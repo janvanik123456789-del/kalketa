@@ -28,5 +28,8 @@
     "packages/*/tests",
     "tests",
     "reference"
+  ],
+  "exclude": [
+    "packages/editor/src"
   ]
 }

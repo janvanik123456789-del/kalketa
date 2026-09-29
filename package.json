@@ -10,9 +10,11 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc -b && tsc -p tsconfig.tests.json",
+    "typecheck": "tsc -b && tsc -p tsconfig.tests.json && tsc -p packages/editor/tsconfig.json",
     "build": "tsc -b",
-    "calc": "node packages/cli/dist/main.js"
+    "calc": "node packages/cli/dist/main.js",
+    "editor": "npm run dev --workspace @calccanvas/editor",
+    "build:editor": "npm run build --workspace @calccanvas/editor"
   },
   "engines": {
     "node": ">=24"

@@ -6,7 +6,7 @@
  * table with an image per record.
  */
 
-import ExcelJS from 'exceljs';
+import type ExcelJS from 'exceljs';
 
 export interface WorkbookImage {
   /** 0-based row in the grid (row 0 is the header). */
@@ -22,7 +22,9 @@ export interface WorkbookSheet {
 }
 
 export async function readWorkbook(data: Uint8Array): Promise<WorkbookSheet[]> {
-  const workbook = new ExcelJS.Workbook();
+  // Loaded on first use: the library is large and only needed for Excel import.
+  const { default: Excel } = await import('exceljs');
+  const workbook = new Excel.Workbook();
   // ExcelJS's typings expect a Node Buffer; a Uint8Array view works the same.
   await workbook.xlsx.load(data as unknown as ArrayBuffer);
   const media = (workbook.model as unknown as { media?: { buffer?: Uint8Array; extension?: string }[] }).media ?? [];

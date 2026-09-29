@@ -1,0 +1,21 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": false,
+    "declaration": false,
+    "noEmit": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "types": ["vite/client"],
+    "esModuleInterop": true,
+    "paths": {
+      "@calccanvas/core": ["../core/src/index.ts"],
+      "@calccanvas/i18n": ["../i18n/src/index.ts"],
+      "@calccanvas/sheet": ["../sheet/src/index.ts"],
+      "@calccanvas/render": ["../render/src/index.ts"]
+    }
+  },
+  "include": ["src", "vite.config.ts"]
+}

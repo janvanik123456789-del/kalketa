@@ -1,0 +1,241 @@
+/**
+ * Table editor: the data layer of the sheet. Typed columns with units,
+ * images per row, import from CSV and Excel.
+ */
+
+import { useState } from 'react';
+import { defaultRegistry, type ColumnSchema, type ColumnType, type Diagnostic } from '@calccanvas/core';
+import { formatDiagnostic, t, type Catalog } from '@calccanvas/i18n';
+import { importTable, parseCsv, readWorkbook, toIdentifier, type SheetDocument, type StoredTable } from '@calccanvas/sheet';
+import { chooseFile } from '../document.js';
+import { addColumn, addRow, deleteColumn, deleteRow, fromEditable, newTable, setCell, toEditable, type EditableTable } from '../logic/tableEdit.js';
+
+interface Props {
+  readonly doc: SheetDocument;
+  readonly catalog: Catalog;
+  readonly diagnostics: readonly Diagnostic[];
+  readonly resolveFile: (path: string) => string | undefined;
+  onChange(doc: SheetDocument): void;
+}
+
+const IMAGE_COLUMN = 'obrazek';
+
+export function TablesView({ doc, catalog, diagnostics, resolveFile, onChange }: Props) {
+  const names = [...doc.tables.keys()];
+  const [active, setActive] = useState<string | undefined>(names[0]);
+  const [messages, setMessages] = useState<string[]>([]);
+  const current = active && doc.tables.has(active) ? active : names[0];
+
+  const putTable = (name: string, stored: StoredTable, files?: ReadonlyMap<string, Uint8Array>) => {
+    const tables = new Map(doc.tables);
+    tables.set(name, stored);
+    const allFiles = new Map(doc.files);
+    for (const [path, data] of files ?? []) allFiles.set(path, data);
+    onChange({ ...doc, tables, files: allFiles });
+  };
+
+  const edit = (table: EditableTable | undefined) => {
+    if (table && current) putTable(current, fromEditable(table));
+  };
+
+  const createTable = () => {
+    const name = toIdentifier(window.prompt(t(catalog, 'editor.tableName'), 'Tabulka') ?? '');
+    if (!name || doc.tables.has(name)) return;
+    putTable(name, fromEditable(newTable(name)));
+    setActive(name);
+  };
+
+  const importFile = async () => {
+    const file = await chooseFile('.csv,.txt,.xlsx');
+    if (!file) return;
+    const suggested = toIdentifier(file.name.replace(/\.[^.]+$/, ''));
+    const name = toIdentifier(window.prompt(t(catalog, 'editor.tableName'), suggested) ?? '');
+    if (!name) return;
+    const source = { title: file.name, retrieved: new Date().toISOString().slice(0, 10) };
+    let imported;
+    if (file.name.toLowerCase().endsWith('.xlsx')) {
+      const [sheet] = await readWorkbook(new Uint8Array(await file.arrayBuffer()));
+      if (!sheet) return;
+      imported = importTable(sheet.rows, { name, registry: defaultRegistry, source, images: sheet.images });
+    } else {
+      imported = importTable(parseCsv(await file.text()), { name, registry: defaultRegistry, source });
+    }
+    putTable(name, { schemaJson: imported.files.schemaJson, dataCsv: imported.files.dataCsv }, imported.files.images);
+    setActive(name);
+    setMessages(imported.diagnostics.map((d) => formatDiagnostic(d, catalog)));
+  };
+
+  return (
+    <div className="tables-view">
+      <nav className="table-list">
+        {names.map((name) => (
+          <button key={name} type="button" className={name === current ? 'active' : ''} onClick={() => setActive(name)}>
+            {name}
+          </button>
+        ))}
+        <button type="button" className="secondary" onClick={createTable}>
+          + {t(catalog, 'editor.newTable')}
+        </button>
+        <button type="button" className="secondary" onClick={importFile}>
+          {t(catalog, 'editor.importTable')}
+        </button>
+      </nav>
+      <section className="table-panel">
+        {messages.length > 0 && (
+          <ul className="messages">
+            {messages.map((m, i) => (
+              <li key={i} className="warning">
+                {m}
+              </li>
+            ))}
+          </ul>
+        )}
+        {diagnostics.length > 0 && (
+          <ul className="messages">
+            {diagnostics.map((d, i) => (
+              <li key={i} className={d.severity}>
+                {formatDiagnostic(d, catalog)}
+              </li>
+            ))}
+          </ul>
+        )}
+        {current ? (
+          <TableGrid
+            key={current}
+            table={toEditable(doc.tables.get(current)!)}
+            catalog={catalog}
+            resolveFile={resolveFile}
+            onChange={edit}
+            onImage={async (row, table) => {
+              const file = await chooseFile('image/*');
+              if (!file) return;
+              const ext = file.name.split('.').pop()?.toLowerCase() ?? 'png';
+              const key = table.rows[row]?.[0] || `radek_${row + 1}`;
+              const fileName = `${key.replace(/[^\p{L}\p{Nd}._-]+/gu, '_')}.${ext}`;
+              let next = table;
+              let column = next.schema.columns.findIndex((c) => c.name === IMAGE_COLUMN);
+              if (column === -1) {
+                next = addColumn(next, { name: IMAGE_COLUMN, type: 'text' })!;
+                column = next.schema.columns.length - 1;
+              }
+              next = setCell(next, row, column, fileName);
+              next = { ...next, schema: { ...next.schema, image: `images/${current}/{${IMAGE_COLUMN}}` } };
+              putTable(current, fromEditable(next), new Map([[`images/${current}/${fileName}`, new Uint8Array(await file.arrayBuffer())]]));
+            }}
+          />
+        ) : (
+          <p className="muted">{t(catalog, 'editor.noTables')}</p>
+        )}
+      </section>
+    </div>
+  );
+}
+
+interface GridProps {
+  readonly table: EditableTable;
+  readonly catalog: Catalog;
+  readonly resolveFile: (path: string) => string | undefined;
+  onChange(table: EditableTable | undefined): void;
+  onImage(row: number, table: EditableTable): void;
+}
+
+function TableGrid({ table, catalog, resolveFile, onChange, onImage }: GridProps) {
+  const { schema } = table;
+  const imageColumn = schema.columns.findIndex((c) => c.name === IMAGE_COLUMN);
+
+  const updateColumn = (index: number, change: Partial<ColumnSchema>) => {
+    const columns = schema.columns.map((c, i) => {
+      if (i !== index) return c;
+      const next = { ...c, ...change } as ColumnSchema & { unit?: string };
+      if (next.type !== 'quantity' || !next.unit) {
+        const { unit: _unit, ...rest } = next;
+        return rest as ColumnSchema;
+      }
+      return next as ColumnSchema;
+    });
+    onChange({ ...table, schema: { ...schema, columns } });
+  };
+
+  const newColumn = () => {
+    const name = toIdentifier(window.prompt(t(catalog, 'editor.columnName'), '') ?? '');
+    if (name) onChange(addColumn(table, { name, type: 'quantity' }));
+  };
+
+  const imageFor = (row: number) => {
+    if (!schema.image || imageColumn === -1) return undefined;
+    const file = table.rows[row]?.[imageColumn];
+    return file ? resolveFile(schema.image.replace(`{${IMAGE_COLUMN}}`, file)) : undefined;
+  };
+
+  return (
+    <div className="grid-wrap">
+      <div className="table-meta">
+        <strong>{schema.name}</strong>
+        {schema.source && <span className="muted"> · {schema.source.title}</span>}
+      </div>
+      <table className="grid">
+        <thead>
+          <tr>
+            <th />
+            {schema.columns.map((c, i) => (
+              <th key={i}>
+                <div className="col-name">{c.name}</div>
+                <div className="col-meta">
+                  <select value={c.type} onChange={(e) => updateColumn(i, { type: e.target.value as ColumnType })} title={t(catalog, 'editor.columnType')}>
+                    <option value="quantity">{t(catalog, 'editor.type.quantity')}</option>
+                    <option value="text">{t(catalog, 'editor.type.text')}</option>
+                    <option value="boolean">{t(catalog, 'editor.type.boolean')}</option>
+                  </select>
+                  {c.type === 'quantity' && (
+                    <input
+                      className="unit"
+                      defaultValue={c.unit ?? ''}
+                      placeholder={t(catalog, 'editor.columnUnit')}
+                      onBlur={(e) => e.target.value !== (c.unit ?? '') && updateColumn(i, { unit: e.target.value.trim() })}
+                    />
+                  )}
+                  {i > 0 && (
+                    <button type="button" className="icon" title={t(catalog, 'editor.deleteColumn')} onClick={() => onChange(deleteColumn(table, i))}>
+                      ×
+                    </button>
+                  )}
+                </div>
+              </th>
+            ))}
+            <th>
+              <button type="button" className="icon" title={t(catalog, 'editor.addColumn')} onClick={newColumn}>
+                +
+              </button>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {table.rows.map((row, r) => (
+            // Keyed by content: inputs keep their own text until blur, so a changed row must remount.
+            <tr key={`${r}:${row.join('\u0001')}`}>
+              <td className="row-tools">
+                {imageFor(r) ? <img className="thumb" src={imageFor(r)} alt="" /> : null}
+                <button type="button" className="icon" title={t(catalog, 'editor.uploadImage')} onClick={() => onImage(r, table)}>
+                  🖼
+                </button>
+              </td>
+              {row.map((cell, c) => (
+                <td key={c} className={schema.columns[c]?.type === 'quantity' ? 'num' : ''}>
+                  <input defaultValue={cell} onBlur={(e) => e.target.value !== cell && onChange(setCell(table, r, c, e.target.value))} />
+                </td>
+              ))}
+              <td>
+                <button type="button" className="icon" title={t(catalog, 'editor.deleteRow')} onClick={() => onChange(deleteRow(table, r))}>
+                  ×
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <button type="button" className="secondary" onClick={() => onChange(addRow(table))}>
+        + {t(catalog, 'editor.addRow')}
+      </button>
+    </div>
+  );
+}

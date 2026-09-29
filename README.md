@@ -20,6 +20,13 @@ npm run build     # sestavení (potřeba pro příkazovou řádku)
 
 Stav projektu určují testy, ne ručně psané zprávy.
 
+## Editor
+
+```bash
+npm run editor      # spustí editor na http://localhost:5173
+npm run build:editor
+```
+
 ## Příkazová řádka
 
 ```bash
@@ -39,6 +46,7 @@ packages/i18n/   překlady hlášení a popisků, formát čísel
 packages/sheet/  tabulky (CSV, Excel), soubor listu .calc
 packages/render/ tisková vrstva: klasický technický výpočet (HTML + MathML)
 packages/cli/    příkazová řádka
+packages/editor/ editor (React): list s živým přepočtem, tabulky, původ hodnot, tisk
 reference/       referenční výpočty R1–R6 s ověřenými výsledky
 tests/           testy celého repozitáře (pravidla architektury)
 docs/            filozofie, architektura, jazyk

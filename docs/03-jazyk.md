@@ -96,11 +96,12 @@ Ohyb: σ = 193.3 MPa ≤ fy = 235 MPa   využití 82 %  ✓   [EN 1993-1-1, 6.2.
 
 Tohle je nejčastější zdroj chyb, proto pravidlo **přísnější než u konkurence**:
 
-1. Za číslem (`5 m`) je to vždy jednotka.
+1. Za číslem (`5 m`) je to vždy jednotka. Jednotka za číslem pokračuje přes `/`, `·` a mocniny, dokud následují jednotky (`12 kN/m`, `4180 J/(kg·K)`). `5 m / 2 s` je proto (5 m)/(2 s).
 2. Samostatně stojící název:
    - je-li definovaný jako proměnná, je to proměnná,
    - jinak je to jednotka.
-3. **Pokud se jméno proměnné shoduje s jednotkou** (`m := 20 kg` — „m“ je i metr), program vydá **varování** v místě definice. (*Calcpad to tiše přijme. U nás platí princip „nehádat potichu“.*)
+3. **Pokud je jméno za číslem zároveň definovaná proměnná** (`L := 5 m`, pak `V := 2 L`: litr, nebo L?), program ho čte jako jednotku a vydá **varování** `W-AMBIGUOUS-UNIT` přímo v místě použití. (*Calcpad to tiše přijme. U nás platí princip „nehádat potichu“.*)
+   *Upraveno při implementaci F1:* původně navržené varování už při definici (`L := 5 m`) by se objevovalo pořád, protože běžná inženýrská jména (L, A, F, T, V, h, d, t, m) jsou zároveň jednotky. Varuje se proto jen tam, kde nejednoznačnost opravdu vznikne.
 4. Vynucení jednotky: `[m]` v hranatých závorkách (**inspirace EPX**, který jednotky vždy píše do hranatých závorek). Ekvivalent Calcpadové tečky `.m`, ale čitelnější.
 
 ### 4.3 Vnitřní reprezentace
@@ -115,13 +116,15 @@ Nejčastější past jednotkových systémů. Pravidla (**převzato z Calcpadu +
 - `°C`, `°F` jsou **absolutní teploty** s posunem nuly.
 - `Δ°C`, `Δ°F` (ASCII `delta_degC`) jsou **teplotní rozdíly** bez posunu. `1 Δ°C = 1 K`.
 - `T₂ - T₁` dvou absolutních teplot dává **rozdíl** (v K, zobrazitelný v `Δ°C`).
-- Sčítání dvou absolutních teplot, nebo násobení absolutní teploty ve °C je **chyba** s vysvětlením.
+- Sčítání dvou absolutních teplot je **chyba** s vysvětlením.
+- Násobení absolutní teploty (např. `p·V = n·R·T` s `T := 20 °C`) je fyzikálně správné, počítá se v kelvinech. Program ale vydá **varování**, protože častěji jde o záměnu s rozdílem. (*Upraveno při implementaci F1, původně navrženo jako chyba.*)
 - `4180 J/(kg·K)` · `60 K` funguje. `4180 J/(kg·°C)` se v jednotce interpretuje jako rozdíl, tedy `J/(kg·Δ°C)`.
 
 ### 4.5 Bezrozměrné a zvláštní dimenze
 
 - `%`, `‰`, `ppm` jsou bezrozměrné násobitele (`21 % = 0.21`).
-- **Úhel** má vlastní nefyzikální dimenzi, aby se nemíchal s procenty (**převzato z Calcpadu**). `sin(30°)` funguje, `sin(30)` je v radiánech.
+- **Úhel je bezrozměrný** podle SI (`rad = 1`, `° = π/180`). `sin(30°)` funguje, `sin(30)` je v radiánech.
+  *Upraveno při implementaci F1:* Calcpad dává úhlu vlastní dimenzi, aby se nemíchal s procenty. To ale rozbije běžné vzorce jako `v = ω·r` (vyšlo by m·rad/s místo m/s). Záměna úhlu s procentem je vzácnější než tyto vzorce.
 - **Vlastní základní dimenze** (kap. 4.6).
 
 ### 4.6 Vlastní dimenze a jednotky
@@ -318,7 +321,8 @@ Každá diagnostika má: **kód**, **závažnost** (chyba / varování / info), 
 | `E-TABLE-EMPTY` | chybějící hodnota v tabulce |
 | `E-SOLVE` | řešič nenašel řešení |
 | `W-EXTRAPOLATION` | `lookup` mimo rozsah tabulky |
-| `W-NAME-IS-UNIT` | jméno proměnné se shoduje s jednotkou |
+| `W-AMBIGUOUS-UNIT` | jméno za číslem je jednotka i proměnná |
+| `W-ABS-TEMP-MUL` | absolutní teplota v součinu |
 | `W-IMPLICIT-MUL` | podezřelé implicitní násobení |
 
 Program **pokračuje ve výpočtu** i po chybě tam, kde to jde (nezávislé části listu se spočítají), a chyba se zobrazí v místě vzniku.

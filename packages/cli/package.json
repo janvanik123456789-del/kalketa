@@ -1,0 +1,14 @@
+{
+  "name": "@calccanvas/cli",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Command line interface: evaluate a sheet and print the results.",
+  "type": "module",
+  "bin": {
+    "calccanvas": "dist/main.js"
+  },
+  "dependencies": {
+    "@calccanvas/core": "*",
+    "@calccanvas/i18n": "*"
+  }
+}

@@ -7,7 +7,8 @@
 
 import { fail } from '../diagnostics.js';
 import type { Expr } from '../lang/ast.js';
-import { dimKey, isDimensionless, powerDim, sameDim } from '../units/dimension.js';
+import { isDimensionless, powerDim, sameDim } from '../units/dimension.js';
+import { baseUnitSymbol } from '../units/display.js';
 import { quantity, type Quantity, type Value } from '../values/value.js';
 import { asBoolean, asQuantity } from './coerce.js';
 
@@ -104,7 +105,7 @@ function arity(call: CallExpr, expected: number): void {
 function dimensionless(call: CallExpr, index: number, evaluate: Evaluate): number {
   const arg = call.args[index]!;
   const q = asQuantity(evaluate(arg), arg.span);
-  if (!isDimensionless(q.dim)) fail('E-FUNC-ARG-DIM', arg.span, { function: call.name, dim: dimKey(q.dim) });
+  if (!isDimensionless(q.dim)) fail('E-FUNC-ARG-DIM', arg.span, { function: call.name, dim: baseUnitSymbol(q.dim) });
   return q.si;
 }
 
@@ -113,7 +114,7 @@ function sameDimArgs(call: CallExpr, evaluate: Evaluate): Quantity[] {
   const first = values[0]!;
   values.forEach((q, i) => {
     if (!sameDim(q.dim, first.dim)) {
-      fail('E-UNIT-MISMATCH', call.args[i]!.span, { operator: call.name, left: dimKey(first.dim), right: dimKey(q.dim) });
+      fail('E-UNIT-MISMATCH', call.args[i]!.span, { operator: call.name, left: baseUnitSymbol(first.dim), right: baseUnitSymbol(q.dim) });
     }
   });
   return values;

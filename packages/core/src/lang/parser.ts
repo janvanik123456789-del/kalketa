@@ -185,7 +185,7 @@ class LineParser {
       if (this.peek().type !== 'eof') {
         // "a = 5": the user meant a definition.
         if (expr.kind === 'variable') fail('E-ASSIGN-WITH-EQUALS', eq.span, { name: expr.name });
-        fail('E-SYNTAX', this.peek().span, { expected: 'end of line', found: this.peek().text });
+        fail('E-SYNTAX', this.peek().span, { expected: 'end-of-line', found: this.peek().text });
       }
     }
     this.expectEnd();
@@ -239,7 +239,7 @@ class LineParser {
     const op = this.next().type as BinaryOperator;
     const result = this.binary(op, left, this.parseAdditive());
     if (COMPARISONS.has(this.peek().type)) {
-      fail('E-SYNTAX', this.peek().span, { expected: 'end of comparison', found: this.peek().text });
+      fail('E-SYNTAX', this.peek().span, { expected: 'end-of-comparison', found: this.peek().text });
     }
     return result;
   }
@@ -296,7 +296,7 @@ class LineParser {
         expr = this.binary('^', expr, exponent);
       } else if (token.type === '.') {
         this.next();
-        const name = this.expect('ident', 'member name');
+        const name = this.expect('ident', 'member-name');
         expr = { kind: 'member', object: expr, name: name.text, span: spanOf(expr, name) };
       } else {
         return expr;
@@ -330,7 +330,7 @@ class LineParser {
       case 'ident':
         return this.parseName();
       default:
-        fail('E-SYNTAX', token.span, { expected: 'value', found: token.text || 'end of line' });
+        fail('E-SYNTAX', token.span, { expected: 'value', found: token.text || 'end-of-line' });
     }
   }
 
@@ -466,7 +466,7 @@ class LineParser {
       }
       base = { kind: 'unit-name', name: token.text, span: token.span };
     } else {
-      fail('E-SYNTAX', token.span, { expected: 'unit', found: token.text || 'end of line' });
+      fail('E-SYNTAX', token.span, { expected: 'unit', found: token.text || 'end-of-line' });
     }
     return this.parseUnitPowers(base);
   }
@@ -519,12 +519,12 @@ class LineParser {
 
   private expect(type: TokenType, expected: string): Token {
     const token = this.peek();
-    if (token.type !== type) fail('E-SYNTAX', token.span, { expected, found: token.text || 'end of line' });
+    if (token.type !== type) fail('E-SYNTAX', token.span, { expected, found: token.text || 'end-of-line' });
     return this.next();
   }
 
   private expectEnd(): void {
     const token = this.peek();
-    if (token.type !== 'eof') fail('E-SYNTAX', token.span, { expected: 'end of line', found: token.text });
+    if (token.type !== 'eof') fail('E-SYNTAX', token.span, { expected: 'end-of-line', found: token.text });
   }
 }

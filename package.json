@@ -10,7 +10,9 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc -b && tsc -p tsconfig.tests.json"
+    "typecheck": "tsc -b && tsc -p tsconfig.tests.json",
+    "build": "tsc -b",
+    "calc": "node packages/cli/dist/main.js"
   },
   "engines": {
     "node": ">=24"

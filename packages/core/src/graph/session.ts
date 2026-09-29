@@ -13,8 +13,8 @@ import { evaluate, type EvalContext } from '../eval/evaluator.js';
 import { BUILTIN_CONSTANTS } from '../eval/functions.js';
 import type { Expr, Sheet, Statement, UnitExpr } from '../lang/ast.js';
 import { parse } from '../lang/parser.js';
-import { dimKey, sameDim } from '../units/dimension.js';
-import { toDisplay, type DisplayValue } from '../units/display.js';
+import { sameDim } from '../units/dimension.js';
+import { baseUnitSymbol, toDisplay, type DisplayValue } from '../units/display.js';
 import { defaultRegistry, type UnitRegistry } from '../units/registry.js';
 import { resolveUnit, type ResolvedUnit } from '../units/unitExpr.js';
 import { fingerprint, type Value } from '../values/value.js';
@@ -167,7 +167,7 @@ export class SheetSession {
       if (targetExpr) {
         target = resolveUnit(targetExpr, this.registry);
         if (value.type !== 'quantity' || !sameDim(target.dim, value.dim)) {
-          const found = value.type === 'quantity' ? dimKey(value.dim) : value.type;
+          const found = value.type === 'quantity' ? baseUnitSymbol(value.dim) : value.type;
           throw new CalcError(diagnostic('E-TARGET-UNIT', targetExpr.span, { unit: target.symbol, found }));
         }
         // The value keeps its target unit when used further on.

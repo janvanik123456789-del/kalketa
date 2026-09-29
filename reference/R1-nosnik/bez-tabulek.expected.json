@@ -1,0 +1,14 @@
+{
+  "sheet": "bez-tabulek.cc",
+  "verifiedBy": "Ruční výpočet prostého nosníku (M = qL²/8, σ = M/W, w = 5qL⁴/384EI) čistou aritmetikou mimo CalcCanvas; průřezové hodnoty IPE 200 z tabulek válcovaných profilů.",
+  "relativeTolerance": 1e-9,
+  "values": {
+    "M_Ed": { "value": 37.5, "unit": "kN·m" },
+    "σ": { "value": 193.0005146680391, "unit": "MPa" },
+    "w": { "value": 23.933595568953265, "unit": "mm" },
+    "w_lim": { "value": 20, "unit": "mm" },
+    "η_M": { "value": 82.12787858214429, "unit": "%" },
+    "ohyb_vyhovuje": { "boolean": true },
+    "pruhyb_vyhovuje": { "boolean": false }
+  }
+}

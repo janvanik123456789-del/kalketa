@@ -7,7 +7,8 @@
 
 import { diagnostic, fail, type Diagnostic, type Span } from '../diagnostics.js';
 import type { BinaryOperator, Expr } from '../lang/ast.js';
-import { dimKey, isDimensionless, multiplyDims, divideDims, powerDim, sameDim } from '../units/dimension.js';
+import { isDimensionless, multiplyDims, divideDims, powerDim, sameDim } from '../units/dimension.js';
+import { baseUnitSymbol } from '../units/display.js';
 import type { UnitRegistry } from '../units/registry.js';
 import { resolveUnit, type ResolvedUnit } from '../units/unitExpr.js';
 import { quantity, type Quantity, type Value } from '../values/value.js';
@@ -95,7 +96,7 @@ function evaluateBinary(op: BinaryOperator, leftExpr: Expr, rightExpr: Expr, spa
       return quantity(a.si / b.si, divideDims(a.dim, b.dim));
     }
     case '^': {
-      if (!isDimensionless(b.dim)) fail('E-POWER-DIM', rightExpr.span, { dim: dimKey(b.dim) });
+      if (!isDimensionless(b.dim)) fail('E-POWER-DIM', rightExpr.span, { dim: baseUnitSymbol(b.dim) });
       warnOnAbsoluteTemperature(a, leftExpr.span, ctx);
       return quantity(a.si ** b.si, powerDim(a.dim, b.si));
     }
@@ -106,7 +107,7 @@ function evaluateBinary(op: BinaryOperator, leftExpr: Expr, rightExpr: Expr, spa
 
 function addSubtract(op: '+' | '-', a: Quantity, b: Quantity, span: Span): Quantity {
   if (!sameDim(a.dim, b.dim)) {
-    fail('E-UNIT-MISMATCH', span, { operator: op, left: dimKey(a.dim), right: dimKey(b.dim) });
+    fail('E-UNIT-MISMATCH', span, { operator: op, left: baseUnitSymbol(a.dim), right: baseUnitSymbol(b.dim) });
   }
   const si = op === '+' ? a.si + b.si : a.si - b.si;
 
@@ -138,7 +139,7 @@ function withoutOffset(unit: ResolvedUnit): ResolvedUnit {
 
 function compare(op: BinaryOperator, a: Quantity, b: Quantity, span: Span): Value {
   if (!sameDim(a.dim, b.dim)) {
-    fail('E-UNIT-MISMATCH', span, { operator: op, left: dimKey(a.dim), right: dimKey(b.dim) });
+    fail('E-UNIT-MISMATCH', span, { operator: op, left: baseUnitSymbol(a.dim), right: baseUnitSymbol(b.dim) });
   }
   const tolerance = COMPARE_EPSILON * Math.max(Math.abs(a.si), Math.abs(b.si));
   const diff = a.si - b.si;

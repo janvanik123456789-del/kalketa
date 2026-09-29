@@ -4,7 +4,22 @@
     "noEmit": true,
     "composite": false,
     "declaration": false,
-    "types": ["node"]
+    "types": [
+      "node"
+    ],
+    "paths": {
+      "@calccanvas/core": [
+        "./packages/core/src/index.ts"
+      ],
+      "@calccanvas/i18n": [
+        "./packages/i18n/src/index.ts"
+      ]
+    }
   },
-  "include": ["packages/*/src", "packages/*/tests", "tests"]
+  "include": [
+    "packages/*/src",
+    "packages/*/tests",
+    "tests",
+    "reference"
+  ]
 }

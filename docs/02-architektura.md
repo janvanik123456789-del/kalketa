@@ -16,8 +16,8 @@
 | Balíčky | **npm workspaces** (monorepo) | bez dalších nástrojů navíc |
 | Testy | **Vitest** | stejně jako ve stávajících verzích |
 | UI | **React + Vite** | největší ekosystém a nejlepší podpora AI asistentů |
-| Sazba vzorců | **KaTeX** (zobrazení), později **MathLive** (editace) | |
-| Tisk / PDF | HTML stránky s CSS pro tisk (**Paged.js**) → PDF | tisková vrstva = HTML stránky A4 |
+| Sazba vzorců | **MathML** (zobrazení i tisk), později **MathLive** (editace) | *Upraveno v F5:* místo KaTeX. MathML umí prohlížeče nativně, nepotřebuje fonty ani styly, je přístupné pro čtečky obrazovky a stejné řešení používá UzonCalc. |
+| Tisk / PDF | HTML stránky s CSS `@page` → PDF přes Edge/Chrome v režimu bez okna | *Upraveno v F5:* Paged.js není potřeba, Chromium umí okraje, záhlaví a čísla stránek sám. Na Windows je Edge vždy k dispozici. |
 | Soubor listu | ZIP kontejner (**fflate**) | viz kap. 4 |
 | Import Excelu | **ExcelJS** | CSV vlastním parserem |
 | Desktop | **Tauri** (případně Electron), až ve fázi F6 | Tauri vyžaduje nainstalovaný Rust toolchain, i když v Rustu nic nepíšeme. Do té doby běží aplikace v prohlížeči. |

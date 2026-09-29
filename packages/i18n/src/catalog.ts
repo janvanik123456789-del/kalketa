@@ -36,6 +36,9 @@ export const UI_KEYS = [
   'trace.source',
   'trace.interpolated',
   'trace.notFound',
+  'print.page',
+  'print.of',
+  'print.condition',
 ] as const;
 
 export type UiKey = (typeof UI_KEYS)[number];

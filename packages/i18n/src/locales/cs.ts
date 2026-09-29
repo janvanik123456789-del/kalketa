@@ -99,5 +99,8 @@ export const cs: Catalog = {
     'trace.source': 'zdroj',
     'trace.interpolated': 'interpolováno',
     'trace.notFound': '„{name}“ není v tomto listu definováno.',
+    'print.page': 'Strana',
+    'print.of': 'z',
+    'print.condition': 'vybrán řádek, který splňuje',
   },
 };

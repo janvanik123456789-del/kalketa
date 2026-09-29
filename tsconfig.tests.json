@@ -17,6 +17,9 @@
       ],
       "@calccanvas/sheet": [
         "./packages/sheet/src/index.ts"
+      ],
+      "@calccanvas/render": [
+        "./packages/render/src/index.ts"
       ]
     }
   },

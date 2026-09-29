@@ -7,6 +7,10 @@
  * calccanvas trace <sheet> <name> [--lang cs]
  *   Shows where a result comes from: formulas, inputs, table rows and sources.
  *
+ * calccanvas print <sheet> [--out file.html] [--pdf file.pdf] [--lang cs]
+ *   Prints the sheet as a classical technical calculation (HTML, optionally PDF).
+ *   The printout uses the sheet's own language when it has one.
+ *
  * calccanvas pack <file.cc> [--out file.calc] [--title "…"]
  * calccanvas unpack <file.calc> [--into folder]
  *   Converts between an unpacked folder and a .calc file.
@@ -16,19 +20,22 @@
  *   Imports a table into a sheet folder (tables/<Table>/schema.json + data.csv).
  */
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { basename, extname, join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { defaultRegistry, traceName, type Diagnostic } from '@calccanvas/core';
 import { catalogFor, formatDiagnostic, t, type Catalog } from '@calccanvas/i18n';
 import { evaluateDocument, FILE_EXTENSION, importTable, parseCsv, readWorkbook } from '@calccanvas/sheet';
 import { openSheet, saveSheetFile, writeFolder, writeTable } from './files.js';
+import { htmlToPdf } from './pdf.js';
 import { formatReport, formatTrace } from './report.js';
+import { printHtml } from '@calccanvas/render';
 
 const USAGE = [
   'Usage:',
   '  calccanvas run <sheet.calc|sheet.cc> [--lang <language>] [--digits <n>]',
   '  calccanvas trace <sheet.calc|sheet.cc> <name> [--lang <language>]',
+  '  calccanvas print <sheet.calc|sheet.cc> [--out <file.html>] [--pdf <file.pdf>] [--lang <language>]',
   '  calccanvas pack <sheet.cc> [--out <file.calc>] [--title <title>]',
   '  calccanvas unpack <sheet.calc> [--into <folder>]',
   '  calccanvas import-table <file.csv|file.xlsx> --name <Table> [--sheet <name>] [--into <folder>] [--source <title>]',
@@ -47,6 +54,7 @@ async function main(argv: string[]): Promise<number> {
       out: { type: 'string' },
       title: { type: 'string' },
       source: { type: 'string' },
+      pdf: { type: 'string' },
     },
   });
   const [command, file, name] = positionals;
@@ -71,6 +79,35 @@ async function main(argv: string[]): Promise<number> {
     }
     console.log(formatReport(result, { catalog, digits }));
     return [...opened.diagnostics, ...tableDiagnostics, ...result.diagnostics].some((d) => d.severity === 'error') ? 1 : 0;
+  }
+
+  if (command === 'print' && file) {
+    const opened = await openSheet(file);
+    printDiagnostics(opened.diagnostics, catalog);
+    const doc = opened.document;
+    if (!doc) return 1;
+    const { result, tableDiagnostics } = evaluateDocument(doc, defaultRegistry);
+    printDiagnostics(tableDiagnostics, catalog);
+    // The printout is in the sheet's language; --lang only applies when it has none.
+    const printCatalog = doc.manifest.language ? catalogFor(doc.manifest.language) : catalog;
+    const html = printHtml(result, {
+      catalog: printCatalog,
+      registry: defaultRegistry,
+      title: firstHeading(doc.source) ?? doc.manifest.title,
+      ...(doc.manifest.author ? { subtitle: doc.manifest.author } : {}),
+      digits: values.digits !== undefined && argv.includes('--digits') ? digits : doc.layout.digits,
+      paper: doc.layout.paper,
+      orientation: doc.layout.orientation,
+      resolveFile: (path) => dataUri(path, doc.files.get(path)),
+    });
+    const htmlOut = values.out ?? file.slice(0, -extname(file).length) + '.html';
+    writeFileSync(htmlOut, html);
+    console.log(htmlOut);
+    if (values.pdf) {
+      htmlToPdf(html, values.pdf);
+      console.log(values.pdf);
+    }
+    return result.diagnostics.some((d) => d.severity === 'error') ? 1 : 0;
   }
 
   if (command === 'pack' && file) {
@@ -123,6 +160,27 @@ async function main(argv: string[]): Promise<number> {
 
   console.error(USAGE);
   return 2;
+}
+
+/** Text of the first "# heading" line, the natural title of a printout. */
+function firstHeading(source: string): string | undefined {
+  return /^[ \t]*#(?!#)[ \t]*(.+?)[ \t]*$/m.exec(source)?.[1];
+}
+
+const MIME: Readonly<Record<string, string>> = {
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.svg': 'image/svg+xml',
+  '.webp': 'image/webp',
+};
+
+/** Embeds a file of the sheet into the HTML, so the printout is self-contained. */
+function dataUri(path: string, data: Uint8Array | undefined): string | undefined {
+  const mime = MIME[extname(path).toLowerCase()];
+  if (!data || !mime) return undefined;
+  return `data:${mime};base64,${Buffer.from(data).toString('base64')}`;
 }
 
 function printDiagnostics(diagnostics: readonly Diagnostic[], catalog: Catalog): void {

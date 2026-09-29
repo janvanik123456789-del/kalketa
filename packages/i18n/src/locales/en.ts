@@ -99,5 +99,8 @@ export const en: Catalog = {
     'trace.source': 'source',
     'trace.interpolated': 'interpolated',
     'trace.notFound': '“{name}” is not defined in this sheet.',
+    'print.page': 'Page',
+    'print.of': 'of',
+    'print.condition': 'selected as the row that satisfies',
   },
 };

@@ -10,6 +10,7 @@ export default defineConfig({
       '@calccanvas/core': src('core'),
       '@calccanvas/i18n': src('i18n'),
       '@calccanvas/sheet': src('sheet'),
+      '@calccanvas/render': src('render'),
     },
   },
   test: {

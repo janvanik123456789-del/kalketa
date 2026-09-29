@@ -10,6 +10,7 @@
   "dependencies": {
     "@calccanvas/core": "*",
     "@calccanvas/i18n": "*",
-    "@calccanvas/sheet": "*"
+    "@calccanvas/sheet": "*",
+    "@calccanvas/render": "*"
   }
 }

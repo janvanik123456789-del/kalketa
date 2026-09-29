@@ -25,6 +25,7 @@ Stav projektu určují testy, ne ručně psané zprávy.
 ```bash
 node packages/cli/dist/main.js run reference/R1-nosnik/nosnik.cc --lang cs
 node packages/cli/dist/main.js trace reference/R1-nosnik/nosnik.cc σ --lang cs
+node packages/cli/dist/main.js print reference/R1-nosnik/nosnik.cc --lang cs --out nosnik.html --pdf nosnik.pdf
 node packages/cli/dist/main.js pack reference/R1-nosnik/nosnik.cc --out nosnik.calc
 node packages/cli/dist/main.js unpack nosnik.calc --into nosnik
 node packages/cli/dist/main.js import-table katalog.xlsx --name Profily --into nosnik
@@ -36,6 +37,7 @@ node packages/cli/dist/main.js import-table katalog.xlsx --name Profily --into n
 packages/core/   výpočetní jádro (bez UI, souborů a znalosti oboru)
 packages/i18n/   překlady hlášení a popisků, formát čísel
 packages/sheet/  tabulky (CSV, Excel), soubor listu .calc
+packages/render/ tisková vrstva: klasický technický výpočet (HTML + MathML)
 packages/cli/    příkazová řádka
 reference/       referenční výpočty R1–R6 s ověřenými výsledky
 tests/           testy celého repozitáře (pravidla architektury)

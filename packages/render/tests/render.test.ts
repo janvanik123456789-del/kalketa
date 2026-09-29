@@ -108,7 +108,7 @@ describe('print model', () => {
 
   it('does not repeat the title heading', () => {
     const d = buildPrintDocument(evaluateSheet('# Test\n## Given\na := 1'), settings);
-    expect(d.blocks[0]).toEqual({ kind: 'heading', level: 2, text: 'Given' });
+    expect(d.blocks[0]).toEqual({ kind: 'heading', line: 2, level: 2, text: 'Given' });
   });
 });
 

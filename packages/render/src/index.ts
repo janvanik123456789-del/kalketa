@@ -14,7 +14,7 @@ import { buildPrintDocument } from './model.js';
 export * from './math.js';
 export { formulaNode, hasSubstitutableParts, type FormulaOptions } from './formula.js';
 export * from './model.js';
-export { renderHtml, type HtmlOptions } from './html.js';
+export { renderHtml, renderBlockHtml, renderSummary, BLOCK_CSS, type HtmlOptions, type BlockHtmlOptions } from './html.js';
 
 export interface PrintSettings {
   readonly catalog: Catalog;

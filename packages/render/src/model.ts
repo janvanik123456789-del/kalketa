@@ -36,6 +36,8 @@ export interface PrintOptions {
   readonly summary?: 'top' | 'bottom' | 'none';
   /** Resolves a path inside the sheet (images/...) to a URL, e.g. a data: URI. */
   readonly resolveFile?: (path: string) => string | undefined;
+  /** The editor shows everything: @hide does not hide there. */
+  readonly showHidden?: boolean;
 }
 
 export type LineRole = 'given' | 'formula' | 'substitution' | 'result';
@@ -53,8 +55,8 @@ export interface Message {
 }
 
 export type PrintBlock =
-  | { readonly kind: 'heading'; readonly level: number; readonly text: string }
-  | { readonly kind: 'paragraph'; readonly text: string }
+  | { readonly kind: 'heading'; readonly line: number; readonly level: number; readonly text: string }
+  | { readonly kind: 'paragraph'; readonly line: number; readonly text: string }
   | { readonly kind: 'equation'; readonly line: number; readonly lines: readonly EquationLine[]; readonly comment?: string; readonly messages: readonly Message[] }
   | {
       readonly kind: 'selection';
@@ -132,7 +134,7 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
       applyDirective(s.name, s.args, mode, blocks);
       continue;
     }
-    if (mode.hidden && s.kind !== 'heading') continue;
+    if (mode.hidden && !options.showHidden && s.kind !== 'heading') continue;
     const messages = r.diagnostics.map((d) => ({ severity: d.severity, text: formatDiagnostic(d, catalog) }));
     const digits = mode.digits;
     const quantityNode = (q: Quantity) => {
@@ -142,10 +144,10 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
 
     switch (s.kind) {
       case 'heading':
-        blocks.push({ kind: 'heading', level: s.level, text: s.text });
+        blocks.push({ kind: 'heading', line: s.span.line, level: s.level, text: s.text });
         break;
       case 'text':
-        blocks.push({ kind: 'paragraph', text: s.text });
+        blocks.push({ kind: 'paragraph', line: s.span.line, text: s.text });
         break;
       case 'invalid':
         blocks.push({ kind: 'error', line: s.span.line, source: sourceText(result, s.span), messages });

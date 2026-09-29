@@ -22,7 +22,7 @@ const SEVERITY_MARK: Readonly<Record<Message['severity'], string>> = { error: '�
 export function renderHtml(doc: PrintDocument, options: HtmlOptions): string {
   const { catalog } = options;
   const summary = doc.summary ? renderSummary(doc.summary.rows, doc.summary.allPassed, catalog) : '';
-  const body = doc.blocks.map((b) => renderBlock(b, catalog)).join('\n');
+  const body = doc.blocks.map((b) => renderBlockHtml(b, catalog)).join('\n');
   return `<!doctype html>
 <html lang="${esc(doc.language)}">
 <head>
@@ -48,7 +48,13 @@ ${doc.summary?.position === 'bottom' ? summary : ''}
 `;
 }
 
-function renderBlock(block: PrintBlock, catalog: Catalog): string {
+export interface BlockHtmlOptions {
+  /** Operator on the defining line; the editor shows "≔", print shows "=". */
+  readonly defineOperator?: string;
+}
+
+/** One block of the print model as HTML; shared by print and the editor. */
+export function renderBlockHtml(block: PrintBlock, catalog: Catalog, options: BlockHtmlOptions = {}): string {
   switch (block.kind) {
     case 'heading': {
       const level = Math.min(block.level + 1, 6);
@@ -60,7 +66,7 @@ function renderBlock(block: PrintBlock, catalog: Catalog): string {
       return '<div class="page-break"></div>';
     case 'equation':
       return `<section class="block equation" data-line="${block.line}">
-${equationTable(block.lines, block.comment)}${messages(block.messages)}
+${equationTable(block.lines, block.comment, options.defineOperator ?? '=')}${messages(block.messages)}
 </section>`;
     case 'selection': {
       const condition = block.condition
@@ -70,7 +76,7 @@ ${equationTable(block.lines, block.comment)}${messages(block.messages)}
       const image = block.image ? `<img class="row-image" src="${esc(block.image)}" alt="${esc(block.label)}">` : '';
       return `<section class="block selection" data-line="${block.line}">
 ${image}<table class="eq">
-<tr><td class="lhs">${math(block.name)}</td><td class="op">=</td><td class="rhs"><strong>${esc(block.label)}</strong> <span class="table-ref">(${esc(t(catalog, 'trace.table'))} ${esc(block.table)}${source})</span></td><td class="note">${comment(block.comment)}</td></tr>
+<tr><td class="lhs">${math(block.name)}</td><td class="op">${esc(options.defineOperator ?? '=')}</td><td class="rhs"><strong>${esc(block.label)}</strong> <span class="table-ref">(${esc(t(catalog, 'trace.table'))} ${esc(block.table)}${source})</span></td><td class="note">${comment(block.comment)}</td></tr>
 ${condition}</table>${messages(block.messages)}
 </section>`;
     }
@@ -97,10 +103,10 @@ ${checkLines(block.lines)}
 }
 
 /** Lines aligned on "=": the left-hand side only on the first line. */
-function equationTable(lines: readonly EquationLine[], note?: string): string {
+function equationTable(lines: readonly EquationLine[], note: string | undefined, defineOperator: string): string {
   const rows = lines.map((line, i) => {
     const lhs = line.lhs ? math(line.lhs) : '';
-    const op = line.lhs || i > 0 ? '=' : '';
+    const op = line.lhs ? defineOperator : i > 0 ? '=' : '';
     return `<tr class="${line.role}"><td class="lhs">${lhs}</td><td class="op">${op}</td><td class="rhs">${math(line.rhs)}</td><td class="note">${i === 0 ? comment(note) : ''}</td></tr>`;
   });
   return `<table class="eq">\n${rows.join('\n')}\n</table>`;
@@ -110,7 +116,7 @@ function checkLines(lines: readonly EquationLine[]): string {
   return `<table class="eq">\n${lines.map((l) => `<tr class="${l.role}"><td class="rhs">${math(l.rhs)}</td></tr>`).join('\n')}\n</table>`;
 }
 
-function renderSummary(rows: readonly SummaryRow[], allPassed: boolean, catalog: Catalog): string {
+export function renderSummary(rows: readonly SummaryRow[], allPassed: boolean, catalog: Catalog): string {
   const body = rows
     .map((r) => {
       const status = !r.evaluated ? `? ${t(catalog, 'checks.notEvaluated')}` : r.passed ? `✓ ${t(catalog, 'checks.passed')}` : `✗ ${t(catalog, 'checks.failed')}`;
@@ -162,7 +168,12 @@ function stylesheet(doc: PrintDocument, options: HtmlOptions): string {
 }
 :root { color-scheme: light; }
 body { font: 10.5pt/1.45 "Segoe UI", "Helvetica Neue", Arial, sans-serif; color: #111; background: #fff; margin: 0 auto; max-width: 180mm; padding: 8mm 0; }
-math { font-family: "Cambria Math", "STIX Two Math", "Latin Modern Math", math; font-size: 1.1em; math-style: normal; }
+@media screen { body { padding: 12mm 10mm; } }
+${BLOCK_CSS}`;
+}
+
+/** Styles of blocks and the summary; used by print and by the editor. */
+export const BLOCK_CSS = `math { font-family: "Cambria Math", "STIX Two Math", "Latin Modern Math", math; font-size: 1.1em; math-style: normal; }
 h1 { font-size: 17pt; margin: 0 0 1mm; }
 h2 { font-size: 13pt; margin: 6mm 0 2mm; border-bottom: 0.4pt solid #999; break-after: avoid; }
 h3, h4, h5, h6 { font-size: 11pt; margin: 4mm 0 1.5mm; break-after: avoid; }
@@ -198,6 +209,4 @@ ul.messages .info { color: #555; }
 .summary .num { text-align: right; white-space: nowrap; }
 .summary tr.failed td { font-weight: 700; }
 .summary .some-failed { font-weight: 700; color: #b71c1c; }
-.page-break { break-after: page; }
-@media screen { body { padding: 12mm 10mm; } }`;
-}
+.page-break { break-after: page; }`;

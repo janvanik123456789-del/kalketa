@@ -88,9 +88,11 @@ function createWindow(): void {
     }
   });
 
+  // The editor starts in the language of the operating system (until the user picks another).
+  const lang = (app.getPreferredSystemLanguages()[0] ?? app.getLocale()).slice(0, 2);
   const entry = editorEntry();
-  if (entry.url) void window.loadURL(entry.url);
-  else void window.loadFile(entry.file!);
+  if (entry.url) void window.loadURL(`${entry.url}?lang=${encodeURIComponent(lang)}`);
+  else void window.loadFile(entry.file!, { query: { lang } });
 }
 
 async function sendOpen(path: string): Promise<void> {
@@ -195,8 +197,9 @@ async function runSmokeTest(pdfPath: string): Promise<void> {
       rows: document.querySelectorAll('.row').length,
       summary: document.querySelectorAll('.summary-box tbody tr').length,
       math: document.querySelectorAll('math').length,
-      errors: document.querySelector('.status')?.textContent ?? ''
-    })`)) as { bridge: boolean; rows: number; summary: number; math: number; errors: string };
+      errors: document.querySelector('.status')?.textContent ?? '',
+      language: document.documentElement.lang
+    })`)) as { bridge: boolean; rows: number; summary: number; math: number; errors: string; language: string };
     const printer = await printWindow('<!doctype html><meta charset="utf-8"><h1>CalcCanvas</h1><math><mfrac><mi>a</mi><mn>2</mn></mfrac></math>');
     const pdf = await printer.webContents.printToPDF({ preferCSSPageSize: true });
     printer.destroy();

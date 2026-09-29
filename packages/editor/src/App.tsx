@@ -41,7 +41,7 @@ function remember(key: string, value: string): void {
   }
 }
 
-const LANGUAGE_KEY = 'calccanvas.language';
+const LANGUAGE_KEY = 'calccanvas.uiLanguage';
 
 function initialLanguage(): string {
   try {
@@ -50,8 +50,9 @@ function initialLanguage(): string {
   } catch {
     // Storage may be unavailable; fall back to the browser language.
   }
-  const browser = navigator.language.slice(0, 2);
-  return CATALOGS[browser] ? browser : 'en';
+  // The desktop app passes the system language; a browser has its own.
+  const system = (new URLSearchParams(location.search).get('lang') ?? navigator.language).slice(0, 2);
+  return CATALOGS[system] ? system : 'en';
 }
 
 export function App() {
@@ -99,11 +100,6 @@ export function App() {
   );
 
   useEffect(() => {
-    try {
-      localStorage.setItem(LANGUAGE_KEY, language);
-    } catch {
-      // Not remembered; harmless.
-    }
     document.documentElement.lang = language;
   }, [language]);
 
@@ -291,7 +287,14 @@ export function App() {
         </label>
         <label>
           {t(ui, 'editor.language')}{' '}
-          <select value={language} onChange={(e) => setLanguage(e.target.value)}>
+          <select
+            value={language}
+            onChange={(e) => {
+              // Only a language the user picks is remembered; otherwise the system language applies.
+              setLanguage(e.target.value);
+              remember(LANGUAGE_KEY, e.target.value);
+            }}
+          >
             {Object.values(CATALOGS).map((c) => (
               <option key={c.locale} value={c.locale}>
                 {c.name}

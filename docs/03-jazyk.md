@@ -45,7 +45,7 @@ Ohyb: σ = 193.3 MPa ≤ fy = 235 MPa   využití 82 %  ✓   [EN 1993-1-1, 6.2.
 
 | Prvek | Zápis | Poznámka |
 |---|---|---|
-| Definice | `a := 5 m` | Jako Mathcad. Odlišuje definici od rovnice. |
+| Definice | `a := 5 m` | Jako Mathcad. Odlišuje definici od rovnice. V editoru stačí napsat `=` za novým jménem na začátku řádku, editor sám vloží `:=` a zobrazí ho jako `≔` (rozhodnuto 2026-09-29). |
 | Zobrazení výsledku | `a =` nebo jen `a` na řádku | Vypíše hodnotu |
 | Rovnice pro řešič | `x² + 2·x == 8` | viz kap. 9 |
 | Komentář | `' text` | Převzato z Calcpadu a Mathcadu |

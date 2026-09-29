@@ -1,18 +1,22 @@
 /**
  * Reference calculations (docs/01-filozofie.md, ch. 10): every *.expected.json
  * next to a sheet lists independently verified results that the sheet must
- * reproduce without any diagnostics.
+ * reproduce without any diagnostics. Tables are loaded from tables/<Name>/
+ * in the same folder.
  */
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { evaluateSheet } from '@calccanvas/core';
+import { defaultRegistry, evaluateSheet, type Table } from '@calccanvas/core';
+import { loadTable } from '@calccanvas/sheet';
+
+type ExpectedValue = { value: number; unit: string } | { boolean: boolean } | { row: string };
 
 interface Expected {
   readonly sheet: string;
   readonly verifiedBy: string;
   readonly relativeTolerance: number;
-  readonly values: Readonly<Record<string, { value: number; unit: string } | { boolean: boolean }>>;
+  readonly values: Readonly<Record<string, ExpectedValue>>;
 }
 
 const ROOT = import.meta.dirname;
@@ -21,12 +25,23 @@ const cases = readdirSync(ROOT, { withFileTypes: true })
   .flatMap((d) =>
     readdirSync(join(ROOT, d.name))
       .filter((f) => f.endsWith('.expected.json'))
-      .map((f) => ({ dir: join(ROOT, d.name), name: `${d.name}/${f}` })),
+      .map((f) => ({ dir: join(ROOT, d.name), file: f, name: `${d.name}/${f}` })),
   );
 
-describe.each(cases)('$name', ({ dir, name }) => {
-  const expected = JSON.parse(readFileSync(join(dir, name.split('/')[1]!), 'utf8')) as Expected;
-  const result = evaluateSheet(readFileSync(join(dir, expected.sheet), 'utf8'));
+function loadTables(dir: string): Table[] {
+  const root = join(dir, 'tables');
+  if (!existsSync(root)) return [];
+  return readdirSync(root).map((name) => {
+    const folder = join(root, name);
+    const loaded = loadTable(readFileSync(join(folder, 'schema.json'), 'utf8'), readFileSync(join(folder, 'data.csv'), 'utf8'), defaultRegistry);
+    expect(loaded.diagnostics, `table ${name}`).toEqual([]);
+    return loaded.table;
+  });
+}
+
+describe.each(cases)('$name', ({ dir, file }) => {
+  const expected = JSON.parse(readFileSync(join(dir, file), 'utf8')) as Expected;
+  const result = evaluateSheet(readFileSync(join(dir, expected.sheet), 'utf8'), { tables: loadTables(dir) });
 
   it('evaluates without diagnostics', () => {
     expect(result.diagnostics).toEqual([]);
@@ -41,6 +56,10 @@ describe.each(cases)('$name', ({ dir, name }) => {
     expect(statement, `missing ${variable}`).toBeDefined();
     if ('boolean' in want) {
       expect(statement!.value).toEqual({ type: 'boolean', value: want.boolean });
+      return;
+    }
+    if ('row' in want) {
+      expect(statement!.value).toMatchObject({ type: 'row', label: want.row });
       return;
     }
     expect(statement!.display?.unit).toBe(want.unit);

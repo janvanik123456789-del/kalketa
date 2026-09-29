@@ -57,6 +57,19 @@ export const DIAGNOSTIC_SEVERITY = {
   'E-FUNC-ARITY': 'error',
   'E-FUNC-ARG-DIM': 'error',
   'E-DOMAIN': 'error',
+  'E-NAMED-ARG': 'error',
+
+  // Tables
+  'E-TABLE-SCHEMA': 'error',
+  'E-TABLE-CELL': 'error',
+  'W-TABLE-UNIT': 'warning',
+  'E-TABLE-KEY': 'error',
+  'E-TABLE-COLUMN': 'error',
+  'E-TABLE-EMPTY': 'error',
+  'E-TABLE-NO-MATCH': 'error',
+  'E-TABLE-INTERPOLATE': 'error',
+  'W-EXTRAPOLATION': 'warning',
+  'W-TABLE-ROWS-SKIPPED': 'warning',
 } as const satisfies Record<string, Severity>;
 
 export type DiagnosticCode = keyof typeof DIAGNOSTIC_SEVERITY;

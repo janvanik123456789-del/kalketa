@@ -6,6 +6,7 @@
  * display.
  */
 
+import type { Cell, Table } from '../tables/table.js';
 import { DIMENSIONLESS, dimKey, type Dimension } from '../units/dimension.js';
 import type { ResolvedUnit } from '../units/unitExpr.js';
 
@@ -30,7 +31,30 @@ export interface TextValue {
   readonly value: string;
 }
 
-export type Value = Quantity | BooleanValue | TextValue;
+export interface TableValue {
+  readonly type: 'table';
+  readonly table: Table;
+}
+
+/** Where a row came from: one table row, or an interpolation between two. */
+export interface RowOrigin {
+  readonly rows: readonly number[];
+  /** Interpolation weight of the second row (0..1; outside when extrapolated). */
+  readonly weight?: number;
+  /** Column the interpolation ran on. */
+  readonly column?: string;
+}
+
+export interface RowValue {
+  readonly type: 'row';
+  readonly table: Table;
+  readonly cells: readonly Cell[];
+  /** Text shown for the row, e.g. "IPE 200". */
+  readonly label: string;
+  readonly origin: RowOrigin;
+}
+
+export type Value = Quantity | BooleanValue | TextValue | TableValue | RowValue;
 
 export function quantity(si: number, dim: Dimension = DIMENSIONLESS, extra: Partial<Pick<Quantity, 'absolute' | 'hint'>> = {}): Quantity {
   return {
@@ -51,6 +75,10 @@ export function fingerprint(value: Value): string {
       return `b:${value.value}`;
     case 'text':
       return `t:${value.value}`;
+    case 'table':
+      return `T:${value.table.fingerprint}`;
+    case 'row':
+      return `r:${value.table.fingerprint}:${value.origin.rows.join(',')}:${value.origin.weight ?? ''}`;
   }
 }
 

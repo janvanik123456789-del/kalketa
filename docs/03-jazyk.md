@@ -235,16 +235,20 @@ Tabulky žijí v datové vrstvě listu (`tables/<Název>/schema.json` + `data.cs
 
 | Zápis | Význam | Fáze |
 |---|---|---|
-| `pick(T, "IPE 200")` | řádek podle klíče. V editoru rozbalovací seznam s obrázkem. | F2 |
-| `r.Wy` | hodnota sloupce, veličina s jednotkou | F2 |
-| `lookup(T, x: λ, y: χ)` | odečet `y` pro dané `x`, **lineární interpolace**. Mimo rozsah = varování. | F2 |
-| `lookup(T, x: λ, y: χ, mode: exact)` | bez interpolace, chyba, když přesná hodnota chybí | F2 |
-| `lookup2(T, řádek: a, sloupec: b)` | 2D interpolace (tabulky součinitelů) | F9 |
-| `find_min(T, by: G, where: …)` | řádek s nejmenším `G`, který splní podmínku | F2 |
-| `find_max(T, by: …, where: …)` | obdobně | F2 |
+| `pick(T, "IPE 200")` | řádek podle klíčového sloupce. V editoru rozbalovací seznam s obrázkem. | F2 ✓ |
+| `pick(T, G: 22.4 kg/m)` | řádek s přesnou hodnotou v libovolném sloupci | F2 ✓ |
+| `profil.W_y` | hodnota sloupce, veličina s jednotkou ze schématu | F2 ✓ |
+| `interpolate(T, λ: λ_rel)` | řádek **lineárně interpolovaný** podle sloupce λ (interpolují se všechny číselné sloupce); mimo rozsah extrapolace a varování | F2 ✓ |
+| `interpolate2(T, …)` | 2D interpolace (tabulky součinitelů) | F9 |
+| `find_min(T, by: G, where: …)` | řádek s nejmenším `G`, který splní podmínku | F2 ✓ |
+| `find_max(T, by: …, where: …)` | obdobně | F2 ✓ |
 | `filter(T, where: …)` | podmnožina řádků | F10 |
 
-**`where` podmínka** se vyhodnotí pro každý řádek. Uvnitř podmínky se `r` odkazuje na zkoušený řádek:
+*Upraveno při implementaci F2:* původně navržené `lookup(T, x: λ, y: χ)` nebylo jednoznačné (kde je zadaná hodnota?). Nově `interpolate(T, λ: 0.4)` vrací celý interpolovaný řádek a hodnota se čte stejně jako u `pick`: `interpolate(Krivka, λ: 0.4).χ`. Přesný odečet bez interpolace je `pick(T, λ: 0.4)`.
+
+Prázdné buňky: čtení prázdné buňky je chyba `E-TABLE-EMPTY`. V `find_min`/`find_max` se řádky, kterým pro podmínku chybí hodnota, přeskočí a program ohlásí jejich počet (`W-TABLE-ROWS-SKIPPED`).
+
+**`where` podmínka** se vyhodnotí pro každý řádek. Uvnitř podmínky se `r` odkazuje na zkoušený řádek (případná proměnná `r` z listu je uvnitř podmínky zastíněná):
 
 ```text
 profil := find_min(Profily_IPE, by: G,
@@ -252,6 +256,14 @@ profil := find_min(Profily_IPE, by: G,
 ```
 
 *Proč:* uživatel nemusí přepisovat výpočet do jiné formy. Podmínka je běžný výraz.
+
+### 8.3 Import tabulek
+
+- **CSV** (oddělovač `;`, `,` nebo tabulátor se pozná automaticky, desetinná čárka i tečka).
+- **Excel (.xlsx)** včetně výsledků vzorců. **Obrázek vložený v Excelu nad řádkem záznamu se stane obrázkem tohoto záznamu** (uloží se do `images/<Tabulka>/` a propojí přes sloupec `obrazek`).
+- Jednotky se čtou z hlavičky: `Wy [cm³]`, `h (mm)`, i `cm3` → `cm³`. Neznámá jednotka se ohlásí (`W-TABLE-UNIT`), nikdy se nehádá.
+- Číselný sloupec = všechny neprázdné buňky jsou čísla; jinak textový.
+- Uvnitř listu se tabulka ukládá jako `schema.json` + `data.csv` s desetinnou tečkou.
 
 **Inspirace:** Calcpad UI mode (`#UI` rozbalovací výběry) ukazuje, že výběr ze seznamu má smysl přímo ve výpočtu. U nás je ale **zdrojem výběru tabulka v listu**, ne pevný seznam v kódu.
 

@@ -9,6 +9,7 @@ export default defineConfig({
     alias: {
       '@calccanvas/core': src('core'),
       '@calccanvas/i18n': src('i18n'),
+      '@calccanvas/sheet': src('sheet'),
     },
   },
   test: {

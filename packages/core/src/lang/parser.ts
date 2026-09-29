@@ -15,12 +15,14 @@
  */
 
 import { CalcError, diagnostic, fail, type Diagnostic, type Span } from '../diagnostics.js';
-import type { BinaryOperator, Expr, Sheet, Statement, UnitExpr } from './ast.js';
+import type { BinaryOperator, Expr, NamedArg, Sheet, Statement, UnitExpr } from './ast.js';
 import { tokenize, type Token, type TokenType } from './lexer.js';
 
 export interface ParseOptions {
   /** Tells whether a name is a known unit symbol. */
   readonly isUnit: (name: string) => boolean;
+  /** Names that exist before the first line (tables of the sheet). */
+  readonly predefined?: Iterable<string>;
 }
 
 export interface ParseResult {
@@ -41,7 +43,7 @@ export function parse(source: string, options: ParseOptions): ParseResult {
   const lexed = tokenize(source);
   const diagnostics: Diagnostic[] = [...lexed.diagnostics];
   const statements: Statement[] = [];
-  const defined = new Set<string>();
+  const defined = new Set<string>(options.predefined ?? []);
 
   for (const line of splitLines(lexed.tokens)) {
     const comments = line.filter((t) => t.type === 'comment');
@@ -325,7 +327,7 @@ class LineParser {
       case '√': {
         this.next();
         const operand = this.parsePostfix();
-        return { kind: 'call', name: 'sqrt', args: [operand], span: spanOf(token, operand) };
+        return { kind: 'call', name: 'sqrt', args: [operand], named: [], span: spanOf(token, operand) };
       }
       case 'ident':
         return this.parseName();
@@ -343,13 +345,22 @@ class LineParser {
     if (this.peek().type === '(') {
       this.next();
       const args: Expr[] = [];
+      const named: NamedArg[] = [];
       if (this.peek().type !== ')') {
         do {
-          args.push(this.parseExpression());
+          if (this.peek().type === 'ident' && this.peek(1).type === ':') {
+            const label = this.next();
+            this.next();
+            if (named.some((n) => n.name === label.text)) fail('E-NAMED-ARG', label.span, { function: name, argument: label.text, problem: 'duplicate' });
+            named.push({ name: label.text, nameSpan: label.span, value: this.parseExpression() });
+          } else {
+            if (named.length > 0) fail('E-NAMED-ARG', this.peek().span, { function: name, argument: '', problem: 'positional-after-named' });
+            args.push(this.parseExpression());
+          }
         } while (this.peek().type === ',' && this.next());
       }
       const close = this.expect(')', ')');
-      return { kind: 'call', name, args, span: spanOf(token, close) };
+      return { kind: 'call', name, args, named, span: spanOf(token, close) };
     }
     if (!this.defined.has(name) && this.options.isUnit(name)) {
       const unit: UnitExpr = { kind: 'unit-name', name, span: token.span };

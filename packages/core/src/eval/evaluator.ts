@@ -14,6 +14,7 @@ import { resolveUnit, type ResolvedUnit } from '../units/unitExpr.js';
 import { quantity, type Quantity, type Value } from '../values/value.js';
 import { asBoolean, asQuantity } from './coerce.js';
 import { BUILTIN_CONSTANTS, callFunction } from './functions.js';
+import { callTableFunction, memberOf, TABLE_FUNCTIONS } from './tables.js';
 
 export interface EvalContext {
   readonly registry: UnitRegistry;
@@ -64,10 +65,14 @@ function evaluateRaw(expr: Expr, ctx: EvalContext): Value {
     }
     case 'binary':
       return evaluateBinary(expr.operator, expr.left, expr.right, expr.span, ctx);
-    case 'call':
+    case 'call': {
+      if (TABLE_FUNCTIONS.has(expr.name)) return callTableFunction(expr, ctx, evaluate);
+      const extra = expr.named[0];
+      if (extra) fail('E-NAMED-ARG', extra.nameSpan, { function: expr.name, argument: extra.name, problem: 'unknown' });
       return callFunction(expr, (arg) => evaluate(arg, ctx));
+    }
     case 'member':
-      return fail('E-UNSUPPORTED', expr.span, { feature: 'member-access' });
+      return memberOf(evaluate(expr.object, ctx), expr.name, expr.span, expr.object.span);
   }
 }
 
@@ -80,8 +85,17 @@ function evaluateBinary(op: BinaryOperator, leftExpr: Expr, rightExpr: Expr, spa
     return { type: 'boolean', value: asBoolean(evaluate(rightExpr, ctx), rightExpr.span) };
   }
 
-  const a = asQuantity(evaluate(leftExpr, ctx), leftExpr.span);
-  const b = asQuantity(evaluate(rightExpr, ctx), rightExpr.span);
+  const left = evaluate(leftExpr, ctx);
+  const right = evaluate(rightExpr, ctx);
+
+  // Text and booleans can be tested for equality ("S235" == material.trida).
+  if ((op === '==' || op === '!=') && left.type === right.type && (left.type === 'text' || left.type === 'boolean')) {
+    const equal = left.value === (right as typeof left).value;
+    return { type: 'boolean', value: op === '==' ? equal : !equal };
+  }
+
+  const a = asQuantity(left, leftExpr.span);
+  const b = asQuantity(right, rightExpr.span);
 
   switch (op) {
     case '+':

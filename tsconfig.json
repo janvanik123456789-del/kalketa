@@ -1,14 +1,9 @@
 {
   "files": [],
   "references": [
-    {
-      "path": "packages/core"
-    },
-    {
-      "path": "packages/i18n"
-    },
-    {
-      "path": "packages/cli"
-    }
+    { "path": "packages/core" },
+    { "path": "packages/i18n" },
+    { "path": "packages/sheet" },
+    { "path": "packages/cli" }
   ]
 }

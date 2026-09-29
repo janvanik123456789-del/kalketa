@@ -17,6 +17,7 @@ import { sameDim } from '../units/dimension.js';
 import { baseUnitSymbol, toDisplay, type DisplayValue } from '../units/display.js';
 import { defaultRegistry, type UnitRegistry } from '../units/registry.js';
 import { resolveUnit, type ResolvedUnit } from '../units/unitExpr.js';
+import type { Table } from '../tables/table.js';
 import { fingerprint, type Value } from '../values/value.js';
 
 export type StatementStatus = 'ok' | 'error' | 'blocked' | 'none';
@@ -45,6 +46,11 @@ export interface SessionOptions {
   readonly registry?: UnitRegistry;
 }
 
+export interface UpdateOptions {
+  /** Tables of the sheet's data layer, available by name. */
+  readonly tables?: readonly Table[];
+}
+
 type EnvEntry = { readonly ok: true; readonly value: Value } | { readonly ok: false };
 
 interface CacheEntry {
@@ -62,9 +68,10 @@ export class SheetSession {
     this.registry = options.registry ?? defaultRegistry;
   }
 
-  update(source: string): SheetResult {
+  update(source: string, options: UpdateOptions = {}): SheetResult {
     const registry = this.registry;
-    const parsed = parse(source, { isUnit: (name) => registry.isUnit(name) });
+    const tables = new Map((options.tables ?? []).map((t) => [t.name, t] as const));
+    const parsed = parse(source, { isUnit: (name) => registry.isUnit(name), predefined: tables.keys() });
     const statements = parsed.sheet.statements;
 
     const definedAt = new Map<string, number>();
@@ -94,7 +101,7 @@ export class SheetSession {
 
       const name = statement.kind === 'definition' ? statement.name : undefined;
       if (statement.kind === 'definition') {
-        const clash = statement.name in BUILTIN_CONSTANTS ? 'E-RESERVED' : env.has(statement.name) ? 'E-REDEFINED' : undefined;
+        const clash = statement.name in BUILTIN_CONSTANTS ? 'E-RESERVED' : env.has(statement.name) || tables.has(statement.name) ? 'E-REDEFINED' : undefined;
         if (clash) {
           const d = diagnostic(clash, statement.nameSpan, { name: statement.name });
           results.push({ statement, status: 'error', dependencies: [], diagnostics: [...parseDiagnostics, d] });
@@ -106,16 +113,16 @@ export class SheetSession {
       const cached = this.cache.get(key);
       let result: Omit<StatementResult, 'statement'>;
       // Results with diagnostics are not reused: their spans point into the old source.
-      const fresh = cached && cached.result.diagnostics.length === 0 && cached.deps.every(([dep, fp]) => currentFingerprint(env, dep) === fp);
+      const fresh = cached && cached.result.diagnostics.length === 0 && cached.deps.every(([dep, fp]) => currentFingerprint(env, tables, dep) === fp);
       if (cached && fresh) {
         result = cached.result;
         reused++;
       } else {
-        result = this.evaluateStatement(statement.expr, statement.target, env, definedAt, index);
+        result = this.evaluateStatement(statement.expr, statement.target, env, tables, definedAt, index);
         evaluated++;
       }
       nextCache.set(key, {
-        deps: result.dependencies.map((dep) => [dep, currentFingerprint(env, dep)] as const),
+        deps: result.dependencies.map((dep) => [dep, currentFingerprint(env, tables, dep)] as const),
         result,
       });
 
@@ -142,6 +149,7 @@ export class SheetSession {
     expr: Expr,
     targetExpr: UnitExpr | undefined,
     env: ReadonlyMap<string, EnvEntry>,
+    tables: ReadonlyMap<string, Table>,
     definedAt: ReadonlyMap<string, number>,
     index: number,
   ): Omit<StatementResult, 'statement'> {
@@ -155,6 +163,8 @@ export class SheetSession {
         if (!dependencies.includes(name)) dependencies.push(name);
         if (entry?.ok) return entry.value;
         if (entry) throw new DependencyFailed(name);
+        const table = tables.get(name);
+        if (table) return { type: 'table', table };
         const at = definedAt.get(name);
         if (at !== undefined && at > index) throw new CalcError(diagnostic('E-DEFINED-LATER', span, { name }));
         throw new CalcError(diagnostic('E-UNDEFINED', span, { name }));
@@ -195,13 +205,13 @@ export class SheetSession {
 }
 
 /** Evaluates a sheet once, without keeping a cache. */
-export function evaluateSheet(source: string, options: SessionOptions = {}): SheetResult {
-  return new SheetSession(options).update(source);
+export function evaluateSheet(source: string, options: SessionOptions & UpdateOptions = {}): SheetResult {
+  return new SheetSession(options).update(source, options);
 }
 
-function currentFingerprint(env: ReadonlyMap<string, EnvEntry>, name: string): string {
+function currentFingerprint(env: ReadonlyMap<string, EnvEntry>, tables: ReadonlyMap<string, Table>, name: string): string {
   const entry = env.get(name);
-  if (!entry) return 'missing';
+  if (!entry) return tables.get(name)?.fingerprint ?? 'missing';
   return entry.ok ? fingerprint(entry.value) : 'failed';
 }
 

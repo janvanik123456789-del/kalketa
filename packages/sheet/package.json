@@ -1,0 +1,19 @@
+{
+  "name": "@calccanvas/sheet",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The sheet's data layer: importing (CSV, Excel) and storing tables.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@calccanvas/core": "*",
+    "exceljs": "^4.4.0"
+  }
+}

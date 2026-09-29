@@ -1,0 +1,18 @@
+{
+  "name": "Profily_IPE",
+  "key": "oznaceni",
+  "columns": [
+    { "name": "oznaceni", "type": "text" },
+    { "name": "h", "type": "quantity", "unit": "mm" },
+    { "name": "b", "type": "quantity", "unit": "mm" },
+    { "name": "A", "type": "quantity", "unit": "cm²" },
+    { "name": "I_y", "type": "quantity", "unit": "cm⁴" },
+    { "name": "W_y", "type": "quantity", "unit": "cm³" },
+    { "name": "G", "type": "quantity", "unit": "kg/m" }
+  ],
+  "source": {
+    "title": "Průřezové charakteristiky válcovaných profilů IPE (EN 10365 / Euronorm 19-57)",
+    "retrieved": "2026-09-29",
+    "note": "Hodnoty zapsány pro testovací účely. Před použitím ve skutečném výpočtu ověřit proti katalogu výrobce."
+  }
+}

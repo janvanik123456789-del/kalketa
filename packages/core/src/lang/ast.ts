@@ -31,8 +31,15 @@ export type Expr =
   | { readonly kind: 'unit'; readonly unit: UnitExpr; readonly span: Span }
   | { readonly kind: 'unary'; readonly operator: '-' | '+' | 'not'; readonly operand: Expr; readonly span: Span }
   | { readonly kind: 'binary'; readonly operator: BinaryOperator; readonly left: Expr; readonly right: Expr; readonly span: Span }
-  | { readonly kind: 'call'; readonly name: string; readonly args: readonly Expr[]; readonly span: Span }
+  | { readonly kind: 'call'; readonly name: string; readonly args: readonly Expr[]; readonly named: readonly NamedArg[]; readonly span: Span }
   | { readonly kind: 'member'; readonly object: Expr; readonly name: string; readonly span: Span };
+
+/** Named call argument: "by: G" in find_min(T, by: G). */
+export interface NamedArg {
+  readonly name: string;
+  readonly nameSpan: Span;
+  readonly value: Expr;
+}
 
 // ---------------------------------------------------------------------------
 // Statements (one per logical line)

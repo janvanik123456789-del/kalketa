@@ -4,6 +4,7 @@
     "noEmit": true,
     "composite": false,
     "declaration": false,
+    "esModuleInterop": true,
     "types": [
       "node"
     ],
@@ -13,6 +14,9 @@
       ],
       "@calccanvas/i18n": [
         "./packages/i18n/src/index.ts"
+      ],
+      "@calccanvas/sheet": [
+        "./packages/sheet/src/index.ts"
       ]
     }
   },

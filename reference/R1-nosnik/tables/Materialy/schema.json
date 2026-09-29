@@ -1,0 +1,16 @@
+{
+  "name": "Materialy",
+  "key": "trida",
+  "columns": [
+    { "name": "trida", "type": "text" },
+    { "name": "f_y", "type": "quantity", "unit": "MPa" },
+    { "name": "f_u", "type": "quantity", "unit": "MPa" },
+    { "name": "E", "type": "quantity", "unit": "GPa" },
+    { "name": "ρ", "type": "quantity", "unit": "kg/m³" }
+  ],
+  "source": {
+    "title": "Konstrukční oceli pro tloušťky do 40 mm (EN 1993-1-1, tab. 3.1)",
+    "retrieved": "2026-09-29",
+    "note": "Hodnoty zapsány pro testovací účely."
+  }
+}

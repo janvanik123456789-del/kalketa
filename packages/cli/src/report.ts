@@ -54,5 +54,7 @@ function formatValue(r: StatementResult, options: ReportOptions): string {
   }
   if (r.value?.type === 'boolean') return options.catalog.terms[String(r.value.value)] ?? String(r.value.value);
   if (r.value?.type === 'text') return JSON.stringify(r.value.value);
+  if (r.value?.type === 'row') return `${r.value.label}   (${r.value.table.name})`;
+  if (r.value?.type === 'table') return r.value.table.name;
   return '?';
 }

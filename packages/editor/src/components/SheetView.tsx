@@ -6,8 +6,9 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
 import type { SheetResult, Statement } from '@calccanvas/core';
-import type { Catalog } from '@calccanvas/i18n';
+import { t, type Catalog } from '@calccanvas/i18n';
 import { renderBlockHtml, renderSummary, type PrintBlock, type PrintDocument } from '@calccanvas/render';
+import { paginate, type PageGeometry } from '../logic/pages.js';
 import { segments, type Segment } from '../logic/segments.js';
 import { defineShortcut } from '../logic/shortcuts.js';
 import { pickOf } from '../logic/pick.js';
@@ -34,6 +35,13 @@ interface Props {
   onInsertAfter(line: number): void;
   onDelete(start: number, end: number): void;
   onPick(statement: Statement, key: string): void;
+  /** Page size and margins of the printout. */
+  readonly geometry: PageGeometry;
+  /** Scale of the pages (1 = 100 %). */
+  readonly zoom: number;
+  /** Title in the page header. */
+  readonly title: string;
+  readonly uiCatalog: Catalog;
 }
 
 export function SheetView(props: Props) {
@@ -51,51 +59,97 @@ export function SheetView(props: Props) {
     }
   };
 
+  // Items laid out on pages: the summary of checks first, then the rows.
+  const items: ({ kind: 'summary' } | { kind: 'row'; seg: Segment })[] = [
+    ...(print.summary ? [{ kind: 'summary' as const }] : []),
+    ...segs.map((seg) => ({ kind: 'row' as const, seg })),
+  ];
+  const breakAfter = items.map((item) => item.kind === 'row' && /^\s*@page\b/.test(item.seg.text));
+
+  // Pagination measures the rendered items, then places them on pages. Heights
+  // do not depend on the page an item is on, so this settles in one pass.
+  const [starts, setStarts] = useState<number[]>([0]);
+  const container = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const root = container.current;
+    const body = root?.querySelector<HTMLElement>('.page-body');
+    if (!root || !body) return;
+    const heights = [...root.querySelectorAll<HTMLElement>('[data-item]')].map((el) => el.offsetHeight);
+    const next = paginate(heights, body.clientHeight, breakAfter);
+    if (next.join() !== starts.join()) setStarts(next);
+  });
+
+  const pages = starts.map((start, i) => items.slice(start, starts[i + 1] ?? items.length)).filter((page) => page.length > 0);
+  const { geometry } = props;
+  const mm = (value: number) => `${value}mm`;
+
   return (
-    <div className="paper">
-      {print.summary && <div className="summary-box" dangerouslySetInnerHTML={{ __html: renderSummary(print.summary.rows, print.summary.allPassed, props.printCatalog) }} />}
-      {segs.map((seg) => {
-        const statement = seg.statement !== undefined ? result.statements[seg.statement] : undefined;
-        const isEditing = editing?.start === seg.start;
-        const block = statement ? blockByLine.get(seg.start) : undefined;
-        const selected = seg.statement !== undefined && seg.statement === props.selected;
-        return (
-          <div
-            key={`${seg.start}:${isEditing ? 'e' : seg.text}`}
-            className={`row${isEditing ? ' editing' : ''}${selected ? ' selected' : ''}${statement?.status === 'error' ? ' has-error' : ''}`}
-            data-line={seg.start}
-            onMouseDown={(e) => {
-              if (isEditing || (e.target as HTMLElement).closest('.pick-control')) return;
-              e.preventDefault();
-              props.onEdit({ start: seg.start, end: seg.end });
-              props.onSelect(seg.statement);
-            }}
-          >
-            <span className="gutter">{seg.start}</span>
-            <div className="content">
-              {isEditing ? (
-                <RowEditor
-                  seg={seg}
-                  result={result}
-                  onChange={(text) => props.onReplace(seg.start, seg.end, text)}
-                  onEnter={() => props.onInsertAfter(seg.end)}
-                  onDeleteEmpty={() => {
-                    const previous = segs[segs.indexOf(seg) - 1];
-                    props.onDelete(seg.start, seg.end);
-                    props.onEdit(previous ? { start: previous.start, end: previous.end } : undefined);
-                  }}
-                  onMove={(d) => move(seg, d)}
-                  onDone={() => props.onEdit(undefined)}
-                />
-              ) : null}
-              {block ? <Block block={block} catalog={props.printCatalog} /> : !isEditing && <PlainLine text={seg.text} />}
-              {!isEditing && statement && <PickFor statement={statement.statement} result={result} resolveFile={props.resolveFile} onPick={props.onPick} />}
-            </div>
+    <div className="pages" ref={container} style={{ zoom: props.zoom }}>
+      {pages.map((page, p) => (
+        <section
+          key={p}
+          className="page"
+          style={{ width: mm(geometry.width), height: mm(geometry.height), padding: `${mm(geometry.margin.top)} ${mm(geometry.margin.right)} ${mm(geometry.margin.bottom)} ${mm(geometry.margin.left)}` }}
+        >
+          <div className="page-head">{props.title}</div>
+          <div className="page-body">
+            {page.map((item) => (item.kind === 'summary' ? summaryItem() : rowItem(item.seg)))}
           </div>
-        );
-      })}
+          <div className="page-foot">
+            {t(props.uiCatalog, 'print.page')} {p + 1} {t(props.uiCatalog, 'print.of')} {pages.length}
+          </div>
+        </section>
+      ))}
     </div>
   );
+
+  function summaryItem() {
+    return (
+      <div key="summary" data-item className="summary-box" dangerouslySetInnerHTML={{ __html: renderSummary(print.summary!.rows, print.summary!.allPassed, props.printCatalog) }} />
+    );
+  }
+
+  function rowItem(seg: Segment) {
+    const statement = seg.statement !== undefined ? result.statements[seg.statement] : undefined;
+    const isEditing = editing?.start === seg.start;
+    const block = statement ? blockByLine.get(seg.start) : undefined;
+    const selected = seg.statement !== undefined && seg.statement === props.selected;
+    return (
+      <div
+        key={`${seg.start}:${isEditing ? 'e' : seg.text}`}
+        data-item
+        className={`row${isEditing ? ' editing' : ''}${selected ? ' selected' : ''}${statement?.status === 'error' ? ' has-error' : ''}`}
+        data-line={seg.start}
+        onMouseDown={(e) => {
+          if (isEditing || (e.target as HTMLElement).closest('.pick-control')) return;
+          e.preventDefault();
+          props.onEdit({ start: seg.start, end: seg.end });
+          props.onSelect(seg.statement);
+        }}
+      >
+        <span className="gutter">{seg.start}</span>
+        <div className="content">
+          {isEditing ? (
+            <RowEditor
+              seg={seg}
+              result={result}
+              onChange={(text) => props.onReplace(seg.start, seg.end, text)}
+              onEnter={() => props.onInsertAfter(seg.end)}
+              onDeleteEmpty={() => {
+                const previous = segs[segs.indexOf(seg) - 1];
+                props.onDelete(seg.start, seg.end);
+                props.onEdit(previous ? { start: previous.start, end: previous.end } : undefined);
+              }}
+              onMove={(d) => move(seg, d)}
+              onDone={() => props.onEdit(undefined)}
+            />
+          ) : null}
+          {block ? <Block block={block} catalog={props.printCatalog} /> : !isEditing && <PlainLine text={seg.text} />}
+          {!isEditing && statement && <PickFor statement={statement.statement} result={result} resolveFile={props.resolveFile} onPick={props.onPick} />}
+        </div>
+      </div>
+    );
+  }
 }
 
 function Block({ block, catalog }: { block: PrintBlock; catalog: Catalog }) {

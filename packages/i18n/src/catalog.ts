@@ -81,6 +81,11 @@ export const UI_KEYS = [
   'editor.discard',
   'editor.cancel',
   'editor.sheetFiles',
+  'editor.zoom',
+  'editor.fitPages',
+  'editor.fitPage',
+  'editor.pane',
+  'editor.hidePane',
 ] as const;
 
 export type UiKey = (typeof UI_KEYS)[number];

@@ -6,7 +6,7 @@
  * everything else is derived from it on every change.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { defaultRegistry, SheetSession, type Diagnostic, type Statement } from '@calccanvas/core';
 import { catalogFor, CATALOGS, formatDiagnostic, t } from '@calccanvas/i18n';
 import { buildPrintDocument, printHtml } from '@calccanvas/render';
@@ -17,6 +17,29 @@ import { replacePickKey, pickOf } from './logic/pick.js';
 import { Inspector } from './components/Inspector.js';
 import { SheetView, type EditRange } from './components/SheetView.js';
 import { TablesView } from './components/TablesView.js';
+import { pageGeometry } from './logic/pages.js';
+
+type ZoomChoice = 'fit1' | 'fit2' | 'fit3' | '0.5' | '0.75' | '1' | '1.25' | '1.5';
+type Pane = 'details' | 'tables' | 'none';
+const MM_TO_PX = 96 / 25.4;
+const PAGE_GAP_PX = 24;
+
+/** Small remembered view settings; storage may be unavailable. */
+function remembered<T extends string>(key: string, fallback: T, allowed: readonly T[]): T {
+  try {
+    const value = localStorage.getItem(key) as T | null;
+    return value && (allowed.length === 0 || allowed.includes(value)) ? value : fallback;
+  } catch {
+    return fallback;
+  }
+}
+function remember(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // Not remembered; harmless.
+  }
+}
 
 const LANGUAGE_KEY = 'calccanvas.language';
 
@@ -40,6 +63,19 @@ export function App() {
   const [editing, setEditing] = useState<EditRange | undefined>();
   const [selected, setSelected] = useState<number | undefined>();
   const [notice, setNotice] = useState<string | undefined>();
+  const [zoomChoice, setZoomChoice] = useState<ZoomChoice>(() => remembered('calccanvas.zoom', 'fit2', ['fit1', 'fit2', 'fit3', '0.5', '0.75', '1', '1.25', '1.5']));
+  const [pane, setPane] = useState<Pane>(() => remembered('calccanvas.pane', 'details', ['details', 'tables', 'none']));
+  const [paneWidth, setPaneWidth] = useState(() => Number(remembered('calccanvas.paneWidth', '380', [])) || 380);
+  const [scrollWidth, setScrollWidth] = useState(1000);
+  const scrollRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const element = scrollRef.current;
+    if (!element) return;
+    const observer = new ResizeObserver(() => setScrollWidth(element.clientWidth));
+    observer.observe(element);
+    return () => observer.disconnect();
+  });
 
   const ui = catalogFor(language);
   const printCatalog = catalogFor(doc.manifest.language ?? language);
@@ -176,6 +212,30 @@ export function App() {
     return () => window.removeEventListener('keydown', onKey);
   });
 
+  const geometry = pageGeometry(doc.layout.paper, doc.layout.orientation);
+  const pageWidthPx = geometry.width * MM_TO_PX;
+  const zoom = zoomChoice.startsWith('fit')
+    ? Math.max(0.3, Math.min(2, (scrollWidth - 48 - PAGE_GAP_PX * (Number(zoomChoice.slice(3)) - 1)) / (Number(zoomChoice.slice(3)) * pageWidthPx)))
+    : Number(zoomChoice);
+  const sheetTitle = /^[ 	]*#(?!#)[ 	]*(.+?)[ 	]*$/m.exec(doc.source)?.[1] ?? doc.manifest.title;
+
+  const startResize = (e: ReactMouseEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = paneWidth;
+    const move = (m: MouseEvent) => setPaneWidth(Math.max(260, Math.min(window.innerWidth - 400, startWidth + startX - m.clientX)));
+    const up = () => {
+      window.removeEventListener('mousemove', move);
+      window.removeEventListener('mouseup', up);
+      setPaneWidth((w) => {
+        remember('calccanvas.paneWidth', String(w));
+        return w;
+      });
+    };
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+  };
+
   const errors = result.diagnostics.filter((d) => d.severity === 'error').length + tableDiagnostics.filter((d) => d.severity === 'error').length;
   const warnings = result.diagnostics.filter((d) => d.severity === 'warning').length;
 
@@ -248,9 +308,47 @@ export function App() {
           {notice}
         </div>
       )}
+      {tab === 'sheet' && (
+        <div className="viewbar">
+          <label>
+            {t(ui, 'editor.zoom')}{' '}
+            <select
+              value={zoomChoice}
+              onChange={(e) => {
+                setZoomChoice(e.target.value as ZoomChoice);
+                remember('calccanvas.zoom', e.target.value);
+              }}
+            >
+              <option value="fit1">{t(ui, 'editor.fitPage')}</option>
+              <option value="fit2">{t(ui, 'editor.fitPages', { count: 2 })}</option>
+              <option value="fit3">{t(ui, 'editor.fitPages', { count: 3 })}</option>
+              {['0.5', '0.75', '1', '1.25', '1.5'].map((z) => (
+                <option key={z} value={z}>
+                  {Math.round(Number(z) * 100)} %
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            {t(ui, 'editor.pane')}{' '}
+            <select
+              value={pane}
+              onChange={(e) => {
+                setPane(e.target.value as Pane);
+                remember('calccanvas.pane', e.target.value);
+              }}
+            >
+              <option value="details">{t(ui, 'editor.details')}</option>
+              <option value="tables">{t(ui, 'editor.tables')}</option>
+              <option value="none">{t(ui, 'editor.hidePane')}</option>
+            </select>
+          </label>
+        </div>
+      )}
       {tab === 'sheet' ? (
         <div className="workspace">
           <main
+            ref={scrollRef}
             className="sheet-scroll"
             onMouseDown={(e) => {
               if (e.target === e.currentTarget) setEditing(undefined);
@@ -273,18 +371,33 @@ export function App() {
               }}
               onDelete={(start, end) => setSource(deleteLines(doc.source, start, end))}
               onPick={pick}
+              geometry={geometry}
+              zoom={zoom}
+              title={sheetTitle}
+              uiCatalog={printCatalog}
             />
           </main>
-          <Inspector
-            result={result}
-            statement={selected}
-            catalog={ui}
-            onSelect={(statement) => {
-              setSelected(statement);
-              const line = result.statements[statement]?.statement.span.line;
-              document.querySelector(`.row[data-line="${line}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
-            }}
-          />
+          {pane !== 'none' && (
+            <>
+              <div className="pane-divider" onMouseDown={startResize} role="separator" aria-orientation="vertical" />
+              <div className="side-pane" style={{ width: paneWidth }}>
+                {pane === 'details' ? (
+                  <Inspector
+                    result={result}
+                    statement={selected}
+                    catalog={ui}
+                    onSelect={(statement) => {
+                      setSelected(statement);
+                      const line = result.statements[statement]?.statement.span.line;
+                      document.querySelector(`.row[data-line="${line}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                    }}
+                  />
+                ) : (
+                  <TablesView doc={doc} catalog={ui} diagnostics={tableDiagnostics} resolveFile={resolveFile} onChange={change} compact />
+                )}
+              </div>
+            </>
+          )}
         </div>
       ) : (
         <TablesView doc={doc} catalog={ui} diagnostics={tableDiagnostics} resolveFile={resolveFile} onChange={change} />

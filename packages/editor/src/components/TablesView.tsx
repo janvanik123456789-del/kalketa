@@ -16,11 +16,13 @@ interface Props {
   readonly diagnostics: readonly Diagnostic[];
   readonly resolveFile: (path: string) => string | undefined;
   onChange(doc: SheetDocument): void;
+  /** Narrow layout for the side panel: table list on top. */
+  readonly compact?: boolean;
 }
 
 const IMAGE_COLUMN = 'obrazek';
 
-export function TablesView({ doc, catalog, diagnostics, resolveFile, onChange }: Props) {
+export function TablesView({ doc, catalog, diagnostics, resolveFile, onChange, compact }: Props) {
   const names = [...doc.tables.keys()];
   const [active, setActive] = useState<string | undefined>(names[0]);
   const [messages, setMessages] = useState<string[]>([]);
@@ -66,7 +68,7 @@ export function TablesView({ doc, catalog, diagnostics, resolveFile, onChange }:
   };
 
   return (
-    <div className="tables-view">
+    <div className={`tables-view${compact ? ' compact' : ''}`}>
       <nav className="table-list">
         {names.map((name) => (
           <button key={name} type="button" className={name === current ? 'active' : ''} onClick={() => setActive(name)}>

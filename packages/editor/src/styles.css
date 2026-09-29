@@ -36,10 +36,19 @@ button, select, input { font: inherit; }
 
 /* Sheet */
 .workspace { flex: 1; display: flex; min-height: 0; }
-.sheet-scroll { flex: 1; overflow: auto; padding: 24px 16px 80px; }
-.paper { background: var(--paper); max-width: 190mm; margin: 0 auto; padding: 12mm 14mm 20mm 8mm; box-shadow: 0 1px 4px rgb(0 0 0 / 12%); min-height: 100%; }
-.summary-box { margin: 0 0 4mm 30px; }
+.sheet-scroll { flex: 1; overflow: auto; padding: 24px 24px 60px; min-width: 0; }
+.viewbar { display: flex; gap: 16px; align-items: center; padding: 4px 12px; background: var(--toolbar); border-bottom: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+
+/* Pages: laid out like the printout, side by side as the window allows. */
+.pages { display: flex; flex-wrap: wrap; gap: 24px; justify-content: center; align-items: flex-start; }
+.page { position: relative; background: var(--paper); box-shadow: 0 1px 5px rgb(0 0 0 / 18%); flex: none; font-size: 10.5pt; line-height: 1.45; }
+.page-body { height: 100%; }
+.page-head { position: absolute; top: 8mm; left: 20mm; font: 8pt sans-serif; color: #888; }
+.page-foot { position: absolute; bottom: 8mm; right: 16mm; font: 8pt sans-serif; color: #888; }
+.summary-box { padding-bottom: 3mm; }
 .row { display: flex; align-items: flex-start; border-radius: 3px; cursor: text; position: relative; }
+/* Line numbers sit in the left margin, so the text width equals the printout. */
+.page .gutter { position: absolute; left: -9mm; width: 8mm; }
 .row:hover { background: #f6f8fb; }
 .row.selected { background: var(--accent-soft); }
 .row.editing { background: #fffbe6; }
@@ -68,7 +77,14 @@ code.raw { display: block; padding: 3px 0; color: var(--muted); font: 12px/1.5 C
 img.thumb { max-height: 28px; max-width: 48px; vertical-align: middle; }
 
 /* Inspector */
-.inspector { width: 360px; flex: none; overflow: auto; border-left: 1px solid var(--line); background: #fbfcfd; padding: 12px 14px; }
+.pane-divider { width: 5px; flex: none; cursor: col-resize; background: var(--line); }
+.pane-divider:hover { background: var(--accent); }
+.side-pane { flex: none; overflow: auto; background: #fbfcfd; display: flex; flex-direction: column; }
+.inspector { padding: 12px 14px; }
+.tables-view.compact { flex-direction: column; }
+.tables-view.compact .table-list { width: auto; flex-direction: row; flex-wrap: wrap; border-right: none; border-bottom: 1px solid var(--line); }
+.tables-view.compact .table-panel { padding: 10px; }
+.tables-view.compact .grid-wrap { min-width: 0; display: block; overflow: auto; }
 .inspector h2 { font-size: 14px; margin: 0 0 8px; }
 .inspector h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin: 14px 0 6px; }
 .inspector .muted, .muted { color: var(--muted); }

@@ -144,5 +144,10 @@ export const en: Catalog = {
     'editor.discard': 'Close without saving',
     'editor.cancel': 'Cancel',
     'editor.sheetFiles': 'CalcCanvas calculations',
+    'editor.zoom': 'Zoom',
+    'editor.fitPages': '{count} pages side by side',
+    'editor.fitPage': '1 page',
+    'editor.pane': 'Side panel',
+    'editor.hidePane': 'hidden',
   },
 };

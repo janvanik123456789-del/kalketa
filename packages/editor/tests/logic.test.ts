@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { defaultRegistry, parse } from '@calccanvas/core';
 import { deleteLines, insertLineAfter, replaceLines, segments } from '../src/logic/segments.js';
+import { pageGeometry, paginate } from '../src/logic/pages.js';
 import { defineShortcut, definedName } from '../src/logic/shortcuts.js';
 import { pickOf, replacePickKey } from '../src/logic/pick.js';
 import { addColumn, addRow, deleteColumn, deleteRow, fromEditable, setCell, toEditable } from '../src/logic/tableEdit.js';
@@ -48,6 +49,27 @@ describe('segments', () => {
     expect(insertLineAfter('a\nb', 1, 'n')).toBe('a\nn\nb');
     expect(insertLineAfter('a', 0)).toBe('\na');
     expect(deleteLines('a\nb\nc', 1, 2)).toBe('c');
+  });
+});
+
+describe('pages', () => {
+  it('fills pages and moves an item that does not fit to the next page', () => {
+    expect(paginate([40, 40, 40, 40], 100)).toEqual([0, 2]);
+    expect(paginate([100, 1], 100)).toEqual([0, 1]);
+  });
+
+  it('keeps an item taller than a page on its own page', () => {
+    expect(paginate([10, 250, 10], 100)).toEqual([0, 1, 2]);
+  });
+
+  it('breaks after forced page breaks, but not after the last item', () => {
+    expect(paginate([10, 10, 10], 100, [false, true, false])).toEqual([0, 2]);
+    expect(paginate([10, 10], 100, [false, true])).toEqual([0]);
+  });
+
+  it('knows the paper sizes', () => {
+    expect(pageGeometry('A4', 'portrait')).toMatchObject({ width: 210, height: 297 });
+    expect(pageGeometry('A4', 'landscape')).toMatchObject({ width: 297, height: 210 });
   });
 });
 

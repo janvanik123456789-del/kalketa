@@ -144,5 +144,10 @@ export const cs: Catalog = {
     'editor.discard': 'Zavřít bez uložení',
     'editor.cancel': 'Zrušit',
     'editor.sheetFiles': 'Výpočty CalcCanvas',
+    'editor.zoom': 'Zobrazení',
+    'editor.fitPages': '{count} stránky vedle sebe',
+    'editor.fitPage': '1 stránka',
+    'editor.pane': 'Boční panel',
+    'editor.hidePane': 'skrytý',
   },
 };

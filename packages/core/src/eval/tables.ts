@@ -32,22 +32,21 @@ const EPSILON = 1e-12;
 
 export function callTableFunction(call: CallExpr, ctx: EvalContext, evaluate: Evaluate): Value {
   const table = tableArgument(call, ctx, evaluate);
-  switch (call.name) {
-    case 'pick':
-      return pick(call, table, ctx, evaluate);
-    case 'interpolate':
-      return interpolate(call, table, ctx, evaluate);
-    default:
-      return findExtreme(call, table, ctx, evaluate);
-  }
+  const result =
+    call.name === 'pick' ? pick(call, table, ctx, evaluate)
+    : call.name === 'interpolate' ? interpolate(call, table, ctx, evaluate)
+    : findExtreme(call, table, ctx, evaluate);
+  if (result.type === 'row') record(ctx, result);
+  return result;
 }
 
 /** row.column */
-export function memberOf(object: Value, name: string, span: Span, objectSpan: Span): Value {
+export function memberOf(object: Value, name: string, span: Span, objectSpan: Span, ctx: EvalContext): Value {
   if (object.type === 'table') return fail('E-UNSUPPORTED', span, { feature: 'table-column' });
   if (object.type !== 'row') return fail('E-TYPE', objectSpan, { expected: 'row', found: object.type });
   const index = columnIndex(object.table, name);
   if (index === -1) fail('E-TABLE-COLUMN', span, { table: object.table.name, column: name });
+  record(ctx, object, name);
   const cell = object.cells[index];
   if (!cell) fail('E-TABLE-EMPTY', span, { table: object.table.name, column: name, row: object.label });
   return cell;
@@ -160,8 +159,10 @@ function findExtreme(call: CallExpr, table: Table, ctx: EvalContext, evaluate: E
 
 /** Evaluates `where` for one row; rows with empty cells count as skipped. */
 function rowMatches(where: NamedArg, row: RowValue, ctx: EvalContext, evaluate: Evaluate): 'yes' | 'no' | 'skipped' {
+  // Reads of the candidate rows are not provenance of the result; only the chosen row is.
+  const { tableReads: _ignored, ...outer } = ctx;
   const rowCtx: EvalContext = {
-    ...ctx,
+    ...outer,
     lookup: (name, span) => (name === ROW_VARIABLE ? row : ctx.lookup(name, span)),
   };
   try {
@@ -196,6 +197,19 @@ function namedArg(call: CallExpr, name: string): NamedArg | undefined {
 
 function unitName(expr: Extract<Expr, { kind: 'unit' }>): string {
   return expr.unit.kind === 'unit-name' ? expr.unit.name : '';
+}
+
+function record(ctx: EvalContext, row: RowValue, column?: string): void {
+  if (!ctx.tableReads) return;
+  const { rows, weight } = row.origin;
+  const read = {
+    table: row.table.name,
+    rows,
+    ...(column !== undefined ? { column } : {}),
+    ...(weight !== undefined ? { weight } : {}),
+  };
+  const same = (r: typeof read) => r.table === read.table && r.column === read.column && r.rows.join() === read.rows.join();
+  if (!ctx.tableReads.some(same)) ctx.tableReads.push(read);
 }
 
 function rowValue(table: Table, row: number): RowValue {

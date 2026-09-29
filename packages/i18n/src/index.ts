@@ -8,7 +8,16 @@ import type { Catalog } from './catalog.js';
 import { cs } from './locales/cs.js';
 import { en } from './locales/en.js';
 
-export type { Catalog } from './catalog.js';
+export { UI_KEYS, type Catalog, type UiKey } from './catalog.js';
+import type { UiKey } from './catalog.js';
+
+/** UI label with {param} placeholders filled in. */
+export function t(catalog: Catalog, key: UiKey, params: Readonly<Record<string, string | number>> = {}): string {
+  return catalog.ui[key].replace(/\{(\w+)\}/g, (match, name: string) => {
+    const value = params[name];
+    return value === undefined ? match : typeof value === 'number' ? formatNumber(value, catalog) : value;
+  });
+}
 
 export const CATALOGS: Readonly<Record<string, Catalog>> = { en, cs };
 

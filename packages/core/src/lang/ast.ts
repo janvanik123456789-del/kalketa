@@ -64,6 +64,13 @@ export type Statement =
       readonly target?: UnitExpr;
     })
   | (StatementBase & { readonly kind: 'display'; readonly expr: Expr; readonly target?: UnitExpr })
+  | (StatementBase & {
+      readonly kind: 'check';
+      /** "Ohyb" in: check "Ohyb": σ ≤ f_y source "EN 1993-1-1, 6.2.5" */
+      readonly label?: string;
+      readonly expr: Expr;
+      readonly source?: string;
+    })
   | (StatementBase & { readonly kind: 'invalid'; /** Name if the line looked like a definition. */ readonly name?: string });
 
 export interface Sheet {

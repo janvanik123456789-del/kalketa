@@ -11,6 +11,7 @@ import { isDimensionless, multiplyDims, divideDims, powerDim, sameDim } from '..
 import { baseUnitSymbol } from '../units/display.js';
 import type { UnitRegistry } from '../units/registry.js';
 import { resolveUnit, type ResolvedUnit } from '../units/unitExpr.js';
+import type { TableRead } from '../tables/table.js';
 import { quantity, type Quantity, type Value } from '../values/value.js';
 import { asBoolean, asQuantity } from './coerce.js';
 import { BUILTIN_CONSTANTS, callFunction } from './functions.js';
@@ -22,6 +23,8 @@ export interface EvalContext {
   lookup(name: string, span: Span): Value;
   /** Collects warnings raised while evaluating. */
   readonly warnings: Diagnostic[];
+  /** Collects reads of table data, for provenance. */
+  readonly tableReads?: TableRead[];
 }
 
 /** Relative tolerance for comparisons, so 0.1 + 0.2 == 0.3 holds. */
@@ -72,7 +75,7 @@ function evaluateRaw(expr: Expr, ctx: EvalContext): Value {
       return callFunction(expr, (arg) => evaluate(arg, ctx));
     }
     case 'member':
-      return memberOf(evaluate(expr.object, ctx), expr.name, expr.span, expr.object.span);
+      return memberOf(evaluate(expr.object, ctx), expr.name, expr.span, expr.object.span, ctx);
   }
 }
 
@@ -151,7 +154,8 @@ function withoutOffset(unit: ResolvedUnit): ResolvedUnit {
   return { symbol: unit.delta ?? unit.symbol, factor: unit.factor, dim: unit.dim };
 }
 
-function compare(op: BinaryOperator, a: Quantity, b: Quantity, span: Span): Value {
+/** Comparison of two quantities with a relative tolerance. */
+export function compare(op: BinaryOperator, a: Quantity, b: Quantity, span: Span): Value {
   if (!sameDim(a.dim, b.dim)) {
     fail('E-UNIT-MISMATCH', span, { operator: op, left: baseUnitSymbol(a.dim), right: baseUnitSymbol(b.dim) });
   }

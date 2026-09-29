@@ -32,11 +32,12 @@ export interface ParseResult {
 
 const KEYWORDS = new Set(['and', 'or', 'not', 'true', 'false', 'check', 'source', 'solve', 'in', 'guess', 'dimension', 'unit']);
 const UNSUPPORTED_STATEMENTS: Readonly<Record<string, string>> = {
-  check: 'check',
   solve: 'solve',
   dimension: 'dimension',
   unit: 'unit-definition',
 };
+/** Keywords that may follow a complete expression. */
+const CONTINUATION_KEYWORDS = new Set(['and', 'or', 'source', 'in', 'guess']);
 const COMPARISONS: ReadonlySet<TokenType> = new Set(['==', '!=', '<', '<=', '>', '>=']);
 
 export function parse(source: string, options: ParseOptions): ParseResult {
@@ -145,6 +146,9 @@ class LineParser {
     if (first.type === 'string' && this.tokens.length === 1) {
       return { kind: 'text', text: first.text, span: lineSpan };
     }
+    if (first.type === 'ident' && first.text === 'check' && this.peek(1).type !== ':=') {
+      return this.parseCheck(lineSpan);
+    }
     if (first.type === 'ident' && first.text in UNSUPPORTED_STATEMENTS && this.peek(1).type !== ':=') {
       fail('E-UNSUPPORTED', first.span, { feature: UNSUPPORTED_STATEMENTS[first.text]! });
     }
@@ -175,6 +179,30 @@ class LineParser {
       nameSpan: nameToken.span,
       expr,
       ...(target ? { target } : {}),
+      span: lineSpan,
+    };
+  }
+
+  /** check ["label":] condition [source "reference"] */
+  private parseCheck(lineSpan: Span): Statement {
+    this.next(); // check
+    let label: string | undefined;
+    if (this.peek().type === 'string') {
+      label = this.next().text;
+      this.expect(':', ':');
+    }
+    const expr = this.parseExpression();
+    let source: string | undefined;
+    if (this.isKeyword('source')) {
+      this.next();
+      source = this.expect('string', 'text').text;
+    }
+    this.expectEnd();
+    return {
+      kind: 'check',
+      expr,
+      ...(label !== undefined ? { label } : {}),
+      ...(source !== undefined ? { source } : {}),
       span: lineSpan,
     };
   }
@@ -509,7 +537,7 @@ class LineParser {
   }
 
   private startsOperand(token: Token): boolean {
-    if (token.type === 'ident') return token.text !== 'and' && token.text !== 'or';
+    if (token.type === 'ident') return !CONTINUATION_KEYWORDS.has(token.text);
     return token.type === 'number' || token.type === '(' || token.type === '[' || token.type === '√' || token.type === 'string';
   }
 

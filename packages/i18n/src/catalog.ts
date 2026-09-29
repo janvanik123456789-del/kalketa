@@ -15,4 +15,27 @@ export interface Catalog {
   /** Translations of term codes used as parameter values. */
   readonly terms: Readonly<Record<string, string>>;
   readonly severity: Readonly<Record<Severity, string>>;
+  /** Labels of the user interface and printed output. */
+  readonly ui: Readonly<Record<UiKey, string>>;
 }
+
+export const UI_KEYS = [
+  'checks.title',
+  'checks.check',
+  'checks.utilization',
+  'checks.source',
+  'checks.passed',
+  'checks.failed',
+  'checks.notEvaluated',
+  'checks.allPassed',
+  'checks.someFailed',
+  'trace.table',
+  'trace.row',
+  'trace.rows',
+  'trace.column',
+  'trace.source',
+  'trace.interpolated',
+  'trace.notFound',
+] as const;
+
+export type UiKey = (typeof UI_KEYS)[number];

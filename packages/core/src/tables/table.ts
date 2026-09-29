@@ -55,6 +55,17 @@ export interface Table {
   readonly fingerprint: string;
 }
 
+/** A read of table data, recorded for provenance. */
+export interface TableRead {
+  readonly table: string;
+  /** Rows involved: one, or two when interpolated. */
+  readonly rows: readonly number[];
+  /** Column read; absent when a whole row was selected. */
+  readonly column?: string;
+  /** Interpolation weight of the second row. */
+  readonly weight?: number;
+}
+
 export interface TableBuildResult {
   readonly table: Table;
   readonly diagnostics: Diagnostic[];

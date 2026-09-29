@@ -4,6 +4,9 @@
  *   Evaluates a sheet (with the tables stored next to it) and prints the results.
  *   Exit code 1 when the sheet has errors, so it can be used in scripts and CI.
  *
+ * calccanvas trace <file.cc> <name> [--lang cs]
+ *   Shows where a result comes from: formulas, inputs, table rows and sources.
+ *
  * calccanvas import-table <file.csv|file.xlsx> --name <Table> [--sheet <Excel sheet>]
  *                         [--into <sheet folder>] [--source "<title>"] [--lang cs]
  *   Imports a table into a sheet folder (tables/<Table>/schema.json + data.csv).
@@ -12,15 +15,16 @@
 import { readFileSync } from 'node:fs';
 import { extname } from 'node:path';
 import { parseArgs } from 'node:util';
-import { defaultRegistry, evaluateSheet, type Diagnostic } from '@calccanvas/core';
-import { catalogFor, formatDiagnostic, type Catalog } from '@calccanvas/i18n';
+import { defaultRegistry, evaluateSheet, traceName, type Diagnostic } from '@calccanvas/core';
+import { catalogFor, formatDiagnostic, t, type Catalog } from '@calccanvas/i18n';
 import { importTable, parseCsv, readWorkbook } from '@calccanvas/sheet';
 import { loadTablesNextTo, writeTable } from './files.js';
-import { formatReport } from './report.js';
+import { formatReport, formatTrace } from './report.js';
 
 const USAGE = [
   'Usage:',
   '  calccanvas run <file.cc> [--lang <language>] [--digits <n>]',
+  '  calccanvas trace <file.cc> <name> [--lang <language>]',
   '  calccanvas import-table <file.csv|file.xlsx> --name <Table> [--sheet <name>] [--into <folder>] [--source <title>]',
 ].join('\n');
 
@@ -37,7 +41,7 @@ async function main(argv: string[]): Promise<number> {
       source: { type: 'string' },
     },
   });
-  const [command, file] = positionals;
+  const [command, file, name] = positionals;
   const catalog = catalogFor(values.lang);
 
   if (command === 'run' && file) {
@@ -47,6 +51,18 @@ async function main(argv: string[]): Promise<number> {
     console.log(formatReport(result, { catalog, digits: Number(values.digits) }));
     const errors = [...loaded.diagnostics, ...result.diagnostics].some((d) => d.severity === 'error');
     return errors ? 1 : 0;
+  }
+
+  if (command === 'trace' && file && name) {
+    const loaded = loadTablesNextTo(file, defaultRegistry);
+    const result = evaluateSheet(readFileSync(file, 'utf8'), { tables: loaded.tables });
+    const node = traceName(result, name);
+    if (!node) {
+      console.error(t(catalog, 'trace.notFound', { name }));
+      return 1;
+    }
+    console.log(formatTrace(node, { catalog, digits: Number(values.digits) }));
+    return 0;
   }
 
   if (command === 'import-table' && file && values.name) {

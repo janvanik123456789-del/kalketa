@@ -23,3 +23,4 @@ export { FUNCTION_NAMES, BUILTIN_CONSTANTS } from './eval/functions.js';
 export * from './graph/session.js';
 export * from './tables/table.js';
 export { TABLE_FUNCTIONS, ROW_VARIABLE } from './eval/tables.js';
+export * from './provenance/trace.js';

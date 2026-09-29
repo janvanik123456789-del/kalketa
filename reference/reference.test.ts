@@ -17,6 +17,8 @@ interface Expected {
   readonly verifiedBy: string;
   readonly relativeTolerance: number;
   readonly values: Readonly<Record<string, ExpectedValue>>;
+  /** Every check of the sheet, in order. */
+  readonly checks?: readonly { label: string; passed: boolean; utilization?: number }[];
 }
 
 const ROOT = import.meta.dirname;
@@ -49,6 +51,16 @@ describe.each(cases)('$name', ({ dir, file }) => {
 
   it('documents how the results were verified', () => {
     expect(expected.verifiedBy.length).toBeGreaterThan(20);
+  });
+
+  it('has the expected checks', () => {
+    const want = expected.checks ?? [];
+    expect(result.checks.map((c) => [c.label, c.passed])).toEqual(want.map((c) => [c.label, c.passed]));
+    want.forEach((c, i) => {
+      if (c.utilization === undefined) return;
+      const got = result.checks[i]!.utilization!;
+      expect(Math.abs(got - c.utilization), c.label).toBeLessThanOrEqual(c.utilization * expected.relativeTolerance);
+    });
   });
 
   it.each(Object.entries(expected.values))('%s', (variable, want) => {

@@ -145,7 +145,7 @@ describe('parser: statements', () => {
   });
 
   it('reports features of later phases as unsupported', () => {
-    expect(parseCodes('check "Ohyb": 1 < 2')).toEqual(['E-UNSUPPORTED']);
+    expect(parseCodes('solve x: x² == 4')).toEqual(['E-UNSUPPORTED']);
     expect(parseCodes('f(x) := x²')).toEqual(['E-UNSUPPORTED']);
   });
 

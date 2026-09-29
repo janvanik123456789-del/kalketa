@@ -70,6 +70,11 @@ export const DIAGNOSTIC_SEVERITY = {
   'E-TABLE-INTERPOLATE': 'error',
   'W-EXTRAPOLATION': 'warning',
   'W-TABLE-ROWS-SKIPPED': 'warning',
+
+  // Sheet files
+  'E-FILE-INVALID': 'error',
+  'E-FILE-VERSION': 'error',
+  'W-FILE-HASH': 'warning',
 } as const satisfies Record<string, Severity>;
 
 export type DiagnosticCode = keyof typeof DIAGNOSTIC_SEVERITY;

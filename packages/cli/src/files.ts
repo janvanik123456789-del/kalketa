@@ -1,42 +1,100 @@
 /**
- * File access for the CLI. A sheet for now is a folder:
+ * File access for the CLI. A sheet is either a .calc file (ZIP container) or
+ * an unpacked folder with the same layout:
  *
- *   nosnik.cc
+ *   nosnik.cc                    (sheet.cc inside the container)
+ *   layout.json                  optional
  *   tables/<Name>/schema.json
  *   tables/<Name>/data.csv
- *   images/<Name>/...
- *
- * which is the layout of the future .calc container (F4).
+ *   images/...
  */
 
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import type { Diagnostic, Table, UnitRegistry } from '@calccanvas/core';
-import { loadTable, tableFolder, type TableFiles } from '@calccanvas/sheet';
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { basename, dirname, extname, join, relative, sep } from 'node:path';
+import type { Diagnostic } from '@calccanvas/core';
+import {
+  DEFAULT_LAYOUT,
+  FILE_EXTENSION,
+  isSafePath,
+  newDocument,
+  readSheetFile,
+  tableFolder,
+  writeSheetFile,
+  type Layout,
+  type SheetDocument,
+  type StoredTable,
+  type TableFiles,
+} from '@calccanvas/sheet';
 
-export interface LoadedTables {
-  readonly tables: Table[];
+/** Folders next to a sheet whose files travel with it. */
+const CARRIED_FOLDERS = ['images', 'ai'];
+
+export interface OpenResult {
+  readonly document?: SheetDocument;
   readonly diagnostics: Diagnostic[];
 }
 
-/** Loads every table stored next to a sheet file. */
-export function loadTablesNextTo(sheetFile: string, registry: UnitRegistry): LoadedTables {
-  const root = join(dirname(sheetFile), 'tables');
-  const tables: Table[] = [];
-  const diagnostics: Diagnostic[] = [];
-  if (!existsSync(root)) return { tables, diagnostics };
-
-  for (const entry of readdirSync(root, { withFileTypes: true })) {
-    if (!entry.isDirectory()) continue;
-    const folder = join(root, entry.name);
-    const schemaPath = join(folder, 'schema.json');
-    const dataPath = join(folder, 'data.csv');
-    if (!existsSync(schemaPath) || !existsSync(dataPath)) continue;
-    const loaded = loadTable(readFileSync(schemaPath, 'utf8'), readFileSync(dataPath, 'utf8'), registry);
-    tables.push(loaded.table);
-    diagnostics.push(...loaded.diagnostics);
+/** Opens a .calc file or a .cc file with its folder. */
+export async function openSheet(path: string): Promise<OpenResult> {
+  if (extname(path).toLowerCase() === FILE_EXTENSION) {
+    return readSheetFile(new Uint8Array(readFileSync(path)));
   }
-  return { tables, diagnostics };
+  return { document: readFolder(path), diagnostics: [] };
+}
+
+/** Builds a document from a .cc file and the tables and images next to it. */
+export function readFolder(sheetFile: string): SheetDocument {
+  const dir = dirname(sheetFile);
+  const created = statSync(sheetFile).birthtime;
+  const base = newDocument(basename(sheetFile, extname(sheetFile)), readFileSync(sheetFile, 'utf8'), created);
+
+  const tables = new Map<string, StoredTable>();
+  const tablesDir = join(dir, 'tables');
+  if (existsSync(tablesDir)) {
+    for (const entry of readdirSync(tablesDir, { withFileTypes: true })) {
+      const folder = join(tablesDir, entry.name);
+      if (!entry.isDirectory() || !existsSync(join(folder, 'schema.json')) || !existsSync(join(folder, 'data.csv'))) continue;
+      tables.set(entry.name, {
+        schemaJson: readFileSync(join(folder, 'schema.json'), 'utf8'),
+        dataCsv: readFileSync(join(folder, 'data.csv'), 'utf8'),
+      });
+    }
+  }
+
+  const files = new Map<string, Uint8Array>();
+  for (const folder of CARRIED_FOLDERS) {
+    for (const file of listFiles(join(dir, folder))) {
+      files.set(relative(dir, file).split(sep).join('/'), new Uint8Array(readFileSync(file)));
+    }
+  }
+
+  const layoutPath = join(dir, 'layout.json');
+  const layout: Layout = existsSync(layoutPath) ? { ...DEFAULT_LAYOUT, ...JSON.parse(readFileSync(layoutPath, 'utf8')) } : DEFAULT_LAYOUT;
+  return { ...base, manifest: { ...base.manifest, modified: new Date().toISOString() }, layout, tables, files };
+}
+
+/** Writes a document as a folder; returns the written paths. */
+export function writeFolder(doc: SheetDocument, dir: string, sheetName: string): string[] {
+  const written: string[] = [];
+  const put = (path: string, data: string | Uint8Array) => {
+    if (!isSafePath(path)) throw new Error(`Unsafe path: ${path}`);
+    const target = join(dir, path);
+    mkdirSync(dirname(target), { recursive: true });
+    writeFileSync(target, data);
+    written.push(target);
+  };
+  put(`${sheetName}.cc`, doc.source);
+  put('layout.json', JSON.stringify(doc.layout, null, 2) + '\n');
+  for (const [name, table] of doc.tables) {
+    put(`${tableFolder(name)}/schema.json`, table.schemaJson);
+    put(`${tableFolder(name)}/data.csv`, table.dataCsv);
+  }
+  for (const [path, data] of doc.files) put(path, data);
+  return written;
+}
+
+export async function saveSheetFile(doc: SheetDocument, path: string): Promise<void> {
+  writeFileSync(path, await writeSheetFile(doc));
 }
 
 /** Writes an imported table into a sheet folder. */
@@ -53,4 +111,12 @@ export function writeTable(sheetDir: string, name: string, files: TableFiles): s
     written.push(target);
   }
   return written;
+}
+
+function listFiles(dir: string): string[] {
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(dir, entry.name);
+    return entry.isDirectory() ? listFiles(path) : [path];
+  });
 }

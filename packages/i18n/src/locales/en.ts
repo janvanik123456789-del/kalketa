@@ -40,6 +40,9 @@ export const en: Catalog = {
     'E-TABLE-INTERPOLATE': 'Cannot interpolate table “{table}” on “{column}”: {problem}.',
     'W-EXTRAPOLATION': 'The value lies outside the range of column “{column}” in table “{table}”; the result is extrapolated.',
     'W-TABLE-ROWS-SKIPPED': '{count} row(s) of table “{table}” were skipped because of empty cells.',
+    'E-FILE-INVALID': 'The file is not a valid CalcCanvas sheet ({problem} {value}).',
+    'E-FILE-VERSION': 'The file was saved by a newer version of CalcCanvas (format {found}, this version reads up to {supported}).',
+    'W-FILE-HASH': 'The file was changed outside CalcCanvas since it was last saved.',
   },
   terms: {
     'end-of-line': 'end of line',
@@ -73,6 +76,10 @@ export const en: Catalog = {
     'table-name': 'table name',
     'column-name': 'column name',
     key: 'key column',
+    'not-zip': 'not a ZIP archive',
+    path: 'unsafe path',
+    json: 'damaged JSON',
+    format: 'unknown format',
   },
   severity: { error: 'error', warning: 'warning', info: 'note' },
   ui: {

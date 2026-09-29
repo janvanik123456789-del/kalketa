@@ -40,6 +40,9 @@ export const cs: Catalog = {
     'E-TABLE-INTERPOLATE': 'Tabulku „{table}“ nelze interpolovat podle „{column}“: {problem}.',
     'W-EXTRAPOLATION': 'Hodnota leží mimo rozsah sloupce „{column}“ tabulky „{table}“; výsledek je extrapolovaný.',
     'W-TABLE-ROWS-SKIPPED': 'Počet přeskočených řádků tabulky „{table}“ kvůli prázdným buňkám: {count}.',
+    'E-FILE-INVALID': 'Soubor není platný list CalcCanvas ({problem} {value}).',
+    'E-FILE-VERSION': 'Soubor uložila novější verze CalcCanvas (formát {found}, tato verze čte nejvýše {supported}).',
+    'W-FILE-HASH': 'Soubor byl od posledního uložení změněn mimo CalcCanvas.',
   },
   terms: {
     'end-of-line': 'konec řádku',
@@ -73,6 +76,10 @@ export const cs: Catalog = {
     'table-name': 'název tabulky',
     'column-name': 'název sloupce',
     key: 'klíčový sloupec',
+    'not-zip': 'není archiv ZIP',
+    path: 'nebezpečná cesta',
+    json: 'poškozený JSON',
+    format: 'neznámý formát',
   },
   severity: { error: 'chyba', warning: 'varování', info: 'poznámka' },
   ui: {

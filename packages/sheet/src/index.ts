@@ -6,7 +6,8 @@
  * .calc container will use (F4).
  */
 
-import { buildTable, type Diagnostic, type TableBuildResult, type TableSchema, type UnitRegistry } from '@calccanvas/core';
+import { buildTable, evaluateSheet, type Diagnostic, type SheetResult, type Table, type TableBuildResult, type TableSchema, type UnitRegistry } from '@calccanvas/core';
+import type { SheetDocument } from './container.js';
 import { parseCsv, writeCsv } from './csv.js';
 import { inferTable } from './infer.js';
 import type { WorkbookImage } from './excel.js';
@@ -14,6 +15,7 @@ import type { WorkbookImage } from './excel.js';
 export { parseCsv, writeCsv, detectDelimiter } from './csv.js';
 export { inferTable, splitHeader, toIdentifier, type InferResult } from './infer.js';
 export { readWorkbook, type WorkbookImage, type WorkbookSheet } from './excel.js';
+export * from './container.js';
 
 /** Files of one stored table, relative to the sheet folder. */
 export interface TableFiles {
@@ -91,4 +93,22 @@ export function importCsv(text: string, options: ImportOptions): ImportResult {
 
 function toFileName(text: string): string {
   return text.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9._-]+/g, '_').replace(/^_+|_+$/g, '');
+}
+
+/** Builds all tables stored in a document. */
+export function documentTables(doc: SheetDocument, registry: UnitRegistry): { tables: Table[]; diagnostics: Diagnostic[] } {
+  const tables: Table[] = [];
+  const diagnostics: Diagnostic[] = [];
+  for (const stored of doc.tables.values()) {
+    const loaded = loadTable(stored.schemaJson, stored.dataCsv, registry);
+    tables.push(loaded.table);
+    diagnostics.push(...loaded.diagnostics);
+  }
+  return { tables, diagnostics };
+}
+
+/** Evaluates a document with its own tables. Table problems come first in the diagnostics. */
+export function evaluateDocument(doc: SheetDocument, registry: UnitRegistry): { result: SheetResult; tableDiagnostics: Diagnostic[] } {
+  const { tables, diagnostics } = documentTables(doc, registry);
+  return { result: evaluateSheet(doc.source, { tables, registry }), tableDiagnostics: diagnostics };
 }

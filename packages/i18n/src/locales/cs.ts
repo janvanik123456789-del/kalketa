@@ -139,5 +139,10 @@ export const cs: Catalog = {
     'editor.help': 'Enter = nový řádek · Shift+Enter = pokračování řádku · Esc = zrušit · „=“ za novým jménem vloží „≔“',
     'editor.openFailed': 'Soubor se nepodařilo otevřít.',
     'editor.tableUsedBy': 'v listu použito jako',
+    'editor.exportPdf': 'Export do PDF…',
+    'editor.closeUnsaved': 'Výpočet obsahuje neuložené změny. Zavřít bez uložení?',
+    'editor.discard': 'Zavřít bez uložení',
+    'editor.cancel': 'Zrušit',
+    'editor.sheetFiles': 'Výpočty CalcCanvas',
   },
 };

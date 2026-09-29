@@ -1,0 +1,65 @@
+{
+  "name": "@calccanvas/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "CalcCanvas as a standalone desktop application (Electron).",
+  "author": "CalcCanvas",
+  "type": "module",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "electron .",
+    "icon": "electron scripts/make-icon.mjs",
+    "dist": "electron-builder --win"
+  },
+  "devDependencies": {
+    "electron": "^44.4.5",
+    "electron-builder": "^26.15.3"
+  },
+  "homepage": "https://calccanvas.local",
+  "build": {
+    "appId": "cz.calccanvas.desktop",
+    "productName": "CalcCanvas",
+    "electronVersion": "44.4.5",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../editor/dist",
+        "to": "editor"
+      }
+    ],
+    "fileAssociations": [
+      {
+        "ext": "calc",
+        "name": "CalcCanvas",
+        "description": "CalcCanvas calculation",
+        "role": "Editor"
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "CalcCanvas"
+    },
+    "portable": {
+      "artifactName": "CalcCanvas-${version}-portable.exe"
+    }
+  }
+}

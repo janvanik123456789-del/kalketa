@@ -139,5 +139,10 @@ export const en: Catalog = {
     'editor.help': 'Enter = new line · Shift+Enter = continue the line · Esc = cancel · "=" after a new name inserts "≔"',
     'editor.openFailed': 'The file could not be opened.',
     'editor.tableUsedBy': 'used in the sheet as',
+    'editor.exportPdf': 'Export PDF…',
+    'editor.closeUnsaved': 'The calculation has unsaved changes. Close without saving?',
+    'editor.discard': 'Close without saving',
+    'editor.cancel': 'Cancel',
+    'editor.sheetFiles': 'CalcCanvas calculations',
   },
 };

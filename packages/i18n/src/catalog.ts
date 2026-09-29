@@ -76,6 +76,11 @@ export const UI_KEYS = [
   'editor.help',
   'editor.openFailed',
   'editor.tableUsedBy',
+  'editor.exportPdf',
+  'editor.closeUnsaved',
+  'editor.discard',
+  'editor.cancel',
+  'editor.sheetFiles',
 ] as const;
 
 export type UiKey = (typeof UI_KEYS)[number];

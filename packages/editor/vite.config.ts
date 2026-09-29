@@ -1,11 +1,13 @@
 import { fileURLToPath } from 'node:url';
 import react from '@vitejs/plugin-react';
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 
 const src = (pkg: string) => fileURLToPath(new URL(`../${pkg}/src/index.ts`, import.meta.url));
 
-export default defineConfig({
-  plugins: [react()],
+export default defineConfig(({ command }) => ({
+  // Relative asset paths, so the desktop app can load the build from disk.
+  base: './',
+  plugins: [react(), ...(command === 'build' ? [contentSecurityPolicy()] : [])],
   resolve: {
     // The editor uses the other packages' sources directly; no build step needed.
     alias: {
@@ -16,4 +18,13 @@ export default defineConfig({
     },
   },
   server: { port: 5173, strictPort: true, fs: { allow: ['../..'] } },
-});
+}));
+
+/** The built editor may load only its own files; images come as data: URIs. */
+function contentSecurityPolicy(): Plugin {
+  const policy = "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; frame-src 'self' about: data:; connect-src 'self'";
+  return {
+    name: 'calccanvas-csp',
+    transformIndexHtml: (html) => html.replace('<head>', `<head>\n    <meta http-equiv="Content-Security-Policy" content="${policy}" />`),
+  };
+}

@@ -11,7 +11,7 @@ import { defaultRegistry, SheetSession, type Diagnostic, type Statement } from '
 import { catalogFor, CATALOGS, formatDiagnostic, t } from '@calccanvas/i18n';
 import { buildPrintDocument, printHtml } from '@calccanvas/render';
 import type { SheetDocument } from '@calccanvas/sheet';
-import { emptyDocument, exampleDocument, fileUri, pickAndOpen, saveDocument, tableCache, type FileHandle } from './document.js';
+import { desktop, emptyDocument, exampleDocument, fileName, fileUri, openBytes, pickAndOpen, saveDocument, tableCache, type FileRef, type OpenedFile } from './document.js';
 import { deleteLines, insertLineAfter, replaceLines } from './logic/segments.js';
 import { replacePickKey, pickOf } from './logic/pick.js';
 import { Inspector } from './components/Inspector.js';
@@ -33,7 +33,7 @@ function initialLanguage(): string {
 
 export function App() {
   const [doc, setDoc] = useState<SheetDocument>(exampleDocument);
-  const [handle, setHandle] = useState<FileHandle | undefined>();
+  const [fileRef, setFileRef] = useState<FileRef | undefined>();
   const [dirty, setDirty] = useState(false);
   const [language, setLanguage] = useState(initialLanguage);
   const [tab, setTab] = useState<'sheet' | 'tables'>('sheet');
@@ -73,12 +73,13 @@ export function App() {
 
   useEffect(() => {
     document.title = `${doc.manifest.title}${dirty ? ' •' : ''} — CalcCanvas`;
-    if (!dirty) return;
+    desktop?.setCloseGuard({ dirty, message: t(ui, 'editor.closeUnsaved'), discard: t(ui, 'editor.discard'), cancel: t(ui, 'editor.cancel') });
+    if (!dirty || desktop) return;
     // Closing the window with unsaved changes asks first.
     const warn = (e: BeforeUnloadEvent) => e.preventDefault();
     window.addEventListener('beforeunload', warn);
     return () => window.removeEventListener('beforeunload', warn);
-  }, [doc.manifest.title, dirty]);
+  }, [doc.manifest.title, dirty, ui]);
 
   const change = (next: SheetDocument) => {
     setDoc(next);
@@ -97,20 +98,27 @@ export function App() {
     if (next !== undefined) setSource(next);
   };
 
-  const open = async () => {
-    const opened = await pickAndOpen();
+  const show = (opened: OpenedFile | undefined) => {
     if (!opened) return;
     if (!opened.document) {
       setNotice([t(ui, 'editor.openFailed'), ...opened.diagnostics.map((d) => formatDiagnostic(d, ui))].join(' '));
       return;
     }
-    replaceDocument(opened.document, opened.handle, opened.diagnostics);
+    replaceDocument(opened.document, opened.ref, opened.diagnostics);
   };
+  const open = async () => show(await pickAndOpen({ sheets: t(ui, 'editor.sheetFiles') }));
 
-  const replaceDocument = (next: SheetDocument, nextHandle: FileHandle | undefined, diagnostics: Diagnostic[] = []) => {
+  // Files opened by double click or from the command line (desktop only).
+  const showRef = useRef(show);
+  showRef.current = show;
+  useEffect(() => {
+    desktop?.onOpenFile((file) => void openBytes(file.name, file.bytes, { kind: 'path', path: file.path }).then((opened) => showRef.current(opened)));
+  }, []);
+
+  const replaceDocument = (next: SheetDocument, nextRef: FileRef | undefined, diagnostics: Diagnostic[] = []) => {
     session.current = new SheetSession();
     setDoc(next);
-    setHandle(nextHandle);
+    setFileRef(nextRef);
     setDirty(false);
     setEditing(undefined);
     setSelected(undefined);
@@ -118,14 +126,15 @@ export function App() {
   };
 
   const save = async () => {
-    const saved = await saveDocument(doc, handle);
-    if (saved) setHandle(saved);
-    setDirty(false);
+    const saved = await saveDocument(doc, fileRef);
+    if (saved) setFileRef(saved);
+    // In a browser without file handles the file is downloaded; it counts as saved.
+    if (saved || !desktop) setDirty(false);
   };
 
-  const printout = () => {
+  const printoutHtml = () => {
     const title = /^[ \t]*#(?!#)[ \t]*(.+?)[ \t]*$/m.exec(doc.source)?.[1] ?? doc.manifest.title;
-    const html = printHtml(result, {
+    return printHtml(result, {
       catalog: printCatalog,
       registry: defaultRegistry,
       title,
@@ -135,6 +144,14 @@ export function App() {
       resolveFile,
       ...(doc.manifest.author ? { subtitle: doc.manifest.author } : {}),
     });
+  };
+
+  const printout = () => {
+    const html = printoutHtml();
+    if (desktop) {
+      void desktop.print(html);
+      return;
+    }
     // A hidden frame with the printout opens the browser's print dialog
     // ("Save as PDF" included) and is not stopped by pop-up blockers.
     document.querySelector('iframe.print-frame')?.remove();
@@ -148,9 +165,11 @@ export function App() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+      const action = { s: save, o: open, p: printout }[e.key.toLowerCase()];
+      if (action) {
         e.preventDefault();
-        void save();
+        void action();
       }
     };
     window.addEventListener('keydown', onKey);
@@ -185,6 +204,11 @@ export function App() {
         <button type="button" onClick={printout}>
           {t(ui, 'editor.print')}
         </button>
+        {desktop && (
+          <button type="button" onClick={() => void desktop!.exportPdf({ html: printoutHtml(), suggestedName: fileName(doc) })}>
+            {t(ui, 'editor.exportPdf')}
+          </button>
+        )}
         <span className="sep" />
         <div className="tabs" role="tablist">
           <button type="button" role="tab" aria-selected={tab === 'sheet'} onClick={() => setTab('sheet')}>

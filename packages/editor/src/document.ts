@@ -74,9 +74,29 @@ export function fileUri(doc: SheetDocument, path: string): string | undefined {
 }
 
 // ---------------------------------------------------------------------------
-// Files. The File System Access API (Chromium) allows saving back to the same
-// file; other browsers download a copy.
+// Files. In the desktop application the bridge gives native dialogs and saves
+// back to the same path. In a browser, the File System Access API (Chromium)
+// does the same; other browsers download a copy.
 // ---------------------------------------------------------------------------
+
+/** Functions of the desktop application (packages/desktop/src/preload.cts). */
+export interface DesktopBridge {
+  openDialog(labels: { sheets: string }): Promise<DesktopFile | undefined>;
+  save(request: { path?: string; suggestedName: string; bytes: Uint8Array }): Promise<string | undefined>;
+  print(html: string): Promise<boolean>;
+  exportPdf(request: { html: string; suggestedName: string }): Promise<string | undefined>;
+  setCloseGuard(guard: { dirty: boolean; message: string; discard: string; cancel: string }): void;
+  onOpenFile(listener: (file: DesktopFile) => void): void;
+}
+
+export interface DesktopFile {
+  readonly path: string;
+  readonly name: string;
+  readonly bytes: Uint8Array;
+}
+
+/** The desktop bridge, or undefined when running in a browser. */
+export const desktop: DesktopBridge | undefined = (window as unknown as { calccanvasDesktop?: DesktopBridge }).calccanvasDesktop;
 
 interface FileHandle {
   readonly name: string;
@@ -89,53 +109,70 @@ interface FsWindow {
   showSaveFilePicker?: (options: unknown) => Promise<FileHandle>;
 }
 
+/** Where the document is saved: a path (desktop) or a browser file handle. */
+export type FileRef = { readonly kind: 'path'; readonly path: string } | { readonly kind: 'handle'; readonly handle: FileHandle };
+
 const CALC_TYPES = [{ description: 'CalcCanvas', accept: { 'application/zip': ['.calc'] } }];
 
 export interface OpenedFile {
   readonly document?: SheetDocument;
   readonly diagnostics: Diagnostic[];
-  readonly handle?: FileHandle;
+  readonly ref?: FileRef;
 }
 
-export async function openFile(file: File, handle?: FileHandle): Promise<OpenedFile> {
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  if (file.name.toLowerCase().endsWith('.cc')) {
-    return { document: newDocument(file.name.replace(/\.cc$/i, ''), new TextDecoder().decode(bytes)), diagnostics: [] };
+/** Opens file bytes: a .calc container, or a .cc sheet text. */
+export async function openBytes(name: string, bytes: Uint8Array, ref?: FileRef): Promise<OpenedFile> {
+  if (name.toLowerCase().endsWith('.cc')) {
+    // A bare .cc has no container yet; saving asks for a new .calc file.
+    return { document: newDocument(name.replace(/\.cc$/i, ''), new TextDecoder().decode(bytes)), diagnostics: [] };
   }
   const read = await readSheetFile(bytes);
-  return { ...read, ...(handle ? { handle } : {}) };
+  return { ...read, ...(ref && read.document ? { ref } : {}) };
 }
 
-/** Opens with a file picker; falls back to a hidden <input type=file>. */
-export async function pickAndOpen(): Promise<OpenedFile | undefined> {
+/** Opens with a file dialog. Returns undefined when cancelled. */
+export async function pickAndOpen(labels: { sheets: string }): Promise<OpenedFile | undefined> {
+  if (desktop) {
+    const file = await desktop.openDialog(labels);
+    return file ? openBytes(file.name, file.bytes, { kind: 'path', path: file.path }) : undefined;
+  }
   const fs = window as unknown as FsWindow;
   if (fs.showOpenFilePicker) {
     try {
       const [handle] = await fs.showOpenFilePicker({ types: [...CALC_TYPES, { description: 'CalcCanvas text', accept: { 'text/plain': ['.cc'] } }] });
       if (!handle) return undefined;
-      return openFile(await handle.getFile(), handle);
+      const file = await handle.getFile();
+      return openBytes(file.name, new Uint8Array(await file.arrayBuffer()), { kind: 'handle', handle });
     } catch {
       return undefined; // cancelled
     }
   }
   const file = await chooseFile('.calc,.cc');
-  return file ? openFile(file) : undefined;
+  return file ? openBytes(file.name, new Uint8Array(await file.arrayBuffer())) : undefined;
 }
 
-export async function saveDocument(doc: SheetDocument, handle: FileHandle | undefined): Promise<FileHandle | undefined> {
+/** Saves the document; returns where it went (undefined if cancelled or downloaded). */
+export async function saveDocument(doc: SheetDocument, ref: FileRef | undefined): Promise<FileRef | undefined> {
   const stamped = { ...doc, manifest: { ...doc.manifest, modified: new Date().toISOString() } };
-  const blob = new Blob([(await writeSheetFile(stamped)) as BlobPart], { type: 'application/zip' });
+  const bytes = await writeSheetFile(stamped);
+
+  if (desktop) {
+    const path = await desktop.save({ ...(ref?.kind === 'path' ? { path: ref.path } : {}), suggestedName: fileName(doc), bytes });
+    return path ? { kind: 'path', path } : undefined;
+  }
+
+  const blob = new Blob([bytes as BlobPart], { type: 'application/zip' });
   const fs = window as unknown as FsWindow;
   try {
-    const target = handle ?? (fs.showSaveFilePicker ? await fs.showSaveFilePicker({ suggestedName: `${fileName(doc)}.calc`, types: CALC_TYPES }) : undefined);
-    if (target) {
-      const writable = await target.createWritable();
+    const handle = ref?.kind === 'handle' ? ref.handle : fs.showSaveFilePicker ? await fs.showSaveFilePicker({ suggestedName: `${fileName(doc)}.calc`, types: CALC_TYPES }) : undefined;
+    if (handle) {
+      const writable = await handle.createWritable();
       await writable.write(blob);
       await writable.close();
-      return target;
+      return { kind: 'handle', handle };
     }
   } catch {
-    return handle; // cancelled
+    return undefined; // cancelled
   }
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -155,8 +192,6 @@ export function chooseFile(accept: string): Promise<File | undefined> {
   });
 }
 
-function fileName(doc: SheetDocument): string {
-  return doc.manifest.title.replace(/[\\/:*?"<>|]+/g, '_').trim() || 'vypocet';
+export function fileName(doc: SheetDocument): string {
+  return doc.manifest.title.replace(/[\/:*?"<>|]+/g, '_').trim() || 'vypocet';
 }
-
-export type { FileHandle };

@@ -1,0 +1,78 @@
+/**
+ * Diagnostics: errors, warnings and infos reported by the core.
+ *
+ * The core never produces human-readable text. It reports a code plus
+ * parameters; the i18n layer turns them into a message in the user's language.
+ */
+
+export type Severity = 'error' | 'warning' | 'info';
+
+/** Location in the source. Lines and columns are 1-based; `offset` is 0-based. */
+export interface Span {
+  readonly offset: number;
+  readonly length: number;
+  readonly line: number;
+  readonly column: number;
+}
+
+export type DiagnosticParams = Readonly<Record<string, string | number>>;
+
+export interface Diagnostic {
+  readonly code: DiagnosticCode;
+  readonly severity: Severity;
+  readonly span: Span;
+  readonly params: DiagnosticParams;
+}
+
+export const DIAGNOSTIC_SEVERITY = {
+  // Lexing and parsing
+  'E-UNEXPECTED-CHAR': 'error',
+  'E-UNTERMINATED-STRING': 'error',
+  'E-SYNTAX': 'error',
+  'E-MISSING-OPERATOR': 'error',
+  'E-ASSIGN-WITH-EQUALS': 'error',
+  'E-UNSUPPORTED': 'error',
+  'W-AMBIGUOUS-UNIT': 'warning',
+
+  // Names
+  'E-UNDEFINED': 'error',
+  'E-DEFINED-LATER': 'error',
+  'E-REDEFINED': 'error',
+  'E-RESERVED': 'error',
+  'I-DEPENDENCY-FAILED': 'info',
+
+  // Units and values
+  'E-UNKNOWN-UNIT': 'error',
+  'E-UNIT-MISMATCH': 'error',
+  'E-TARGET-UNIT': 'error',
+  'E-ABS-TEMP': 'error',
+  'W-ABS-TEMP-MUL': 'warning',
+  'E-POWER-DIM': 'error',
+  'E-TYPE': 'error',
+  'E-DIV-ZERO': 'error',
+  'E-NOT-FINITE': 'error',
+
+  // Functions
+  'E-FUNC-UNKNOWN': 'error',
+  'E-FUNC-ARITY': 'error',
+  'E-FUNC-ARG-DIM': 'error',
+  'E-DOMAIN': 'error',
+} as const satisfies Record<string, Severity>;
+
+export type DiagnosticCode = keyof typeof DIAGNOSTIC_SEVERITY;
+
+export function diagnostic(code: DiagnosticCode, span: Span, params: DiagnosticParams = {}): Diagnostic {
+  return { code, severity: DIAGNOSTIC_SEVERITY[code], span, params };
+}
+
+/** Thrown inside the core to abort evaluation of one statement. */
+export class CalcError extends Error {
+  constructor(readonly diagnostic: Diagnostic) {
+    super(diagnostic.code);
+    this.name = 'CalcError';
+  }
+}
+
+export function fail(code: DiagnosticCode, span: Span, params: DiagnosticParams = {}): never {
+  throw new CalcError(diagnostic(code, span, params));
+}

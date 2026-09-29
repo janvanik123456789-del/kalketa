@@ -1,10 +1,23 @@
 /**
- * @calccanvas/core — výpočetní jádro.
+ * @calccanvas/core — the calculation engine.
  *
- * Pravidla (viz Claude_navrh/02-architektura.md, kap. 2):
- *  - žádné závislosti na jiných balíčcích projektu,
- *  - žádný přístup k souborům ani síti (deterministické),
- *  - žádná znalost konkrétního oboru.
+ * Rules (docs/02-architektura.md, ch. 2):
+ *  - no dependencies on other packages of the project,
+ *  - no file system or network access (deterministic),
+ *  - no knowledge of any particular field of engineering.
  */
 
-export const CORE_VERSION = '0.0.0';
+export const CORE_VERSION = '0.1.0';
+
+export * from './diagnostics.js';
+export type * from './lang/ast.js';
+export { tokenize, type Token, type TokenType } from './lang/lexer.js';
+export { parse, type ParseOptions, type ParseResult } from './lang/parser.js';
+export * from './units/dimension.js';
+export { UnitRegistry, defaultRegistry, type UnitDef } from './units/registry.js';
+export { resolveUnit, formatUnit, type ResolvedUnit } from './units/unitExpr.js';
+export { toDisplay, inUnit, baseUnitSymbol, type DisplayValue } from './units/display.js';
+export * from './values/value.js';
+export { evaluate, type EvalContext } from './eval/evaluator.js';
+export { FUNCTION_NAMES, BUILTIN_CONSTANTS } from './eval/functions.js';
+export * from './graph/session.js';

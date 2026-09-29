@@ -303,7 +303,9 @@ Výchozí zobrazení pro tisk je **vzorec → dosazení → výsledek** (standar
 
 ## 12. Chyby a varování
 
-Každá diagnostika má: **kód**, **závažnost** (chyba / varování / info), **místo** (řádek, sloupec, rozsah), **zprávu česky** a volitelně **nápovědu**.
+Každá diagnostika má: **kód**, **závažnost** (chyba / varování / info), **místo** (řádek, sloupec, rozsah), **parametry** a volitelně **nápovědu**.
+
+**Jádro nevrací text zprávy, jen kód a parametry.** Text vzniká až v UI podle jazyka, který si uživatel zvolil v nastavení (viz kap. 15).
 
 | Kód | Příklad |
 |---|---|
@@ -338,6 +340,23 @@ Program **pokračuje ve výpočtu** i po chybě tam, kde to jde (nezávislé č�
 
 ## 14. Otevřené otázky jazyka
 
-1. Klíčová slova česky, nebo anglicky? (`check` / `posudek`). Návrh: anglická v souboru, v editoru a tisku podle jazyka listu.
-2. Víceřádkové výrazy: pokračování řádku `_` (Calcpad), nebo automaticky při neuzavřené závorce? Návrh: obojí.
-3. Oddělovač tisíců v zápisu (`2 500 000`): povolit mezeru? Kolidovalo by to s implicitním násobením číslo·číslo. Návrh: povolit jen úzkou mezeru, nebo `_` (`2_500_000`).
+1. Víceřádkové výrazy: pokračování řádku `_` (Calcpad), nebo automaticky při neuzavřené závorce? Návrh: obojí.
+2. Oddělovač tisíců v zápisu (`2 500 000`): povolit mezeru? Kolidovalo by to s implicitním násobením číslo·číslo. Návrh: povolit jen úzkou mezeru, nebo `_` (`2_500_000`).
+
+---
+
+## 15. Jazyk programu a lokalizace
+
+**Rozhodnuto 2026-09-29.**
+
+- **Soubor listu je jazykově neutrální.** Klíčová slova (`check`, `source`, `solve`, `pick` …) a názvy vestavěných funkcí jsou **anglicky**. List vytvořený v češtině jde otevřít v libovolném jiném jazyce.
+- **Uživatel si v nastavení zvolí jazyk programu** (libovolný jazyk, pro který existuje překlad). Podle něj se překládá:
+  - celé UI (menu, dialogy, nápověda),
+  - hlášení chyb a varování (jádro vrací jen kód + parametry, viz kap. 12),
+  - tisková vrstva: popisky jako „Posouzení“, „využití“, „Zdroj“, souhrn podmínek,
+  - formát čísel a dat (desetinná čárka/tečka, oddělovač tisíců) podle zvyklostí jazyka, pokud ho list nepřepíše.
+- **Jazyk tisku je vlastnost listu**, ne programu. Kolega v Německu otevře český výpočet v německém UI, ale tisk zůstane česky, dokud ho sám nezmění.
+- **Co se nepřekládá:** jména proměnných, názvy tabulek a sloupců, texty a komentáře napsané uživatelem, značky jednotek (SI je mezinárodní).
+- **Editor může klíčová slova zobrazovat přeložená** (např. `check` jako „posudek“), v souboru ale zůstává anglický tvar.
+- Kód programu včetně komentářů je v angličtině.
+- Překlady jsou v samostatných katalozích zpráv (`i18n/<jazyk>.json`). Začneme češtinou a angličtinou, další jazyk je jen další katalog bez změny kódu.

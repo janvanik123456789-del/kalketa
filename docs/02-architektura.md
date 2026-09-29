@@ -54,6 +54,7 @@ calccanvas/
 │   ├── render/          ← převod výsledků na tiskovou podobu (HTML + KaTeX)
 │   ├── editor/          ← React aplikace
 │   ├── cli/             ← `calccanvas run list.calc`, `calccanvas test`, export PDF
+│   ├── i18n/            ← katalogy zpráv (cs, en, …), formát čísel podle jazyka
 │   └── ai/              ← (později) rozhraní pro LLM, volitelné
 │
 ├── reference/           ← referenční výpočty R1–R6 (listy + očekávané výsledky)
@@ -234,7 +235,12 @@ Každá fáze končí procházejícími testy. **MVP = referenční výpočet R1
 
 ---
 
-## 10. Otevřená rozhodnutí
+## 10. Jazyk kódu a lokalizace
+
+- Kód, komentáře, názvy a klíčová slova jazyka výpočtu jsou **anglicky**.
+- Uživatel si v nastavení zvolí jazyk programu. **Jádro nikdy nevrací hotový text** (jen kódy a parametry), texty dodává balíček `i18n`. Podrobnosti v [03-jazyk.md](03-jazyk.md), kap. 15.
+
+## 11. Otevřená rozhodnutí
 
 1. **Přesná syntaxe jazyka.** Samostatný dokument `03-jazyk.md` před fází F1.
 2. **Tauri, nebo Electron** pro desktop. Rozhodnout ve fázi F6 (Tauri potřebuje Rust toolchain, Electron je větší, ale bez něj).

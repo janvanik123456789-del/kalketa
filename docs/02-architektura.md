@@ -1,0 +1,242 @@
+# CalcCanvas — Architektura a plán realizace
+
+**Verze:** 1.0 (návrh)
+**Datum:** 2026-09-29
+**Navazuje na:** [01-filozofie.md](01-filozofie.md)
+**Rozhodnutí:** varianta A, tedy TypeScript pro jádro i UI
+
+---
+
+## 1. Technologie
+
+| Oblast | Volba | Poznámka |
+|---|---|---|
+| Jazyk | **TypeScript** (strict) | jeden jazyk pro jádro, editor, CLI i budoucí server |
+| Běhové prostředí | Node.js 24 LTS, prohlížeč | jádro poběží v obou beze změn |
+| Balíčky | **npm workspaces** (monorepo) | bez dalších nástrojů navíc |
+| Testy | **Vitest** | stejně jako ve stávajících verzích |
+| UI | **React + Vite** | největší ekosystém a nejlepší podpora AI asistentů |
+| Sazba vzorců | **KaTeX** (zobrazení), později **MathLive** (editace) | |
+| Tisk / PDF | HTML stránky s CSS pro tisk (**Paged.js**) → PDF | tisková vrstva = HTML stránky A4 |
+| Soubor listu | ZIP kontejner (**fflate**) | viz kap. 4 |
+| Import Excelu | **ExcelJS** | CSV vlastním parserem |
+| Desktop | **Tauri** (případně Electron), až ve fázi F6 | Tauri vyžaduje nainstalovaný Rust toolchain, i když v Rustu nic nepíšeme. Do té doby běží aplikace v prohlížeči. |
+| Verzování | **git** od prvního dne | |
+
+**Čísla:** všude float64 (stejné jako Python i Rust). Zaokrouhlení řeší až tisková vrstva.
+
+---
+
+## 2. Struktura repozitáře
+
+Nový čistý repozitář `calccanvas/`. Stávající tři složky zůstanou beze změny jako archiv, kód se z nich přebírá jen s procházejícími testy (kap. 8).
+
+```text
+calccanvas/
+├── packages/
+│   ├── core/            ← výpočetní jádro, ŽÁDNÉ závislosti na UI ani souborech
+│   │   ├── lang/        lexer, parser, AST
+│   │   ├── units/       dimenze, jednotky, posunuté jednotky, vlastní dimenze
+│   │   ├── values/      Quantity, Complex, Series, Date, Text, Enum
+│   │   ├── eval/        vyhodnocení výrazů, vestavěné funkce
+│   │   ├── graph/       graf závislostí, inkrementální přepočet, cykly
+│   │   ├── tables/      typované tabulky, pick, lookup + interpolace, hledání
+│   │   ├── checks/      podmínky, využití, souhrn
+│   │   ├── solver/      řešič rovnic (Brent, Newton)
+│   │   ├── provenance/  dohledání hodnoty ke vzorci / řádku / zdroji
+│   │   └── diagnostics/ jednotný systém chyb a varování
+│   │
+│   ├── sheet/           ← model listu a formát souboru
+│   │   ├── model/       List, vrstvy, bloky, revize
+│   │   ├── format/      čtení/zápis ZIP kontejneru, textový formát výpočtu
+│   │   └── import/      CSV, Excel
+│   │
+│   ├── render/          ← převod výsledků na tiskovou podobu (HTML + KaTeX)
+│   ├── editor/          ← React aplikace
+│   ├── cli/             ← `calccanvas run list.calc`, `calccanvas test`, export PDF
+│   └── ai/              ← (později) rozhraní pro LLM, volitelné
+│
+├── reference/           ← referenční výpočty R1–R6 (listy + očekávané výsledky)
+└── docs/                ← filozofie, architektura, návrh jazyka
+```
+
+### Pravidla závislostí (hlídat v lintu)
+
+```text
+editor ──► render ──► sheet ──► core
+  cli ──────────────► sheet ──► core
+   ai ──────────────► sheet ──► core
+```
+
+- **core nezávisí na ničem** z projektu, nesahá na soubory ani síť a je deterministický.
+- **core nezná žádný obor.** Kód pro konkrétní obor (IPE, kabely, NPV…) patří do tabulek a bloků v `reference/` nebo do knihoven, ne do `core`.
+- **ai** jen čte list a vrací návrhy. Nikdy nemění výpočet přímo.
+
+---
+
+## 3. Jazyk výpočtu (textová podoba)
+
+Uvnitř listu je výpočet uložený jako čitelný text. Editor ho zobrazuje jako sázené vzorce a tisková vrstva jako klasický technický výpočet. Předběžná ukázka pro R1, přesnou syntaxi určí samostatný dokument `03-jazyk.md`:
+
+```text
+# Posouzení nosníku N1
+
+## Zadání
+L := 5 m                          ' rozpětí
+q := 12 kN/m                      ' spojité zatížení
+material := pick(Materialy, "S235")
+profil   := pick(Profily_IPE, "IPE 200")
+
+## Výpočet
+M_Ed := q·L²/8
+σ    := M_Ed / profil.Wy
+w    := 5·q·L⁴ / (384·material.E·profil.Iy)
+
+## Posouzení
+check "Ohyb":   σ ≤ material.fy        source "EN 1993-1-1, 6.2.5"
+check "Průhyb": w ≤ L/250              source "EN 1990, A1.4"
+
+## Návrh
+profil_min := find_min(Profily_IPE, by: G, where: σ ≤ material.fy)
+```
+
+Zásady jazyka:
+
+- `:=` je definice, `=` je v tisku zobrazení výsledku, `==` je rovnice pro řešič.
+- Jednotky se píšou přímo (`12 kN/m`). Nejednoznačnost (`m` jako metr vs. proměnná) se hlásí, nikdy se tiše nehádá.
+- Unicode i ASCII zápis jsou rovnocenné (`σ` / `sigma`, `·` / `*`, `²` / `^2`).
+- Tabulky a jejich sloupce jsou běžné hodnoty (`profil.Wy`).
+
+---
+
+## 4. Formát souboru listu
+
+Přípona `.calc`, obsahem je ZIP kontejner:
+
+```text
+nosnik-N1.calc
+├── manifest.json          verze formátu, název, autor, revize, otisk obsahu
+├── sheet.cc               výpočet v textovém jazyce (kap. 3)
+├── layout.json            tisková vrstva: stránky, pořadí, formát čísel
+├── workspace.json         pracovní vrstva: varianty, poznámky, pozice
+├── tables/
+│   └── Profily_IPE/
+│       ├── schema.json    sloupce, typy, jednotky, zdroj, datum převzetí
+│       └── data.csv       data
+├── images/                obrázky k řádkům tabulek a do tisku
+├── ai/                    poznámky a přijaté návrhy LLM (volitelné)
+└── revisions/             zmrazené revize (A, B, C …)
+```
+
+- Vše uvnitř je v otevřených formátech (JSON, CSV, text, PNG/SVG). Obsah jde přečíst i bez programu.
+- `sheet.cc` a `data.csv` jsou text, takže je jde porovnávat mezi revizemi a verzovat v gitu.
+- `manifest.json` obsahuje **verzi formátu** od první verze, aby šly starší listy vždy načíst.
+
+---
+
+## 5. Tok dat
+
+```text
+sheet.cc ──► lexer ──► parser ──► AST ──► graf závislostí
+                                              │
+tabulky (tables/) ────────────────────────────┤
+                                              ▼
+                                   vyhodnocení (core/eval)
+                                              │
+                          ┌───────────────────┼──────────────────┐
+                          ▼                   ▼                  ▼
+                    výsledky            diagnostika         provenance
+                          │                   │                  │
+                          └──────────► render (tisk) ◄───────────┘
+                                              │
+                                     editor / PDF / CLI
+```
+
+- Po změně vstupu se přepočítají jen závislé uzly (inkrementální přepočet).
+- **Veřejné API jádra je jedna čistá funkce:** `evaluate(sheet, tables) → { results, diagnostics, provenance }`. Stejné volání používá editor, CLI, testy i budoucí server.
+
+---
+
+## 6. Editor (první verze)
+
+Plný WYSIWYG editor vzorců jako v Mathcadu je nejdražší část projektu, proto postupně:
+
+1. **Blokový editor.** Stránka je seřazený seznam bloků: nadpis, text, vzorec, výběr z tabulky, podmínka, obrázek, tabulka.
+2. **Vzorec** se zobrazuje sázený (KaTeX). Po kliknutí se edituje jako řádek textu, po opuštění se znovu vysází.
+3. **Výběr z tabulky** je rozbalovací seznam s náhledem obrázku. V tisku se zobrazí jen zvolená hodnota.
+4. **Tabulkový editor** pro typované tabulky (sloupce s jednotkami, obrázky k řádkům, import z Excelu a CSV).
+5. **Klik na hodnotu** otevře panel s provenance (vzorec → vstupy → řádek tabulky → zdroj).
+6. Později MathLive pro přímou editaci sázených vzorců a volné plátno v pracovní vrstvě.
+
+---
+
+## 7. Testovací strategie
+
+| Úroveň | Co | Kde |
+|---|---|---|
+| Jednotkové testy | každý modul jádra samostatně | `packages/*/tests` |
+| **Referenční výpočty R1–R6** | celé listy a jejich očekávané výsledky s tolerancí | `reference/` |
+| Chybové a hraniční případy | seznam z filozofie, kap. 10.1 | `reference/errors/` |
+| Round-trip | uložit → načíst → stejný výsledek, u každého referenčního listu | automaticky |
+| Nezávislost na oboru | `core` nesmí obsahovat názvy z oborů (kontrola lintem/testem) | CI |
+
+- **Očekávané výsledky** referenčních výpočtů se ověří nezávisle (ručním výpočtem, tabulkami, jiným programem) a uloží se k listu.
+- `npm test` spouští všechno a **žádná fáze není hotová, dokud testy neprocházejí**.
+- Status dokumenty se nepíšou ručně. Stav je to, co ukazují testy.
+
+---
+
+## 8. Co převzít ze stávajících verzí
+
+Kód se přebírá **po kouscích, vždy i s testy**. Co neprojde, se nepřebírá.
+
+| Zdroj | Co | Stav |
+|---|---|---|
+| `calc-canvas_01` | lexer, expression parser (implicitní násobení), dimenze, Quantity, graf a reaktivní přepočet | funguje, 47/47 testů |
+| `calc-canvas` | posunuté jednotky (°C, °F), parser jednotek, registr jednotek, detekce implicitních parametrů | nápad dobrý, kód nekompiluje (34 chyb) → opravit, nebo přepsat podle testů |
+| `calc-canvas_02` | návrh modelu Project/Page/Block a chybových kódů (CC-012) | jen jako inspirace (Python) |
+| `Konkurence/` | CalcpadCE: pravoasociativní `^`, zápis cílové jednotky; EPX: detekce implicitních parametrů; postgresql-unit: posunuté jednotky | inspirace |
+
+---
+
+## 9. Plán realizace
+
+Každá fáze končí procházejícími testy. **MVP = referenční výpočet R1 projde od souboru až po PDF.**
+
+### Cesta k MVP (R1 — nosník)
+
+| Fáze | Obsah | Hotovo, když |
+|---|---|---|
+| **F0 Základ** | git, monorepo, Vitest, lint, pravidla závislostí | `npm test` projde na prázdném projektu |
+| **F1 Jádro** | lexer, parser, jednotky (převzato z v0.1 + °C), vyhodnocení, graf, diagnostika | výpočet R1 bez tabulek projde přes CLI |
+| **F2 Tabulky** | typované tabulky, CSV/Excel import, `pick`, `lookup` s interpolací, `find_min` | R1 s tabulkami profilů a materiálů projde přes CLI |
+| **F3 Podmínky + provenance** | `check`, využití, souhrn, dohledání hodnoty | R1 vypíše souhrn posudků a původ každé hodnoty |
+| **F4 Formát listu** | ZIP kontejner, uložení/načtení, verze formátu | round-trip R1 |
+| **F5 Tisk** | render do HTML stránek, KaTeX, formát čísel, PDF | R1 se vytiskne jako klasický výpočet |
+| **F6 Editor** | blokový editor, výběr z tabulky s obrázkem, tabulkový editor, panel provenance, desktop | R1 jde celý vytvořit v editoru |
+
+### Rozšíření jádra (další referenční výpočty)
+
+| Fáze | Referenční výpočet | Nové schopnosti jádra |
+|---|---|---|
+| F7 | R2 strojař | vložené bloky se vstupy/výstupy, uživatelské funkce |
+| F8 | R3 chemik | vlastní dimenze, řešič rovnic |
+| F9 | R4 elektrikář | komplexní čísla, 2D interpolace |
+| F10 | R5 ekonom | měna a kurz k datu, řady, data a období, finanční funkce |
+| F11 | R6 průřezový | varianty, více tabulek v jednom listu |
+
+### Potom
+
+- revize a porovnání revizí, PDF s otiskem,
+- vrstva AI (převod katalogů do tabulek, kontrola výpočtu),
+- Python jako jazyk pro zásuvné moduly,
+- serverová databáze a sdílené knihovny tabulek.
+
+---
+
+## 10. Otevřená rozhodnutí
+
+1. **Přesná syntaxe jazyka.** Samostatný dokument `03-jazyk.md` před fází F1.
+2. **Tauri, nebo Electron** pro desktop. Rozhodnout ve fázi F6 (Tauri potřebuje Rust toolchain, Electron je větší, ale bez něj).
+3. **Očekávané výsledky R1–R6.** Kdo a jak je nezávisle ověří (ideálně odborník z daného oboru).
+4. **Umístění repozitáře a zálohování** (GitHub/GitLab, soukromé, nebo jen lokální git).

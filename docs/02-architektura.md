@@ -133,6 +133,15 @@ nosnik-N1.calc
 - `sheet.cc` a `data.csv` jsou text, takže je jde porovnávat mezi revizemi a verzovat v gitu.
 - `manifest.json` obsahuje **verzi formátu** od první verze, aby šly starší listy vždy načíst.
 
+**Upřesněno při implementaci F4:**
+
+- `manifest.json`: `format: "calccanvas-sheet"`, `formatVersion`, název, jazyk tisku, autor, datum vytvoření a změny, program, který soubor zapsal, a **otisk obsahu** (SHA-256 všech ostatních položek). Když se obsah změní mimo program, při otevření se zobrazí varování (`W-FILE-HASH`).
+- Soubor z **novější verze formátu** se odmítne s jasnou zprávou (`E-FILE-VERSION`), nikdy se nečte napůl.
+- **Neznámé položky se zachovají** (např. data z budoucí verze nebo vrstva AI), takže je starší program při uložení nesmaže.
+- Stejný obsah dává **stejné bajty** (pevné pořadí a časová značka položek). Hodí se pro porovnávání a git.
+- Cesty uvnitř archivu se kontrolují (žádné `..`, absolutní cesty ani zpětná lomítka), aby rozbalení nemohlo zapisovat mimo cílovou složku.
+- Příkazová řádka: `pack` (složka → `.calc`), `unpack` (`.calc` → složka), `run` a `trace` čtou obojí.
+
 ---
 
 ## 5. Tok dat

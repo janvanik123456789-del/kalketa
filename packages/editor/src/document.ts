@@ -82,6 +82,7 @@ export function fileUri(doc: SheetDocument, path: string): string | undefined {
 /** Functions of the desktop application (packages/desktop/src/preload.cts). */
 export interface DesktopBridge {
   openDialog(labels: { sheets: string }): Promise<DesktopFile | undefined>;
+  openPath(path: string): Promise<DesktopFile | undefined>;
   save(request: { path?: string; suggestedName: string; bytes: Uint8Array }): Promise<string | undefined>;
   print(html: string): Promise<boolean>;
   exportPdf(request: { html: string; suggestedName: string }): Promise<string | undefined>;

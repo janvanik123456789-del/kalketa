@@ -129,6 +129,17 @@ function registerBridge(): void {
     return result.canceled || !path ? undefined : readSheet(path);
   });
 
+  // Recent files: only sheet files can be opened this way.
+  ipcMain.handle('calccanvas:open-path', async (event, path: unknown) => {
+    fromEditor(event);
+    if (typeof path !== 'string' || !SHEET_EXTENSIONS.includes(extname(path).toLowerCase())) return undefined;
+    try {
+      return await readSheet(path);
+    } catch {
+      return undefined;
+    }
+  });
+
   ipcMain.handle('calccanvas:save', async (event, request: { path?: string; suggestedName: string; bytes: Uint8Array }) => {
     const owner = fromEditor(event);
     let path = typeof request.path === 'string' && extname(request.path).toLowerCase() === '.calc' ? request.path : undefined;
@@ -197,14 +208,16 @@ async function runSmokeTest(pdfPath: string): Promise<void> {
       rows: document.querySelectorAll('.row').length,
       summary: document.querySelectorAll('.summary-box tbody tr').length,
       math: document.querySelectorAll('math').length,
-      errors: document.querySelector('.status')?.textContent ?? '',
+      errors: document.querySelector('.statusbar')?.textContent ?? '',
+      menus: document.querySelectorAll('.menubar-item').length,
+      toolbars: document.querySelectorAll('.toolbar-box').length,
       language: document.documentElement.lang
-    })`)) as { bridge: boolean; rows: number; summary: number; math: number; errors: string; language: string };
+    })`)) as { bridge: boolean; rows: number; summary: number; math: number; errors: string; menus: number; toolbars: number; language: string };
     const printer = await printWindow('<!doctype html><meta charset="utf-8"><h1>CalcCanvas</h1><math><mfrac><mi>a</mi><mn>2</mn></mfrac></math>');
     const pdf = await printer.webContents.printToPDF({ preferCSSPageSize: true });
     printer.destroy();
     await writeFile(pdfPath, pdf);
-    ok = state.bridge && state.rows > 10 && state.summary > 0 && state.math > 0 && pdf.length > 1000;
+    ok = state.bridge && state.menus === 6 && state.toolbars > 0 && state.rows > 10 && state.summary > 0 && state.math > 0 && pdf.length > 1000;
     console.log(JSON.stringify({ ok, ...state, pdfBytes: pdf.length }));
   } catch (err) {
     console.log(JSON.stringify({ ok: false, error: (err as Error).message }));

@@ -17,6 +17,8 @@ import { PickControl } from './PickControl.js';
 export interface EditRange {
   readonly start: number;
   readonly end: number;
+  /** Caret position when editing starts (default: end of the text). */
+  readonly cursor?: number;
 }
 
 interface Props {
@@ -132,6 +134,7 @@ export function SheetView(props: Props) {
           {isEditing ? (
             <RowEditor
               seg={seg}
+              initialCursor={editing?.cursor}
               result={result}
               onChange={(text) => props.onReplace(seg.start, seg.end, text)}
               onEnter={() => props.onInsertAfter(seg.end)}
@@ -170,6 +173,7 @@ function PickFor(props: { statement: Statement; result: SheetResult; resolveFile
 
 interface RowEditorProps {
   readonly seg: Segment;
+  readonly initialCursor: number | undefined;
   readonly result: SheetResult;
   onChange(text: string): void;
   onEnter(): void;
@@ -178,7 +182,7 @@ interface RowEditorProps {
   onDone(): void;
 }
 
-function RowEditor({ seg, result, onChange, onEnter, onDeleteEmpty, onMove, onDone }: RowEditorProps) {
+function RowEditor({ seg, initialCursor, result, onChange, onEnter, onDeleteEmpty, onMove, onDone }: RowEditorProps) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const [original] = useState(seg.text);
   const pendingCursor = useRef<number | undefined>(undefined);
@@ -187,7 +191,8 @@ function RowEditor({ seg, result, onChange, onEnter, onDeleteEmpty, onMove, onDo
     const area = ref.current;
     if (!area) return;
     area.focus();
-    area.setSelectionRange(area.value.length, area.value.length);
+    const at = Math.min(initialCursor ?? area.value.length, area.value.length);
+    area.setSelectionRange(at, at);
   }, []);
 
   useLayoutEffect(() => {
@@ -208,7 +213,7 @@ function RowEditor({ seg, result, onChange, onEnter, onDeleteEmpty, onMove, onDo
     const area = e.currentTarget;
     const atStart = area.selectionStart === 0 && area.selectionEnd === 0;
     const atEnd = area.selectionStart === area.value.length;
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey) {
       e.preventDefault();
       onEnter();
     } else if (e.key === 'Escape') {

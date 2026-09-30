@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { defaultRegistry, parse } from '@calccanvas/core';
 import { deleteLines, insertLineAfter, replaceLines, segments } from '../src/logic/segments.js';
 import { pageGeometry, paginate } from '../src/logic/pages.js';
+import { createHistory, MERGE_WINDOW_MS, record, redo, undo } from '../src/logic/history.js';
 import { defineShortcut, definedName } from '../src/logic/shortcuts.js';
 import { pickOf, replacePickKey } from '../src/logic/pick.js';
 import { addColumn, addRow, deleteColumn, deleteRow, fromEditable, setCell, toEditable } from '../src/logic/tableEdit.js';
@@ -49,6 +50,41 @@ describe('segments', () => {
     expect(insertLineAfter('a\nb', 1, 'n')).toBe('a\nn\nb');
     expect(insertLineAfter('a', 0)).toBe('\na');
     expect(deleteLines('a\nb\nc', 1, 2)).toBe('c');
+  });
+});
+
+describe('undo history', () => {
+  it('undoes and redoes whole states', () => {
+    let h = createHistory('a');
+    h = record(h, 'b');
+    h = record(h, 'c');
+    h = undo(h);
+    expect(h.present).toBe('b');
+    h = undo(h);
+    expect(h.present).toBe('a');
+    expect(undo(h)).toBe(h);
+    h = redo(redo(h));
+    expect(h.present).toBe('c');
+    expect(redo(h)).toBe(h);
+  });
+
+  it('merges quick changes of the same group into one step', () => {
+    let h = createHistory('');
+    h = record(h, 'x', 'line 3', 1000);
+    h = record(h, 'x=', 'line 3', 1500);
+    h = record(h, 'x=1', 'line 3', 2000);
+    expect(h.past).toEqual(['']);
+    h = record(h, 'x=1 m', 'line 3', 2000 + MERGE_WINDOW_MS + 1);
+    expect(h.past).toEqual(['', 'x=1']);
+    h = record(h, 'y', 'line 4', 5000);
+    expect(h.past).toEqual(['', 'x=1', 'x=1 m']);
+  });
+
+  it('drops the redo branch after a new change', () => {
+    let h = record(record(createHistory('a'), 'b'), 'c');
+    h = record(undo(h), 'd');
+    expect(h.future).toEqual([]);
+    expect(h.past).toEqual(['a', 'b']);
   });
 });
 

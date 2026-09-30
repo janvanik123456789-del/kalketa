@@ -4,11 +4,12 @@
  */
 
 import { useState } from 'react';
-import { defaultRegistry, type ColumnSchema, type ColumnType, type Diagnostic } from '@calccanvas/core';
+import type { ColumnSchema, ColumnType, Diagnostic } from '@calccanvas/core';
 import { formatDiagnostic, t, type Catalog } from '@calccanvas/i18n';
-import { importTable, parseCsv, readWorkbook, toIdentifier, type SheetDocument, type StoredTable } from '@calccanvas/sheet';
+import { toIdentifier, type SheetDocument, type StoredTable } from '@calccanvas/sheet';
 import { chooseFile } from '../document.js';
-import { addColumn, addRow, deleteColumn, deleteRow, fromEditable, newTable, setCell, toEditable, type EditableTable } from '../logic/tableEdit.js';
+import { addColumn, addRow, deleteColumn, deleteRow, fromEditable, setCell, toEditable, type EditableTable } from '../logic/tableEdit.js';
+import { createTable, importTableFile, withTable, type TableChange } from '../tableActions.js';
 
 interface Props {
   readonly doc: SheetDocument;
@@ -28,43 +29,17 @@ export function TablesView({ doc, catalog, diagnostics, resolveFile, onChange, c
   const [messages, setMessages] = useState<string[]>([]);
   const current = active && doc.tables.has(active) ? active : names[0];
 
-  const putTable = (name: string, stored: StoredTable, files?: ReadonlyMap<string, Uint8Array>) => {
-    const tables = new Map(doc.tables);
-    tables.set(name, stored);
-    const allFiles = new Map(doc.files);
-    for (const [path, data] of files ?? []) allFiles.set(path, data);
-    onChange({ ...doc, tables, files: allFiles });
-  };
+  const putTable = (name: string, stored: StoredTable, files?: ReadonlyMap<string, Uint8Array>) => onChange(withTable(doc, name, stored, files));
 
   const edit = (table: EditableTable | undefined) => {
     if (table && current) putTable(current, fromEditable(table));
   };
 
-  const createTable = () => {
-    const name = toIdentifier(window.prompt(t(catalog, 'editor.tableName'), 'Tabulka') ?? '');
-    if (!name || doc.tables.has(name)) return;
-    putTable(name, fromEditable(newTable(name)));
-    setActive(name);
-  };
-
-  const importFile = async () => {
-    const file = await chooseFile('.csv,.txt,.xlsx');
-    if (!file) return;
-    const suggested = toIdentifier(file.name.replace(/\.[^.]+$/, ''));
-    const name = toIdentifier(window.prompt(t(catalog, 'editor.tableName'), suggested) ?? '');
-    if (!name) return;
-    const source = { title: file.name, retrieved: new Date().toISOString().slice(0, 10) };
-    let imported;
-    if (file.name.toLowerCase().endsWith('.xlsx')) {
-      const [sheet] = await readWorkbook(new Uint8Array(await file.arrayBuffer()));
-      if (!sheet) return;
-      imported = importTable(sheet.rows, { name, registry: defaultRegistry, source, images: sheet.images });
-    } else {
-      imported = importTable(parseCsv(await file.text()), { name, registry: defaultRegistry, source });
-    }
-    putTable(name, { schemaJson: imported.files.schemaJson, dataCsv: imported.files.dataCsv }, imported.files.images);
-    setActive(name);
-    setMessages(imported.diagnostics.map((d) => formatDiagnostic(d, catalog)));
+  const apply = (result: TableChange | undefined) => {
+    if (!result) return;
+    onChange(result.doc);
+    setActive(result.name);
+    setMessages(result.messages);
   };
 
   return (
@@ -75,10 +50,10 @@ export function TablesView({ doc, catalog, diagnostics, resolveFile, onChange, c
             {name}
           </button>
         ))}
-        <button type="button" className="secondary" onClick={createTable}>
+        <button type="button" className="secondary" onClick={() => apply(createTable(doc, catalog))}>
           + {t(catalog, 'editor.newTable')}
         </button>
-        <button type="button" className="secondary" onClick={importFile}>
+        <button type="button" className="secondary" onClick={async () => apply(await importTableFile(doc, catalog))}>
           {t(catalog, 'editor.importTable')}
         </button>
       </nav>

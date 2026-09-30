@@ -13,6 +13,7 @@ interface OpenedFile {
 
 contextBridge.exposeInMainWorld('calccanvasDesktop', {
   openDialog: (labels: { sheets: string }): Promise<OpenedFile | undefined> => ipcRenderer.invoke('calccanvas:open-dialog', labels),
+  openPath: (path: string): Promise<OpenedFile | undefined> => ipcRenderer.invoke('calccanvas:open-path', path),
   save: (request: { path?: string; suggestedName: string; bytes: Uint8Array }): Promise<string | undefined> => ipcRenderer.invoke('calccanvas:save', request),
   print: (html: string): Promise<boolean> => ipcRenderer.invoke('calccanvas:print', html),
   exportPdf: (request: { html: string; suggestedName: string }): Promise<string | undefined> => ipcRenderer.invoke('calccanvas:export-pdf', request),

@@ -1,0 +1,179 @@
+/**
+ * Toolbar layout in the style of classic CAD programs: toolbars dock at any
+ * edge of the window, in bands (rows at the top and bottom, columns at the
+ * sides), or float freely. Users can build their own toolbars from any
+ * command. The layout is a user preference, stored outside the document.
+ */
+
+export type Dock = 'top' | 'bottom' | 'left' | 'right';
+
+export type ToolbarPlace =
+  | { readonly kind: 'dock'; readonly dock: Dock; readonly band: number; readonly order: number }
+  | { readonly kind: 'float'; readonly x: number; readonly y: number };
+
+export interface ToolbarState {
+  readonly id: string;
+  /** Built-in toolbars are named by a label key and cannot be deleted. */
+  readonly builtin: boolean;
+  /** User-given name (custom toolbars, or a renamed built-in one). */
+  readonly name?: string;
+  /** Command ids; SEPARATOR divides groups. */
+  readonly items: readonly string[];
+  readonly visible: boolean;
+  readonly place: ToolbarPlace;
+}
+
+export interface ToolbarLayout {
+  readonly version: 1;
+  readonly toolbars: readonly ToolbarState[];
+}
+
+export const SEPARATOR = '|';
+
+const dock = (d: Dock, band: number, order: number): ToolbarPlace => ({ kind: 'dock', dock: d, band, order });
+
+export const GREEK_SYMBOLS = ['α', 'β', 'γ', 'δ', 'ε', 'η', 'θ', 'λ', 'μ', 'ν', 'π', 'ρ', 'σ', 'τ', 'φ', 'ψ', 'ω', 'Δ', 'Σ', 'Φ', 'Ω'];
+export const OPERATOR_SYMBOLS = ['·', '÷', '≤', '≥', '≠', '√', '²', '³', '⁻¹', '°', 'Δ°C', '_', '|'];
+
+export function defaultLayout(): ToolbarLayout {
+  return {
+    version: 1,
+    toolbars: [
+      {
+        id: 'standard',
+        builtin: true,
+        visible: true,
+        place: dock('top', 0, 0),
+        items: ['file.new', 'file.open', 'file.save', SEPARATOR, 'file.print', 'file.pdf', SEPARATOR, 'edit.undo', 'edit.redo'],
+      },
+      {
+        id: 'insert',
+        builtin: true,
+        visible: true,
+        place: dock('top', 0, 1),
+        items: ['insert.heading', 'insert.text', 'insert.definition', 'insert.check', 'insert.pick', 'insert.pageBreak'],
+      },
+      {
+        id: 'view',
+        builtin: true,
+        visible: true,
+        place: dock('top', 0, 2),
+        items: ['view.zoomOut', 'view.zoomIn', SEPARATOR, 'view.fit1', 'view.fit2', 'view.fit3', SEPARATOR, 'view.paneDetails', 'view.paneTables'],
+      },
+      { id: 'operators', builtin: true, visible: true, place: dock('left', 0, 0), items: OPERATOR_SYMBOLS.map((s) => `sym:${s}`) },
+      { id: 'greek', builtin: true, visible: true, place: dock('left', 1, 0), items: GREEK_SYMBOLS.map((s) => `sym:${s}`) },
+    ],
+  };
+}
+
+/** Visible docked toolbars of one edge, grouped into bands and ordered. */
+export function bandsOf(layout: ToolbarLayout, edge: Dock): ToolbarState[][] {
+  const docked = layout.toolbars.filter((t) => t.visible && t.place.kind === 'dock' && t.place.dock === edge);
+  const bands = [...new Set(docked.map((t) => (t.place as Extract<ToolbarPlace, { kind: 'dock' }>).band))].sort((a, b) => a - b);
+  return bands.map((band) =>
+    docked
+      .filter((t) => (t.place as Extract<ToolbarPlace, { kind: 'dock' }>).band === band)
+      .sort((a, b) => (a.place as Extract<ToolbarPlace, { kind: 'dock' }>).order - (b.place as Extract<ToolbarPlace, { kind: 'dock' }>).order),
+  );
+}
+
+export function floating(layout: ToolbarLayout): ToolbarState[] {
+  return layout.toolbars.filter((t) => t.visible && t.place.kind === 'float');
+}
+
+function update(layout: ToolbarLayout, id: string, change: (t: ToolbarState) => ToolbarState): ToolbarLayout {
+  return { ...layout, toolbars: layout.toolbars.map((t) => (t.id === id ? change(t) : t)) };
+}
+
+/**
+ * Docks a toolbar at an edge. `band` is the index among the visible bands of
+ * that edge; one past the last creates a new band. `order` places it among
+ * the toolbars of the band (default: at the end).
+ */
+export function dockToolbar(layout: ToolbarLayout, id: string, edge: Dock, band: number, order?: number): ToolbarLayout {
+  // Take the toolbar out first; bands are then numbered 0..n-1 without gaps.
+  const without = compactBands(update(layout, id, (t) => ({ ...t, visible: true, place: { kind: 'float', x: 0, y: 0 } })));
+  const bands = bandsOf(without, edge);
+  const target = Math.max(0, Math.min(band, bands.length));
+  const members = (bands[target] ?? []).map((t) => t.id);
+  members.splice(Math.max(0, Math.min(order ?? members.length, members.length)), 0, id);
+  return {
+    ...without,
+    toolbars: without.toolbars.map((t) => {
+      const index = members.indexOf(t.id);
+      return index === -1 ? t : { ...t, place: { kind: 'dock', dock: edge, band: target, order: index } };
+    }),
+  };
+}
+
+export function floatToolbar(layout: ToolbarLayout, id: string, x: number, y: number): ToolbarLayout {
+  return compactBands(update(layout, id, (t) => ({ ...t, visible: true, place: { kind: 'float', x: Math.round(x), y: Math.round(y) } })));
+}
+
+/** Removes empty bands left behind after a toolbar moved away. */
+export function compactBands(layout: ToolbarLayout): ToolbarLayout {
+  let result = layout;
+  for (const edge of ['top', 'bottom', 'left', 'right'] as const) {
+    bandsOf(result, edge).forEach((band, i) =>
+      band.forEach((t, order) => {
+        result = update(result, t.id, (s) => ({ ...s, place: { kind: 'dock', dock: edge, band: i, order } }));
+      }),
+    );
+  }
+  return result;
+}
+
+export function setVisible(layout: ToolbarLayout, id: string, visible: boolean): ToolbarLayout {
+  return compactBands(update(layout, id, (t) => ({ ...t, visible })));
+}
+
+export function setItems(layout: ToolbarLayout, id: string, items: readonly string[]): ToolbarLayout {
+  return update(layout, id, (t) => ({ ...t, items }));
+}
+
+export function renameToolbar(layout: ToolbarLayout, id: string, name: string): ToolbarLayout {
+  const trimmed = name.trim();
+  return update(layout, id, (t) => {
+    const { name: _old, ...rest } = t;
+    return trimmed ? { ...rest, name: trimmed } : rest;
+  });
+}
+
+/** A new empty custom toolbar, floating near the top left. */
+export function addToolbar(layout: ToolbarLayout, name: string): { layout: ToolbarLayout; id: string } {
+  let n = 1;
+  while (layout.toolbars.some((t) => t.id === `custom${n}`)) n++;
+  const id = `custom${n}`;
+  const toolbar: ToolbarState = { id, builtin: false, name, items: [], visible: true, place: { kind: 'float', x: 120 + n * 20, y: 140 + n * 20 } };
+  return { layout: { ...layout, toolbars: [...layout.toolbars, toolbar] }, id };
+}
+
+export function removeToolbar(layout: ToolbarLayout, id: string): ToolbarLayout {
+  return compactBands({ ...layout, toolbars: layout.toolbars.filter((t) => t.id !== id || t.builtin) });
+}
+
+/**
+ * Reads a stored layout. Unknown or damaged data gives the default layout;
+ * built-in toolbars added in newer versions are appended.
+ */
+export function parseLayout(json: string | null): ToolbarLayout {
+  const fallback = defaultLayout();
+  if (!json) return fallback;
+  try {
+    const stored = JSON.parse(json) as ToolbarLayout;
+    if (stored.version !== 1 || !Array.isArray(stored.toolbars)) return fallback;
+    const valid = stored.toolbars.filter(
+      (t) => typeof t.id === 'string' && Array.isArray(t.items) && t.items.every((i: unknown) => typeof i === 'string') && isPlace(t.place),
+    );
+    const missing = fallback.toolbars.filter((b) => !valid.some((t) => t.id === b.id));
+    return compactBands({ version: 1, toolbars: [...valid, ...missing] });
+  } catch {
+    return fallback;
+  }
+}
+
+function isPlace(place: unknown): place is ToolbarPlace {
+  const p = place as ToolbarPlace;
+  if (p?.kind === 'float') return Number.isFinite(p.x) && Number.isFinite(p.y);
+  return p?.kind === 'dock' && ['top', 'bottom', 'left', 'right'].includes(p.dock) && Number.isInteger(p.band) && Number.isInteger(p.order);
+}

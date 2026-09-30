@@ -1,0 +1,25 @@
+{
+  "name": "Latky",
+  "key": "latka",
+  "columns": [
+    {
+      "name": "latka",
+      "type": "text"
+    },
+    {
+      "name": "M",
+      "type": "quantity",
+      "unit": "g/mol"
+    },
+    {
+      "name": "rozpustnost",
+      "type": "quantity",
+      "unit": "g/L"
+    }
+  ],
+  "source": {
+    "title": "Molární hmotnosti a rozpustnost ve vodě při 20 °C (orientační hodnoty)",
+    "retrieved": "2026-09-30",
+    "note": "Hodnoty zapsány pro testovací účely; kyselina octová se s vodou mísí neomezeně."
+  }
+}

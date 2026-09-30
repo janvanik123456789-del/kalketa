@@ -1,0 +1,25 @@
+{
+  "name": "Materialy",
+  "key": "oznaceni",
+  "columns": [
+    {
+      "name": "oznaceni",
+      "type": "text"
+    },
+    {
+      "name": "τ_dov",
+      "type": "quantity",
+      "unit": "MPa"
+    },
+    {
+      "name": "R_m",
+      "type": "quantity",
+      "unit": "MPa"
+    }
+  ],
+  "source": {
+    "title": "Oceli pro hřídele, dovolené napětí v krutu při klidném zatížení (orientační hodnoty)",
+    "retrieved": "2026-09-30",
+    "note": "Hodnoty zapsány pro testovací účely."
+  }
+}

@@ -64,7 +64,11 @@ describe.each(cases)('$name', ({ dir, file }) => {
   });
 
   it.each(Object.entries(expected.values))('%s', (variable, want) => {
-    const statement = result.statements.find((s) => s.statement.kind === 'definition' && s.statement.name === variable);
+    // A value is defined by ":=", or found by a solve line.
+    const solved = result.statements.flatMap((s) => s.solutions ?? []).find((s) => s.name === variable);
+    const statement = solved
+      ? { value: solved.value, display: solved.display }
+      : result.statements.find((s) => s.statement.kind === 'definition' && s.statement.name === variable);
     expect(statement, `missing ${variable}`).toBeDefined();
     if ('boolean' in want) {
       expect(statement!.value).toEqual({ type: 'boolean', value: want.boolean });

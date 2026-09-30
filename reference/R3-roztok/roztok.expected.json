@@ -1,0 +1,43 @@
+{
+  "sheet": "roztok.cc",
+  "verifiedBy": "Ruční výpočet čistou aritmetikou mimo CalcCanvas (Python): m = c·V·M; w = m/(m + ρ·V); V_2 = c·V/c_2; x z kvadratické rovnice x² + K_a·x − K_a·c_0 = 0 (kladný kořen, list ho hledá řešičem); pH = −log10(x); α = x/c_0.",
+  "relativeTolerance": 1e-09,
+  "values": {
+    "m": {
+      "value": 4.499879999999999,
+      "unit": "g"
+    },
+    "w": {
+      "value": 0.8919486759838277,
+      "unit": "%"
+    },
+    "V_2": {
+      "value": 1540.0,
+      "unit": "mL"
+    },
+    "x": {
+      "value": 0.0013326709730779752,
+      "unit": "mol/L"
+    },
+    "pH": {
+      "value": 2.8752770615501357,
+      "unit": ""
+    },
+    "α": {
+      "value": 1.332670973077975,
+      "unit": "%"
+    }
+  },
+  "checks": [
+    {
+      "label": "Sůl se rozpustí",
+      "passed": true,
+      "utilization": 0.025068969359331474
+    },
+    {
+      "label": "Slabá kyselina",
+      "passed": true,
+      "utilization": 0.266534194615595
+    }
+  ]
+}

@@ -22,6 +22,8 @@ export interface Token {
   readonly text: string;
   /** Numeric value for numbers and superscripts, heading level for headings. */
   readonly value: number;
+  /** A number written with i or j right after it: 4j. */
+  readonly imaginary?: boolean;
   readonly span: Span;
 }
 
@@ -140,6 +142,13 @@ export function tokenize(source: string, options: LexOptions = {}): LexResult {
     }
     if (isDigit(ch) || (ch === '.' && isDigit(source[pos + 1]))) {
       const text = readNumber();
+      // An imaginary number: 4j or 4i, with nothing between the digits and the letter.
+      const suffix = source[pos];
+      if ((suffix === 'j' || suffix === 'i') && !isIdentPart(source[pos + 1] ?? ' ')) {
+        pos++;
+        tokens.push({ type: 'number', text, value: Number(text), imaginary: true, span: spanFrom(start) });
+        continue;
+      }
       push('number', start, text, Number(text));
       continue;
     }

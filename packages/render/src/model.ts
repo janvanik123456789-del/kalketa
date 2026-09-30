@@ -24,7 +24,7 @@ import {
 } from '@calccanvas/core';
 import { formatDiagnostic, formatNumber, t, type Catalog } from '@calccanvas/i18n';
 import { formulaNode, hasSubstitutableParts, THIN_SPACE, type FormulaOptions, type Substituted } from './formula.js';
-import { mn, mo, mtext, mu, nameNode, paren, row, sup, type MathNode } from './math.js';
+import { mi, mn, mo, mtext, mu, nameNode, paren, row, sup, type MathNode } from './math.js';
 
 export interface PrintOptions {
   readonly catalog: Catalog;
@@ -159,7 +159,7 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
     const digits = mode.digits;
     const quantityNode = (q: Quantity) => {
       const shown = toDisplay(q, options.registry);
-      return valueNode(shown.value, shown.unit, numberFormat(digits));
+      return valueNode(shown.value, shown.unit, numberFormat(digits), shown.im);
     };
 
     switch (s.kind) {
@@ -209,7 +209,7 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
           lines.push({ role: 'formula', op: '', rhs: range });
         }
         for (const found of r.solutions ?? []) {
-          lines.push({ role: 'result', lhs: nameNode(found.name), op: '=', rhs: valueNode(found.display.value, found.display.unit, numberFormat(digits)) });
+          lines.push({ role: 'result', lhs: nameNode(found.name), op: '=', rhs: valueNode(found.display.value, found.display.unit, numberFormat(digits), found.display.im) });
         }
         blocks.push({ kind: 'equation', line: s.span.line, lines, ...(s.comment ? { comment: s.comment } : {}), messages });
         break;
@@ -306,7 +306,7 @@ function equationLines(
 
 function resultNode(r: StatementResult, format: (value: number) => string, booleans: FormulaOptions['booleans']): MathNode | undefined {
   if (r.status !== 'ok' || !r.value) return undefined;
-  if (r.display) return valueNode(r.display.value, r.display.unit, format);
+  if (r.display) return valueNode(r.display.value, r.display.unit, format, r.display.im);
   if (r.value.type === 'boolean') return mtext(r.value.value ? booleans.true : booleans.false);
   return otherValueNode(r.value);
 }
@@ -316,7 +316,8 @@ function substitution(result: SheetResult, quantityNode: (q: Quantity) => MathNo
   const wrap = (value: Value | undefined): Substituted | undefined => {
     if (!value) return undefined;
     if (value.type === 'quantity') {
-      return { node: quantityNode(value), negative: value.si < 0, hasUnit: !!value.hint || Object.keys(value.dim).length > 0 };
+      // A complex value is a sum: it needs parentheses like a negative one.
+      return { node: quantityNode(value), negative: value.si < 0 || !!value.im, hasUnit: !!value.hint || Object.keys(value.dim).length > 0 };
     }
     if (value.type === 'text' || value.type === 'boolean') {
       const text = value.type === 'text' ? `"${value.value}"` : value.value ? formulaOptions.booleans.true : formulaOptions.booleans.false;
@@ -411,11 +412,18 @@ function applyDirective(name: string, args: string, mode: Mode, blocks: PrintBlo
 }
 
 /** "37,5 kN·m"; scientific numbers become mantissa · 10^exponent. */
-export function valueNode(value: number, unit: string, format: (value: number) => string): MathNode {
-  const text = format(value);
-  const e = /^(.*)E(-?\d+)$/.exec(text);
-  const number = e ? row(mn(e[1]!), mo('·'), sup(mn('10'), mn(e[2]!.replace('-', '−')))) : mn(text.replace('-', '−'));
-  return unit ? row(number, THIN_SPACE, mu(unit)) : number;
+export function valueNode(value: number, unit: string, format: (value: number) => string, im?: number): MathNode {
+  const numberNode = (x: number): MathNode => {
+    const text = format(x);
+    const e = /^(.*)E(-?\d+)$/.exec(text);
+    return e ? row(mn(e[1]!), mo('·'), sup(mn('10'), mn(e[2]!.replace('-', '−')))) : mn(text.replace('-', '−'));
+  };
+  if (!im) return unit ? row(numberNode(value), THIN_SPACE, mu(unit)) : numberNode(value);
+  // A complex value: "(3 + 4j) Ω"; the imaginary unit is j.
+  const imaginary = row(numberNode(Math.abs(im)), mi('j'));
+  const complex = value === 0 ? (im < 0 ? row(mo('−'), imaginary) : imaginary) : row(numberNode(value), mo(im < 0 ? '−' : '+'), imaginary);
+  if (!unit) return complex;
+  return row(value === 0 ? complex : paren(complex), THIN_SPACE, mu(unit));
 }
 
 /** "A_kruh(d)" or "σ(M; W)". */

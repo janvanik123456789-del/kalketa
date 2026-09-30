@@ -10,7 +10,7 @@ import type { Expr } from '../lang/ast.js';
 import { isDimensionless, powerDim, sameDim } from '../units/dimension.js';
 import { baseUnitSymbol } from '../units/display.js';
 import { quantity, type Quantity, type Value } from '../values/value.js';
-import { asBoolean, asQuantity } from './coerce.js';
+import { asBoolean, asComplex, asQuantity } from './coerce.js';
 
 export const BUILTIN_CONSTANTS: Readonly<Record<string, number>> = {
   π: Math.PI,
@@ -47,6 +47,8 @@ const DOMAINS: Readonly<Record<string, (x: number) => boolean>> = {
 
 export const FUNCTION_NAMES: readonly string[] = [
   ...Object.keys(UNARY_DIMENSIONLESS), 'sqrt', 'abs', 'atan2', 'min', 'max', 'if',
+  // Complex numbers (F9)
+  're', 'im', 'conj', 'arg', 'polar',
 ];
 
 export function callFunction(call: CallExpr, evaluate: Evaluate): Value {
@@ -70,14 +72,42 @@ export function callFunction(call: CallExpr, evaluate: Evaluate): Value {
   switch (name) {
     case 'sqrt': {
       arity(call, 1);
-      const x = asQuantity(evaluate(args[0]!), args[0]!.span);
+      const x = asComplex(evaluate(args[0]!), args[0]!.span);
+      if (x.im) {
+        // Principal square root of a complex value.
+        const r = Math.hypot(x.si, x.im);
+        return quantity(Math.sqrt((r + x.si) / 2), powerDim(x.dim, 0.5), { im: Math.sign(x.im) * Math.sqrt((r - x.si) / 2) });
+      }
+      // A real negative number has no real root: an error, as usual in a calculation.
       if (x.si < 0) fail('E-DOMAIN', args[0]!.span, { function: name });
       return quantity(Math.sqrt(x.si), powerDim(x.dim, 0.5));
     }
     case 'abs': {
       arity(call, 1);
-      const x = asQuantity(evaluate(args[0]!), args[0]!.span);
-      return { ...x, si: Math.abs(x.si) };
+      // Magnitude; of a complex value |a + bj| = √(a² + b²).
+      const { im, ...x } = asComplex(evaluate(args[0]!), args[0]!.span);
+      return { ...x, si: Math.hypot(x.si, im ?? 0) };
+    }
+    case 're':
+    case 'im':
+    case 'conj': {
+      arity(call, 1);
+      const { im, ...x } = asComplex(evaluate(args[0]!), args[0]!.span);
+      if (name === 're') return x;
+      if (name === 'im') return { ...x, si: im ?? 0 };
+      return im ? { ...x, im: -im } : x;
+    }
+    case 'arg': {
+      arity(call, 1);
+      const x = asComplex(evaluate(args[0]!), args[0]!.span);
+      return quantity(Math.atan2(x.im ?? 0, x.si));
+    }
+    case 'polar': {
+      // polar(230 V, 30°): magnitude and angle.
+      arity(call, 2);
+      const r = asQuantity(evaluate(args[0]!), args[0]!.span);
+      const phi = dimensionless(call, 1, evaluate);
+      return quantity(r.si * Math.cos(phi), r.dim, { im: r.si * Math.sin(phi), ...(r.hint ? { hint: r.hint } : {}) });
     }
     case 'atan2': {
       arity(call, 2);

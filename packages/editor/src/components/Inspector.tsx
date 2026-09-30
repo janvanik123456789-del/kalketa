@@ -5,7 +5,7 @@
  */
 
 import { toDecimalComma, traceStatement, type SheetResult, type TraceNode } from '@calccanvas/core';
-import { formatDiagnostic, formatNumber, t, type Catalog } from '@calccanvas/i18n';
+import { formatDiagnostic, formatValue, t, type Catalog } from '@calccanvas/i18n';
 
 interface Props {
   readonly result: SheetResult;
@@ -62,7 +62,7 @@ export function Inspector({ result, statement, catalog, decimalComma, onSelect, 
 
 function TraceItem({ node, catalog, decimalComma, onSelect, onLayer }: { node: TraceNode; catalog: Catalog; decimalComma: boolean; onSelect(statement: number): void; onLayer(layer: string): void }) {
   const value = node.display
-    ? `${formatNumber(node.display.value, catalog)}${node.display.unit ? ` ${node.display.unit}` : ''}`
+    ? formatValue(node.display.value, node.display.im, node.display.unit, catalog)
     : node.value?.type === 'row'
       ? node.value.label
       : node.value?.type === 'boolean'

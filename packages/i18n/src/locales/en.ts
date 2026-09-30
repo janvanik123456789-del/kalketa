@@ -25,6 +25,8 @@ export const en: Catalog = {
     'E-TYPE': 'Expected {expected}, found {found}.',
     'E-DIV-ZERO': 'Division by zero.',
     'E-NOT-FINITE': 'The result is not a finite number.',
+    'E-COMPLEX-ARG': 'A complex number cannot be used here.',
+    'E-COMPLEX-ORDER': 'Complex numbers have no order, so “{operator}” cannot compare them; compare abs(…) or re(…).',
     'E-FUNC-UNKNOWN': 'Unknown function “{function}”.',
     'E-FUNC-ARITY': '“{function}” takes {expected} argument(s), got {found}.',
     'E-FUNC-ARG-DIM': 'The argument of “{function}” must be dimensionless, not {dim}.',

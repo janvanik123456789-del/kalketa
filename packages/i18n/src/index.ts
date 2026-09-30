@@ -47,6 +47,23 @@ export interface NumberFormatOptions {
  * Engineering-friendly number: significant digits, locale separators and
  * scientific notation for very large or very small magnitudes.
  */
+/**
+ * A value that may be complex, with its unit: "46 A", "(27,6 − 36,8j) A", "4j".
+ * The imaginary unit is written j, as electrical engineers do.
+ */
+export function formatValue(value: number, im: number | undefined, unit: string, catalog: Catalog, options: NumberFormatOptions = {}): string {
+  const number = im ? complexText(value, im, (x) => formatNumber(x, catalog, options)) : formatNumber(value, catalog, options);
+  if (!unit) return number;
+  return im && value !== 0 ? `(${number}) ${unit}` : `${number} ${unit}`;
+}
+
+/** "3 + 4j", "−2 − 1,5j", "4j" from the parts, each formatted by `format`. */
+export function complexText(re: number, im: number, format: (x: number) => string): string {
+  const imaginary = `${format(Math.abs(im))}j`;
+  if (re === 0) return im < 0 ? `−${imaginary}` : imaginary;
+  return `${format(re).replace('-', '−')} ${im < 0 ? '−' : '+'} ${imaginary}`;
+}
+
 export function formatNumber(value: number, catalog: Catalog, options: NumberFormatOptions = {}): string {
   const digits = options.digits ?? 4;
   const abs = Math.abs(value);

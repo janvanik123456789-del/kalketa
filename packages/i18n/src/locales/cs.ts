@@ -25,6 +25,8 @@ export const cs: Catalog = {
     'E-TYPE': 'Očekáváno: {expected}; nalezeno: {found}.',
     'E-DIV-ZERO': 'Dělení nulou.',
     'E-NOT-FINITE': 'Výsledek není konečné číslo.',
+    'E-COMPLEX-ARG': 'Tady nejde použít komplexní číslo.',
+    'E-COMPLEX-ORDER': 'Komplexní čísla nemají pořadí, „{operator}“ je neporovná; porovnejte abs(…) nebo re(…).',
     'E-FUNC-UNKNOWN': 'Neznámá funkce „{function}“.',
     'E-FUNC-ARITY': '„{function}“ má {expected} argument(y), zadáno {found}.',
     'E-FUNC-ARG-DIM': 'Argument funkce „{function}“ musí být bezrozměrný, ne {dim}.',

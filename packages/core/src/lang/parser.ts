@@ -501,7 +501,15 @@ class LineParser {
       case '(': {
         this.next();
         const inner = this.parseExpression();
-        this.expect(')', ')');
+        const close = this.expect(')', ')');
+        // A unit right after a group: "(3 + 4j) Ω". A name defined above stays a name.
+        const next = this.peek();
+        if (next.type === 'ident' && !KEYWORDS.has(next.text) && !this.defined.has(next.text) && this.isUnit(next.text)) {
+          const unit = this.parseUnitChain();
+          const factor: Expr = { kind: 'unit', unit, span: unit.span };
+          return { kind: 'binary', operator: '*', left: inner, right: factor, span: spanOf(token, unit) };
+        }
+        void close;
         return inner;
       }
       case '[': {
@@ -559,7 +567,7 @@ class LineParser {
     const next = this.peek();
     if (next.type === '[') {
       const unit = this.parseBracketUnit();
-      return { kind: 'number', value: token.value, unit, span: spanOf(token, unit) };
+      return { kind: 'number', value: token.value, unit, span: spanOf(token, unit), ...(token.imaginary ? { imaginary: true } : {}) };
     }
     if (next.type === 'ident' && !KEYWORDS.has(next.text)) {
       if (!this.isUnit(next.text)) {
@@ -567,9 +575,9 @@ class LineParser {
         fail('E-UNKNOWN-UNIT', next.span, { unit: next.text });
       }
       const unit = this.parseUnitChain();
-      return { kind: 'number', value: token.value, unit, span: spanOf(token, unit) };
+      return { kind: 'number', value: token.value, unit, span: spanOf(token, unit), ...(token.imaginary ? { imaginary: true } : {}) };
     }
-    const value: Expr = { kind: 'number', value: token.value, span: token.span };
+    const value: Expr = { kind: 'number', value: token.value, span: token.span, ...(token.imaginary ? { imaginary: true } : {}) };
     if (next.type === '(') {
       this.next();
       const inner = this.parseExpression();

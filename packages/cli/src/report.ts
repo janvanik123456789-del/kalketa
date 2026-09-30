@@ -12,7 +12,7 @@ import {
   type StatementResult,
   type TraceNode,
 } from '@calccanvas/core';
-import { formatDiagnostic, formatNumber, t, type Catalog } from '@calccanvas/i18n';
+import { formatDiagnostic, formatNumber, formatValue as formatQuantityValue, t, type Catalog } from '@calccanvas/i18n';
 
 export interface ReportOptions {
   readonly catalog: Catalog;
@@ -64,7 +64,7 @@ function formatStatement(r: StatementResult, result: SheetResult, options: Repor
       return `${head}   ${formatCheckValues(r.check, options)}`;
     }
     case 'solve':
-      return r.solutions ? r.solutions.map((found) => `${found.name} = ${formatDisplay(found.display.value, found.display.unit, options)}`).join('   ') : '?';
+      return r.solutions ? r.solutions.map((found) => `${found.name} = ${formatDisplay(found.display.value, found.display.unit, options, found.display.im)}`).join('   ') : '?';
     case 'invalid':
       return '?';
     default:
@@ -114,7 +114,7 @@ export function formatTrace(node: TraceNode, options: ReportOptions): string {
   const { catalog } = options;
   const lines: string[] = [];
   const visit = (n: TraceNode, prefix: string, childPrefix: string): void => {
-    const value = n.display ? ` = ${formatDisplay(n.display.value, n.display.unit, options)}` : n.value?.type === 'row' ? ` = ${n.value.label}` : '';
+    const value = n.display ? ` = ${formatDisplay(n.display.value, n.display.unit, options, n.display.im)}` : n.value?.type === 'row' ? ` = ${n.value.label}` : '';
     // Plain inputs ("q := 12 kN/m") need no formula; computed values show theirs.
     const computed = n.inputs.length > 0 || n.tables.length > 0;
     const formula = n.expression && computed ? `   ← ${n.expression}` : '';
@@ -143,7 +143,7 @@ export function formatTrace(node: TraceNode, options: ReportOptions): string {
 }
 
 function formatValue(r: StatementResult, options: ReportOptions): string {
-  if (r.display) return formatDisplay(r.display.value, r.display.unit, options);
+  if (r.display) return formatDisplay(r.display.value, r.display.unit, options, r.display.im);
   if (r.value?.type === 'boolean') return options.catalog.terms[String(r.value.value)] ?? String(r.value.value);
   if (r.value?.type === 'text') return JSON.stringify(r.value.value);
   if (r.value?.type === 'row') return `${r.value.label}   (${r.value.table.name})`;
@@ -154,12 +154,11 @@ function formatValue(r: StatementResult, options: ReportOptions): string {
 
 function formatQuantity(q: Quantity, options: ReportOptions): string {
   const shown = toDisplay(q, defaultRegistry);
-  return formatDisplay(shown.value, shown.unit, options);
+  return formatDisplay(shown.value, shown.unit, options, shown.im);
 }
 
-function formatDisplay(value: number, unit: string, options: ReportOptions): string {
-  const number = formatNumber(value, options.catalog, options.digits !== undefined ? { digits: options.digits } : {});
-  return unit ? `${number} ${unit}` : number;
+function formatDisplay(value: number, unit: string, options: ReportOptions, im?: number): string {
+  return formatQuantityValue(value, im, unit, options.catalog, options.digits !== undefined ? { digits: options.digits } : {});
 }
 
 function formatPercent(ratio: number, options: ReportOptions): string {

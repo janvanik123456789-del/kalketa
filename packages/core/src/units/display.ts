@@ -16,6 +16,8 @@ export interface DisplayValue {
   readonly value: number;
   /** Unit symbol; empty for dimensionless values. */
   readonly unit: string;
+  /** Imaginary part in `unit`, for complex values. */
+  readonly im?: number;
 }
 
 const BASE_SYMBOLS: Readonly<Record<string, string>> = {
@@ -25,12 +27,16 @@ const BASE_SYMBOLS: Readonly<Record<string, string>> = {
 export function toDisplay(q: Quantity, registry: UnitRegistry, target?: ResolvedUnit): DisplayValue {
   if (target && sameDim(target.dim, q.dim)) return inUnit(q, target);
   if (q.hint && sameDim(q.hint.dim, q.dim)) return inUnit(q, q.hint);
-  if (isDimensionless(q.dim)) return { value: q.si, unit: '' };
+  if (isDimensionless(q.dim)) return scaled(q, 1, '');
   for (const symbol of PREFERRED_UNITS) {
     const def = registry.resolve(symbol);
-    if (def && sameDim(def.dim, q.dim)) return { value: q.si / def.factor, unit: symbol };
+    if (def && sameDim(def.dim, q.dim)) return scaled(q, def.factor, symbol);
   }
-  return { value: q.si, unit: baseUnitSymbol(q.dim, registry.baseSymbols()) };
+  return scaled(q, 1, baseUnitSymbol(q.dim, registry.baseSymbols()));
+}
+
+function scaled(q: Quantity, factor: number, unit: string): DisplayValue {
+  return { value: q.si / factor, unit, ...(q.im ? { im: q.im / factor } : {}) };
 }
 
 /** Converts to a unit; absolute temperatures honour the zero-point shift. */
@@ -40,7 +46,7 @@ export function inUnit(q: Quantity, unit: ResolvedUnit): DisplayValue {
     // A temperature difference shown in °C is a Δ°C.
     return { value: q.si / unit.factor, unit: unit.delta ?? unit.symbol };
   }
-  return { value: q.si / unit.factor, unit: unit.symbol };
+  return scaled(q, unit.factor, unit.symbol);
 }
 
 /** "kg·m²/s³" from a dimension; `own` names a sheet's own dimensions (Mena -> CZK). */

@@ -21,6 +21,8 @@ export interface Quantity {
   readonly absolute?: boolean;
   /** Unit the value came with; used for display when no target unit is given. */
   readonly hint?: ResolvedUnit;
+  /** Imaginary part in coherent SI units, for complex values (impedance 3 + 4j Ω). */
+  readonly im?: number;
 }
 
 export interface BooleanValue {
@@ -80,13 +82,14 @@ export interface RecordValue {
 
 export type Value = Quantity | BooleanValue | TextValue | TableValue | RowValue | FunctionValue | RecordValue;
 
-export function quantity(si: number, dim: Dimension = DIMENSIONLESS, extra: Partial<Pick<Quantity, 'absolute' | 'hint'>> = {}): Quantity {
+export function quantity(si: number, dim: Dimension = DIMENSIONLESS, extra: Partial<Pick<Quantity, 'absolute' | 'hint' | 'im'>> = {}): Quantity {
   return {
     type: 'quantity',
     si,
     dim,
     ...(extra.absolute ? { absolute: true } : {}),
     ...(extra.hint ? { hint: extra.hint } : {}),
+    ...(extra.im ? { im: extra.im } : {}),
   };
 }
 
@@ -94,7 +97,7 @@ export function quantity(si: number, dim: Dimension = DIMENSIONLESS, extra: Part
 export function fingerprint(value: Value): string {
   switch (value.type) {
     case 'quantity':
-      return `q:${value.si}:${dimKey(value.dim)}:${value.absolute ? 'a' : ''}:${value.hint?.symbol ?? ''}`;
+      return `q:${value.si}:${dimKey(value.dim)}:${value.absolute ? 'a' : ''}:${value.hint?.symbol ?? ''}${value.im ? `:i${value.im}` : ''}`;
     case 'boolean':
       return `b:${value.value}`;
     case 'text':

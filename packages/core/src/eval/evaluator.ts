@@ -13,7 +13,7 @@ import type { UnitRegistry } from '../units/registry.js';
 import { resolveUnit, type ResolvedUnit } from '../units/unitExpr.js';
 import type { TableRead } from '../tables/table.js';
 import { quantity, type Quantity, type Value } from '../values/value.js';
-import { asBoolean, asQuantity } from './coerce.js';
+import { asBoolean, asComplex } from './coerce.js';
 import { BUILTIN_CONSTANTS, callFunction, FUNCTION_NAMES } from './functions.js';
 import { callTableFunction, memberOf, TABLE_FUNCTIONS } from './tables.js';
 import { applyFunction, lookupFunction } from './userFunctions.js';
@@ -36,13 +36,18 @@ const COMPARE_EPSILON = 1e-12;
 
 export function evaluate(expr: Expr, ctx: EvalContext): Value {
   const value = evaluateRaw(expr, ctx);
-  if (value.type === 'quantity' && !Number.isFinite(value.si)) fail('E-NOT-FINITE', expr.span);
+  if (value.type === 'quantity' && (!Number.isFinite(value.si) || !Number.isFinite(value.im ?? 0))) fail('E-NOT-FINITE', expr.span);
   return value;
 }
 
 function evaluateRaw(expr: Expr, ctx: EvalContext): Value {
   switch (expr.kind) {
     case 'number': {
+      if (expr.imaginary) {
+        const unit = expr.unit ? resolveUnit(expr.unit, ctx.registry) : undefined;
+        if (unit?.offset !== undefined) fail('E-COMPLEX-ARG', expr.span);
+        return quantity(0, unit?.dim, { im: expr.value * (unit?.factor ?? 1), ...(unit ? { hint: unit } : {}) });
+      }
       if (!expr.unit) return quantity(expr.value);
       const unit = resolveUnit(expr.unit, ctx.registry);
       if (unit.offset !== undefined) {
@@ -67,8 +72,8 @@ function evaluateRaw(expr: Expr, ctx: EvalContext): Value {
     case 'unary': {
       const operand = evaluate(expr.operand, ctx);
       if (expr.operator === 'not') return { type: 'boolean', value: !asBoolean(operand, expr.operand.span) };
-      const q = asQuantity(operand, expr.operand.span);
-      return expr.operator === '-' ? { ...q, si: -q.si } : q;
+      const q = asComplex(operand, expr.operand.span);
+      return expr.operator === '-' ? { ...q, si: -q.si, ...(q.im ? { im: -q.im } : {}) } : q;
     }
     case 'binary':
       return evaluateBinary(expr.operator, expr.left, expr.right, expr.span, ctx);
@@ -112,8 +117,9 @@ function evaluateBinary(op: BinaryOperator, leftExpr: Expr, rightExpr: Expr, spa
     return { type: 'boolean', value: op === '==' ? equal : !equal };
   }
 
-  const a = asQuantity(left, leftExpr.span);
-  const b = asQuantity(right, rightExpr.span);
+  const a = asComplex(left, leftExpr.span);
+  const b = asComplex(right, rightExpr.span);
+  if (a.im || b.im) return complexBinary(op, a, b, leftExpr, rightExpr, span, ctx);
 
   switch (op) {
     case '+':
@@ -137,6 +143,57 @@ function evaluateBinary(op: BinaryOperator, leftExpr: Expr, rightExpr: Expr, spa
     }
     default:
       return compare(op, a, b, span);
+  }
+}
+
+/**
+ * Arithmetic with complex values (docs/03-jazyk.md, ch. 6): + − · / and powers
+ * with a real exponent. Complex numbers have no order, so only == and ≠ compare them.
+ */
+function complexBinary(op: BinaryOperator, a: Quantity, b: Quantity, leftExpr: Expr, rightExpr: Expr, span: Span, ctx: EvalContext): Value {
+  const [ar, ai, br, bi] = [a.si, a.im ?? 0, b.si, b.im ?? 0];
+  const make = (re: number, im: number, dim: Quantity['dim'], hint?: ResolvedUnit): Quantity => quantity(re, dim, { im, ...(hint ? { hint } : {}) });
+  switch (op) {
+    case '+':
+    case '-': {
+      if (!sameDim(a.dim, b.dim)) fail('E-UNIT-MISMATCH', span, { operator: op, left: baseUnitSymbol(a.dim), right: baseUnitSymbol(b.dim) });
+      if (a.absolute || b.absolute) fail('E-COMPLEX-ARG', span);
+      const sign = op === '+' ? 1 : -1;
+      return make(ar + sign * br, ai + sign * bi, a.dim, a.hint ?? b.hint);
+    }
+    case '*':
+    case '/': {
+      if (a.absolute || b.absolute) fail('E-COMPLEX-ARG', span);
+      const scaled = isDimensionless(b.dim) && !b.hint ? a : op === '*' && isDimensionless(a.dim) && !a.hint ? b : undefined;
+      const hint = scaled?.hint && !isDimensionless(scaled.dim) ? scaled.hint : undefined;
+      if (op === '*') return make(ar * br - ai * bi, ar * bi + ai * br, multiplyDims(a.dim, b.dim), hint);
+      const d = br * br + bi * bi;
+      if (d === 0) fail('E-DIV-ZERO', rightExpr.span);
+      return make((ar * br + ai * bi) / d, (ai * br - ar * bi) / d, divideDims(a.dim, b.dim), hint);
+    }
+    case '^': {
+      if (bi || !isDimensionless(b.dim)) fail('E-COMPLEX-ARG', rightExpr.span);
+      if (ai === 0 && ar === 0) return make(0, 0, powerDim(a.dim, br));
+      // Principal value: r^p ∠ p·φ.
+      const r = Math.hypot(ar, ai) ** br;
+      const phi = Math.atan2(ai, ar) * br;
+      const re = r * Math.cos(phi);
+      const im = r * Math.sin(phi);
+      // Whole powers of a + bj are exact up to rounding: keep tiny parts out.
+      const tiny = 1e-15 * r;
+      return make(Math.abs(re) < tiny ? 0 : re, Math.abs(im) < tiny ? 0 : im, powerDim(a.dim, br), poweredHint(a, br).hint);
+    }
+    case '==':
+    case '!=': {
+      if (!sameDim(a.dim, b.dim)) fail('E-UNIT-MISMATCH', span, { operator: op, left: baseUnitSymbol(a.dim), right: baseUnitSymbol(b.dim) });
+      const tolerance = COMPARE_EPSILON * Math.max(Math.hypot(ar, ai), Math.hypot(br, bi));
+      const equal = Math.hypot(ar - br, ai - bi) <= tolerance;
+      return { type: 'boolean', value: op === '==' ? equal : !equal };
+    }
+    default:
+      void ctx;
+      void leftExpr;
+      return fail('E-COMPLEX-ORDER', span, { operator: op });
   }
 }
 

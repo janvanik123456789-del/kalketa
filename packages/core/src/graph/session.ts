@@ -9,7 +9,7 @@
  */
 
 import { CalcError, diagnostic, type Diagnostic, type Span } from '../diagnostics.js';
-import { asBoolean, asQuantity } from '../eval/coerce.js';
+import { asBoolean, asComplex } from '../eval/coerce.js';
 import { compare, evaluate, type EvalContext } from '../eval/evaluator.js';
 import { BUILTIN_CONSTANTS } from '../eval/functions.js';
 import { defineFunction, isBuiltinFunction } from '../eval/userFunctions.js';
@@ -437,8 +437,9 @@ function evaluateCheck(statement: Extract<Statement, { kind: 'check' }>, ctx: Ev
   };
   const expr = statement.expr;
   if (expr.kind === 'binary' && CHECK_OPERATORS.has(expr.operator)) {
-    const left = asQuantity(evaluate(expr.left, ctx), expr.left.span);
-    const right = asQuantity(evaluate(expr.right, ctx), expr.right.span);
+    const left = asComplex(evaluate(expr.left, ctx), expr.left.span);
+    const right = asComplex(evaluate(expr.right, ctx), expr.right.span);
+    if (left.im || right.im) throw new CalcError(diagnostic('E-COMPLEX-ORDER', expr.span, { operator: expr.operator }));
     const passed = asBoolean(compare(expr.operator, left, right, expr.span), expr.span);
     const utilization = utilizationOf(expr.operator, left, right);
     return { ...info, passed, operator: expr.operator, left, right, ...(utilization !== undefined ? { utilization } : {}) };

@@ -78,7 +78,7 @@ function render(expr: Expr, o: FormulaOptions): Rendered {
 
   switch (expr.kind) {
     case 'number': {
-      const n = mn(o.literal(expr.value));
+      const n = expr.imaginary ? row(mn(o.literal(expr.value)), mi('j')) : mn(o.literal(expr.value));
       return { node: expr.unit ? row(n, THIN_SPACE, mu(formatUnit(expr.unit))) : n, prec: expr.unit ? 6 : ATOM };
     }
     case 'unit':

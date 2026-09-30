@@ -153,6 +153,8 @@ export function LayersPane({ layers, active, catalog, used, open, nameOf, onActi
 
 interface TabsProps {
   readonly layers: readonly Layer[];
+  /** Layers that have a tab (the ones in use). */
+  readonly shown: ReadonlySet<string>;
   readonly active: string;
   /** Layers open in the workspace. */
   readonly open: readonly string[];
@@ -175,7 +177,7 @@ type OpenMenu = { readonly items: readonly MenuItem[]; readonly at: { x: number;
  * tab. Ctrl+click opens a layer side by side, right click (or ▾ on the active
  * tab) offers what the layer can do, "+" adds a layer.
  */
-export function LayerTabs({ layers, active, open, catalog, used, commands, nameOf, onActivate, onOpenBeside, onChange, onAdd, onDelete }: TabsProps) {
+export function LayerTabs({ layers, shown, active, open, catalog, used, commands, nameOf, onActivate, onOpenBeside, onChange, onAdd, onDelete }: TabsProps) {
   const [menu, setMenu] = useState<OpenMenu | undefined>();
   const set = (id: string, change: Parameters<typeof updateLayer>[2]) => onChange(updateLayer(layers, id, change));
 
@@ -227,7 +229,7 @@ export function LayerTabs({ layers, active, open, catalog, used, commands, nameO
 
   return (
     <nav className="layer-tabs" aria-label={t(catalog, 'layers.tabs')}>
-      {layers.map((layer) => (
+      {layers.filter((l) => shown.has(l.id)).map((layer) => (
         <div
           key={layer.id}
           role="button"

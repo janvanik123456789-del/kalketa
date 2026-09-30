@@ -325,7 +325,7 @@ async function runSmokeTest(pdfPath: string): Promise<void> {
     await writeFile(pdfPath, pdf);
     ok =
       state.bridge && state.sideBySide && state.menus === 7 && state.toolbars > 0 && state.rows > 10 && state.summary > 0 && state.math > 0 && reshapedColumns === 3 && pdf.length > 1000 &&
-      layers.newKeepsExample && layers.tabs === 5 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.help && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer4 layer5' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && layers.q.includes('16,73');
+      layers.newKeepsExample && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.help && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer4 layer5' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
     console.log(JSON.stringify({ ok, ...state, reshapedColumns, layers, pdfBytes: pdf.length }));
   } catch (err) {
     console.log(JSON.stringify({ ok: false, error: (err as Error).message }));
@@ -385,11 +385,11 @@ async function clickOn(selector: string, modifiers: Array<'control'> = [], butto
   await pause(150);
 }
 
-/** Clicks the row of the open context menu whose label starts with `label`. */
+/** Clicks the row of an open menu (the deepest one first) whose label starts with `label`. */
 async function clickMenu(label: string): Promise<void> {
   const found = (await smokeWindow!.webContents.executeJavaScript(`(() => {
     document.querySelectorAll('[data-smoke]').forEach((e) => e.removeAttribute('data-smoke'));
-    const row = [...document.querySelectorAll('.context-menu .menu-row')].find((r) => r.querySelector('.menu-label').textContent.trim().startsWith(${JSON.stringify(label)}));
+    const row = [...document.querySelectorAll('.menu-panel .menu-row')].reverse().find((r) => r.querySelector('.menu-label').textContent.trim().startsWith(${JSON.stringify(label)}));
     row?.setAttribute('data-smoke', '');
     return !!row;
   })()`)) as boolean;
@@ -449,13 +449,27 @@ async function layersWithRealInput(picture: string) {
   await takePicture(picture.replace(/\.png$/, '-notes.png'));
 
   // AI notes can only be read: no text field, and typing changes nothing.
-  await clickOn('.layer-tab[data-layer="ai"]');
+  // Empty AI notes have no tab (space by importance); the View menu still opens them beside.
+  const aiTabWhileEmpty = (await contents.executeJavaScript(`!!document.querySelector('.layer-tab[data-layer="ai"]')`)) as boolean;
+  await clickOn('.menubar-item:nth-child(3) > button');
+  await clickMenu('Vrstvy vedle sebe');
+  await clickMenu('✦');
   await clickOn('.notes-view.ai .notes-preview');
   await typeText('ruční zásah');
   const aiReadOnly = (await contents.executeJavaScript(
-    `!!document.querySelector('.notes-view.ai') && !document.querySelector('.notes-view textarea') && !document.body.textContent.includes('ruční zásah')`,
+    `!!document.querySelector('.notes-view.ai') && !document.querySelector('.notes-view.ai textarea') && !document.body.textContent.includes('ruční zásah') && ![...document.querySelectorAll('textarea')].some((a) => a.value.includes('ruční zásah'))`,
   )) as boolean;
   await takePicture(picture.replace(/\.png$/, '-ai.png'));
+  // The AI notes cannot be deleted: their menu has no Delete.
+  await clickOn('.layer-tab[data-layer="ai"]', [], 'right');
+  const aiDeletable = (await contents.executeJavaScript(
+    `[...document.querySelectorAll('.context-menu .menu-row')].some((r) => r.textContent.includes('Odstranit'))`,
+  )) as boolean;
+  const aiMenu = (await contents.executeJavaScript(`document.querySelectorAll('.context-menu .menu-row').length`)) as number;
+  await pressKey('Escape');
+  // Closing the empty AI notes takes their tab away again.
+  await clickOn('.layer-view[data-layer="ai"] .layer-view-head button');
+  const aiTabAfterClose = (await contents.executeJavaScript(`!!document.querySelector('.layer-tab[data-layer="ai"]')`)) as boolean;
   await clickOn('.layer-tab[data-layer="main"]');
   await takePicture(picture);
   const state = (await contents.executeJavaScript(`({
@@ -464,13 +478,6 @@ async function layersWithRealInput(picture: string) {
     errors: Number(document.querySelector('.statusbar span')?.textContent.replace(/\\D+/g, '') ?? -1),
     q: [...document.querySelectorAll('.row')].find((r) => r.textContent.includes('q_d'))?.textContent ?? '',
   })`)) as { tabs: number; used: number; errors: number; q: string };
-  // The AI notes cannot be deleted: their menu has no Delete.
-  await clickOn('.layer-tab[data-layer="ai"]', [], 'right');
-  const aiDeletable = (await contents.executeJavaScript(
-    `[...document.querySelectorAll('.context-menu .menu-row')].some((r) => r.textContent.includes('Odstranit'))`,
-  )) as boolean;
-  const aiMenu = (await contents.executeJavaScript(`document.querySelectorAll('.context-menu .menu-row').length`)) as number;
-  await pressKey('Escape');
   // Tables of a data layer: a narrow strip of names with icons for a new table and an import.
   await clickOn('.layer-tab[data-layer="data"]');
   const tableStrip = (await contents.executeJavaScript(
@@ -480,7 +487,8 @@ async function layersWithRealInput(picture: string) {
   await clickOn('.layer-tab[data-layer="main"]');
 
   // Side by side: Ctrl+click on the tab of the auxiliary calculation.
-  await clickOn('.layer-tab:nth-child(4)', ['control']);
+  await contents.executeJavaScript(`[...document.querySelectorAll('.layer-tab')].find((t) => t.textContent.includes('Zatížení'))?.setAttribute('data-load', '')`);
+  await clickOn('.layer-tab[data-load]', ['control']);
   await clickOn('.layer-view:nth-child(2) .page .row');
   const split = (await contents.executeJavaScript(
     `[...document.querySelectorAll('.layer-view')].map((v) => v.dataset.layer + (v.classList.contains('active') ? '*' : '') + ':' + v.querySelectorAll('.page').length).join(' ')`,
@@ -507,12 +515,12 @@ async function layersWithRealInput(picture: string) {
   // More calculations at once: a new one in its own tab, back to the first, Ctrl+Tab, Ctrl+W.
   await clickOn('.doc-tab-new');
   const second = (await contents.executeJavaScript(
-    `[document.querySelectorAll('.doc-tab').length, document.querySelectorAll('.layer-tab:not(.add)').length]`,
-  )) as [number, number];
+    `[document.querySelectorAll('.doc-tab').length, document.querySelectorAll('.layer-tab').length, document.querySelector('.statusbar').textContent.includes('Posouzení') ? 1 : 0]`,
+  )) as [number, number, number];
   await takePicture(picture.replace(/[.]png$/, '-docs.png'));
   await clickOn('.doc-tab:nth-child(1) .doc-tab-title');
   const firstKept = (await contents.executeJavaScript(
-    `document.querySelectorAll('.layer-tab:not(.add):not(.hidden)').length === 4 && !!document.querySelector('.doc-tab:nth-child(1).active .doc-dirty')`,
+    `document.querySelectorAll('.layer-tab:not(.add):not(.hidden)').length === 3 && !!document.querySelector('.doc-tab:nth-child(1).active .doc-dirty')`,
   )) as boolean;
   await pressKey('Tab', ['control']);
   await pressKey('W', ['control']);
@@ -551,7 +559,7 @@ async function layersWithRealInput(picture: string) {
     oneCopy = (await hasFile(other)) && !(await hasFile(smokeWindow!)) && viaRecent === undefined && named;
   }
   other?.destroy();
-  const multi = second[0] === 2 && second[1] === 3 && firstKept && documents === 1 && newWindow && oneCopy !== false;
+  const multi = second[0] === 2 && second[1] === 0 && second[2] === 0 && firstKept && documents === 1 && newWindow && oneCopy !== false;
 
   // A user function typed like a person would: "=" after the head becomes ":=".
   await clickOn('.doc-tab-new');
@@ -616,7 +624,7 @@ async function layersWithRealInput(picture: string) {
     blocksOk = shown.errors === 0 && shown.text.includes('Prosty nosnik 1.2') && shown.text.includes('45');
     await takePicture(picture.replace(/[.]png$/, '-blocks.png'));
   }
-  return { ...state, newKeepsExample, citations, aiReadOnly, split, mainHidden, twoLayers, addKinds, aiDeletable, aiMenu, tableStrip, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, help, blocksOk };
+  return { ...state, newKeepsExample, citations, aiReadOnly, split, mainHidden, twoLayers, addKinds, aiDeletable, aiMenu, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, help, blocksOk };
 }
 
 /**

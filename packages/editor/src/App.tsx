@@ -172,6 +172,14 @@ export function App() {
   const result = resultOf(layer);
   const nameOf = (l: Layer) => layerName(l, ui);
   const layerTables = useMemo(() => tablesByLayer(doc.layers, doc.tables.keys()), [doc.layers, doc.tables]);
+  /**
+   * Space by importance: most calculations are just the sheet. A layer gets a
+   * tab once it is in use (a data layer with tables, AI notes with text, any
+   * layer the user added or opened); the strip appears only when there is
+   * more than the sheet, or when the sheet is hidden and must be shown again.
+   */
+  const inUse = (l: Layer): boolean =>
+    l.kind === 'sheet' || l.kind === 'calc' || l.kind === 'sources' || (l.kind === 'data' ? (layerTables.get(l.id)?.length ?? 0) > 0 : Boolean(l.text?.trim()));
   const resolveFile = useCallback((path: string) => fileUri(doc, path), [doc]);
   const openKey = openPanes.join('|');
   const prints = useMemo(
@@ -570,8 +578,11 @@ export function App() {
 
   const applyTable = (change_: TableChange | undefined) => {
     if (!change_) return;
-    change(assignTable(change_.doc, change_.name));
-    choosePane('tables');
+    const next = assignTable(change_.doc, change_.name);
+    change(next);
+    // The table opens in its data layer next to the sheet.
+    const home = next.layers.find((l) => l.kind === 'data' && l.tables?.includes(change_.name));
+    if (home) openBeside(home.id);
     if (change_.messages.length > 0) setNotice(change_.messages.join(' '));
   };
 
@@ -743,7 +754,21 @@ export function App() {
     },
     {
       label: t(ui, 'menu.insert'),
-      items: [cmd('insert.heading'), cmd('insert.text'), cmd('insert.definition'), cmd('insert.check'), cmd('insert.pick'), cmd('insert.pageBreak'), sep, cmd('insert.newTable'), cmd('insert.importTable'), cmd('insert.block'), sep,
+      items: [cmd('insert.heading'), cmd('insert.text'), cmd('insert.definition'), cmd('insert.check'), cmd('insert.pick'), cmd('insert.pageBreak'), sep, cmd('insert.newTable'), cmd('insert.importTable'), cmd('insert.block'),
+        ...(doc.blocks.size > 0
+          ? [
+              {
+                kind: 'submenu' as const,
+                label: t(ui, 'blocks.title'),
+                items: [...doc.blocks].map(([name, b]) => ({
+                  kind: 'action' as const,
+                  label: `${t(ui, 'blocks.delete')} „${name}“ (${t(ui, 'blocks.version', { version: b.version })}${b.origin ? `, ${t(ui, 'blocks.origin', { origin: b.origin })}` : ''})`,
+                  run: () => void deleteBlock(name),
+                })),
+              },
+            ]
+          : []),
+        sep,
         { kind: 'submenu', label: t(ui, 'menu.layer'), items: [cmd('insert.layerCalc'), cmd('insert.layerData'), cmd('insert.layerSources')] },
       ],
     },
@@ -941,8 +966,9 @@ export function App() {
             })}
           </div>
         )}
-        {!tableEditor && (
+        {!tableEditor && (doc.layers.some((l) => l.kind !== 'sheet' && (inUse(l) || openPanes.includes(l.id))) || !doc.layers[0]!.visible) && (
           <LayerTabs
+            shown={new Set(doc.layers.filter((l) => inUse(l) || openPanes.includes(l.id)).map((l) => l.id))}
             layers={doc.layers}
             active={layer.id}
             open={openPanes}
@@ -965,9 +991,11 @@ export function App() {
         <span className={warnings > 0 ? 'warn' : ''}>
           {ui.severity.warning}: {warnings}
         </span>
-        <span className={failedChecks > 0 ? 'bad' : ''}>
-          {t(ui, 'checks.title')}: {checks.length - failedChecks}/{checks.length} ✓
-        </span>
+        {checks.length > 0 && (
+          <span className={failedChecks > 0 ? 'bad' : ''}>
+            {t(ui, 'checks.title')}: {checks.length - failedChecks}/{checks.length} ✓
+          </span>
+        )}
         <span className="grow" />
         <span>{Math.round(zoom * 100)} %</span>
         <span>{dirty ? t(ui, 'editor.unsaved') : t(ui, 'editor.saved')}</span>

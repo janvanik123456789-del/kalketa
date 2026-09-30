@@ -17,6 +17,7 @@ import { asBoolean, asQuantity } from './coerce.js';
 import { BUILTIN_CONSTANTS, callFunction, FUNCTION_NAMES } from './functions.js';
 import { callTableFunction, memberOf, TABLE_FUNCTIONS } from './tables.js';
 import { applyFunction, lookupFunction } from './userFunctions.js';
+import type { BlockCaller, BlockInput } from './blocks.js';
 
 export interface EvalContext {
   readonly registry: UnitRegistry;
@@ -26,6 +27,8 @@ export interface EvalContext {
   readonly warnings: Diagnostic[];
   /** Collects reads of table data, for provenance. */
   readonly tableReads?: TableRead[];
+  /** Blocks of the sheet, callable by name. */
+  readonly blocks?: BlockCaller;
 }
 
 /** Relative tolerance for comparisons, so 0.1 + 0.2 == 0.3 holds. */
@@ -71,6 +74,7 @@ function evaluateRaw(expr: Expr, ctx: EvalContext): Value {
       return evaluateBinary(expr.operator, expr.left, expr.right, expr.span, ctx);
     case 'call': {
       if (TABLE_FUNCTIONS.has(expr.name)) return callTableFunction(expr, ctx, evaluate);
+      if (ctx.blocks?.has(expr.name)) return callBlock(expr, ctx);
       if (!FUNCTION_NAMES.includes(expr.name)) return applyFunction(lookupFunction(expr, ctx), expr, ctx, evaluate);
       const extra = expr.named[0];
       if (extra) fail('E-NAMED-ARG', extra.nameSpan, { function: expr.name, argument: extra.name, problem: 'unknown' });
@@ -79,6 +83,15 @@ function evaluateRaw(expr: Expr, ctx: EvalContext): Value {
     case 'member':
       return memberOf(evaluate(expr.object, ctx), expr.name, expr.span, expr.object.span, ctx);
   }
+}
+
+/** A block is called with its inputs by name: Prosty_nosnik(L: 6 m, q: 10 kN/m). */
+function callBlock(call: Extract<Expr, { kind: 'call' }>, ctx: EvalContext): Value {
+  const positional = call.args[0];
+  if (positional) fail('E-NAMED-ARG', positional.span, { function: call.name, argument: '', problem: 'positional' });
+  const inputs = new Map<string, BlockInput>();
+  for (const arg of call.named) inputs.set(arg.name, { value: evaluate(arg.value, ctx), nameSpan: arg.nameSpan });
+  return ctx.blocks!.call(call.name, inputs, call.span);
 }
 
 function evaluateBinary(op: BinaryOperator, leftExpr: Expr, rightExpr: Expr, span: Span, ctx: EvalContext): Value {

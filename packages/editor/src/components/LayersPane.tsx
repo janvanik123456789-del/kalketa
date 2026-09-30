@@ -24,9 +24,12 @@ interface PaneProps {
   onChange(layers: Layer[]): void;
   onAdd(kind: (typeof NEW_LAYER_KINDS)[number]): void;
   onDelete(id: string): void;
+  /** Blocks stored in the sheet. */
+  readonly blocks: readonly { readonly name: string; readonly version: string; readonly origin?: string }[];
+  onDeleteBlock(name: string): void;
 }
 
-export function LayersPane({ layers, active, catalog, used, open, nameOf, onActivate, onOpenBeside, onChange, onAdd, onDelete }: PaneProps) {
+export function LayersPane({ layers, active, catalog, used, open, nameOf, onActivate, onOpenBeside, onChange, onAdd, onDelete, blocks, onDeleteBlock }: PaneProps) {
   const set = (id: string, change: Parameters<typeof updateLayer>[2]) => onChange(updateLayer(layers, id, change));
   return (
     <aside className="layers-pane">
@@ -102,6 +105,26 @@ export function LayersPane({ layers, active, catalog, used, open, nameOf, onActi
           </button>
         ))}
       </div>
+      <h3>{t(catalog, 'blocks.title')}</h3>
+      {blocks.length === 0 ? (
+        <p className="muted small">{t(catalog, 'blocks.none')}</p>
+      ) : (
+        <ul className="block-list">
+          {blocks.map((block) => (
+            <li key={block.name} className="block-item" data-block={block.name}>
+              <span className="glyph">▣</span>
+              <span className="block-name">{block.name}</span>
+              <span className="block-info">
+                {t(catalog, 'blocks.version', { version: block.version })}
+                {block.origin ? ` · ${t(catalog, 'blocks.origin', { origin: block.origin })}` : ''}
+              </span>
+              <button type="button" title={t(catalog, 'blocks.delete')} onClick={() => onDeleteBlock(block.name)}>
+                ✕
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </aside>
   );
 }

@@ -42,6 +42,7 @@ export function callTableFunction(call: CallExpr, ctx: EvalContext, evaluate: Ev
 
 /** row.column */
 export function memberOf(object: Value, name: string, span: Span, objectSpan: Span, ctx: EvalContext): Value {
+  if (object.type === 'record') return object.values.get(name) ?? fail('E-BLOCK-OUTPUT', span, { block: object.block, name });
   if (object.type === 'table') return fail('E-UNSUPPORTED', span, { feature: 'table-column' });
   if (object.type !== 'row') return fail('E-TYPE', objectSpan, { expected: 'row', found: object.type });
   const index = columnIndex(object.table, name);

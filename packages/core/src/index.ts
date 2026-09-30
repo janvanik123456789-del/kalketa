@@ -15,6 +15,7 @@ export { tokenize, type Token, type TokenType, type LexOptions } from './lang/le
 export { parse, type ParseOptions, type ParseResult } from './lang/parser.js';
 export * from './units/dimension.js';
 export { UnitRegistry, defaultRegistry, canonicalUnitSymbol, type UnitDef } from './units/registry.js';
+export { blockVersion, type BlockSource } from './eval/blocks.js';
 export { resolveUnit, formatUnit, type ResolvedUnit } from './units/unitExpr.js';
 export { toDisplay, inUnit, baseUnitSymbol, type DisplayValue } from './units/display.js';
 export * from './values/value.js';

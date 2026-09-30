@@ -6,6 +6,7 @@
  *   sheet.cc           the calculation as text
  *   layout.json        print settings
  *   tables/<Name>/     schema.json + data.csv
+ *   blocks/<Name>/     block.cc (calculation with "input" lines) + block.json (version, origin)
  *   images/...         pictures of table rows and of the printout
  *   (anything else)    kept unchanged, so newer files survive older programs
  *
@@ -19,8 +20,12 @@ import { strFromU8, strToU8, unzipSync, zipSync, type Zippable } from 'fflate';
 import { defaultLayers, withAiLayer, type Layer, type LayerKind } from './layers.js';
 
 export const FORMAT_ID = 'calccanvas-sheet';
-/** 1: sheet + tables. 2: adds layers (layers.json, layers/<id>/). Version 1 files still open. */
-export const FORMAT_VERSION = 2;
+/**
+ * 1: sheet + tables. 2: adds layers (layers.json, layers/<id>/). 3: adds blocks
+ * (blocks/<Name>/). Older files still open; an older program refuses a newer
+ * file rather than calculating it without its blocks.
+ */
+export const FORMAT_VERSION = 3;
 export const FILE_EXTENSION = '.calc';
 
 export interface Manifest {
@@ -53,6 +58,15 @@ export interface StoredTable {
   readonly dataCsv: string;
 }
 
+/** A reusable block stored in the sheet (docs/01-filozofie.md, ch. 6.2). */
+export interface StoredBlock {
+  /** Calculation text; inputs are marked "input". */
+  readonly source: string;
+  readonly version: string;
+  /** Where it was taken from (file name), to find newer versions later. */
+  readonly origin?: string;
+}
+
 export interface SheetDocument {
   readonly manifest: Manifest;
   readonly source: string;
@@ -63,6 +77,8 @@ export interface SheetDocument {
   readonly files: ReadonlyMap<string, Uint8Array>;
   /** Layers in order; the first is always the printed sheet (its text is `source`). */
   readonly layers: readonly Layer[];
+  /** Blocks by name; the sheet calls them like functions. */
+  readonly blocks: ReadonlyMap<string, StoredBlock>;
 }
 
 export interface ReadResult {
@@ -79,6 +95,7 @@ const LAYERS = 'layers.json';
 /** Text of a layer: a calculation or notes. */
 const LAYER_TEXT = /^layers\/([^/]+)\/(sheet\.cc|notes\.md)$/;
 const LAYER_KINDS: readonly LayerKind[] = ['sheet', 'calc', 'data', 'ai', 'sources'];
+const BLOCK_ENTRY = /^blocks\/([^/]+)\/(block\.cc|block\.json)$/;
 
 function layerTextPath(layer: Layer): string | undefined {
   if (layer.kind === 'calc') return `layers/${layer.id}/sheet.cc`;
@@ -98,6 +115,7 @@ export function newDocument(title: string, source = '', now = new Date()): Sheet
     tables: new Map(),
     files: new Map(),
     layers: defaultLayers(),
+    blocks: new Map(),
   };
 }
 
@@ -175,12 +193,21 @@ export async function readSheetEntries(raw: Readonly<Record<string, Uint8Array>>
   const layerTexts = new Map<string, string>();
 
   const tableParts = new Map<string, { schemaJson?: string; dataCsv?: string }>();
+  const blockParts = new Map<string, { source?: string; info?: string }>();
   const files = new Map<string, Uint8Array>();
   for (const [path, data] of Object.entries(raw)) {
     if (path === MANIFEST || path === SHEET || path === LAYOUT || path === LAYERS || path.endsWith('/')) continue;
     const text = LAYER_TEXT.exec(path);
     if (text && layers.some((l) => l.id === text[1] && layerTextPath(l) === path)) {
       layerTexts.set(text[1]!, strFromU8(data));
+      continue;
+    }
+    const blockEntry = BLOCK_ENTRY.exec(path);
+    if (blockEntry) {
+      const part = blockParts.get(blockEntry[1]!) ?? {};
+      if (blockEntry[2] === 'block.cc') part.source = strFromU8(data);
+      else part.info = strFromU8(data);
+      blockParts.set(blockEntry[1]!, part);
       continue;
     }
     const match = TABLE_ENTRY.exec(path);
@@ -199,8 +226,24 @@ export async function readSheetEntries(raw: Readonly<Record<string, Uint8Array>>
     tables.set(name, { schemaJson: part.schemaJson, dataCsv: part.dataCsv });
   }
 
+  const blocks = new Map<string, StoredBlock>();
+  for (const [name, part] of blockParts) {
+    if (part.source === undefined) return invalid('block', name);
+    let info: { version?: unknown; origin?: unknown } = {};
+    try {
+      info = part.info ? (JSON.parse(part.info) as typeof info) : {};
+    } catch {
+      return invalid('json', `blocks/${name}/block.json`);
+    }
+    blocks.set(name, {
+      source: part.source,
+      version: typeof info.version === 'string' ? info.version : '1',
+      ...(typeof info.origin === 'string' ? { origin: info.origin } : {}),
+    });
+  }
+
   layers = layers.map((l) => (layerTextPath(l) ? { ...l, text: layerTexts.get(l.id) ?? '' } : l));
-  const document: SheetDocument = { manifest, source: strFromU8(sheetBytes), layout, tables, files, layers };
+  const document: SheetDocument = { manifest, source: strFromU8(sheetBytes), layout, tables, files, layers, blocks };
   if (manifest.contentHash && manifest.contentHash !== (await hashEntries(sheetEntries(document)))) {
     diagnostics.push(diagnostic('W-FILE-HASH', NO_SPAN));
   }
@@ -223,6 +266,11 @@ export function sheetEntries(doc: SheetDocument): [string, Uint8Array][] {
     const table = doc.tables.get(name)!;
     entries.push([`tables/${name}/schema.json`, strToU8(table.schemaJson)]);
     entries.push([`tables/${name}/data.csv`, strToU8(table.dataCsv)]);
+  }
+  for (const name of [...doc.blocks.keys()].sort()) {
+    const block = doc.blocks.get(name)!;
+    entries.push([`blocks/${name}/block.cc`, strToU8(block.source)]);
+    entries.push([`blocks/${name}/block.json`, json({ version: block.version, ...(block.origin !== undefined ? { origin: block.origin } : {}) })]);
   }
   for (const path of [...doc.files.keys()].sort()) {
     if (!isSafePath(path)) throw new Error(`Unsafe path in sheet document: ${path}`);

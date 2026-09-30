@@ -70,6 +70,8 @@ export type Statement =
       readonly target?: UnitExpr;
       /** Parameters of a user function: A_kruh(d) := π·d²/4. */
       readonly params?: readonly Param[];
+      /** An input of a block ("input L := 5 m"): a call of the block may give another value. */
+      readonly input?: boolean;
     })
   | (StatementBase & { readonly kind: 'display'; readonly expr: Expr; readonly target?: UnitExpr })
   | (StatementBase & {

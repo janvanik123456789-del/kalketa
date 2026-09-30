@@ -28,7 +28,7 @@ import {
 
 /** Files and folders next to a sheet that belong to it. */
 const CARRIED_FILES = ['layout.json', 'layers.json'];
-const CARRIED_FOLDERS = ['tables', 'images', 'layers', 'ai'];
+const CARRIED_FOLDERS = ['tables', 'images', 'layers', 'ai', 'blocks'];
 
 export interface OpenResult {
   readonly document?: SheetDocument;

@@ -28,6 +28,10 @@ ${body}
 </section>`;
 }
 
+function blockCalc(title: string | undefined, catalog: Catalog): string {
+  return title ? `\n<div class="imported">${esc(t(catalog, 'print.blockCalc'))}: ${esc(title)}</div>` : '';
+}
+
 function imported(values: readonly string[] | undefined, catalog: Catalog): string {
   if (!values?.length) return '';
   return `\n<div class="imported">${esc(t(catalog, 'print.imported'))}: ${values.map(esc).join(', ')}</div>`;
@@ -83,7 +87,7 @@ export function renderBlockHtml(block: PrintBlock, catalog: Catalog, options: Bl
       return '<div class="page-break"></div>';
     case 'equation':
       return `<section class="block equation" data-line="${block.line}">
-${equationTable(block.lines, block.comment, options.defineOperator ?? '=')}${imported(block.imported, catalog)}${messages(block.messages)}
+${equationTable(block.lines, block.comment, options.defineOperator ?? '=')}${imported(block.imported, catalog)}${blockCalc(block.blockCalc, catalog)}${messages(block.messages)}
 </section>`;
     case 'selection': {
       const condition = block.condition

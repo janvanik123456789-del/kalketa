@@ -6,6 +6,7 @@
  * display.
  */
 
+import type { SheetResult } from '../graph/session.js';
 import type { Expr } from '../lang/ast.js';
 import type { Cell, Table } from '../tables/table.js';
 import { DIMENSIONLESS, dimKey, type Dimension } from '../units/dimension.js';
@@ -64,7 +65,20 @@ export interface FunctionValue {
   readonly captured: ReadonlyMap<string, Value>;
 }
 
-export type Value = Quantity | BooleanValue | TextValue | TableValue | RowValue | FunctionValue;
+/** Result of a block (N1 := Prosty_nosnik(L: 6 m)): its values, read as N1.M_max. */
+export interface RecordValue {
+  readonly type: 'record';
+  readonly block: string;
+  readonly version: string;
+  /** The inputs given at the call. */
+  readonly inputs: ReadonlyMap<string, Value>;
+  /** All values of the block, inputs included. */
+  readonly values: ReadonlyMap<string, Value>;
+  /** The block calculated with these inputs, for print and provenance. */
+  readonly result: SheetResult;
+}
+
+export type Value = Quantity | BooleanValue | TextValue | TableValue | RowValue | FunctionValue | RecordValue;
 
 export function quantity(si: number, dim: Dimension = DIMENSIONLESS, extra: Partial<Pick<Quantity, 'absolute' | 'hint'>> = {}): Quantity {
   return {
@@ -95,6 +109,8 @@ export function fingerprint(value: Value): string {
       const captured = [...value.captured].map(([name, v]) => `${name}=${fingerprint(v)}`).join(';');
       return `f:${value.name}(${value.params.join(',')}):${body}:${captured}`;
     }
+    case 'record':
+      return `B:${value.block}:${value.version}:${[...value.values].map(([name, v]) => `${name}=${fingerprint(v)}`).join(';')}`;
   }
 }
 

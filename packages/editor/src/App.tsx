@@ -10,7 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as R
 import { defaultRegistry, rowLabel, type Diagnostic, type Statement } from '@calccanvas/core';
 import { catalogFor, CATALOGS, formatDiagnostic, formatNumber, t, type Catalog } from '@calccanvas/i18n';
 import { buildPrintDocument, printHtml } from '@calccanvas/render';
-import { addLayer, allDiagnostics, appendixLayers, isRemovable, LayerSessions, MAIN_LAYER, removeLayer, tablesByLayer, updateLayer, type AddableLayerKind, type Layer, type SheetDocument } from '@calccanvas/sheet';
+import { addLayer, allDiagnostics, appendixLayers, blockAppendices, documentBlocks, isRemovable, LayerSessions, MAIN_LAYER, removeLayer, tablesByLayer, updateLayer, type AddableLayerKind, type Layer, type SheetDocument } from '@calccanvas/sheet';
 import { buildCommands, shortcutOf, type Command } from './commands.js';
 import { desktop, emptyDocument, exampleDocument, fileName, fileUri, largestParts, openBytes, pickAndOpen, saveDocument, tableCache, type FileRef, type OpenedFile } from './document.js';
 import { record, redo, undo, type History } from './logic/history.js';
@@ -20,6 +20,7 @@ import { pickOf, replacePickKey } from './logic/pick.js';
 import { deleteLines, insertLineAfter, replaceLines, segments } from './logic/segments.js';
 import { parseLayout, setVisible, type ToolbarLayout } from './logic/toolbars.js';
 import { createTable, importTableFile, type TableChange } from './tableActions.js';
+import { importBlockFile } from './blockActions.js';
 import { AboutDialog, CustomizeDialog, PropertiesDialog, SettingsDialog, ShortcutsDialog } from './components/Dialogs.js';
 import { DocumentTabs } from './components/DocumentTabs.js';
 import { Inspector } from './components/Inspector.js';
@@ -150,7 +151,8 @@ export function App() {
   }, [docs.tabs]);
 
   const { tables, diagnostics: tableDiagnostics } = useMemo(() => buildTables(doc), [buildTables, doc.tables]);
-  const evaluation = useMemo(() => sessions.evaluate(doc.source, doc.layers, tables), [sessions, doc.source, doc.layers, tables]);
+  const blocks = useMemo(() => documentBlocks(doc), [doc.blocks]);
+  const evaluation = useMemo(() => sessions.evaluate(doc.source, doc.layers, tables, blocks), [sessions, doc.source, doc.layers, tables, blocks]);
 
   // Open layers side by side; the active one is being worked on. The printed
   // sheet and auxiliary calculations are edited as pages, data layers as
@@ -283,6 +285,29 @@ export function App() {
     activate(added.id);
   };
 
+  /** Takes a calculation from a file as a block and inserts a line that uses it. */
+  const insertBlock = async () => {
+    const added = await importBlockFile(doc, ui);
+    if (!added) return;
+    if ('failed' in added) return setNotice(t(ui, 'blocks.openFailed', { name: added.failed }));
+    // Into the calculation being worked on, else at the end of the printed sheet.
+    const target = layer.kind === 'sheet' || layer.kind === 'calc' ? layer : doc.layers[0]!;
+    const text = textOf(target);
+    const after = target === layer ? (currentRange()?.end ?? text.split('\n').length) : text.split('\n').length;
+    const line = `${uniqueName(added.name.slice(0, 1).toUpperCase())} := ${added.call}`;
+    const source = insertLineAfter(text, after, line);
+    change(target.kind === 'sheet' ? { ...added.doc, source } : { ...added.doc, layers: updateLayer(added.doc.layers, target.id, { text: source }) });
+    if (target !== layer) activate(target.id);
+    choosePane('layers');
+  };
+
+  const deleteBlock = async (name: string) => {
+    if (!(await askConfirm(t(ui, 'blocks.deleteConfirm', { name })))) return;
+    const remaining = new Map(doc.blocks);
+    remaining.delete(name);
+    change({ ...doc, blocks: remaining });
+  };
+
   const deleteLayer = async (id: string) => {
     const target = doc.layers.find((l) => l.id === id);
     if (!target || !isRemovable(target) || !(await askConfirm(t(ui, 'layers.deleteConfirm', { name: nameOf(target) })))) return;
@@ -408,7 +433,7 @@ export function App() {
       orientation: doc.layout.orientation,
       resolveFile,
       ...(doc.manifest.author ? { subtitle: doc.manifest.author } : {}),
-      appendices: appendixLayers(doc.layers, evaluation, (l) => layerName(l, printCatalog)),
+      appendices: [...appendixLayers(doc.layers, evaluation, (l) => layerName(l, printCatalog)), ...blockAppendices(evaluation.main)],
     });
 
   const printout = () => {
@@ -606,6 +631,7 @@ export function App() {
       newTable: () => void createTable(doc, ui).then(applyTable),
       importTable: () => void importTableFile(doc, ui).then(applyTable),
       addLayer: (kind) => void newLayer(kind),
+      insertBlock: () => void insertBlock(),
       settings: () => setDialog('settings'),
       shortcuts: () => setDialog('shortcuts'),
       about: () => setDialog('about'),
@@ -713,7 +739,7 @@ export function App() {
     },
     {
       label: t(ui, 'menu.insert'),
-      items: [cmd('insert.heading'), cmd('insert.text'), cmd('insert.definition'), cmd('insert.check'), cmd('insert.pick'), cmd('insert.pageBreak'), sep, cmd('insert.newTable'), cmd('insert.importTable'), sep,
+      items: [cmd('insert.heading'), cmd('insert.text'), cmd('insert.definition'), cmd('insert.check'), cmd('insert.pick'), cmd('insert.pageBreak'), sep, cmd('insert.newTable'), cmd('insert.importTable'), cmd('insert.block'), sep,
         { kind: 'submenu', label: t(ui, 'menu.layer'), items: [cmd('insert.layerCalc'), cmd('insert.layerData'), cmd('insert.layerSources')] },
       ],
     },
@@ -840,6 +866,8 @@ export function App() {
                     onChange={setLayers}
                     onAdd={(kind) => void newLayer(kind)}
                     onDelete={(id) => void deleteLayer(id)}
+                    blocks={[...doc.blocks].map(([name, b]) => ({ name, version: b.version, ...(b.origin !== undefined ? { origin: b.origin } : {}) }))}
+                    onDeleteBlock={(name) => void deleteBlock(name)}
                   />
                 ) : pane === 'details' ? (
                   <Inspector

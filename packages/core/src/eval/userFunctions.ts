@@ -97,6 +97,7 @@ export function applyFunction(fn: FunctionValue, call: CallExpr, ctx: EvalContex
     registry: ctx.registry,
     warnings: ctx.warnings,
     ...(ctx.tableReads ? { tableReads: ctx.tableReads } : {}),
+    ...(ctx.blocks ? { blocks: ctx.blocks } : {}),
     lookup(name: string, span: Span): Value {
       const index = fn.params.indexOf(name);
       if (index !== -1) return args[index]!;

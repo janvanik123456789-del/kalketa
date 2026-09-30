@@ -25,7 +25,7 @@ import { basename, extname, join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { defaultRegistry, traceName, type Diagnostic } from '@calccanvas/core';
 import { catalogFor, formatDiagnostic, t, type Catalog, type UiKey } from '@calccanvas/i18n';
-import { appendixLayers, evaluateDocument, FILE_EXTENSION, importTable, parseCsv, readWorkbook } from '@calccanvas/sheet';
+import { appendixLayers, blockAppendices, evaluateDocument, FILE_EXTENSION, importTable, parseCsv, readWorkbook } from '@calccanvas/sheet';
 import { openSheet, saveSheetFile, writeFolder, writeTable } from './files.js';
 import { htmlToPdf } from './pdf.js';
 import { formatReport, formatTrace } from './report.js';
@@ -99,7 +99,7 @@ async function main(argv: string[]): Promise<number> {
       paper: doc.layout.paper,
       orientation: doc.layout.orientation,
       resolveFile: (path) => dataUri(path, doc.files.get(path)),
-      appendices: appendixLayers(doc.layers, evaluation, (layer) => t(printCatalog, `layer.kind.${layer.kind}` as UiKey)),
+      appendices: [...appendixLayers(doc.layers, evaluation, (layer) => t(printCatalog, `layer.kind.${layer.kind}` as UiKey)), ...blockAppendices(evaluation.main)],
     });
     const htmlOut = values.out ?? file.slice(0, -extname(file).length) + '.html';
     writeFileSync(htmlOut, html);

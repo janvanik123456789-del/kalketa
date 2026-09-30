@@ -61,6 +61,11 @@ export const DIAGNOSTIC_SEVERITY = {
   'E-NOT-FUNCTION': 'error',
   'E-RECURSION': 'error',
 
+  // Blocks
+  'E-BLOCK-INPUT': 'error',
+  'E-BLOCK-ERROR': 'error',
+  'E-BLOCK-OUTPUT': 'error',
+
   // Tables
   'E-TABLE-SCHEMA': 'error',
   'E-TABLE-CELL': 'error',

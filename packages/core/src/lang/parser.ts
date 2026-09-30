@@ -30,7 +30,7 @@ export interface ParseResult {
   readonly diagnostics: Diagnostic[];
 }
 
-const KEYWORDS = new Set(['and', 'or', 'not', 'true', 'false', 'check', 'source', 'solve', 'in', 'guess', 'dimension', 'unit']);
+const KEYWORDS = new Set(['and', 'or', 'not', 'true', 'false', 'check', 'source', 'solve', 'in', 'guess', 'dimension', 'unit', 'input']);
 const UNSUPPORTED_STATEMENTS: Readonly<Record<string, string>> = {
   solve: 'solve',
   dimension: 'dimension',
@@ -126,7 +126,8 @@ class LineParser {
 
   /** Name on the left of ":=", if the line looks like a definition (of a value or a function). */
   definitionName(): string | undefined {
-    const [first, second] = this.tokens;
+    const [input, ...rest] = this.tokens;
+    const [first, second] = input?.type === 'ident' && input.text === 'input' ? rest : this.tokens;
     if (first?.type !== 'ident') return undefined;
     if (second?.type === ':=') return first.text;
     return second?.type === '(' && this.tokens.some((t) => t.type === ':=') ? first.text : undefined;
@@ -156,6 +157,13 @@ class LineParser {
     }
 
     const defineAt = this.tokens.findIndex((t) => t.type === ':=');
+    // "input L := 5 m": an input of a block.
+    if (first.type === 'ident' && first.text === 'input' && this.peek(1).type === 'ident') {
+      this.next();
+      const definition = this.parseDefinition(defineAt, lineSpan);
+      if (definition.kind === 'definition' && definition.params) fail('E-SYNTAX', first.span, { expected: 'name', found: 'input' });
+      return { ...definition, input: true } as Statement;
+    }
     if (defineAt !== -1) return this.parseDefinition(defineAt, lineSpan);
     return this.parseDisplay(lineSpan);
   }
@@ -163,7 +171,7 @@ class LineParser {
   private parseDefinition(defineAt: number, lineSpan: Span): Statement {
     const nameToken = this.peek();
     const isFunction = nameToken.type === 'ident' && this.peek(1).type === '(';
-    if (nameToken.type !== 'ident' || (defineAt !== 1 && !isFunction)) {
+    if (nameToken.type !== 'ident' || (defineAt !== this.pos + 1 && !isFunction)) {
       fail('E-SYNTAX', nameToken.span, { expected: 'name', found: nameToken.text });
     }
     if (KEYWORDS.has(nameToken.text)) fail('E-RESERVED', nameToken.span, { name: nameToken.text });

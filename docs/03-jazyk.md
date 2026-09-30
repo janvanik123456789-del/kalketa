@@ -210,6 +210,32 @@ A := A_kruh(20 mm)          ' 314,2 mm²
 - V tisku se definice ukáže jako vzorec bez dosazení a výsledku, hlavička česky s „;“: `σ(M; W)`.
 - Celá mocnina zachová jednotku, se kterou hodnota přišla: `(20 mm)²` je 400 mm², ne 0,0004 m².
 
+### 7.2a Znovupoužitelné bloky (F7)
+
+Blok je hotový výpočet uložený v listu (`blocks/<Jméno>/`), například „prostý nosník“. Jeho vstupy se v textu bloku označí slovem `input`:
+
+```text
+# Prostý nosník                  ' text bloku
+@version 1.2
+input L := 5 m
+input q := 12 kN/m
+M_max := q·L²/8 | kN·m
+```
+
+V listu se blok volá jménem, vstupy se zadávají jménem a nezadané platí z bloku:
+
+```text
+N1 := Prosty_nosnik(L: 6 m; q: 10 kN/m)
+M := N1.M_max                    ' 45 kN·m
+```
+
+- Výsledek volání nese všechny hodnoty bloku (`N1.M_max`, `N1.L`).
+- Vstup musí mít stejný rozměr jako v bloku (E-BLOCK-INPUT). Neznámý vstup i nepojmenovaný argument je chyba.
+- Blok smí použít jiný blok, ale ne sám sebe.
+- Změna textu bloku nebo vstupu přepočte všechna místa, kde se blok volá.
+- V tisku je u řádku odkaz „Výpočet bloku: Příloha C“. Každé použití bloku se vytiskne jako příloha s celým výpočtem pro zadané vstupy, aby kontrolor viděl, odkud výsledek je.
+- V editoru: Vložit → Blok ze souboru… zkopíruje výpočet z jiného souboru do listu a vloží řádek s voláním a předvyplněnými vstupy. Bloky listu jsou vidět v panelu Vrstvy.
+
 ### 7.3 Podmíněná hodnota
 
 ```text

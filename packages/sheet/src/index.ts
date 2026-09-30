@@ -6,7 +6,7 @@
  * .calc container will use (F4).
  */
 
-import { buildTable, type Diagnostic, type SheetResult, type Table, type TableBuildResult, type TableSchema, type UnitRegistry } from '@calccanvas/core';
+import { buildTable, type BlockSource, type Diagnostic, type SheetResult, type Table, type TableBuildResult, type TableSchema, type UnitRegistry } from '@calccanvas/core';
 import type { SheetDocument } from './container.js';
 import { LayerSessions, type LayerEvaluation } from './layers.js';
 import { parseCsv, writeCsv } from './csv.js';
@@ -110,11 +110,16 @@ export function documentTables(doc: SheetDocument, registry: UnitRegistry): { ta
 }
 
 /** Evaluates a document with its own tables. Table problems come first in the diagnostics. */
+/** The blocks of a document, as the calculation takes them. */
+export function documentBlocks(doc: SheetDocument): Map<string, BlockSource> {
+  return new Map([...doc.blocks].map(([name, block]) => [name, { name, source: block.source, version: block.version }]));
+}
+
 export function evaluateDocument(
   doc: SheetDocument,
   registry: UnitRegistry,
 ): { result: SheetResult; evaluation: LayerEvaluation; tableDiagnostics: Diagnostic[] } {
   const { tables, diagnostics } = documentTables(doc, registry);
-  const evaluation = new LayerSessions(registry).evaluate(doc.source, doc.layers, tables);
+  const evaluation = new LayerSessions(registry).evaluate(doc.source, doc.layers, tables, documentBlocks(doc));
   return { result: evaluation.main, evaluation, tableDiagnostics: diagnostics };
 }

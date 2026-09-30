@@ -10,7 +10,7 @@
  *   sources  theory, requirements, reasons: text, cropped figures, citations, links
  */
 
-import type { Diagnostic, ImportedValue, SheetResult, Table, UnitRegistry } from '@calccanvas/core';
+import type { BlockSource, Diagnostic, ImportedValue, SheetResult, Table, UnitRegistry } from '@calccanvas/core';
 import { SheetSession } from '@calccanvas/core';
 
 export type LayerKind = 'sheet' | 'calc' | 'data' | 'ai' | 'sources';
@@ -142,7 +142,7 @@ export class LayerSessions {
 
   constructor(private readonly registry: UnitRegistry) {}
 
-  evaluate(source: string, layers: readonly Layer[], tables: readonly Table[]): LayerEvaluation {
+  evaluate(source: string, layers: readonly Layer[], tables: readonly Table[], blocks: ReadonlyMap<string, BlockSource> = new Map()): LayerEvaluation {
     const next = new Map<string, SheetSession>();
     const session = (id: string) => {
       const s = this.sessions.get(id) ?? new SheetSession({ registry: this.registry });
@@ -155,13 +155,13 @@ export class LayerSessions {
     const aux = new Map<string, SheetResult>();
     for (const layer of layers) {
       if (layer.kind !== 'calc') continue;
-      const result = session(layer.id).update(layer.text ?? '', { tables, imports: new Map(imports) });
+      const result = session(layer.id).update(layer.text ?? '', { tables, imports: new Map(imports), blocks });
       aux.set(layer.id, result);
       for (const [name, value] of result.values) {
         if (!imports.has(name)) imports.set(name, { value, layer: layer.id, layerName: layer.name ?? layer.id });
       }
     }
-    const main = session(MAIN_LAYER).update(source, { tables, imports });
+    const main = session(MAIN_LAYER).update(source, { tables, imports, blocks });
     this.sessions = next;
     return { main, aux, used: usedLayers(main, aux) };
   }
@@ -193,6 +193,18 @@ export function allDiagnostics(evaluation: LayerEvaluation): Diagnostic[] {
 export type AppendixLayer =
   | { readonly kind: 'calc'; readonly layer: string; readonly name: string; readonly result: SheetResult }
   | { readonly kind: 'notes'; readonly layer: string; readonly name: string; readonly text: string };
+
+/**
+ * Each use of a block on the printed sheet, printed after it with the inputs
+ * of that use: "N1 := Prosty_nosnik(L: 6 m)" gives "Prosty_nosnik – N1".
+ */
+export function blockAppendices(main: SheetResult): AppendixLayer[] {
+  return main.statements.flatMap((r): AppendixLayer[] => {
+    const s = r.statement;
+    if (s.kind !== 'definition' || r.value?.type !== 'record') return [];
+    return [{ kind: 'calc', layer: `block:${s.name}`, name: `${r.value.block.replaceAll('_', ' ')} – ${s.name}`, result: r.value.result }];
+  });
+}
 
 /**
  * Layers printed after the sheet, in layer order: those marked as appendix,

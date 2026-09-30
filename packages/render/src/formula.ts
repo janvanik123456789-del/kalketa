@@ -18,6 +18,8 @@ export interface FormulaOptions {
   readonly booleans: { readonly true: string; readonly false: string };
   /** Value to print instead of a variable or column; undefined keeps the symbol. */
   readonly substitute?: (expr: Expr) => Substituted | undefined;
+  /** Names set as plain text, not as math symbols: blocks ("Prosty_nosnik" as "Prosty nosnik"). */
+  readonly textNames?: ReadonlySet<string>;
 }
 
 export interface Substituted {
@@ -131,7 +133,11 @@ function renderCall(expr: Extract<Expr, { kind: 'call' }>, o: FormulaOptions): R
     if (parts.length > 0) parts.push(mo(o.argumentSeparator));
     parts.push(mtext(`${named.name}: `), render(named.value, o).node);
   }
-  const name = expr.name.includes('_') ? sub(mi(expr.name.split('_')[0]!, true), mi(expr.name.split('_').slice(1).join(','), true)) : mi(expr.name, true);
+  const name = o.textNames?.has(expr.name)
+    ? mtext(expr.name.replaceAll('_', ' '))
+    : expr.name.includes('_')
+      ? sub(mi(expr.name.split('_')[0]!, true), mi(expr.name.split('_').slice(1).join(','), true))
+      : mi(expr.name, true);
   return { node: row(name, paren(row(...parts))), prec: ATOM };
 }
 

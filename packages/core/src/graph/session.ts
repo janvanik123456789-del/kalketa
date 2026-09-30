@@ -13,6 +13,7 @@ import { asBoolean, asQuantity } from '../eval/coerce.js';
 import { compare, evaluate, type EvalContext } from '../eval/evaluator.js';
 import { BUILTIN_CONSTANTS } from '../eval/functions.js';
 import { defineFunction, isBuiltinFunction } from '../eval/userFunctions.js';
+import type { BlockCaller, BlockSource } from '../eval/blocks.js';
 import type { BinaryOperator, Sheet, Statement } from '../lang/ast.js';
 import { parse } from '../lang/parser.js';
 import type { Table, TableRead } from '../tables/table.js';
@@ -20,7 +21,7 @@ import { sameDim } from '../units/dimension.js';
 import { baseUnitSymbol, toDisplay, type DisplayValue } from '../units/display.js';
 import { defaultRegistry, type UnitRegistry } from '../units/registry.js';
 import { resolveUnit, type ResolvedUnit } from '../units/unitExpr.js';
-import { fingerprint, type Quantity, type Value } from '../values/value.js';
+import { fingerprint, typeName, type Quantity, type Value } from '../values/value.js';
 
 export type StatementStatus = 'ok' | 'error' | 'blocked' | 'none';
 
@@ -92,6 +93,12 @@ export interface UpdateOptions {
   readonly tables?: readonly Table[];
   /** Results of auxiliary calculation layers, available by name. */
   readonly imports?: ReadonlyMap<string, ImportedValue>;
+  /** Blocks stored in the sheet, callable by name. */
+  readonly blocks?: ReadonlyMap<string, BlockSource>;
+  /** Values for the "input" lines, when this sheet is calculated as a block. */
+  readonly inputs?: ReadonlyMap<string, Value>;
+  /** Blocks being calculated around this one, to stop a block from using itself. */
+  readonly blockStack?: readonly string[];
 }
 
 type EnvEntry = { readonly ok: true; readonly value: Value } | { readonly ok: false };
@@ -119,6 +126,9 @@ export class SheetSession {
     const registry = this.registry;
     const tables = new Map((options.tables ?? []).map((t) => [t.name, t] as const));
     const imports: ReadonlyMap<string, ImportedValue> = options.imports ?? new Map();
+    const blocks: ReadonlyMap<string, BlockSource> = options.blocks ?? new Map();
+    const inputs: ReadonlyMap<string, Value> = options.inputs ?? new Map();
+    const context: StatementContext = { env: new Map(), tables, imports, blocks, inputs, blockStack: options.blockStack ?? [] };
     const parsed = parse(source, { isUnit: (name) => registry.isUnit(name), predefined: [...tables.keys(), ...imports.keys()] });
     const statements = parsed.sheet.statements;
 
@@ -128,7 +138,7 @@ export class SheetSession {
       if (name !== undefined && !definedAt.has(name)) definedAt.set(name, i);
     });
 
-    const env = new Map<string, EnvEntry>();
+    const env = context.env;
     const results: StatementResult[] = [];
     const nextCache = new Map<string, CacheEntry>();
     let evaluated = 0;
@@ -152,7 +162,7 @@ export class SheetSession {
         const reserved = statement.name in BUILTIN_CONSTANTS || (statement.params !== undefined && isBuiltinFunction(statement.name));
         const clash = reserved
           ? 'E-RESERVED'
-          : env.has(statement.name) || tables.has(statement.name) || imports.has(statement.name) ? 'E-REDEFINED' : undefined;
+          : env.has(statement.name) || tables.has(statement.name) || imports.has(statement.name) || blocks.has(statement.name) ? 'E-REDEFINED' : undefined;
         if (clash) {
           const d = diagnostic(clash, statement.nameSpan, { name: statement.name });
           results.push({ statement, status: 'error', ...none, diagnostics: [...parseDiagnostics, d] });
@@ -160,20 +170,22 @@ export class SheetSession {
         }
       }
 
-      const key = source.slice(statement.span.offset, statement.span.offset + statement.span.length);
+      // An input given from outside is part of what the line means.
+      const given = statement.kind === 'definition' && statement.input ? inputs.get(statement.name) : undefined;
+      const key = source.slice(statement.span.offset, statement.span.offset + statement.span.length) + (given ? `\u0000${fingerprint(given)}` : '');
       const cached = this.cache.get(key);
       let result: PartialResult;
       // Results with diagnostics are not reused: their spans point into the old source.
-      const fresh = cached && cached.result.diagnostics.length === 0 && cached.deps.every(([dep, fp]) => currentFingerprint(env, tables, imports, dep) === fp);
+      const fresh = cached && cached.result.diagnostics.length === 0 && cached.deps.every(([dep, fp]) => currentFingerprint(context, dep) === fp);
       if (cached && fresh) {
         result = cached.result;
         reused++;
       } else {
-        result = this.evaluateStatement(statement, env, tables, imports, definedAt, index);
+        result = this.evaluateStatement(statement, context, definedAt, index);
         evaluated++;
       }
       nextCache.set(key, {
-        deps: result.dependencies.map((dep) => [dep, currentFingerprint(env, tables, imports, dep)] as const),
+        deps: result.dependencies.map((dep) => [dep, currentFingerprint(context, dep)] as const),
         result,
       });
 
@@ -200,20 +212,54 @@ export class SheetSession {
     };
   }
 
-  private evaluateStatement(
-    statement: Evaluable,
-    env: ReadonlyMap<string, EnvEntry>,
-    tables: ReadonlyMap<string, Table>,
-    imports: ReadonlyMap<string, ImportedValue>,
-    definedAt: ReadonlyMap<string, number>,
-    index: number,
-  ): PartialResult {
+  /** Calculates a block as a sheet of its own, with the inputs given at the call. */
+  private blockCaller(context: StatementContext, dependencies: string[]): BlockCaller {
+    return {
+      has: (name) => context.blocks.has(name),
+      call: (name, given, span) => {
+        const block = context.blocks.get(name)!;
+        const dependency = `${BLOCK_DEPENDENCY}${name}`;
+        if (!dependencies.includes(dependency)) dependencies.push(dependency);
+        if (context.blockStack.includes(name)) throw new CalcError(diagnostic('E-RECURSION', span, { function: name }));
+        const result = new SheetSession({ registry: this.registry }).update(block.source, {
+          tables: [...context.tables.values()],
+          blocks: context.blocks,
+          inputs: new Map([...given].map(([input, arg]) => [input, arg.value])),
+          blockStack: [...context.blockStack, name],
+        });
+        // Tables the block read are dependencies of the call too.
+        for (const r of result.statements) {
+          for (const dep of r.dependencies) if (context.tables.has(dep) && !dependencies.includes(dep)) dependencies.push(dep);
+        }
+        const inputNames = new Set(result.sheet.statements.flatMap((s) => (s.kind === 'definition' && s.input ? [s.name] : [])));
+        for (const [input, arg] of given) {
+          if (!inputNames.has(input)) throw new CalcError(diagnostic('E-NAMED-ARG', arg.nameSpan, { function: name, argument: input, problem: 'unknown' }));
+        }
+        const inputError = result.diagnostics.find((d) => d.code === 'E-BLOCK-INPUT');
+        if (inputError) throw new CalcError({ ...inputError, span: given.get(String(inputError.params['name']))?.nameSpan ?? span });
+        const errors = result.diagnostics.filter((d) => d.severity === 'error').length;
+        if (errors > 0) throw new CalcError(diagnostic('E-BLOCK-ERROR', span, { block: name, count: errors }));
+        return {
+          type: 'record',
+          block: name,
+          version: block.version,
+          inputs: new Map([...given].map(([input, arg]) => [input, arg.value])),
+          values: result.values,
+          result,
+        };
+      },
+    };
+  }
+
+  private evaluateStatement(statement: Evaluable, context: StatementContext, definedAt: ReadonlyMap<string, number>, index: number): PartialResult {
+    const { env, tables, imports } = context;
     const dependencies: string[] = [];
     const tableReads: TableRead[] = [];
     const ctx: EvalContext = {
       registry: this.registry,
       warnings: [],
       tableReads,
+      ...(context.blocks.size > 0 ? { blocks: this.blockCaller(context, dependencies) } : {}),
       lookup(name: string, span: Span): Value {
         const entry = env.get(name);
         // Unknown names are recorded too, so defining them later invalidates the cache.
@@ -249,6 +295,10 @@ export class SheetSession {
       }
 
       let value = evaluate(statement.expr, ctx);
+      if (statement.kind === 'definition' && statement.input) {
+        const given = context.inputs.get(statement.name);
+        if (given) value = acceptInput(statement, value, given, context.blockStack.at(-1) ?? '');
+      }
       let target: ResolvedUnit | undefined;
       if (statement.target) {
         target = resolveUnit(statement.target, this.registry);
@@ -279,6 +329,20 @@ export class SheetSession {
       throw err;
     }
   }
+}
+
+/** A value given for a block input must be of the same kind as the block's own. */
+function acceptInput(statement: Extract<Statement, { kind: 'definition' }>, own: Value, given: Value, block: string): Value {
+  if (own.type === 'quantity' && given.type === 'quantity') {
+    if (!sameDim(own.dim, given.dim) || !!own.absolute !== !!given.absolute) {
+      throw new CalcError(diagnostic('E-BLOCK-INPUT', statement.nameSpan, { block, name: statement.name, expected: baseUnitSymbol(own.dim), found: baseUnitSymbol(given.dim) }));
+    }
+    return given;
+  }
+  if (own.type !== given.type) {
+    throw new CalcError(diagnostic('E-BLOCK-INPUT', statement.nameSpan, { block, name: statement.name, expected: typeName(own), found: typeName(given) }));
+  }
+  return given;
 }
 
 /**
@@ -323,7 +387,25 @@ export function evaluateSheet(source: string, options: SessionOptions & UpdateOp
   return new SheetSession(options).update(source, options);
 }
 
-function currentFingerprint(env: ReadonlyMap<string, EnvEntry>, tables: ReadonlyMap<string, Table>, imports: ReadonlyMap<string, ImportedValue>, name: string): string {
+/** What evaluating one line needs besides the line itself. */
+interface StatementContext {
+  readonly env: Map<string, EnvEntry>;
+  readonly tables: ReadonlyMap<string, Table>;
+  readonly imports: ReadonlyMap<string, ImportedValue>;
+  readonly blocks: ReadonlyMap<string, BlockSource>;
+  readonly inputs: ReadonlyMap<string, Value>;
+  readonly blockStack: readonly string[];
+}
+
+/** Dependency on a block's text: recorded as "block:<name>". */
+const BLOCK_DEPENDENCY = 'block:';
+
+function currentFingerprint(context: StatementContext, name: string): string {
+  const { env, tables, imports, blocks } = context;
+  if (name.startsWith(BLOCK_DEPENDENCY)) {
+    const block = blocks.get(name.slice(BLOCK_DEPENDENCY.length));
+    return block ? `${block.version}:${block.source}` : 'missing';
+  }
   const entry = env.get(name);
   if (!entry) {
     const imported = imports.get(name);

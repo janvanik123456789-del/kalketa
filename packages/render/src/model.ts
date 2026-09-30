@@ -66,6 +66,8 @@ export type PrintBlock =
       readonly comment?: string;
       /** Values taken from auxiliary calculations, e.g. "q (Příloha A: Zatížení)". */
       readonly imported?: readonly string[];
+      /** Appendix with the calculation of the block used on this line. */
+      readonly blockCalc?: string;
       readonly messages: readonly Message[];
     }
   | {
@@ -126,7 +128,10 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
   const decimalComma = formatNumber(1.5, catalog).includes(',');
   const numberFormat = (digits: number) => (value: number) => formatNumber(value, catalog, { digits });
 
+  // Blocks used in the sheet: their names are words, not math symbols.
+  const blockNames = new Set(result.statements.flatMap((r) => (r.value?.type === 'record' ? [r.value.block] : [])));
   const formulaOptions = (substitute?: FormulaOptions['substitute']): FormulaOptions => ({
+    ...(blockNames.size > 0 ? { textNames: blockNames } : {}),
     literal: numberFormat(15),
     argumentSeparator: decimalComma ? ';' : ',',
     booleans: { true: catalog.terms['true'] ?? 'true', false: catalog.terms['false'] ?? 'false' },
@@ -178,7 +183,16 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
           break;
         }
         const imported = importedValues(r, result, options);
-        blocks.push({ kind: 'equation', line: s.span.line, lines, ...(s.comment ? { comment: s.comment } : {}), ...(imported.length ? { imported } : {}), messages });
+        const blockCalc = s.kind === 'definition' && r.value?.type === 'record' ? options.importSource?.(`block:${s.name}`) : undefined;
+        blocks.push({
+          kind: 'equation',
+          line: s.span.line,
+          lines,
+          ...(s.comment ? { comment: s.comment } : {}),
+          ...(imported.length ? { imported } : {}),
+          ...(blockCalc ? { blockCalc } : {}),
+          messages,
+        });
         break;
       }
       case 'check': {
@@ -378,6 +392,7 @@ function functionHead(name: string, params: readonly { readonly name: string }[]
 function otherValueNode(value: Value): MathNode | undefined {
   if (value.type === 'text') return mtext(value.value);
   if (value.type === 'row') return mtext(value.label);
+  if (value.type === 'record') return mtext(`${value.block.replaceAll('_', ' ')} ${value.version}`);
   return undefined;
 }
 

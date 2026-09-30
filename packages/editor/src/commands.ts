@@ -61,6 +61,7 @@ export interface CommandContext {
     insert(kind: 'heading' | 'text' | 'definition' | 'check' | 'pick' | 'pageBreak'): void;
     newTable(): void;
     importTable(): void;
+    insertBlock(): void;
     addLayer(kind: 'calc' | 'data' | 'sources'): void;
     settings(): void;
     shortcuts(): void;
@@ -115,6 +116,7 @@ export function buildCommands(ctx: CommandContext): Map<string, Command> {
   add('insert.pageBreak', 'insert', () => a.insert('pageBreak'), { shortcut: 'Ctrl+Enter' });
   add('insert.newTable', 'insert', a.newTable);
   add('insert.importTable', 'insert', a.importTable);
+  add('insert.block', 'insert', a.insertBlock);
   add('insert.layerCalc', 'insert', () => a.addLayer('calc'));
   add('insert.layerData', 'insert', () => a.addLayer('data'));
   add('insert.layerSources', 'insert', () => a.addLayer('sources'));

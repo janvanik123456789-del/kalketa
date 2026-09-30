@@ -188,8 +188,21 @@ interface RowEditorProps {
 
 function RowEditor({ seg, initialCursor, decimalComma, result, onChange, onEnter, onDeleteEmpty, onMove, onDone }: RowEditorProps) {
   // The line is edited in the user's notation (50,5) and stored in file notation (50.5).
-  const shown = decimalComma ? toDecimalComma(seg.text) : seg.text;
-  const store = (text: string) => onChange(decimalComma ? fromDecimalComma(text) : text);
+  // What the user types is kept as typed: converting it back on every keystroke
+  // would turn a half-typed "55," into "55;" before the next digit arrives.
+  const toShown = (text: string) => (decimalComma ? toDecimalComma(text) : text);
+  const [shown, setShown] = useState(() => toShown(seg.text));
+  const lastStored = useRef(seg.text);
+  const store = (text: string) => {
+    setShown(text);
+    lastStored.current = decimalComma ? fromDecimalComma(text) : text;
+    onChange(lastStored.current);
+  };
+  // A change from outside (not typed here) replaces the draft.
+  if (seg.text !== lastStored.current) {
+    lastStored.current = seg.text;
+    setShown(toShown(seg.text));
+  }
   const ref = useRef<HTMLTextAreaElement>(null);
   const [original] = useState(seg.text);
   const pendingCursor = useRef<number | undefined>(undefined);
@@ -225,6 +238,7 @@ function RowEditor({ seg, initialCursor, decimalComma, result, onChange, onEnter
       onEnter();
     } else if (e.key === 'Escape') {
       e.preventDefault();
+      lastStored.current = original;
       onChange(original);
       onDone();
     } else if (e.key === 'Backspace' && area.value === '') {

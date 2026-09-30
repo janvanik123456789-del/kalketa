@@ -55,6 +55,13 @@ describe('quantities', () => {
     expectValue('6 m / 2 s', 3, 'm/s');
   });
 
+  it('keeps the unit when scaling by a plain number', () => {
+    expectValue('g := 3.5 kN/m\n1.35·g', 4.725, 'kN/m');
+    expectValue('g := 3.5 kN/m\ng/2', 1.75, 'kN/m');
+    expectValue('g := 3.5 kN/m\n2·g + 1 kN/m', 8, 'kN/m');
+    expectValue('L := 250 cm\n2/L', 0.8, '1/m');
+  });
+
   it('shows preferred SI units for computed results', () => {
     expectValue('2 kg · 3 m/s²', 6, 'N');
     expectValue('10 N · 2 m / 4 s', 5, 'W');

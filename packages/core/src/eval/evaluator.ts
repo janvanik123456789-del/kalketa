@@ -108,9 +108,12 @@ function evaluateBinary(op: BinaryOperator, leftExpr: Expr, rightExpr: Expr, spa
     case '/': {
       warnOnAbsoluteTemperature(a, leftExpr.span, ctx);
       warnOnAbsoluteTemperature(b, rightExpr.span, ctx);
-      if (op === '*') return quantity(a.si * b.si, multiplyDims(a.dim, b.dim));
+      // Scaling by a plain number keeps the unit: 1.35 · g_k stays in kN/m.
+      const scaled = isDimensionless(b.dim) && !b.hint ? a : op === '*' && isDimensionless(a.dim) && !a.hint ? b : undefined;
+      const hint = scaled?.hint && !isDimensionless(scaled.dim) ? { hint: scaled.hint } : {};
+      if (op === '*') return quantity(a.si * b.si, multiplyDims(a.dim, b.dim), hint);
       if (b.si === 0) fail('E-DIV-ZERO', rightExpr.span);
-      return quantity(a.si / b.si, divideDims(a.dim, b.dim));
+      return quantity(a.si / b.si, divideDims(a.dim, b.dim), hint);
     }
     case '^': {
       if (!isDimensionless(b.dim)) fail('E-POWER-DIM', rightExpr.span, { dim: baseUnitSymbol(b.dim) });

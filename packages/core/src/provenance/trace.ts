@@ -12,7 +12,8 @@
 
 import type { SheetResult, StatementResult } from '../graph/session.js';
 import { rowLabel, type TableRead, type TableSource } from '../tables/table.js';
-import type { DisplayValue } from '../units/display.js';
+import { toDisplay, type DisplayValue } from '../units/display.js';
+import { defaultRegistry } from '../units/registry.js';
 import type { Value } from '../values/value.js';
 
 export interface TraceTableRef extends TableRead {
@@ -22,7 +23,9 @@ export interface TraceTableRef extends TableRead {
 }
 
 export interface TraceNode {
-  readonly kind: 'variable' | 'table' | 'unknown';
+  readonly kind: 'variable' | 'table' | 'imported' | 'unknown';
+  /** For values taken from another layer: that layer. */
+  readonly layer?: { readonly id: string; readonly name: string };
   readonly name: string;
   /** Index into SheetResult.statements. */
   readonly statement?: number;
@@ -41,6 +44,19 @@ export interface TraceNode {
 export function traceName(result: SheetResult, name: string, depth = 32): TraceNode | undefined {
   const index = result.statements.findIndex((r) => r.statement.kind === 'definition' && r.statement.name === name);
   if (index !== -1) return traceStatement(result, index, depth);
+  const imported = result.imports.get(name);
+  if (imported) {
+    const display = imported.value.type === 'quantity' ? toDisplay(imported.value, defaultRegistry) : undefined;
+    return {
+      kind: 'imported',
+      name,
+      value: imported.value,
+      ...(display ? { display } : {}),
+      layer: { id: imported.layer, name: imported.layerName },
+      inputs: [],
+      tables: [],
+    };
+  }
   const table = result.tables.get(name);
   if (table) {
     return {

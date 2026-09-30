@@ -65,6 +65,8 @@ export interface SheetResult {
   readonly values: ReadonlyMap<string, Value>;
   /** Tables available to the sheet, by name. */
   readonly tables: ReadonlyMap<string, Table>;
+  /** Values taken from auxiliary calculation layers, by name. */
+  readonly imports: ReadonlyMap<string, ImportedValue>;
   readonly diagnostics: readonly Diagnostic[];
   /** All checks in sheet order; failed or not evaluated ones included. */
   readonly checks: readonly CheckSummaryItem[];
@@ -76,9 +78,19 @@ export interface SessionOptions {
   readonly registry?: UnitRegistry;
 }
 
+/** A value computed in another layer (an auxiliary calculation) and used here by name. */
+export interface ImportedValue {
+  readonly value: Value;
+  /** Id and name of the layer it comes from. */
+  readonly layer: string;
+  readonly layerName: string;
+}
+
 export interface UpdateOptions {
-  /** Tables of the sheet's data layer, available by name. */
+  /** Tables of the sheet's data layers, available by name. */
   readonly tables?: readonly Table[];
+  /** Results of auxiliary calculation layers, available by name. */
+  readonly imports?: ReadonlyMap<string, ImportedValue>;
 }
 
 type EnvEntry = { readonly ok: true; readonly value: Value } | { readonly ok: false };
@@ -105,7 +117,8 @@ export class SheetSession {
   update(source: string, options: UpdateOptions = {}): SheetResult {
     const registry = this.registry;
     const tables = new Map((options.tables ?? []).map((t) => [t.name, t] as const));
-    const parsed = parse(source, { isUnit: (name) => registry.isUnit(name), predefined: tables.keys() });
+    const imports: ReadonlyMap<string, ImportedValue> = options.imports ?? new Map();
+    const parsed = parse(source, { isUnit: (name) => registry.isUnit(name), predefined: [...tables.keys(), ...imports.keys()] });
     const statements = parsed.sheet.statements;
 
     const definedAt = new Map<string, number>();
@@ -135,7 +148,8 @@ export class SheetSession {
       }
 
       if (statement.kind === 'definition') {
-        const clash = statement.name in BUILTIN_CONSTANTS ? 'E-RESERVED' : env.has(statement.name) || tables.has(statement.name) ? 'E-REDEFINED' : undefined;
+        const clash =
+          statement.name in BUILTIN_CONSTANTS ? 'E-RESERVED' : env.has(statement.name) || tables.has(statement.name) || imports.has(statement.name) ? 'E-REDEFINED' : undefined;
         if (clash) {
           const d = diagnostic(clash, statement.nameSpan, { name: statement.name });
           results.push({ statement, status: 'error', ...none, diagnostics: [...parseDiagnostics, d] });
@@ -147,16 +161,16 @@ export class SheetSession {
       const cached = this.cache.get(key);
       let result: PartialResult;
       // Results with diagnostics are not reused: their spans point into the old source.
-      const fresh = cached && cached.result.diagnostics.length === 0 && cached.deps.every(([dep, fp]) => currentFingerprint(env, tables, dep) === fp);
+      const fresh = cached && cached.result.diagnostics.length === 0 && cached.deps.every(([dep, fp]) => currentFingerprint(env, tables, imports, dep) === fp);
       if (cached && fresh) {
         result = cached.result;
         reused++;
       } else {
-        result = this.evaluateStatement(statement, env, tables, definedAt, index);
+        result = this.evaluateStatement(statement, env, tables, imports, definedAt, index);
         evaluated++;
       }
       nextCache.set(key, {
-        deps: result.dependencies.map((dep) => [dep, currentFingerprint(env, tables, dep)] as const),
+        deps: result.dependencies.map((dep) => [dep, currentFingerprint(env, tables, imports, dep)] as const),
         result,
       });
 
@@ -176,6 +190,7 @@ export class SheetSession {
       statements: results,
       values,
       tables,
+      imports,
       diagnostics: results.flatMap((r) => r.diagnostics),
       checks: checkSummary(results),
       stats: { evaluated, reused },
@@ -186,6 +201,7 @@ export class SheetSession {
     statement: Evaluable,
     env: ReadonlyMap<string, EnvEntry>,
     tables: ReadonlyMap<string, Table>,
+    imports: ReadonlyMap<string, ImportedValue>,
     definedAt: ReadonlyMap<string, number>,
     index: number,
   ): PartialResult {
@@ -201,6 +217,8 @@ export class SheetSession {
         if (!dependencies.includes(name)) dependencies.push(name);
         if (entry?.ok) return entry.value;
         if (entry) throw new DependencyFailed(name);
+        const imported = imports.get(name);
+        if (imported) return imported.value;
         const table = tables.get(name);
         if (table) return { type: 'table', table };
         const at = definedAt.get(name);
@@ -297,9 +315,13 @@ export function evaluateSheet(source: string, options: SessionOptions & UpdateOp
   return new SheetSession(options).update(source, options);
 }
 
-function currentFingerprint(env: ReadonlyMap<string, EnvEntry>, tables: ReadonlyMap<string, Table>, name: string): string {
+function currentFingerprint(env: ReadonlyMap<string, EnvEntry>, tables: ReadonlyMap<string, Table>, imports: ReadonlyMap<string, ImportedValue>, name: string): string {
   const entry = env.get(name);
-  if (!entry) return tables.get(name)?.fingerprint ?? 'missing';
+  if (!entry) {
+    const imported = imports.get(name);
+    if (imported) return `${imported.layer}:${fingerprint(imported.value)}`;
+    return tables.get(name)?.fingerprint ?? 'missing';
+  }
   return entry.ok ? fingerprint(entry.value) : 'failed';
 }
 

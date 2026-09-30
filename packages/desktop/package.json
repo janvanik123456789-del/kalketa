@@ -69,7 +69,8 @@
       ],
       "icon": "build/icon.png",
       "category": "Science",
-      "synopsis": "Engineering calculations with units, tables and print"
+      "synopsis": "Engineering calculations with units, tables and print",
+      "executableName": "calccanvas"
     },
     "appImage": {
       "artifactName": "CalcCanvas-${version}-x86_64.AppImage"

@@ -93,7 +93,9 @@ export function App() {
     // Another window (Window > New window) starts empty; the first one shows the example.
     const blank = new URLSearchParams(location.search).has('blank');
     const language = initialLanguage();
-    const first = newTab<SheetDocument, FileRef>(blank ? emptyDocument(t(catalogFor(language), 'editor.untitled'), language) : exampleDocument(), MAIN_LAYER);
+    const first = blank
+      ? newTab<SheetDocument, FileRef>(emptyDocument(t(catalogFor(language), 'editor.untitled'), language), MAIN_LAYER, undefined, true)
+      : newTab<SheetDocument, FileRef>(exampleDocument(), MAIN_LAYER);
     return { tabs: [first], active: first.id };
   });
   const tab = docs.tabs.find((d) => d.id === docs.active) ?? docs.tabs[0]!;
@@ -336,9 +338,9 @@ export function App() {
   };
 
   /** Shows a document in a tab of its own (or switches to it when that file is already open). */
-  const openDocument = (next: SheetDocument, ref: FileRef | undefined, diagnostics: Diagnostic[] = []) => {
+  const openDocument = (next: SheetDocument, ref: FileRef | undefined, diagnostics: Diagnostic[] = [], blank = false) => {
     const path = ref?.kind === 'path' ? ref.path : undefined;
-    const added = newTab<SheetDocument, FileRef>(next, firstVisible(next.layers), ref ? { ref, ...(path !== undefined ? { path } : {}) } : undefined);
+    const added = newTab<SheetDocument, FileRef>(next, firstVisible(next.layers), ref ? { ref, ...(path !== undefined ? { path } : {}) } : undefined, blank);
     setDocs((s) => openTab(s, added));
     leaveEditing();
     setNotice(diagnostics.length > 0 ? diagnostics.map((d) => formatDiagnostic(d, ui)).join(' ') : undefined);
@@ -356,7 +358,7 @@ export function App() {
     const target = docs.tabs.find((d) => d.id === id);
     if (!target) return;
     if (isDirty(target) && !(await askConfirm(t(ui, 'docs.closeUnsaved', { name: docLabel(target) })))) return;
-    setDocs((s) => closeTab(s, id, () => newTab<SheetDocument, FileRef>(emptyDocument(t(ui, 'editor.untitled'), language), MAIN_LAYER)));
+    setDocs((s) => closeTab(s, id, () => newTab<SheetDocument, FileRef>(emptyDocument(t(ui, 'editor.untitled'), language), MAIN_LAYER, undefined, true)));
     leaveEditing();
   };
 
@@ -587,7 +589,7 @@ export function App() {
     tableEditor,
     documents: docs.tabs.length,
     actions: {
-      newDocument: () => openDocument(emptyDocument(t(ui, 'editor.untitled'), language), undefined),
+      newDocument: () => openDocument(emptyDocument(t(ui, 'editor.untitled'), language), undefined, [], true),
       open: () => void pickAndOpen({ sheets: t(ui, 'editor.sheetFiles') }).then(show),
       save: () => void save(),
       saveAs: () => void save(true),

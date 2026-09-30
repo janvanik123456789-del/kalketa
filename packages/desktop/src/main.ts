@@ -325,7 +325,7 @@ async function runSmokeTest(pdfPath: string): Promise<void> {
     await writeFile(pdfPath, pdf);
     ok =
       state.bridge && state.sideBySide && state.menus === 7 && state.toolbars > 0 && state.rows > 10 && state.summary > 0 && state.math > 0 && reshapedColumns === 3 && pdf.length > 1000 &&
-      layers.tabs === 5 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.blocksOk !== false && layers.mainHidden && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.q.includes('16,73');
+      layers.newKeepsExample && layers.tabs === 5 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.blocksOk !== false && layers.mainHidden && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.q.includes('16,73');
     console.log(JSON.stringify({ ok, ...state, reshapedColumns, layers, pdfBytes: pdf.length }));
   } catch (err) {
     console.log(JSON.stringify({ ok: false, error: (err as Error).message }));
@@ -404,6 +404,11 @@ async function pressKey(keyCode: string, modifiers: Array<'control' | 'shift'> =
 async function layersWithRealInput(picture: string) {
   const contents = smokeWindow!.webContents;
   contents.focus();
+  // Right after start, "+" adds a tab next to the example (it does not replace it); Ctrl+W closes it again.
+  await clickOn('.doc-tab-new');
+  const tabsAfterNew = (await contents.executeJavaScript(`[...document.querySelectorAll('.doc-tab .doc-tab-title')].map((t) => t.textContent)`)) as string[];
+  await pressKey('W', ['control']);
+  const newKeepsExample = tabsAfterNew.length === 2 && (await contents.executeJavaScript(`document.querySelectorAll('.doc-tab').length`)) === 1;
   await clickOn('.layer-tab.add'); // opens the Layers panel
   await clickOn('.layer-add button:nth-child(1)'); // auxiliary calculation
   await pressKey('A', ['control']);
@@ -560,7 +565,7 @@ async function layersWithRealInput(picture: string) {
     blocksOk = shown.blocks === 1 && shown.errors === 0 && shown.text.includes('Prosty nosnik 1.2') && shown.text.includes('45');
     await takePicture(picture.replace(/[.]png$/, '-blocks.png'));
   }
-  return { ...state, citations, aiReadOnly, split, mainHidden, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, blocksOk };
+  return { ...state, newKeepsExample, citations, aiReadOnly, split, mainHidden, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, blocksOk };
 }
 
 /**

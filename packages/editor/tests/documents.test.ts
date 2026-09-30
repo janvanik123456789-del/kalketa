@@ -8,19 +8,29 @@ const edited = (tab: Tab): Tab => ({ ...tab, history: record(tab.history, `${tab
 
 describe('open documents', () => {
   it('know when they are unsaved or untouched', () => {
-    const example = newTab<string, string>('example', 'main');
-    expect(isPristine(example)).toBe(true);
-    expect(isDirty(edited(example))).toBe(true);
-    expect(isPristine(edited(example))).toBe(false);
+    const blank = newTab<string, string>('', 'main', undefined, true);
+    expect(isPristine(blank)).toBe(true);
+    expect(isDirty(edited(blank))).toBe(true);
+    expect(isPristine(edited(blank))).toBe(false);
     expect(isPristine(file('a.calc'))).toBe(false);
+    expect(isPristine(newTab<string, string>('example', 'main'))).toBe(false);
   });
 
   it('replace an untouched new document when a file is opened', () => {
-    const example = newTab<string, string>('example', 'main');
+    const blank = newTab<string, string>('', 'main', undefined, true);
     const a = file('a.calc');
-    const state = openTab({ tabs: [example], active: example.id }, a);
+    const state = openTab({ tabs: [blank], active: blank.id }, a);
     expect(state.tabs.map((t) => t.id)).toEqual([a.id]);
     expect(state.active).toBe(a.id);
+  });
+
+  it('never replace the example, and always add a new document', () => {
+    const example = newTab<string, string>('example', 'main');
+    const a = file('a.calc');
+    expect(openTab({ tabs: [example], active: example.id }, a).tabs.map((t) => t.id)).toEqual([example.id, a.id]);
+    const blank = newTab<string, string>('', 'main', undefined, true);
+    const another = newTab<string, string>('', 'main', undefined, true);
+    expect(openTab({ tabs: [blank], active: blank.id }, another).tabs).toHaveLength(2);
   });
 
   it('add a tab after the active one otherwise', () => {

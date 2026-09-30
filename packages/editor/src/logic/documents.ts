@@ -16,13 +16,16 @@ export interface DocTab<D, R> {
   /** Layers open side by side, and which of them is being worked on. */
   readonly panes: readonly string[];
   readonly activePane: number;
+  /** A new, empty calculation: a file opened while it is untouched takes its place. */
+  readonly blank?: boolean;
 }
 
 let lastId = 0;
 
-export function newTab<D, R>(doc: D, firstPane: string, file?: { ref: R; path?: string }): DocTab<D, R> {
+export function newTab<D, R>(doc: D, firstPane: string, file?: { ref: R; path?: string }, blank = false): DocTab<D, R> {
   return {
     id: ++lastId,
+    ...(blank ? { blank: true } : {}),
     history: createHistory(doc),
     savedDoc: doc,
     ...(file ? { fileRef: file.ref, ...(file.path !== undefined ? { path: file.path } : {}) } : {}),
@@ -35,9 +38,12 @@ export function isDirty<D, R>(tab: DocTab<D, R>): boolean {
   return tab.history.present !== tab.savedDoc;
 }
 
-/** A new or example document nobody has touched: opening a file may take its place. */
+/**
+ * A new, empty document nobody has touched: opening a file may take its place
+ * (as in a word processor). The example and files are never replaced.
+ */
 export function isPristine<D, R>(tab: DocTab<D, R>): boolean {
-  return !isDirty(tab) && tab.fileRef === undefined && tab.history.past.length === 0;
+  return tab.blank === true && !isDirty(tab) && tab.fileRef === undefined && tab.history.past.length === 0;
 }
 
 export interface Tabs<D, R> {
@@ -46,16 +52,16 @@ export interface Tabs<D, R> {
 }
 
 /**
- * Shows a document: a file that is already open is only switched to; an
- * untouched new document gives its place; otherwise a tab is added after the
- * active one.
+ * Shows a document: a file that is already open is only switched to; a file
+ * takes the place of an untouched new document; otherwise (and always for a
+ * new document) a tab is added after the active one.
  */
 export function openTab<D, R>(state: Tabs<D, R>, tab: DocTab<D, R>): Tabs<D, R> {
   const existing = tab.path !== undefined ? state.tabs.find((t) => t.path === tab.path) : undefined;
   if (existing) return { tabs: state.tabs, active: existing.id };
   const index = state.tabs.findIndex((t) => t.id === state.active);
   const current = state.tabs[index];
-  if (current && isPristine(current)) {
+  if (current && !tab.blank && isPristine(current)) {
     return { tabs: state.tabs.map((t) => (t.id === current.id ? tab : t)), active: tab.id };
   }
   const tabs = [...state.tabs];

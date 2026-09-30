@@ -155,6 +155,7 @@ export function App() {
   const change = (next: SheetDocument, group?: string) => setHistory((h) => record(h, next, group));
   /** Changes the text of the active layer; a locked layer stays as it is. */
   const setSource = (source: string, group?: string, files?: ReadonlyMap<string, Uint8Array>) => {
+    if (layer.kind === 'ai') return setNotice(t(ui, 'notes.aiReadOnly'));
     if (layer.locked) return setNotice(t(ui, 'layers.lockedNotice'));
     const withFiles = files ? { ...doc, files: new Map([...doc.files, ...files]) } : doc;
     change(layer.kind === 'sheet' ? { ...withFiles, source } : { ...withFiles, layers: updateLayer(doc.layers, layer.id, { text: source }) }, group);
@@ -618,7 +619,7 @@ export function App() {
             {notice}
           </div>
         )}
-        {!tableEditor && layer.locked && <div className="notice locked">{t(ui, 'layers.lockedNotice')}</div>}
+        {!tableEditor && layer.locked && layer.kind !== 'ai' && <div className="notice locked">{t(ui, 'layers.lockedNotice')}</div>}
         {!tableEditor && !layer.visible && <div className="notice">{t(ui, 'layers.hiddenNotice')}</div>}
         {tableEditor ? (
           <TablesView doc={doc} catalog={ui} diagnostics={tableDiagnostics} resolveFile={resolveFile} onChange={(next) => change(next)} assign={assignTable} />

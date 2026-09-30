@@ -2,6 +2,9 @@
  * Notes of a sources or AI layer: text in a small Markdown subset on the
  * left, the printed look on the right. Pictures are stored as cropped images
  * in the layer (layers/<id>/images/), never as whole PDFs.
+ *
+ * AI notes are written by the AI only: people see them, light grey, and
+ * cannot change them.
  */
 
 import { useRef } from 'react';
@@ -51,6 +54,27 @@ export function NotesView({ layer, title, catalog, readOnly, resolveFile, onChan
     insertBlock(`![${caption.replace(/[[\]]/g, '')}](${path})`, new Map([[path, new Uint8Array(await file.arrayBuffer())]]));
   };
 
+  const preview = (
+    <div className={`notes-preview page-like${layer.kind === 'ai' ? ' ai-notes' : ''}`}>
+      <style>{NOTES_CSS}</style>
+      <h2 className="notes-title">{title}</h2>
+      {text.trim() ? (
+        <div className="notes" dangerouslySetInnerHTML={{ __html: notesHtml(text, { resolveFile }) }} />
+      ) : (
+        <p className="muted">{t(catalog, layer.kind === 'ai' ? 'notes.aiPlaceholder' : 'notes.empty')}</p>
+      )}
+    </div>
+  );
+
+  if (layer.kind === 'ai') {
+    return (
+      <div className="notes-view ai">
+        <p className="help ai-readonly">✦ {t(catalog, 'notes.aiReadOnly')}</p>
+        {preview}
+      </div>
+    );
+  }
+
   return (
     <div className="notes-view">
       <div className="notes-editor">
@@ -70,20 +94,12 @@ export function NotesView({ layer, title, catalog, readOnly, resolveFile, onChan
           value={text}
           readOnly={readOnly}
           spellCheck
-          placeholder={layer.kind === 'ai' ? t(catalog, 'notes.aiPlaceholder') : t(catalog, 'notes.help')}
+          placeholder={t(catalog, 'notes.help')}
           onChange={(e) => onChange(e.target.value)}
         />
         <p className="help">{t(catalog, 'notes.help')}</p>
       </div>
-      <div className="notes-preview page-like">
-        <style>{NOTES_CSS}</style>
-        <h2 className="notes-title">{title}</h2>
-        {text.trim() ? (
-          <div className="notes" dangerouslySetInnerHTML={{ __html: notesHtml(text, { resolveFile }) }} />
-        ) : (
-          <p className="muted">{t(catalog, 'notes.empty')}</p>
-        )}
-      </div>
+      {preview}
     </div>
   );
 }

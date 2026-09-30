@@ -69,9 +69,11 @@ export function LayersPane({ layers, active, catalog, used, nameOf, onActivate, 
                     <input type="checkbox" checked={layer.visible} onChange={(e) => set(layer.id, { visible: e.target.checked })} /> {t(catalog, 'layers.visible')}
                   </label>
                 )}
-                <label>
-                  <input type="checkbox" checked={layer.locked} onChange={(e) => set(layer.id, { locked: e.target.checked })} /> {t(catalog, 'layers.locked')}
-                </label>
+                {layer.kind !== 'ai' && (
+                  <label>
+                    <input type="checkbox" checked={layer.locked} onChange={(e) => set(layer.id, { locked: e.target.checked })} /> {t(catalog, 'layers.locked')}
+                  </label>
+                )}
                 {printable && (
                   <label>
                     <input type="checkbox" checked={layer.appendix || used.has(layer.id)} disabled={used.has(layer.id)} onChange={(e) => set(layer.id, { appendix: e.target.checked })} />{' '}

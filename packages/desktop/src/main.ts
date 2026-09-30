@@ -227,7 +227,7 @@ async function runSmokeTest(pdfPath: string): Promise<void> {
     await writeFile(pdfPath, pdf);
     ok =
       state.bridge && state.menus === 6 && state.toolbars > 0 && state.rows > 10 && state.summary > 0 && state.math > 0 && reshapedColumns === 3 && pdf.length > 1000 &&
-      layers.tabs === 5 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.q.includes('16,73');
+      layers.tabs === 5 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.aiReadOnly && layers.q.includes('16,73');
     console.log(JSON.stringify({ ok, ...state, reshapedColumns, layers, pdfBytes: pdf.length }));
   } catch (err) {
     console.log(JSON.stringify({ ok: false, error: (err as Error).message }));
@@ -330,6 +330,15 @@ async function layersWithRealInput(picture: string) {
   await typeText('> ČSN EN 1990, tab. A1.2(B)');
   const citations = (await contents.executeJavaScript(`document.querySelectorAll('.notes blockquote.citation').length`)) as number;
   await takePicture(picture.replace(/\.png$/, '-notes.png'));
+
+  // AI notes can only be read: no text field, and typing changes nothing.
+  await clickOn('.layer-tab[data-layer="ai"]');
+  await clickOn('.notes-view.ai .notes-preview');
+  await typeText('ruční zásah');
+  const aiReadOnly = (await contents.executeJavaScript(
+    `!!document.querySelector('.notes-view.ai') && !document.querySelector('.notes-view textarea') && !document.body.textContent.includes('ruční zásah')`,
+  )) as boolean;
+  await takePicture(picture.replace(/\.png$/, '-ai.png'));
   await clickOn('.layer-tab[data-layer="main"]');
   await takePicture(picture);
   const state = (await contents.executeJavaScript(`({
@@ -338,7 +347,7 @@ async function layersWithRealInput(picture: string) {
     errors: Number(document.querySelector('.statusbar span')?.textContent.replace(/\\D+/g, '') ?? -1),
     q: [...document.querySelectorAll('.row')].find((r) => r.textContent.includes('q_d'))?.textContent ?? '',
   })`)) as { tabs: number; used: number; errors: number; q: string };
-  return { ...state, citations };
+  return { ...state, citations, aiReadOnly };
 }
 
 /**

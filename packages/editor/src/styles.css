@@ -260,3 +260,9 @@ button.icon:hover { color: var(--accent); }
 .ask { display: flex; flex-direction: column; gap: 6px; min-width: 340px; margin: 0; }
 .ask input { padding: 4px 6px; border: 1px solid #aab2bd; border-radius: 2px; }
 .submenu-anchor.flipped { left: auto; right: 100%; }
+/* AI notes: read only, light grey so they never pass for the engineer's own text */
+.notes-view.ai { flex-direction: column; flex-wrap: nowrap; align-items: center; }
+.notes-view.ai .notes-preview { flex: none; width: 100%; }
+.ai-notes .notes, .ai-notes .notes-title { color: #8f969f; }
+.ai-notes .notes blockquote.citation { color: #9aa0a8; border-left-color: #c9ced4; }
+.ai-readonly { margin: 0; align-self: stretch; }

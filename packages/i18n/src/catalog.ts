@@ -208,6 +208,7 @@ export const UI_KEYS = [
   'notes.citationTemplate',
   'notes.help',
   'notes.aiPlaceholder',
+  'notes.aiReadOnly',
   'notes.empty',
   'menu.layer',
   'cmd.view.paneLayers',

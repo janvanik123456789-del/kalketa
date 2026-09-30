@@ -26,6 +26,8 @@ export type BinaryOperator =
 export type Expr =
   | { readonly kind: 'number'; readonly value: number; readonly unit?: UnitExpr; readonly span: Span; readonly imaginary?: boolean }
   | { readonly kind: 'string'; readonly value: string; readonly span: Span }
+  /** A date: 2026-09-29, as days from 1970-01-01. */
+  | { readonly kind: 'date'; readonly days: number; readonly span: Span }
   | { readonly kind: 'boolean'; readonly value: boolean; readonly span: Span }
   | { readonly kind: 'variable'; readonly name: string; readonly span: Span }
   | { readonly kind: 'unit'; readonly unit: UnitExpr; readonly span: Span }

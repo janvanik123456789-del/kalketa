@@ -10,8 +10,9 @@ import { parse } from '../lang/parser.js';
 import type { UnitRegistry } from '../units/registry.js';
 import { resolveUnit, type ResolvedUnit } from '../units/unitExpr.js';
 import { quantity, type Value } from '../values/value.js';
+import { dateValue, parseDate } from '../values/date.js';
 
-export type ColumnType = 'quantity' | 'text' | 'boolean';
+export type ColumnType = 'quantity' | 'text' | 'boolean' | 'date';
 
 export interface ColumnSchema {
   readonly name: string;
@@ -169,6 +170,11 @@ function parseCell(text: string, column: Column): Cell | undefined {
       if (TRUE_WORDS.has(lower)) return { type: 'boolean', value: true };
       if (FALSE_WORDS.has(lower)) return { type: 'boolean', value: false };
       return undefined;
+    }
+    case 'date': {
+      // "2026-09-29" or "29.9.2026".
+      const days = parseDate(text);
+      return days === undefined ? undefined : dateValue(days);
     }
     case 'quantity': {
       const n = parseNumber(text);

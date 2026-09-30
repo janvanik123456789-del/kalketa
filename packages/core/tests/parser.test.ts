@@ -22,6 +22,8 @@ function show(expr: Expr): string {
       return `[${unitText(expr.unit)}]`;
     case 'string':
       return JSON.stringify(expr.value);
+    case 'date':
+      return `date(${expr.days})`;
     case 'boolean':
       return String(expr.value);
     case 'unary':

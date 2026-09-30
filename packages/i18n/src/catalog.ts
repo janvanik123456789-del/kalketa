@@ -73,6 +73,7 @@ export const UI_KEYS = [
   'editor.type.quantity',
   'editor.type.text',
   'editor.type.boolean',
+  'editor.type.date',
   'editor.noTables',
   'editor.image',
   'editor.uploadImage',

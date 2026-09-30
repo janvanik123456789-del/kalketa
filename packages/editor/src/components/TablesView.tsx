@@ -167,6 +167,7 @@ function TableGrid({ table, catalog, resolveFile, onChange, onImage }: GridProps
                     <option value="quantity">{t(catalog, 'editor.type.quantity')}</option>
                     <option value="text">{t(catalog, 'editor.type.text')}</option>
                     <option value="boolean">{t(catalog, 'editor.type.boolean')}</option>
+                    <option value="date">{t(catalog, 'editor.type.date')}</option>
                   </select>
                   {c.type === 'quantity' && (
                     <input

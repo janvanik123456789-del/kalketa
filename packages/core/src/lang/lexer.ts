@@ -7,9 +7,10 @@
 
 import { diagnostic, type Diagnostic, type Span } from '../diagnostics.js';
 import { normalizeIdentifier } from './names.js';
+import { daysFromCivil, isValidDay } from '../values/date.js';
 
 export type TokenType =
-  | 'number' | 'ident' | 'string' | 'superscript'
+  | 'number' | 'ident' | 'string' | 'superscript' | 'date'
   | 'heading' | 'comment' | 'directive'
   | '+' | '-' | '*' | '/' | '^' | '√'
   | '(' | ')' | '[' | ']' | ',' | '.' | '..' | ':' | '|'
@@ -134,6 +135,17 @@ export function tokenize(source: string, options: LexOptions = {}): LexResult {
       continue;
     }
 
+    // A date: 2026-09-29 (not a subtraction). Its value is days from 1970-01-01.
+    if (isDigit(ch)) {
+      const date = /^(\d{4})-(\d{2})-(\d{2})(?![\p{L}\p{Nd}_])/u.exec(source.slice(pos, pos + 11));
+      if (date) {
+        pos += 10;
+        const [y, m, d] = [Number(date[1]), Number(date[2]), Number(date[3])];
+        if (!isValidDay(y, m, d)) diagnostics.push(diagnostic('E-DATE-INVALID', spanFrom(start), { value: date[0] }));
+        push('date', start, date[0], daysFromCivil(y, m, d));
+        continue;
+      }
+    }
     // "0 .. 10" and "0..10": a range, not the number .10.
     if (ch === '.' && source[pos + 1] === '.') {
       pos += 2;

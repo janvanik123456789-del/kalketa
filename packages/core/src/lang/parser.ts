@@ -370,7 +370,9 @@ class LineParser {
       const eq = this.next();
       if (this.peek().type !== 'eof') {
         // "a = 5": the user meant a definition.
+        // (also "m = 5": a name that happens to be a unit)
         if (expr.kind === 'variable') fail('E-ASSIGN-WITH-EQUALS', eq.span, { name: expr.name });
+        if (expr.kind === 'unit' && expr.unit.kind === 'unit-name') fail('E-ASSIGN-WITH-EQUALS', eq.span, { name: expr.unit.name });
         fail('E-SYNTAX', this.peek().span, { expected: 'end-of-line', found: this.peek().text });
       }
     }
@@ -504,6 +506,9 @@ class LineParser {
       case 'string':
         this.next();
         return { kind: 'string', value: token.text, span: token.span };
+      case 'date':
+        this.next();
+        return { kind: 'date', days: token.value, span: token.span };
       case '(': {
         this.next();
         const inner = this.parseExpression();
@@ -736,7 +741,7 @@ class LineParser {
 
   private startsOperand(token: Token): boolean {
     if (token.type === 'ident') return !CONTINUATION_KEYWORDS.has(token.text);
-    return token.type === 'number' || token.type === '(' || token.type === '[' || token.type === '√' || token.type === 'string';
+    return token.type === 'number' || token.type === '(' || token.type === '[' || token.type === '√' || token.type === 'string' || token.type === 'date';
   }
 
   private isKeyword(word: string): boolean {

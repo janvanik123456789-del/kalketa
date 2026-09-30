@@ -54,6 +54,8 @@ export const DIAGNOSTIC_SEVERITY = {
   'E-COMPLEX-ARG': 'error',
   'E-COMPLEX-ORDER': 'error',
   'E-INDEX': 'error',
+  'E-DATE-INVALID': 'error',
+  'E-DATE-ARITHMETIC': 'error',
   'E-VECTOR-LENGTH': 'error',
   'E-RANGE-SIZE': 'error',
   'E-NO-PAYBACK': 'error',

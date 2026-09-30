@@ -24,3 +24,11 @@ describe('series in print', () => {
     expect(line.kind === 'equation' && toText(line.lines[0]!.rhs)).toBe('CF_2');
   });
 });
+
+describe('dates in print', () => {
+  it('are written as calendar days in the language of the printout', () => {
+    expect(resultOf('splatnost := 2026-09-29 + 30 d')).toBe('29. 10. 2026');
+    const en = buildPrintDocument(evaluateSheet('d := 2026-09-29'), { catalog: catalogFor('en'), registry: defaultRegistry, digits: 4, title: 'T' }).blocks[0]!;
+    expect(en.kind === 'equation' && toText(en.lines.at(-1)!.rhs)).toBe('9/29/2026');
+  });
+});

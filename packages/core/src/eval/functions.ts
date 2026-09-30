@@ -11,6 +11,7 @@ import { isDimensionless, powerDim, sameDim } from '../units/dimension.js';
 import { baseUnitSymbol } from '../units/display.js';
 import { quantity, type Quantity, type Value } from '../values/value.js';
 import { asBoolean, asComplex, asQuantity } from './coerce.js';
+import { civilFromDays, dateValue, daysFromCivil, daysOf, isDate, isValidDay } from '../values/date.js';
 
 export const BUILTIN_CONSTANTS: Readonly<Record<string, number>> = {
   π: Math.PI,
@@ -51,6 +52,7 @@ export const FUNCTION_NAMES: readonly string[] = [
   're', 'im', 'conj', 'arg', 'polar',
   // Series and finance (F10)
   'range', 'sum', 'len', 'mean', 'cumsum', 'npv', 'irr', 'pmt', 'payback',
+  'date', 'year', 'month', 'day',
 ];
 
 export function callFunction(call: CallExpr, evaluate: Evaluate): Value {
@@ -124,6 +126,22 @@ export function callFunction(call: CallExpr, evaluate: Evaluate): Value {
       const values = single?.type === 'vector' ? nonEmpty(single, call) : sameDimArgs(call, evaluate);
       const pick = name === 'min' ? (a: Quantity, b: Quantity) => (b.si < a.si ? b : a) : (a: Quantity, b: Quantity) => (b.si > a.si ? b : a);
       return values.reduce(pick);
+    }
+    case 'date': {
+      // date(2026, 9, 29)
+      arity(call, 3);
+      const [y, m, d] = [0, 1, 2].map((i) => dimensionless(call, i, evaluate));
+      if (![y, m, d].every((v) => Number.isInteger(v)) || !isValidDay(y!, m!, d!)) fail('E-DATE-INVALID', call.span, { value: `${y}-${m}-${d}` });
+      return dateValue(daysFromCivil(y!, m!, d!));
+    }
+    case 'year':
+    case 'month':
+    case 'day': {
+      arity(call, 1);
+      const q = asQuantity(evaluate(args[0]!), args[0]!.span);
+      if (!isDate(q)) fail('E-TYPE', args[0]!.span, { expected: 'date', found: 'number' });
+      const civil = civilFromDays(daysOf(q));
+      return quantity(name === 'year' ? civil.year : name === 'month' ? civil.month : civil.day);
     }
     case 'range': {
       // range(1, 25) or range(0 m, 10 m, 0.5 m): from, to (included), step.

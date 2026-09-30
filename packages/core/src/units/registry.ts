@@ -77,6 +77,9 @@ const BUILT_IN: readonly UnitDef[] = [
   { symbol: 'min', factor: 60, dim: T },
   { symbol: 'h', factor: 3600, dim: T },
   { symbol: 'd', factor: 86400, dim: T },
+  { symbol: 'wk', factor: 7 * 86400, dim: T },
+  // Year: 365.25 days (the Julian year). Not "a": that is too common a name (side, acceleration).
+  { symbol: 'yr', factor: 365.25 * 86400, dim: T },
 
   // Mechanics
   { symbol: 'N', factor: 1, dim: FORCE, prefixable: true },

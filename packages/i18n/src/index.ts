@@ -52,9 +52,15 @@ export interface NumberFormatOptions {
  * The imaginary unit is written j, as electrical engineers do.
  */
 export function formatValue(value: number, im: number | undefined, unit: string, catalog: Catalog, options: NumberFormatOptions = {}): string {
+  if (unit === 'date') return formatDate(value, catalog);
   const number = im ? complexText(value, im, (x) => formatNumber(x, catalog, options)) : formatNumber(value, catalog, options);
   if (!unit) return number;
   return im && value !== 0 ? `(${number}) ${unit}` : `${number} ${unit}`;
+}
+
+/** A calendar day given as days from 1970-01-01: "29. 9. 2026" in Czech, "9/29/2026" in English. */
+export function formatDate(days: number, catalog: Catalog): string {
+  return new Intl.DateTimeFormat(catalog.locale, { timeZone: 'UTC', year: 'numeric', month: 'numeric', day: 'numeric' }).format(new Date(Math.round(days) * 86_400_000));
 }
 
 /** "3 + 4j", "−2 − 1,5j", "4j" from the parts, each formatted by `format`. */

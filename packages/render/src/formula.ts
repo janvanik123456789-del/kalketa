@@ -20,6 +20,8 @@ export interface FormulaOptions {
   readonly substitute?: (expr: Expr) => Substituted | undefined;
   /** Names set as plain text, not as math symbols: blocks ("Prosty_nosnik" as "Prosty nosnik"). */
   readonly textNames?: ReadonlySet<string>;
+  /** Formats a date literal: "29. 9. 2026"; ISO when absent. */
+  readonly date?: (days: number) => string;
   /** Variables holding the result of a block: N1.M_max is printed as M_max(N1). */
   readonly recordNames?: ReadonlySet<string>;
 }
@@ -87,6 +89,8 @@ function render(expr: Expr, o: FormulaOptions): Rendered {
       return { node: mu(unitText(expr.unit)), prec: ATOM };
     case 'string':
       return { node: mtext(`"${expr.value}"`), prec: ATOM };
+    case 'date':
+      return { node: mtext(o.date ? o.date(expr.days) : new Date(expr.days * 86_400_000).toISOString().slice(0, 10)), prec: ATOM };
     case 'boolean':
       return { node: mtext(expr.value ? o.booleans.true : o.booleans.false), prec: ATOM };
     case 'variable':

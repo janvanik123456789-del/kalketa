@@ -22,7 +22,7 @@ import {
   type UnitRegistry,
   type Value,
 } from '@calccanvas/core';
-import { formatDiagnostic, formatNumber, t, type Catalog } from '@calccanvas/i18n';
+import { formatDate, formatDiagnostic, formatNumber, t, type Catalog } from '@calccanvas/i18n';
 import { formulaNode, hasSubstitutableParts, THIN_SPACE, type FormulaOptions, type Substituted } from './formula.js';
 import { mi, mn, mo, mtext, mu, nameNode, paren, row, sup, type MathNode } from './math.js';
 
@@ -134,7 +134,9 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
   // Blocks used in the sheet: their names are words, not math symbols.
   const blockNames = new Set(result.statements.flatMap((r) => (r.value?.type === 'record' ? [r.value.block] : [])));
   const recordNames = new Set([...result.values].flatMap(([name, value]) => (value.type === 'record' ? [name] : [])));
+  const dateFormat = (days: number) => formatDate(days, catalog);
   const formulaOptions = (substitute?: FormulaOptions['substitute']): FormulaOptions => ({
+    date: dateFormat,
     ...(blockNames.size > 0 ? { textNames: blockNames } : {}),
     ...(recordNames.size > 0 ? { recordNames } : {}),
     literal: numberFormat(15),
@@ -159,7 +161,7 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
     const digits = mode.digits;
     const quantityNode = (q: Quantity) => {
       const shown = toDisplay(q, options.registry);
-      return valueNode(shown.value, shown.unit, numberFormat(digits), shown.im);
+      return valueNode(shown.value, shown.unit, numberFormat(digits), shown.im, dateFormat);
     };
 
     switch (s.kind) {
@@ -209,7 +211,7 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
           lines.push({ role: 'formula', op: '', rhs: range });
         }
         for (const found of r.solutions ?? []) {
-          lines.push({ role: 'result', lhs: nameNode(found.name), op: '=', rhs: valueNode(found.display.value, found.display.unit, numberFormat(digits), found.display.im) });
+          lines.push({ role: 'result', lhs: nameNode(found.name), op: '=', rhs: valueNode(found.display.value, found.display.unit, numberFormat(digits), found.display.im, dateFormat) });
         }
         blocks.push({ kind: 'equation', line: s.span.line, lines, ...(s.comment ? { comment: s.comment } : {}), messages });
         break;
@@ -282,7 +284,7 @@ function equationLines(
   format: (value: number) => string,
 ): EquationLine[] {
   const withLhs = (line: Omit<EquationLine, 'lhs'>, first: boolean): EquationLine => (first && lhs ? { ...line, lhs } : line);
-  const result = resultNode(r, format, formulaOptions().booleans, formulaOptions().argumentSeparator);
+  const result = resultNode(r, format, formulaOptions().booleans, formulaOptions().argumentSeparator, formulaOptions().date);
   const given = expr.kind === 'number' || (expr.kind === 'unary' && expr.operand.kind === 'number') || expr.kind === 'string' || expr.kind === 'boolean';
 
   // A conversion shows both units: "100 EUR = 2 500 CZK".
@@ -304,9 +306,15 @@ function equationLines(
   return lines;
 }
 
-function resultNode(r: StatementResult, format: (value: number) => string, booleans: FormulaOptions['booleans'], separator = ','): MathNode | undefined {
+function resultNode(
+  r: StatementResult,
+  format: (value: number) => string,
+  booleans: FormulaOptions['booleans'],
+  separator = ',',
+  date?: (days: number) => string,
+): MathNode | undefined {
   if (r.status !== 'ok' || !r.value) return undefined;
-  if (r.display) return valueNode(r.display.value, r.display.unit, format, r.display.im);
+  if (r.display) return valueNode(r.display.value, r.display.unit, format, r.display.im, date);
   if (r.displayList) return seriesNode(r.displayList, format, separator);
   if (r.value.type === 'boolean') return mtext(r.value.value ? booleans.true : booleans.false);
   return otherValueNode(r.value);
@@ -413,7 +421,9 @@ function applyDirective(name: string, args: string, mode: Mode, blocks: PrintBlo
 }
 
 /** "37,5 kN·m"; scientific numbers become mantissa · 10^exponent. */
-export function valueNode(value: number, unit: string, format: (value: number) => string, im?: number): MathNode {
+export function valueNode(value: number, unit: string, format: (value: number) => string, im?: number, date?: (days: number) => string): MathNode {
+  // A date: "29. 9. 2026".
+  if (unit === 'date') return mtext(date ? date(value) : isoDate(value));
   const numberNode = (x: number): MathNode => {
     const text = format(x);
     const e = /^(.*)E(-?\d+)$/.exec(text);
@@ -425,6 +435,10 @@ export function valueNode(value: number, unit: string, format: (value: number) =
   const complex = value === 0 ? (im < 0 ? row(mo('−'), imaginary) : imaginary) : row(numberNode(value), mo(im < 0 ? '−' : '+'), imaginary);
   if (!unit) return complex;
   return row(value === 0 ? complex : paren(complex), THIN_SPACE, mu(unit));
+}
+
+function isoDate(days: number): string {
+  return new Date(Math.round(days) * 86_400_000).toISOString().slice(0, 10);
 }
 
 /** "[100; 120; 150] CZK"; a long series shows its start and end: "[1; 2; 3; 4; 5; …; 24; 25] (25)". */

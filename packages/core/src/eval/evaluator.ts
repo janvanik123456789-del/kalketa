@@ -13,6 +13,7 @@ import type { UnitRegistry } from '../units/registry.js';
 import { resolveUnit, type ResolvedUnit } from '../units/unitExpr.js';
 import type { TableRead } from '../tables/table.js';
 import { quantity, type Quantity, type Value, type VectorValue } from '../values/value.js';
+import { dateValue, isDate } from '../values/date.js';
 import { asBoolean, asComplex, asQuantity } from './coerce.js';
 import { BUILTIN_CONSTANTS, callFunction, FUNCTION_NAMES } from './functions.js';
 import { callTableFunction, memberOf, TABLE_FUNCTIONS } from './tables.js';
@@ -62,6 +63,8 @@ function evaluateRaw(expr: Expr, ctx: EvalContext): Value {
     }
     case 'string':
       return { type: 'text', value: expr.value };
+    case 'date':
+      return dateValue(expr.days);
     case 'boolean':
       return { type: 'boolean', value: expr.value };
     case 'variable': {
@@ -178,6 +181,9 @@ function arithmetic(op: BinaryOperator, left: Value, right: Value, leftExpr: Exp
       return addSubtract(op, a, b, span);
     case '*':
     case '/': {
+      // A date has no size: 2026-09-29 · 2 means nothing.
+      if (isDate(a)) fail('E-DATE-ARITHMETIC', leftExpr.span);
+      if (isDate(b)) fail('E-DATE-ARITHMETIC', rightExpr.span);
       warnOnAbsoluteTemperature(a, leftExpr.span, ctx);
       warnOnAbsoluteTemperature(b, rightExpr.span, ctx);
       // Scaling by a plain number keeps the unit: 1.35 · g_k stays in kN/m.

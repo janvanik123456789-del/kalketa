@@ -14,7 +14,7 @@ import { addLayer, allDiagnostics, appendixLayers, isRemovable, LayerSessions, M
 import { buildCommands, shortcutOf, type Command } from './commands.js';
 import { desktop, emptyDocument, exampleDocument, fileName, fileUri, largestParts, openBytes, pickAndOpen, saveDocument, tableCache, type FileRef, type OpenedFile } from './document.js';
 import { record, redo, undo, type History } from './logic/history.js';
-import { closeTab, cycleTab, isDirty, newTab, openTab, type DocTab, type Tabs } from './logic/documents.js';
+import { closeTab, cycleTab, fileNameOf, isDirty, newTab, openTab, type DocTab, type Tabs } from './logic/documents.js';
 import { pageGeometry } from './logic/pages.js';
 import { pickOf, replacePickKey } from './logic/pick.js';
 import { deleteLines, insertLineAfter, replaceLines, segments } from './logic/segments.js';
@@ -96,6 +96,10 @@ export function App() {
     return { tabs: [first], active: first.id };
   });
   const tab = docs.tabs.find((d) => d.id === docs.active) ?? docs.tabs[0]!;
+  /** A saved calculation is called by its file name; a new one by its title. */
+  const docLabel = (d: Tab) =>
+    d.path !== undefined ? fileNameOf(d.path) : d.fileRef?.kind === 'handle' ? d.fileRef.handle.name : d.history.present.manifest.title;
+  const label = docLabel(tab);
   /** Changes the active document's tab; later changes of the same event build on earlier ones. */
   const updateTab = (f: (d: Tab) => Tab) => {
     const id = tab.id;
@@ -190,13 +194,13 @@ export function App() {
   }, [language]);
 
   useEffect(() => {
-    document.title = `${doc.manifest.title}${dirty ? ' •' : ''} — CalcCanvas`;
+    document.title = `${label}${dirty ? ' •' : ''} — CalcCanvas`;
     desktop?.setCloseGuard({ dirty: anyDirty, message: t(ui, 'editor.closeUnsaved'), discard: t(ui, 'editor.discard'), cancel: t(ui, 'editor.cancel') });
     if (!anyDirty || desktop) return;
     const warn = (e: BeforeUnloadEvent) => e.preventDefault();
     window.addEventListener('beforeunload', warn);
     return () => window.removeEventListener('beforeunload', warn);
-  }, [doc.manifest.title, dirty, anyDirty, ui]);
+  }, [label, dirty, anyDirty, ui]);
 
   // ------------------------------------------------------------------------
   // Document changes (all go through the undo history)
@@ -319,7 +323,7 @@ export function App() {
   const closeDocument = async (id: number) => {
     const target = docs.tabs.find((d) => d.id === id);
     if (!target) return;
-    if (isDirty(target) && !(await askConfirm(t(ui, 'docs.closeUnsaved', { name: target.history.present.manifest.title })))) return;
+    if (isDirty(target) && !(await askConfirm(t(ui, 'docs.closeUnsaved', { name: docLabel(target) })))) return;
     setDocs((s) => closeTab(s, id, () => newTab<SheetDocument, FileRef>(emptyDocument(t(ui, 'editor.untitled'), language), MAIN_LAYER)));
     leaveEditing();
   };
@@ -717,7 +721,7 @@ export function App() {
         sep,
         ...docs.tabs.map((d, i) => ({
           kind: 'action' as const,
-          label: `&${i + 1} ${d.history.present.manifest.title}${isDirty(d) ? ' •' : ''}`,
+          label: `&${i + 1} ${docLabel(d)}${isDirty(d) ? ' •' : ''}`,
           checked: d.id === tab.id,
           run: () => switchDocument(d.id),
         })),
@@ -854,7 +858,7 @@ export function App() {
         }
       >
         <DocumentTabs
-          tabs={docs.tabs.map((d) => ({ id: d.id, title: d.history.present.manifest.title, dirty: isDirty(d), ...(d.path !== undefined ? { path: d.path } : {}) }))}
+          tabs={docs.tabs.map((d) => ({ id: d.id, title: docLabel(d), dirty: isDirty(d), ...(d.path !== undefined ? { path: d.path } : {}) }))}
           active={tab.id}
           catalog={ui}
           onSelect={switchDocument}

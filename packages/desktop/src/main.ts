@@ -498,7 +498,10 @@ async function layersWithRealInput(picture: string) {
     await sendOpen(smokeFile); // as by a double click in Explorer
     const viaRecent = await smokeWindow!.webContents.executeJavaScript(`window.calccanvasDesktop.openPath(${JSON.stringify(smokeFile)})`);
     await pause(500);
-    oneCopy = (await hasFile(other)) && !(await hasFile(smokeWindow!)) && viaRecent === undefined;
+    // The window and the tab are called by the file name.
+    const named = other.getTitle().startsWith(basename(smokeFile)) &&
+      ((await other.webContents.executeJavaScript(`document.querySelector('.doc-tab.active .doc-tab-title')?.textContent ?? ''`)) as string).startsWith(basename(smokeFile));
+    oneCopy = (await hasFile(other)) && !(await hasFile(smokeWindow!)) && viaRecent === undefined && named;
   }
   other?.destroy();
   const multi = second[0] === 2 && second[1] === 3 && firstKept && documents === 1 && newWindow && oneCopy !== false;

@@ -82,3 +82,8 @@ export function cycleTab<D, R>(state: Tabs<D, R>, direction: 1 | -1): number {
   const next = (index + direction + state.tabs.length) % state.tabs.length;
   return state.tabs[next]?.id ?? state.active;
 }
+
+/** "Nosnik.calc" from "C:\Vypocty\Nosnik.calc" or "/home/x/Nosnik.calc". */
+export function fileNameOf(path: string): string {
+  return path.split(/[\\/]/).pop() || path;
+}

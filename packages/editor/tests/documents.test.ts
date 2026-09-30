@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { record } from '../src/logic/history.js';
-import { closeTab, cycleTab, isDirty, isPristine, newTab, openTab, type DocTab, type Tabs } from '../src/logic/documents.js';
+import { closeTab, cycleTab, fileNameOf, isDirty, isPristine, newTab, openTab, type DocTab, type Tabs } from '../src/logic/documents.js';
 
 type Tab = DocTab<string, string>;
 const file = (path: string) => newTab<string, string>(`doc ${path}`, 'main', { ref: path, path });
@@ -58,5 +58,13 @@ describe('open documents', () => {
     const state = { tabs: [a, b, c], active: c.id };
     expect(cycleTab(state, 1)).toBe(a.id);
     expect(cycleTab(state, -1)).toBe(b.id);
+  });
+});
+
+describe('file names', () => {
+  it('are the last part of Windows and POSIX paths', () => {
+    expect(fileNameOf('C:\\Výpočty\\Nosník N1.calc')).toBe('Nosník N1.calc');
+    expect(fileNameOf('/home/jan/Nosnik.calc')).toBe('Nosnik.calc');
+    expect(fileNameOf('Nosnik.calc')).toBe('Nosnik.calc');
   });
 });

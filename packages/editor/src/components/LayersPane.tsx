@@ -5,6 +5,9 @@
 
 import { t, type Catalog } from '@calccanvas/i18n';
 import { isRemovable, moveLayer, updateLayer, type Layer, type LayerKind } from '@calccanvas/sheet';
+import { useState } from 'react';
+import type { Command } from '../commands.js';
+import { ContextMenu, type MenuItem } from './MenuBar.js';
 import { ask } from './Ask.js';
 
 /** Two panels side by side. Drawn, so it does not depend on the fonts of the system. */
@@ -154,34 +157,105 @@ interface TabsProps {
   /** Layers open in the workspace. */
   readonly open: readonly string[];
   readonly catalog: Catalog;
+  /** Auxiliary calculations the sheet takes values from. */
+  readonly used: ReadonlySet<string>;
+  readonly commands: ReadonlyMap<string, Command>;
   nameOf(layer: Layer): string;
   onActivate(id: string): void;
   onOpenBeside(id: string): void;
-  onAdd(): void;
+  onChange(layers: Layer[]): void;
+  onAdd(kind: (typeof NEW_LAYER_KINDS)[number]): void;
+  onDelete(id: string): void;
 }
 
-/** Tabs of the visible layers, like sheets of a workbook. Ctrl+click opens one side by side. */
-export function LayerTabs({ layers, active, open, catalog, nameOf, onActivate, onOpenBeside, onAdd }: TabsProps) {
+type OpenMenu = { readonly items: readonly MenuItem[]; readonly at: { x: number; y: number } };
+
+/**
+ * Tabs of all layers, like sheets of a workbook; a hidden layer has a greyed
+ * tab. Ctrl+click opens a layer side by side, right click (or ▾ on the active
+ * tab) offers what the layer can do, "+" adds a layer.
+ */
+export function LayerTabs({ layers, active, open, catalog, used, commands, nameOf, onActivate, onOpenBeside, onChange, onAdd, onDelete }: TabsProps) {
+  const [menu, setMenu] = useState<OpenMenu | undefined>();
+  const set = (id: string, change: Parameters<typeof updateLayer>[2]) => onChange(updateLayer(layers, id, change));
+
+  const layerMenu = (layer: Layer): MenuItem[] => {
+    const main = layer.kind === 'sheet';
+    const i = layers.indexOf(layer);
+    const printable = layer.kind === 'calc' || layer.kind === 'sources' || layer.kind === 'ai';
+    const items: MenuItem[] = [
+      { kind: 'action', label: t(catalog, 'layers.openBeside'), enabled: layer.visible, run: () => onOpenBeside(layer.id) },
+      { kind: 'separator' },
+      { kind: 'action', label: t(catalog, 'layers.visible'), checked: layer.visible, run: () => set(layer.id, { visible: !layer.visible }) },
+    ];
+    if (layer.kind !== 'ai') items.push({ kind: 'action', label: t(catalog, 'layers.locked'), checked: layer.locked, run: () => set(layer.id, { locked: !layer.locked }) });
+    if (printable) {
+      items.push({
+        kind: 'action',
+        label: used.has(layer.id) ? `${t(catalog, 'layers.appendix')} (${t(catalog, 'layers.used')})` : t(catalog, 'layers.appendix'),
+        checked: Boolean(layer.appendix) || used.has(layer.id),
+        enabled: !used.has(layer.id),
+        run: () => set(layer.id, { appendix: !layer.appendix }),
+      });
+    }
+    if (!main) {
+      items.push(
+        { kind: 'separator' },
+        {
+          kind: 'action',
+          label: t(catalog, 'layers.rename'),
+          run: () =>
+            void ask(t(catalog, 'layers.newName'), nameOf(layer)).then((name) => {
+              if (name?.trim()) set(layer.id, { name: name.trim() });
+            }),
+        },
+        { kind: 'action', label: t(catalog, 'layers.moveLeft'), enabled: i > 1, run: () => onChange(moveLayer(layers, layer.id, -1)) },
+        { kind: 'action', label: t(catalog, 'layers.moveRight'), enabled: i < layers.length - 1, run: () => onChange(moveLayer(layers, layer.id, 1)) },
+      );
+    }
+    if (isRemovable(layer)) items.push({ kind: 'separator' }, { kind: 'action', label: t(catalog, 'layers.delete'), run: () => onDelete(layer.id) });
+    return items;
+  };
+
+  const addMenu: MenuItem[] = NEW_LAYER_KINDS.map((kind) => ({ kind: 'action', label: `${LAYER_GLYPH[kind]}  ${t(catalog, `layer.kind.${kind}`)}`, run: () => onAdd(kind) }));
+
+  const openMenu = (items: readonly MenuItem[], e: { clientX: number; clientY: number; preventDefault(): void; stopPropagation(): void }) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setMenu({ items, at: { x: e.clientX, y: e.clientY } });
+  };
+
   return (
     <nav className="layer-tabs" aria-label={t(catalog, 'layers.tabs')}>
-      {layers
-        .filter((l) => l.visible || open.includes(l.id))
-        .map((layer) => (
-          <button
-            key={layer.id}
-            type="button"
-            className={`layer-tab${layer.id === active ? ' active' : open.includes(layer.id) ? ' open' : ''}`}
-            data-layer={layer.id}
-            title={t(catalog, 'layers.tabHint')}
-            onClick={(e) => (e.ctrlKey || e.metaKey ? onOpenBeside(layer.id) : onActivate(layer.id))}
-          >
-            <span className="glyph">{LAYER_GLYPH[layer.kind]}</span> {nameOf(layer)}
-            {layer.locked && <LockIcon />}
-          </button>
-        ))}
-      <button type="button" className="layer-tab add" title={t(catalog, 'layers.add')} onClick={onAdd}>
+      {layers.map((layer) => (
+        <div
+          key={layer.id}
+          role="button"
+          tabIndex={0}
+          className={`layer-tab${layer.id === active ? ' active' : open.includes(layer.id) ? ' open' : ''}${layer.visible ? '' : ' hidden'}`}
+          data-layer={layer.id}
+          title={[t(catalog, 'layers.tabHint'), used.has(layer.id) ? t(catalog, 'layers.used') : '', layer.visible ? '' : t(catalog, 'layers.hiddenTab')].filter(Boolean).join('\n')}
+          onClick={(e) => {
+            // A hidden layer's tab shows the layer again.
+            if (!layer.visible) set(layer.id, { visible: true });
+            if (e.ctrlKey || e.metaKey) onOpenBeside(layer.id);
+            else onActivate(layer.id);
+          }}
+          onContextMenu={(e) => openMenu(layerMenu(layer), e)}
+        >
+          <span className="glyph">{LAYER_GLYPH[layer.kind]}</span> {nameOf(layer)}
+          {layer.locked && <LockIcon />}
+          {layer.id === active && (
+            <button type="button" className="tab-menu" title={t(catalog, 'layers.menu')} onClick={(e) => openMenu(layerMenu(layer), e)}>
+              ▾
+            </button>
+          )}
+        </div>
+      ))}
+      <button type="button" className="layer-tab add" title={t(catalog, 'layers.add')} onClick={(e) => openMenu(addMenu, e)}>
         +
       </button>
+      {menu && <ContextMenu items={menu.items} commands={commands} at={menu.at} onClose={() => setMenu(undefined)} />}
     </nav>
   );
 }

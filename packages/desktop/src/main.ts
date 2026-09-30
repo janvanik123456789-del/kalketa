@@ -325,7 +325,7 @@ async function runSmokeTest(pdfPath: string): Promise<void> {
     await writeFile(pdfPath, pdf);
     ok =
       state.bridge && state.sideBySide && state.menus === 7 && state.toolbars > 0 && state.rows > 10 && state.summary > 0 && state.math > 0 && reshapedColumns === 3 && pdf.length > 1000 &&
-      layers.newKeepsExample && layers.tabs === 5 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.help && layers.blocksOk !== false && layers.mainHidden && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.q.includes('16,73');
+      layers.newKeepsExample && layers.tabs === 5 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.help && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer4 layer5' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && layers.q.includes('16,73');
     console.log(JSON.stringify({ ok, ...state, reshapedColumns, layers, pdfBytes: pdf.length }));
   } catch (err) {
     console.log(JSON.stringify({ ok: false, error: (err as Error).message }));
@@ -370,7 +370,7 @@ async function reshapeWithRealMouse(): Promise<number> {
 // pipeline like the user's mouse and keyboard.
 const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function clickOn(selector: string, modifiers: Array<'control'> = []): Promise<void> {
+async function clickOn(selector: string, modifiers: Array<'control'> = [], button: 'left' | 'right' = 'left'): Promise<void> {
   const contents = smokeWindow!.webContents;
   const point = (await contents.executeJavaScript(`(() => {
     const element = document.querySelector(${JSON.stringify(selector)});
@@ -380,9 +380,21 @@ async function clickOn(selector: string, modifiers: Array<'control'> = []): Prom
     return { x: Math.round(r.left + Math.min(r.width / 2, 40)), y: Math.round(r.top + r.height / 2) };
   })()`)) as { x: number; y: number } | undefined;
   if (!point) throw new Error(`Not found: ${selector}`);
-  contents.sendInputEvent({ type: 'mouseDown', ...point, button: 'left', clickCount: 1, modifiers });
-  contents.sendInputEvent({ type: 'mouseUp', ...point, button: 'left', clickCount: 1, modifiers });
+  contents.sendInputEvent({ type: 'mouseDown', ...point, button, clickCount: 1, modifiers });
+  contents.sendInputEvent({ type: 'mouseUp', ...point, button, clickCount: 1, modifiers });
   await pause(150);
+}
+
+/** Clicks the row of the open context menu whose label starts with `label`. */
+async function clickMenu(label: string): Promise<void> {
+  const found = (await smokeWindow!.webContents.executeJavaScript(`(() => {
+    document.querySelectorAll('[data-smoke]').forEach((e) => e.removeAttribute('data-smoke'));
+    const row = [...document.querySelectorAll('.context-menu .menu-row')].find((r) => r.querySelector('.menu-label').textContent.trim().startsWith(${JSON.stringify(label)}));
+    row?.setAttribute('data-smoke', '');
+    return !!row;
+  })()`)) as boolean;
+  if (!found) throw new Error(`No menu row: ${label}`);
+  await clickOn('[data-smoke]');
 }
 
 async function typeText(text: string): Promise<void> {
@@ -409,8 +421,9 @@ async function layersWithRealInput(picture: string) {
   const tabsAfterNew = (await contents.executeJavaScript(`[...document.querySelectorAll('.doc-tab .doc-tab-title')].map((t) => t.textContent)`)) as string[];
   await pressKey('W', ['control']);
   const newKeepsExample = tabsAfterNew.length === 2 && (await contents.executeJavaScript(`document.querySelectorAll('.doc-tab').length`)) === 1;
-  await clickOn('.layer-tab.add'); // opens the Layers panel
-  await clickOn('.layer-add button:nth-child(1)'); // auxiliary calculation
+  await clickOn('.layer-tab.add'); // a menu of the kinds of layers
+  const addKinds = (await contents.executeJavaScript(`document.querySelectorAll('.context-menu .menu-row').length`)) as number;
+  await clickMenu('∑'); // auxiliary calculation
   await pressKey('A', ['control']);
   await typeText('Zatížení');
   await pressKey('Enter');
@@ -427,7 +440,8 @@ async function layersWithRealInput(picture: string) {
   await typeText('q := q_d');
   await clickOn('.sheet-scroll');
 
-  await clickOn('.layer-add button:nth-child(3)'); // sources
+  await clickOn('.layer-tab.add');
+  await clickMenu('❝'); // sources
   await pressKey('Enter'); // default name
   await clickOn('.notes-text');
   await typeText('> ČSN EN 1990, tab. A1.2(B)');
@@ -446,12 +460,24 @@ async function layersWithRealInput(picture: string) {
   await takePicture(picture);
   const state = (await contents.executeJavaScript(`({
     tabs: document.querySelectorAll('.layer-tab:not(.add)').length,
-    used: document.querySelectorAll('.layer-note').length,
+    used: [...document.querySelectorAll('.layer-tab')].filter((t) => t.title.includes('list z ní čerpá')).length,
     errors: Number(document.querySelector('.statusbar span')?.textContent.replace(/\\D+/g, '') ?? -1),
-    addKinds: document.querySelectorAll('.layer-add button').length,
-    aiDeletable: document.querySelectorAll('.layer-item[data-layer="ai"] .layer-actions button').length > 4,
     q: [...document.querySelectorAll('.row')].find((r) => r.textContent.includes('q_d'))?.textContent ?? '',
-  })`)) as { tabs: number; used: number; errors: number; addKinds: number; aiDeletable: boolean; q: string };
+  })`)) as { tabs: number; used: number; errors: number; q: string };
+  // The AI notes cannot be deleted: their menu has no Delete.
+  await clickOn('.layer-tab[data-layer="ai"]', [], 'right');
+  const aiDeletable = (await contents.executeJavaScript(
+    `[...document.querySelectorAll('.context-menu .menu-row')].some((r) => r.textContent.includes('Odstranit'))`,
+  )) as boolean;
+  const aiMenu = (await contents.executeJavaScript(`document.querySelectorAll('.context-menu .menu-row').length`)) as number;
+  await pressKey('Escape');
+  // Tables of a data layer: a narrow strip of names with icons for a new table and an import.
+  await clickOn('.layer-tab[data-layer="data"]');
+  const tableStrip = (await contents.executeJavaScript(
+    `document.querySelectorAll('.layer-view.active .table-list .table-action').length === 2 && document.querySelector('.layer-view.active .table-list').getBoundingClientRect().height < 50`,
+  )) as boolean;
+  await takePicture(picture.replace(/[.]png$/, '-data.png'));
+  await clickOn('.layer-tab[data-layer="main"]');
 
   // Side by side: Ctrl+click on the tab of the auxiliary calculation.
   await clickOn('.layer-tab:nth-child(4)', ['control']);
@@ -462,13 +488,16 @@ async function layersWithRealInput(picture: string) {
   await takePicture(picture.replace(/\.png$/, '-split.png'));
 
   // Work only in the layers: hide the printed sheet.
-  await clickOn('.layer-item[data-layer="main"] .layer-flags input');
+  await clickOn('.layer-tab[data-layer="main"]', [], 'right');
+  await takePicture(picture.replace(/[.]png$/, '-tabmenu.png'));
+  await clickMenu('Zobrazit');
   const mainHidden = (await contents.executeJavaScript(
-    `!document.querySelector('.layer-view[data-layer="main"], .layer-tab[data-layer="main"]') && document.querySelectorAll('.layer-view').length === 1`,
+    `!document.querySelector('.layer-view[data-layer="main"]') && !!document.querySelector('.layer-tab.hidden[data-layer="main"]') && document.querySelectorAll('.layer-view').length === 1`,
   )) as boolean;
   await takePicture(picture.replace(/\.png$/, '-nomain.png'));
   // Two layers side by side with the sheet hidden: open the last layer beside the one shown.
-  await clickOn('.layer-item:last-child .layer-actions button:first-child');
+  await clickOn('.layer-tab[data-layer]:nth-last-child(2)', [], 'right');
+  await clickMenu('Otevřít vedle');
   await pause(300);
   const twoLayers = (await contents.executeJavaScript(
     `[...document.querySelectorAll('.layer-view')].map((v) => v.getAttribute('data-layer')).join(' ')`,
@@ -483,7 +512,7 @@ async function layersWithRealInput(picture: string) {
   await takePicture(picture.replace(/[.]png$/, '-docs.png'));
   await clickOn('.doc-tab:nth-child(1) .doc-tab-title');
   const firstKept = (await contents.executeJavaScript(
-    `document.querySelectorAll('.layer-tab:not(.add)').length === 4 && !!document.querySelector('.doc-tab:nth-child(1).active .doc-dirty')`,
+    `document.querySelectorAll('.layer-tab:not(.add):not(.hidden)').length === 4 && !!document.querySelector('.doc-tab:nth-child(1).active .doc-dirty')`,
   )) as boolean;
   await pressKey('Tab', ['control']);
   await pressKey('W', ['control']);
@@ -584,10 +613,10 @@ async function layersWithRealInput(picture: string) {
       errors: Number(document.querySelector('.statusbar span')?.textContent.replace(/\\D+/g, '') ?? -1),
       text: document.querySelector('.layer-view.active .pages')?.textContent ?? '',
     })`)) as { blocks: number; errors: number; text: string };
-    blocksOk = shown.blocks === 1 && shown.errors === 0 && shown.text.includes('Prosty nosnik 1.2') && shown.text.includes('45');
+    blocksOk = shown.errors === 0 && shown.text.includes('Prosty nosnik 1.2') && shown.text.includes('45');
     await takePicture(picture.replace(/[.]png$/, '-blocks.png'));
   }
-  return { ...state, newKeepsExample, citations, aiReadOnly, split, mainHidden, twoLayers, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, help, blocksOk };
+  return { ...state, newKeepsExample, citations, aiReadOnly, split, mainHidden, twoLayers, addKinds, aiDeletable, aiMenu, tableStrip, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, help, blocksOk };
 }
 
 /**

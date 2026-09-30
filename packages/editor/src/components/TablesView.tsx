@@ -9,6 +9,7 @@ import { formatDiagnostic, t, type Catalog } from '@calccanvas/i18n';
 import { toIdentifier, type SheetDocument, type StoredTable } from '@calccanvas/sheet';
 import { chooseFile } from '../document.js';
 import { ask } from './Ask.js';
+import { commandIcon } from '../icons.js';
 import { addColumn, addRow, deleteColumn, deleteRow, fromEditable, setCell, toEditable, type EditableTable } from '../logic/tableEdit.js';
 import { createTable, importTableFile, withTable, type TableChange } from '../tableActions.js';
 
@@ -55,11 +56,11 @@ export function TablesView({ doc, catalog, diagnostics, resolveFile, onChange, c
             {name}
           </button>
         ))}
-        <button type="button" className="secondary" onClick={async () => apply(await createTable(doc, catalog))}>
-          + {t(catalog, 'editor.newTable')}
+        <button type="button" className="table-action" title={t(catalog, 'editor.newTable')} onClick={async () => apply(await createTable(doc, catalog))}>
+          {commandIcon('insert.newTable') ?? '+'}
         </button>
-        <button type="button" className="secondary" onClick={async () => apply(await importTableFile(doc, catalog))}>
-          {t(catalog, 'editor.importTable')}
+        <button type="button" className="table-action" title={t(catalog, 'editor.importTable')} onClick={async () => apply(await importTableFile(doc, catalog))}>
+          {commandIcon('insert.importTable') ?? '⇩'}
         </button>
       </nav>
       <section className="table-panel">

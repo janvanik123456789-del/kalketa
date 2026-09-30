@@ -124,7 +124,8 @@ export function App() {
   const [notice, setNotice] = useState<string | undefined>();
   const [dialog, setDialog] = useState<DialogKind | undefined>();
   const [zoomChoice, setZoomChoice] = useState(() => stored('calccanvas.zoom') ?? 'fit2');
-  const [pane, setPane] = useState<Pane>(() => (['details', 'tables', 'layers', 'none'].includes(stored('calccanvas.pane') ?? '') ? (stored('calccanvas.pane') as Pane) : 'details'));
+  // The layer tabs do what the Layers panel did, so the panel no longer opens by itself at start.
+  const [pane, setPane] = useState<Pane>(() => (['details', 'tables', 'none'].includes(stored('calccanvas.pane') ?? '') ? (stored('calccanvas.pane') as Pane) : stored('calccanvas.pane') === 'layers' ? 'none' : 'details'));
   const [paneWidth, setPaneWidth] = useState(() => Number(stored('calccanvas.paneWidth')) || 380);
   // Layers open side by side in this document, and which of them is being worked on.
   const panes = tab.panes;
@@ -300,7 +301,6 @@ export function App() {
     const source = insertLineAfter(text, after, line);
     change(target.kind === 'sheet' ? { ...added.doc, source } : { ...added.doc, layers: updateLayer(added.doc.layers, target.id, { text: source }) });
     if (target !== layer) activate(target.id);
-    choosePane('layers');
   };
 
   const deleteBlock = async (name: string) => {
@@ -879,10 +879,7 @@ export function App() {
                     statement={selected}
                     catalog={ui}
                     decimalComma={decimalComma}
-                    onLayer={(id) => {
-                      activate(id);
-                      choosePane('layers');
-                    }}
+                    onLayer={activate}
                     onSelect={(statement) => {
                       setSelected(statement);
                       const line = result.statements[statement]?.statement.span.line;
@@ -945,7 +942,20 @@ export function App() {
           </div>
         )}
         {!tableEditor && (
-          <LayerTabs layers={doc.layers} active={layer.id} open={openPanes} catalog={ui} nameOf={nameOf} onActivate={activate} onOpenBeside={openBeside} onAdd={() => choosePane('layers')} />
+          <LayerTabs
+            layers={doc.layers}
+            active={layer.id}
+            open={openPanes}
+            catalog={ui}
+            used={evaluation.used}
+            commands={commands}
+            nameOf={nameOf}
+            onActivate={activate}
+            onOpenBeside={openBeside}
+            onChange={setLayers}
+            onAdd={(kind) => void newLayer(kind)}
+            onDelete={(id) => void deleteLayer(id)}
+          />
         )}
       </ToolbarFrame>
       <footer className="statusbar">

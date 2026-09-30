@@ -118,6 +118,23 @@ export function MenuBar({ menus, commands }: Props) {
   );
 }
 
+/** A menu at a point of the window: right click, or a small ▾ button. */
+export function ContextMenu({ items, commands, at, onClose }: { items: readonly MenuItem[]; commands: ReadonlyMap<string, Command>; at: { x: number; y: number }; onClose(): void }) {
+  const anchor = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const close = (e: MouseEvent) => {
+      if (!anchor.current?.contains(e.target as Node)) onClose();
+    };
+    window.addEventListener('mousedown', close);
+    return () => window.removeEventListener('mousedown', close);
+  }, [onClose]);
+  return (
+    <div ref={anchor} className="context-menu" style={{ left: at.x, top: at.y }} onMouseDown={(e) => e.preventDefault()}>
+      <MenuPanel items={items} commands={commands} onClose={onClose} />
+    </div>
+  );
+}
+
 interface PanelProps {
   readonly items: readonly MenuItem[];
   readonly commands: ReadonlyMap<string, Command>;
@@ -215,7 +232,11 @@ function MenuPanel({ items, commands, onClose, onNeighbour }: PanelProps) {
   useLayoutEffect(() => {
     const element = panel.current;
     if (!element) return;
-    const overflow = element.getBoundingClientRect().right - document.documentElement.clientWidth;
+    const rect = element.getBoundingClientRect();
+    // A menu opened near the bottom (the layer tabs) opens upwards.
+    const below = rect.bottom - window.innerHeight;
+    if (below > 0) element.style.top = `calc(100% - ${Math.min(rect.height, below + 2)}px)`;
+    const overflow = rect.right - window.innerWidth;
     if (overflow <= 0) return;
     const anchor = element.parentElement;
     if (anchor?.classList.contains('submenu-anchor')) anchor.classList.add('flipped');

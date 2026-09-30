@@ -278,7 +278,6 @@ export const en: Catalog = {
     'cmd.insert.layerCalc': '&Auxiliary calculation',
     'cmd.insert.layerData': '&Data',
     'cmd.insert.layerSources': '&Sources',
-    'cmd.insert.layerAi': 'A&I notes',
     'size.warning': 'The calculation file has {size} MB. Most space is taken by: {items}.',
     'settings.sizeLimit': 'Warn when the calculation file exceeds (MB)',
   },

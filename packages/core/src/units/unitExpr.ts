@@ -10,7 +10,7 @@
 import { fail } from '../diagnostics.js';
 import type { UnitExpr } from '../lang/ast.js';
 import { DIMENSIONLESS, divideDims, multiplyDims, powerDim, superscript, type Dimension } from './dimension.js';
-import type { UnitDef, UnitRegistry } from './registry.js';
+import { canonicalUnitSymbol, type UnitDef, type UnitRegistry } from './registry.js';
 
 export interface ResolvedUnit {
   readonly symbol: string;
@@ -70,7 +70,7 @@ export function formatUnit(expr: UnitExpr): string {
     case 'unit-one':
       return '1';
     case 'unit-name':
-      return expr.name;
+      return canonicalUnitSymbol(expr.name);
     case 'unit-mul':
       return `${formatUnit(expr.left)}·${formatUnit(expr.right)}`;
     case 'unit-div': {

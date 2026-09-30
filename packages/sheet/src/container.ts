@@ -16,7 +16,7 @@
 
 import { diagnostic, NO_SPAN, type Diagnostic } from '@calccanvas/core';
 import { strFromU8, strToU8, unzipSync, zipSync, type Zippable } from 'fflate';
-import { defaultLayers, type Layer, type LayerKind } from './layers.js';
+import { defaultLayers, withAiLayer, type Layer, type LayerKind } from './layers.js';
 
 export const FORMAT_ID = 'calccanvas-sheet';
 /** 1: sheet + tables. 2: adds layers (layers.json, layers/<id>/). Version 1 files still open. */
@@ -288,5 +288,5 @@ function parseLayers(value: unknown): Layer[] {
   });
   const sheets = layers.filter((l) => l.kind === 'sheet');
   if (sheets.length !== 1 || layers[0]?.kind !== 'sheet') throw new Error('sheet layer');
-  return layers;
+  return withAiLayer(layers);
 }

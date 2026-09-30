@@ -10,7 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as R
 import { defaultRegistry, rowLabel, type Diagnostic, type Statement } from '@calccanvas/core';
 import { catalogFor, CATALOGS, formatDiagnostic, formatNumber, t, type Catalog } from '@calccanvas/i18n';
 import { buildPrintDocument, printHtml } from '@calccanvas/render';
-import { addLayer, allDiagnostics, appendixLayers, LayerSessions, MAIN_LAYER, removeLayer, tablesByLayer, updateLayer, type Layer, type SheetDocument } from '@calccanvas/sheet';
+import { addLayer, allDiagnostics, appendixLayers, isRemovable, LayerSessions, MAIN_LAYER, removeLayer, tablesByLayer, updateLayer, type AddableLayerKind, type Layer, type SheetDocument } from '@calccanvas/sheet';
 import { buildCommands, shortcutOf, type Command } from './commands.js';
 import { desktop, emptyDocument, exampleDocument, fileName, fileUri, largestParts, openBytes, pickAndOpen, saveDocument, tableCache, type FileRef, type OpenedFile } from './document.js';
 import { createHistory, record, redo, reset, undo } from './logic/history.js';
@@ -168,7 +168,7 @@ export function App() {
     setSelected(undefined);
   };
 
-  const newLayer = async (kind: 'calc' | 'data' | 'sources' | 'ai') => {
+  const newLayer = async (kind: AddableLayerKind) => {
     const name = (await ask(t(ui, 'layers.newName'), t(ui, `layer.kind.${kind}`)))?.trim();
     if (!name) return;
     const added = addLayer(doc.layers, kind, name);
@@ -178,7 +178,7 @@ export function App() {
 
   const deleteLayer = async (id: string) => {
     const target = doc.layers.find((l) => l.id === id);
-    if (!target || target.kind === 'sheet' || !(await askConfirm(t(ui, 'layers.deleteConfirm', { name: nameOf(target) })))) return;
+    if (!target || !isRemovable(target) || !(await askConfirm(t(ui, 'layers.deleteConfirm', { name: nameOf(target) })))) return;
     // Pictures of the layer go with it; tables of a data layer move to another data layer.
     const files = new Map([...doc.files].filter(([path]) => !path.startsWith(`layers/${id}/`)));
     change({ ...doc, layers: removeLayer(doc.layers, id), files });
@@ -551,7 +551,7 @@ export function App() {
     {
       label: t(ui, 'menu.insert'),
       items: [cmd('insert.heading'), cmd('insert.text'), cmd('insert.definition'), cmd('insert.check'), cmd('insert.pick'), cmd('insert.pageBreak'), sep, cmd('insert.newTable'), cmd('insert.importTable'), sep,
-        { kind: 'submenu', label: t(ui, 'menu.layer'), items: [cmd('insert.layerCalc'), cmd('insert.layerData'), cmd('insert.layerSources'), cmd('insert.layerAi')] },
+        { kind: 'submenu', label: t(ui, 'menu.layer'), items: [cmd('insert.layerCalc'), cmd('insert.layerData'), cmd('insert.layerSources')] },
       ],
     },
     { label: t(ui, 'menu.tools'), items: [cmd('tools.settings')] },

@@ -55,7 +55,7 @@ export interface CommandContext {
     insert(kind: 'heading' | 'text' | 'definition' | 'check' | 'pick' | 'pageBreak'): void;
     newTable(): void;
     importTable(): void;
-    addLayer(kind: 'calc' | 'data' | 'sources' | 'ai'): void;
+    addLayer(kind: 'calc' | 'data' | 'sources'): void;
     settings(): void;
     shortcuts(): void;
     about(): void;
@@ -111,7 +111,6 @@ export function buildCommands(ctx: CommandContext): Map<string, Command> {
   add('insert.layerCalc', 'insert', () => a.addLayer('calc'));
   add('insert.layerData', 'insert', () => a.addLayer('data'));
   add('insert.layerSources', 'insert', () => a.addLayer('sources'));
-  add('insert.layerAi', 'insert', () => a.addLayer('ai'));
 
   add('tools.settings', 'tools', a.settings);
   add('help.shortcuts', 'help', a.shortcuts);

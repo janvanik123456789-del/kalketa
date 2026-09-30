@@ -5,6 +5,9 @@
  * prefixed interpretation (min is minute, not milli-inch).
  *
  * Angles follow SI and are dimensionless (rad = 1), so ω·r gives m/s.
+ *
+ * Symbols that are hard to type have keyboard spellings, shown canonically:
+ * u and µ (micro sign) for the micro prefix μ (uF -> μF), ohm for Ω (kohm -> kΩ).
  */
 
 import { dim, DIMENSIONLESS, type Dimension } from './dimension.js';
@@ -43,6 +46,9 @@ const MAG_FLUX = dim({ M: 1, L: 2, T: -2, I: -1 });
 const MAG_FLUX_DENSITY = dim({ M: 1, T: -2, I: -1 });
 const INDUCTANCE = dim({ M: 1, L: 2, T: -2, I: -2 });
 const FREQUENCY = dim({ T: -1 });
+const DOSE = dim({ L: 2, T: -2 });
+const ILLUMINANCE = dim({ J: 1, L: -2 });
+const CATALYTIC = dim({ N: 1, T: -1 });
 
 const BUILT_IN: readonly UnitDef[] = [
   // Base units
@@ -80,6 +86,7 @@ const BUILT_IN: readonly UnitDef[] = [
   { symbol: 'bar', factor: 1e5, dim: PRESSURE, prefixable: true },
   { symbol: 'atm', factor: 101325, dim: PRESSURE },
   { symbol: 'psi', factor: 6894.757293168, dim: PRESSURE },
+  { symbol: 'mmHg', factor: 133.322387415, dim: PRESSURE },
   { symbol: 'J', factor: 1, dim: ENERGY, prefixable: true },
   { symbol: 'Wh', factor: 3600, dim: ENERGY, prefixable: true },
   { symbol: 'cal', factor: 4.184, dim: ENERGY, prefixable: true },
@@ -93,12 +100,21 @@ const BUILT_IN: readonly UnitDef[] = [
   { symbol: 'Ah', factor: 3600, dim: CHARGE, prefixable: true },
   { symbol: 'V', factor: 1, dim: VOLTAGE, prefixable: true },
   { symbol: 'VA', factor: 1, dim: POWER, prefixable: true },
+  { symbol: 'var', factor: 1, dim: POWER, prefixable: true },
   { symbol: 'Ω', factor: 1, dim: RESISTANCE, prefixable: true },
   { symbol: 'S', factor: 1, dim: CONDUCTANCE, prefixable: true },
   { symbol: 'F', factor: 1, dim: CAPACITANCE, prefixable: true },
   { symbol: 'Wb', factor: 1, dim: MAG_FLUX, prefixable: true },
   { symbol: 'T', factor: 1, dim: MAG_FLUX_DENSITY, prefixable: true },
   { symbol: 'H', factor: 1, dim: INDUCTANCE, prefixable: true },
+
+  // Light, radiation, chemistry
+  { symbol: 'lm', factor: 1, dim: J, prefixable: true },
+  { symbol: 'lx', factor: 1, dim: ILLUMINANCE, prefixable: true },
+  { symbol: 'Bq', factor: 1, dim: FREQUENCY, prefixable: true },
+  { symbol: 'Gy', factor: 1, dim: DOSE, prefixable: true },
+  { symbol: 'Sv', factor: 1, dim: DOSE, prefixable: true },
+  { symbol: 'kat', factor: 1, dim: CATALYTIC, prefixable: true },
 
   // Dimensionless
   { symbol: 'rad', factor: 1, dim: DIMENSIONLESS, prefixable: true },
@@ -108,13 +124,25 @@ const BUILT_IN: readonly UnitDef[] = [
   { symbol: 'ppm', factor: 1e-6, dim: DIMENSIONLESS },
 ];
 
-/** SI prefixes. Two-letter "da" is listed first so it wins over "d". */
+/** SI prefixes (2022, quecto to quetta). Two-letter "da" is listed first so it wins over "d". */
 const PREFIXES: readonly (readonly [string, number])[] = [
   ['da', 1e1],
-  ['Y', 1e24], ['Z', 1e21], ['E', 1e18], ['P', 1e15], ['T', 1e12], ['G', 1e9],
+  ['Q', 1e30], ['R', 1e27], ['Y', 1e24], ['Z', 1e21], ['E', 1e18], ['P', 1e15], ['T', 1e12], ['G', 1e9],
   ['M', 1e6], ['k', 1e3], ['h', 1e2], ['d', 1e-1], ['c', 1e-2], ['m', 1e-3],
-  ['μ', 1e-6], ['µ', 1e-6], ['n', 1e-9], ['p', 1e-12], ['f', 1e-15], ['a', 1e-18],
+  ['μ', 1e-6], ['n', 1e-9], ['p', 1e-12], ['f', 1e-15], ['a', 1e-18],
+  ['z', 1e-21], ['y', 1e-24], ['r', 1e-27], ['q', 1e-30],
 ];
+
+/** Keyboard spellings of symbols; no built-in unit starts with u or µ. */
+const MICRO_SPELLINGS = /^[uµ](?=.)/;
+const ALIASES: Readonly<Record<string, string>> = { ohm: 'Ω' };
+
+/** The canonical way to write a unit symbol: uF -> μF, µm -> μm, kohm -> kΩ. */
+export function canonicalUnitSymbol(symbol: string): string {
+  const micro = symbol.replace(MICRO_SPELLINGS, 'μ');
+  const alias = Object.keys(ALIASES).find((a) => micro.endsWith(a));
+  return alias ? micro.slice(0, -alias.length) + ALIASES[alias] : micro;
+}
 
 export class UnitRegistry {
   private readonly units = new Map<string, UnitDef>();
@@ -124,9 +152,11 @@ export class UnitRegistry {
   }
 
   /** Finds a unit by symbol, trying SI prefixes when there is no exact match. */
-  resolve(symbol: string): UnitDef | undefined {
-    const exact = this.units.get(symbol);
+  resolve(written: string): UnitDef | undefined {
+    const exact = this.units.get(written);
     if (exact) return exact;
+    const symbol = canonicalUnitSymbol(written);
+    if (symbol !== written) return this.resolve(symbol);
     for (const [prefix, scale] of PREFIXES) {
       if (!symbol.startsWith(prefix) || symbol.length === prefix.length) continue;
       const base = this.units.get(symbol.slice(prefix.length));

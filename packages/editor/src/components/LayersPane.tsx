@@ -4,11 +4,11 @@
  */
 
 import { t, type Catalog } from '@calccanvas/i18n';
-import { moveLayer, updateLayer, type Layer, type LayerKind } from '@calccanvas/sheet';
+import { isRemovable, moveLayer, updateLayer, type Layer, type LayerKind } from '@calccanvas/sheet';
 import { ask } from './Ask.js';
 
 export const LAYER_GLYPH: Readonly<Record<LayerKind, string>> = { sheet: '▤', calc: '∑', data: '▦', ai: '✦', sources: '❝' };
-export const NEW_LAYER_KINDS = ['calc', 'data', 'sources', 'ai'] as const;
+export const NEW_LAYER_KINDS = ['calc', 'data', 'sources'] as const;
 
 interface PaneProps {
   readonly layers: readonly Layer[];
@@ -57,9 +57,11 @@ export function LayersPane({ layers, active, catalog, used, nameOf, onActivate, 
                     >
                       ✎
                     </button>
-                    <button type="button" title={t(catalog, 'layers.delete')} onClick={() => onDelete(layer.id)}>
-                      ✕
-                    </button>
+                    {isRemovable(layer) && (
+                      <button type="button" title={t(catalog, 'layers.delete')} onClick={() => onDelete(layer.id)}>
+                        ✕
+                      </button>
+                    )}
                   </span>
                 )}
               </div>

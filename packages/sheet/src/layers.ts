@@ -5,7 +5,8 @@
  *   sheet    the printed calculation (exactly one, id "main"; text in SheetDocument.source)
  *   calc     auxiliary calculation; the sheet may use its results
  *   data     tables (a table belongs to one data layer)
- *   ai       notes and suggestions of an LLM; never change the calculation
+ *   ai       notes and suggestions of an LLM; never change the calculation.
+ *            Every sheet has exactly one; people read it, only the AI writes it.
  *   sources  theory, requirements, reasons: text, cropped figures, citations, links
  */
 
@@ -43,8 +44,11 @@ export function defaultLayers(): Layer[] {
   ];
 }
 
+/** Kinds of layers people add; the printed sheet and the AI notes exist once. */
+export type AddableLayerKind = Exclude<LayerKind, 'sheet' | 'ai'>;
+
 /** A new layer with a unique id, added after the others. */
-export function addLayer(layers: readonly Layer[], kind: Exclude<LayerKind, 'sheet'>, name: string): { layers: Layer[]; id: string } {
+export function addLayer(layers: readonly Layer[], kind: AddableLayerKind, name: string): { layers: Layer[]; id: string } {
   let n = layers.length + 1;
   while (layers.some((l) => l.id === `layer${n}`)) n++;
   const id = `layer${n}`;
@@ -64,10 +68,26 @@ export function updateLayer(layers: readonly Layer[], id: string, change: Partia
   return layers.map((l) => (l.id === id ? { ...l, ...change } : l));
 }
 
-/** Removes a layer; the printed sheet stays. Tables of a removed data layer move to the first data layer. */
+/** Whether people may delete the layer: not the printed sheet, not the AI notes. */
+export function isRemovable(layer: Layer): boolean {
+  return layer.kind !== 'sheet' && layer.kind !== 'ai';
+}
+
+/**
+ * Makes sure a sheet has its AI notes layer (files written before it existed,
+ * or by other programs); it is added at the end.
+ */
+export function withAiLayer(layers: readonly Layer[]): Layer[] {
+  if (layers.some((l) => l.kind === 'ai')) return [...layers];
+  let id = DEFAULT_AI_LAYER;
+  for (let n = 2; layers.some((l) => l.id === id); n++) id = `${DEFAULT_AI_LAYER}${n}`;
+  return [...layers, { id, kind: 'ai', visible: true, locked: false, appendix: false, text: '' }];
+}
+
+/** Removes a layer; the printed sheet and the AI notes stay. Tables of a removed data layer move to the first data layer. */
 export function removeLayer(layers: readonly Layer[], id: string): Layer[] {
   const removed = layers.find((l) => l.id === id);
-  if (!removed || removed.kind === 'sheet') return [...layers];
+  if (!removed || !isRemovable(removed)) return [...layers];
   const rest = layers.filter((l) => l.id !== id);
   if (removed.kind !== 'data' || !removed.tables?.length) return rest;
   const target = rest.find((l) => l.kind === 'data');

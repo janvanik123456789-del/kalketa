@@ -13,6 +13,7 @@ import {
   removeLayer,
   tablesByLayer,
   updateLayer,
+  withAiLayer,
   writeSheetFile,
   type SheetDocument,
 } from '../src/index.js';
@@ -36,6 +37,15 @@ describe('layer list', () => {
     expect(moveLayer(layers, 'data', -1).map((l) => l.id)).toEqual(['main', 'data', id, 'ai']);
     expect(removeLayer(layers, 'main').map((l) => l.id)).toContain('main');
     expect(removeLayer(layers, id).map((l) => l.id)).toEqual(['main', 'data', 'ai']);
+  });
+
+  it('always has exactly one AI notes layer, which cannot be removed', () => {
+    expect(removeLayer(defaultLayers(), 'ai').map((l) => l.id)).toContain('ai');
+    const without = defaultLayers().filter((l) => l.kind !== 'ai');
+    expect(withAiLayer(without).filter((l) => l.kind === 'ai')).toHaveLength(1);
+    expect(withAiLayer(defaultLayers())).toEqual(defaultLayers());
+    // @ts-expect-error people cannot add another AI layer
+    addLayer(defaultLayers(), 'ai', 'AI 2');
   });
 
   it('keeps tables of a removed data layer', () => {
@@ -127,6 +137,20 @@ describe('.calc format version 2', () => {
     const read = await readSheetFile(v1);
     expect(read.diagnostics).toEqual([]);
     expect(read.document!.layers).toEqual(defaultLayers().map((l) => (l.kind === 'ai' ? { ...l, text: '' } : l)));
+  });
+
+  it('adds the AI notes layer to files that lack it', async () => {
+    const good = await writeSheetFile(newDocument('T'));
+    const entries = unzipSync(good);
+    entries['layers.json'] = strToU8(JSON.stringify([{ id: 'main', kind: 'sheet' }, { id: 'ai', kind: 'calc', name: 'Moje' }]));
+    const read = await readSheetFile(zipSync(entries));
+    // Edited outside the program: only the content hash warning.
+    expect(read.diagnostics.map((d) => d.code)).toEqual(['W-FILE-HASH']);
+    expect(read.document!.layers.map((l) => [l.id, l.kind])).toEqual([
+      ['main', 'sheet'],
+      ['ai', 'calc'],
+      ['ai2', 'ai'],
+    ]);
   });
 
   it('rejects a damaged layer list', async () => {

@@ -227,7 +227,7 @@ async function runSmokeTest(pdfPath: string): Promise<void> {
     await writeFile(pdfPath, pdf);
     ok =
       state.bridge && state.menus === 6 && state.toolbars > 0 && state.rows > 10 && state.summary > 0 && state.math > 0 && reshapedColumns === 3 && pdf.length > 1000 &&
-      layers.tabs === 5 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.aiReadOnly && layers.q.includes('16,73');
+      layers.tabs === 5 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.aiReadOnly && layers.addKinds === 3 && !layers.aiDeletable && layers.q.includes('16,73');
     console.log(JSON.stringify({ ok, ...state, reshapedColumns, layers, pdfBytes: pdf.length }));
   } catch (err) {
     console.log(JSON.stringify({ ok: false, error: (err as Error).message }));
@@ -345,8 +345,10 @@ async function layersWithRealInput(picture: string) {
     tabs: document.querySelectorAll('.layer-tab:not(.add)').length,
     used: document.querySelectorAll('.layer-note').length,
     errors: Number(document.querySelector('.statusbar span')?.textContent.replace(/\\D+/g, '') ?? -1),
+    addKinds: document.querySelectorAll('.layer-add button').length,
+    aiDeletable: document.querySelectorAll('.layer-item[data-layer="ai"] .layer-actions button').length > 3,
     q: [...document.querySelectorAll('.row')].find((r) => r.textContent.includes('q_d'))?.textContent ?? '',
-  })`)) as { tabs: number; used: number; errors: number; q: string };
+  })`)) as { tabs: number; used: number; errors: number; addKinds: number; aiDeletable: boolean; q: string };
   return { ...state, citations, aiReadOnly };
 }
 

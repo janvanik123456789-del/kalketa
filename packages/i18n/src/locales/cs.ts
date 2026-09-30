@@ -278,7 +278,6 @@ export const cs: Catalog = {
     'cmd.insert.layerCalc': '&Pomocný výpočet',
     'cmd.insert.layerData': '&Datová vrstva',
     'cmd.insert.layerSources': 'Po&dklady',
-    'cmd.insert.layerAi': 'Poznámky &AI',
     'size.warning': 'Soubor výpočtu má {size} MB. Nejvíc místa zabírá: {items}.',
     'settings.sizeLimit': 'Upozornit, když soubor výpočtu přesáhne (MB)',
   },

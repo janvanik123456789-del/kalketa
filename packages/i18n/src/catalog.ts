@@ -215,7 +215,6 @@ export const UI_KEYS = [
   'cmd.insert.layerCalc',
   'cmd.insert.layerData',
   'cmd.insert.layerSources',
-  'cmd.insert.layerAi',
   'size.warning',
   'settings.sizeLimit',
 ] as const;

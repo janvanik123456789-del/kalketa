@@ -31,10 +31,9 @@ export interface ParseResult {
 }
 
 const KEYWORDS = new Set(['and', 'or', 'not', 'true', 'false', 'check', 'source', 'solve', 'in', 'guess', 'dimension', 'unit', 'input']);
-const UNSUPPORTED_STATEMENTS: Readonly<Record<string, string>> = {
-  dimension: 'dimension',
-  unit: 'unit-definition',
-};
+const UNSUPPORTED_STATEMENTS: Readonly<Record<string, string>> = {};
+/** "unit ks: dimensionless" (also "unit ks: 1"). */
+export const DIMENSIONLESS_NAME = 'dimensionless';
 /** Keywords that may follow a complete expression. */
 const CONTINUATION_KEYWORDS = new Set(['and', 'or', 'source', 'in', 'guess']);
 const COMPARISONS: ReadonlySet<TokenType> = new Set(['==', '!=', '<', '<=', '>', '>=']);
@@ -44,6 +43,8 @@ export function parse(source: string, options: ParseOptions): ParseResult {
   const diagnostics: Diagnostic[] = [...lexed.diagnostics];
   const statements: Statement[] = [];
   const defined = new Set<string>(options.predefined ?? []);
+  // The sheet's own units, known from their "unit" line on.
+  const units = new Set<string>();
 
   for (const line of splitLines(lexed.tokens)) {
     const comments = line.filter((t) => t.type === 'comment');
@@ -55,7 +56,7 @@ export function parse(source: string, options: ParseOptions): ParseResult {
       continue;
     }
 
-    const parser = new LineParser(tokens, options, defined, diagnostics);
+    const parser = new LineParser(tokens, options, defined, diagnostics, units);
     let statement: Statement;
     try {
       statement = parser.parseStatement();
@@ -123,6 +124,7 @@ class LineParser {
     private readonly options: ParseOptions,
     private readonly defined: Set<string>,
     private readonly diagnostics: Diagnostic[],
+    private readonly units: Set<string>,
   ) {
     const last = tokens[tokens.length - 1]!;
     // Synthetic end-of-line token placed right after the last real token.
@@ -164,6 +166,15 @@ class LineParser {
     }
     if (first.type === 'ident' && first.text === 'solve' && this.peek(1).type !== ':=') {
       return this.parseSolve(lineSpan);
+    }
+    if (first.type === 'ident' && first.text === 'dimension' && this.peek(1).type === 'ident') {
+      this.next();
+      const name = this.next();
+      this.expectEnd();
+      return { kind: 'dimension', name: name.text, nameSpan: name.span, span: lineSpan };
+    }
+    if (first.type === 'ident' && first.text === 'unit' && this.peek(1).type === 'ident') {
+      return this.parseUnitDefinition(lineSpan);
     }
     if (first.type === 'ident' && first.text in UNSUPPORTED_STATEMENTS && this.peek(1).type !== ':=') {
       fail('E-UNSUPPORTED', first.span, { feature: UNSUPPORTED_STATEMENTS[first.text]! });
@@ -319,6 +330,37 @@ class LineParser {
     if (equations.length === 0) fail('E-SYNTAX', this.end.span, { expected: '==', found: 'end-of-line' });
     if (range && unknowns.length !== 1) fail('E-SYNTAX', range.low.span, { expected: 'guess', found: 'in' });
     return { kind: 'solve', unknowns, equations, ...(range ? { range } : {}), guesses, span: lineSpan };
+  }
+
+  /** unit CZK: Mena · unit ks: dimensionless · unit EUR := 25 CZK */
+  private parseUnitDefinition(lineSpan: Span): Statement {
+    this.next(); // unit
+    const name = this.next();
+    if (KEYWORDS.has(name.text)) fail('E-RESERVED', name.span, { name: name.text });
+    if (this.options.isUnit(name.text) || this.units.has(name.text) || this.defined.has(name.text)) fail('E-REDEFINED', name.span, { name: name.text });
+    let statement: Statement;
+    if (this.peek().type === ':') {
+      this.next();
+      const dim = this.peek();
+      if (dim.type === 'number' && dim.value === 1) {
+        this.next();
+        statement = { kind: 'unit', name: name.text, nameSpan: name.span, dimension: { name: DIMENSIONLESS_NAME, span: dim.span }, span: lineSpan };
+      } else {
+        const token = this.expect('ident', 'dimension');
+        statement = { kind: 'unit', name: name.text, nameSpan: name.span, dimension: { name: token.text, span: token.span }, span: lineSpan };
+      }
+    } else {
+      this.expect(':=', ':=');
+      statement = { kind: 'unit', name: name.text, nameSpan: name.span, expr: this.parseExpression(), span: lineSpan };
+    }
+    this.expectEnd();
+    this.units.add(name.text);
+    return statement;
+  }
+
+  /** Built-in units and the sheet's own ones defined above. */
+  private isUnit(name: string): boolean {
+    return this.options.isUnit(name) || this.units.has(name);
   }
 
   private parseDisplay(lineSpan: Span): Statement {
@@ -504,7 +546,7 @@ class LineParser {
       const close = this.expect(')', ')');
       return { kind: 'call', name, args, named, span: spanOf(token, close) };
     }
-    if (!this.defined.has(name) && this.options.isUnit(name)) {
+    if (!this.defined.has(name) && this.isUnit(name)) {
       const unit: UnitExpr = { kind: 'unit-name', name, span: token.span };
       return { kind: 'unit', unit, span: token.span };
     }
@@ -520,7 +562,7 @@ class LineParser {
       return { kind: 'number', value: token.value, unit, span: spanOf(token, unit) };
     }
     if (next.type === 'ident' && !KEYWORDS.has(next.text)) {
-      if (!this.options.isUnit(next.text)) {
+      if (!this.isUnit(next.text)) {
         if (this.defined.has(next.text)) fail('E-MISSING-OPERATOR', next.span, { found: next.text });
         fail('E-UNKNOWN-UNIT', next.span, { unit: next.text });
       }
@@ -560,7 +602,7 @@ class LineParser {
 
   private tryParseUnitFactor(): UnitExpr | undefined {
     const token = this.peek();
-    if (token.type === 'ident' && this.options.isUnit(token.text)) return this.parseUnitFactor(false);
+    if (token.type === 'ident' && this.isUnit(token.text)) return this.parseUnitFactor(false);
     if (token.type !== '(') return undefined;
     // "J/(kg·K)": accept the group only if it contains nothing but units.
     const save = this.pos;
@@ -613,7 +655,7 @@ class LineParser {
       this.expect(')', ')');
     } else if (token.type === 'ident') {
       this.next();
-      if (!this.options.isUnit(token.text)) fail('E-UNKNOWN-UNIT', token.span, { unit: token.text });
+      if (!this.isUnit(token.text)) fail('E-UNKNOWN-UNIT', token.span, { unit: token.text });
       if (!explicit && this.defined.has(token.text)) {
         this.diagnostics.push(diagnostic('W-AMBIGUOUS-UNIT', token.span, { name: token.text }));
       }

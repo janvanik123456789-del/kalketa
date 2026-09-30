@@ -12,6 +12,7 @@
  */
 
 import {
+  formatUnit,
   toDisplay,
   type Diagnostic,
   type Expr,
@@ -233,6 +234,17 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
         });
         break;
       }
+      case 'dimension':
+      case 'unit': {
+        if (r.status === 'error' || r.status === 'blocked') {
+          blocks.push({ kind: 'error', line: s.span.line, source: sourceText(result, s.span), messages });
+        } else if (s.kind === 'unit' && s.expr) {
+          // A unit given by a value is an assumption of the calculation: "1 EUR = 25 CZK".
+          const one = row(mn(formulaOptions().literal(1)), mo(' '), mu(s.name));
+          blocks.push({ kind: 'equation', line: s.span.line, lines: [{ role: 'given', lhs: one, op: '=', rhs: formulaNode(s.expr, formulaOptions()) }], ...(s.comment ? { comment: s.comment } : {}), messages });
+        }
+        break;
+      }
       default:
         break;
     }
@@ -273,6 +285,11 @@ function equationLines(
   const result = resultNode(r, format, formulaOptions().booleans);
   const given = expr.kind === 'number' || (expr.kind === 'unary' && expr.operand.kind === 'number') || expr.kind === 'string' || expr.kind === 'boolean';
 
+  // A conversion shows both units: "100 EUR = 2 500 CZK".
+  const conversion = !lhs && expr.kind === 'number' && expr.unit !== undefined && r.display !== undefined && r.display.unit !== formatUnit(expr.unit);
+  if (conversion && result) {
+    return [{ role: 'formula', rhs: formulaNode(expr, formulaOptions()) }, { role: 'result', rhs: result }];
+  }
   if (given || mode.resultOnly) {
     return [withLhs({ role: given ? 'given' : 'result', rhs: result ?? formulaNode(expr, formulaOptions()) }, true)];
   }

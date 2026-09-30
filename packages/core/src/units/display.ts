@@ -30,7 +30,7 @@ export function toDisplay(q: Quantity, registry: UnitRegistry, target?: Resolved
     const def = registry.resolve(symbol);
     if (def && sameDim(def.dim, q.dim)) return { value: q.si / def.factor, unit: symbol };
   }
-  return { value: q.si, unit: baseUnitSymbol(q.dim) };
+  return { value: q.si, unit: baseUnitSymbol(q.dim, registry.baseSymbols()) };
 }
 
 /** Converts to a unit; absolute temperatures honour the zero-point shift. */
@@ -43,9 +43,9 @@ export function inUnit(q: Quantity, unit: ResolvedUnit): DisplayValue {
   return { value: q.si / unit.factor, unit: unit.symbol };
 }
 
-/** "kg·m²/s³" from a dimension. */
-export function baseUnitSymbol(d: Dimension): string {
-  const part = (key: string, exp: number): string => (BASE_SYMBOLS[key] ?? key) + superscript(exp);
+/** "kg·m²/s³" from a dimension; `own` names a sheet's own dimensions (Mena -> CZK). */
+export function baseUnitSymbol(d: Dimension, own: ReadonlyMap<string, string> = new Map()): string {
+  const part = (key: string, exp: number): string => (BASE_SYMBOLS[key] ?? own.get(key) ?? key) + superscript(exp);
   const keys = dimKey(d) === '1' ? [] : Object.keys(d);
   const num = keys.filter((k) => d[k]! > 0).map((k) => part(k, d[k]!));
   const den = keys.filter((k) => d[k]! < 0).map((k) => part(k, -d[k]!));

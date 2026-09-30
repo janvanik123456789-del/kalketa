@@ -88,6 +88,16 @@ export type Statement =
       readonly expr: Expr;
       readonly source?: string;
     })
+  | (StatementBase & { readonly kind: 'dimension'; readonly name: string; readonly nameSpan: Span })
+  | (StatementBase & {
+      readonly kind: 'unit';
+      readonly name: string;
+      readonly nameSpan: Span;
+      /** "unit CZK: Mena": base unit of a dimension; "dimensionless" (or 1) for counts like ks. */
+      readonly dimension?: { readonly name: string; readonly span: Span };
+      /** "unit EUR := 25 CZK": a unit defined by a value. */
+      readonly expr?: Expr;
+    })
   | (StatementBase & {
       readonly kind: 'solve';
       /** The names the statement finds and defines. */

@@ -144,8 +144,12 @@ describe('parser: statements', () => {
     expect(parseCodes('a = 5')).toEqual(['E-ASSIGN-WITH-EQUALS']);
   });
 
-  it('reports features of later phases as unsupported', () => {
-    expect(parseCodes('dimension Mena')).toEqual(['E-UNSUPPORTED']);
+  it("parses a sheet's own dimensions and units; a new unit is known from its line on", () => {
+    const result = parse('dimension Mena\nunit CZK: Mena\nunit EUR := 25 CZK\nx := 5 EUR', { isUnit });
+    expect(result.diagnostics).toEqual([]);
+    expect(result.sheet.statements.map((s) => s.kind)).toEqual(['dimension', 'unit', 'unit', 'definition']);
+    expect(result.sheet.statements[1]).toMatchObject({ name: 'CZK', dimension: { name: 'Mena' } });
+    expect(parseCodes('x := 5 CZK\nunit CZK: 1')).toEqual(['E-UNKNOWN-UNIT']);
   });
 
   it('parses function definitions; parameters are names even where they spell units', () => {

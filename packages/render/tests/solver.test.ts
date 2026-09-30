@@ -29,3 +29,23 @@ describe('solve in print', () => {
     expect(html).not.toContain('≔');
   });
 });
+
+describe("a sheet's own units in print", () => {
+  it('show a unit given by a value as an assumption, and errors of unit lines', () => {
+    const doc = buildPrintDocument(evaluateSheet('dimension Mena\nunit CZK: Mena\nunit EUR := 25 CZK\nunit X: Nic'), { catalog: cs, registry: defaultRegistry, digits: 4, title: 'T' });
+    expect(doc.blocks.map((b) => b.kind)).toEqual(['equation', 'error']);
+    const rate = doc.blocks[0]!;
+    const plain = (text: string) => text.replace(/\s+/g, ' ');
+    expect(rate.kind === 'equation' && rate.lines.map((l) => [l.lhs && plain(toText(l.lhs)), l.op, plain(toText(l.rhs))])).toEqual([['1 EUR', '=', '25 CZK']]);
+  });
+});
+
+describe('a conversion in print', () => {
+  it('shows both units', () => {
+    const doc = buildPrintDocument(evaluateSheet('100 EUR | CZK =\n5 m =', { }), { catalog: cs, registry: defaultRegistry, digits: 4, title: 'T' });
+    // EUR is not known here: the first line is an error; a plain value keeps one line.
+    expect(doc.blocks[1]!.kind === 'equation' && doc.blocks[1]!.lines.length).toBe(1);
+    const converted = buildPrintDocument(evaluateSheet('1.5 km | m ='), { catalog: cs, registry: defaultRegistry, digits: 4, title: 'T' }).blocks[0]!;
+    expect(converted.kind === 'equation' && converted.lines.map((l) => toText(l.rhs).replace(/\s+/g, ' '))).toEqual(['1,5 km', '1 500 m']);
+  });
+});

@@ -14,6 +14,8 @@ import { compare, evaluate, type EvalContext } from '../eval/evaluator.js';
 import { BUILTIN_CONSTANTS } from '../eval/functions.js';
 import { defineFunction, isBuiltinFunction } from '../eval/userFunctions.js';
 import { solveStatement } from '../eval/solver.js';
+import { DIMENSIONLESS_NAME } from '../lang/parser.js';
+import { DIMENSIONLESS, dim, type Dimension } from '../units/dimension.js';
 import type { BlockCaller, BlockSource } from '../eval/blocks.js';
 import type { BinaryOperator, Sheet, Statement } from '../lang/ast.js';
 import { parse } from '../lang/parser.js';
@@ -131,9 +133,22 @@ export class SheetSession {
     const imports: ReadonlyMap<string, ImportedValue> = options.imports ?? new Map();
     const blocks: ReadonlyMap<string, BlockSource> = options.blocks ?? new Map();
     const inputs: ReadonlyMap<string, Value> = options.inputs ?? new Map();
-    const context: StatementContext = { env: new Map(), tables, imports, blocks, inputs, blockStack: options.blockStack ?? [] };
     const parsed = parse(source, { isUnit: (name) => registry.isUnit(name), predefined: [...tables.keys(), ...imports.keys()] });
     const statements = parsed.sheet.statements;
+    // A sheet with its own units calculates with its own copy of the registry.
+    const ownUnits = statements.filter((s) => s.kind === 'unit' || s.kind === 'dimension');
+    const context: StatementContext = {
+      env: new Map(),
+      tables,
+      imports,
+      blocks,
+      inputs,
+      blockStack: options.blockStack ?? [],
+      registry: ownUnits.length > 0 ? registry.extend() : registry,
+      dimensions: new Set(),
+    };
+    // Every result depends on the sheet's own units: changing one recalculates all.
+    const unitsKey = ownUnits.map((s) => source.slice(s.span.offset, s.span.offset + s.span.length)).join('\n');
 
     const definedAt = new Map<string, number>();
     statements.forEach((s, i) => {
@@ -154,6 +169,11 @@ export class SheetSession {
       if (statement.kind === 'invalid') {
         if (statement.name !== undefined && !env.has(statement.name)) env.set(statement.name, { ok: false });
         results.push({ statement, status: 'error', ...none, diagnostics: parseDiagnostics });
+        return;
+      }
+      if (statement.kind === 'dimension' || statement.kind === 'unit') {
+        const d = this.defineUnit(statement, context, index, definedAt);
+        results.push({ statement, status: d.status, ...none, dependencies: d.dependencies, diagnostics: [...parseDiagnostics, ...d.diagnostics] });
         return;
       }
       if (statement.kind !== 'definition' && statement.kind !== 'display' && statement.kind !== 'check' && statement.kind !== 'solve') {
@@ -184,7 +204,8 @@ export class SheetSession {
 
       // An input given from outside is part of what the line means.
       const given = statement.kind === 'definition' && statement.input ? inputs.get(statement.name) : undefined;
-      const key = source.slice(statement.span.offset, statement.span.offset + statement.span.length) + (given ? `\u0000${fingerprint(given)}` : '');
+      const key =
+        source.slice(statement.span.offset, statement.span.offset + statement.span.length) + (given ? `\u0000${fingerprint(given)}` : '') + (unitsKey ? `\u0000${unitsKey}` : '');
       const cached = this.cache.get(key);
       let result: PartialResult;
       // Results with diagnostics are not reused: their spans point into the old source.
@@ -269,12 +290,48 @@ export class SheetSession {
     };
   }
 
+  /** "dimension Mena" and "unit CZK: Mena" / "unit EUR := 25 CZK": add to the sheet's registry. */
+  private defineUnit(
+    statement: Extract<Statement, { kind: 'dimension' | 'unit' }>,
+    context: StatementContext,
+    index: number,
+    definedAt: ReadonlyMap<string, number>,
+  ): { status: StatementStatus; dependencies: readonly string[]; diagnostics: Diagnostic[] } {
+    const registry = context.registry;
+    if (statement.kind === 'dimension') {
+      const taken = SI_DIMENSIONS.has(statement.name) || context.dimensions.has(statement.name);
+      if (taken) return { status: 'error', dependencies: [], diagnostics: [diagnostic('E-REDEFINED', statement.nameSpan, { name: statement.name })] };
+      context.dimensions.add(statement.name);
+      return { status: 'ok', dependencies: [], diagnostics: [] };
+    }
+    if (registry.has(statement.name)) return { status: 'error', dependencies: [], diagnostics: [diagnostic('E-REDEFINED', statement.nameSpan, { name: statement.name })] };
+    if (statement.dimension) {
+      const name = statement.dimension.name;
+      let dimension: Dimension;
+      if (name === DIMENSIONLESS_NAME) dimension = DIMENSIONLESS;
+      else if (context.dimensions.has(name)) dimension = dim({ [name]: 1 });
+      else return { status: 'error', dependencies: [], diagnostics: [diagnostic('E-UNDEFINED', statement.dimension.span, { name })] };
+      registry.define({ symbol: statement.name, factor: 1, dim: dimension }, name === DIMENSIONLESS_NAME ? undefined : name);
+      return { status: 'ok', dependencies: [], diagnostics: [] };
+    }
+    // A unit defined by a value: its size and dimension.
+    const result = this.evaluateStatement({ kind: 'display', expr: statement.expr!, span: statement.span }, context, definedAt, index);
+    if (result.status !== 'ok' || result.value?.type !== 'quantity') {
+      const found = result.value ? typeName(result.value) : undefined;
+      const diagnostics = found ? [diagnostic('E-TYPE', statement.expr!.span, { expected: 'number', found })] : [...result.diagnostics];
+      return { status: result.status === 'blocked' ? 'blocked' : 'error', dependencies: result.dependencies, diagnostics };
+    }
+    const size = result.value;
+    registry.define({ symbol: statement.name, factor: size.si, dim: size.dim });
+    return { status: 'ok', dependencies: result.dependencies, diagnostics: [...result.diagnostics] };
+  }
+
   private evaluateStatement(statement: Evaluable, context: StatementContext, definedAt: ReadonlyMap<string, number>, index: number): PartialResult {
     const { env, tables, imports } = context;
     const dependencies: string[] = [];
     const tableReads: TableRead[] = [];
     const ctx: EvalContext = {
-      registry: this.registry,
+      registry: context.registry,
       warnings: [],
       tableReads,
       ...(context.blocks.size > 0 ? { blocks: this.blockCaller(context, dependencies) } : {}),
@@ -309,7 +366,7 @@ export class SheetSession {
 
       if (statement.kind === 'solve') {
         const found = solveStatement(statement, ctx, evaluate);
-        const solutions = statement.unknowns.map((u, i) => ({ name: u.name, value: found[i]!, display: toDisplay(found[i]!, this.registry) }));
+        const solutions = statement.unknowns.map((u, i) => ({ name: u.name, value: found[i]!, display: toDisplay(found[i]!, context.registry) }));
         return { status: 'ok', solutions, dependencies, tableReads, diagnostics: ctx.warnings };
       }
 
@@ -325,7 +382,7 @@ export class SheetSession {
       }
       let target: ResolvedUnit | undefined;
       if (statement.target) {
-        target = resolveUnit(statement.target, this.registry);
+        target = resolveUnit(statement.target, context.registry);
         if (value.type !== 'quantity' || !sameDim(target.dim, value.dim)) {
           const found = value.type === 'quantity' ? baseUnitSymbol(value.dim) : value.type;
           throw new CalcError(diagnostic('E-TARGET-UNIT', statement.target.span, { unit: target.symbol, found }));
@@ -333,7 +390,7 @@ export class SheetSession {
         // The value keeps its target unit when used further on.
         value = { ...value, hint: target };
       }
-      const display = value.type === 'quantity' ? toDisplay(value, this.registry, target) : undefined;
+      const display = value.type === 'quantity' ? toDisplay(value, context.registry, target) : undefined;
       return {
         status: 'ok',
         value,
@@ -419,7 +476,14 @@ interface StatementContext {
   readonly blocks: ReadonlyMap<string, BlockSource>;
   readonly inputs: ReadonlyMap<string, Value>;
   readonly blockStack: readonly string[];
+  /** Built-in units plus the sheet's own ones, added as their lines are read. */
+  readonly registry: UnitRegistry;
+  /** The sheet's own dimensions ("dimension Mena"). */
+  readonly dimensions: Set<string>;
 }
+
+/** Base dimensions of SI: a sheet's own dimension cannot take their names. */
+const SI_DIMENSIONS: ReadonlySet<string> = new Set(['M', 'L', 'T', 'I', 'Θ', 'N', 'J']);
 
 /** Dependency on a block's text: recorded as "block:<name>". */
 const BLOCK_DEPENDENCY = 'block:';

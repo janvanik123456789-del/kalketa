@@ -133,22 +133,50 @@ const PREFIXES: readonly (readonly [string, number])[] = [
   ['z', 1e-21], ['y', 1e-24], ['r', 1e-27], ['q', 1e-30],
 ];
 
-/** Keyboard spellings of symbols; no built-in unit starts with u or µ. */
+/** Keyboard spellings of symbols: u and µ for μ before a built-in unit that takes prefixes. */
 const MICRO_SPELLINGS = /^[uµ](?=.)/;
+const PREFIXABLE_SYMBOLS: ReadonlySet<string> = new Set(BUILT_IN.filter((u) => u.prefixable).map((u) => u.symbol));
 const ALIASES: Readonly<Record<string, string>> = { ohm: 'Ω' };
 
 /** The canonical way to write a unit symbol: uF -> μF, µm -> μm, kohm -> kΩ. */
 export function canonicalUnitSymbol(symbol: string): string {
-  const micro = symbol.replace(MICRO_SPELLINGS, 'μ');
+  // A sheet's own unit "usd" stays "usd"; only uF, um, … mean micro.
+  const rest = symbol.slice(1);
+  const micro = MICRO_SPELLINGS.test(symbol) && (PREFIXABLE_SYMBOLS.has(rest) || rest.endsWith('ohm')) ? `μ${rest}` : symbol;
   const alias = Object.keys(ALIASES).find((a) => micro.endsWith(a));
   return alias ? micro.slice(0, -alias.length) + ALIASES[alias] : micro;
 }
 
 export class UnitRegistry {
   private readonly units = new Map<string, UnitDef>();
+  /** Base units of a sheet's own dimensions: Mena -> CZK. */
+  private readonly baseUnits = new Map<string, string>();
 
   constructor(defs: readonly UnitDef[] = BUILT_IN) {
     for (const def of defs) this.units.set(def.symbol, def);
+  }
+
+  /** A copy to which a sheet adds its own units. */
+  extend(): UnitRegistry {
+    const copy = new UnitRegistry([...this.units.values()]);
+    for (const [dimension, symbol] of this.baseUnits) copy.baseUnits.set(dimension, symbol);
+    return copy;
+  }
+
+  /** Adds a unit; a base unit of a new dimension also names it in displays. */
+  define(def: UnitDef, baseOf?: string): void {
+    this.units.set(def.symbol, def);
+    if (baseOf !== undefined && !this.baseUnits.has(baseOf)) this.baseUnits.set(baseOf, def.symbol);
+  }
+
+  /** Whether the exact symbol is a unit (no prefixes, no spellings). */
+  has(symbol: string): boolean {
+    return this.units.has(symbol);
+  }
+
+  /** Symbols of the sheet's own base dimensions, for "CZK/os" instead of "Mena/Osoby". */
+  baseSymbols(): ReadonlyMap<string, string> {
+    return this.baseUnits;
   }
 
   /** Finds a unit by symbol, trying SI prefixes when there is no exact match. */

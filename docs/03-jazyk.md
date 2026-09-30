@@ -138,6 +138,15 @@ unit ks: dimensionless           ' počitatelné kusy
 unit kNm := kN·m                 ' odvozená jednotka (alias)
 ```
 
+*Upřesněno při implementaci F8:*
+- `dimension`, `unit … : …` a `unit … := …` platí od svého řádku dolů (jednotku nejde použít nad ním) a jen v tomto listu.
+- Základní jednotka pojmenuje výsledky bez jednotky: `1000 CZK / 4 os` se ukáže jako „250 CZK/os“, ne „Mena/Osoby“.
+- `unit ks: dimensionless` (nebo `unit ks: 1`) je počitatelná jednotka bez dimenze. Výsledek si ji ponese (`12 ks · 2 = 24 ks`).
+- Jednotka daná hodnotou smí číst hodnoty shora: `unit EUR := kurz·CZK`. V tisku je vidět jako předpoklad „1 EUR = 25 CZK“, deklarace dimenzí a základních jednotek se netisknou.
+- Změna kterékoli vlastní jednotky přepočte celý list.
+- Chyby: neznámá dimenze (E-UNDEFINED), jméno už použité pro jednotku nebo základní dimenzi SI (E-REDEFINED).
+- Kurz k datu z tabulky (`kurz(Kurzy, "EUR", 2026-09-29)`) přijde s daty v F10.
+
 *Oproti Calcpadu:* tam jsou všechny vlastní bezrozměrné jednotky v jedné společné „deváté dimenzi“, takže nejde odlišit měny od bitů. U nás má každá vlastní dimenze vlastní exponent. Převod měn je vázaný na **datum a zdroj**, a je tedy dohledatelný.
 
 ### 4.7 Jednotky mol konkrétní látky (chemie, R3)

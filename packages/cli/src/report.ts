@@ -48,6 +48,8 @@ function formatStatement(r: StatementResult, result: SheetResult, options: Repor
       return `${'#'.repeat(s.level)} ${s.text}`;
     case 'text':
       return s.text;
+    case 'picture':
+      return `[${s.caption || s.path}]`;
     case 'definition':
     case 'display': {
       if (s.kind === 'definition' && s.params) {

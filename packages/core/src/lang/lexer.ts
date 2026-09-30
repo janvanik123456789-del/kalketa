@@ -11,7 +11,7 @@ import { daysFromCivil, isValidDay } from '../values/date.js';
 
 export type TokenType =
   | 'number' | 'ident' | 'string' | 'superscript' | 'date'
-  | 'heading' | 'comment' | 'directive'
+  | 'heading' | 'comment' | 'directive' | 'picture'
   | '+' | '-' | '*' | '/' | '^' | '√'
   | '(' | ')' | '[' | ']' | ',' | '.' | '..' | ':' | '|'
   | ':=' | '=' | '==' | '!=' | '<' | '<=' | '>' | '>='
@@ -93,6 +93,16 @@ export function tokenize(source: string, options: LexOptions = {}): LexResult {
     }
     if (ch === ' ' || ch === '\t' || ch === '\r' || ch === ' ' || ch === ' ') {
       pos++;
+      continue;
+    }
+
+    // A picture line, as in Markdown: ![caption](images/sheet/schema.png){width=60%}
+    if (ch === '!' && source[pos + 1] === '[' && atLineStart()) {
+      const end = lineEnd(source, pos);
+      // A trailing ' comment is not part of the picture (captions may contain apostrophes only in the brackets).
+      const text = source.slice(pos, end).trim();
+      pos = end;
+      push('picture', start, text);
       continue;
     }
 

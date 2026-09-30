@@ -23,6 +23,7 @@ contextBridge.exposeInMainWorld('calccanvasDesktop', {
   onShowFile: (listener: (path: string) => void): void => {
     ipcRenderer.on('calccanvas:show-file', (_event, path: string) => listener(path));
   },
+  clipboardPictures: (): Promise<{ name: string; type: string; bytes: Uint8Array }[]> => ipcRenderer.invoke('calccanvas:clipboard-pictures'),
   onOpenFile: (listener: (file: OpenedFile) => void): void => {
     ipcRenderer.on('calccanvas:open-file', (_event, file: OpenedFile) => listener(file));
   },

@@ -68,6 +68,7 @@ export interface CommandContext {
     functions(): void;
     about(): void;
     insertSymbol(symbol: string): void;
+    insertPicture(): void;
   };
 }
 
@@ -115,6 +116,7 @@ export function buildCommands(ctx: CommandContext): Map<string, Command> {
   add('insert.check', 'insert', () => a.insert('check'));
   add('insert.pick', 'insert', () => a.insert('pick'));
   add('insert.pageBreak', 'insert', () => a.insert('pageBreak'), { shortcut: 'Ctrl+Enter' });
+  add('insert.picture', 'insert', a.insertPicture);
   add('insert.newTable', 'insert', a.newTable);
   add('insert.importTable', 'insert', a.importTable);
   add('insert.block', 'insert', a.insertBlock);

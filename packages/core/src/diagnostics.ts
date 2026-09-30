@@ -29,6 +29,7 @@ export const DIAGNOSTIC_SEVERITY = {
   'E-UNEXPECTED-CHAR': 'error',
   'E-UNTERMINATED-STRING': 'error',
   'E-SYNTAX': 'error',
+  'E-PICTURE-SYNTAX': 'error',
   'E-MISSING-OPERATOR': 'error',
   'E-ASSIGN-WITH-EQUALS': 'error',
   'E-UNSUPPORTED': 'error',

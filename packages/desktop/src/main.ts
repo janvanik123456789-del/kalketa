@@ -8,15 +8,62 @@
  * window, and a guard against closing with unsaved changes.
  */
 
-import { app, BrowserWindow, dialog, ipcMain, Menu, shell, type IpcMainInvokeEvent } from 'electron';
+import { app, BrowserWindow, clipboard, ClipboardItem, dialog, ipcMain, Menu, nativeImage, shell, type IpcMainInvokeEvent } from 'electron';
 import { mkdtempSync } from 'node:fs';
 import { readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { stat } from 'node:fs/promises';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SHEET_EXTENSIONS = ['.calc', '.cc'];
+const PICTURE_TYPES: Readonly<Record<string, string>> = {
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+  '.svg': 'image/svg+xml',
+  '.bmp': 'image/bmp',
+};
+const MAX_PICTURE_BYTES = 30 * 1024 * 1024;
+
+/**
+ * Files copied in a file manager: Linux file managers put a list of file://
+ * URIs (text/uri-list or GNOME's own format), Explorer its own format; some
+ * put just the path as text.
+ */
+async function clipboardFiles(): Promise<string[]> {
+  const texts: string[] = [];
+  for (const item of await clipboard.read()) {
+    for (const type of item.types) {
+      if (type !== 'text/uri-list' && type !== 'text/plain' && !type.includes('gnome-copied-files') && !type.includes('FileNameW')) continue;
+      const blob = (await item.getType(type)) as Blob;
+      texts.push(type.includes('FileNameW') ? Buffer.from(await blob.arrayBuffer()).toString('utf16le').replace(/\0.*$/s, '') : await blob.text());
+    }
+  }
+  const paths: string[] = [];
+  for (const line of texts.join('\n').split(/\r?\n/)) {
+    const entry = line.trim();
+    try {
+      if (entry.startsWith('file://')) paths.push(fileURLToPath(entry));
+      else if (/^(\/|[A-Za-z]:\\)/.test(entry)) paths.push(entry);
+    } catch {
+      // Not a file URI.
+    }
+  }
+  return [...new Set(paths)];
+}
+
+/** A picture copied in another program (a screenshot, a picture from a browser). */
+async function clipboardImage(): Promise<Uint8Array | undefined> {
+  for (const item of await clipboard.read()) {
+    const type = item.types.find((t) => t === 'image/png') ?? item.types.find((t) => t.startsWith('image/'));
+    if (type) return new Uint8Array(await ((await item.getType(type)) as Blob).arrayBuffer());
+  }
+  return undefined;
+}
 
 interface OpenedFile {
   readonly path: string;
@@ -287,6 +334,24 @@ function registerBridge(): void {
     editor.files = new Set(paths.filter((p): p is string => typeof p === 'string').map(fileKey));
   });
 
+  ipcMain.handle('calccanvas:clipboard-pictures', async (event) => {
+    fromEditor(event);
+    const pictures: { name: string; type: string; bytes: Uint8Array }[] = [];
+    for (const path of (await clipboardFiles()).slice(0, 20)) {
+      const type = PICTURE_TYPES[extname(path).toLowerCase()];
+      if (!type) continue;
+      try {
+        if ((await stat(path)).size > MAX_PICTURE_BYTES) continue;
+        pictures.push({ name: basename(path), type, bytes: await readFile(path) });
+      } catch {
+        // A file that cannot be read is left out.
+      }
+    }
+    if (pictures.length > 0) return pictures;
+    const image = await clipboardImage();
+    return image ? [{ name: '', type: 'image/png', bytes: image }] : [];
+  });
+
   ipcMain.handle('calccanvas:new-window', (event) => {
     fromEditor(event);
     createWindow({ blank: true });
@@ -325,7 +390,7 @@ async function runSmokeTest(pdfPath: string): Promise<void> {
     await writeFile(pdfPath, pdf);
     ok =
       state.bridge && state.sideBySide && state.menus === 7 && state.toolbars > 0 && state.rows > 10 && state.summary > 0 && state.math > 0 && reshapedColumns === 3 && pdf.length > 1000 &&
-      layers.newKeepsExample && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.help && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer4 layer5' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
+      layers.newKeepsExample && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer4 layer5' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
     console.log(JSON.stringify({ ok, ...state, reshapedColumns, layers, pdfBytes: pdf.length }));
   } catch (err) {
     console.log(JSON.stringify({ ok: false, error: (err as Error).message }));
@@ -609,6 +674,63 @@ async function layersWithRealInput(picture: string) {
   const ownUnits = userFunction.rows.some((r) => r.replace(/\s+/g, '').includes('100EUR=2500CZK'));
   const help = listed > 50 && userFunction.rows.some((r) => r.replace(/\s+/g, '').includes('hypot(3m;4m)=5m'));
 
+  // Pictures: a picture on the clipboard, Ctrl+V in the sheet (real keys).
+  const bitmap = Buffer.alloc(240 * 120 * 4);
+  for (let p = 0; p < 240 * 120; p++) bitmap.writeUInt32LE(p % 240 < 120 ? 0xff3060c0 : 0xffe0a020, p * 4);
+  const png = nativeImage.createFromBitmap(bitmap, { width: 240, height: 120 }).toPNG();
+  await clipboard.write([new ClipboardItem({ 'image/png': new Blob([new Uint8Array(png)], { type: 'image/png' }) })]);
+  await clickOn('.page .row[data-line="3"]');
+  await pressKey('V', ['control']);
+  await pause(800);
+  await clickOn('.sheet-scroll');
+  await pause(300);
+  const pasted = (await contents.executeJavaScript(`({
+    img: !!document.querySelector('.layer-view.active .picture img[src^="data:image/png"]'),
+    line: [...document.querySelectorAll('.layer-view.active .row')].find((r) => r.querySelector('.picture'))?.dataset.line ?? '',
+  })`)) as { img: boolean; line: string };
+  // Dragging the corner handle with the mouse makes the picture wider.
+  await clickOn(`.layer-view.active .row[data-line="${pasted.line}"] figure`);
+  const handle = (await contents.executeJavaScript(`(() => {
+    const row = document.querySelector('.layer-view.active .row[data-line="${pasted.line}"]');
+    const figure = row?.querySelector('figure');
+    if (!row || !figure) return undefined;
+    row.scrollIntoView({ block: 'center' });
+    const r = row.querySelector('.picture-handle').getBoundingClientRect();
+    return { x: Math.round(r.left + r.width / 2 - 2), y: Math.round(r.top + r.height / 2 - 2), width: figure.getBoundingClientRect().width };
+  })()`)) as { x: number; y: number; width: number } | undefined;
+  let resized = false;
+  if (handle) {
+    contents.sendInputEvent({ type: 'mouseMove', x: handle.x - 20, y: handle.y - 20 });
+    await pause(150);
+    contents.sendInputEvent({ type: 'mouseDown', x: handle.x + 2, y: handle.y + 2, button: 'left', clickCount: 1 });
+    for (let step = 1; step <= 5; step++) {
+      contents.sendInputEvent({ type: 'mouseMove', x: handle.x + 2 + step * 12, y: handle.y + 2, button: 'left' } as Electron.MouseInputEvent);
+      await pause(40);
+    }
+    await takePicture(picture.replace(/[.]png$/, '-picture.png'));
+    contents.sendInputEvent({ type: 'mouseUp', x: handle.x + 62, y: handle.y + 2, button: 'left', clickCount: 1 });
+    await pause(400);
+    const after = (await contents.executeJavaScript(
+      `document.querySelector('.layer-view.active .row[data-line="${pasted.line}"] figure')?.getBoundingClientRect().width ?? 0`,
+    )) as number;
+    resized = after > handle.width + 40;
+  }
+  // A file dropped on a row goes in after that row (an OS drag cannot be sent as input, so the drop event is dispatched).
+  await contents.executeJavaScript(`(async () => {
+    const bytes = Uint8Array.from(atob(${JSON.stringify(png.toString('base64'))}), (c) => c.charCodeAt(0));
+    const data = new DataTransfer();
+    data.items.add(new File([bytes], 'Schéma nosníku.png', { type: 'image/png' }));
+    const row = document.querySelector('.layer-view.active .row[data-line="2"]');
+    row.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: data }));
+    row.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: data }));
+  })()`);
+  await pause(800);
+  const dropped = (await contents.executeJavaScript(
+    `[...document.querySelectorAll('.layer-view.active .row[data-line="3"] figcaption')].map((f) => f.textContent.replace(/\\s+/g, ' ').trim()).join('|')`,
+  )) as string;
+  await takePicture(picture.replace(/[.]png$/, '-pictures.png'));
+  const pictures = pasted.img && resized && dropped === 'Obr. 1: Schéma nosníku';
+
   // A sheet with a block: the block is listed, its use shows the block and computes.
   const blockFile = process.env['CALCCANVAS_SMOKE_BLOCKS'];
   let blocksOk: boolean | undefined;
@@ -624,7 +746,7 @@ async function layersWithRealInput(picture: string) {
     blocksOk = shown.errors === 0 && shown.text.includes('Prosty nosnik 1.2') && shown.text.includes('45');
     await takePicture(picture.replace(/[.]png$/, '-blocks.png'));
   }
-  return { ...state, newKeepsExample, citations, aiReadOnly, split, mainHidden, twoLayers, addKinds, aiDeletable, aiMenu, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, help, blocksOk };
+  return { ...state, newKeepsExample, citations, aiReadOnly, split, mainHidden, twoLayers, addKinds, aiDeletable, aiMenu, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, help, pasted, resized, dropped, pictures, blocksOk };
 }
 
 /**

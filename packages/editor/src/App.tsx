@@ -12,7 +12,7 @@ import { catalogFor, CATALOGS, formatDiagnostic, formatNumber, t, type Catalog }
 import { buildPrintDocument, printHtml } from '@calccanvas/render';
 import { addLayer, allDiagnostics, appendixLayers, blockAppendices, documentBlocks, isRemovable, LayerSessions, MAIN_LAYER, removeLayer, tablesByLayer, updateLayer, type AddableLayerKind, type Layer, type SheetDocument } from '@calccanvas/sheet';
 import { buildCommands, shortcutOf, type Command } from './commands.js';
-import { desktop, emptyDocument, exampleDocument, fileName, fileUri, largestParts, openBytes, pickAndOpen, saveDocument, tableCache, type FileRef, type OpenedFile } from './document.js';
+import { chooseFile, desktop, emptyDocument, exampleDocument, fileName, fileUri, largestParts, openBytes, pickAndOpen, saveDocument, tableCache, type FileRef, type OpenedFile } from './document.js';
 import { record, redo, undo, type History } from './logic/history.js';
 import { closeTab, cycleTab, fileNameOf, isDirty, newTab, openTab, type DocTab, type Tabs } from './logic/documents.js';
 import { pageGeometry } from './logic/pages.js';
@@ -20,6 +20,7 @@ import { pickOf, replacePickKey } from './logic/pick.js';
 import { deleteLines, insertLineAfter, replaceLines, segments } from './logic/segments.js';
 import { parseLayout, setVisible, type ToolbarLayout } from './logic/toolbars.js';
 import { createTable, importTableFile, type TableChange } from './tableActions.js';
+import { captionOf, fromFile, pictureLine, picturePath, pixelWidth, widthFor, type IncomingPicture } from './logic/pictures.js';
 import { importBlockFile } from './blockActions.js';
 import { AboutDialog, CustomizeDialog, FunctionsDialog, PropertiesDialog, SettingsDialog, ShortcutsDialog } from './components/Dialogs.js';
 import { DocumentTabs } from './components/DocumentTabs.js';
@@ -482,6 +483,42 @@ export function App() {
     setEditing(edit ? { start: after + 1, end: after + 1, ...(cursor !== undefined ? { cursor } : {}) } : undefined);
   };
 
+  /**
+   * Puts pictures into a layer: after `afterLine`, else after the line being
+   * edited, else at the end. The picture files go into the calculation file.
+   * AI notes and data layers take no pictures; they go to the printed sheet.
+   */
+  const insertPictures = async (pictures: readonly IncomingPicture[], target: Layer = layer, afterLine?: number) => {
+    if (pictures.length === 0) return;
+    const into = target.kind === 'ai' || target.kind === 'data' ? doc.layers[0]! : target;
+    const folder = into.kind === 'sheet' ? 'images/sheet' : `layers/${into.id}/images`;
+    const files = new Map<string, Uint8Array>();
+    const taken = (path: string) => doc.files.has(path) || files.has(path);
+    const textWidth = geometry.width - geometry.margin.left - geometry.margin.right;
+    const lines: string[] = [];
+    for (const picture of pictures) {
+      const path = picturePath(folder, picture.name || 'obrazek', picture.type, taken);
+      files.set(path, picture.bytes);
+      // A picture in notes flows with the text; in a calculation it gets a width to drag.
+      const width = into.kind === 'sheet' || into.kind === 'calc' ? widthFor(await pixelWidth(picture), textWidth) : undefined;
+      lines.push(pictureLine(captionOf(picture.name), path, width));
+    }
+    const current = textOf(into);
+    if (into.kind === 'sources') {
+      setLayerText(into, `${current.trimEnd()}\n\n${lines.join('\n\n')}\n`, undefined, files);
+      return;
+    }
+    const at = afterLine ?? (into.id === layer.id ? currentRange()?.end : undefined) ?? current.split('\n').length;
+    setLayerText(into, insertLineAfter(current, at, lines.join('\n')), undefined, files);
+    setEditing(undefined);
+  };
+
+  const insertPictureFile = async () => {
+    const file = await chooseFile('image/*');
+    const picture = file ? await fromFile(file) : undefined;
+    if (picture) await insertPictures([picture]);
+  };
+
   const uniqueName = (base: string) => {
     const names = new Set(result.statements.flatMap((r) => (r.statement.kind === 'definition' ? [r.statement.name] : [])));
     let n = 1;
@@ -650,8 +687,77 @@ export function App() {
       functions: () => setDialog('functions'),
       about: () => setDialog('about'),
       insertSymbol,
+      insertPicture: () => void insertPictureFile(),
     },
   });
+
+  // Pictures come by dropping files on the sheet or by pasting (Ctrl+V): a
+  // screenshot, a picture copied in another program, or a picture file copied
+  // in Explorer or a Linux file manager.
+  const dialogOpen = useRef(false);
+  dialogOpen.current = dialog !== undefined;
+  const picturesRef = useRef(insertPictures);
+  picturesRef.current = insertPictures;
+  const layerOfElement = (element: EventTarget | null): Layer | undefined => {
+    const id = (element as Element | null)?.closest?.('.layer-view')?.getAttribute('data-layer');
+    return id ? doc.layers.find((l) => l.id === id) : undefined;
+  };
+  const layerOfRef = useRef(layerOfElement);
+  layerOfRef.current = layerOfElement;
+  useEffect(() => {
+    const hasFiles = (e: DragEvent) => [...(e.dataTransfer?.types ?? [])].includes('Files');
+    const over = (e: DragEvent) => {
+      if (!hasFiles(e)) return;
+      // Without this the window would open the dropped file instead of the sheet.
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+    };
+    const drop = (e: DragEvent) => {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+      const files = [...(e.dataTransfer?.files ?? [])];
+      const row = (e.target as Element | null)?.closest?.('.row[data-line]');
+      const line = row ? Number(row.getAttribute('data-line')) : undefined;
+      const target = layerOfRef.current(e.target);
+      void Promise.all(files.map(fromFile)).then((pictures) => {
+        const found = pictures.filter((p): p is IncomingPicture => p !== undefined);
+        void picturesRef.current(found, target, line);
+      });
+    };
+    const paste = (e: ClipboardEvent) => {
+      if (dialogOpen.current) return;
+      const data = e.clipboardData;
+      const files = [...(data?.files ?? [])].filter((f) => f.type.startsWith('image/'));
+      if (files.length > 0) {
+        e.preventDefault();
+        // A copied picture (a screenshot) comes as "image.png": it has no name of its own.
+        const named = (p: IncomingPicture | undefined) => (p && /^image\.\w+$/.test(p.name) ? { ...p, name: '' } : p);
+        void Promise.all(files.map(fromFile)).then((pictures) => void picturesRef.current(pictures.map(named).filter((p): p is IncomingPicture => p !== undefined)));
+        return;
+      }
+      // A file copied in a file manager arrives as its path (or nothing); the desktop reads it.
+      const text = data?.getData('text/plain') ?? '';
+      const looksLikeFile = /^(file:\/\/|\/|[A-Za-z]:\\).*\.(png|jpe?g|gif|webp|svg|bmp)\s*$/i.test(text.trim());
+      if (!desktop || (text !== '' && !looksLikeFile)) return;
+      e.preventDefault();
+      const area = document.activeElement;
+      void desktop.clipboardPictures().then((pictures) => {
+        if (pictures.length > 0) void picturesRef.current(pictures);
+        else if (text && area instanceof HTMLTextAreaElement) {
+          area.setRangeText(text, area.selectionStart, area.selectionEnd, 'end');
+          area.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+      });
+    };
+    window.addEventListener('dragover', over);
+    window.addEventListener('drop', drop);
+    window.addEventListener('paste', paste);
+    return () => {
+      window.removeEventListener('dragover', over);
+      window.removeEventListener('drop', drop);
+      window.removeEventListener('paste', paste);
+    };
+  }, []);
 
   const commandsRef = useRef(commands);
   commandsRef.current = commands;
@@ -754,7 +860,7 @@ export function App() {
     },
     {
       label: t(ui, 'menu.insert'),
-      items: [cmd('insert.heading'), cmd('insert.text'), cmd('insert.definition'), cmd('insert.check'), cmd('insert.pick'), cmd('insert.pageBreak'), sep, cmd('insert.newTable'), cmd('insert.importTable'), cmd('insert.block'),
+      items: [cmd('insert.heading'), cmd('insert.text'), cmd('insert.definition'), cmd('insert.check'), cmd('insert.pick'), cmd('insert.pageBreak'), sep, cmd('insert.picture'), cmd('insert.newTable'), cmd('insert.importTable'), cmd('insert.block'),
         ...(doc.blocks.size > 0
           ? [
               {

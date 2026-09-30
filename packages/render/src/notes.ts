@@ -26,7 +26,7 @@ type Block =
   | { readonly kind: 'quote'; readonly lines: string[] }
   | { readonly kind: 'figure'; readonly caption: string; readonly path: string };
 
-const FIGURE = /^!\[([^\]]*)\]\(([^)\s]+)\)\s*$/;
+const FIGURE = /^!\[([^\]]*)\]\(([^)\s]+)\)\s*(?:\{[^}]*\})?\s*$/;
 
 export function notesHtml(text: string, options: NotesOptions = {}): string {
   return parseBlocks(text)

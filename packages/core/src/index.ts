@@ -12,7 +12,7 @@ export const CORE_VERSION = '0.1.0';
 export * from './diagnostics.js';
 export type * from './lang/ast.js';
 export { tokenize, type Token, type TokenType, type LexOptions } from './lang/lexer.js';
-export { parse, type ParseOptions, type ParseResult } from './lang/parser.js';
+export { formatPicture, parse, parsePicture, type ParseOptions, type ParseResult, type PictureLine } from './lang/parser.js';
 export * from './units/dimension.js';
 export { UnitRegistry, defaultRegistry, canonicalUnitSymbol, type UnitDef } from './units/registry.js';
 export { blockVersion, type BlockSource } from './eval/blocks.js';

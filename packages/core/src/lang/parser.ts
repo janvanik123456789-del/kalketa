@@ -154,6 +154,13 @@ class LineParser {
       this.expectEnd();
       return { kind: 'heading', level: first.value, text: first.text, span: lineSpan };
     }
+    if (first.type === 'picture') {
+      this.next();
+      this.expectEnd();
+      const picture = parsePicture(first.text);
+      if (!picture) fail('E-PICTURE-SYNTAX', first.span);
+      return { kind: 'picture', ...picture, span: lineSpan };
+    }
     if (first.type === 'directive') {
       const args = this.tokens.slice(1).map((t) => t.text).join(' ');
       return { kind: 'directive', name: first.text, args, span: lineSpan };
@@ -769,4 +776,28 @@ class LineParser {
     const token = this.peek();
     if (token.type !== 'eof') fail('E-SYNTAX', token.span, { expected: 'end-of-line', found: token.text });
   }
+}
+
+export interface PictureLine {
+  readonly caption: string;
+  readonly path: string;
+  /** Share of the text width in percent; absent for the picture's own size. */
+  readonly width?: number;
+}
+
+const PICTURE = /^!\[([^\]]*)\]\(([^()\s]+)\)\s*(?:\{\s*width\s*=\s*(\d+(?:\.\d+)?)\s*%\s*\})?$/;
+
+/** "![Schéma](images/sheet/a.png){width=60%}" -> its parts; undefined when malformed. */
+export function parsePicture(text: string): PictureLine | undefined {
+  const match = PICTURE.exec(text.trim());
+  if (!match) return undefined;
+  const width = match[3] === undefined ? undefined : Number(match[3]);
+  if (width !== undefined && !(width > 0 && width <= 100)) return undefined;
+  return { caption: match[1]!.trim(), path: match[2]!, ...(width !== undefined ? { width } : {}) };
+}
+
+/** The line of a picture, as parsePicture reads it. */
+export function formatPicture(picture: PictureLine): string {
+  const width = picture.width === undefined ? '' : `{width=${Math.round(picture.width)}%}`;
+  return `![${picture.caption.replace(/[\[\]\n]/g, ' ').trim()}](${picture.path})${width}`;
 }

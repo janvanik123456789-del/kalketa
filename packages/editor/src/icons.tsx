@@ -96,6 +96,13 @@ const ICONS: Readonly<Record<string, ReactElement>> = {
       <path {...S} d="M16 12v6M13 15h6" />
     </>
   ),
+  'insert.picture': (
+    <>
+      <path {...S} d="M2.5 4h15v12h-15z" />
+      <path {...S} d="M2.5 14l4.5-4.5 3.5 3.5 2.5-2.5 4.5 4.5" />
+      <circle {...S} cx="13" cy="7.5" r="1.3" />
+    </>
+  ),
   'insert.importTable': (
     <>
       <path {...S} d="M6.5 7.5h11v10h-11zM6.5 11h11M6.5 14.5h11M11 7.5v10" />

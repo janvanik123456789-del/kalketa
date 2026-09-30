@@ -85,6 +85,14 @@ export function renderBlockHtml(block: PrintBlock, catalog: Catalog, options: Bl
       return `<p class="text">${esc(block.text)}</p>`;
     case 'page-break':
       return '<div class="page-break"></div>';
+    case 'picture': {
+      const image = block.src
+        ? `<img src="${esc(block.src)}" alt="${esc(block.caption)}">`
+        : `<div class="missing-image">${esc(t(catalog, 'print.pictureMissing', { path: block.path }))}</div>`;
+      const caption = block.label ? `<figcaption><span class="figure-label">${esc(block.label)}:</span> ${esc(block.caption)}</figcaption>` : '';
+      const size = block.width !== undefined ? ` style="width:${block.width}%"` : '';
+      return `<figure class="block picture${block.width === undefined ? ' natural' : ''}" data-line="${block.line}"${size}>${image}${caption}</figure>`;
+    }
     case 'equation':
       return `<section class="block equation" data-line="${block.line}">
 ${equationTable(block.lines, block.comment, options.defineOperator ?? '=')}${imported(block.imported, catalog)}${blockCalc(block.blockCalc, catalog)}${messages(block.messages)}
@@ -203,6 +211,13 @@ h2 { font-size: 13pt; margin: 6mm 0 2mm; border-bottom: 0.4pt solid #999; break-
 h3, h4, h5, h6 { font-size: 11pt; margin: 4mm 0 1.5mm; break-after: avoid; }
 .subtitle { margin: 0 0 4mm; color: #444; }
 .text { margin: 1.5mm 0; }
+.block.picture { margin: 3mm auto; text-align: center; }
+.picture img { display: block; width: 100%; height: auto; }
+.picture.natural { width: fit-content; max-width: 100%; }
+.picture.natural img { width: auto; max-width: 100%; }
+.picture figcaption { margin-top: 1.5mm; font-size: 9pt; }
+.picture .figure-label { font-weight: 600; }
+.picture .missing-image { padding: 4mm; border: 1px dashed #c62828; color: #c62828; font-size: 9pt; }
 .block { margin: 1.5mm 0 2.5mm; break-inside: avoid; }
 table.eq { border-collapse: collapse; }
 table.eq td { padding: 0.6mm 1.2mm; vertical-align: middle; }

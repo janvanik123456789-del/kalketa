@@ -4,8 +4,8 @@
  * every keystroke.
  */
 
-import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
-import { fromDecimalComma, toDecimalComma, type SheetResult, type Statement } from '@calccanvas/core';
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type MouseEvent as ReactMouseEvent } from 'react';
+import { formatPicture, fromDecimalComma, parsePicture, toDecimalComma, type SheetResult, type Statement } from '@calccanvas/core';
 import { formatNumber, t, type Catalog } from '@calccanvas/i18n';
 import { renderBlockHtml, renderSummary, type PrintBlock, type PrintDocument } from '@calccanvas/render';
 import { paginate, type PageGeometry } from '../logic/pages.js';
@@ -73,6 +73,8 @@ export function SheetView(props: Props) {
   // Pagination measures the rendered items, then places them on pages. Heights
   // do not depend on the page an item is on, so this settles in one pass.
   const [starts, setStarts] = useState<number[]>([0]);
+  // A picture knows its height only once loaded; then the pages are laid out again.
+  const [, relayout] = useState(0);
   const container = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const root = container.current;
@@ -150,7 +152,21 @@ export function SheetView(props: Props) {
               onDone={() => props.onEdit(undefined)}
             />
           ) : null}
-          {block ? <Block block={block} catalog={props.printCatalog} /> : !isEditing && <PlainLine text={props.decimalComma ? toDecimalComma(seg.text) : seg.text} />}
+          {block?.kind === 'picture' ? (
+            <PictureBlock
+              block={block}
+              catalog={props.printCatalog}
+              onLoad={() => relayout((n) => n + 1)}
+              onResize={(width) => {
+                const picture = parsePicture(seg.text);
+                if (picture) props.onReplace(seg.start, seg.end, formatPicture({ ...picture, width }));
+              }}
+            />
+          ) : block ? (
+            <Block block={block} catalog={props.printCatalog} />
+          ) : (
+            !isEditing && <PlainLine text={props.decimalComma ? toDecimalComma(seg.text) : seg.text} />
+          )}
           {!isEditing && statement && <PickFor statement={statement.statement} result={result} catalog={props.printCatalog} resolveFile={props.resolveFile} onPick={props.onPick} />}
         </div>
       </div>
@@ -160,6 +176,55 @@ export function SheetView(props: Props) {
 
 function Block({ block, catalog }: { block: PrintBlock; catalog: Catalog }) {
   return <div className="block-view" dangerouslySetInnerHTML={{ __html: renderBlockHtml(block, catalog, { defineOperator: '≔' }) }} />;
+}
+
+/**
+ * A picture as printed, with a handle in its corner: dragging it sets the
+ * width as a share of the text width (the picture stays centred).
+ */
+function PictureBlock({ block, catalog, onLoad, onResize }: { block: Extract<PrintBlock, { kind: 'picture' }>; catalog: Catalog; onLoad(): void; onResize(width: number): void }) {
+  const [dragged, setDragged] = useState<number | undefined>();
+  const figure = useRef<HTMLElement>(null);
+  const width = dragged ?? block.width;
+
+  const startResize = (e: ReactMouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const element = figure.current;
+    const body = element?.closest('.page-body');
+    if (!element || !body) return;
+    const rect = element.getBoundingClientRect();
+    const centre = rect.left + rect.width / 2;
+    const bodyWidth = body.getBoundingClientRect().width;
+    let current = width ?? Math.round((rect.width / bodyWidth) * 100);
+    const move = (event: MouseEvent) => {
+      current = Math.max(10, Math.min(100, Math.round(((2 * Math.abs(event.clientX - centre)) / bodyWidth) * 100)));
+      setDragged(current);
+    };
+    const up = () => {
+      window.removeEventListener('mousemove', move);
+      window.removeEventListener('mouseup', up);
+      setDragged(undefined);
+      if (current !== block.width) onResize(current);
+    };
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+  };
+
+  return (
+    <div className="block-view">
+      <figure ref={figure} className={`block picture${width === undefined ? ' natural' : ''}`} data-line={block.line} style={width !== undefined ? { width: `${width}%` } : undefined}>
+        {block.src ? <img src={block.src} alt={block.caption} draggable={false} onLoad={onLoad} /> : <div className="missing-image">{t(catalog, 'print.pictureMissing', { path: block.path })}</div>}
+        {block.label && (
+          <figcaption>
+            <span className="figure-label">{block.label}:</span> {block.caption}
+          </figcaption>
+        )}
+        <span className="picture-handle" title={t(catalog, 'editor.pictureResize')} onMouseDown={startResize} />
+        {dragged !== undefined && <span className="picture-size">{dragged} %</span>}
+      </figure>
+    </div>
+  );
 }
 
 function PlainLine({ text }: { text: string }) {

@@ -98,6 +98,8 @@ export interface DesktopBridge {
   setOpenFiles(paths: string[]): void;
   /** Another window tried to open a file this one has: show its tab. */
   onShowFile(listener: (path: string) => void): void;
+  /** Pictures on the clipboard: picture files copied in a file manager, or a copied picture. */
+  clipboardPictures(): Promise<{ name: string; type: string; bytes: Uint8Array }[]>;
 }
 
 export interface DesktopFile {

@@ -63,6 +63,18 @@ export type PrintBlock =
   | { readonly kind: 'heading'; readonly line: number; readonly level: number; readonly text: string }
   | { readonly kind: 'paragraph'; readonly line: number; readonly text: string }
   | {
+      readonly kind: 'picture';
+      readonly line: number;
+      readonly path: string;
+      /** URL of the picture; absent when the file is not in the sheet. */
+      readonly src?: string;
+      readonly caption: string;
+      /** "Obr. 3" for a picture with a caption. */
+      readonly label?: string;
+      /** Share of the text width in percent. */
+      readonly width?: number;
+    }
+  | {
       readonly kind: 'equation';
       readonly line: number;
       readonly lines: readonly EquationLine[];
@@ -149,6 +161,7 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
   const titleHeading = result.statements.find((r) => r.statement.kind === 'heading')?.statement;
   const skipTitle = titleHeading?.kind === 'heading' && titleHeading.level === 1 && titleHeading.text === options.title ? titleHeading : undefined;
 
+  let figures = 0;
   for (const r of result.statements) {
     const s = r.statement;
     if (s === skipTitle) continue;
@@ -171,6 +184,20 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
       case 'text':
         blocks.push({ kind: 'paragraph', line: s.span.line, text: s.text });
         break;
+      case 'picture': {
+        const src = options.resolveFile?.(s.path);
+        const label = s.caption ? t(catalog, 'print.figure', { n: String(++figures) }) : undefined;
+        blocks.push({
+          kind: 'picture',
+          line: s.span.line,
+          path: s.path,
+          caption: s.caption,
+          ...(src ? { src } : {}),
+          ...(label ? { label } : {}),
+          ...(s.width !== undefined ? { width: s.width } : {}),
+        });
+        break;
+      }
       case 'invalid':
         blocks.push({ kind: 'error', line: s.span.line, source: sourceText(result, s.span), messages });
         break;

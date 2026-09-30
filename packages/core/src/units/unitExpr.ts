@@ -9,7 +9,7 @@
 
 import { fail } from '../diagnostics.js';
 import type { UnitExpr } from '../lang/ast.js';
-import { DIMENSIONLESS, divideDims, multiplyDims, powerDim, superscript, type Dimension } from './dimension.js';
+import { DIMENSIONLESS, divideDims, isDimensionless, multiplyDims, powerDim, superscript, type Dimension } from './dimension.js';
 import { canonicalUnitSymbol, type UnitDef, type UnitRegistry } from './registry.js';
 
 export interface ResolvedUnit {
@@ -20,6 +20,11 @@ export interface ResolvedUnit {
   readonly offset?: number;
   /** Difference unit matching an absolute one (°C -> Δ°C). */
   readonly delta?: string;
+  /**
+   * A power of one unit (mm, mm², cm³): products and quotients of powers of
+   * the same unit keep it (mm² · mm = mm³).
+   */
+  readonly power?: { readonly symbol: string; readonly exponent: number; readonly factor: number; readonly dim: Dimension };
 }
 
 export function resolveUnit(expr: UnitExpr, registry: UnitRegistry): ResolvedUnit {
@@ -31,9 +36,15 @@ export function resolveUnit(expr: UnitExpr, registry: UnitRegistry): ResolvedUni
       dim: def.dim,
       ...(def.offset !== undefined ? { offset: def.offset } : {}),
       ...(def.delta !== undefined ? { delta: def.delta } : {}),
+      ...(def.offset === undefined && !isDimensionless(def.dim) ? { power: { symbol: def.symbol, exponent: 1, factor: def.factor, dim: def.dim } } : {}),
     };
   }
   const { factor, dim } = scaleOf(expr, registry);
+  // mm², cm³: remember the unit and its power.
+  if (expr.kind === 'unit-pow' && expr.base.kind === 'unit-name') {
+    const unit = resolveUnit(expr.base, registry);
+    if (unit.power) return { symbol: formatUnit(expr), factor, dim, power: { ...unit.power, exponent: expr.exponent } };
+  }
   return { symbol: formatUnit(expr), factor, dim };
 }
 

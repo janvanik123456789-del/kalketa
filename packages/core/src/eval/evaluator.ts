@@ -188,7 +188,8 @@ function arithmetic(op: BinaryOperator, left: Value, right: Value, leftExpr: Exp
       warnOnAbsoluteTemperature(b, rightExpr.span, ctx);
       // Scaling by a plain number keeps the unit: 1.35 · g_k stays in kN/m.
       const scaled = scaledOperand(op, a, b);
-      const hint = keptHint(scaled) ? { hint: scaled!.hint! } : {};
+      const combined = scaled ? undefined : samePowerHint(op, a, b);
+      const hint = keptHint(scaled) ? { hint: scaled!.hint! } : combined ? { hint: combined } : {};
       if (op === '*') return quantity(a.si * b.si, multiplyDims(a.dim, b.dim), hint);
       if (b.si === 0) fail('E-DIV-ZERO', rightExpr.span);
       return quantity(a.si / b.si, divideDims(a.dim, b.dim), hint);
@@ -303,8 +304,30 @@ function addSubtract(op: '+' | '-', a: Quantity, b: Quantity, span: Span): Quant
 /** A whole power keeps the unit: (20 mm)² is 400 mm², (2 kN/m)² is 4 (kN/m)². */
 function poweredHint(a: Quantity, exponent: number): { hint?: ResolvedUnit } {
   if (!a.hint || a.absolute || !Number.isInteger(exponent) || exponent === 0 || isDimensionless(a.dim)) return {};
+  if (a.hint.power) return { hint: powerOf(a.hint.power, a.hint.power.exponent * exponent)! };
   const symbol = /[·/]/.test(a.hint.symbol) ? `(${a.hint.symbol})` : a.hint.symbol;
   return { hint: { symbol: `${symbol}${superscript(exponent)}`, factor: a.hint.factor ** exponent, dim: powerDim(a.hint.dim, exponent) } };
+}
+
+/**
+ * Powers of the same unit multiply to a power of it: mm² · mm = mm³,
+ * cm³ / cm = cm², so the volume of a rod given in mm comes out in mm³.
+ * Different units (kN · m / cm³) fall back to SI units; a target unit (| MPa) picks others.
+ */
+function samePowerHint(op: '*' | '/', a: Quantity, b: Quantity): ResolvedUnit | undefined {
+  const [pa, pb] = [a.hint?.power, b.hint?.power];
+  if (!pa || !pb || pa.symbol !== pb.symbol || a.absolute || b.absolute) return undefined;
+  return powerOf(pa, op === '*' ? pa.exponent + pb.exponent : pa.exponent - pb.exponent);
+}
+
+function powerOf(unit: NonNullable<ResolvedUnit['power']>, exponent: number): ResolvedUnit | undefined {
+  if (exponent === 0 || !Number.isInteger(exponent)) return undefined;
+  return {
+    symbol: `${unit.symbol}${superscript(exponent)}`,
+    factor: unit.factor ** exponent,
+    dim: powerDim(unit.dim, exponent),
+    power: { ...unit, exponent },
+  };
 }
 
 function deltaHint(hint: ResolvedUnit | undefined): { hint?: ResolvedUnit } {

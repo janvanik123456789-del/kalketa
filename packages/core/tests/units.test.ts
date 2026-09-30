@@ -120,6 +120,16 @@ describe('quantities', () => {
     expectValue('L := 5 m\nL^0.5', Math.sqrt(5), 'm^0.5');
   });
 
+  it('keeps the unit when multiplying powers of it: a rod given in mm has its volume in mm³', () => {
+    expectValue('d := 20 mm\nL := 500 mm\nV := π·d²/4·L\nV =', Math.PI * 100 * 500, 'mm³');
+    expectValue('a := 3 cm\nb := 4 cm\na·b', 12, 'cm²');
+    expectValue('V := 60 cm³\nA := 20 cm²\nV/A', 3, 'cm');
+    expectValue('x := 5 mm\nx/x', 1, '');
+    // Different units: SI (or a target unit chosen with "|").
+    expectValue('d := 20 mm\nL := 0.5 m\nπ·d²/4·L', Math.PI * 100e-6 * 0.5, 'm³');
+    expectValue('d := 20 mm\nL := 0.5 m\nπ·d²/4·L | cm³', Math.PI * 100e-6 * 0.5 * 1e6, 'cm³');
+  });
+
   it('shows preferred SI units for computed results', () => {
     expectValue('2 kg · 3 m/s²', 6, 'N');
     expectValue('10 N · 2 m / 4 s', 5, 'W');

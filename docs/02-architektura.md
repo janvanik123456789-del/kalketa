@@ -229,11 +229,13 @@ Každá fáze končí procházejícími testy. **MVP = referenční výpočet R1
 
 | Fáze | Referenční výpočet | Nové schopnosti jádra |
 |---|---|---|
-| F7 | R2 strojař | vložené bloky se vstupy/výstupy, uživatelské funkce |
-| F8 | R3 chemik | vlastní dimenze, řešič rovnic |
-| F9 | R4 elektrikář | komplexní čísla, 2D interpolace |
-| F10 | R5 ekonom | měna a kurz k datu, řady, data a období, finanční funkce |
-| F11 | R6 průřezový | varianty, více tabulek v jednom listu |
+| F7 ✓ | R2 strojař | vložené bloky se vstupy/výstupy, uživatelské funkce |
+| F8 ✓ | R3 chemik | vlastní dimenze, řešič rovnic |
+| F9 ✓ | R4 elektrikář | komplexní čísla, 2D interpolace |
+| F10 ✓ | R5 ekonom | měna a kurz k datu, řady, data a období, finanční funkce |
+| F11 (možný dodělek) | R6 průřezový ✓ | více tabulek v jednom listu ✓; varianty odloženy, viz níže |
+
+*F11, varianty (rozhodnuto 30. 9. 2026):* zatím se řeší kopiemi souboru (Uložit jako), otevřenými v záložkách nebo ve dvou oknech. Kdyby chyběl přehled, dodělá se **Okno → Porovnat otevřené výpočty**: srovnávací tabulka stejně pojmenovaných výsledků a posudků z otevřených záložek, bez změny formátu souboru. Použije stejné porovnání výsledků jako revize (kap. 7 filozofie). Varianty v jednom souboru (vrstva s tabulkou vstupů `input`) zůstávají možností, pokud by kopie nestačily.
 
 ### Potom
 

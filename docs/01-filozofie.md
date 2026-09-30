@@ -174,6 +174,7 @@ Blok s jasnými vstupy a výstupy (např. „prostý nosník“, „dimenzován�
 - **Zmrazení revize:** list jde uzavřít jako revizi A, B, C.
 - **Porovnání revizí:** ukáže změněné vstupy a jejich dopad, např. „IPE 200 → IPE 220, využití v ohybu 94 % → 76 %“.
 - **Varianty:** v pracovní vrstvě jde spočítat více variant vedle sebe. Do tisku jde jen zvolená.
+  *Upřesněno 30. 9. 2026:* zatím se varianty řeší kopiemi souboru (Uložit jako) v záložkách nebo oknech vedle sebe; porovnání otevřených výpočtů je možný dodělek (F11), postavený na stejném porovnání jako revize.
 - **Export do PDF s otiskem (hashem):** z vytištěného výpočtu jde ověřit, kterou revizi listu představuje.
 
 ---

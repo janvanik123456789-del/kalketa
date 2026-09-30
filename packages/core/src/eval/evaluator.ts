@@ -188,7 +188,7 @@ function arithmetic(op: BinaryOperator, left: Value, right: Value, leftExpr: Exp
       warnOnAbsoluteTemperature(b, rightExpr.span, ctx);
       // Scaling by a plain number keeps the unit: 1.35 · g_k stays in kN/m.
       const scaled = scaledOperand(op, a, b);
-      const hint = scaled?.hint && !isDimensionless(scaled.dim) ? { hint: scaled.hint } : {};
+      const hint = keptHint(scaled) ? { hint: scaled!.hint! } : {};
       if (op === '*') return quantity(a.si * b.si, multiplyDims(a.dim, b.dim), hint);
       if (b.si === 0) fail('E-DIV-ZERO', rightExpr.span);
       return quantity(a.si / b.si, divideDims(a.dim, b.dim), hint);
@@ -222,7 +222,7 @@ function complexBinary(op: BinaryOperator, a: Quantity, b: Quantity, leftExpr: E
     case '/': {
       if (a.absolute || b.absolute) fail('E-COMPLEX-ARG', span);
       const scaled = scaledOperand(op, a, b);
-      const hint = scaled?.hint && !isDimensionless(scaled.dim) ? scaled.hint : undefined;
+      const hint = keptHint(scaled) ? scaled!.hint : undefined;
       if (op === '*') return make(ar * br - ai * bi, ar * bi + ai * br, multiplyDims(a.dim, b.dim), hint);
       const d = br * br + bi * bi;
       if (d === 0) fail('E-DIV-ZERO', rightExpr.span);
@@ -266,6 +266,16 @@ function scaledOperand(op: '*' | '/', a: Quantity, b: Quantity): Quantity | unde
   if (plainA && !plainB) return op === '*' ? b : undefined;
   if (plainA && plainB) return !b.hint ? a : op === '*' && !a.hint ? b : undefined;
   return undefined;
+}
+
+/**
+ * Whether a product keeps the unit symbol of the scaled factor: always for
+ * units with a dimension; of plain numbers only counts like ks (size 1), so
+ * 200 · 21 % is 42, not 4200 %.
+ */
+function keptHint(scaled: Quantity | undefined): boolean {
+  if (!scaled?.hint) return false;
+  return !isDimensionless(scaled.dim) || scaled.hint.factor === 1;
 }
 
 function addSubtract(op: '+' | '-', a: Quantity, b: Quantity, span: Span): Quantity {

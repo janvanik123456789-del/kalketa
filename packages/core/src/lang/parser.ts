@@ -337,7 +337,7 @@ class LineParser {
     this.next(); // unit
     const name = this.next();
     if (KEYWORDS.has(name.text)) fail('E-RESERVED', name.span, { name: name.text });
-    if (this.options.isUnit(name.text) || this.units.has(name.text) || this.defined.has(name.text)) fail('E-REDEFINED', name.span, { name: name.text });
+    if (this.units.has(name.text) || this.defined.has(name.text)) fail('E-REDEFINED', name.span, { name: name.text });
     let statement: Statement;
     if (this.peek().type === ':') {
       this.next();

@@ -49,7 +49,7 @@ const OPERATORS: readonly (readonly [string, TokenType])[] = [
 ];
 
 const isDigit = (ch: string | undefined): boolean => ch !== undefined && ch >= '0' && ch <= '9';
-const isIdentStart = (ch: string): boolean => /[\p{L}°%‰]/u.test(ch);
+const isIdentStart = (ch: string): boolean => /[\p{L}°%‰€$£¥]/u.test(ch);
 // Superscript digits are not part of a name (L² is L squared), subscripts are (T₁).
 const isIdentPart = (ch: string): boolean => /[\p{L}\p{Nd}\p{M}_°₀-₉]/u.test(ch);
 

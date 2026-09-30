@@ -56,7 +56,7 @@ describe('lexer', () => {
   });
 
   it('reports unexpected characters and unterminated strings', () => {
-    expect(tokenize('a $ b').diagnostics.map((d) => d.code)).toEqual(['E-UNEXPECTED-CHAR']);
+    expect(tokenize('a § b').diagnostics.map((d) => d.code)).toEqual(['E-UNEXPECTED-CHAR']);
     expect(tokenize('"open').diagnostics.map((d) => d.code)).toEqual(['E-UNTERMINATED-STRING']);
   });
 });

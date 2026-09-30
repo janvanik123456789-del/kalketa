@@ -306,7 +306,7 @@ export class SheetSession {
       context.dimensions.add(statement.name);
       return { status: 'ok', dependencies: [], diagnostics: [] };
     }
-    if (registry.has(statement.name)) return { status: 'error', dependencies: [], diagnostics: [diagnostic('E-REDEFINED', statement.nameSpan, { name: statement.name })] };
+    if (registry.has(statement.name) && !registry.isRedefinable(statement.name)) return { status: 'error', dependencies: [], diagnostics: [diagnostic('E-REDEFINED', statement.nameSpan, { name: statement.name })] };
     if (statement.dimension) {
       const name = statement.dimension.name;
       let dimension: Dimension;

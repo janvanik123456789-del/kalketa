@@ -138,6 +138,8 @@ unit ks: dimensionless           ' počitatelné kusy
 unit kNm := kN·m                 ' odvozená jednotka (alias)
 ```
 
+*Doplněno po F10:* **měny jsou vestavěné**, každá má vlastní dimenzi: CZK (i „Kč“), EUR („€“), USD („$“), GBP („£“), CHF, PLN („zł“), HUF („Ft“), JPY („¥“). `5 CZK + 2 EUR` je chyba, dokud list neurčí kurz (`unit EUR := 24,7 CZK` nebo kurzem z tabulky k datu); vestavěnou měnu jde takto v listu předefinovat. Listy, které si měnu deklarovaly samy (`dimension Mena`, `unit CZK: Mena`), fungují dál. Výkon panelů: `kWp`.
+
 *Upřesněno při implementaci F8:*
 - `dimension`, `unit … : …` a `unit … := …` platí od svého řádku dolů (jednotku nejde použít nad ním) a jen v tomto listu.
 - Základní jednotka pojmenuje výsledky bez jednotky: `1000 CZK / 4 os` se ukáže jako „250 CZK/os“, ne „Mena/Osoby“.

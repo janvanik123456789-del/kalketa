@@ -155,7 +155,7 @@ describe('parser: statements', () => {
     expect(result.diagnostics).toEqual([]);
     expect(result.sheet.statements.map((s) => s.kind)).toEqual(['dimension', 'unit', 'unit', 'definition']);
     expect(result.sheet.statements[1]).toMatchObject({ name: 'CZK', dimension: { name: 'Mena' } });
-    expect(parseCodes('x := 5 CZK\nunit CZK: 1')).toEqual(['E-UNKNOWN-UNIT']);
+    expect(parseCodes('x := 5 Tolar\nunit Tolar: 1')).toEqual(['E-UNKNOWN-UNIT']);
   });
 
   it('parses function definitions; parameters are names even where they spell units', () => {

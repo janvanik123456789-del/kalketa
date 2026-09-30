@@ -43,7 +43,7 @@ describe("a sheet's own dimensions and units", () => {
     expect(codes('dimension L')).toEqual(['E-REDEFINED']);
     expect(codes('dimension Mena\ndimension Mena')).toEqual(['E-REDEFINED']);
     expect(codes(`${MENA}unit CZK: Mena`)).toEqual(['E-REDEFINED']);
-    expect(codes('x := 5 CZK\ndimension Mena\nunit CZK: Mena')).toEqual(['E-UNKNOWN-UNIT']);
+    expect(codes('x := 5 Tolar\ndimension Mena\nunit Tolar: Mena')).toEqual(['E-UNKNOWN-UNIT']);
     expect(codes('unit X := "text"')).toEqual(['E-TYPE']);
   });
 
@@ -57,7 +57,33 @@ describe("a sheet's own dimensions and units", () => {
   });
 
   it('do not leak into other sheets', () => {
-    evaluateSheet(`${MENA}x := 1 CZK`);
-    expect(codes('x := 1 CZK')).toEqual(['E-UNKNOWN-UNIT']);
+    evaluateSheet('dimension Mena\nunit Tolar: Mena\nx := 1 Tolar');
+    expect(codes('x := 1 Tolar')).toEqual(['E-UNKNOWN-UNIT']);
+  });
+});
+
+describe('built-in currencies and kWp (a new sheet, nothing declared)', () => {
+  it('know CZK and its local symbol Kč, EUR and €, USD and $', () => {
+    expectValue('100 CZK + 50 Kč', 150, 'CZK');
+    expectValue('5 € + 2 EUR', 7, '€');
+    expectValue('20 $ | USD', 20, 'USD');
+    // A derived result is named by the currency code.
+    expectValue('cena := 4.2 Kč/kWh\n1000 kWh · cena', 4200, 'CZK');
+  });
+
+  it('keep currencies apart until the sheet gives a rate', () => {
+    expect(codes('5 CZK + 2 EUR')).toEqual(['E-UNIT-MISMATCH']);
+    expectValue('unit EUR := 24.7 CZK\n5 CZK + 2 EUR', 54.4, 'CZK');
+    expectValue('kurz := 24.7\nunit EUR := kurz·CZK\n100 EUR | Kč', 2470, 'Kč');
+  });
+
+  it('still open sheets that declared money themselves', () => {
+    expectValue('dimension Mena\nunit CZK: Mena\nunit EUR := 25 CZK\n2 EUR | CZK', 50, 'CZK');
+    expect(codes('unit m: 1')).toEqual(['E-REDEFINED']);
+  });
+
+  it('know kWp, the peak power of solar panels', () => {
+    expectValue('P := 10 kWp\nP | kW', 10, 'kW');
+    expectValue('10 kWp · 950 h | kWh', 9500, 'kWh');
   });
 });

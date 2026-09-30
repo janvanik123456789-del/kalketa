@@ -22,6 +22,8 @@ export interface UnitDef {
   /** Symbol of the matching temperature-difference unit (°C -> Δ°C). */
   readonly delta?: string;
   readonly prefixable?: boolean;
+  /** A currency: a sheet may define it anew by its rate ("unit EUR := 24.7 CZK"). */
+  readonly currency?: boolean;
 }
 
 const L = dim({ L: 1 });
@@ -49,6 +51,12 @@ const FREQUENCY = dim({ T: -1 });
 const DOSE = dim({ L: 2, T: -2 });
 const ILLUMINANCE = dim({ J: 1, L: -2 });
 const CATALYTIC = dim({ N: 1, T: -1 });
+
+/** A currency with its ISO code and local symbols (Kč, €, $): all of one dimension. */
+function currency(code: string, symbols: readonly string[] = []): UnitDef[] {
+  const dimension = dim({ [code]: 1 });
+  return [code, ...symbols].map((symbol) => ({ symbol, factor: 1, dim: dimension, prefixable: symbol === code, currency: true }));
+}
 
 const BUILT_IN: readonly UnitDef[] = [
   // Base units
@@ -103,6 +111,8 @@ const BUILT_IN: readonly UnitDef[] = [
   { symbol: 'Ah', factor: 3600, dim: CHARGE, prefixable: true },
   { symbol: 'V', factor: 1, dim: VOLTAGE, prefixable: true },
   { symbol: 'VA', factor: 1, dim: POWER, prefixable: true },
+  // Peak power of solar panels (kWp): a power, named for the rated output.
+  { symbol: 'Wp', factor: 1, dim: POWER, prefixable: true },
   { symbol: 'var', factor: 1, dim: POWER, prefixable: true },
   { symbol: 'Ω', factor: 1, dim: RESISTANCE, prefixable: true },
   { symbol: 'S', factor: 1, dim: CONDUCTANCE, prefixable: true },
@@ -118,6 +128,17 @@ const BUILT_IN: readonly UnitDef[] = [
   { symbol: 'Gy', factor: 1, dim: DOSE, prefixable: true },
   { symbol: 'Sv', factor: 1, dim: DOSE, prefixable: true },
   { symbol: 'kat', factor: 1, dim: CATALYTIC, prefixable: true },
+
+  // Currencies: each is a dimension of its own, so 5 CZK + 2 EUR is an error
+  // until the sheet gives a rate ("unit EUR := 24.7 CZK" or a rate from a table).
+  ...currency('CZK', ['Kč']),
+  ...currency('EUR', ['€']),
+  ...currency('USD', ['$']),
+  ...currency('GBP', ['£']),
+  ...currency('CHF'),
+  ...currency('PLN', ['zł']),
+  ...currency('HUF', ['Ft']),
+  ...currency('JPY', ['¥']),
 
   // Dimensionless
   { symbol: 'rad', factor: 1, dim: DIMENSIONLESS, prefixable: true },
@@ -175,6 +196,11 @@ export class UnitRegistry {
   /** Whether the exact symbol is a unit (no prefixes, no spellings). */
   has(symbol: string): boolean {
     return this.units.has(symbol);
+  }
+
+  /** Whether a sheet may define this unit anew: a currency, given by its rate. */
+  isRedefinable(symbol: string): boolean {
+    return this.units.get(symbol)?.currency === true;
   }
 
   /** Symbols of the sheet's own base dimensions, for "CZK/os" instead of "Mena/Osoby". */

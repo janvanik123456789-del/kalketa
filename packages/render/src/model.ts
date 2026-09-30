@@ -24,7 +24,7 @@ import {
 } from '@calccanvas/core';
 import { formatDate, formatDiagnostic, formatNumber, t, type Catalog } from '@calccanvas/i18n';
 import { formulaNode, hasSubstitutableParts, THIN_SPACE, type FormulaOptions, type Substituted } from './formula.js';
-import { mi, mn, mo, mtext, mu, nameNode, paren, row, sup, type MathNode } from './math.js';
+import { mi, mn, mo, mtext, mu, nameNode, paren, row, sup, toText, type MathNode } from './math.js';
 
 export interface PrintOptions {
   readonly catalog: Catalog;
@@ -300,7 +300,9 @@ function equationLines(
   // "a = b" or "G_min = G": the substitution would only repeat the result.
   const plainVariable = expr.kind === 'variable' || expr.kind === 'member';
   if (mode.substitution && !plainVariable && hasSubstitutableParts(expr) && r.status === 'ok') {
-    lines.push({ role: 'substitution', rhs: formulaNode(expr, formulaOptions(substitute)) });
+    // Nothing substituted (e.g. a series stays a name): no second, identical line.
+    const substituted = formulaNode(expr, formulaOptions(substitute));
+    if (toText(substituted) !== toText(lines[0]!.rhs)) lines.push({ role: 'substitution', rhs: substituted });
   }
   if (result) lines.push({ role: 'result', rhs: result });
   return lines;

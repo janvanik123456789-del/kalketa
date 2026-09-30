@@ -32,3 +32,11 @@ describe('dates in print', () => {
     expect(en.kind === 'equation' && toText(en.lines.at(-1)!.rhs)).toBe('9/29/2026');
   });
 });
+
+describe('a formula with nothing to substitute', () => {
+  it('is not printed twice', () => {
+    const doc = buildPrintDocument(evaluateSheet('CF := [-1000, 300, 400, 500]\ndoba := payback(CF)'), { catalog: cs, registry: defaultRegistry, digits: 4, title: 'T' });
+    const line = doc.blocks[1]!;
+    expect(line.kind === 'equation' && line.lines.map((l) => l.role)).toEqual(['formula', 'result']);
+  });
+});

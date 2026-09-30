@@ -4,7 +4,7 @@
  * Enter runs, Esc closes. Clicking keeps the focus where the user was typing.
  */
 
-import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import type { Command } from '../commands.js';
 import { commandIcon } from '../icons.js';
 
@@ -210,8 +210,20 @@ function MenuPanel({ items, commands, onClose, onNeighbour }: PanelProps) {
     row.run?.();
   };
 
+  // A menu that would leave the window opens to the other side (submenus) or shifts left.
+  const panel = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const element = panel.current;
+    if (!element) return;
+    const overflow = element.getBoundingClientRect().right - document.documentElement.clientWidth;
+    if (overflow <= 0) return;
+    const anchor = element.parentElement;
+    if (anchor?.classList.contains('submenu-anchor')) anchor.classList.add('flipped');
+    else element.style.left = `${-overflow - 2}px`;
+  }, []);
+
   return (
-    <div className="menu-panel" role="menu">
+    <div ref={panel} className="menu-panel" role="menu">
       {items.map((item, i) => {
         const row = rows[i];
         if (!row) return item.kind === 'separator' ? <div key={i} className="menu-separator" role="separator" /> : <Fragment key={i} />;

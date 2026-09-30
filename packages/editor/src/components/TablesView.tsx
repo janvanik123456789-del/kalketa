@@ -8,6 +8,7 @@ import type { ColumnSchema, ColumnType, Diagnostic } from '@calccanvas/core';
 import { formatDiagnostic, t, type Catalog } from '@calccanvas/i18n';
 import { toIdentifier, type SheetDocument, type StoredTable } from '@calccanvas/sheet';
 import { chooseFile } from '../document.js';
+import { ask } from './Ask.js';
 import { addColumn, addRow, deleteColumn, deleteRow, fromEditable, setCell, toEditable, type EditableTable } from '../logic/tableEdit.js';
 import { createTable, importTableFile, withTable, type TableChange } from '../tableActions.js';
 
@@ -19,15 +20,19 @@ interface Props {
   onChange(doc: SheetDocument): void;
   /** Narrow layout for the side panel: table list on top. */
   readonly compact?: boolean;
+  /** Only these tables (the tables of one data layer); all when absent. */
+  readonly names?: readonly string[];
+  /** Puts a newly created or imported table into its layer. */
+  assign?(doc: SheetDocument, name: string): SheetDocument;
 }
 
 const IMAGE_COLUMN = 'obrazek';
 
-export function TablesView({ doc, catalog, diagnostics, resolveFile, onChange, compact }: Props) {
-  const names = [...doc.tables.keys()];
+export function TablesView({ doc, catalog, diagnostics, resolveFile, onChange, compact, names: only, assign }: Props) {
+  const names = only ? only.filter((n) => doc.tables.has(n)) : [...doc.tables.keys()];
   const [active, setActive] = useState<string | undefined>(names[0]);
   const [messages, setMessages] = useState<string[]>([]);
-  const current = active && doc.tables.has(active) ? active : names[0];
+  const current = active && names.includes(active) ? active : names[0];
 
   const putTable = (name: string, stored: StoredTable, files?: ReadonlyMap<string, Uint8Array>) => onChange(withTable(doc, name, stored, files));
 
@@ -37,7 +42,7 @@ export function TablesView({ doc, catalog, diagnostics, resolveFile, onChange, c
 
   const apply = (result: TableChange | undefined) => {
     if (!result) return;
-    onChange(result.doc);
+    onChange(assign ? assign(result.doc, result.name) : result.doc);
     setActive(result.name);
     setMessages(result.messages);
   };
@@ -50,7 +55,7 @@ export function TablesView({ doc, catalog, diagnostics, resolveFile, onChange, c
             {name}
           </button>
         ))}
-        <button type="button" className="secondary" onClick={() => apply(createTable(doc, catalog))}>
+        <button type="button" className="secondary" onClick={async () => apply(await createTable(doc, catalog))}>
           + {t(catalog, 'editor.newTable')}
         </button>
         <button type="button" className="secondary" onClick={async () => apply(await importTableFile(doc, catalog))}>
@@ -133,8 +138,8 @@ function TableGrid({ table, catalog, resolveFile, onChange, onImage }: GridProps
     onChange({ ...table, schema: { ...schema, columns } });
   };
 
-  const newColumn = () => {
-    const name = toIdentifier(window.prompt(t(catalog, 'editor.columnName'), '') ?? '');
+  const newColumn = async () => {
+    const name = toIdentifier((await ask(t(catalog, 'editor.columnName'))) ?? '');
     if (name) onChange(addColumn(table, { name, type: 'quantity' }));
   };
 

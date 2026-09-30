@@ -30,7 +30,7 @@ export interface CommandContext {
   readonly canUndo: boolean;
   readonly canRedo: boolean;
   readonly zoomChoice: string;
-  readonly pane: 'details' | 'tables' | 'none';
+  readonly pane: 'details' | 'tables' | 'layers' | 'none';
   readonly tableEditor: boolean;
   readonly actions: {
     newDocument(): void;
@@ -49,12 +49,13 @@ export interface CommandContext {
     deleteLine(): void;
     setZoom(choice: string): void;
     zoomBy(direction: 1 | -1): void;
-    setPane(pane: 'details' | 'tables' | 'none'): void;
+    setPane(pane: 'details' | 'tables' | 'layers' | 'none'): void;
     toggleTableEditor(): void;
     customize(): void;
     insert(kind: 'heading' | 'text' | 'definition' | 'check' | 'pick' | 'pageBreak'): void;
     newTable(): void;
     importTable(): void;
+    addLayer(kind: 'calc' | 'data' | 'sources' | 'ai'): void;
     settings(): void;
     shortcuts(): void;
     about(): void;
@@ -94,6 +95,7 @@ export function buildCommands(ctx: CommandContext): Map<string, Command> {
   add('view.zoom100', 'view', () => a.setZoom('1'), { shortcut: 'Ctrl+0', checked: ctx.zoomChoice === '1' });
   add('view.paneDetails', 'view', () => a.setPane('details'), { checked: ctx.pane === 'details' });
   add('view.paneTables', 'view', () => a.setPane('tables'), { checked: ctx.pane === 'tables' });
+  add('view.paneLayers', 'view', () => a.setPane('layers'), { checked: ctx.pane === 'layers' });
   add('view.paneNone', 'view', () => a.setPane('none'), { checked: ctx.pane === 'none' });
   add('view.tableEditor', 'view', a.toggleTableEditor, { checked: ctx.tableEditor });
   add('view.customize', 'view', a.customize);
@@ -106,6 +108,10 @@ export function buildCommands(ctx: CommandContext): Map<string, Command> {
   add('insert.pageBreak', 'insert', () => a.insert('pageBreak'), { shortcut: 'Ctrl+Enter' });
   add('insert.newTable', 'insert', a.newTable);
   add('insert.importTable', 'insert', a.importTable);
+  add('insert.layerCalc', 'insert', () => a.addLayer('calc'));
+  add('insert.layerData', 'insert', () => a.addLayer('data'));
+  add('insert.layerSources', 'insert', () => a.addLayer('sources'));
+  add('insert.layerAi', 'insert', () => a.addLayer('ai'));
 
   add('tools.settings', 'tools', a.settings);
   add('help.shortcuts', 'help', a.shortcuts);

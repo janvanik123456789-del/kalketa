@@ -6,6 +6,7 @@ import { defaultRegistry } from '@calccanvas/core';
 import { formatDiagnostic, t, type Catalog } from '@calccanvas/i18n';
 import { importTable, parseCsv, readWorkbook, toIdentifier, type SheetDocument, type StoredTable } from '@calccanvas/sheet';
 import { chooseFile } from './document.js';
+import { ask } from './components/Ask.js';
 import { fromEditable, newTable } from './logic/tableEdit.js';
 
 export interface TableChange {
@@ -23,8 +24,8 @@ export function withTable(doc: SheetDocument, name: string, stored: StoredTable,
 }
 
 /** Asks for a name and adds an empty table. */
-export function createTable(doc: SheetDocument, catalog: Catalog): TableChange | undefined {
-  const name = toIdentifier(window.prompt(t(catalog, 'editor.tableName'), 'Tabulka') ?? '');
+export async function createTable(doc: SheetDocument, catalog: Catalog): Promise<TableChange | undefined> {
+  const name = toIdentifier((await ask(t(catalog, 'editor.tableName'), 'Tabulka')) ?? '');
   if (!name || doc.tables.has(name)) return undefined;
   return { doc: withTable(doc, name, fromEditable(newTable(name))), name, messages: [] };
 }
@@ -34,7 +35,7 @@ export async function importTableFile(doc: SheetDocument, catalog: Catalog): Pro
   const file = await chooseFile('.csv,.txt,.xlsx');
   if (!file) return undefined;
   const suggested = toIdentifier(file.name.replace(/\.[^.]+$/, ''));
-  const name = toIdentifier(window.prompt(t(catalog, 'editor.tableName'), suggested) ?? '');
+  const name = toIdentifier((await ask(t(catalog, 'editor.tableName'), suggested)) ?? '');
   if (!name) return undefined;
   const source = { title: file.name, retrieved: new Date().toISOString().slice(0, 10) };
   let imported;

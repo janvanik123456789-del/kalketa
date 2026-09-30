@@ -220,13 +220,15 @@ async function runSmokeTest(pdfPath: string): Promise<void> {
       language: document.documentElement.lang
     })`)) as { bridge: boolean; rows: number; summary: number; math: number; errors: string; menus: number; toolbars: number; language: string };
     const reshapedColumns = await reshapeWithRealMouse();
+    const layers = await layersWithRealInput(pdfPath.replace(/\.pdf$/i, '') + '-layers.png');
     const printer = await printWindow('<!doctype html><meta charset="utf-8"><h1>CalcCanvas</h1><math><mfrac><mi>a</mi><mn>2</mn></mfrac></math>');
     const pdf = await printer.webContents.printToPDF({ preferCSSPageSize: true });
     printer.destroy();
     await writeFile(pdfPath, pdf);
     ok =
-      state.bridge && state.menus === 6 && state.toolbars > 0 && state.rows > 10 && state.summary > 0 && state.math > 0 && reshapedColumns === 3 && pdf.length > 1000;
-    console.log(JSON.stringify({ ok, ...state, reshapedColumns, pdfBytes: pdf.length }));
+      state.bridge && state.menus === 6 && state.toolbars > 0 && state.rows > 10 && state.summary > 0 && state.math > 0 && reshapedColumns === 3 && pdf.length > 1000 &&
+      layers.tabs === 5 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.q.includes('16,73');
+    console.log(JSON.stringify({ ok, ...state, reshapedColumns, layers, pdfBytes: pdf.length }));
   } catch (err) {
     console.log(JSON.stringify({ ok: false, error: (err as Error).message }));
   }
@@ -264,6 +266,94 @@ async function reshapeWithRealMouse(): Promise<number> {
     console.log(JSON.stringify({ handle, events: await contents.executeJavaScript('[...new Set(window.__smokeEvents)]') }));
   }
   return columns;
+}
+
+// Real input for the smoke test: the events go through Chromium's input
+// pipeline like the user's mouse and keyboard.
+const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function clickOn(selector: string): Promise<void> {
+  const contents = window!.webContents;
+  const point = (await contents.executeJavaScript(`(() => {
+    const element = document.querySelector(${JSON.stringify(selector)});
+    if (!element) return undefined;
+    element.scrollIntoView({ block: 'center' });
+    const r = element.getBoundingClientRect();
+    return { x: Math.round(r.left + Math.min(r.width / 2, 40)), y: Math.round(r.top + r.height / 2) };
+  })()`)) as { x: number; y: number } | undefined;
+  if (!point) throw new Error(`Not found: ${selector}`);
+  contents.sendInputEvent({ type: 'mouseDown', ...point, button: 'left', clickCount: 1 });
+  contents.sendInputEvent({ type: 'mouseUp', ...point, button: 'left', clickCount: 1 });
+  await pause(150);
+}
+
+async function typeText(text: string): Promise<void> {
+  for (const ch of text) window!.webContents.sendInputEvent({ type: 'char', keyCode: ch });
+  await pause(150);
+}
+
+async function pressKey(keyCode: string, modifiers: Array<'control' | 'shift'> = []): Promise<void> {
+  window!.webContents.sendInputEvent({ type: 'keyDown', keyCode, modifiers });
+  window!.webContents.sendInputEvent({ type: 'keyUp', keyCode, modifiers });
+  await pause(150);
+}
+
+/**
+ * Layers with real input: adds an auxiliary calculation with a load, lets the
+ * sheet take it over, adds a sources layer with a citation. Saves a picture
+ * of the window. Returns what the editor shows afterwards.
+ */
+async function layersWithRealInput(picture: string) {
+  const contents = window!.webContents;
+  contents.focus();
+  await clickOn('.layer-tab.add'); // opens the Layers panel
+  await clickOn('.layer-add button:nth-child(1)'); // auxiliary calculation
+  await pressKey('A', ['control']);
+  await typeText('Zatížení');
+  await pressKey('Enter');
+  await clickOn('.page .row');
+  await typeText('q_d := 1,35·3,5 kN/m + 1,5·8 kN/m');
+  await clickOn('.sheet-scroll'); // done editing
+
+  await clickOn('.layer-tab[data-layer="main"]');
+  const loadRow = (await contents.executeJavaScript(
+    `[...document.querySelectorAll('.row')].find((r) => r.textContent.includes('12') && r.textContent.includes('kN/m'))?.dataset.line`,
+  )) as string | undefined;
+  await clickOn(`.row[data-line="${loadRow}"]`);
+  await pressKey('A', ['control']);
+  await typeText('q := q_d');
+  await clickOn('.sheet-scroll');
+
+  await clickOn('.layer-add button:nth-child(3)'); // sources
+  await pressKey('Enter'); // default name
+  await clickOn('.notes-text');
+  await typeText('> ČSN EN 1990, tab. A1.2(B)');
+  const citations = (await contents.executeJavaScript(`document.querySelectorAll('.notes blockquote.citation').length`)) as number;
+  await takePicture(picture.replace(/\.png$/, '-notes.png'));
+  await clickOn('.layer-tab[data-layer="main"]');
+  await takePicture(picture);
+  const state = (await contents.executeJavaScript(`({
+    tabs: document.querySelectorAll('.layer-tab:not(.add)').length,
+    used: document.querySelectorAll('.layer-note').length,
+    errors: Number(document.querySelector('.statusbar span')?.textContent.replace(/\\D+/g, '') ?? -1),
+    q: [...document.querySelectorAll('.row')].find((r) => r.textContent.includes('q_d'))?.textContent ?? '',
+  })`)) as { tabs: number; used: number; errors: number; q: string };
+  return { ...state, citations };
+}
+
+/**
+ * A hidden window does not paint: it is shown fully transparent, with mouse
+ * clicks passing through it, just for the picture.
+ */
+async function takePicture(path: string): Promise<void> {
+  window!.setOpacity(0);
+  window!.setIgnoreMouseEvents(true);
+  window!.showInactive();
+  window!.webContents.invalidate();
+  await pause(800);
+  const image = await window!.webContents.capturePage();
+  window!.hide();
+  await writeFile(path, image.toPNG());
 }
 
 /** Hidden window with the printout; no preload, no scripts needed. */

@@ -183,7 +183,7 @@ Blok s jasnými vstupy a výstupy (např. „prostý nosník“, „dimenzován�
 - List je **jeden soubor-kontejner** (ZIP, stejně jako `.docx`), který obsahuje výpočet, tabulky, obrázky a metadata.
 - **Výpočet uvnitř je čitelný text:** jde porovnávat verze, verzovat v gitu a snadno s ním pracuje i LLM.
 - Tabulky jsou uvnitř v otevřeném formátu (CSV nebo podobném), aby šly otevřít i bez programu.
-- Každá vrstva má v kontejneru vlastní složku `layers/<id>/` a seznam vrstev (druh, název, pořadí, zámek, příloha) je v `manifest.json`. Soubory bez tohoto seznamu (formát verze 1) se otevřou se třemi výchozími vrstvami: `sheet.cc` je List, `tables/` je Databáze.
+- Seznam vrstev (druh, název, pořadí, viditelnost, zámek, příloha, tabulky datové vrstvy) je v `layers.json`. Každá vrstva má vlastní složku `layers/<id>/`: pomocný výpočet má `sheet.cc`, podklady a poznámky AI mají `notes.md` a výřezy obrázků v `images/`. Tištěný List zůstává v `sheet.cc` a tabulky v `tables/`. Soubory bez seznamu (formát verze 1) se otevřou se třemi výchozími vrstvami.
 
 ---
 

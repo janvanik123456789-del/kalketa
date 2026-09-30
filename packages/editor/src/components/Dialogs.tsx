@@ -3,7 +3,7 @@
  * toolbars, Keyboard shortcuts, About.
  */
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { CATALOGS, t, type Catalog } from '@calccanvas/i18n';
 import type { SheetDocument } from '@calccanvas/sheet';
 import { plainLabel, type Command, type CommandCategory } from '../commands.js';
@@ -19,6 +19,7 @@ import {
   type ToolbarLayout,
 } from '../logic/toolbars.js';
 import { toolbarName } from './Toolbars.js';
+import { ask } from './Ask.js';
 
 interface DialogProps {
   readonly title: string;
@@ -31,8 +32,12 @@ interface DialogProps {
 }
 
 export function Dialog({ title, catalog, children, wide, onClose, onOk }: DialogProps) {
+  const own = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // Only the topmost dialog answers keys (a question may open over another dialog).
+      const dialogs = document.querySelectorAll('.dialog-backdrop');
+      if (dialogs[dialogs.length - 1] !== own.current) return;
       if (e.key === 'Escape') {
         e.preventDefault();
         onClose();
@@ -46,7 +51,7 @@ export function Dialog({ title, catalog, children, wide, onClose, onOk }: Dialog
   }, [onClose, onOk]);
 
   return (
-    <div className="dialog-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+    <div ref={own} className="dialog-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className={`dialog${wide ? ' wide' : ''}`} role="dialog" aria-modal="true" aria-label={title}>
         <div className="dialog-title">
           <span>{title}</span>
@@ -78,10 +83,22 @@ export function Dialog({ title, catalog, children, wide, onClose, onOk }: Dialog
 
 // ---------------------------------------------------------------------------
 
-export function SettingsDialog({ catalog, language, onApply, onClose }: { catalog: Catalog; language: string; onApply(language: string): void; onClose(): void }) {
+export interface Settings {
+  readonly language: string;
+  /** Saving a larger file shows a warning (megabytes). */
+  readonly sizeLimit: number;
+}
+
+export function SettingsDialog({ catalog, language, sizeLimit, onApply, onClose }: { catalog: Catalog; language: string; sizeLimit: number; onApply(settings: Settings): void; onClose(): void }) {
   const [value, setValue] = useState(language);
+  const [limit, setLimit] = useState(String(sizeLimit));
+  const apply = () => {
+    const mb = Number(limit.replace(',', '.'));
+    onApply({ language: value, sizeLimit: Number.isFinite(mb) && mb > 0 ? mb : sizeLimit });
+    onClose();
+  };
   return (
-    <Dialog title={t(catalog, 'settings.title')} catalog={catalog} onClose={onClose} onOk={() => (onApply(value), onClose())}>
+    <Dialog title={t(catalog, 'settings.title')} catalog={catalog} onClose={onClose} onOk={apply}>
       <label className="field">
         <span>{t(catalog, 'settings.language')}</span>
         <select value={value} onChange={(e) => setValue(e.target.value)} autoFocus>
@@ -93,6 +110,10 @@ export function SettingsDialog({ catalog, language, onApply, onClose }: { catalo
         </select>
       </label>
       <p className="hint">{t(catalog, 'settings.hint')}</p>
+      <label className="field">
+        <span>{t(catalog, 'settings.sizeLimit')}</span>
+        <input type="number" min="1" step="1" value={limit} onChange={(e) => setLimit(e.target.value)} />
+      </label>
     </Dialog>
   );
 }
@@ -230,8 +251,8 @@ export function CustomizeDialog({
           <div className="button-column">
             <button
               type="button"
-              onClick={() => {
-                const name = window.prompt(t(catalog, 'customize.newName'), '')?.trim();
+              onClick={async () => {
+                const name = (await ask(t(catalog, 'customize.newName')))?.trim();
                 if (!name) return;
                 const added = addToolbar(layout, name);
                 setLayout(added.layout);
@@ -243,10 +264,10 @@ export function CustomizeDialog({
             <button
               type="button"
               disabled={!toolbar}
-              onClick={() => {
+              onClick={async () => {
                 if (!toolbar) return;
-                const name = window.prompt(t(catalog, 'customize.rename'), toolbarName(toolbar, catalog));
-                if (name !== null) setLayout(renameToolbar(layout, toolbar.id, name));
+                const name = await ask(t(catalog, 'customize.rename'), toolbarName(toolbar, catalog));
+                if (name !== undefined) setLayout(renameToolbar(layout, toolbar.id, name));
               }}
             >
               {t(catalog, 'customize.rename')}

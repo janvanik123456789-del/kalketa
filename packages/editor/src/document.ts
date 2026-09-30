@@ -152,10 +152,11 @@ export async function pickAndOpen(labels: { sheets: string }): Promise<OpenedFil
   return file ? openBytes(file.name, new Uint8Array(await file.arrayBuffer())) : undefined;
 }
 
-/** Saves the document; returns where it went (undefined if cancelled or downloaded). */
-export async function saveDocument(doc: SheetDocument, ref: FileRef | undefined): Promise<FileRef | undefined> {
+/** Saves the document; returns where it went (undefined if cancelled or downloaded). `onBytes` sees the file content. */
+export async function saveDocument(doc: SheetDocument, ref: FileRef | undefined, onBytes?: (bytes: Uint8Array) => void): Promise<FileRef | undefined> {
   const stamped = { ...doc, manifest: { ...doc.manifest, modified: new Date().toISOString() } };
   const bytes = await writeSheetFile(stamped);
+  onBytes?.(bytes);
 
   if (desktop) {
     const path = await desktop.save({ ...(ref?.kind === 'path' ? { path: ref.path } : {}), suggestedName: fileName(doc), bytes });
@@ -195,4 +196,13 @@ export function chooseFile(accept: string): Promise<File | undefined> {
 
 export function fileName(doc: SheetDocument): string {
   return doc.manifest.title.replace(/[\/:*?"<>|]+/g, '_').trim() || 'vypocet';
+}
+
+/** The largest parts of a document, for the file size warning. */
+export function largestParts(doc: SheetDocument, count = 3): { name: string; bytes: number }[] {
+  const parts: { name: string; bytes: number }[] = [];
+  for (const [path, data] of doc.files) parts.push({ name: path, bytes: data.length });
+  for (const [name, table] of doc.tables) parts.push({ name: `tables/${name}`, bytes: table.dataCsv.length + table.schemaJson.length });
+  for (const layer of doc.layers) if (layer.text) parts.push({ name: layer.name ?? layer.id, bytes: layer.text.length });
+  return parts.sort((a, b) => b.bytes - a.bytes).slice(0, count);
 }

@@ -7,12 +7,12 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
-import { defaultRegistry, rowLabel, SheetSession, type Diagnostic, type Statement } from '@calccanvas/core';
-import { catalogFor, CATALOGS, formatDiagnostic, formatNumber, t } from '@calccanvas/i18n';
+import { defaultRegistry, rowLabel, type Diagnostic, type Statement } from '@calccanvas/core';
+import { catalogFor, CATALOGS, formatDiagnostic, formatNumber, t, type Catalog } from '@calccanvas/i18n';
 import { buildPrintDocument, printHtml } from '@calccanvas/render';
-import type { SheetDocument } from '@calccanvas/sheet';
+import { addLayer, allDiagnostics, appendixLayers, LayerSessions, MAIN_LAYER, removeLayer, tablesByLayer, updateLayer, type Layer, type SheetDocument } from '@calccanvas/sheet';
 import { buildCommands, shortcutOf, type Command } from './commands.js';
-import { desktop, emptyDocument, exampleDocument, fileName, fileUri, openBytes, pickAndOpen, saveDocument, tableCache, type FileRef, type OpenedFile } from './document.js';
+import { desktop, emptyDocument, exampleDocument, fileName, fileUri, largestParts, openBytes, pickAndOpen, saveDocument, tableCache, type FileRef, type OpenedFile } from './document.js';
 import { createHistory, record, redo, reset, undo } from './logic/history.js';
 import { pageGeometry } from './logic/pages.js';
 import { pickOf, replacePickKey } from './logic/pick.js';
@@ -21,12 +21,15 @@ import { parseLayout, setVisible, type ToolbarLayout } from './logic/toolbars.js
 import { createTable, importTableFile, type TableChange } from './tableActions.js';
 import { AboutDialog, CustomizeDialog, PropertiesDialog, SettingsDialog, ShortcutsDialog } from './components/Dialogs.js';
 import { Inspector } from './components/Inspector.js';
+import { ask, askConfirm, AskHost } from './components/Ask.js';
+import { LayersPane, LayerTabs } from './components/LayersPane.js';
+import { NotesView } from './components/NotesView.js';
 import { MenuBar, type Menu, type MenuItem } from './components/MenuBar.js';
 import { SheetView, type EditRange } from './components/SheetView.js';
 import { TablesView } from './components/TablesView.js';
 import { ToolbarFrame, toolbarName } from './components/Toolbars.js';
 
-type Pane = 'details' | 'tables' | 'none';
+type Pane = 'details' | 'tables' | 'layers' | 'none';
 type DialogKind = 'settings' | 'properties' | 'customize' | 'shortcuts' | 'about';
 
 const MM_TO_PX = 96 / 25.4;
@@ -36,6 +39,8 @@ const LANGUAGE_KEY = 'calccanvas.uiLanguage';
 const TOOLBARS_KEY = 'calccanvas.toolbars';
 const RECENT_KEY = 'calccanvas.recent';
 const RECENT_LIMIT = 8;
+const SIZE_LIMIT_KEY = 'calccanvas.sizeLimitMb';
+const DEFAULT_SIZE_LIMIT_MB = 50;
 
 // Small remembered preferences; storage may be unavailable.
 function stored(key: string): string | null {
@@ -61,6 +66,11 @@ function initialLanguage(): string {
   return CATALOGS[system] ? system : 'en';
 }
 
+/** Name of a layer: its own, or the name of its kind in the given language. */
+function layerName(layer: Layer, catalog: Catalog): string {
+  return layer.name ?? t(catalog, `layer.kind.${layer.kind}`);
+}
+
 function recentFiles(): string[] {
   try {
     const list = JSON.parse(stored(RECENT_KEY) ?? '[]') as unknown;
@@ -84,8 +94,10 @@ export function App() {
   const [notice, setNotice] = useState<string | undefined>();
   const [dialog, setDialog] = useState<DialogKind | undefined>();
   const [zoomChoice, setZoomChoice] = useState(() => stored('calccanvas.zoom') ?? 'fit2');
-  const [pane, setPane] = useState<Pane>(() => (['details', 'tables', 'none'].includes(stored('calccanvas.pane') ?? '') ? (stored('calccanvas.pane') as Pane) : 'details'));
+  const [pane, setPane] = useState<Pane>(() => (['details', 'tables', 'layers', 'none'].includes(stored('calccanvas.pane') ?? '') ? (stored('calccanvas.pane') as Pane) : 'details'));
   const [paneWidth, setPaneWidth] = useState(() => Number(stored('calccanvas.paneWidth')) || 380);
+  const [activeId, setActiveId] = useState(MAIN_LAYER);
+  const [sizeLimit, setSizeLimit] = useState(() => Number(stored(SIZE_LIMIT_KEY)) || DEFAULT_SIZE_LIMIT_MB);
   const [toolbars, setToolbars] = useState<ToolbarLayout>(() => parseLayout(stored(TOOLBARS_KEY)));
   const [scrollWidth, setScrollWidth] = useState(1000);
   const scrollRef = useRef<HTMLElement>(null);
@@ -94,11 +106,20 @@ export function App() {
   // The user writes numbers the way the program language does: 50,5 in Czech.
   const decimalComma = formatNumber(1.5, ui).includes(',');
   const printCatalog = catalogFor(doc.manifest.language ?? language);
-  const session = useRef(new SheetSession());
+  const sessions = useRef(new LayerSessions(defaultRegistry));
   const buildTables = useRef(tableCache(defaultRegistry));
 
   const { tables, diagnostics: tableDiagnostics } = useMemo(() => buildTables.current(doc), [doc.tables]);
-  const result = useMemo(() => session.current.update(doc.source, { tables }), [doc.source, tables]);
+  const evaluation = useMemo(() => sessions.current.evaluate(doc.source, doc.layers, tables), [doc.source, doc.layers, tables]);
+
+  // The layer being worked on. The printed sheet and auxiliary calculations
+  // are edited as pages; data layers as tables; notes as text.
+  const layer = doc.layers.find((l) => l.id === activeId) ?? doc.layers[0]!;
+  const isCalc = layer.kind === 'sheet' || layer.kind === 'calc';
+  const text = layer.kind === 'sheet' ? doc.source : (layer.text ?? '');
+  const result = (layer.kind === 'calc' ? evaluation.aux.get(layer.id) : undefined) ?? evaluation.main;
+  const nameOf = (l: Layer) => layerName(l, ui);
+  const layerTables = useMemo(() => tablesByLayer(doc.layers, doc.tables.keys()), [doc.layers, doc.tables]);
   const resolveFile = useCallback((path: string) => fileUri(doc, path), [doc]);
   const print = useMemo(
     () => buildPrintDocument(result, { catalog: printCatalog, registry: defaultRegistry, digits: doc.layout.digits, title: '', showHidden: true, resolveFile }),
@@ -132,21 +153,58 @@ export function App() {
 
   /** `group` merges quick successive changes (typing in one line) into one undo step. */
   const change = (next: SheetDocument, group?: string) => setHistory((h) => record(h, next, group));
-  const setSource = (source: string, group?: string) => change({ ...doc, source }, group);
+  /** Changes the text of the active layer; a locked layer stays as it is. */
+  const setSource = (source: string, group?: string, files?: ReadonlyMap<string, Uint8Array>) => {
+    if (layer.locked) return setNotice(t(ui, 'layers.lockedNotice'));
+    const withFiles = files ? { ...doc, files: new Map([...doc.files, ...files]) } : doc;
+    change(layer.kind === 'sheet' ? { ...withFiles, source } : { ...withFiles, layers: updateLayer(doc.layers, layer.id, { text: source }) }, group);
+  };
+  const setLayers = (layers: Layer[]) => change({ ...doc, layers });
 
-  const replace = (start: number, end: number, text: string) => {
-    setSource(replaceLines(doc.source, start, end, text), `line:${start}`);
-    setEditing({ start, end: start + text.split('\n').length - 1 });
+  const activate = (id: string) => {
+    setActiveId(id);
+    setEditing(undefined);
+    setSelected(undefined);
+  };
+
+  const newLayer = async (kind: 'calc' | 'data' | 'sources' | 'ai') => {
+    const name = (await ask(t(ui, 'layers.newName'), t(ui, `layer.kind.${kind}`)))?.trim();
+    if (!name) return;
+    const added = addLayer(doc.layers, kind, name);
+    setLayers(added.layers);
+    activate(added.id);
+  };
+
+  const deleteLayer = async (id: string) => {
+    const target = doc.layers.find((l) => l.id === id);
+    if (!target || target.kind === 'sheet' || !(await askConfirm(t(ui, 'layers.deleteConfirm', { name: nameOf(target) })))) return;
+    // Pictures of the layer go with it; tables of a data layer move to another data layer.
+    const files = new Map([...doc.files].filter(([path]) => !path.startsWith(`layers/${id}/`)));
+    change({ ...doc, layers: removeLayer(doc.layers, id), files });
+    if (activeId === id) activate(MAIN_LAYER);
+  };
+
+  /** A new table belongs to the active data layer, else to the first one. */
+  const assignTable = (next: SheetDocument, name: string): SheetDocument => {
+    const target = layer.kind === 'data' ? next.layers.find((l) => l.id === layer.id) : next.layers.find((l) => l.kind === 'data');
+    if (!target || target.tables?.includes(name)) return next;
+    return { ...next, layers: updateLayer(next.layers, target.id, { tables: [...(target.tables ?? []), name] }) };
+  };
+
+  const replace = (start: number, end: number, lines: string) => {
+    setSource(replaceLines(text, start, end, lines), `${layer.id}:line:${start}`);
+    setEditing({ start, end: start + lines.split('\n').length - 1 });
   };
 
   const pick = (statement: Statement, key: string) => {
     const info = pickOf(statement);
-    const next = info ? replacePickKey(doc.source, info, key) : undefined;
+    const next = info ? replacePickKey(text, info, key) : undefined;
     if (next !== undefined) setSource(next);
   };
 
   const replaceDocument = (next: SheetDocument, ref: FileRef | undefined, diagnostics: Diagnostic[] = []) => {
-    session.current = new SheetSession();
+    sessions.current = new LayerSessions(defaultRegistry);
+    setActiveId(MAIN_LAYER);
     setHistory(reset(next));
     setSavedDoc(next);
     setFileRef(ref);
@@ -180,7 +238,13 @@ export function App() {
   }, []);
 
   const save = async (as = false) => {
-    const target = await saveDocument(doc, as ? undefined : fileRef);
+    let size = 0;
+    const target = await saveDocument(doc, as ? undefined : fileRef, (bytes) => (size = bytes.length));
+    if (size > sizeLimit * 1024 * 1024) {
+      const mb = (bytes: number) => formatNumber(Math.round(bytes / 104857.6) / 10, ui);
+      const items = largestParts(doc).map((p) => t(ui, 'size.largest', { name: p.name, size: mb(p.bytes) }));
+      setNotice(t(ui, 'size.warning', { size: mb(size), items: items.join(', ') }));
+    }
     if (target) {
       setFileRef(target);
       if (target.kind === 'path') addRecent(target.path);
@@ -190,7 +254,7 @@ export function App() {
   };
 
   const printoutHtml = () =>
-    printHtml(result, {
+    printHtml(evaluation.main, {
       catalog: printCatalog,
       registry: defaultRegistry,
       title: /^[ \t]*#(?!#)[ \t]*(.+?)[ \t]*$/m.exec(doc.source)?.[1] ?? doc.manifest.title,
@@ -199,6 +263,7 @@ export function App() {
       orientation: doc.layout.orientation,
       resolveFile,
       ...(doc.manifest.author ? { subtitle: doc.manifest.author } : {}),
+      appendices: appendixLayers(doc.layers, evaluation, (l) => layerName(l, printCatalog)),
     });
 
   const printout = () => {
@@ -226,14 +291,14 @@ export function App() {
     if (editing) return editing;
     const s = selected !== undefined ? result.statements[selected]?.statement : undefined;
     if (!s) return undefined;
-    return segments(doc.source, result.sheet.statements).find((seg) => seg.statement === selected);
+    return segments(text, result.sheet.statements).find((seg) => seg.statement === selected);
   };
 
-  const lineCount = doc.source.split('\n').length;
+  const lineCount = text.split('\n').length;
 
-  const insertLine = (text: string, cursor?: number, edit = true) => {
+  const insertLine = (line: string, cursor?: number, edit = true) => {
     const after = currentRange()?.end ?? lineCount;
-    setSource(insertLineAfter(doc.source, after, text));
+    setSource(insertLineAfter(text, after, line));
     setEditing(edit ? { start: after + 1, end: after + 1, ...(cursor !== undefined ? { cursor } : {}) } : undefined);
   };
 
@@ -330,7 +395,7 @@ export function App() {
 
   const applyTable = (change_: TableChange | undefined) => {
     if (!change_) return;
-    change(change_.doc);
+    change(assignTable(change_.doc, change_.name));
     choosePane('tables');
     if (change_.messages.length > 0) setNotice(change_.messages.join(' '));
   };
@@ -369,13 +434,13 @@ export function App() {
       duplicateLine: () => {
         const range = currentRange();
         if (!range) return;
-        const text = doc.source.split('\n').slice(range.start - 1, range.end).join('\n');
-        setSource(insertLineAfter(doc.source, range.end, text));
+        const lines = text.split('\n').slice(range.start - 1, range.end).join('\n');
+        setSource(insertLineAfter(text, range.end, lines));
       },
       deleteLine: () => {
         const range = currentRange();
         if (!range) return;
-        setSource(deleteLines(doc.source, range.start, range.end));
+        setSource(deleteLines(text, range.start, range.end));
         setEditing(undefined);
         setSelected(undefined);
       },
@@ -385,8 +450,9 @@ export function App() {
       toggleTableEditor: () => setTableEditor((v) => !v),
       customize: () => setDialog('customize'),
       insert,
-      newTable: () => applyTable(createTable(doc, ui)),
+      newTable: () => void createTable(doc, ui).then(applyTable),
       importTable: () => void importTableFile(doc, ui).then(applyTable),
+      addLayer: (kind) => void newLayer(kind),
       settings: () => setDialog('settings'),
       shortcuts: () => setDialog('shortcuts'),
       about: () => setDialog('about'),
@@ -465,7 +531,7 @@ export function App() {
         cmd('view.zoomOut'),
         cmd('view.zoom100'),
         sep,
-        { kind: 'submenu', label: t(ui, 'menu.pane'), items: [cmd('view.paneDetails'), cmd('view.paneTables'), cmd('view.paneNone')] },
+        { kind: 'submenu', label: t(ui, 'menu.pane'), items: [cmd('view.paneDetails'), cmd('view.paneTables'), cmd('view.paneLayers'), cmd('view.paneNone')] },
         cmd('view.tableEditor'),
         sep,
         {
@@ -483,15 +549,20 @@ export function App() {
     },
     {
       label: t(ui, 'menu.insert'),
-      items: [cmd('insert.heading'), cmd('insert.text'), cmd('insert.definition'), cmd('insert.check'), cmd('insert.pick'), cmd('insert.pageBreak'), sep, cmd('insert.newTable'), cmd('insert.importTable')],
+      items: [cmd('insert.heading'), cmd('insert.text'), cmd('insert.definition'), cmd('insert.check'), cmd('insert.pick'), cmd('insert.pageBreak'), sep, cmd('insert.newTable'), cmd('insert.importTable'), sep,
+        { kind: 'submenu', label: t(ui, 'menu.layer'), items: [cmd('insert.layerCalc'), cmd('insert.layerData'), cmd('insert.layerSources'), cmd('insert.layerAi')] },
+      ],
     },
     { label: t(ui, 'menu.tools'), items: [cmd('tools.settings')] },
     { label: t(ui, 'menu.help'), items: [cmd('help.shortcuts'), sep, cmd('help.about')] },
   ];
 
-  const errors = result.diagnostics.filter((d) => d.severity === 'error').length + tableDiagnostics.filter((d) => d.severity === 'error').length;
-  const warnings = result.diagnostics.filter((d) => d.severity === 'warning').length;
-  const failedChecks = result.checks.filter((c) => !c.passed).length;
+  // The status bar counts all calculation layers: an error in an auxiliary layer matters too.
+  const diagnostics = allDiagnostics(evaluation);
+  const checks = [evaluation.main, ...evaluation.aux.values()].flatMap((r) => r.checks);
+  const errors = diagnostics.filter((d) => d.severity === 'error').length + tableDiagnostics.filter((d) => d.severity === 'error').length;
+  const warnings = diagnostics.filter((d) => d.severity === 'warning').length;
+  const failedChecks = checks.filter((c) => !c.passed).length;
 
   return (
     <div className="app">
@@ -506,12 +577,28 @@ export function App() {
             <>
               <div className="pane-divider" onMouseDown={startResize} role="separator" aria-orientation="vertical" />
               <div className="side-pane" style={{ width: paneWidth }}>
-                {pane === 'details' ? (
+                {pane === 'layers' ? (
+                  <LayersPane
+                    layers={doc.layers}
+                    active={layer.id}
+                    catalog={ui}
+                    used={evaluation.used}
+                    nameOf={nameOf}
+                    onActivate={activate}
+                    onChange={setLayers}
+                    onAdd={(kind) => void newLayer(kind)}
+                    onDelete={(id) => void deleteLayer(id)}
+                  />
+                ) : pane === 'details' ? (
                   <Inspector
                     result={result}
                     statement={selected}
                     catalog={ui}
                     decimalComma={decimalComma}
+                    onLayer={(id) => {
+                      activate(id);
+                      choosePane('layers');
+                    }}
                     onSelect={(statement) => {
                       setSelected(statement);
                       const line = result.statements[statement]?.statement.span.line;
@@ -519,7 +606,7 @@ export function App() {
                     }}
                   />
                 ) : (
-                  <TablesView doc={doc} catalog={ui} diagnostics={tableDiagnostics} resolveFile={resolveFile} onChange={(next) => change(next)} compact />
+                  <TablesView doc={doc} catalog={ui} diagnostics={tableDiagnostics} resolveFile={resolveFile} onChange={(next) => change(next)} assign={assignTable} compact />
                 )}
               </div>
             </>
@@ -531,8 +618,31 @@ export function App() {
             {notice}
           </div>
         )}
+        {!tableEditor && layer.locked && <div className="notice locked">{t(ui, 'layers.lockedNotice')}</div>}
+        {!tableEditor && !layer.visible && <div className="notice">{t(ui, 'layers.hiddenNotice')}</div>}
         {tableEditor ? (
-          <TablesView doc={doc} catalog={ui} diagnostics={tableDiagnostics} resolveFile={resolveFile} onChange={(next) => change(next)} />
+          <TablesView doc={doc} catalog={ui} diagnostics={tableDiagnostics} resolveFile={resolveFile} onChange={(next) => change(next)} assign={assignTable} />
+        ) : layer.kind === 'data' ? (
+          <TablesView
+            key={layer.id}
+            doc={doc}
+            catalog={ui}
+            diagnostics={tableDiagnostics}
+            resolveFile={resolveFile}
+            names={layerTables.get(layer.id) ?? []}
+            assign={assignTable}
+            onChange={(next) => (layer.locked ? setNotice(t(ui, 'layers.lockedNotice')) : change(next))}
+          />
+        ) : !isCalc ? (
+          <NotesView
+            key={layer.id}
+            layer={layer}
+            title={nameOf(layer)}
+            catalog={ui}
+            readOnly={layer.locked}
+            resolveFile={resolveFile}
+            onChange={(next, files) => setSource(next, `${layer.id}:notes`, files)}
+          />
         ) : (
           <div className="workspace">
             <main
@@ -548,31 +658,33 @@ export function App() {
               }}
             >
               <SheetView
-                source={doc.source}
+                key={layer.id}
+                source={text}
                 result={result}
                 print={print}
                 printCatalog={printCatalog}
                 editing={editing}
                 selected={selected}
                 resolveFile={resolveFile}
-                onEdit={setEditing}
+                onEdit={(range) => (layer.locked && range ? setNotice(t(ui, 'layers.lockedNotice')) : setEditing(range))}
                 onSelect={setSelected}
                 onReplace={replace}
                 onInsertAfter={(line) => {
-                  setSource(insertLineAfter(doc.source, line));
+                  setSource(insertLineAfter(text, line));
                   setEditing({ start: line + 1, end: line + 1 });
                 }}
-                onDelete={(start, end) => setSource(deleteLines(doc.source, start, end))}
+                onDelete={(start, end) => setSource(deleteLines(text, start, end))}
                 onPick={pick}
                 geometry={geometry}
                 zoom={zoom}
-                title={/^[ \t]*#(?!#)[ \t]*(.+?)[ \t]*$/m.exec(doc.source)?.[1] ?? doc.manifest.title}
+                title={layer.kind === 'calc' ? nameOf(layer) : (/^[ \t]*#(?!#)[ \t]*(.+?)[ \t]*$/m.exec(doc.source)?.[1] ?? doc.manifest.title)}
                 uiCatalog={printCatalog}
                 decimalComma={decimalComma}
               />
             </main>
           </div>
         )}
+        {!tableEditor && <LayerTabs layers={doc.layers} active={layer.id} catalog={ui} nameOf={nameOf} onActivate={activate} onAdd={() => choosePane('layers')} />}
       </ToolbarFrame>
       <footer className="statusbar">
         <span className={errors > 0 ? 'bad' : ''}>
@@ -582,7 +694,7 @@ export function App() {
           {ui.severity.warning}: {warnings}
         </span>
         <span className={failedChecks > 0 ? 'bad' : ''}>
-          {t(ui, 'checks.title')}: {result.checks.length - failedChecks}/{result.checks.length} ✓
+          {t(ui, 'checks.title')}: {checks.length - failedChecks}/{checks.length} ✓
         </span>
         <span className="grow" />
         <span>{Math.round(zoom * 100)} %</span>
@@ -592,9 +704,12 @@ export function App() {
         <SettingsDialog
           catalog={ui}
           language={language}
+          sizeLimit={sizeLimit}
           onApply={(next) => {
-            setLanguage(next);
-            remember(LANGUAGE_KEY, next);
+            setLanguage(next.language);
+            remember(LANGUAGE_KEY, next.language);
+            setSizeLimit(next.sizeLimit);
+            remember(SIZE_LIMIT_KEY, String(next.sizeLimit));
           }}
           onClose={() => setDialog(undefined)}
         />
@@ -603,6 +718,7 @@ export function App() {
       {dialog === 'customize' && <CustomizeDialog catalog={ui} layout={toolbars} commands={commands} onApply={changeToolbars} onClose={() => setDialog(undefined)} />}
       {dialog === 'shortcuts' && <ShortcutsDialog catalog={ui} commands={commands} onClose={() => setDialog(undefined)} />}
       {dialog === 'about' && <AboutDialog catalog={ui} onClose={() => setDialog(undefined)} />}
+      <AskHost catalog={ui} title="CalcCanvas" />
     </div>
   );
 }

@@ -14,9 +14,11 @@ interface Props {
   /** Formulas are shown in the user's notation (50,5). */
   readonly decimalComma: boolean;
   onSelect(statement: number): void;
+  /** Opens the layer a value was taken from. */
+  onLayer(layer: string): void;
 }
 
-export function Inspector({ result, statement, catalog, decimalComma, onSelect }: Props) {
+export function Inspector({ result, statement, catalog, decimalComma, onSelect, onLayer }: Props) {
   const r = statement !== undefined ? result.statements[statement] : undefined;
   if (!r || (r.statement.kind !== 'definition' && r.statement.kind !== 'display' && r.statement.kind !== 'check' && r.statement.kind !== 'invalid')) {
     return (
@@ -49,7 +51,7 @@ export function Inspector({ result, statement, catalog, decimalComma, onSelect }
         <section>
           <h3>{t(catalog, 'editor.origin')}</h3>
           <ul className="trace">
-            <TraceItem node={trace} catalog={catalog} decimalComma={decimalComma} onSelect={onSelect} />
+            <TraceItem node={trace} catalog={catalog} decimalComma={decimalComma} onSelect={onSelect} onLayer={onLayer} />
           </ul>
         </section>
       )}
@@ -58,7 +60,7 @@ export function Inspector({ result, statement, catalog, decimalComma, onSelect }
   );
 }
 
-function TraceItem({ node, catalog, decimalComma, onSelect }: { node: TraceNode; catalog: Catalog; decimalComma: boolean; onSelect(statement: number): void }) {
+function TraceItem({ node, catalog, decimalComma, onSelect, onLayer }: { node: TraceNode; catalog: Catalog; decimalComma: boolean; onSelect(statement: number): void; onLayer(layer: string): void }) {
   const value = node.display
     ? `${formatNumber(node.display.value, catalog)}${node.display.unit ? ` ${node.display.unit}` : ''}`
     : node.value?.type === 'row'
@@ -75,6 +77,11 @@ function TraceItem({ node, catalog, decimalComma, onSelect }: { node: TraceNode;
         {computed && node.expression && <span className="formula"> ← {decimalComma ? toDecimalComma(node.expression) : node.expression}</span>}
         {node.line !== undefined && <span className="line"> ({node.line})</span>}
       </button>
+      {node.layer && (
+        <button type="button" className="layer-ref" onClick={() => onLayer(node.layer!.id)}>
+          {t(catalog, 'trace.layer')} <strong>{node.layer.name}</strong>
+        </button>
+      )}
       {(node.tables.length > 0 || node.inputs.length > 0) && (
         <ul>
           {node.tables.map((ref, i) => (
@@ -91,7 +98,7 @@ function TraceItem({ node, catalog, decimalComma, onSelect }: { node: TraceNode;
             </li>
           ))}
           {node.inputs.map((input, i) => (
-            <TraceItem key={`i${i}`} node={input} catalog={catalog} decimalComma={decimalComma} onSelect={onSelect} />
+            <TraceItem key={`i${i}`} node={input} catalog={catalog} decimalComma={decimalComma} onSelect={onSelect} onLayer={onLayer} />
           ))}
         </ul>
       )}

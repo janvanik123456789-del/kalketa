@@ -218,3 +218,45 @@ table.grid td.num input { text-align: right; font-variant-numeric: tabular-nums;
 table.grid td.row-tools { white-space: nowrap; padding: 0 4px; background: #fafbfc; }
 button.icon { border: none; background: none; cursor: pointer; color: var(--muted); padding: 0 4px; }
 button.icon:hover { color: var(--accent); }
+
+/* Layers: tabs under the workspace, the side panel, notes */
+.layer-tabs { display: flex; flex-wrap: wrap; gap: 2px; padding: 0 8px; background: var(--toolbar); border-top: 1px solid var(--line); flex: none; user-select: none; }
+.layer-tab { border: 1px solid var(--line); border-top: none; background: #eef0f3; padding: 2px 12px 3px; font-size: 12px; cursor: pointer; border-radius: 0 0 4px 4px; margin-top: -1px; }
+.layer-tab:hover { background: #fff; }
+.layer-tab.active { background: #fff; border-color: #aab2bd; font-weight: 600; }
+.layer-tab.add { padding: 2px 8px 3px; }
+.glyph { font-family: "Cambria Math", "Segoe UI Symbol", serif; color: #4a5a70; }
+.notice.locked { background: #eef3fb; border-bottom-color: #b9c9e4; cursor: default; }
+.layers-pane { padding: 10px 12px; overflow: auto; height: 100%; box-sizing: border-box; }
+.layers-pane h2 { font-size: 15px; margin: 0 0 8px; }
+.layers-pane h3 { font-size: 13px; margin: 14px 0 6px; }
+.layer-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.layer-item { border: 1px solid var(--line); border-radius: 4px; background: #fff; padding: 4px 6px; }
+.layer-item.active { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+.layer-item.hidden .layer-name { color: #8a929c; }
+.layer-head { display: flex; align-items: center; gap: 4px; }
+.layer-name { flex: 1; text-align: left; border: none; background: none; padding: 2px 0; cursor: pointer; font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.layer-name .kind { font-weight: 400; color: var(--muted); font-size: 12px; }
+.layer-actions { display: flex; gap: 1px; flex: none; }
+.layer-actions button { border: 1px solid transparent; background: none; width: 24px; height: 22px; cursor: pointer; border-radius: 3px; padding: 0; }
+.layer-actions button:hover:not(:disabled) { border-color: #b9c3d0; background: #f4f6f9; }
+.layer-actions button:disabled { color: #c0c5cc; cursor: default; }
+.layer-flags { display: flex; flex-wrap: wrap; gap: 2px 12px; font-size: 12px; color: #333; padding-left: 2px; }
+.layer-flags label { display: inline-flex; align-items: center; gap: 3px; cursor: pointer; }
+.layer-note { font-size: 11px; color: var(--accent); padding: 2px 2px 0; }
+.layer-add { display: flex; flex-wrap: wrap; gap: 4px; }
+.layer-ref { display: block; border: none; background: none; padding: 0 0 2px 14px; font-size: 12px; color: var(--accent); cursor: pointer; text-align: left; }
+.layer-ref:hover { text-decoration: underline; }
+.notes-view { flex: 1; display: flex; flex-wrap: wrap; gap: 20px; padding: 20px; overflow: auto; min-height: 0; align-items: stretch; }
+.notes-editor { flex: 1 1 340px; display: flex; flex-direction: column; min-height: 400px; }
+.notes-toolbar { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.notes-toolbar .grow { flex: 1; }
+.notes-text { flex: 1; resize: none; border: 1px solid #aab2bd; border-radius: 3px; padding: 8px 10px; font: 13px/1.55 Consolas, "Courier New", monospace; background: #fff; outline: none; }
+.notes-text:focus { border-color: var(--accent); }
+.notes-text[readonly] { background: #f6f7f9; }
+.notes-preview { flex: 1 1 340px; background: var(--paper); box-shadow: 0 1px 5px rgb(0 0 0 / 18%); padding: 16mm 18mm; box-sizing: border-box; max-width: 210mm; min-height: 400px; overflow: auto; }
+.notes-title { margin: 0 0 4mm; font-size: 14pt; }
+.notes-editor .help { font-size: 12px; color: var(--muted); margin: 6px 0 0; }
+.ask { display: flex; flex-direction: column; gap: 6px; min-width: 340px; margin: 0; }
+.ask input { padding: 4px 6px; border: 1px solid #aab2bd; border-radius: 2px; }
+.submenu-anchor.flipped { left: auto; right: 100%; }

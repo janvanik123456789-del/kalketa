@@ -20,6 +20,8 @@ export interface FormulaOptions {
   readonly substitute?: (expr: Expr) => Substituted | undefined;
   /** Names set as plain text, not as math symbols: blocks ("Prosty_nosnik" as "Prosty nosnik"). */
   readonly textNames?: ReadonlySet<string>;
+  /** Variables holding the result of a block: N1.M_max is printed as M_max(N1). */
+  readonly recordNames?: ReadonlySet<string>;
 }
 
 export interface Substituted {
@@ -88,6 +90,10 @@ function render(expr: Expr, o: FormulaOptions): Rendered {
     case 'variable':
       return { node: expr.name === 'π' ? mi('π') : nameNode(expr.name), prec: ATOM };
     case 'member':
+      // The value of a block names its use: N1.M_max -> M_max(N1).
+      if (expr.object.kind === 'variable' && o.recordNames?.has(expr.object.name)) {
+        return { node: row(nameNode(expr.name), paren(nameNode(expr.object.name))), prec: ATOM };
+      }
       // Printed as the column name: profil.W_y -> W_y.
       return { node: nameNode(expr.name), prec: ATOM };
     case 'unary': {

@@ -17,5 +17,7 @@ describe('blocks in print', () => {
     expect(html).toContain('<mtext>Prosty nosnik 1.2</mtext>');
     expect(html).toContain('<mtext>Prosty nosnik</mtext>');
     expect(html).toContain('54');
+    // N1.M_max is printed as M_max(N1).
+    expect(html).toMatch(/<msub><mi>M<\/mi><mi[^>]*>max<\/mi><\/msub><mrow><mo>\(<\/mo><mi[^>]*>N1<\/mi><mo>\)<\/mo><\/mrow>/);
   });
 });

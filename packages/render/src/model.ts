@@ -130,8 +130,10 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
 
   // Blocks used in the sheet: their names are words, not math symbols.
   const blockNames = new Set(result.statements.flatMap((r) => (r.value?.type === 'record' ? [r.value.block] : [])));
+  const recordNames = new Set([...result.values].flatMap(([name, value]) => (value.type === 'record' ? [name] : [])));
   const formulaOptions = (substitute?: FormulaOptions['substitute']): FormulaOptions => ({
     ...(blockNames.size > 0 ? { textNames: blockNames } : {}),
+    ...(recordNames.size > 0 ? { recordNames } : {}),
     literal: numberFormat(15),
     argumentSeparator: decimalComma ? ';' : ',',
     booleans: { true: catalog.terms['true'] ?? 'true', false: catalog.terms['false'] ?? 'false' },

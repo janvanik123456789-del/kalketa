@@ -251,6 +251,14 @@ Každá fáze končí procházejícími testy. **MVP = referenční výpočet R1
   - malá tolerance na hranici šířky, aby nepřeskakoval počet sloupců,
   - vlastní zoom pro každý panel vrstev vedle sebe,
   - při velmi malém zoomu (pod asi 40 %) klik stránku nejdřív přiblíží.
+- **Výběr stylu výpočtu** (30. 9. 2026). Dnešní vzhled listu plýtvá místem. Zůstane jako jeden ze stylů, třeba „Vzdušný“. Přibude úsporný styl a výběr stylu ve Vlastnostech výpočtu, uložený v souboru. Kandidáti na úsporu:
+  - výsledek na stejném řádku jako vzorec: `A = π·d²/4 = π·(20 mm)²/4 = 314,2 mm²`, zalomit jen při nedostatku šířky,
+  - dosazení vynechat u jednoduchých vzorců (jedna proměnná, prosté násobení),
+  - zadání (`L := 6 m`) sázet ve dvou až třech sloupcích,
+  - menší svislé mezery mezi řádky a pod nadpisy,
+  - menší okraje stránky a menší patička.
+
+  Styl mění jen sazbu, nikdy výpočet. Tisk a PDF použijí styl uložený v souboru, takže stejný soubor vypadá všude stejně.
 
 ---
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DIAGNOSTIC_SEVERITY, diagnostic, evaluateSheet, type DiagnosticCode } from '@calccanvas/core';
+import { builtinFunctions, DIAGNOSTIC_SEVERITY, diagnostic, evaluateSheet, FUNCTION_MODULES, type DiagnosticCode } from '@calccanvas/core';
 import { CATALOGS, catalogFor, formatDiagnostic, formatNumber } from '../src/index.js';
 
 const span = { offset: 0, length: 1, line: 1, column: 1 };
@@ -41,5 +41,14 @@ describe('formatNumber', () => {
   it('switches to scientific notation for extreme magnitudes', () => {
     expect(formatNumber(1.602e-19, catalogFor('en'))).toBe('1.602E-19');
     expect(formatNumber(0, catalogFor('en'))).toBe('0');
+  });
+});
+
+describe('function help', () => {
+  it('describes every built-in function and module in every language', () => {
+    for (const catalog of Object.values(CATALOGS)) {
+      for (const def of builtinFunctions.all()) expect(catalog.functions[def.name], `${catalog.locale}: ${def.name}`).toBeTruthy();
+      for (const module of FUNCTION_MODULES) expect(catalog.functionModules[module], `${catalog.locale}: ${module}`).toBeTruthy();
+    }
   });
 });

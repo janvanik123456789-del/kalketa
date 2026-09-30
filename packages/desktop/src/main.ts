@@ -325,7 +325,7 @@ async function runSmokeTest(pdfPath: string): Promise<void> {
     await writeFile(pdfPath, pdf);
     ok =
       state.bridge && state.sideBySide && state.menus === 7 && state.toolbars > 0 && state.rows > 10 && state.summary > 0 && state.math > 0 && reshapedColumns === 3 && pdf.length > 1000 &&
-      layers.newKeepsExample && layers.tabs === 5 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.blocksOk !== false && layers.mainHidden && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.q.includes('16,73');
+      layers.newKeepsExample && layers.tabs === 5 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.help && layers.blocksOk !== false && layers.mainHidden && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.q.includes('16,73');
     console.log(JSON.stringify({ ok, ...state, reshapedColumns, layers, pdfBytes: pdf.length }));
   } catch (err) {
     console.log(JSON.stringify({ ok: false, error: (err as Error).message }));
@@ -536,6 +536,19 @@ async function layersWithRealInput(picture: string) {
     await pressKey('Enter');
     await typeText(line);
   }
+  // Help on functions (F1): find hypot, click it into the line, finish the call.
+  await pressKey('Enter');
+  await typeText('c_h := ');
+  await pressKey('F1');
+  await pause(300);
+  const listed = (await contents.executeJavaScript(`document.querySelectorAll('table.functions tr').length`)) as number;
+  await typeText('hypot');
+  await pause(200);
+  await takePicture(picture.replace(/[.]png$/, '-help.png'));
+  await clickOn('table.functions tr');
+  await typeText('3 m; 4 m)');
+  await pressKey('Enter');
+  await typeText('c_h =');
   await clickOn('.sheet-scroll');
   await pause(300);
   const userFunction = (await contents.executeJavaScript(`({
@@ -550,6 +563,7 @@ async function layersWithRealInput(picture: string) {
   const rod = userFunction.rows.some((r) => r.replace(/\s+/g, '').includes('=157100mm³'));
   const complex = userFunction.rows.some((r) => r.replace(/\s+/g, '').includes('(27,6−36,8j)A'));
   const ownUnits = userFunction.rows.some((r) => r.replace(/\s+/g, '').includes('100EUR=2500CZK'));
+  const help = listed > 50 && userFunction.rows.some((r) => r.replace(/\s+/g, '').includes('hypot(3m;4m)=5m'));
 
   // A sheet with a block: the block is listed, its use shows the block and computes.
   const blockFile = process.env['CALCCANVAS_SMOKE_BLOCKS'];
@@ -566,7 +580,7 @@ async function layersWithRealInput(picture: string) {
     blocksOk = shown.blocks === 1 && shown.errors === 0 && shown.text.includes('Prosty nosnik 1.2') && shown.text.includes('45');
     await takePicture(picture.replace(/[.]png$/, '-blocks.png'));
   }
-  return { ...state, newKeepsExample, citations, aiReadOnly, split, mainHidden, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, blocksOk };
+  return { ...state, newKeepsExample, citations, aiReadOnly, split, mainHidden, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, help, blocksOk };
 }
 
 /**

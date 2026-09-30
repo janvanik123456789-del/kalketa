@@ -198,7 +198,21 @@ Od nejvyšší priority (**převzato z Calcpadu, standardní školní matematika
 
 ### 7.1 Vestavěné (F1)
 
-`sqrt`, `abs`, `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `atan2`, `exp`, `ln`, `log10`, `min`, `max`, `round`, `floor`, `ceil`, `if(podmínka, a, b)`.
+Funkce jsou v **registru funkcí** rozdělené do modulů. Každá funkce má v registru název, modul, parametry, počet argumentů a výpočet. Jádro se na funkci jen ptá registru, takže přidat modul (obor, později zásuvný modul) nevyžaduje zásah do jádra. Z registru vzniká i nápověda **Nápověda → Funkce (F1)**: hledání, popis v jazyce programu, kliknutím se funkce vloží na místo kurzoru.
+
+| Modul | Funkce |
+|---|---|
+| Matematika | `sqrt`, `abs`, `min`, `max`, `hypot(a, b, …)`, `mod(a, b)`, `sign`, `floor`, `ceil`, `round(x)` / `round(x, n)`, `exp`, `ln`, `log10`, `log(x, b)`, `factorial(n)` |
+| Goniometrické a hyperbolické | `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `atan2(y, x)`, `sinh`, `cosh`, `tanh`, `asinh`, `acosh`, `atanh` |
+| Komplexní čísla | `re`, `im`, `conj`, `arg`, `polar(r, φ)` (7.1a) |
+| Řady | `range`, `sum`, `len`, `cumsum` (7.1b) |
+| Statistika | `mean`, `median`, `stdev` (výběrová, n − 1) |
+| Finance | `npv`, `irr`, `pmt`, `payback` (7.1b) |
+| Data | `date`, `year`, `month`, `day` (7.1b) |
+| Logika | `if(podmínka, a, b)` (7.3) |
+| Tabulky | `pick`, `interpolate`, `find_min`, `find_max` (kap. 8) |
+
+Počet argumentů kontroluje registr jednotně (`E-FUNC-ARITY`). `mod` a `hypot` zachovají jednotku (`mod(1250 mm, 1 m) = 250 mm`), `median` a `stdev` jednotku řady.
 
 Goniometrické a logaritmické funkce **vyžadují bezrozměrný argument** (nebo úhel). Jinak je to chyba (**stejně jako Calcpad**).
 

@@ -65,6 +65,7 @@ export interface CommandContext {
     addLayer(kind: 'calc' | 'data' | 'sources'): void;
     settings(): void;
     shortcuts(): void;
+    functions(): void;
     about(): void;
     insertSymbol(symbol: string): void;
   };
@@ -126,6 +127,7 @@ export function buildCommands(ctx: CommandContext): Map<string, Command> {
   add('window.next', 'window', () => a.cycleDocument(1), { shortcut: 'Ctrl+Tab', enabled: ctx.documents > 1 });
   add('window.previous', 'window', () => a.cycleDocument(-1), { shortcut: 'Ctrl+Shift+Tab', enabled: ctx.documents > 1 });
   add('window.closeAll', 'window', a.closeAllDocuments);
+  add('help.functions', 'help', a.functions, { shortcut: 'F1' });
   add('help.shortcuts', 'help', a.shortcuts);
   add('help.about', 'help', a.about);
 

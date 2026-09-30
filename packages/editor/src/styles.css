@@ -124,6 +124,14 @@ button, select, input { font: inherit; }
 .button-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 .button-row button, .button-column button { min-width: 0; }
 table.shortcuts td { padding: 2px 16px 2px 0; }
+.functions-filter { width: 100%; box-sizing: border-box; margin-bottom: 8px; }
+.functions-list { max-height: 60vh; overflow-y: auto; }
+.functions-list h4 { margin: 10px 0 4px; }
+table.functions { border-collapse: collapse; width: 100%; }
+table.functions td { padding: 3px 12px 3px 4px; vertical-align: top; }
+table.functions td:first-child { white-space: nowrap; }
+table.functions tr { cursor: pointer; }
+table.functions tr:hover { background: var(--hover, rgba(0, 0, 0, 0.06)); }
 kbd { font: 12px Consolas, monospace; background: #fff; border: 1px solid #c4cad2; border-radius: 3px; padding: 0 5px; }
 .about { display: flex; gap: 16px; align-items: flex-start; max-width: 420px; }
 

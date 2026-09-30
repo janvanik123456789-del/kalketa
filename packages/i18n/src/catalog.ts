@@ -3,7 +3,7 @@
  * catalog; no code changes are needed elsewhere.
  */
 
-import type { DiagnosticCode, Severity } from '@calccanvas/core';
+import type { DiagnosticCode, FunctionModuleId, Severity } from '@calccanvas/core';
 
 export interface Catalog {
   /** BCP 47 tag, also used for number formatting (cs -> 1 234,5). */
@@ -12,6 +12,10 @@ export interface Catalog {
   readonly name: string;
   /** Message per diagnostic code; {param} placeholders are filled in. */
   readonly diagnostics: Readonly<Record<DiagnosticCode, string>>;
+  /** Names of the modules of built-in functions, for help. */
+  readonly functionModules: Readonly<Record<FunctionModuleId, string>>;
+  /** One sentence per built-in function, for help. */
+  readonly functions: Readonly<Record<string, string>>;
   /** Translations of term codes used as parameter values. */
   readonly terms: Readonly<Record<string, string>>;
   readonly severity: Readonly<Record<Severity, string>>;
@@ -138,6 +142,10 @@ export const UI_KEYS = [
   'cmd.tools.settings',
   'cmd.help.shortcuts',
   'cmd.help.about',
+  'cmd.help.functions',
+  'help.functionsTitle',
+  'help.functionsFilter',
+  'help.functionsInsert',
   'cmd.symbol',
   'toolbar.standard',
   'toolbar.insert',

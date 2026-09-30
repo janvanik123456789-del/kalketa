@@ -4,10 +4,7 @@
  * after the head of a new function: "A_kruh(d) =" becomes "A_kruh(d) :=".
  */
 
-import { FUNCTION_NAMES } from '@calccanvas/core';
-
-/** Table functions are also built in: pick(T, …) = asks for the result. */
-const TABLE_FUNCTIONS: readonly string[] = ['pick', 'interpolate', 'find_min', 'find_max'];
+import { builtinFunctions } from '@calccanvas/core';
 
 const NAME = String.raw`[\p{L}][\p{L}\p{Nd}\p{M}_]*`;
 const PARAMS = String.raw`\(\s*${NAME}(?:\s*[,;]\s*${NAME})*\s*\)`;
@@ -29,7 +26,7 @@ export function defineShortcut(text: string, cursor: number, isDefinedElsewhere:
   const match = LEADING_NAME.exec(before);
   if (!match || after.trimStart().startsWith('=')) return undefined;
   const name = match[1]!;
-  if (isDefinedElsewhere(name) || FUNCTION_NAMES.includes(name) || TABLE_FUNCTIONS.includes(name)) return undefined;
+  if (isDefinedElsewhere(name) || builtinFunctions.has(name)) return undefined;
   // "payback(CF) =" with CF defined above is a call that asks for the result.
   const params = /\(([^()]*)\)/.exec(before)?.[1]?.split(/[,;]/).map((p) => p.trim()) ?? [];
   if (params.some((p) => isDefinedElsewhere(p))) return undefined;

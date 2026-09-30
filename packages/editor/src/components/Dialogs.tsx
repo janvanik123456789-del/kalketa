@@ -1,9 +1,10 @@
 /**
  * Classic modal dialogs: Settings, Calculation properties, Customize
- * toolbars, Keyboard shortcuts, About.
+ * toolbars, Keyboard shortcuts, Functions, About.
  */
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { builtinFunctions, FUNCTION_MODULES, signature } from '@calccanvas/core';
 import { CATALOGS, t, type Catalog } from '@calccanvas/i18n';
 import type { SheetDocument } from '@calccanvas/sheet';
 import { plainLabel, type Command, type CommandCategory } from '../commands.js';
@@ -355,6 +356,43 @@ export function ShortcutsDialog({ catalog, commands, onClose }: { catalog: Catal
           ))}
         </tbody>
       </table>
+    </Dialog>
+  );
+}
+
+/** Help on the built-in functions, generated from the function registry. */
+export function FunctionsDialog({ catalog, separator, onInsert, onClose }: { catalog: Catalog; separator: string; onInsert(text: string): void; onClose(): void }) {
+  const [filter, setFilter] = useState('');
+  const wanted = filter.trim().toLowerCase();
+  const all = builtinFunctions.all();
+  const shown = all.filter((def) => !wanted || def.name.toLowerCase().includes(wanted) || (catalog.functions[def.name] ?? '').toLowerCase().includes(wanted));
+  return (
+    <Dialog title={t(catalog, 'help.functionsTitle')} catalog={catalog} wide onClose={onClose}>
+      <input className="functions-filter" type="search" autoFocus placeholder={t(catalog, 'help.functionsFilter')} value={filter} onChange={(e) => setFilter(e.target.value)} />
+      <div className="functions-list">
+        {FUNCTION_MODULES.map((module) => {
+          const defs = shown.filter((def) => def.module === module);
+          if (defs.length === 0) return null;
+          return (
+            <section key={module}>
+              <h4>{catalog.functionModules[module]}</h4>
+              <table className="functions">
+                <tbody>
+                  {defs.map((def) => (
+                    <tr key={def.name} onClick={() => onInsert(`${def.name}(`)} title={t(catalog, 'help.functionsInsert')}>
+                      <td>
+                        <code>{signature(def, separator)}</code>
+                      </td>
+                      <td>{catalog.functions[def.name] ?? CATALOGS['en']?.functions[def.name] ?? ''}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </section>
+          );
+        })}
+      </div>
+      <p className="hint">{t(catalog, 'help.functionsInsert')}</p>
     </Dialog>
   );
 }

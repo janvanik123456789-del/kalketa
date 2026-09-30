@@ -17,18 +17,16 @@ import { CalcError, fail, type Span } from '../diagnostics.js';
 import type { Expr, Statement } from '../lang/ast.js';
 import type { FunctionValue, Value } from '../values/value.js';
 import type { EvalContext } from './evaluator.js';
-import { BUILTIN_CONSTANTS, FUNCTION_NAMES } from './functions.js';
+import { BUILTIN_CONSTANTS, builtinFunctions } from './functions.js';
 import { ROW_VARIABLE, TABLE_FUNCTIONS } from './tables.js';
 
 type Evaluate = (expr: Expr, ctx: EvalContext) => Value;
 type CallExpr = Extract<Expr, { kind: 'call' }>;
 type FunctionDefinition = Extract<Statement, { kind: 'definition' }> & { readonly params: NonNullable<Extract<Statement, { kind: 'definition' }>['params']> };
 
-const BUILTIN_FUNCTIONS: ReadonlySet<string> = new Set(FUNCTION_NAMES);
-
 /** Names that user functions (and variables) cannot take over. */
 export function isBuiltinFunction(name: string): boolean {
-  return BUILTIN_FUNCTIONS.has(name) || TABLE_FUNCTIONS.has(name);
+  return builtinFunctions.has(name);
 }
 
 interface FreeName {

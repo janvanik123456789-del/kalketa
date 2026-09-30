@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fromDecimalComma, SheetSession, toDecimalComma } from '../src/index.js';
+import { builtinFunctions, FUNCTION_MODULES, FUNCTION_NAMES, fromDecimalComma, SheetSession, signature, toDecimalComma } from '../src/index.js';
 import { codes, expectValue } from './helpers.js';
 
 describe('user functions', () => {
@@ -75,5 +75,60 @@ describe('user functions', () => {
   it('are written with ";" between parameters in the decimal-comma notation', () => {
     expect(toDecimalComma('σ(M, W) := M/W·1.5')).toBe('σ(M; W) := M/W·1,5');
     expect(fromDecimalComma('σ(M; W) := M/W·1,5')).toBe('σ(M, W) := M/W·1.5');
+  });
+});
+
+describe('function registry', () => {
+  it('describes every built-in function with a module and parameters', () => {
+    for (const def of builtinFunctions.all()) {
+      expect(FUNCTION_MODULES, def.name).toContain(def.module);
+      expect(def.params.length, def.name).toBeGreaterThan(0);
+    }
+    expect(builtinFunctions.get('find_min')?.module).toBe('tables');
+    expect(FUNCTION_NAMES).not.toContain('pick');
+  });
+
+  it('checks the number of arguments in one place', () => {
+    expect(codes('sin(1, 2)')).toEqual(['E-FUNC-ARITY']);
+    expect(codes('round(1, 2, 3)')).toEqual(['E-FUNC-ARITY']);
+    expect(codes('hypot(3)')).toEqual(['E-FUNC-ARITY']);
+  });
+
+  it('writes signatures in the notation of the sheet', () => {
+    expect(signature(builtinFunctions.get('atan2')!)).toBe('atan2(y, x)');
+    expect(signature(builtinFunctions.get('atan2')!, ';')).toBe('atan2(y; x)');
+  });
+});
+
+describe('math and statistics functions', () => {
+  it('log with a base, mod, sign, factorial, hypot', () => {
+    expectValue('log(8, 2)', 3, '');
+    expectValue('mod(7, 3)', 1, '');
+    expectValue('mod(-1, 3)', 2, '');
+    expectValue('mod(1250 mm, 1 m)', 250, 'mm');
+    expectValue('sign(-4 kN)', -1, '');
+    expectValue('factorial(5)', 120, '');
+    expectValue('hypot(3 m, 4 m)', 5, 'm');
+    expect(codes('log(8, 1)')).toEqual(['E-DOMAIN']);
+    expect(codes('factorial(2.5)')).toEqual(['E-DOMAIN']);
+    expect(codes('mod(5 m, 2 s)')).toEqual(['E-UNIT-MISMATCH']);
+  });
+
+  it('round to decimals', () => {
+    expectValue('round(3.14159, 2)', 3.14, '');
+    expectValue('round(2.5)', 3, '');
+  });
+
+  it('median and sample standard deviation keep the unit', () => {
+    expectValue('median([3, 1, 2] kN)', 2, 'kN');
+    expectValue('median([4, 1, 3, 2])', 2.5, '');
+    expectValue('stdev([2, 4, 4, 4, 5, 5, 7, 9] mm)', Math.sqrt(32 / 7), 'mm');
+    expect(codes('stdev(range(1, 1))')).toEqual(['E-DOMAIN']);
+  });
+
+  it('hyperbolic inverses', () => {
+    expectValue('asinh(sinh(0.7))', 0.7, '');
+    expectValue('atanh(0.5)', Math.atanh(0.5), '');
+    expect(codes('acosh(0.5)')).toEqual(['E-DOMAIN']);
   });
 });

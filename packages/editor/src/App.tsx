@@ -21,7 +21,7 @@ import { deleteLines, insertLineAfter, replaceLines, segments } from './logic/se
 import { parseLayout, setVisible, type ToolbarLayout } from './logic/toolbars.js';
 import { createTable, importTableFile, type TableChange } from './tableActions.js';
 import { importBlockFile } from './blockActions.js';
-import { AboutDialog, CustomizeDialog, PropertiesDialog, SettingsDialog, ShortcutsDialog } from './components/Dialogs.js';
+import { AboutDialog, CustomizeDialog, FunctionsDialog, PropertiesDialog, SettingsDialog, ShortcutsDialog } from './components/Dialogs.js';
 import { DocumentTabs } from './components/DocumentTabs.js';
 import { Inspector } from './components/Inspector.js';
 import { ask, askConfirm, AskHost } from './components/Ask.js';
@@ -34,7 +34,7 @@ import { ToolbarFrame, toolbarName } from './components/Toolbars.js';
 
 type Pane = 'details' | 'tables' | 'layers' | 'none';
 type Tab = DocTab<SheetDocument, FileRef>;
-type DialogKind = 'settings' | 'properties' | 'customize' | 'shortcuts' | 'about';
+type DialogKind = 'settings' | 'properties' | 'customize' | 'shortcuts' | 'functions' | 'about';
 
 const MM_TO_PX = 96 / 25.4;
 const PAGE_GAP_PX = 24;
@@ -636,6 +636,7 @@ export function App() {
       insertBlock: () => void insertBlock(),
       settings: () => setDialog('settings'),
       shortcuts: () => setDialog('shortcuts'),
+      functions: () => setDialog('functions'),
       about: () => setDialog('about'),
       insertSymbol,
     },
@@ -645,7 +646,8 @@ export function App() {
   commandsRef.current = commands;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (dialog || !(e.ctrlKey || e.metaKey)) return;
+      // Function keys work alone (F1 help); other shortcuts need Ctrl.
+      if (dialog || !(e.ctrlKey || e.metaKey || /^F\d+$/.test(e.key))) return;
       const key = shortcutOf(e);
       const target = e.target as HTMLElement;
       const inRow = target.matches?.('textarea.row-editor');
@@ -763,7 +765,7 @@ export function App() {
         })),
       ],
     },
-    { label: t(ui, 'menu.help'), items: [cmd('help.shortcuts'), sep, cmd('help.about')] },
+    { label: t(ui, 'menu.help'), items: [cmd('help.functions'), cmd('help.shortcuts'), sep, cmd('help.about')] },
   ];
 
   const layerContent = (l: Layer, active: boolean) => {
@@ -977,6 +979,17 @@ export function App() {
       {dialog === 'properties' && <PropertiesDialog catalog={ui} doc={doc} onApply={(next) => change(next)} onClose={() => setDialog(undefined)} />}
       {dialog === 'customize' && <CustomizeDialog catalog={ui} layout={toolbars} commands={commands} onApply={changeToolbars} onClose={() => setDialog(undefined)} />}
       {dialog === 'shortcuts' && <ShortcutsDialog catalog={ui} commands={commands} onClose={() => setDialog(undefined)} />}
+      {dialog === 'functions' && (
+        <FunctionsDialog
+          catalog={ui}
+          separator={decimalComma ? ';' : ','}
+          onInsert={(text) => {
+            setDialog(undefined);
+            insertSymbol(text);
+          }}
+          onClose={() => setDialog(undefined)}
+        />
+      )}
       {dialog === 'about' && <AboutDialog catalog={ui} onClose={() => setDialog(undefined)} />}
       <AskHost catalog={ui} title="CalcCanvas" />
     </div>

@@ -337,6 +337,8 @@ export function App() {
 
   const show = (opened: OpenedFile | undefined) => {
     if (!opened) return;
+    // A file that did not end up in a tab of its own is not open here.
+    if (!opened.document || !opened.ref) desktop?.setOpenFiles(openPaths ? openPaths.split('\n') : []);
     if (!opened.document) {
       setNotice([t(ui, 'editor.openFailed'), ...opened.diagnostics.map((d) => formatDiagnostic(d, ui))].join(' '));
       return;
@@ -347,13 +349,31 @@ export function App() {
   // Files opened by double click or from the command line (desktop only).
   const showRef = useRef(show);
   showRef.current = show;
+  // A file another window wanted to open is open here: show it.
+  const revealRef = useRef((path: string) => {});
+  revealRef.current = (path: string) => {
+    const open = docs.tabs.find((d) => d.path !== undefined && d.path.toLowerCase() === path.toLowerCase());
+    if (!open) return;
+    switchDocument(open.id);
+    setNotice(t(ui, 'docs.alreadyOpen'));
+  };
   useEffect(() => {
     desktop?.onOpenFile((file) => void openBytes(file.name, file.bytes, { kind: 'path', path: file.path }).then((opened) => showRef.current(opened)));
+    desktop?.onShowFile((path) => revealRef.current(path));
   }, []);
+
+  // The application keeps each file in one window only; it needs to know which files are open here.
+  const openPaths = docs.tabs.flatMap((d) => (d.path !== undefined ? [d.path] : [])).join('\n');
+  useEffect(() => {
+    desktop?.setOpenFiles(openPaths ? openPaths.split('\n') : []);
+  }, [openPaths]);
 
   const save = async (as = false) => {
     let size = 0;
-    const target = await saveDocument(doc, as ? undefined : fileRef, (bytes) => (size = bytes.length));
+    const target = await saveDocument(doc, as ? undefined : fileRef, (bytes) => (size = bytes.length), {
+      openElsewhere: t(ui, 'docs.openElsewhere'),
+      ...(tab.path !== undefined ? { current: tab.path } : {}),
+    });
     if (size > sizeLimit * 1024 * 1024) {
       const mb = (bytes: number) => formatNumber(Math.round(bytes / 104857.6) / 10, ui);
       const items = largestParts(doc).map((p) => t(ui, 'size.largest', { name: p.name, size: mb(p.bytes) }));

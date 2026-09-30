@@ -272,6 +272,8 @@ export const en: Catalog = {
     'cmd.window.closeAll': 'Close &all',
     'docs.closeUnsaved': '“{name}” has unsaved changes. Close it without saving?',
     'docs.new': 'New calculation',
+    'docs.alreadyOpen': 'This file is already open — here it is.',
+    'docs.openElsewhere': 'That file is open in another CalcCanvas window. Save under another name, or close it there first.',
     'docs.close': 'Close',
     'menu.sideBySide': 'Layers side by &side',
     'layers.openBeside': 'Open side by side',

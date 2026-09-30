@@ -83,13 +83,21 @@ export function fileUri(doc: SheetDocument, path: string): string | undefined {
 export interface DesktopBridge {
   openDialog(labels: { sheets: string }): Promise<DesktopFile | undefined>;
   openPath(path: string): Promise<DesktopFile | undefined>;
-  save(request: { path?: string; suggestedName: string; bytes: Uint8Array }): Promise<string | undefined>;
+  /**
+   * Saves to `path`, or asks where. `current` is the document's own file; any
+   * other open file is refused with the message `openElsewhere`.
+   */
+  save(request: { path?: string; current?: string; suggestedName: string; bytes: Uint8Array; openElsewhere?: string }): Promise<string | undefined>;
   print(html: string): Promise<boolean>;
   exportPdf(request: { html: string; suggestedName: string }): Promise<string | undefined>;
   /** Opens another editor window with an empty calculation. */
   newWindow(): Promise<void>;
   setCloseGuard(guard: { dirty: boolean; message: string; discard: string; cancel: string }): void;
   onOpenFile(listener: (file: DesktopFile) => void): void;
+  /** Files this window has open; the application keeps each file in one window only. */
+  setOpenFiles(paths: string[]): void;
+  /** Another window tried to open a file this one has: show its tab. */
+  onShowFile(listener: (path: string) => void): void;
 }
 
 export interface DesktopFile {
@@ -155,13 +163,18 @@ export async function pickAndOpen(labels: { sheets: string }): Promise<OpenedFil
 }
 
 /** Saves the document; returns where it went (undefined if cancelled or downloaded). `onBytes` sees the file content. */
-export async function saveDocument(doc: SheetDocument, ref: FileRef | undefined, onBytes?: (bytes: Uint8Array) => void): Promise<FileRef | undefined> {
+export async function saveDocument(
+  doc: SheetDocument,
+  ref: FileRef | undefined,
+  onBytes?: (bytes: Uint8Array) => void,
+  labels?: { openElsewhere: string; current?: string },
+): Promise<FileRef | undefined> {
   const stamped = { ...doc, manifest: { ...doc.manifest, modified: new Date().toISOString() } };
   const bytes = await writeSheetFile(stamped);
   onBytes?.(bytes);
 
   if (desktop) {
-    const path = await desktop.save({ ...(ref?.kind === 'path' ? { path: ref.path } : {}), suggestedName: fileName(doc), bytes });
+    const path = await desktop.save({ ...(ref?.kind === 'path' ? { path: ref.path } : {}), suggestedName: fileName(doc), bytes, ...(labels ?? {}) });
     return path ? { kind: 'path', path } : undefined;
   }
 

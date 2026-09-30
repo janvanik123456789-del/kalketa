@@ -209,6 +209,8 @@ export const UI_KEYS = [
   'cmd.window.closeAll',
   'docs.closeUnsaved',
   'docs.new',
+  'docs.alreadyOpen',
+  'docs.openElsewhere',
   'docs.close',
   'menu.sideBySide',
   'layers.openBeside',

@@ -272,6 +272,8 @@ export const cs: Catalog = {
     'cmd.window.closeAll': 'Zavřít &vše',
     'docs.closeUnsaved': '„{name}“ má neuložené změny. Zavřít bez uložení?',
     'docs.new': 'Nový výpočet',
+    'docs.alreadyOpen': 'Tento soubor už je otevřený – je tady.',
+    'docs.openElsewhere': 'Tento soubor je otevřený v jiném okně CalcCanvas. Uložte výpočet pod jiným názvem, nebo soubor nejdřív zavřete v tom okně.',
     'docs.close': 'Zavřít',
     'menu.sideBySide': 'Vrstvy vedle &sebe',
     'layers.openBeside': 'Otevřít vedle',

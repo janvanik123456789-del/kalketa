@@ -12,7 +12,7 @@ import { app, BrowserWindow, dialog, ipcMain, Menu, shell, type IpcMainInvokeEve
 import { mkdtempSync } from 'node:fs';
 import { readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { basename, dirname, extname, join } from 'node:path';
+import { basename, dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -31,8 +31,12 @@ interface CloseGuard {
   cancel: string;
 }
 
-/** Editor windows by their web contents, each with its own close guard. */
-const editors = new Map<number, { readonly window: BrowserWindow; readonly guard: CloseGuard }>();
+/**
+ * Editor windows by their web contents, each with its own close guard and the
+ * files it has open. A file is open in one window at most: two copies would
+ * overwrite each other's changes.
+ */
+const editors = new Map<number, { readonly window: BrowserWindow; readonly guard: CloseGuard; files: Set<string> }>();
 /** The editor window used last; files opened from outside go there. */
 let lastFocused: BrowserWindow | undefined;
 /** The first window, which the smoke test drives. */
@@ -75,7 +79,7 @@ function createWindow(options: { blank?: boolean } = {}): BrowserWindow {
   });
   const contentsId = win.webContents.id;
   const guard: CloseGuard = { dirty: false, message: '', discard: 'Discard', cancel: 'Cancel' };
-  editors.set(contentsId, { window: win, guard });
+  editors.set(contentsId, { window: win, guard, files: new Set() });
   lastFocused = win;
   win.on('focus', () => (lastFocused = win));
   win.on('closed', () => {
@@ -125,6 +129,41 @@ function createWindow(options: { blank?: boolean } = {}): BrowserWindow {
   return win;
 }
 
+/** Paths compare as the file system does: case-insensitive on Windows. */
+function fileKey(path: string): string {
+  const full = resolve(path);
+  return process.platform === 'win32' || process.platform === 'darwin' ? full.toLowerCase() : full;
+}
+
+/** The window that has the file open, if any. */
+function ownerOf(path: string): BrowserWindow | undefined {
+  const key = fileKey(path);
+  return [...editors.values()].find((e) => e.files.has(key))?.window;
+}
+
+/** Brings the window with the file to the front and lets it show the file's tab. */
+function reveal(owner: BrowserWindow, path: string): void {
+  if (owner.isMinimized()) owner.restore();
+  owner.focus();
+  owner.webContents.send('calccanvas:show-file', path);
+}
+
+/**
+ * Hands a file to a window unless another window has it open already; then
+ * that one is shown instead. Returns the file, or undefined when shown elsewhere.
+ */
+async function openFor(window: BrowserWindow, path: string): Promise<OpenedFile | undefined> {
+  const owner = ownerOf(path);
+  if (owner && owner !== window) {
+    reveal(owner, path);
+    return undefined;
+  }
+  const file = await readSheet(path);
+  // Counted at once, so a quick second attempt from another window is caught too.
+  editors.get(window.webContents.id)?.files.add(fileKey(path));
+  return file;
+}
+
 /** The window files from outside go to: the one used last. */
 function targetWindow(): BrowserWindow | undefined {
   return lastFocused && !lastFocused.isDestroyed() ? lastFocused : [...editors.values()][0]?.window;
@@ -132,7 +171,10 @@ function targetWindow(): BrowserWindow | undefined {
 
 async function sendOpen(path: string): Promise<void> {
   try {
-    targetWindow()?.webContents.send('calccanvas:open-file', await readSheet(path));
+    const window = targetWindow();
+    if (!window) return;
+    const file = await openFor(window, path);
+    if (file) window.webContents.send('calccanvas:open-file', file);
   } catch (err) {
     dialog.showErrorBox('CalcCanvas', `${path}\n${(err as Error).message}`);
   }
@@ -161,21 +203,21 @@ function registerBridge(): void {
       filters: [{ name: String(labels?.sheets ?? 'CalcCanvas'), extensions: ['calc', 'cc'] }],
     });
     const path = result.filePaths[0];
-    return result.canceled || !path ? undefined : readSheet(path);
+    return result.canceled || !path ? undefined : openFor(owner, path);
   });
 
   // Recent files: only sheet files can be opened this way.
   ipcMain.handle('calccanvas:open-path', async (event, path: unknown) => {
-    fromEditor(event);
+    const owner = fromEditor(event);
     if (typeof path !== 'string' || !SHEET_EXTENSIONS.includes(extname(path).toLowerCase())) return undefined;
     try {
-      return await readSheet(path);
+      return await openFor(owner, path);
     } catch {
       return undefined;
     }
   });
 
-  ipcMain.handle('calccanvas:save', async (event, request: { path?: string; suggestedName: string; bytes: Uint8Array }) => {
+  ipcMain.handle('calccanvas:save', async (event, request: { path?: string; current?: string; suggestedName: string; bytes: Uint8Array; openElsewhere?: string }) => {
     const owner = fromEditor(event);
     let path = typeof request.path === 'string' && extname(request.path).toLowerCase() === '.calc' ? request.path : undefined;
     if (!path) {
@@ -186,7 +228,15 @@ function registerBridge(): void {
       if (result.canceled || !result.filePath) return undefined;
       path = result.filePath;
     }
+    // Never write over a file that is open (in another window or another tab),
+    // except the document's own file.
+    const current = typeof request.current === 'string' ? fileKey(request.current) : undefined;
+    if (ownerOf(path) && fileKey(path) !== current) {
+      await dialog.showMessageBox(owner, { type: 'warning', message: String(request.openElsewhere ?? path), noLink: true });
+      return undefined;
+    }
     await writeFile(path, request.bytes);
+    editors.get(event.sender.id)?.files.add(fileKey(path));
     return path;
   });
 
@@ -227,6 +277,13 @@ function registerBridge(): void {
     editor.guard.message = String(guard?.message ?? '');
     editor.guard.discard = String(guard?.discard ?? 'Discard');
     editor.guard.cancel = String(guard?.cancel ?? 'Cancel');
+  });
+
+  // Each window tells which files it has open (after opening, saving as, closing).
+  ipcMain.on('calccanvas:open-files', (event, paths: unknown) => {
+    const editor = editors.get(event.sender.id);
+    if (!editor || !Array.isArray(paths)) return;
+    editor.files = new Set(paths.filter((p): p is string => typeof p === 'string').map(fileKey));
   });
 
   ipcMain.handle('calccanvas:new-window', (event) => {
@@ -427,9 +484,25 @@ async function layersWithRealInput(picture: string) {
         `document.querySelectorAll('.doc-tab').length === 1 && !document.title.includes('Posouzení') && typeof window.calccanvasDesktop === 'object'`,
       )) as boolean)
     : false;
+
+  // A file is open in one window only: the second window has it, the first one asks for it twice.
+  const smokeFile = process.env['CALCCANVAS_SMOKE_FILE'];
+  let oneCopy: boolean | undefined;
+  if (smokeFile && other) {
+    const selector = `.doc-tab[title=${JSON.stringify(smokeFile)}]`;
+    const hasFile = (w: BrowserWindow) => w.webContents.executeJavaScript(`!!document.querySelector(${JSON.stringify(selector)})`) as Promise<boolean>;
+    lastFocused = other;
+    await sendOpen(smokeFile);
+    await pause(800);
+    lastFocused = smokeWindow;
+    await sendOpen(smokeFile); // as by a double click in Explorer
+    const viaRecent = await smokeWindow!.webContents.executeJavaScript(`window.calccanvasDesktop.openPath(${JSON.stringify(smokeFile)})`);
+    await pause(500);
+    oneCopy = (await hasFile(other)) && !(await hasFile(smokeWindow!)) && viaRecent === undefined;
+  }
   other?.destroy();
-  const multi = second[0] === 2 && second[1] === 3 && firstKept && documents === 1 && newWindow;
-  return { ...state, citations, aiReadOnly, split, mainHidden, second, firstKept, documents, newWindow, multi };
+  const multi = second[0] === 2 && second[1] === 3 && firstKept && documents === 1 && newWindow && oneCopy !== false;
+  return { ...state, citations, aiReadOnly, split, mainHidden, second, firstKept, documents, newWindow, oneCopy, multi };
 }
 
 /**

@@ -41,6 +41,7 @@ export interface CommandContext {
     saveAs(): void;
     closeDocument(): void;
     closeAllDocuments(): void;
+    newWindow(): void;
     cycleDocument(direction: 1 | -1): void;
     properties(): void;
     print(): void;
@@ -119,6 +120,7 @@ export function buildCommands(ctx: CommandContext): Map<string, Command> {
   add('insert.layerSources', 'insert', () => a.addLayer('sources'));
 
   add('tools.settings', 'tools', a.settings);
+  add('window.new', 'window', a.newWindow, { shortcut: 'Ctrl+Shift+N', enabled: ctx.desktop });
   add('window.next', 'window', () => a.cycleDocument(1), { shortcut: 'Ctrl+Tab', enabled: ctx.documents > 1 });
   add('window.previous', 'window', () => a.cycleDocument(-1), { shortcut: 'Ctrl+Shift+Tab', enabled: ctx.documents > 1 });
   add('window.closeAll', 'window', a.closeAllDocuments);

@@ -266,6 +266,7 @@ export const en: Catalog = {
     'layers.hiddenNotice': 'This layer is hidden. Show it in the Layers panel.',
     'menu.window': '&Window',
     'cmd.file.close': '&Close',
+    'cmd.window.new': 'New &window',
     'cmd.window.next': '&Next calculation',
     'cmd.window.previous': '&Previous calculation',
     'cmd.window.closeAll': 'Close &all',

@@ -1,10 +1,11 @@
 /**
  * CalcCanvas desktop application (Electron main process).
  *
- * The window shows the editor (packages/editor). The editor has no access to
- * Node or the disk; it gets a small, fixed set of functions through the
- * preload bridge: open and save files, print, export PDF, and a guard against
- * closing with unsaved changes.
+ * Each window shows the editor (packages/editor); Window > New window opens
+ * another one, e.g. to compare two calculations on two monitors. The editor
+ * has no access to Node or the disk; it gets a small, fixed set of functions
+ * through the preload bridge: open and save files, print, export PDF, a new
+ * window, and a guard against closing with unsaved changes.
  */
 
 import { app, BrowserWindow, dialog, ipcMain, Menu, shell, type IpcMainInvokeEvent } from 'electron';
@@ -30,14 +31,19 @@ interface CloseGuard {
   cancel: string;
 }
 
-let window: BrowserWindow | undefined;
-const closeGuard: CloseGuard = { dirty: false, message: '', discard: 'Discard', cancel: 'Cancel' };
+/** Editor windows by their web contents, each with its own close guard. */
+const editors = new Map<number, { readonly window: BrowserWindow; readonly guard: CloseGuard }>();
+/** The editor window used last; files opened from outside go there. */
+let lastFocused: BrowserWindow | undefined;
+/** The first window, which the smoke test drives. */
+let smokeWindow: BrowserWindow | undefined;
+const smokeTest = process.env['CALCCANVAS_SMOKE_TEST'];
 /** File given on the command line or by double click, before the window was ready. */
 let pendingOpen: string | undefined = sheetArgument(process.argv);
 
 // The smoke test runs with a fresh profile, so it neither sees nor changes the
 // user's toolbars, language or recent files.
-if (process.env['CALCCANVAS_SMOKE_TEST']) app.setPath('userData', mkdtempSync(join(tmpdir(), 'calccanvas-smoke-')));
+if (smokeTest) app.setPath('userData', mkdtempSync(join(tmpdir(), 'calccanvas-smoke-')));
 
 function editorEntry(): { url?: string; file?: string } {
   const devUrl = process.env['CALCCANVAS_DEV_URL'];
@@ -45,10 +51,15 @@ function editorEntry(): { url?: string; file?: string } {
   return { file: app.isPackaged ? join(process.resourcesPath, 'editor', 'index.html') : join(HERE, '../../editor/dist/index.html') };
 }
 
-function createWindow(): void {
-  window = new BrowserWindow({
+/** Opens an editor window; `blank` starts it with an empty calculation instead of the example. */
+function createWindow(options: { blank?: boolean } = {}): BrowserWindow {
+  // A new window opens slightly below and right of the current one.
+  const from = BrowserWindow.getFocusedWindow() ?? lastFocused;
+  const position = from && !from.isDestroyed() ? { x: from.getPosition()[0]! + 32, y: from.getPosition()[1]! + 32 } : {};
+  const win = new BrowserWindow({
     width: 1400,
     height: 900,
+    ...position,
     minWidth: 900,
     minHeight: 600,
     title: 'CalcCanvas',
@@ -62,21 +73,29 @@ function createWindow(): void {
       spellcheck: false,
     },
   });
-  Menu.setApplicationMenu(null); // the editor has its own toolbar and shortcuts
+  const contentsId = win.webContents.id;
+  const guard: CloseGuard = { dirty: false, message: '', discard: 'Discard', cancel: 'Cancel' };
+  editors.set(contentsId, { window: win, guard });
+  lastFocused = win;
+  win.on('focus', () => (lastFocused = win));
+  win.on('closed', () => {
+    editors.delete(contentsId);
+    if (lastFocused === win) lastFocused = [...editors.values()].at(-1)?.window;
+  });
 
   // The window only ever shows the editor; links open in the system browser.
-  window.webContents.setWindowOpenHandler(({ url }) => {
+  win.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https?:\/\//.test(url)) void shell.openExternal(url);
     return { action: 'deny' };
   });
-  window.webContents.on('will-navigate', (event) => event.preventDefault());
+  win.webContents.on('will-navigate', (event) => event.preventDefault());
 
-  window.on('close', (event) => {
-    if (!closeGuard.dirty || !window) return;
-    const choice = dialog.showMessageBoxSync(window, {
+  win.on('close', (event) => {
+    if (!guard.dirty) return;
+    const choice = dialog.showMessageBoxSync(win, {
       type: 'warning',
-      message: closeGuard.message,
-      buttons: [closeGuard.discard, closeGuard.cancel],
+      message: guard.message,
+      buttons: [guard.discard, guard.cancel],
       defaultId: 1,
       cancelId: 1,
       noLink: true,
@@ -84,10 +103,13 @@ function createWindow(): void {
     if (choice !== 0) event.preventDefault();
   });
 
-  const smokeTest = process.env['CALCCANVAS_SMOKE_TEST'];
-  if (smokeTest) window.webContents.once('did-finish-load', () => void runSmokeTest(smokeTest));
-  else window.once('ready-to-show', () => window?.show());
-  window.webContents.once('did-finish-load', () => {
+  if (smokeTest && !smokeWindow) {
+    smokeWindow = win;
+    win.webContents.once('did-finish-load', () => void runSmokeTest(smokeTest));
+  } else if (!smokeTest) {
+    win.once('ready-to-show', () => win.show());
+  }
+  win.webContents.once('did-finish-load', () => {
     if (pendingOpen) {
       void sendOpen(pendingOpen);
       pendingOpen = undefined;
@@ -96,14 +118,21 @@ function createWindow(): void {
 
   // The editor starts in the language of the operating system (until the user picks another).
   const lang = (app.getPreferredSystemLanguages()[0] ?? app.getLocale()).slice(0, 2);
+  const query: Record<string, string> = { lang, ...(options.blank ? { blank: '1' } : {}) };
   const entry = editorEntry();
-  if (entry.url) void window.loadURL(`${entry.url}?lang=${encodeURIComponent(lang)}`);
-  else void window.loadFile(entry.file!, { query: { lang } });
+  if (entry.url) void win.loadURL(`${entry.url}?${new URLSearchParams(query)}`);
+  else void win.loadFile(entry.file!, { query });
+  return win;
+}
+
+/** The window files from outside go to: the one used last. */
+function targetWindow(): BrowserWindow | undefined {
+  return lastFocused && !lastFocused.isDestroyed() ? lastFocused : [...editors.values()][0]?.window;
 }
 
 async function sendOpen(path: string): Promise<void> {
   try {
-    window?.webContents.send('calccanvas:open-file', await readSheet(path));
+    targetWindow()?.webContents.send('calccanvas:open-file', await readSheet(path));
   } catch (err) {
     dialog.showErrorBox('CalcCanvas', `${path}\n${(err as Error).message}`);
   }
@@ -117,11 +146,11 @@ function sheetArgument(argv: readonly string[]): string | undefined {
   return argv.slice(1).find((arg) => SHEET_EXTENSIONS.includes(extname(arg).toLowerCase()));
 }
 
-/** Only the editor's own window may call the bridge. */
+/** Only the editor windows may call the bridge. */
 function fromEditor(event: IpcMainInvokeEvent): BrowserWindow {
-  const sender = BrowserWindow.fromWebContents(event.sender);
-  if (!sender || sender !== window) throw new Error('Unknown sender');
-  return sender;
+  const editor = editors.get(event.sender.id);
+  if (!editor) throw new Error('Unknown sender');
+  return editor.window;
 }
 
 function registerBridge(): void {
@@ -192,11 +221,17 @@ function registerBridge(): void {
   });
 
   ipcMain.on('calccanvas:close-guard', (event, guard: CloseGuard) => {
-    if (BrowserWindow.fromWebContents(event.sender) !== window) return;
-    closeGuard.dirty = Boolean(guard?.dirty);
-    closeGuard.message = String(guard?.message ?? '');
-    closeGuard.discard = String(guard?.discard ?? 'Discard');
-    closeGuard.cancel = String(guard?.cancel ?? 'Cancel');
+    const editor = editors.get(event.sender.id);
+    if (!editor) return;
+    editor.guard.dirty = Boolean(guard?.dirty);
+    editor.guard.message = String(guard?.message ?? '');
+    editor.guard.discard = String(guard?.discard ?? 'Discard');
+    editor.guard.cancel = String(guard?.cancel ?? 'Cancel');
+  });
+
+  ipcMain.handle('calccanvas:new-window', (event) => {
+    fromEditor(event);
+    createWindow({ blank: true });
   });
 }
 
@@ -209,7 +244,7 @@ async function runSmokeTest(pdfPath: string): Promise<void> {
   let ok = false;
   try {
     await new Promise((resolve) => setTimeout(resolve, 500));
-    const state = (await window!.webContents.executeJavaScript(`({
+    const state = (await smokeWindow!.webContents.executeJavaScript(`({
       bridge: typeof window.calccanvasDesktop === 'object',
       rows: document.querySelectorAll('.row').length,
       summary: document.querySelectorAll('.summary-box tbody tr').length,
@@ -241,7 +276,7 @@ async function runSmokeTest(pdfPath: string): Promise<void> {
  * handle). Returns the number of columns afterwards; 1 + round(70 / 30) = 3.
  */
 async function reshapeWithRealMouse(): Promise<number> {
-  const contents = window!.webContents;
+  const contents = smokeWindow!.webContents;
   const handle = (await contents.executeJavaScript(`(() => {
     window.__smokeEvents = [];
     for (const type of ['mousedown', 'mousemove', 'mouseup']) {
@@ -273,7 +308,7 @@ async function reshapeWithRealMouse(): Promise<number> {
 const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function clickOn(selector: string, modifiers: Array<'control'> = []): Promise<void> {
-  const contents = window!.webContents;
+  const contents = smokeWindow!.webContents;
   const point = (await contents.executeJavaScript(`(() => {
     const element = document.querySelector(${JSON.stringify(selector)});
     if (!element) return undefined;
@@ -288,13 +323,13 @@ async function clickOn(selector: string, modifiers: Array<'control'> = []): Prom
 }
 
 async function typeText(text: string): Promise<void> {
-  for (const ch of text) window!.webContents.sendInputEvent({ type: 'char', keyCode: ch });
+  for (const ch of text) smokeWindow!.webContents.sendInputEvent({ type: 'char', keyCode: ch });
   await pause(150);
 }
 
 async function pressKey(keyCode: string, modifiers: Array<'control' | 'shift'> = []): Promise<void> {
-  window!.webContents.sendInputEvent({ type: 'keyDown', keyCode, modifiers });
-  window!.webContents.sendInputEvent({ type: 'keyUp', keyCode, modifiers });
+  smokeWindow!.webContents.sendInputEvent({ type: 'keyDown', keyCode, modifiers });
+  smokeWindow!.webContents.sendInputEvent({ type: 'keyUp', keyCode, modifiers });
   await pause(150);
 }
 
@@ -304,7 +339,7 @@ async function pressKey(keyCode: string, modifiers: Array<'control' | 'shift'> =
  * of the window. Returns what the editor shows afterwards.
  */
 async function layersWithRealInput(picture: string) {
-  const contents = window!.webContents;
+  const contents = smokeWindow!.webContents;
   contents.focus();
   await clickOn('.layer-tab.add'); // opens the Layers panel
   await clickOn('.layer-add button:nth-child(1)'); // auxiliary calculation
@@ -378,8 +413,23 @@ async function layersWithRealInput(picture: string) {
   await pressKey('Tab', ['control']);
   await pressKey('W', ['control']);
   const documents = (await contents.executeJavaScript(`document.querySelectorAll('.doc-tab').length`)) as number;
-  const multi = second[0] === 2 && second[1] === 3 && firstKept && documents === 1;
-  return { ...state, citations, aiReadOnly, split, mainHidden, second, firstKept, documents, multi };
+
+  // Another window, e.g. to compare two calculations: Ctrl+Shift+N.
+  await pressKey('N', ['control', 'shift']);
+  let other: BrowserWindow | undefined;
+  for (let i = 0; i < 50 && !other; i++) {
+    await pause(100);
+    other = [...editors.values()].map((e) => e.window).find((w) => w !== smokeWindow && !w.webContents.isLoading());
+  }
+  await pause(500);
+  const newWindow = other
+    ? ((await other.webContents.executeJavaScript(
+        `document.querySelectorAll('.doc-tab').length === 1 && !document.title.includes('Posouzení') && typeof window.calccanvasDesktop === 'object'`,
+      )) as boolean)
+    : false;
+  other?.destroy();
+  const multi = second[0] === 2 && second[1] === 3 && firstKept && documents === 1 && newWindow;
+  return { ...state, citations, aiReadOnly, split, mainHidden, second, firstKept, documents, newWindow, multi };
 }
 
 /**
@@ -387,13 +437,13 @@ async function layersWithRealInput(picture: string) {
  * clicks passing through it, just for the picture.
  */
 async function takePicture(path: string): Promise<void> {
-  window!.setOpacity(0);
-  window!.setIgnoreMouseEvents(true);
-  window!.showInactive();
-  window!.webContents.invalidate();
+  smokeWindow!.setOpacity(0);
+  smokeWindow!.setIgnoreMouseEvents(true);
+  smokeWindow!.showInactive();
+  smokeWindow!.webContents.invalidate();
   await pause(800);
-  const image = await window!.webContents.capturePage();
-  window!.hide();
+  const image = await smokeWindow!.webContents.capturePage();
+  smokeWindow!.hide();
   await writeFile(path, image.toPNG());
 }
 
@@ -409,6 +459,7 @@ if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
   app.on('second-instance', (_event, argv) => {
+    const window = targetWindow();
     if (!window) return;
     if (window.isMinimized()) window.restore();
     window.focus();
@@ -418,11 +469,12 @@ if (!app.requestSingleInstanceLock()) {
   app.on('open-file', (event, path) => {
     // macOS delivers files this way.
     event.preventDefault();
-    if (window) void sendOpen(path);
+    if (editors.size > 0) void sendOpen(path);
     else pendingOpen = path;
   });
 
   void app.whenReady().then(() => {
+    Menu.setApplicationMenu(null); // the editor has its own menus, toolbars and shortcuts
     registerBridge();
     createWindow();
   });

@@ -86,6 +86,8 @@ export interface DesktopBridge {
   save(request: { path?: string; suggestedName: string; bytes: Uint8Array }): Promise<string | undefined>;
   print(html: string): Promise<boolean>;
   exportPdf(request: { html: string; suggestedName: string }): Promise<string | undefined>;
+  /** Opens another editor window with an empty calculation. */
+  newWindow(): Promise<void>;
   setCloseGuard(guard: { dirty: boolean; message: string; discard: string; cancel: string }): void;
   onOpenFile(listener: (file: DesktopFile) => void): void;
 }

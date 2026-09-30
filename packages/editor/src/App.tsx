@@ -89,7 +89,10 @@ export function App() {
   // Open calculations, one tab each. Everything below that belongs to one
   // document (history, file, open layers) is read from the active tab.
   const [docs, setDocs] = useState<Tabs<SheetDocument, FileRef>>(() => {
-    const first = newTab<SheetDocument, FileRef>(exampleDocument(), MAIN_LAYER);
+    // Another window (Window > New window) starts empty; the first one shows the example.
+    const blank = new URLSearchParams(location.search).has('blank');
+    const language = initialLanguage();
+    const first = newTab<SheetDocument, FileRef>(blank ? emptyDocument(t(catalogFor(language), 'editor.untitled'), language) : exampleDocument(), MAIN_LAYER);
     return { tabs: [first], active: first.id };
   });
   const tab = docs.tabs.find((d) => d.id === docs.active) ?? docs.tabs[0]!;
@@ -533,6 +536,7 @@ export function App() {
       saveAs: () => void save(true),
       closeDocument: () => void closeDocument(tab.id),
       closeAllDocuments: () => void closeAllDocuments(),
+      newWindow: () => void desktop?.newWindow(),
       cycleDocument: (direction) => switchDocument(cycleTab(docs, direction)),
       properties: () => setDialog('properties'),
       print: printout,
@@ -685,6 +689,7 @@ export function App() {
     {
       label: t(ui, 'menu.window'),
       items: [
+        ...(desktop ? [cmd('window.new'), sep] : []),
         cmd('window.next'),
         cmd('window.previous'),
         sep,

@@ -266,6 +266,7 @@ export const cs: Catalog = {
     'layers.hiddenNotice': 'Vrstva je skrytá. Zobrazíte ji v panelu Vrstvy.',
     'menu.window': '&Okno',
     'cmd.file.close': '&Zavřít',
+    'cmd.window.new': '&Nové okno',
     'cmd.window.next': '&Další výpočet',
     'cmd.window.previous': '&Předchozí výpočet',
     'cmd.window.closeAll': 'Zavřít &vše',

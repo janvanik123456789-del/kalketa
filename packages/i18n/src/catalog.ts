@@ -203,6 +203,7 @@ export const UI_KEYS = [
   'layers.hiddenNotice',
   'menu.window',
   'cmd.file.close',
+  'cmd.window.new',
   'cmd.window.next',
   'cmd.window.previous',
   'cmd.window.closeAll',

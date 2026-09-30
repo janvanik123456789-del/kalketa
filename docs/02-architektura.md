@@ -244,6 +244,14 @@ Každá fáze končí procházejícími testy. **MVP = referenční výpočet R1
 - Python jako jazyk pro zásuvné moduly,
 - serverová databáze a sdílené knihovny tabulek.
 
+### Možná (nápady odložené, zatím beze změny)
+
+- **Stránky vedle sebe podle zoomu** (30. 9. 2026). Dnes se stránky zalamují podle šířky panelu a tlačítka 1/2/3 stránky dopočítají zoom, aby se vešlo N stránek. Možná úprava: hlavním ovládáním je zoom a počet stránek z něj vyplyne, tlačítka 1/2/3 zůstanou jako „přizpůsobit na N stránek“. Pravidlo: po „přizpůsobit“ se drží počet stránek a zoom se dopočítá, po ruční změně zoomu se drží zoom. K tomu patří:
+  - ukotvení na aktivní řádek při přeskládání, aby řádek po otevření bočního panelu nebo vrstvy vedle neuskočil,
+  - malá tolerance na hranici šířky, aby nepřeskakoval počet sloupců,
+  - vlastní zoom pro každý panel vrstev vedle sebe,
+  - při velmi malém zoomu (pod asi 40 %) klik stránku nejdřív přiblíží.
+
 ---
 
 ## 10. Jazyk kódu a lokalizace

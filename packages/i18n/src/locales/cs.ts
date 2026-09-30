@@ -87,6 +87,7 @@ export const cs: Catalog = {
     'not-numeric': 'sloupec není číselný',
     'too-few-rows': 'jsou potřeba alespoň dva řádky s hodnotou',
     'duplicate-x': 'sousední řádky mají stejnou hodnotu',
+    grid: 'v mřížce chybí bod v okolí hodnoty',
     'table-name': 'název tabulky',
     'column-name': 'název sloupce',
     key: 'klíčový sloupec',

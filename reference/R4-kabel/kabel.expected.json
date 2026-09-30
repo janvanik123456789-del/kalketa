@@ -1,0 +1,42 @@
+{
+  "sheet": "kabel.cc",
+  "verifiedBy": "Ruční výpočet čistou aritmetikou mimo CalcCanvas (Python): I_B = P/(√3·U·cos φ); k lineárně mezi 30 °C a 35 °C při n = 3 (t = 0,6); nejmenší průřez s I_z·k ≥ I_B; ΔU = √3·|Z|·I_B s Z = (R + jX)·L, protože |Z·I| = |Z|·|I|.",
+  "relativeTolerance": 1e-09,
+  "values": {
+    "I_B": {
+      "value": 37.35795859462284,
+      "unit": "A"
+    },
+    "k": {
+      "value": 0.6748,
+      "unit": ""
+    },
+    "kabel": {
+      "row": "CYKY 16 mm²"
+    },
+    "I_zk": {
+      "value": 45.886399999999995,
+      "unit": "A"
+    },
+    "ΔU": {
+      "value": 4.478357645078365,
+      "unit": "V"
+    },
+    "ΔU_rel": {
+      "value": 1.1195894112695912,
+      "unit": "%"
+    }
+  },
+  "checks": [
+    {
+      "label": "Proudová zatížitelnost",
+      "passed": true,
+      "utilization": 0.8141401067554406
+    },
+    {
+      "label": "Úbytek napětí",
+      "passed": true,
+      "utilization": 0.3731964704231971
+    }
+  ]
+}

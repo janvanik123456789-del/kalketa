@@ -103,6 +103,11 @@ function render(expr: Expr, o: FormulaOptions): Rendered {
       return { node: row(mo(symbol), wrap(operand, operand.prec <= 5)), prec: 6, negative: true };
     }
     case 'binary':
+      // A unit after a group reads like a unit after a number: "(3 + 4j) Ω".
+      if (expr.operator === '*' && expr.right.kind === 'unit') {
+        const group = render(expr.left, o);
+        return { node: row(paren(group.node), THIN_SPACE, render(expr.right, o).node), prec: 6 };
+      }
       return renderBinary(expr.operator, render(expr.left, o), render(expr.right, o));
     case 'call':
       return renderCall(expr, o);

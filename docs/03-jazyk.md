@@ -173,7 +173,7 @@ Od nejvyšší priority (**převzato z Calcpadu, standardní školní matematika
 | 10 | `\|` cílová jednotka (vždy na konci výrazu) | — |
 
 **Implicitní násobení** mezi dvěma proměnnými (`a b`) **není povoleno**. Je to chyba s nápovědou „chybí `·`?“.
-*Proč:* zápis `ab` by mohl být jedna proměnná `ab`, nebo `a·b`. Povoluje se jen číslo·jednotka (`5 m`) a číslo·závorka (`2(a+b)`).
+*Proč:* zápis `ab` by mohl být jedna proměnná `ab`, nebo `a·b`. Povoluje se jen číslo·jednotka (`5 m`), číslo·závorka (`2(a+b)`) a závorka·jednotka (`(3 + 4j) Ω`, *doplněno v F9*; jméno definované výše zůstává jménem, ne jednotkou).
 
 ---
 
@@ -186,7 +186,7 @@ Od nejvyšší priority (**převzato z Calcpadu, standardní školní matematika
 | Text | `"S235"` | F2 |
 | Řádek tabulky | `pick(Profily, "IPE 200")` | F2 |
 | Tabulka | `Profily_IPE` | F2 |
-| Komplexní číslo | `3 + 4i Ω` | F9 |
+| Komplexní číslo | `(3 + 4j) Ω`, `4i` | F9 ✓ |
 | Řada / vektor | `[100; 120; 150] CZK`, `range(1, 25)` | F10 |
 | Datum a období | `2026-09-29`, `25 roků` | F10 |
 
@@ -199,6 +199,23 @@ Od nejvyšší priority (**převzato z Calcpadu, standardní školní matematika
 `sqrt`, `abs`, `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `atan2`, `exp`, `ln`, `log10`, `min`, `max`, `round`, `floor`, `ceil`, `if(podmínka, a, b)`.
 
 Goniometrické a logaritmické funkce **vyžadují bezrozměrný argument** (nebo úhel). Jinak je to chyba (**stejně jako Calcpad**).
+
+### 7.1a Komplexní čísla (F9)
+
+```text
+Z := (3 + 4j) Ω                 ' j nebo i hned za číslem, bez mezery
+I := 230 V / Z                  ' (27,6 − 36,8j) A
+abs(I) =                        ' 46 A
+arg(Z) | ° =                    ' 53,13°
+U := polar(230 V, 30°)          ' zadání v polárním tvaru
+S := U·conj(I) | VA             ' zdánlivý výkon
+```
+
+- Funkce: `re`, `im`, `conj`, `abs` (velikost), `arg` (úhel), `polar(r, φ)`, `sqrt`. Mocnina jen s reálným exponentem.
+- Výsledky se píší s `j`: „(27,6 − 36,8j) A“.
+- Komplexní čísla nemají pořadí: `<`, `≤` i posudek s nimi je chyba s radou porovnat `abs(…)` (E-COMPLEX-ORDER). Kde dávají smysl jen reálná čísla (goniometrické funkce, tabulky, řešič, absolutní teplota), je chyba E-COMPLEX-ARG, nikdy tiché zahození imaginární části.
+- `sqrt(-4)` zůstává chybou; odmocnina z komplexního čísla dá hlavní hodnotu.
+- Jména `i` a `j` zůstávají volná pro proměnné (`1000·(1 + i)`); imaginární jednotka je jen hned za číslem.
 
 ### 7.2 Uživatelské funkce (F7)
 
@@ -287,7 +304,7 @@ Tabulky žijí v datové vrstvě listu (`tables/<Název>/schema.json` + `data.cs
 | `pick(T, G: 22.4 kg/m)` | řádek s přesnou hodnotou v libovolném sloupci | F2 ✓ |
 | `profil.W_y` | hodnota sloupce, veličina s jednotkou ze schématu | F2 ✓ |
 | `interpolate(T, λ: λ_rel)` | řádek **lineárně interpolovaný** podle sloupce λ (interpolují se všechny číselné sloupce); mimo rozsah extrapolace a varování | F2 ✓ |
-| `interpolate2(T, …)` | 2D interpolace (tabulky součinitelů) | F9 |
+| `interpolate(T, θ: 35 °C, n: 3)` | 2D (bilineární) interpolace v mřížce: tabulka má jeden řádek na bod (θ, n, k); chybí-li bod mřížky v okolí hodnoty, je to chyba | F9 ✓ |
 | `find_min(T, by: G, where: …)` | řádek s nejmenším `G`, který splní podmínku | F2 ✓ |
 | `find_max(T, by: …, where: …)` | obdobně | F2 ✓ |
 | `filter(T, where: …)` | podmnožina řádků | F10 |

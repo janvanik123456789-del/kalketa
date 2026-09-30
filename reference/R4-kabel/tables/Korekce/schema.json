@@ -1,0 +1,28 @@
+{
+  "name": "Korekce",
+  "key": "bod",
+  "columns": [
+    {
+      "name": "bod",
+      "type": "text"
+    },
+    {
+      "name": "θ",
+      "type": "quantity",
+      "unit": "°C"
+    },
+    {
+      "name": "n",
+      "type": "quantity"
+    },
+    {
+      "name": "k",
+      "type": "quantity"
+    }
+  ],
+  "source": {
+    "title": "Korekční součinitele na teplotu okolí a seskupení kabelů (orientační hodnoty podle ČSN 33 2000-5-52, tab. B.52.14 a B.52.17)",
+    "retrieved": "2026-09-30",
+    "note": "Součin obou součinitelů; hodnoty zapsány pro testovací účely."
+  }
+}

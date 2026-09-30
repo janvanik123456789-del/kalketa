@@ -47,6 +47,9 @@ export interface RowOrigin {
   readonly weight?: number;
   /** Column the interpolation ran on. */
   readonly column?: string;
+  /** Second axis of a 2D interpolation: its weight and column. */
+  readonly weight2?: number;
+  readonly column2?: string;
 }
 
 export interface RowValue {
@@ -105,7 +108,7 @@ export function fingerprint(value: Value): string {
     case 'table':
       return `T:${value.table.fingerprint}`;
     case 'row':
-      return `r:${value.table.fingerprint}:${value.origin.rows.join(',')}:${value.origin.weight ?? ''}`;
+      return `r:${value.table.fingerprint}:${value.origin.rows.join(',')}:${value.origin.weight ?? ''}:${value.origin.weight2 ?? ''}`;
     case 'function': {
       // The body without source positions, and the values it reads.
       const body = JSON.stringify(value.body, (key, v: unknown) => (key === 'span' || key === 'nameSpan' ? undefined : v));

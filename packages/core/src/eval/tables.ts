@@ -78,6 +78,7 @@ function pick(call: CallExpr, table: Table, ctx: EvalContext, evaluate: Evaluate
 }
 
 function interpolate(call: CallExpr, table: Table, ctx: EvalContext, evaluate: Evaluate): Value {
+  if (call.args.length === 1 && call.named.length === 2) return interpolate2(call, table, ctx, evaluate);
   if (call.args.length !== 1 || call.named.length !== 1) {
     return fail('E-FUNC-ARITY', call.span, { function: 'interpolate', expected: 2, found: call.args.length + call.named.length });
   }
@@ -120,6 +121,91 @@ function interpolate(call: CallExpr, table: Table, ctx: EvalContext, evaluate: E
     label: `${rowLabel(table, a.row)} – ${rowLabel(table, b.row)}`,
     origin: { rows: [a.row, b.row], weight: t, column: arg.name },
   };
+}
+
+/**
+ * interpolate(T, θ: 35 °C, n: 4): bilinear interpolation over a grid of
+ * rows, one row per point (θ, n, k …). The four points around the query must
+ * be in the table; outside the grid it extrapolates with a warning.
+ */
+function interpolate2(call: CallExpr, table: Table, ctx: EvalContext, evaluate: Evaluate): Value {
+  const axes = call.named.map((arg) => {
+    const index = requireColumn(table, arg.name, arg.nameSpan);
+    if (table.columns[index]!.type !== 'quantity') fail('E-TABLE-INTERPOLATE', arg.nameSpan, { table: table.name, column: arg.name, problem: 'not-numeric' });
+    const x = evaluate(arg.value, ctx);
+    if (x.type !== 'quantity') return fail('E-TYPE', arg.value.span, { expected: 'number', found: x.type });
+    return { arg, index, x };
+  }) as [Axis, Axis];
+
+  // Rows with both coordinates; the distinct values of each axis.
+  const points = table.rows.flatMap((cells, row) => {
+    const a = cells[axes[0].index] ?? null;
+    const b = cells[axes[1].index] ?? null;
+    return a?.type === 'quantity' && b?.type === 'quantity' ? [{ row, a: a.si, b: b.si }] : [];
+  });
+  const brackets = axes.map((axis, k) => {
+    const first = table.rows.find((cells) => cells[axis.index]?.type === 'quantity')?.[axis.index] as Quantity | undefined;
+    if (first && !sameDim(first.dim, axis.x.dim)) {
+      fail('E-UNIT-MISMATCH', axis.arg.value.span, { operator: 'interpolate', left: baseUnitSymbol(first.dim), right: baseUnitSymbol(axis.x.dim) });
+    }
+    const values = [...new Set(points.map((p) => (k === 0 ? p.a : p.b)))].sort((x, y) => x - y);
+    if (values.length < 2) fail('E-TABLE-INTERPOLATE', axis.arg.nameSpan, { table: table.name, column: axis.arg.name, problem: 'too-few-rows' });
+    return bracket(values, axis.x.si);
+  }) as [Bracket, Bracket];
+  axes.forEach((axis, k) => {
+    const t = brackets[k]!.t;
+    if (t < 0 || t > 1) ctx.warnings.push(diagnostic('W-EXTRAPOLATION', axis.arg.value.span, { table: table.name, column: axis.arg.name }));
+  });
+
+  // The four corners around the query.
+  const corner = (a: number, b: number): number => {
+    const found = points.find((p) => near(p.a, a) && near(p.b, b));
+    if (!found) fail('E-TABLE-INTERPOLATE', call.span, { table: table.name, column: `${axes[0].arg.name}, ${axes[1].arg.name}`, problem: 'grid' });
+    return found!.row;
+  };
+  const [x, y] = brackets;
+  const r00 = corner(x.low, y.low);
+  const r10 = corner(x.high, y.low);
+  const r01 = corner(x.low, y.high);
+  const r11 = corner(x.high, y.high);
+  const cell = (row: number, c: number) => table.rows[row]![c] ?? null;
+  const cells = table.columns.map((_, c) => {
+    if (c === axes[0].index) return axes[0].x;
+    if (c === axes[1].index) return axes[1].x;
+    return blend(blend(cell(r00, c), cell(r10, c), x.t), blend(cell(r01, c), cell(r11, c), x.t), y.t);
+  });
+  return {
+    type: 'row',
+    table,
+    cells,
+    label: `${rowLabel(table, r00)} – ${rowLabel(table, r11)}`,
+    origin: { rows: [...new Set([r00, r10, r01, r11])], weight: x.t, column: axes[0].arg.name, weight2: y.t, column2: axes[1].arg.name },
+  };
+}
+
+interface Axis {
+  readonly arg: NamedArg;
+  readonly index: number;
+  readonly x: Quantity;
+}
+
+interface Bracket {
+  readonly low: number;
+  readonly high: number;
+  /** Position of the query between low and high (outside 0..1 when extrapolated). */
+  readonly t: number;
+}
+
+/** The neighbouring grid values around x; an exact hit has t = 0. */
+function bracket(values: readonly number[], x: number): Bracket {
+  const exact = values.find((v) => near(v, x));
+  if (exact !== undefined) return { low: exact, high: exact, t: 0 };
+  let i = values.findIndex((v) => v > x) - 1;
+  if (i === -2) i = values.length - 2;
+  if (i === -1) i = 0;
+  const low = values[i]!;
+  const high = values[i + 1]!;
+  return { low, high, t: (x - low) / (high - low) };
 }
 
 function findExtreme(call: CallExpr, table: Table, ctx: EvalContext, evaluate: Evaluate): Value {

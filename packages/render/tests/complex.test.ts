@@ -14,6 +14,9 @@ describe('complex values in print', () => {
     expect(lines.at(-1)).toBe('(27,6−36,8j) A');
     // The substitution puts the complex value in parentheses.
     expect(lines[1]).toContain('(3+4j) Ω');
+    // The definition shows the unit after the group without a multiplication dot.
+    const z = doc.blocks[0]!;
+    expect(z.kind === 'equation' && plain(toText(z.lines[0]!.rhs))).toBe('(3+4j) Ω');
   });
 
   it('are formatted the same way in text', () => {

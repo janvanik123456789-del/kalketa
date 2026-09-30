@@ -87,6 +87,7 @@ export const en: Catalog = {
     'not-numeric': 'the column is not numeric',
     'too-few-rows': 'at least two rows with values are needed',
     'duplicate-x': 'neighbouring rows have the same value',
+    grid: 'a point of the grid around the value is missing',
     'table-name': 'table name',
     'column-name': 'column name',
     key: 'key column',

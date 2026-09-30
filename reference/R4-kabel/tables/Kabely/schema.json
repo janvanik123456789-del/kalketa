@@ -1,0 +1,35 @@
+{
+  "name": "Kabely",
+  "key": "oznaceni",
+  "columns": [
+    {
+      "name": "oznaceni",
+      "type": "text"
+    },
+    {
+      "name": "S",
+      "type": "quantity",
+      "unit": "mm²"
+    },
+    {
+      "name": "I_z",
+      "type": "quantity",
+      "unit": "A"
+    },
+    {
+      "name": "R",
+      "type": "quantity",
+      "unit": "Ω/km"
+    },
+    {
+      "name": "X",
+      "type": "quantity",
+      "unit": "Ω/km"
+    }
+  ],
+  "source": {
+    "title": "Měděné kabely, uložení B2, 3 zatížené vodiče (orientační hodnoty podle ČSN 33 2000-5-52)",
+    "retrieved": "2026-09-30",
+    "note": "Hodnoty zapsány pro testovací účely."
+  }
+}

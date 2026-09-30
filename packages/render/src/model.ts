@@ -285,7 +285,8 @@ function equationLines(
 ): EquationLine[] {
   const withLhs = (line: Omit<EquationLine, 'lhs'>, first: boolean): EquationLine => (first && lhs ? { ...line, lhs } : line);
   const result = resultNode(r, format, formulaOptions().booleans, formulaOptions().argumentSeparator, formulaOptions().date);
-  const given = expr.kind === 'number' || (expr.kind === 'unary' && expr.operand.kind === 'number') || expr.kind === 'string' || expr.kind === 'boolean';
+  const given =
+    expr.kind === 'number' || (expr.kind === 'unary' && expr.operand.kind === 'number') || expr.kind === 'string' || expr.kind === 'boolean' || expr.kind === 'date';
 
   // A conversion shows both units: "100 EUR = 2 500 CZK".
   const conversion = !lhs && expr.kind === 'number' && expr.unit !== undefined && r.display !== undefined && r.display.unit !== formatUnit(expr.unit);
@@ -296,7 +297,10 @@ function equationLines(
     return [withLhs({ role: given ? 'given' : 'result', rhs: result ?? formulaNode(expr, formulaOptions()) }, true)];
   }
 
-  const lines: EquationLine[] = [withLhs({ role: 'formula', rhs: formulaNode(expr, formulaOptions()) }, true)];
+  // "I_mp := panel.I_mp": the formula would only repeat the name; the result says it all.
+  const formula = formulaNode(expr, formulaOptions());
+  if (lhs && result && toText(formula) === toText(lhs)) return [withLhs({ role: 'result', rhs: result }, true)];
+  const lines: EquationLine[] = [withLhs({ role: 'formula', rhs: formula }, true)];
   // "a = b" or "G_min = G": the substitution would only repeat the result.
   const plainVariable = expr.kind === 'variable' || expr.kind === 'member';
   if (mode.substitution && !plainVariable && hasSubstitutableParts(expr) && r.status === 'ok') {

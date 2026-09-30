@@ -22,6 +22,8 @@ export interface FormulaOptions {
   readonly textNames?: ReadonlySet<string>;
   /** Formats a date literal: "29. 9. 2026"; ISO when absent. */
   readonly date?: (days: number) => string;
+  /** Column names read from more than one row in this formula: printed with their row. */
+  readonly qualifiedMembers?: ReadonlySet<string>;
   /** Variables holding the result of a block: N1.M_max is printed as M_max(N1). */
   readonly recordNames?: ReadonlySet<string>;
 }
@@ -52,7 +54,43 @@ const PRECEDENCE: Readonly<Record<BinaryOperator, number>> = {
 export const THIN_SPACE = mtext(' ');
 
 export function formulaNode(expr: Expr, options: FormulaOptions): MathNode {
-  return render(expr, options).node;
+  // A column name read from two different rows (stridac.cena + kabel.cena) is
+  // printed with its row, cena(stridac), so the two can be told apart.
+  const clashing = clashingMembers(expr);
+  return render(expr, clashing.size > 0 ? { ...options, qualifiedMembers: clashing } : options).node;
+}
+
+function clashingMembers(expr: Expr): Set<string> {
+  const objects = new Map<string, Set<string>>();
+  const visit = (e: Expr): void => {
+    switch (e.kind) {
+      case 'member':
+        if (e.object.kind === 'variable') {
+          const set = objects.get(e.name) ?? new Set<string>();
+          set.add(e.object.name);
+          objects.set(e.name, set);
+        }
+        return visit(e.object);
+      case 'unary':
+        return visit(e.operand);
+      case 'binary':
+        visit(e.left);
+        return visit(e.right);
+      case 'call':
+        e.args.forEach(visit);
+        e.named.forEach((n) => visit(n.value));
+        return;
+      case 'vector':
+        return e.items.forEach(visit);
+      case 'index':
+        visit(e.object);
+        return visit(e.index);
+      default:
+        return;
+    }
+  };
+  visit(expr);
+  return new Set([...objects].filter(([, set]) => set.size > 1).map(([name]) => name));
 }
 
 /** True when substitution would print something different from the formula. */
@@ -98,7 +136,7 @@ function render(expr: Expr, o: FormulaOptions): Rendered {
       return { node: expr.name === 'π' ? mi('π', true) : nameNode(expr.name), prec: ATOM };
     case 'member':
       // The value of a block names its use: N1.M_max -> M_max(N1).
-      if (expr.object.kind === 'variable' && o.recordNames?.has(expr.object.name)) {
+      if (expr.object.kind === 'variable' && (o.recordNames?.has(expr.object.name) || o.qualifiedMembers?.has(expr.name))) {
         return { node: row(nameNode(expr.name), paren(nameNode(expr.object.name))), prec: ATOM };
       }
       // Printed as the column name: profil.W_y -> W_y.
@@ -112,8 +150,9 @@ function render(expr: Expr, o: FormulaOptions): Rendered {
     case 'binary':
       // A unit after a group reads like a unit after a number: "(3 + 4j) Ω".
       if (expr.operator === '*' && expr.right.kind === 'unit') {
+        // "(3 + 4j) Ω"; a single name or number needs no parentheses: "kurz CZK".
         const group = render(expr.left, o);
-        return { node: row(paren(group.node), THIN_SPACE, render(expr.right, o).node), prec: 6 };
+        return { node: row(group.prec >= ATOM ? group.node : paren(group.node), THIN_SPACE, render(expr.right, o).node), prec: 6 };
       }
       return renderBinary(expr.operator, render(expr.left, o), render(expr.right, o));
     case 'call':

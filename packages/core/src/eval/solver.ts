@@ -1,0 +1,236 @@
+/**
+ * Equation solver (docs/03-jazyk.md, ch. 9):
+ *
+ *   solve x: x² + 2·x == 8 in 0 .. 10            one unknown in an interval
+ *   solve (I_1, I_2):                             a system, from a first guess
+ *       U_1 == R_1·I_1 + R_3·(I_1 - I_2)
+ *       U_2 == R_2·I_2 + R_3·(I_2 - I_1)
+ *       guess I_1 = 1 A, I_2 = 1 A
+ *
+ * One unknown in an interval: a bracketing method (regula falsi with the
+ * Anderson–Björck correction, as Calcpad's $Root); it always finds a root when
+ * the interval has a sign change. Otherwise Newton–Raphson with a numerical
+ * Jacobian and a damped step. Units are checked like anywhere else: both sides
+ * of an equation must have the same dimension, and the unknowns take the
+ * dimension of their interval or first guess. No solution is an error with an
+ * explanation, never a silent NaN.
+ */
+
+import { CalcError, fail, type Span } from '../diagnostics.js';
+import type { Expr, Statement } from '../lang/ast.js';
+import { sameDim, type Dimension } from '../units/dimension.js';
+import { baseUnitSymbol } from '../units/display.js';
+import { DIMENSIONLESS } from '../units/dimension.js';
+import type { ResolvedUnit } from '../units/unitExpr.js';
+import { quantity, type Quantity, type Value } from '../values/value.js';
+import { asQuantity } from './coerce.js';
+import type { EvalContext } from './evaluator.js';
+
+type SolveStatement = Extract<Statement, { kind: 'solve' }>;
+type Evaluate = (expr: Expr, ctx: EvalContext) => Value;
+
+const MAX_ITERATIONS = 200;
+const RESIDUAL_TOLERANCE = 1e-10;
+/** Where an equation has no value (x/0, ln(-1), overflow): skipped, not an error. */
+const UNDEFINED_POINT: ReadonlySet<string> = new Set(['E-DOMAIN', 'E-DIV-ZERO', 'E-NOT-FINITE']);
+/** Sub-intervals searched for a sign change when the ends of the interval have the same sign. */
+const SCAN_STEPS = 64;
+
+interface Unknown {
+  readonly name: string;
+  readonly dim: Dimension;
+  readonly hint?: ResolvedUnit;
+  readonly absolute?: boolean;
+}
+
+/** Solves the statement; returns the unknowns in the order they were written. */
+export function solveStatement(statement: SolveStatement, ctx: EvalContext, evaluate: Evaluate): Quantity[] {
+  const { unknowns, equations } = statement;
+  if (equations.length !== unknowns.length) {
+    fail('E-SOLVE-COUNT', statement.span, { unknowns: unknowns.length, equations: equations.length });
+  }
+
+  // Guesses and the interval give the unknowns their dimension and unit.
+  const guesses = new Map<string, Quantity>();
+  for (const g of statement.guesses) {
+    if (!unknowns.some((u) => u.name === g.name)) fail('E-NAMED-ARG', g.nameSpan, { function: 'solve', argument: g.name, problem: 'unknown' });
+    guesses.set(g.name, asQuantity(evaluate(g.value, ctx), g.value.span));
+  }
+  let range: [Quantity, Quantity] | undefined;
+  if (statement.range) {
+    const low = asQuantity(evaluate(statement.range.low, ctx), statement.range.low.span);
+    const high = asQuantity(evaluate(statement.range.high, ctx), statement.range.high.span);
+    if (!sameDim(low.dim, high.dim)) {
+      fail('E-UNIT-MISMATCH', statement.range.high.span, { operator: '..', left: baseUnitSymbol(low.dim), right: baseUnitSymbol(high.dim) });
+    }
+    range = low.si <= high.si ? [low, high] : [high, low];
+  }
+  const shape: Unknown[] = unknowns.map((u) => {
+    const from = guesses.get(u.name) ?? range?.[0];
+    return { name: u.name, dim: from?.dim ?? DIMENSIONLESS, ...(from?.hint ? { hint: from.hint } : {}), ...(from?.absolute ? { absolute: true } : {}) };
+  });
+
+  const values = (x: readonly number[]): Quantity[] =>
+    shape.map((u, i) => quantity(x[i]!, u.dim, { ...(u.hint ? { hint: u.hint } : {}), ...(u.absolute ? { absolute: true } : {}) }));
+
+  // Iterations run quietly: warnings and table reads count only for the solution.
+  const quiet: EvalContext = { registry: ctx.registry, warnings: [], ...(ctx.blocks ? { blocks: ctx.blocks } : {}), lookup: ctx.lookup };
+  const residuals = (x: readonly number[], context: EvalContext = quiet): { r: number[]; scale: number[] } => {
+    const given = values(x);
+    const inner: EvalContext = {
+      ...context,
+      lookup: (name: string, span: Span) => {
+        const index = shape.findIndex((u) => u.name === name);
+        return index === -1 ? context.lookup(name, span) : given[index]!;
+      },
+    };
+    const r: number[] = [];
+    const scale: number[] = [];
+    for (const eq of equations) {
+      const left = asQuantity(evaluate(eq.left, inner), eq.left.span);
+      const right = asQuantity(evaluate(eq.right, inner), eq.right.span);
+      if (!sameDim(left.dim, right.dim)) {
+        fail('E-UNIT-MISMATCH', eq.span, { operator: '==', left: baseUnitSymbol(left.dim), right: baseUnitSymbol(right.dim) });
+      }
+      r.push(left.si - right.si);
+      scale.push(Math.max(Math.abs(left.si), Math.abs(right.si), Number.MIN_VALUE));
+    }
+    return { r, scale };
+  };
+
+  const x = range && unknowns.length === 1 ? [bracketed(range[0].si, range[1].si, (v) => residuals([v]), statement.span)] : newton(shape.map((u) => guesses.get(u.name)?.si ?? range?.[0].si ?? 1), residuals, statement.span);
+
+  // The solution once more, with warnings and table reads recorded.
+  residuals(x, ctx);
+  return values(x);
+}
+
+/** One unknown in [a, b]: regula falsi with the Anderson–Björck correction. */
+function bracketed(low: number, high: number, g: (x: number) => { r: number[]; scale: number[] }, span: Span): number {
+  const f = (x: number): number => {
+    try {
+      return g(x).r[0]!;
+    } catch (err) {
+      // A point where the equation cannot be evaluated gives no sign information.
+      if (err instanceof CalcError && UNDEFINED_POINT.has(err.diagnostic.code)) return Number.NaN;
+      throw err;
+    }
+  };
+  const done = (x: number): boolean => {
+    const { r, scale } = g(x);
+    return Math.abs(r[0]!) <= RESIDUAL_TOLERANCE * scale[0]!;
+  };
+
+  let a = low;
+  let b = high;
+  let fa = f(a);
+  let fb = f(b);
+  if (fa === 0 && done(a)) return a;
+  if (fb === 0 && done(b)) return b;
+
+  // No sign change at the ends: look for one inside (e.g. two roots in the interval).
+  if (!(fa * fb < 0)) {
+    const step = (high - low) / SCAN_STEPS;
+    let found = false;
+    let x0 = low;
+    let f0 = fa;
+    for (let i = 1; i <= SCAN_STEPS && !found; i++) {
+      const x1 = low + step * i;
+      const f1 = f(x1);
+      if (f1 === 0) return x1;
+      if (f0 * f1 < 0) {
+        [a, fa, b, fb] = [x0, f0, x1, f1];
+        found = true;
+      }
+      if (!Number.isNaN(f1)) [x0, f0] = [x1, f1];
+    }
+    if (!found) fail('E-SOLVE-NO-ROOT', span);
+  }
+
+  for (let i = 0; i < MAX_ITERATIONS; i++) {
+    const c = b - (fb * (b - a)) / (fb - fa);
+    const fc = f(c);
+    if (fc === 0 || Math.abs(b - a) <= 4 * Number.EPSILON * Math.max(Math.abs(a), Math.abs(b))) return c;
+    if (fc * fb < 0) {
+      a = b;
+      fa = fb;
+    } else {
+      const m = 1 - fc / fb;
+      fa *= m > 0 ? m : 0.5;
+    }
+    b = c;
+    fb = fc;
+    if (done(c)) return c;
+  }
+  return b;
+}
+
+/** A system (or one unknown without an interval): damped Newton–Raphson. */
+function newton(start: number[], residuals: (x: readonly number[]) => { r: number[]; scale: number[] }, span: Span): number[] {
+  let x = [...start];
+  const typical = start.map((v) => Math.abs(v) || 1);
+  let current = residuals(x);
+  for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
+    if (converged(current)) return x;
+    const n = x.length;
+    const jacobian: number[][] = [];
+    for (let j = 0; j < n; j++) {
+      const h = 1e-7 * Math.max(Math.abs(x[j]!), typical[j]!);
+      const shifted = [...x];
+      shifted[j] = x[j]! + h;
+      const r = residuals(shifted).r;
+      for (let i = 0; i < n; i++) (jacobian[i] ??= [])[j] = (r[i]! - current.r[i]!) / h;
+    }
+    const step = gauss(jacobian, current.r.map((v) => -v));
+    if (!step) fail('E-SOLVE-SINGULAR', span);
+
+    // Damped step: halve until the residuals get smaller.
+    let accepted = false;
+    for (let t = 1; t >= 1 / 1024; t /= 2) {
+      const next = x.map((v, i) => v + t * step[i]!);
+      let trial: { r: number[]; scale: number[] };
+      try {
+        trial = residuals(next);
+      } catch (err) {
+        if (err instanceof CalcError && err.diagnostic.code !== 'E-UNIT-MISMATCH') continue;
+        throw err;
+      }
+      if (size(trial) < size(current)) {
+        x = next;
+        current = trial;
+        accepted = true;
+        break;
+      }
+    }
+    if (!accepted) break;
+  }
+  if (converged(current)) return x;
+  return fail('E-SOLVE-NO-CONVERGENCE', span);
+}
+
+function converged({ r, scale }: { r: number[]; scale: number[] }): boolean {
+  return r.every((v, i) => Math.abs(v) <= RESIDUAL_TOLERANCE * scale[i]!);
+}
+
+function size({ r, scale }: { r: number[]; scale: number[] }): number {
+  return Math.hypot(...r.map((v, i) => v / scale[i]!));
+}
+
+/** Solves A·x = b with partial pivoting; undefined when A is singular. */
+function gauss(a: number[][], b: number[]): number[] | undefined {
+  const n = b.length;
+  const m = a.map((row, i) => [...row, b[i]!]);
+  for (let col = 0; col < n; col++) {
+    let pivot = col;
+    for (let r = col + 1; r < n; r++) if (Math.abs(m[r]![col]!) > Math.abs(m[pivot]![col]!)) pivot = r;
+    const largest = Math.max(...m.map((row) => Math.abs(row[col]!)));
+    if (Math.abs(m[pivot]![col]!) <= 1e-13 * (largest || 1) || m[pivot]![col] === 0) return undefined;
+    [m[col], m[pivot]] = [m[pivot]!, m[col]!];
+    for (let r = 0; r < n; r++) {
+      if (r === col) continue;
+      const factor = m[r]![col]! / m[col]![col]!;
+      for (let c = col; c <= n; c++) m[r]![c]! -= factor * m[col]![c]!;
+    }
+  }
+  return m.map((row, i) => row[n]! / row[i]!);
+}

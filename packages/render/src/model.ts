@@ -49,6 +49,8 @@ export interface EquationLine {
   /** Left-hand side; only on the first line of a block. */
   readonly lhs?: MathNode;
   readonly rhs: MathNode;
+  /** Sign between the sides when it is not the defining one: "=" in an equation. */
+  readonly op?: string;
 }
 
 export interface Message {
@@ -195,6 +197,20 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
           ...(blockCalc ? { blockCalc } : {}),
           messages,
         });
+        break;
+      }
+      case 'solve': {
+        // The equations as written, then the values found.
+        const lines: EquationLine[] = s.equations.map((eq) => ({ role: 'formula', lhs: formulaNode(eq.left, formulaOptions()), op: '=', rhs: formulaNode(eq.right, formulaOptions()) }));
+        // The interval decides which root is found: "0 ≤ x ≤ 10".
+        if (s.range && s.unknowns[0]) {
+          const range = row(formulaNode(s.range.low, formulaOptions()), mo('≤'), nameNode(s.unknowns[0].name), mo('≤'), formulaNode(s.range.high, formulaOptions()));
+          lines.push({ role: 'formula', op: '', rhs: range });
+        }
+        for (const found of r.solutions ?? []) {
+          lines.push({ role: 'result', lhs: nameNode(found.name), op: '=', rhs: valueNode(found.display.value, found.display.unit, numberFormat(digits)) });
+        }
+        blocks.push({ kind: 'equation', line: s.span.line, lines, ...(s.comment ? { comment: s.comment } : {}), messages });
         break;
       }
       case 'check': {

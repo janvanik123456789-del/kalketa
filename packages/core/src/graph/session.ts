@@ -13,6 +13,7 @@ import { asBoolean, asQuantity } from '../eval/coerce.js';
 import { compare, evaluate, type EvalContext } from '../eval/evaluator.js';
 import { BUILTIN_CONSTANTS } from '../eval/functions.js';
 import { defineFunction, isBuiltinFunction } from '../eval/userFunctions.js';
+import { solveStatement } from '../eval/solver.js';
 import type { BlockCaller, BlockSource } from '../eval/blocks.js';
 import type { BinaryOperator, Sheet, Statement } from '../lang/ast.js';
 import { parse } from '../lang/parser.js';
@@ -47,6 +48,8 @@ export interface StatementResult {
   readonly value?: Value;
   readonly display?: DisplayValue;
   readonly check?: CheckResult;
+  /** Values found by a solve statement, in the order of its unknowns. */
+  readonly solutions?: readonly { readonly name: string; readonly value: Quantity; readonly display: DisplayValue }[];
   /** Names this statement read, in order of first use (including undefined ones). */
   readonly dependencies: readonly string[];
   /** Table data this statement read directly. */
@@ -102,7 +105,7 @@ export interface UpdateOptions {
 }
 
 type EnvEntry = { readonly ok: true; readonly value: Value } | { readonly ok: false };
-type Evaluable = Extract<Statement, { kind: 'definition' | 'display' | 'check' }>;
+type Evaluable = Extract<Statement, { kind: 'definition' | 'display' | 'check' | 'solve' }>;
 type PartialResult = Omit<StatementResult, 'statement'>;
 
 interface CacheEntry {
@@ -134,8 +137,8 @@ export class SheetSession {
 
     const definedAt = new Map<string, number>();
     statements.forEach((s, i) => {
-      const name = s.kind === 'definition' || s.kind === 'invalid' ? s.name : undefined;
-      if (name !== undefined && !definedAt.has(name)) definedAt.set(name, i);
+      const names = s.kind === 'definition' || s.kind === 'invalid' ? (s.name !== undefined ? [s.name] : []) : s.kind === 'solve' ? s.unknowns.map((u) => u.name) : [];
+      for (const name of names) if (!definedAt.has(name)) definedAt.set(name, i);
     });
 
     const env = context.env;
@@ -153,11 +156,20 @@ export class SheetSession {
         results.push({ statement, status: 'error', ...none, diagnostics: parseDiagnostics });
         return;
       }
-      if (statement.kind !== 'definition' && statement.kind !== 'display' && statement.kind !== 'check') {
+      if (statement.kind !== 'definition' && statement.kind !== 'display' && statement.kind !== 'check' && statement.kind !== 'solve') {
         results.push({ statement, status: 'none', ...none, diagnostics: parseDiagnostics });
         return;
       }
 
+      if (statement.kind === 'solve') {
+        const taken = statement.unknowns.find((u) => u.name in BUILTIN_CONSTANTS || env.has(u.name) || tables.has(u.name) || imports.has(u.name) || blocks.has(u.name));
+        if (taken) {
+          const d = diagnostic(taken.name in BUILTIN_CONSTANTS ? 'E-RESERVED' : 'E-REDEFINED', taken.span, { name: taken.name });
+          statement.unknowns.forEach((u) => env.has(u.name) || env.set(u.name, { ok: false }));
+          results.push({ statement, status: 'error', ...none, diagnostics: [...parseDiagnostics, d] });
+          return;
+        }
+      }
       if (statement.kind === 'definition') {
         const reserved = statement.name in BUILTIN_CONSTANTS || (statement.params !== undefined && isBuiltinFunction(statement.name));
         const clash = reserved
@@ -191,6 +203,12 @@ export class SheetSession {
 
       if (statement.kind === 'definition') {
         env.set(statement.name, result.status === 'ok' && result.value ? { ok: true, value: result.value } : { ok: false });
+      }
+      if (statement.kind === 'solve') {
+        statement.unknowns.forEach((u, i) => {
+          const found = result.solutions?.[i];
+          env.set(u.name, found ? { ok: true, value: found.value } : { ok: false });
+        });
       }
       results.push({ statement, ...result, diagnostics: [...parseDiagnostics, ...result.diagnostics] });
     });
@@ -289,6 +307,12 @@ export class SheetSession {
         };
       }
 
+      if (statement.kind === 'solve') {
+        const found = solveStatement(statement, ctx, evaluate);
+        const solutions = statement.unknowns.map((u, i) => ({ name: u.name, value: found[i]!, display: toDisplay(found[i]!, this.registry) }));
+        return { status: 'ok', solutions, dependencies, tableReads, diagnostics: ctx.warnings };
+      }
+
       if (statement.kind === 'definition' && statement.params) {
         const fn = defineFunction({ ...statement, params: statement.params }, ctx);
         return { status: 'ok', value: fn, dependencies, tableReads, diagnostics: ctx.warnings };
@@ -320,7 +344,7 @@ export class SheetSession {
       };
     } catch (err) {
       if (err instanceof DependencyFailed) {
-        const d = diagnostic('I-DEPENDENCY-FAILED', statement.expr.span, { name: err.message });
+        const d = diagnostic('I-DEPENDENCY-FAILED', statement.kind === 'solve' ? statement.span : statement.expr.span, { name: err.message });
         return { status: 'blocked', dependencies, tableReads, diagnostics: [...ctx.warnings, d] };
       }
       if (err instanceof CalcError) {

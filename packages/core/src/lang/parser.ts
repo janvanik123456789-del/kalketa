@@ -15,7 +15,7 @@
  */
 
 import { CalcError, diagnostic, fail, type Diagnostic, type Span } from '../diagnostics.js';
-import type { BinaryOperator, Expr, NamedArg, Param, Sheet, Statement, UnitExpr } from './ast.js';
+import type { BinaryOperator, Equation, Expr, NamedArg, Param, Sheet, Statement, UnitExpr } from './ast.js';
 import { tokenize, type Token, type TokenType } from './lexer.js';
 
 export interface ParseOptions {
@@ -32,7 +32,6 @@ export interface ParseResult {
 
 const KEYWORDS = new Set(['and', 'or', 'not', 'true', 'false', 'check', 'source', 'solve', 'in', 'guess', 'dimension', 'unit', 'input']);
 const UNSUPPORTED_STATEMENTS: Readonly<Record<string, string>> = {
-  solve: 'solve',
   dimension: 'dimension',
   unit: 'unit-definition',
 };
@@ -77,17 +76,28 @@ function withComment(statement: Statement, comment: string | undefined): Stateme
   return comment === undefined ? statement : { ...statement, comment };
 }
 
-/** Splits tokens into logical lines. A line continues while brackets are open. */
+/**
+ * Splits tokens into logical lines. A line continues while brackets are open,
+ * and a "solve" line continues on the indented lines below it (its equations);
+ * there the line breaks are kept, they separate the equations.
+ */
 function splitLines(tokens: readonly Token[]): Token[][] {
   const lines: Token[][] = [];
   let current: Token[] = [];
   let depth = 0;
-  for (const token of tokens) {
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i]!;
     if (token.type === 'eof') break;
     if (token.type === '(' || token.type === '[') depth++;
     if ((token.type === ')' || token.type === ']') && depth > 0) depth--;
     if (token.type === 'newline') {
       if (depth > 0) continue;
+      const next = tokens[i + 1];
+      const solving = current[0]?.type === 'ident' && current[0].text === 'solve';
+      if (solving && next && next.type !== 'newline' && next.type !== 'eof' && next.span.column > 1) {
+        current.push(token);
+        continue;
+      }
       lines.push(current);
       current = [];
       continue;
@@ -151,6 +161,9 @@ class LineParser {
     }
     if (first.type === 'ident' && first.text === 'check' && this.peek(1).type !== ':=') {
       return this.parseCheck(lineSpan);
+    }
+    if (first.type === 'ident' && first.text === 'solve' && this.peek(1).type !== ':=') {
+      return this.parseSolve(lineSpan);
     }
     if (first.type === 'ident' && first.text in UNSUPPORTED_STATEMENTS && this.peek(1).type !== ':=') {
       fail('E-UNSUPPORTED', first.span, { feature: UNSUPPORTED_STATEMENTS[first.text]! });
@@ -243,6 +256,71 @@ class LineParser {
     };
   }
 
+  /**
+   * solve x: equation [in low .. high]
+   * solve (a, b): equation, equation [guess a = 1 m, b = 2 m]
+   * Equations may also stand on the indented lines below.
+   */
+  private parseSolve(lineSpan: Span): Statement {
+    this.next(); // solve
+    const unknowns: Param[] = [];
+    const unknown = () => {
+      const token = this.expect('ident', 'unknown');
+      if (KEYWORDS.has(token.text)) fail('E-RESERVED', token.span, { name: token.text });
+      if (unknowns.some((u) => u.name === token.text)) fail('E-REDEFINED', token.span, { name: token.text });
+      unknowns.push({ name: token.text, span: token.span });
+    };
+    if (this.peek().type === '(') {
+      this.next();
+      do unknown();
+      while (this.peek().type === ',' && this.next());
+      this.expect(')', ')');
+    } else {
+      unknown();
+    }
+    this.expect(':', ':');
+    // The unknowns are names from here on, even where they spell a unit (t, s).
+    unknowns.forEach((u) => this.defined.add(u.name));
+
+    const equations: Equation[] = [];
+    const guesses: NamedArg[] = [];
+    let range: { low: Expr; high: Expr } | undefined;
+    for (;;) {
+      while (this.peek().type === 'newline' || this.peek().type === ',') this.next();
+      if (this.peek().type === 'eof') break;
+      if (this.isKeyword('in')) {
+        this.next();
+        const low = this.parseAdditive();
+        this.expect('..', '..');
+        range = { low, high: this.parseAdditive() };
+        continue;
+      }
+      if (this.isKeyword('guess')) {
+        this.next();
+        do {
+          const name = this.expect('ident', 'unknown');
+          if (this.peek().type !== '=' && this.peek().type !== ':') fail('E-SYNTAX', this.peek().span, { expected: '=', found: this.peek().text || 'end-of-line' });
+          this.next();
+          guesses.push({ name: name.text, nameSpan: name.span, value: this.parseAdditive() });
+        } while (this.peek().type === ',' && this.next());
+        continue;
+      }
+      const left = this.parseAdditive();
+      const eq = this.peek();
+      if (eq.type !== '==' && eq.type !== '=') fail('E-SYNTAX', eq.span, { expected: '==', found: eq.text || 'end-of-line' });
+      this.next();
+      const right = this.parseAdditive();
+      equations.push({ left, right, span: spanOf(left, right) });
+      const after = this.peek();
+      if (after.type !== ',' && after.type !== 'newline' && after.type !== 'eof' && !this.isKeyword('in') && !this.isKeyword('guess')) {
+        fail('E-SYNTAX', after.span, { expected: 'end-of-line', found: after.text });
+      }
+    }
+    if (equations.length === 0) fail('E-SYNTAX', this.end.span, { expected: '==', found: 'end-of-line' });
+    if (range && unknowns.length !== 1) fail('E-SYNTAX', range.low.span, { expected: 'guess', found: 'in' });
+    return { kind: 'solve', unknowns, equations, ...(range ? { range } : {}), guesses, span: lineSpan };
+  }
+
   private parseDisplay(lineSpan: Span): Statement {
     const expr = this.parseExpression();
     const target = this.parseTarget();
@@ -310,7 +388,7 @@ class LineParser {
     return result;
   }
 
-  private parseAdditive(): Expr {
+  parseAdditive(): Expr {
     let left = this.parseMultiplicative();
     while (this.peek().type === '+' || this.peek().type === '-') {
       const op = this.next().type as '+' | '-';

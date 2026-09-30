@@ -12,7 +12,7 @@ export type TokenType =
   | 'number' | 'ident' | 'string' | 'superscript'
   | 'heading' | 'comment' | 'directive'
   | '+' | '-' | '*' | '/' | '^' | '√'
-  | '(' | ')' | '[' | ']' | ',' | '.' | ':' | '|'
+  | '(' | ')' | '[' | ']' | ',' | '.' | '..' | ':' | '|'
   | ':=' | '=' | '==' | '!=' | '<' | '<=' | '>' | '>='
   | 'newline' | 'eof';
 
@@ -41,7 +41,7 @@ const OPERATORS: readonly (readonly [string, TokenType])[] = [
   ['≠', '!='], ['≤', '<='], ['≥', '>='],
   ['+', '+'], ['-', '-'], ['−', '-'], ['*', '*'], ['·', '*'], ['⋅', '*'], ['×', '*'],
   ['/', '/'], ['÷', '/'], ['^', '^'], ['√', '√'],
-  ['(', '('], [')', ')'], ['[', '['], [']', ']'], [',', ','], ['.', '.'],
+  ['(', '('], [')', ')'], ['[', '['], [']', ']'], [',', ','], ['..', '..'], ['…', '..'], ['.', '.'],
   [':', ':'], ['|', '|'], ['=', '='], ['<', '<'], ['>', '>'],
 ];
 
@@ -132,6 +132,12 @@ export function tokenize(source: string, options: LexOptions = {}): LexResult {
       continue;
     }
 
+    // "0 .. 10" and "0..10": a range, not the number .10.
+    if (ch === '.' && source[pos + 1] === '.') {
+      pos += 2;
+      push('..', start, '..');
+      continue;
+    }
     if (isDigit(ch) || (ch === '.' && isDigit(source[pos + 1]))) {
       const text = readNumber();
       push('number', start, text, Number(text));

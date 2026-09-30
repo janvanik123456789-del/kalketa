@@ -63,6 +63,8 @@ function formatStatement(r: StatementResult, result: SheetResult, options: Repor
       if (!r.check) return `${head}   ${t(options.catalog, 'checks.notEvaluated')}`;
       return `${head}   ${formatCheckValues(r.check, options)}`;
     }
+    case 'solve':
+      return r.solutions ? r.solutions.map((found) => `${found.name} = ${formatDisplay(found.display.value, found.display.unit, options)}`).join('   ') : '?';
     case 'invalid':
       return '?';
     default:

@@ -145,7 +145,7 @@ describe('parser: statements', () => {
   });
 
   it('reports features of later phases as unsupported', () => {
-    expect(parseCodes('solve x: x² == 4')).toEqual(['E-UNSUPPORTED']);
+    expect(parseCodes('dimension Mena')).toEqual(['E-UNSUPPORTED']);
   });
 
   it('parses function definitions; parameters are names even where they spell units', () => {

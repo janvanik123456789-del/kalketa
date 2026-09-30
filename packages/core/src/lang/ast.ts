@@ -34,6 +34,13 @@ export type Expr =
   | { readonly kind: 'call'; readonly name: string; readonly args: readonly Expr[]; readonly named: readonly NamedArg[]; readonly span: Span }
   | { readonly kind: 'member'; readonly object: Expr; readonly name: string; readonly span: Span };
 
+/** One equation of a solve statement: left == right. */
+export interface Equation {
+  readonly left: Expr;
+  readonly right: Expr;
+  readonly span: Span;
+}
+
 /** Parameter of a user function. */
 export interface Param {
   readonly name: string;
@@ -80,6 +87,16 @@ export type Statement =
       readonly label?: string;
       readonly expr: Expr;
       readonly source?: string;
+    })
+  | (StatementBase & {
+      readonly kind: 'solve';
+      /** The names the statement finds and defines. */
+      readonly unknowns: readonly Param[];
+      readonly equations: readonly Equation[];
+      /** "in 0 .. 10": interval of a single unknown. */
+      readonly range?: { readonly low: Expr; readonly high: Expr };
+      /** "guess I_1 = 1 A": first guesses, which also give the unknowns their units. */
+      readonly guesses: readonly NamedArg[];
     })
   | (StatementBase & { readonly kind: 'invalid'; /** Name if the line looked like a definition. */ readonly name?: string });
 

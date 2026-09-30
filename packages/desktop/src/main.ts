@@ -324,7 +324,7 @@ async function runSmokeTest(pdfPath: string): Promise<void> {
     await writeFile(pdfPath, pdf);
     ok =
       state.bridge && state.sideBySide && state.menus === 7 && state.toolbars > 0 && state.rows > 10 && state.summary > 0 && state.math > 0 && reshapedColumns === 3 && pdf.length > 1000 &&
-      layers.tabs === 5 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.aiReadOnly && layers.multi && layers.functions && layers.blocksOk !== false && layers.mainHidden && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.q.includes('16,73');
+      layers.tabs === 5 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.blocksOk !== false && layers.mainHidden && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.q.includes('16,73');
     console.log(JSON.stringify({ ok, ...state, reshapedColumns, layers, pdfBytes: pdf.length }));
   } catch (err) {
     console.log(JSON.stringify({ ok: false, error: (err as Error).message }));
@@ -519,6 +519,8 @@ async function layersWithRealInput(picture: string) {
   await typeText('A_kruh(d) = π·d²/4');
   await pressKey('Enter');
   await typeText('A_kruh(20 mm) =');
+  await pressKey('Enter');
+  await typeText('solve x: x² + 2·x == 8 in 0 .. 10');
   await clickOn('.sheet-scroll');
   await pause(300);
   const userFunction = (await contents.executeJavaScript(`({
@@ -527,6 +529,7 @@ async function layersWithRealInput(picture: string) {
   })`)) as { errors: number; rows: string[] };
   await takePicture(picture.replace(/[.]png$/, '-function.png'));
   const functions = userFunction.errors === 0 && userFunction.rows.some((r) => r.includes('314,2'));
+  const solved = userFunction.rows.some((r) => r.replace(/\s+/g, '').includes('x=2'));
 
   // A sheet with a block: the block is listed, its use shows the block and computes.
   const blockFile = process.env['CALCCANVAS_SMOKE_BLOCKS'];
@@ -543,7 +546,7 @@ async function layersWithRealInput(picture: string) {
     blocksOk = shown.blocks === 1 && shown.errors === 0 && shown.text.includes('Prosty nosnik 1.2') && shown.text.includes('45');
     await takePicture(picture.replace(/[.]png$/, '-blocks.png'));
   }
-  return { ...state, citations, aiReadOnly, split, mainHidden, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, blocksOk };
+  return { ...state, citations, aiReadOnly, split, mainHidden, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, blocksOk };
 }
 
 /**

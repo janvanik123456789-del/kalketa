@@ -61,6 +61,12 @@ export const DIAGNOSTIC_SEVERITY = {
   'E-NOT-FUNCTION': 'error',
   'E-RECURSION': 'error',
 
+  // Solver
+  'E-SOLVE-COUNT': 'error',
+  'E-SOLVE-NO-ROOT': 'error',
+  'E-SOLVE-NO-CONVERGENCE': 'error',
+  'E-SOLVE-SINGULAR': 'error',
+
   // Blocks
   'E-BLOCK-INPUT': 'error',
   'E-BLOCK-ERROR': 'error',

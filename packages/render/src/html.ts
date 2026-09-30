@@ -127,7 +127,7 @@ ${checkLines(block.lines)}
 function equationTable(lines: readonly EquationLine[], note: string | undefined, defineOperator: string): string {
   const rows = lines.map((line, i) => {
     const lhs = line.lhs ? math(line.lhs) : '';
-    const op = line.lhs ? defineOperator : i > 0 ? '=' : '';
+    const op = line.op ?? (line.lhs ? defineOperator : i > 0 ? '=' : '');
     return `<tr class="${line.role}"><td class="lhs">${lhs}</td><td class="op">${op}</td><td class="rhs">${math(line.rhs)}</td><td class="note">${i === 0 ? comment(note) : ''}</td></tr>`;
   });
   return `<table class="eq">\n${rows.join('\n')}\n</table>`;

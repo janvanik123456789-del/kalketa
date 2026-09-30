@@ -83,7 +83,13 @@ export interface RecordValue {
   readonly result: SheetResult;
 }
 
-export type Value = Quantity | BooleanValue | TextValue | TableValue | RowValue | FunctionValue | RecordValue;
+/** A series of numbers of one dimension: cash flows by year, measurements. */
+export interface VectorValue {
+  readonly type: 'vector';
+  readonly items: readonly Quantity[];
+}
+
+export type Value = Quantity | BooleanValue | TextValue | TableValue | RowValue | FunctionValue | RecordValue | VectorValue;
 
 export function quantity(si: number, dim: Dimension = DIMENSIONLESS, extra: Partial<Pick<Quantity, 'absolute' | 'hint' | 'im'>> = {}): Quantity {
   return {
@@ -115,6 +121,8 @@ export function fingerprint(value: Value): string {
       const captured = [...value.captured].map(([name, v]) => `${name}=${fingerprint(v)}`).join(';');
       return `f:${value.name}(${value.params.join(',')}):${body}:${captured}`;
     }
+    case 'vector':
+      return `v:${value.items.map(fingerprint).join('|')}`;
     case 'record':
       return `B:${value.block}:${value.version}:${[...value.values].map(([name, v]) => `${name}=${fingerprint(v)}`).join(';')}`;
   }

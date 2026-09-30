@@ -43,7 +43,7 @@ export function callTableFunction(call: CallExpr, ctx: EvalContext, evaluate: Ev
 /** row.column */
 export function memberOf(object: Value, name: string, span: Span, objectSpan: Span, ctx: EvalContext): Value {
   if (object.type === 'record') return object.values.get(name) ?? fail('E-BLOCK-OUTPUT', span, { block: object.block, name });
-  if (object.type === 'table') return fail('E-UNSUPPORTED', span, { feature: 'table-column' });
+  if (object.type === 'table') return columnOf(object.table, name, span);
   if (object.type !== 'row') return fail('E-TYPE', objectSpan, { expected: 'row', found: object.type });
   const index = columnIndex(object.table, name);
   if (index === -1) fail('E-TABLE-COLUMN', span, { table: object.table.name, column: name });
@@ -75,6 +75,18 @@ function pick(call: CallExpr, table: Table, ctx: EvalContext, evaluate: Evaluate
   const row = table.rows.findIndex((cells) => cellEquals(cells[index] ?? null, wanted));
   if (row === -1) fail('E-TABLE-KEY', span, { table: table.name, column, key: describe(wanted) });
   return rowValue(table, row);
+}
+
+/** A numeric column of a table as a series: Vyroba.E. */
+function columnOf(table: Table, name: string, span: Span): Value {
+  const index = requireColumn(table, name, span);
+  if (table.columns[index]!.type !== 'quantity') fail('E-TABLE-INTERPOLATE', span, { table: table.name, column: name, problem: 'not-numeric' });
+  const items = table.rows.map((cells, row) => {
+    const cell = cells[index] ?? null;
+    if (cell?.type !== 'quantity') return fail('E-TABLE-EMPTY', span, { table: table.name, column: name, row: rowLabel(table, row) });
+    return cell;
+  });
+  return { type: 'vector', items };
 }
 
 function interpolate(call: CallExpr, table: Table, ctx: EvalContext, evaluate: Evaluate): Value {

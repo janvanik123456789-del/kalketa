@@ -32,6 +32,10 @@ function show(expr: Expr): string {
       return `${expr.name}(${expr.args.map(show).join(', ')})`;
     case 'member':
       return `${show(expr.object)}.${expr.name}`;
+    case 'vector':
+      return `[${expr.items.map(show).join(', ')}]`;
+    case 'index':
+      return `${show(expr.object)}[${show(expr.index)}]`;
   }
 }
 

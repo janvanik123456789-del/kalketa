@@ -282,7 +282,7 @@ function equationLines(
   format: (value: number) => string,
 ): EquationLine[] {
   const withLhs = (line: Omit<EquationLine, 'lhs'>, first: boolean): EquationLine => (first && lhs ? { ...line, lhs } : line);
-  const result = resultNode(r, format, formulaOptions().booleans);
+  const result = resultNode(r, format, formulaOptions().booleans, formulaOptions().argumentSeparator);
   const given = expr.kind === 'number' || (expr.kind === 'unary' && expr.operand.kind === 'number') || expr.kind === 'string' || expr.kind === 'boolean';
 
   // A conversion shows both units: "100 EUR = 2 500 CZK".
@@ -304,9 +304,10 @@ function equationLines(
   return lines;
 }
 
-function resultNode(r: StatementResult, format: (value: number) => string, booleans: FormulaOptions['booleans']): MathNode | undefined {
+function resultNode(r: StatementResult, format: (value: number) => string, booleans: FormulaOptions['booleans'], separator = ','): MathNode | undefined {
   if (r.status !== 'ok' || !r.value) return undefined;
   if (r.display) return valueNode(r.display.value, r.display.unit, format, r.display.im);
+  if (r.displayList) return seriesNode(r.displayList, format, separator);
   if (r.value.type === 'boolean') return mtext(r.value.value ? booleans.true : booleans.false);
   return otherValueNode(r.value);
 }
@@ -425,6 +426,21 @@ export function valueNode(value: number, unit: string, format: (value: number) =
   if (!unit) return complex;
   return row(value === 0 ? complex : paren(complex), THIN_SPACE, mu(unit));
 }
+
+/** "[100; 120; 150] CZK"; a long series shows its start and end: "[1; 2; 3; 4; 5; …; 24; 25] (25)". */
+function seriesNode(items: readonly { value: number; unit: string }[], format: (value: number) => string, separator: string): MathNode {
+  const shown = items.length > SERIES_SHOWN ? [...items.slice(0, 5), undefined, ...items.slice(-2)] : items;
+  const parts: MathNode[] = [];
+  shown.forEach((item, i) => {
+    if (i > 0) parts.push(mo(separator));
+    parts.push(item ? valueNode(item.value, '', format) : mo('…'));
+  });
+  const unit = items[0]?.unit ?? '';
+  const count = items.length > SERIES_SHOWN ? [THIN_SPACE, mtext(`(${items.length})`)] : [];
+  return row(mo('['), ...parts, mo(']'), ...(unit ? [THIN_SPACE, mu(unit)] : []), ...count);
+}
+
+const SERIES_SHOWN = 12;
 
 /** "A_kruh(d)" or "σ(M; W)". */
 function functionHead(name: string, params: readonly { readonly name: string }[], separator: string): MathNode {

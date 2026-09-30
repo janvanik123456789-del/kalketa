@@ -484,6 +484,12 @@ class LineParser {
         this.next();
         const name = this.expect('ident', 'member-name');
         expr = { kind: 'member', object: expr, name: name.text, span: spanOf(expr, name) };
+      } else if (token.type === '[' && expr.kind !== 'number') {
+        // CF[1]: an item of a series.
+        this.next();
+        const index = this.parseExpression();
+        const close = this.expect(']', ']');
+        expr = { kind: 'index', object: expr, index, span: spanOf(expr, close) };
       } else {
         return expr;
       }
@@ -513,8 +519,18 @@ class LineParser {
         return inner;
       }
       case '[': {
-        const unit = this.parseBracketUnit();
-        return { kind: 'unit', unit, span: unit.span };
+        // "[m]" is a unit; anything else in brackets is a series: [100, 120, 150] CZK.
+        const save = this.pos;
+        const diagnosticsBefore = this.diagnostics.length;
+        try {
+          const unit = this.parseBracketUnit();
+          return { kind: 'unit', unit, span: unit.span };
+        } catch (err) {
+          if (!(err instanceof CalcError)) throw err;
+          this.pos = save;
+          this.diagnostics.length = diagnosticsBefore;
+        }
+        return this.parseVector();
       }
       case '√': {
         this.next();
@@ -559,6 +575,24 @@ class LineParser {
       return { kind: 'unit', unit, span: token.span };
     }
     return { kind: 'variable', name, span: token.span };
+  }
+
+  /** [a, b, c] with an optional unit after it: [100, 120] CZK. */
+  private parseVector(): Expr {
+    const open = this.next();
+    const items: Expr[] = [];
+    if (this.peek().type !== ']') {
+      do items.push(this.parseExpression());
+      while (this.peek().type === ',' && this.next());
+    }
+    const close = this.expect(']', ']');
+    const vector: Expr = { kind: 'vector', items, span: spanOf(open, close) };
+    const next = this.peek();
+    if (next.type === 'ident' && !KEYWORDS.has(next.text) && !this.defined.has(next.text) && this.isUnit(next.text)) {
+      const unit = this.parseUnitChain();
+      return { kind: 'binary', operator: '*', left: vector, right: { kind: 'unit', unit, span: unit.span }, span: spanOf(open, unit) };
+    }
+    return vector;
   }
 
   /** Number with optional unit ("12 kN/m", "5 [m]") or implicit product ("2(a+b)"). */

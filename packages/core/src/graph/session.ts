@@ -49,6 +49,8 @@ export interface StatementResult {
   readonly status: StatementStatus;
   readonly value?: Value;
   readonly display?: DisplayValue;
+  /** Items of a series, all in one unit. */
+  readonly displayList?: readonly DisplayValue[];
   readonly check?: CheckResult;
   /** Values found by a solve statement, in the order of its unknowns. */
   readonly solutions?: readonly { readonly name: string; readonly value: Quantity; readonly display: DisplayValue }[];
@@ -383,18 +385,28 @@ export class SheetSession {
       let target: ResolvedUnit | undefined;
       if (statement.target) {
         target = resolveUnit(statement.target, context.registry);
-        if (value.type !== 'quantity' || !sameDim(target.dim, value.dim)) {
+        if (value.type === 'vector') {
+          const unit = target;
+          const wrong = value.items.find((q) => !sameDim(unit.dim, q.dim));
+          if (wrong) throw new CalcError(diagnostic('E-TARGET-UNIT', statement.target.span, { unit: unit.symbol, found: baseUnitSymbol(wrong.dim) }));
+          value = { type: 'vector', items: value.items.map((q) => ({ ...q, hint: unit })) };
+        } else if (value.type !== 'quantity' || !sameDim(target.dim, value.dim)) {
           const found = value.type === 'quantity' ? baseUnitSymbol(value.dim) : value.type;
           throw new CalcError(diagnostic('E-TARGET-UNIT', statement.target.span, { unit: target.symbol, found }));
+        } else {
+          // The value keeps its target unit when used further on.
+          value = { ...value, hint: target };
         }
-        // The value keeps its target unit when used further on.
-        value = { ...value, hint: target };
       }
       const display = value.type === 'quantity' ? toDisplay(value, context.registry, target) : undefined;
+      // A series is shown in one unit: the target, else the unit of its first item.
+      const unit = target ?? (value.type === 'vector' ? value.items.find((q) => q.hint)?.hint : undefined);
+      const displayList = value.type === 'vector' ? value.items.map((q) => toDisplay(q, context.registry, unit)) : undefined;
       return {
         status: 'ok',
         value,
         ...(display ? { display } : {}),
+        ...(displayList ? { displayList } : {}),
         dependencies,
         tableReads,
         diagnostics: ctx.warnings,

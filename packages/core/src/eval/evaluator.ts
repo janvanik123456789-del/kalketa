@@ -12,8 +12,8 @@ import { baseUnitSymbol } from '../units/display.js';
 import type { UnitRegistry } from '../units/registry.js';
 import { resolveUnit, type ResolvedUnit } from '../units/unitExpr.js';
 import type { TableRead } from '../tables/table.js';
-import { quantity, type Quantity, type Value } from '../values/value.js';
-import { asBoolean, asComplex } from './coerce.js';
+import { quantity, type Quantity, type Value, type VectorValue } from '../values/value.js';
+import { asBoolean, asComplex, asQuantity } from './coerce.js';
 import { BUILTIN_CONSTANTS, callFunction, FUNCTION_NAMES } from './functions.js';
 import { callTableFunction, memberOf, TABLE_FUNCTIONS } from './tables.js';
 import { applyFunction, lookupFunction } from './userFunctions.js';
@@ -72,8 +72,10 @@ function evaluateRaw(expr: Expr, ctx: EvalContext): Value {
     case 'unary': {
       const operand = evaluate(expr.operand, ctx);
       if (expr.operator === 'not') return { type: 'boolean', value: !asBoolean(operand, expr.operand.span) };
+      const negate = (q: Quantity): Quantity => ({ ...q, si: -q.si, ...(q.im ? { im: -q.im } : {}) });
+      if (operand.type === 'vector') return expr.operator === '-' ? { type: 'vector', items: operand.items.map(negate) } : operand;
       const q = asComplex(operand, expr.operand.span);
-      return expr.operator === '-' ? { ...q, si: -q.si, ...(q.im ? { im: -q.im } : {}) } : q;
+      return expr.operator === '-' ? negate(q) : q;
     }
     case 'binary':
       return evaluateBinary(expr.operator, expr.left, expr.right, expr.span, ctx);
@@ -87,7 +89,33 @@ function evaluateRaw(expr: Expr, ctx: EvalContext): Value {
     }
     case 'member':
       return memberOf(evaluate(expr.object, ctx), expr.name, expr.span, expr.object.span, ctx);
+    case 'vector':
+      return vectorOf(expr, ctx);
+    case 'index': {
+      const object = evaluate(expr.object, ctx);
+      if (object.type !== 'vector') return fail('E-TYPE', expr.object.span, { expected: 'vector', found: object.type === 'quantity' ? 'number' : object.type });
+      const index = asQuantity(evaluate(expr.index, ctx), expr.index.span);
+      if (!isDimensionless(index.dim) || !Number.isInteger(index.si) || index.si < 1 || index.si > object.items.length) {
+        fail('E-INDEX', expr.index.span, { index: index.si, length: object.items.length });
+      }
+      return object.items[index.si - 1]!;
+    }
   }
+}
+
+/** [a, b, c]: all items of one dimension; a series among them is spread. */
+function vectorOf(expr: Extract<Expr, { kind: 'vector' }>, ctx: EvalContext): VectorValue {
+  const items: Quantity[] = [];
+  for (const item of expr.items) {
+    const value = evaluate(item, ctx);
+    const parts = value.type === 'vector' ? value.items : [asQuantity(value, item.span)];
+    for (const q of parts) {
+      const first = items[0];
+      if (first && !sameDim(first.dim, q.dim)) fail('E-UNIT-MISMATCH', item.span, { operator: ',', left: baseUnitSymbol(first.dim), right: baseUnitSymbol(q.dim) });
+      items.push(q);
+    }
+  }
+  return { type: 'vector', items };
 }
 
 /** A block is called with its inputs by name: Prosty_nosnik(L: 6 m, q: 10 kN/m). */
@@ -117,6 +145,29 @@ function evaluateBinary(op: BinaryOperator, leftExpr: Expr, rightExpr: Expr, spa
     return { type: 'boolean', value: op === '==' ? equal : !equal };
   }
 
+  if (left.type === 'vector' || right.type === 'vector') return vectorBinary(op, left, right, leftExpr, rightExpr, span, ctx);
+  return arithmetic(op, left, right, leftExpr, rightExpr, span, ctx);
+}
+
+/**
+ * Series item by item: [1, 2] + [3, 4], or with one number: CF / (1 + i)^t.
+ * Series have no order, so they are not compared.
+ */
+function vectorBinary(op: BinaryOperator, left: Value, right: Value, leftExpr: Expr, rightExpr: Expr, span: Span, ctx: EvalContext): VectorValue {
+  if (!['+', '-', '*', '/', '^'].includes(op)) fail('E-TYPE', span, { expected: 'number', found: 'vector' });
+  const length = (v: Value) => (v.type === 'vector' ? v.items.length : undefined);
+  const n = length(left) ?? length(right)!;
+  if (left.type === 'vector' && right.type === 'vector' && left.items.length !== right.items.length) {
+    fail('E-VECTOR-LENGTH', span, { left: left.items.length, right: right.items.length });
+  }
+  const at = (v: Value, i: number): Value => (v.type === 'vector' ? v.items[i]! : v);
+  const items: Quantity[] = [];
+  for (let i = 0; i < n; i++) items.push(asComplex(arithmetic(op, at(left, i), at(right, i), leftExpr, rightExpr, span, ctx), span));
+  return { type: 'vector', items };
+}
+
+/** Two numbers (real or complex): + − · / ^ and comparisons. */
+function arithmetic(op: BinaryOperator, left: Value, right: Value, leftExpr: Expr, rightExpr: Expr, span: Span, ctx: EvalContext): Value {
   const a = asComplex(left, leftExpr.span);
   const b = asComplex(right, rightExpr.span);
   if (a.im || b.im) return complexBinary(op, a, b, leftExpr, rightExpr, span, ctx);

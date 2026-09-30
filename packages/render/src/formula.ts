@@ -65,6 +65,8 @@ export function hasSubstitutableParts(expr: Expr): boolean {
       return hasSubstitutableParts(expr.left) || hasSubstitutableParts(expr.right);
     case 'call':
       return expr.args.some(hasSubstitutableParts);
+    case 'vector':
+      return expr.items.some(hasSubstitutableParts);
     default:
       return false;
   }
@@ -111,6 +113,20 @@ function render(expr: Expr, o: FormulaOptions): Rendered {
       return renderBinary(expr.operator, render(expr.left, o), render(expr.right, o));
     case 'call':
       return renderCall(expr, o);
+    case 'vector': {
+      const parts: MathNode[] = [];
+      expr.items.forEach((item, i) => {
+        if (i > 0) parts.push(mo(o.argumentSeparator));
+        parts.push(render(item, o).node);
+      });
+      return { node: row(mo('['), ...parts, mo(']')), prec: ATOM };
+    }
+    case 'index': {
+      // CF[1] is written CF₁.
+      const object = render(expr.object, o);
+      const index = render(expr.index, o).node;
+      return { node: expr.object.kind === 'variable' ? sub(object.node, index) : row(wrap(object, object.prec < ATOM), mo('['), index, mo(']')), prec: ATOM };
+    }
   }
 }
 

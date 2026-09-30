@@ -149,6 +149,13 @@ function formatValue(r: StatementResult, options: ReportOptions): string {
   if (r.value?.type === 'row') return `${r.value.label}   (${r.value.table.name})`;
   if (r.value?.type === 'table') return r.value.table.name;
   if (r.value?.type === 'record') return `${r.value.block} ${r.value.version}`;
+  if (r.displayList) {
+    const sep = formatNumber(1.5, options.catalog).includes(',') ? '; ' : ', ';
+    const unit = r.displayList[0]?.unit ?? '';
+    const numbers = r.displayList.map((d) => formatDisplay(d.value, '', options));
+    const shown = numbers.length > 12 ? [...numbers.slice(0, 5), '…', ...numbers.slice(-2)] : numbers;
+    return `[${shown.join(sep)}]${unit ? ` ${unit}` : ''}${numbers.length > 12 ? ` (${numbers.length})` : ''}`;
+  }
   return '?';
 }
 

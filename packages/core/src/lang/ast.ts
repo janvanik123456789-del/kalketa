@@ -32,7 +32,11 @@ export type Expr =
   | { readonly kind: 'unary'; readonly operator: '-' | '+' | 'not'; readonly operand: Expr; readonly span: Span }
   | { readonly kind: 'binary'; readonly operator: BinaryOperator; readonly left: Expr; readonly right: Expr; readonly span: Span }
   | { readonly kind: 'call'; readonly name: string; readonly args: readonly Expr[]; readonly named: readonly NamedArg[]; readonly span: Span }
-  | { readonly kind: 'member'; readonly object: Expr; readonly name: string; readonly span: Span };
+  | { readonly kind: 'member'; readonly object: Expr; readonly name: string; readonly span: Span }
+  /** A series: [100, 120, 150] (a series inside is spread: [−I, savings]). */
+  | { readonly kind: 'vector'; readonly items: readonly Expr[]; readonly span: Span }
+  /** An item of a series, counted from 1: CF[1]. */
+  | { readonly kind: 'index'; readonly object: Expr; readonly index: Expr; readonly span: Span };
 
 /** One equation of a solve statement: left == right. */
 export interface Equation {

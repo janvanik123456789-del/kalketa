@@ -53,6 +53,10 @@ export const DIAGNOSTIC_SEVERITY = {
   'E-NOT-FINITE': 'error',
   'E-COMPLEX-ARG': 'error',
   'E-COMPLEX-ORDER': 'error',
+  'E-INDEX': 'error',
+  'E-VECTOR-LENGTH': 'error',
+  'E-RANGE-SIZE': 'error',
+  'E-NO-PAYBACK': 'error',
 
   // Functions
   'E-FUNC-UNKNOWN': 'error',

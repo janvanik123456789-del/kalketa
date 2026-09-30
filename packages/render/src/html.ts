@@ -9,12 +9,28 @@
 
 import { t, type Catalog } from '@calccanvas/i18n';
 import { esc, toMathML, type MathNode } from './math.js';
+import { NOTES_CSS } from './notes.js';
 import type { EquationLine, Message, PrintBlock, PrintDocument, SummaryRow } from './model.js';
 
 export interface HtmlOptions {
   readonly catalog: Catalog;
   readonly paper?: 'A4' | 'A3' | 'Letter';
   readonly orientation?: 'portrait' | 'landscape';
+  /** Appendices after the sheet, already rendered (see appendixHtml). */
+  readonly appendices?: readonly string[];
+}
+
+/** An appendix: its own page(s) with a title, e.g. "Příloha A: Zatížení". */
+export function appendixHtml(title: string, body: string): string {
+  return `<section class="appendix">
+<h1 class="appendix-title">${esc(title)}</h1>
+${body}
+</section>`;
+}
+
+function imported(values: readonly string[] | undefined, catalog: Catalog): string {
+  if (!values?.length) return '';
+  return `\n<div class="imported">${esc(t(catalog, 'print.imported'))}: ${values.map(esc).join(', ')}</div>`;
 }
 
 const SEVERITY_MARK: Readonly<Record<Message['severity'], string>> = { error: '✕', warning: '⚠', info: 'ℹ' };
@@ -43,6 +59,7 @@ ${doc.summary?.position === 'top' ? summary : ''}
 ${body}
 </main>
 ${doc.summary?.position === 'bottom' ? summary : ''}
+${(options.appendices ?? []).join('\n')}
 </body>
 </html>
 `;
@@ -66,7 +83,7 @@ export function renderBlockHtml(block: PrintBlock, catalog: Catalog, options: Bl
       return '<div class="page-break"></div>';
     case 'equation':
       return `<section class="block equation" data-line="${block.line}">
-${equationTable(block.lines, block.comment, options.defineOperator ?? '=')}${messages(block.messages)}
+${equationTable(block.lines, block.comment, options.defineOperator ?? '=')}${imported(block.imported, catalog)}${messages(block.messages)}
 </section>`;
     case 'selection': {
       const condition = block.condition
@@ -169,7 +186,10 @@ function stylesheet(doc: PrintDocument, options: HtmlOptions): string {
 :root { color-scheme: light; }
 body { font: 10.5pt/1.45 "Segoe UI", "Helvetica Neue", Arial, sans-serif; color: #111; background: #fff; margin: 0 auto; max-width: 180mm; padding: 8mm 0; }
 @media screen { body { padding: 12mm 10mm; } }
-${BLOCK_CSS}`;
+${BLOCK_CSS}
+${NOTES_CSS}
+.appendix { break-before: page; }
+.appendix-title { font-size: 15pt; margin: 0 0 4mm; }`;
 }
 
 /** Styles of blocks and the summary; used by print and by the editor. */
@@ -209,4 +229,5 @@ ul.messages .info { color: #555; }
 .summary .num { text-align: right; white-space: nowrap; }
 .summary tr.failed td { font-weight: 700; }
 .summary .some-failed { font-weight: 700; color: #b71c1c; }
-.page-break { break-after: page; }`;
+.page-break { break-after: page; }
+.imported { font-size: 9pt; color: #1f4f8f; margin: 0.3mm 0 0 18mm; }`;

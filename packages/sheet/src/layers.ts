@@ -169,3 +169,26 @@ function usedLayers(main: SheetResult, aux: ReadonlyMap<string, SheetResult>): S
 export function allDiagnostics(evaluation: LayerEvaluation): Diagnostic[] {
   return [...evaluation.main.diagnostics, ...[...evaluation.aux.values()].flatMap((r) => r.diagnostics)];
 }
+
+export type AppendixLayer =
+  | { readonly kind: 'calc'; readonly layer: string; readonly name: string; readonly result: SheetResult }
+  | { readonly kind: 'notes'; readonly layer: string; readonly name: string; readonly text: string };
+
+/**
+ * Layers printed after the sheet, in layer order: those marked as appendix,
+ * and every auxiliary calculation the sheet uses (the checker must see it).
+ * `nameOf` names layers that have no name of their own (default layers).
+ */
+export function appendixLayers(layers: readonly Layer[], evaluation: LayerEvaluation, nameOf: (layer: Layer) => string): AppendixLayer[] {
+  return layers.flatMap((layer): AppendixLayer[] => {
+    const name = layer.name ?? nameOf(layer);
+    if (layer.kind === 'calc' && (layer.appendix || evaluation.used.has(layer.id))) {
+      const result = evaluation.aux.get(layer.id);
+      return result ? [{ kind: 'calc', layer: layer.id, name, result }] : [];
+    }
+    if ((layer.kind === 'sources' || layer.kind === 'ai') && layer.appendix) {
+      return [{ kind: 'notes', layer: layer.id, name, text: layer.text ?? '' }];
+    }
+    return [];
+  });
+}

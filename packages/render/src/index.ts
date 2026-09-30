@@ -7,14 +7,21 @@
  */
 
 import type { SheetResult, UnitRegistry } from '@calccanvas/core';
-import type { Catalog } from '@calccanvas/i18n';
-import { renderHtml } from './html.js';
+import { t, type Catalog } from '@calccanvas/i18n';
+import { appendixHtml, renderBlockHtml, renderHtml } from './html.js';
 import { buildPrintDocument } from './model.js';
+import { notesHtml } from './notes.js';
 
 export * from './math.js';
 export { formulaNode, hasSubstitutableParts, type FormulaOptions } from './formula.js';
 export * from './model.js';
-export { renderHtml, renderBlockHtml, renderSummary, BLOCK_CSS, type HtmlOptions, type BlockHtmlOptions } from './html.js';
+export { renderHtml, renderBlockHtml, renderSummary, appendixHtml, BLOCK_CSS, type HtmlOptions, type BlockHtmlOptions } from './html.js';
+export { notesHtml, notesImages, NOTES_CSS, type NotesOptions } from './notes.js';
+
+/** A layer printed after the sheet. */
+export type PrintAppendix =
+  | { readonly kind: 'calc'; readonly layer: string; readonly name: string; readonly result: SheetResult }
+  | { readonly kind: 'notes'; readonly layer: string; readonly name: string; readonly text: string };
 
 export interface PrintSettings {
   readonly catalog: Catalog;
@@ -26,21 +33,46 @@ export interface PrintSettings {
   readonly orientation?: 'portrait' | 'landscape';
   readonly summary?: 'top' | 'bottom' | 'none';
   readonly resolveFile?: (path: string) => string | undefined;
+  /** Layers printed after the sheet, in this order, as Appendix A, B, … */
+  readonly appendices?: readonly PrintAppendix[];
+}
+
+/** "Příloha A: Zatížení" for the n-th appendix. */
+export function appendixTitle(catalog: Catalog, index: number, name: string): string {
+  return t(catalog, 'print.appendix', { letter: String.fromCharCode(65 + (index % 26)), name });
 }
 
 /** Evaluated sheet -> printable HTML page. */
 export function printHtml(result: SheetResult, settings: PrintSettings): string {
-  const doc = buildPrintDocument(result, {
+  const appendices = settings.appendices ?? [];
+  const titles = new Map(appendices.map((a, i) => [a.layer, appendixTitle(settings.catalog, i, a.name)]));
+  const common = {
     catalog: settings.catalog,
     registry: settings.registry,
     digits: settings.digits ?? 4,
+    importSource: (layer: string) => titles.get(layer),
+    ...(settings.resolveFile ? { resolveFile: settings.resolveFile } : {}),
+  };
+  const doc = buildPrintDocument(result, {
+    ...common,
     title: settings.title,
     ...(settings.subtitle !== undefined ? { subtitle: settings.subtitle } : {}),
     ...(settings.summary !== undefined ? { summary: settings.summary } : {}),
-    ...(settings.resolveFile ? { resolveFile: settings.resolveFile } : {}),
   });
+
+  const rendered = appendices.map((appendix) => {
+    const title = titles.get(appendix.layer)!;
+    if (appendix.kind === 'notes') {
+      const notes = notesHtml(appendix.text, settings.resolveFile ? { resolveFile: settings.resolveFile } : {});
+      return appendixHtml(title, `<div class="notes">${notes}</div>`);
+    }
+    const inner = buildPrintDocument(appendix.result, { ...common, title: appendix.name, summary: 'none' });
+    return appendixHtml(title, inner.blocks.map((b) => renderBlockHtml(b, settings.catalog)).join('\n'));
+  });
+
   return renderHtml(doc, {
     catalog: settings.catalog,
+    appendices: rendered,
     ...(settings.paper ? { paper: settings.paper } : {}),
     ...(settings.orientation ? { orientation: settings.orientation } : {}),
   });

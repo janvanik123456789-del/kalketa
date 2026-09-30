@@ -24,8 +24,8 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { basename, extname, join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { defaultRegistry, traceName, type Diagnostic } from '@calccanvas/core';
-import { catalogFor, formatDiagnostic, t, type Catalog } from '@calccanvas/i18n';
-import { evaluateDocument, FILE_EXTENSION, importTable, parseCsv, readWorkbook } from '@calccanvas/sheet';
+import { catalogFor, formatDiagnostic, t, type Catalog, type UiKey } from '@calccanvas/i18n';
+import { appendixLayers, evaluateDocument, FILE_EXTENSION, importTable, parseCsv, readWorkbook } from '@calccanvas/sheet';
 import { openSheet, saveSheetFile, writeFolder, writeTable } from './files.js';
 import { htmlToPdf } from './pdf.js';
 import { formatReport, formatTrace } from './report.js';
@@ -86,7 +86,7 @@ async function main(argv: string[]): Promise<number> {
     printDiagnostics(opened.diagnostics, catalog);
     const doc = opened.document;
     if (!doc) return 1;
-    const { result, tableDiagnostics } = evaluateDocument(doc, defaultRegistry);
+    const { result, evaluation, tableDiagnostics } = evaluateDocument(doc, defaultRegistry);
     printDiagnostics(tableDiagnostics, catalog);
     // The printout is in the sheet's language; --lang only applies when it has none.
     const printCatalog = doc.manifest.language ? catalogFor(doc.manifest.language) : catalog;
@@ -99,6 +99,7 @@ async function main(argv: string[]): Promise<number> {
       paper: doc.layout.paper,
       orientation: doc.layout.orientation,
       resolveFile: (path) => dataUri(path, doc.files.get(path)),
+      appendices: appendixLayers(doc.layers, evaluation, (layer) => t(printCatalog, `layer.kind.${layer.kind}` as UiKey)),
     });
     const htmlOut = values.out ?? file.slice(0, -extname(file).length) + '.html';
     writeFileSync(htmlOut, html);

@@ -38,6 +38,8 @@ export interface PrintOptions {
   readonly resolveFile?: (path: string) => string | undefined;
   /** The editor shows everything: @hide does not hide there. */
   readonly showHidden?: boolean;
+  /** Where values from another layer are shown to come from, e.g. "Příloha A: Zatížení". */
+  readonly importSource?: (layerId: string) => string | undefined;
 }
 
 export type LineRole = 'given' | 'formula' | 'substitution' | 'result';
@@ -57,7 +59,15 @@ export interface Message {
 export type PrintBlock =
   | { readonly kind: 'heading'; readonly line: number; readonly level: number; readonly text: string }
   | { readonly kind: 'paragraph'; readonly line: number; readonly text: string }
-  | { readonly kind: 'equation'; readonly line: number; readonly lines: readonly EquationLine[]; readonly comment?: string; readonly messages: readonly Message[] }
+  | {
+      readonly kind: 'equation';
+      readonly line: number;
+      readonly lines: readonly EquationLine[];
+      readonly comment?: string;
+      /** Values taken from auxiliary calculations, e.g. "q (Příloha A: Zatížení)". */
+      readonly imported?: readonly string[];
+      readonly messages: readonly Message[];
+    }
   | {
       readonly kind: 'selection';
       readonly line: number;
@@ -164,7 +174,8 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
           blocks.push({ kind: 'error', line: s.span.line, source: sourceText(result, s.span), messages });
           break;
         }
-        blocks.push({ kind: 'equation', line: s.span.line, lines, ...(s.comment ? { comment: s.comment } : {}), messages });
+        const imported = importedValues(r, result, options);
+        blocks.push({ kind: 'equation', line: s.span.line, lines, ...(s.comment ? { comment: s.comment } : {}), ...(imported.length ? { imported } : {}), messages });
         break;
       }
       case 'check': {
@@ -271,6 +282,16 @@ function substitution(result: SheetResult, quantityNode: (q: Quantity) => MathNo
     }
     return undefined;
   };
+}
+
+/** Names this statement takes from auxiliary calculation layers, with their source. */
+function importedValues(r: StatementResult, result: SheetResult, options: PrintOptions): string[] {
+  return r.dependencies.flatMap((name) => {
+    const imported = result.imports.get(name);
+    if (!imported) return [];
+    const source = options.importSource?.(imported.layer) ?? imported.layerName;
+    return [`${name} (${source})`];
+  });
 }
 
 function selectionBlock(r: StatementResult, result: SheetResult, options: PrintOptions, formulaOptions: FormulaOptions, messages: Message[]): PrintBlock {

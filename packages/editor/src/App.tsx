@@ -496,7 +496,36 @@ export function App() {
   return (
     <div className="app">
       <MenuBar menus={menus} commands={commands} />
-      <ToolbarFrame layout={toolbars} commands={commands} catalog={ui} onLayout={changeToolbars}>
+      <ToolbarFrame
+        layout={toolbars}
+        commands={commands}
+        catalog={ui}
+        onLayout={changeToolbars}
+        aside={
+          !tableEditor && pane !== 'none' && (
+            <>
+              <div className="pane-divider" onMouseDown={startResize} role="separator" aria-orientation="vertical" />
+              <div className="side-pane" style={{ width: paneWidth }}>
+                {pane === 'details' ? (
+                  <Inspector
+                    result={result}
+                    statement={selected}
+                    catalog={ui}
+                    decimalComma={decimalComma}
+                    onSelect={(statement) => {
+                      setSelected(statement);
+                      const line = result.statements[statement]?.statement.span.line;
+                      document.querySelector(`.row[data-line="${line}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                    }}
+                  />
+                ) : (
+                  <TablesView doc={doc} catalog={ui} diagnostics={tableDiagnostics} resolveFile={resolveFile} onChange={(next) => change(next)} compact />
+                )}
+              </div>
+            </>
+          )
+        }
+      >
         {notice && (
           <div className="notice" role="status" onClick={() => setNotice(undefined)}>
             {notice}
@@ -542,28 +571,6 @@ export function App() {
                 decimalComma={decimalComma}
               />
             </main>
-            {pane !== 'none' && (
-              <>
-                <div className="pane-divider" onMouseDown={startResize} role="separator" aria-orientation="vertical" />
-                <div className="side-pane" style={{ width: paneWidth }}>
-                  {pane === 'details' ? (
-                    <Inspector
-                      result={result}
-                      statement={selected}
-                      catalog={ui}
-                      decimalComma={decimalComma}
-                      onSelect={(statement) => {
-                        setSelected(statement);
-                        const line = result.statements[statement]?.statement.span.line;
-                        document.querySelector(`.row[data-line="${line}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
-                      }}
-                    />
-                  ) : (
-                    <TablesView doc={doc} catalog={ui} diagnostics={tableDiagnostics} resolveFile={resolveFile} onChange={(next) => change(next)} compact />
-                  )}
-                </div>
-              </>
-            )}
           </div>
         )}
       </ToolbarFrame>

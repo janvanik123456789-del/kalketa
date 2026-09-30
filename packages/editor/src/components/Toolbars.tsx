@@ -27,13 +27,15 @@ export interface ToolbarFrameProps {
   readonly commands: ReadonlyMap<string, Command>;
   readonly catalog: Catalog;
   onLayout(layout: ToolbarLayout): void;
-  /** The working area, surrounded by the four docks. */
+  /** The working area (the sheet), surrounded by the four docks. */
   readonly children: ReactNode;
+  /** Shown to the right of the right dock (the side panel), so side toolbars hug the sheet. */
+  readonly aside?: ReactNode;
 }
 
-const DOCK_SNAP_PX = 28;
+const DOCK_SNAP_PX = 40;
 
-export function ToolbarFrame({ layout, commands, catalog, onLayout, children }: ToolbarFrameProps) {
+export function ToolbarFrame({ layout, commands, catalog, onLayout, children, aside }: ToolbarFrameProps) {
   const [drag, setDrag] = useState<Drag | undefined>();
   const docks = { top: useRef<HTMLDivElement>(null), bottom: useRef<HTMLDivElement>(null), left: useRef<HTMLDivElement>(null), right: useRef<HTMLDivElement>(null) };
 
@@ -113,6 +115,7 @@ export function ToolbarFrame({ layout, commands, catalog, onLayout, children }: 
         {renderDock('left')}
         <div className="toolbar-center">{children}</div>
         {renderDock('right')}
+        {aside}
       </div>
       {renderDock('bottom')}
       {floating(layout).map((toolbar) => (

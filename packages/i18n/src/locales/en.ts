@@ -203,6 +203,7 @@ export const en: Catalog = {
     'toolbar.view': 'View',
     'toolbar.operators': 'Operators',
     'toolbar.greek': 'Greek letters',
+    'toolbar.reshape': 'Drag to change the shape: sideways for more or fewer columns, down or up for more or fewer rows',
     'dlg.ok': 'OK',
     'dlg.cancel': 'Cancel',
     'dlg.close': 'Close',

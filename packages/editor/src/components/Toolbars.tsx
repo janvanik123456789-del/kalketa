@@ -192,15 +192,28 @@ interface BoxProps {
 }
 
 /**
- * Starts reshaping: each CELL_PX the pointer moves sideways adds or removes a
- * column. `direction` is -1 for toolbars docked at the right edge, which grow
- * towards the sheet (to the left).
+ * Starts reshaping from a corner handle, like resizing a window: dragging
+ * sideways adds or removes columns, dragging down or up adds or removes rows
+ * (the toolbar gets taller and narrower). Whichever way the pointer moved
+ * more wins. `direction` is -1 for toolbars docked at the right edge, which
+ * grow towards the sheet (to the left).
  */
-function startReshape(e: ReactMouseEvent, columns: number, direction: 1 | -1, onColumns: (columns: number) => void): void {
+function startReshape(e: ReactMouseEvent, items: readonly string[], columns: number, direction: 1 | -1, onColumns: (columns: number) => void): void {
   e.preventDefault();
   e.stopPropagation();
   const startX = e.clientX;
-  const move = (m: MouseEvent) => onColumns(columns + Math.round(((m.clientX - startX) * direction) / CELL_PX));
+  const startY = e.clientY;
+  const count = Math.max(1, items.filter((i) => i !== SEPARATOR).length);
+  const rows = Math.ceil(count / columns);
+  const move = (m: MouseEvent) => {
+    const dx = (m.clientX - startX) * direction;
+    const dy = m.clientY - startY;
+    if (Math.abs(dx) >= Math.abs(dy)) {
+      onColumns(columns + Math.round(dx / CELL_PX));
+    } else {
+      onColumns(Math.ceil(count / Math.max(1, rows + Math.round(dy / CELL_PX))));
+    }
+  };
   const up = () => {
     window.removeEventListener('mousemove', move);
     window.removeEventListener('mouseup', up);
@@ -218,7 +231,13 @@ function ToolbarBox({ toolbar, commands, catalog, edge, ghost, onGrip, onColumns
     <div ref={box} className={`toolbar-box${vertical ? ' vertical' : ''}${ghost ? ' ghost' : ''}`} data-toolbar={toolbar.id} role="toolbar" aria-label={toolbarName(toolbar, catalog)}>
       <span className="toolbar-grip" title={toolbarName(toolbar, catalog)} onMouseDown={(e) => box.current && onGrip(e, box.current)} />
       <Buttons items={toolbar.items} commands={commands} {...(columns !== undefined && columns > 1 ? { columns } : {})} />
-      {columns !== undefined && <span className="reshape-handle bottom" onMouseDown={(e) => startReshape(e, columns, edge === 'right' ? -1 : 1, onColumns)} />}
+      {columns !== undefined && (
+        <span
+          className={`reshape-handle corner${edge === 'right' ? ' mirrored' : ''}`}
+          title={t(catalog, 'toolbar.reshape')}
+          onMouseDown={(e) => startReshape(e, toolbar.items, columns, edge === 'right' ? -1 : 1, onColumns)}
+        />
+      )}
     </div>
   );
 }
@@ -239,7 +258,7 @@ function FloatingToolbar({ toolbar, commands, catalog, ghost, onGrip, onColumns,
       <div className="float-buttons">
         <Buttons items={toolbar.items} commands={commands} columns={columns} />
       </div>
-      <span className="reshape-handle corner" onMouseDown={(e) => startReshape(e, columns, 1, onColumns)} />
+      <span className="reshape-handle corner" title={t(catalog, 'toolbar.reshape')} onMouseDown={(e) => startReshape(e, toolbar.items, columns, 1, onColumns)} />
     </div>
   );
 }

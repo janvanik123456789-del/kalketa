@@ -203,6 +203,7 @@ export const cs: Catalog = {
     'toolbar.view': 'Zobrazení',
     'toolbar.operators': 'Operátory',
     'toolbar.greek': 'Řecká písmena',
+    'toolbar.reshape': 'Tažením změníte tvar: do strany více či méně sloupců, dolů či nahoru více či méně řádků',
     'dlg.ok': 'OK',
     'dlg.cancel': 'Storno',
     'dlg.close': 'Zavřít',

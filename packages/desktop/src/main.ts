@@ -8,7 +8,9 @@
  */
 
 import { app, BrowserWindow, dialog, ipcMain, Menu, shell, type IpcMainInvokeEvent } from 'electron';
+import { mkdtempSync } from 'node:fs';
 import { readFile, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { basename, dirname, extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -32,6 +34,10 @@ let window: BrowserWindow | undefined;
 const closeGuard: CloseGuard = { dirty: false, message: '', discard: 'Discard', cancel: 'Cancel' };
 /** File given on the command line or by double click, before the window was ready. */
 let pendingOpen: string | undefined = sheetArgument(process.argv);
+
+// The smoke test runs with a fresh profile, so it neither sees nor changes the
+// user's toolbars, language or recent files.
+if (process.env['CALCCANVAS_SMOKE_TEST']) app.setPath('userData', mkdtempSync(join(tmpdir(), 'calccanvas-smoke-')));
 
 function editorEntry(): { url?: string; file?: string } {
   const devUrl = process.env['CALCCANVAS_DEV_URL'];
@@ -213,16 +219,51 @@ async function runSmokeTest(pdfPath: string): Promise<void> {
       toolbars: document.querySelectorAll('.toolbar-box').length,
       language: document.documentElement.lang
     })`)) as { bridge: boolean; rows: number; summary: number; math: number; errors: string; menus: number; toolbars: number; language: string };
+    const reshapedColumns = await reshapeWithRealMouse();
     const printer = await printWindow('<!doctype html><meta charset="utf-8"><h1>CalcCanvas</h1><math><mfrac><mi>a</mi><mn>2</mn></mfrac></math>');
     const pdf = await printer.webContents.printToPDF({ preferCSSPageSize: true });
     printer.destroy();
     await writeFile(pdfPath, pdf);
-    ok = state.bridge && state.menus === 6 && state.toolbars > 0 && state.rows > 10 && state.summary > 0 && state.math > 0 && pdf.length > 1000;
-    console.log(JSON.stringify({ ok, ...state, pdfBytes: pdf.length }));
+    ok =
+      state.bridge && state.menus === 6 && state.toolbars > 0 && state.rows > 10 && state.summary > 0 && state.math > 0 && reshapedColumns === 3 && pdf.length > 1000;
+    console.log(JSON.stringify({ ok, ...state, reshapedColumns, pdfBytes: pdf.length }));
   } catch (err) {
     console.log(JSON.stringify({ ok: false, error: (err as Error).message }));
   }
   app.exit(ok ? 0 : 1);
+}
+
+/**
+ * Drags the corner handle of the Operators toolbar 70 px to the right with
+ * real mouse events (not synthetic DOM events, which once hid a misplaced
+ * handle). Returns the number of columns afterwards; 1 + round(70 / 30) = 3.
+ */
+async function reshapeWithRealMouse(): Promise<number> {
+  const contents = window!.webContents;
+  const handle = (await contents.executeJavaScript(`(() => {
+    window.__smokeEvents = [];
+    for (const type of ['mousedown', 'mousemove', 'mouseup']) {
+      window.addEventListener(type, (e) => window.__smokeEvents.push(type + ':' + (e.target.className || e.target.tagName)), true);
+    }
+    const r = document.querySelector('.toolbar-box[data-toolbar="operators"] .reshape-handle.corner').getBoundingClientRect();
+    return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+  })()`)) as { x: number; y: number };
+  contents.sendInputEvent({ type: 'mouseDown', x: handle.x, y: handle.y, button: 'left', clickCount: 1 });
+  for (let dx = 10; dx <= 70; dx += 10) {
+    contents.sendInputEvent({ type: 'mouseMove', x: handle.x + dx, y: handle.y, modifiers: ['leftbuttondown'] });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  contents.sendInputEvent({ type: 'mouseUp', x: handle.x + 70, y: handle.y, button: 'left', clickCount: 1 });
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  const columns = (await contents.executeJavaScript(`(() => {
+    const grid = document.querySelector('.toolbar-box[data-toolbar="operators"] .button-grid');
+    return grid ? grid.style.gridTemplateColumns.match(/repeat\\((\\d+)/)?.[1] * 1 : 1;
+  })()`)) as number;
+  if (columns !== 3) {
+    // Which elements received the mouse tells whether the handle was hit at all.
+    console.log(JSON.stringify({ handle, events: await contents.executeJavaScript('[...new Set(window.__smokeEvents)]') }));
+  }
+  return columns;
 }
 
 /** Hidden window with the printout; no preload, no scripts needed. */

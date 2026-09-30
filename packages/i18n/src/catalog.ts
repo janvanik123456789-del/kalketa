@@ -140,6 +140,7 @@ export const UI_KEYS = [
   'toolbar.view',
   'toolbar.operators',
   'toolbar.greek',
+  'toolbar.reshape',
   'dlg.ok',
   'dlg.cancel',
   'dlg.close',

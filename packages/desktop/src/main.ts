@@ -121,7 +121,8 @@ function createWindow(options: { blank?: boolean } = {}): BrowserWindow {
   });
 
   // The editor starts in the language of the operating system (until the user picks another).
-  const lang = (app.getPreferredSystemLanguages()[0] ?? app.getLocale()).slice(0, 2);
+  // The smoke test types Czech notation (50,5; separators ";"), so it runs in Czech everywhere.
+  const lang = smokeTest ? 'cs' : (app.getPreferredSystemLanguages()[0] ?? app.getLocale()).slice(0, 2);
   const query: Record<string, string> = { lang, ...(options.blank ? { blank: '1' } : {}) };
   const entry = editorEntry();
   if (entry.url) void win.loadURL(`${entry.url}?${new URLSearchParams(query)}`);

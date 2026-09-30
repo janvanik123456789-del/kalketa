@@ -7,6 +7,25 @@ import { t, type Catalog } from '@calccanvas/i18n';
 import { isRemovable, moveLayer, updateLayer, type Layer, type LayerKind } from '@calccanvas/sheet';
 import { ask } from './Ask.js';
 
+/** Two panels side by side. Drawn, so it does not depend on the fonts of the system. */
+function BesideIcon() {
+  return (
+    <svg className="inline-icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+      <rect x="1.5" y="2.5" width="6" height="11" rx="1" fill="none" stroke="currentColor" />
+      <rect x="8.5" y="2.5" width="6" height="11" rx="1" fill="none" stroke="currentColor" />
+    </svg>
+  );
+}
+
+function LockIcon() {
+  return (
+    <svg className="inline-icon lock" viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+      <rect x="3" y="7" width="10" height="7" rx="1" fill="currentColor" />
+      <path d="M5 7V5a3 3 0 0 1 6 0v2" fill="none" stroke="currentColor" strokeWidth="1.5" />
+    </svg>
+  );
+}
+
 export const LAYER_GLYPH: Readonly<Record<LayerKind, string>> = { sheet: '▤', calc: '∑', data: '▦', ai: '✦', sources: '❝' };
 export const NEW_LAYER_KINDS = ['calc', 'data', 'sources'] as const;
 
@@ -47,7 +66,7 @@ export function LayersPane({ layers, active, catalog, used, open, nameOf, onActi
                 </button>
                 <span className="layer-actions">
                   <button type="button" title={t(catalog, 'layers.openBeside')} onClick={() => onOpenBeside(layer.id)}>
-                    ⧉
+                    <BesideIcon />
                   </button>
                   {!main && (
                     <>
@@ -157,7 +176,7 @@ export function LayerTabs({ layers, active, open, catalog, nameOf, onActivate, o
             onClick={(e) => (e.ctrlKey || e.metaKey ? onOpenBeside(layer.id) : onActivate(layer.id))}
           >
             <span className="glyph">{LAYER_GLYPH[layer.kind]}</span> {nameOf(layer)}
-            {layer.locked ? ' 🔒' : ''}
+            {layer.locked && <LockIcon />}
           </button>
         ))}
       <button type="button" className="layer-tab add" title={t(catalog, 'layers.add')} onClick={onAdd}>

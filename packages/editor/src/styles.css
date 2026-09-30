@@ -299,3 +299,6 @@ button.icon:hover { color: var(--accent); }
 .block-item button { border: 1px solid transparent; background: none; border-radius: 3px; cursor: pointer; padding: 0 5px; }
 .block-item button:hover { border-color: #b9c3d0; background: #f4f6f9; }
 .muted.small { font-size: 12px; margin: 0; }
+
+.inline-icon { vertical-align: -2px; }
+.inline-icon.lock { margin-left: 4px; color: var(--muted); }

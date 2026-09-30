@@ -94,7 +94,8 @@ function render(expr: Expr, o: FormulaOptions): Rendered {
     case 'boolean':
       return { node: mtext(expr.value ? o.booleans.true : o.booleans.false), prec: ATOM };
     case 'variable':
-      return { node: expr.name === 'π' ? mi('π') : nameNode(expr.name), prec: ATOM };
+      // Constants are upright (ISO 80000-2): π, not the italic 𝜋.
+      return { node: expr.name === 'π' ? mi('π', true) : nameNode(expr.name), prec: ATOM };
     case 'member':
       // The value of a block names its use: N1.M_max -> M_max(N1).
       if (expr.object.kind === 'variable' && o.recordNames?.has(expr.object.name)) {

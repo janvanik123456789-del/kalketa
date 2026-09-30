@@ -6,8 +6,9 @@
  * .calc container will use (F4).
  */
 
-import { buildTable, evaluateSheet, type Diagnostic, type SheetResult, type Table, type TableBuildResult, type TableSchema, type UnitRegistry } from '@calccanvas/core';
+import { buildTable, type Diagnostic, type SheetResult, type Table, type TableBuildResult, type TableSchema, type UnitRegistry } from '@calccanvas/core';
 import type { SheetDocument } from './container.js';
+import { LayerSessions, type LayerEvaluation } from './layers.js';
 import { parseCsv, writeCsv } from './csv.js';
 import { inferTable } from './infer.js';
 import type { WorkbookImage } from './excel.js';
@@ -16,6 +17,7 @@ export { parseCsv, writeCsv, detectDelimiter } from './csv.js';
 export { inferTable, splitHeader, toIdentifier, type InferResult } from './infer.js';
 export { readWorkbook, type WorkbookImage, type WorkbookSheet } from './excel.js';
 export * from './container.js';
+export * from './layers.js';
 
 /** Files of one stored table, relative to the sheet folder. */
 export interface TableFiles {
@@ -108,7 +110,11 @@ export function documentTables(doc: SheetDocument, registry: UnitRegistry): { ta
 }
 
 /** Evaluates a document with its own tables. Table problems come first in the diagnostics. */
-export function evaluateDocument(doc: SheetDocument, registry: UnitRegistry): { result: SheetResult; tableDiagnostics: Diagnostic[] } {
+export function evaluateDocument(
+  doc: SheetDocument,
+  registry: UnitRegistry,
+): { result: SheetResult; evaluation: LayerEvaluation; tableDiagnostics: Diagnostic[] } {
   const { tables, diagnostics } = documentTables(doc, registry);
-  return { result: evaluateSheet(doc.source, { tables, registry }), tableDiagnostics: diagnostics };
+  const evaluation = new LayerSessions(registry).evaluate(doc.source, doc.layers, tables);
+  return { result: evaluation.main, evaluation, tableDiagnostics: diagnostics };
 }

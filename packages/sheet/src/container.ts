@@ -16,9 +16,11 @@
 
 import { diagnostic, NO_SPAN, type Diagnostic } from '@calccanvas/core';
 import { strFromU8, strToU8, unzipSync, zipSync, type Zippable } from 'fflate';
+import { defaultLayers, type Layer, type LayerKind } from './layers.js';
 
 export const FORMAT_ID = 'calccanvas-sheet';
-export const FORMAT_VERSION = 1;
+/** 1: sheet + tables. 2: adds layers (layers.json, layers/<id>/). Version 1 files still open. */
+export const FORMAT_VERSION = 2;
 export const FILE_EXTENSION = '.calc';
 
 export interface Manifest {
@@ -57,8 +59,10 @@ export interface SheetDocument {
   readonly layout: Layout;
   /** By table name. */
   readonly tables: ReadonlyMap<string, StoredTable>;
-  /** All other entries by path (images/..., ai/..., unknown future content). */
+  /** All other entries by path (images/..., layers/<id>/images/..., unknown future content). */
   readonly files: ReadonlyMap<string, Uint8Array>;
+  /** Layers in order; the first is always the printed sheet (its text is `source`). */
+  readonly layers: readonly Layer[];
 }
 
 export interface ReadResult {
@@ -71,6 +75,16 @@ const MANIFEST = 'manifest.json';
 const SHEET = 'sheet.cc';
 const LAYOUT = 'layout.json';
 const TABLE_ENTRY = /^tables\/([^/]+)\/(schema\.json|data\.csv)$/;
+const LAYERS = 'layers.json';
+/** Text of a layer: a calculation or notes. */
+const LAYER_TEXT = /^layers\/([^/]+)\/(sheet\.cc|notes\.md)$/;
+const LAYER_KINDS: readonly LayerKind[] = ['sheet', 'calc', 'data', 'ai', 'sources'];
+
+function layerTextPath(layer: Layer): string | undefined {
+  if (layer.kind === 'calc') return `layers/${layer.id}/sheet.cc`;
+  if (layer.kind === 'ai' || layer.kind === 'sources') return `layers/${layer.id}/notes.md`;
+  return undefined;
+}
 
 /** Fixed timestamp for every entry (the ZIP epoch), for reproducible bytes. */
 const ZIP_MTIME = new Date('1980-01-01T00:00:00Z');
@@ -83,12 +97,13 @@ export function newDocument(title: string, source = '', now = new Date()): Sheet
     layout: DEFAULT_LAYOUT,
     tables: new Map(),
     files: new Map(),
+    layers: defaultLayers(),
   };
 }
 
 /** Serializes a document; the content hash in the manifest is recomputed. */
 export async function writeSheetFile(doc: SheetDocument): Promise<Uint8Array> {
-  const entries = contentEntries(doc);
+  const entries = sheetEntries(doc);
   const manifest: Manifest = { ...doc.manifest, format: FORMAT_ID, formatVersion: FORMAT_VERSION, contentHash: await hashEntries(entries) };
 
   const zippable: Zippable = {};
@@ -98,18 +113,25 @@ export async function writeSheetFile(doc: SheetDocument): Promise<Uint8Array> {
 }
 
 export async function readSheetFile(bytes: Uint8Array): Promise<ReadResult> {
+  let raw: Record<string, Uint8Array>;
+  try {
+    raw = unzipSync(bytes);
+  } catch {
+    return { diagnostics: [diagnostic('E-FILE-INVALID', NO_SPAN, { problem: 'not-zip', value: '' })] };
+  }
+  return readSheetEntries(raw);
+}
+
+/**
+ * Reads a document from its entries (path -> bytes), as found in the ZIP
+ * container or in an unpacked folder.
+ */
+export async function readSheetEntries(raw: Readonly<Record<string, Uint8Array>>): Promise<ReadResult> {
   const diagnostics: Diagnostic[] = [];
   const invalid = (problem: string, value = '') => {
     diagnostics.push(diagnostic('E-FILE-INVALID', NO_SPAN, { problem, value }));
     return { diagnostics };
   };
-
-  let raw: Record<string, Uint8Array>;
-  try {
-    raw = unzipSync(bytes);
-  } catch {
-    return invalid('not-zip');
-  }
 
   for (const path of Object.keys(raw)) {
     if (!isSafePath(path)) return invalid('path', path);
@@ -141,10 +163,26 @@ export async function readSheetFile(bytes: Uint8Array): Promise<ReadResult> {
     }
   }
 
+  // Version 1 files have no layer list: they get the three default layers.
+  let layers: Layer[] = defaultLayers();
+  if (raw[LAYERS]) {
+    try {
+      layers = parseLayers(JSON.parse(strFromU8(raw[LAYERS])));
+    } catch {
+      return invalid('json', LAYERS);
+    }
+  }
+  const layerTexts = new Map<string, string>();
+
   const tableParts = new Map<string, { schemaJson?: string; dataCsv?: string }>();
   const files = new Map<string, Uint8Array>();
   for (const [path, data] of Object.entries(raw)) {
-    if (path === MANIFEST || path === SHEET || path === LAYOUT || path.endsWith('/')) continue;
+    if (path === MANIFEST || path === SHEET || path === LAYOUT || path === LAYERS || path.endsWith('/')) continue;
+    const text = LAYER_TEXT.exec(path);
+    if (text && layers.some((l) => l.id === text[1] && layerTextPath(l) === path)) {
+      layerTexts.set(text[1]!, strFromU8(data));
+      continue;
+    }
     const match = TABLE_ENTRY.exec(path);
     if (match) {
       const part = tableParts.get(match[1]!) ?? {};
@@ -161,19 +199,26 @@ export async function readSheetFile(bytes: Uint8Array): Promise<ReadResult> {
     tables.set(name, { schemaJson: part.schemaJson, dataCsv: part.dataCsv });
   }
 
-  const document: SheetDocument = { manifest, source: strFromU8(sheetBytes), layout, tables, files };
-  if (manifest.contentHash && manifest.contentHash !== (await hashEntries(contentEntries(document)))) {
+  layers = layers.map((l) => (layerTextPath(l) ? { ...l, text: layerTexts.get(l.id) ?? '' } : l));
+  const document: SheetDocument = { manifest, source: strFromU8(sheetBytes), layout, tables, files, layers };
+  if (manifest.contentHash && manifest.contentHash !== (await hashEntries(sheetEntries(document)))) {
     diagnostics.push(diagnostic('W-FILE-HASH', NO_SPAN));
   }
   return { document, diagnostics };
 }
 
-/** Entries other than the manifest, in a stable order. */
-function contentEntries(doc: SheetDocument): [string, Uint8Array][] {
+/** Entries other than the manifest, in a stable order: what an unpacked folder holds. */
+export function sheetEntries(doc: SheetDocument): [string, Uint8Array][] {
   const entries: [string, Uint8Array][] = [
     [SHEET, strToU8(doc.source)],
     [LAYOUT, json(doc.layout)],
+    // The list of layers without their texts; each text is its own entry below.
+    [LAYERS, json(doc.layers.map(layerInfo))],
   ];
+  for (const layer of doc.layers) {
+    const path = layerTextPath(layer);
+    if (path) entries.push([path, strToU8(layer.text ?? '')]);
+  }
   for (const name of [...doc.tables.keys()].sort()) {
     const table = doc.tables.get(name)!;
     entries.push([`tables/${name}/schema.json`, strToU8(table.schemaJson)]);
@@ -207,4 +252,41 @@ export function isSafePath(path: string): boolean {
 
 function json(value: unknown): Uint8Array {
   return strToU8(JSON.stringify(value, null, 2) + '\n');
+}
+
+/** A layer without its text, keys always in the same order (stable bytes and content hash). */
+function layerInfo(l: Layer): Omit<Layer, 'text'> {
+  return {
+    id: l.id,
+    kind: l.kind,
+    ...(l.name !== undefined ? { name: l.name } : {}),
+    visible: l.visible,
+    locked: l.locked,
+    appendix: l.appendix,
+    ...(l.tables !== undefined ? { tables: l.tables } : {}),
+  };
+}
+
+/** Validates the stored layer list; the printed sheet is always first and unique. */
+function parseLayers(value: unknown): Layer[] {
+  if (!Array.isArray(value)) throw new Error('layers');
+  const ids = new Set<string>();
+  const layers = value.map((raw): Layer => {
+    const l = raw as Partial<Layer>;
+    if (typeof l.id !== 'string' || !/^[A-Za-z0-9_-]+$/.test(l.id) || ids.has(l.id)) throw new Error('layer id');
+    if (!LAYER_KINDS.includes(l.kind as LayerKind)) throw new Error('layer kind');
+    ids.add(l.id);
+    return {
+      id: l.id,
+      kind: l.kind!,
+      ...(typeof l.name === 'string' ? { name: l.name } : {}),
+      visible: l.visible !== false,
+      locked: l.locked === true,
+      appendix: l.appendix === true,
+      ...(l.kind === 'data' ? { tables: Array.isArray(l.tables) ? l.tables.filter((t): t is string => typeof t === 'string') : [] } : {}),
+    };
+  });
+  const sheets = layers.filter((l) => l.kind === 'sheet');
+  if (sheets.length !== 1 || layers[0]?.kind !== 'sheet') throw new Error('sheet layer');
+  return layers;
 }

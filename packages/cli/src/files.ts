@@ -7,27 +7,28 @@
  *   tables/<Name>/schema.json
  *   tables/<Name>/data.csv
  *   images/...
+ *   layers.json, layers/<id>/  further layers (auxiliary calculations, notes)
  */
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, extname, join, relative, sep } from 'node:path';
 import type { Diagnostic } from '@calccanvas/core';
 import {
-  DEFAULT_LAYOUT,
   FILE_EXTENSION,
   isSafePath,
   newDocument,
+  readSheetEntries,
   readSheetFile,
+  sheetEntries,
   tableFolder,
   writeSheetFile,
-  type Layout,
   type SheetDocument,
-  type StoredTable,
   type TableFiles,
 } from '@calccanvas/sheet';
 
-/** Folders next to a sheet whose files travel with it. */
-const CARRIED_FOLDERS = ['images', 'ai'];
+/** Files and folders next to a sheet that belong to it. */
+const CARRIED_FILES = ['layout.json', 'layers.json'];
+const CARRIED_FOLDERS = ['tables', 'images', 'layers', 'ai'];
 
 export interface OpenResult {
   readonly document?: SheetDocument;
@@ -39,57 +40,39 @@ export async function openSheet(path: string): Promise<OpenResult> {
   if (extname(path).toLowerCase() === FILE_EXTENSION) {
     return readSheetFile(new Uint8Array(readFileSync(path)));
   }
-  return { document: readFolder(path), diagnostics: [] };
+  return readFolder(path);
 }
 
-/** Builds a document from a .cc file and the tables and images next to it. */
-export function readFolder(sheetFile: string): SheetDocument {
+/**
+ * Reads a .cc file and what belongs to it in its folder. The folder holds the
+ * same entries as the .calc container, except that the sheet is named after
+ * the file and there is no manifest.
+ */
+export async function readFolder(sheetFile: string): Promise<OpenResult> {
   const dir = dirname(sheetFile);
-  const created = statSync(sheetFile).birthtime;
-  const base = newDocument(basename(sheetFile, extname(sheetFile)), readFileSync(sheetFile, 'utf8'), created);
-
-  const tables = new Map<string, StoredTable>();
-  const tablesDir = join(dir, 'tables');
-  if (existsSync(tablesDir)) {
-    for (const entry of readdirSync(tablesDir, { withFileTypes: true })) {
-      const folder = join(tablesDir, entry.name);
-      if (!entry.isDirectory() || !existsSync(join(folder, 'schema.json')) || !existsSync(join(folder, 'data.csv'))) continue;
-      tables.set(entry.name, {
-        schemaJson: readFileSync(join(folder, 'schema.json'), 'utf8'),
-        dataCsv: readFileSync(join(folder, 'data.csv'), 'utf8'),
-      });
-    }
+  const entries: Record<string, Uint8Array> = { 'sheet.cc': new Uint8Array(readFileSync(sheetFile)) };
+  for (const name of CARRIED_FILES) {
+    if (existsSync(join(dir, name))) entries[name] = new Uint8Array(readFileSync(join(dir, name)));
   }
-
-  const files = new Map<string, Uint8Array>();
   for (const folder of CARRIED_FOLDERS) {
-    for (const file of listFiles(join(dir, folder))) {
-      files.set(relative(dir, file).split(sep).join('/'), new Uint8Array(readFileSync(file)));
-    }
+    for (const file of listFiles(join(dir, folder))) entries[relative(dir, file).split(sep).join('/')] = new Uint8Array(readFileSync(file));
   }
-
-  const layoutPath = join(dir, 'layout.json');
-  const layout: Layout = existsSync(layoutPath) ? { ...DEFAULT_LAYOUT, ...JSON.parse(readFileSync(layoutPath, 'utf8')) } : DEFAULT_LAYOUT;
-  return { ...base, manifest: { ...base.manifest, modified: new Date().toISOString() }, layout, tables, files };
+  const manifest = newDocument(basename(sheetFile, extname(sheetFile)), '', statSync(sheetFile).birthtime).manifest;
+  entries['manifest.json'] = new TextEncoder().encode(JSON.stringify({ ...manifest, modified: new Date().toISOString() }));
+  return readSheetEntries(entries);
 }
 
 /** Writes a document as a folder; returns the written paths. */
 export function writeFolder(doc: SheetDocument, dir: string, sheetName: string): string[] {
   const written: string[] = [];
-  const put = (path: string, data: string | Uint8Array) => {
-    if (!isSafePath(path)) throw new Error(`Unsafe path: ${path}`);
-    const target = join(dir, path);
+  for (const [path, data] of sheetEntries(doc)) {
+    const name = path === 'sheet.cc' ? `${sheetName}.cc` : path;
+    if (!isSafePath(name)) throw new Error(`Unsafe path: ${name}`);
+    const target = join(dir, name);
     mkdirSync(dirname(target), { recursive: true });
     writeFileSync(target, data);
     written.push(target);
-  };
-  put(`${sheetName}.cc`, doc.source);
-  put('layout.json', JSON.stringify(doc.layout, null, 2) + '\n');
-  for (const [name, table] of doc.tables) {
-    put(`${tableFolder(name)}/schema.json`, table.schemaJson);
-    put(`${tableFolder(name)}/data.csv`, table.dataCsv);
   }
-  for (const [path, data] of doc.files) put(path, data);
   return written;
 }
 

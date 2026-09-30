@@ -1,9 +1,12 @@
 /**
  * Typing helpers of the row editor (docs/03-jazyk.md, ch. 2):
- * "=" typed right after a new name at the start of a line becomes ":=".
+ * "=" typed right after a new name at the start of a line becomes ":=", also
+ * after the head of a new function: "A_kruh(d) =" becomes "A_kruh(d) :=".
  */
 
-const LEADING_NAME = /^\s*([\p{L}][\p{L}\p{Nd}\p{M}_]*)\s*$/u;
+const NAME = String.raw`[\p{L}][\p{L}\p{Nd}\p{M}_]*`;
+const PARAMS = String.raw`\(\s*${NAME}(?:\s*[,;]\s*${NAME})*\s*\)`;
+const LEADING_NAME = new RegExp(String.raw`^\s*(${NAME})\s*(?:${PARAMS})?\s*$`, 'u');
 
 export interface Edit {
   readonly text: string;
@@ -27,5 +30,5 @@ export function defineShortcut(text: string, cursor: number, isDefinedElsewhere:
 
 /** Name defined by a line of text, if it is a definition. */
 export function definedName(text: string): string | undefined {
-  return /^\s*([\p{L}][\p{L}\p{Nd}\p{M}_]*)\s*:=/u.exec(text)?.[1];
+  return new RegExp(String.raw`^\s*(${NAME})\s*(?:${PARAMS})?\s*:=`, 'u').exec(text)?.[1];
 }

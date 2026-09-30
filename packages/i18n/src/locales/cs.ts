@@ -28,6 +28,8 @@ export const cs: Catalog = {
     'E-FUNC-UNKNOWN': 'Neznámá funkce „{function}“.',
     'E-FUNC-ARITY': '„{function}“ má {expected} argument(y), zadáno {found}.',
     'E-FUNC-ARG-DIM': 'Argument funkce „{function}“ musí být bezrozměrný, ne {dim}.',
+    'E-NOT-FUNCTION': '„{name}“ není funkce.',
+    'E-RECURSION': 'Funkce „{function}“ nesmí volat sama sebe.',
     'E-DOMAIN': 'Argument je mimo definiční obor funkce „{function}“.',
     'E-NAMED-ARG': 'Argument „{argument}“ funkce „{function}“: {problem}.',
     'E-TABLE-SCHEMA': 'Tabulka „{table}“: neplatný údaj ({problem}) „{value}“.',

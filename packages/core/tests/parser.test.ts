@@ -146,7 +146,21 @@ describe('parser: statements', () => {
 
   it('reports features of later phases as unsupported', () => {
     expect(parseCodes('solve x: x² == 4')).toEqual(['E-UNSUPPORTED']);
-    expect(parseCodes('f(x) := x²')).toEqual(['E-UNSUPPORTED']);
+  });
+
+  it('parses function definitions; parameters are names even where they spell units', () => {
+    const result = parse('f(m, t) := m/t + 2 s', { isUnit });
+    expect(result.diagnostics).toEqual([]);
+    const s = result.sheet.statements[0]!;
+    expect(s).toMatchObject({ kind: 'definition', name: 'f', params: [{ name: 'm' }, { name: 't' }] });
+    expect(s.kind === 'definition' && s.expr).toMatchObject({
+      left: { kind: 'binary', left: { kind: 'variable', name: 'm' }, right: { kind: 'variable', name: 't' } },
+      right: { kind: 'number', unit: { name: 's' } },
+    });
+    // Outside the function m is the metre again.
+    expect(parse('f(m) := m\nx := m', { isUnit }).sheet.statements[1]).toMatchObject({ expr: { kind: 'unit' } });
+    expect(parseCodes('f(x, and) := x')).toEqual(['E-RESERVED']);
+    expect(parseCodes('f(x := x')).toEqual(['E-SYNTAX']);
   });
 
   it('recovers after a syntax error and keeps parsing', () => {

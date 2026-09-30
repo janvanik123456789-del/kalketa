@@ -23,7 +23,7 @@ import {
 } from '@calccanvas/core';
 import { formatDiagnostic, formatNumber, t, type Catalog } from '@calccanvas/i18n';
 import { formulaNode, hasSubstitutableParts, THIN_SPACE, type FormulaOptions, type Substituted } from './formula.js';
-import { mn, mo, mtext, mu, nameNode, row, sup, type MathNode } from './math.js';
+import { mn, mo, mtext, mu, nameNode, paren, row, sup, type MathNode } from './math.js';
 
 export interface PrintOptions {
   readonly catalog: Catalog;
@@ -169,7 +169,10 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
           break;
         }
         const substitute = substitution(result, quantityNode, formulaOptions());
-        const lines = equationLines(r, s.expr, s.kind === 'definition' ? nameNode(s.name) : undefined, mode, formulaOptions, substitute, numberFormat(digits));
+        // A user function shows as "A_kruh(d) = π·d²/4": its parameters have no values to substitute.
+        const params = s.kind === 'definition' ? s.params : undefined;
+        const lhs = s.kind !== 'definition' ? undefined : params ? functionHead(s.name, params, formulaOptions().argumentSeparator) : nameNode(s.name);
+        const lines = equationLines(r, s.expr, lhs, params ? { ...mode, substitution: false } : mode, formulaOptions, substitute, numberFormat(digits));
         if (r.status === 'error' && lines.length <= 1 && s.kind === 'display') {
           blocks.push({ kind: 'error', line: s.span.line, source: sourceText(result, s.span), messages });
           break;
@@ -364,6 +367,12 @@ export function valueNode(value: number, unit: string, format: (value: number) =
   const e = /^(.*)E(-?\d+)$/.exec(text);
   const number = e ? row(mn(e[1]!), mo('·'), sup(mn('10'), mn(e[2]!.replace('-', '−')))) : mn(text.replace('-', '−'));
   return unit ? row(number, THIN_SPACE, mu(unit)) : number;
+}
+
+/** "A_kruh(d)" or "σ(M; W)". */
+function functionHead(name: string, params: readonly { readonly name: string }[], separator: string): MathNode {
+  const inner = params.flatMap((p, i) => (i > 0 ? [mo(separator), nameNode(p.name)] : [nameNode(p.name)]));
+  return row(nameNode(name), paren(row(...inner)));
 }
 
 function otherValueNode(value: Value): MathNode | undefined {

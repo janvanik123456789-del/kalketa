@@ -15,7 +15,7 @@
  */
 
 import { CalcError, diagnostic, fail, type Diagnostic, type Span } from '../diagnostics.js';
-import type { BinaryOperator, Expr, NamedArg, Sheet, Statement, UnitExpr } from './ast.js';
+import type { BinaryOperator, Expr, NamedArg, Param, Sheet, Statement, UnitExpr } from './ast.js';
 import { tokenize, type Token, type TokenType } from './lexer.js';
 
 export interface ParseOptions {
@@ -124,10 +124,12 @@ class LineParser {
     };
   }
 
-  /** Name on the left of ":=", if the line looks like a definition. */
+  /** Name on the left of ":=", if the line looks like a definition (of a value or a function). */
   definitionName(): string | undefined {
     const [first, second] = this.tokens;
-    return first?.type === 'ident' && second?.type === ':=' ? first.text : undefined;
+    if (first?.type !== 'ident') return undefined;
+    if (second?.type === ':=') return first.text;
+    return second?.type === '(' && this.tokens.some((t) => t.type === ':=') ? first.text : undefined;
   }
 
   parseStatement(): Statement {
@@ -160,17 +162,26 @@ class LineParser {
 
   private parseDefinition(defineAt: number, lineSpan: Span): Statement {
     const nameToken = this.peek();
-    if (defineAt !== 1 || nameToken.type !== 'ident') {
-      if (nameToken.type === 'ident' && this.peek(1).type === '(') {
-        fail('E-UNSUPPORTED', nameToken.span, { feature: 'function-definition' });
-      }
+    const isFunction = nameToken.type === 'ident' && this.peek(1).type === '(';
+    if (nameToken.type !== 'ident' || (defineAt !== 1 && !isFunction)) {
       fail('E-SYNTAX', nameToken.span, { expected: 'name', found: nameToken.text });
     }
     if (KEYWORDS.has(nameToken.text)) fail('E-RESERVED', nameToken.span, { name: nameToken.text });
     this.next();
-    this.next(); // :=
-    const expr = this.parseExpression();
-    const target = this.parseTarget();
+    const params = isFunction ? this.parseParams() : undefined;
+    this.expect(':=', ':=');
+
+    // Parameters are names inside the body, even where they spell a unit (m, t, s).
+    const added = (params ?? []).map((p) => p.name).filter((name) => !this.defined.has(name));
+    added.forEach((name) => this.defined.add(name));
+    let expr: Expr;
+    let target: UnitExpr | undefined;
+    try {
+      expr = this.parseExpression();
+      target = this.parseTarget();
+    } finally {
+      added.forEach((name) => this.defined.delete(name));
+    }
     this.defined.add(nameToken.text);
     this.expectEnd();
     return {
@@ -179,8 +190,25 @@ class LineParser {
       nameSpan: nameToken.span,
       expr,
       ...(target ? { target } : {}),
+      ...(params ? { params } : {}),
       span: lineSpan,
     };
+  }
+
+  /** "(d)" or "(M, W)" after the name of a function being defined. */
+  private parseParams(): Param[] {
+    this.expect('(', '(');
+    const params: Param[] = [];
+    if (this.peek().type !== ')') {
+      do {
+        const token = this.expect('ident', 'parameter');
+        if (KEYWORDS.has(token.text)) fail('E-RESERVED', token.span, { name: token.text });
+        if (params.some((p) => p.name === token.text)) fail('E-REDEFINED', token.span, { name: token.text });
+        params.push({ name: token.text, span: token.span });
+      } while (this.peek().type === ',' && this.next());
+    }
+    this.expect(')', ')');
+    return params;
   }
 
   /** check ["label":] condition [source "reference"] */

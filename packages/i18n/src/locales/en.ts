@@ -28,6 +28,8 @@ export const en: Catalog = {
     'E-FUNC-UNKNOWN': 'Unknown function “{function}”.',
     'E-FUNC-ARITY': '“{function}” takes {expected} argument(s), got {found}.',
     'E-FUNC-ARG-DIM': 'The argument of “{function}” must be dimensionless, not {dim}.',
+    'E-NOT-FUNCTION': '“{name}” is not a function.',
+    'E-RECURSION': 'The function “{function}” must not call itself.',
     'E-DOMAIN': 'The argument is outside the domain of “{function}”.',
     'E-NAMED-ARG': 'Argument “{argument}” of “{function}”: {problem}.',
     'E-TABLE-SCHEMA': 'Table “{table}”: invalid {problem} “{value}”.',

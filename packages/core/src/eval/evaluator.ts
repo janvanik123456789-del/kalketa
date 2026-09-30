@@ -7,15 +7,16 @@
 
 import { diagnostic, fail, type Diagnostic, type Span } from '../diagnostics.js';
 import type { BinaryOperator, Expr } from '../lang/ast.js';
-import { isDimensionless, multiplyDims, divideDims, powerDim, sameDim } from '../units/dimension.js';
+import { isDimensionless, multiplyDims, divideDims, powerDim, sameDim, superscript } from '../units/dimension.js';
 import { baseUnitSymbol } from '../units/display.js';
 import type { UnitRegistry } from '../units/registry.js';
 import { resolveUnit, type ResolvedUnit } from '../units/unitExpr.js';
 import type { TableRead } from '../tables/table.js';
 import { quantity, type Quantity, type Value } from '../values/value.js';
 import { asBoolean, asQuantity } from './coerce.js';
-import { BUILTIN_CONSTANTS, callFunction } from './functions.js';
+import { BUILTIN_CONSTANTS, callFunction, FUNCTION_NAMES } from './functions.js';
 import { callTableFunction, memberOf, TABLE_FUNCTIONS } from './tables.js';
+import { applyFunction, lookupFunction } from './userFunctions.js';
 
 export interface EvalContext {
   readonly registry: UnitRegistry;
@@ -70,6 +71,7 @@ function evaluateRaw(expr: Expr, ctx: EvalContext): Value {
       return evaluateBinary(expr.operator, expr.left, expr.right, expr.span, ctx);
     case 'call': {
       if (TABLE_FUNCTIONS.has(expr.name)) return callTableFunction(expr, ctx, evaluate);
+      if (!FUNCTION_NAMES.includes(expr.name)) return applyFunction(lookupFunction(expr, ctx), expr, ctx, evaluate);
       const extra = expr.named[0];
       if (extra) fail('E-NAMED-ARG', extra.nameSpan, { function: expr.name, argument: extra.name, problem: 'unknown' });
       return callFunction(expr, (arg) => evaluate(arg, ctx));
@@ -118,7 +120,7 @@ function evaluateBinary(op: BinaryOperator, leftExpr: Expr, rightExpr: Expr, spa
     case '^': {
       if (!isDimensionless(b.dim)) fail('E-POWER-DIM', rightExpr.span, { dim: baseUnitSymbol(b.dim) });
       warnOnAbsoluteTemperature(a, leftExpr.span, ctx);
-      return quantity(a.si ** b.si, powerDim(a.dim, b.si));
+      return quantity(a.si ** b.si, powerDim(a.dim, b.si), poweredHint(a, b.si));
     }
     default:
       return compare(op, a, b, span);
@@ -145,6 +147,13 @@ function addSubtract(op: '+' | '-', a: Quantity, b: Quantity, span: Span): Quant
   // Keep the unit of the first operand that has one (Calcpad: 1.23 m + 35 cm = 1.58 m).
   const hint = a.hint ?? b.hint;
   return quantity(si, a.dim, hint ? { hint } : {});
+}
+
+/** A whole power keeps the unit: (20 mm)² is 400 mm², (2 kN/m)² is 4 (kN/m)². */
+function poweredHint(a: Quantity, exponent: number): { hint?: ResolvedUnit } {
+  if (!a.hint || a.absolute || !Number.isInteger(exponent) || exponent === 0 || isDimensionless(a.dim)) return {};
+  const symbol = /[·/]/.test(a.hint.symbol) ? `(${a.hint.symbol})` : a.hint.symbol;
+  return { hint: { symbol: `${symbol}${superscript(exponent)}`, factor: a.hint.factor ** exponent, dim: powerDim(a.hint.dim, exponent) } };
 }
 
 function deltaHint(hint: ResolvedUnit | undefined): { hint?: ResolvedUnit } {

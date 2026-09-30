@@ -319,7 +319,7 @@ async function runSmokeTest(pdfPath: string): Promise<void> {
     await writeFile(pdfPath, pdf);
     ok =
       state.bridge && state.menus === 7 && state.toolbars > 0 && state.rows > 10 && state.summary > 0 && state.math > 0 && reshapedColumns === 3 && pdf.length > 1000 &&
-      layers.tabs === 5 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.aiReadOnly && layers.multi && layers.mainHidden && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.q.includes('16,73');
+      layers.tabs === 5 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.aiReadOnly && layers.multi && layers.functions && layers.mainHidden && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.q.includes('16,73');
     console.log(JSON.stringify({ ok, ...state, reshapedColumns, layers, pdfBytes: pdf.length }));
   } catch (err) {
     console.log(JSON.stringify({ ok: false, error: (err as Error).message }));
@@ -505,7 +505,24 @@ async function layersWithRealInput(picture: string) {
   }
   other?.destroy();
   const multi = second[0] === 2 && second[1] === 3 && firstKept && documents === 1 && newWindow && oneCopy !== false;
-  return { ...state, citations, aiReadOnly, split, mainHidden, second, firstKept, documents, newWindow, oneCopy, multi };
+
+  // A user function typed like a person would: "=" after the head becomes ":=".
+  await clickOn('.doc-tab-new');
+  await clickOn('.page .row');
+  await pressKey('End');
+  await pressKey('Enter');
+  await typeText('A_kruh(d) = π·d²/4');
+  await pressKey('Enter');
+  await typeText('A_kruh(20 mm) =');
+  await clickOn('.sheet-scroll');
+  await pause(300);
+  const userFunction = (await contents.executeJavaScript(`({
+    errors: Number(document.querySelector('.statusbar span')?.textContent.replace(/\\D+/g, '') ?? -1),
+    rows: [...document.querySelectorAll('.page .row')].map((r) => r.textContent.replace(/\\s+/g, ' ').trim()).filter(Boolean),
+  })`)) as { errors: number; rows: string[] };
+  await takePicture(picture.replace(/[.]png$/, '-function.png'));
+  const functions = userFunction.errors === 0 && userFunction.rows.some((r) => r.includes('314,2'));
+  return { ...state, citations, aiReadOnly, split, mainHidden, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions };
 }
 
 /**

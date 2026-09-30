@@ -111,6 +111,15 @@ describe('quantities', () => {
     expectValue('L := 250 cm\n2/L', 0.8, '1/m');
   });
 
+  it('keeps the unit through whole powers', () => {
+    expectValue('(20 mm)²', 400, 'mm²');
+    expectValue('d := 20 mm\nπ·d²/4', Math.PI * 100, 'mm²');
+    expectValue('A_kruh(d) := π·d²/4\nA_kruh(20 mm)', Math.PI * 100, 'mm²');
+    expectValue('(2 kN/m)^2', 4, '(kN/m)²');
+    expectValue('L := 5 m\nL^-1', 0.2, 'm⁻¹');
+    expectValue('L := 5 m\nL^0.5', Math.sqrt(5), 'm^0.5');
+  });
+
   it('shows preferred SI units for computed results', () => {
     expectValue('2 kg · 3 m/s²', 6, 'N');
     expectValue('10 N · 2 m / 4 s', 5, 'W');

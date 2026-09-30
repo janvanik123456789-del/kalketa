@@ -12,6 +12,7 @@ import { CalcError, diagnostic, type Diagnostic, type Span } from '../diagnostic
 import { asBoolean, asQuantity } from '../eval/coerce.js';
 import { compare, evaluate, type EvalContext } from '../eval/evaluator.js';
 import { BUILTIN_CONSTANTS } from '../eval/functions.js';
+import { defineFunction, isBuiltinFunction } from '../eval/userFunctions.js';
 import type { BinaryOperator, Sheet, Statement } from '../lang/ast.js';
 import { parse } from '../lang/parser.js';
 import type { Table, TableRead } from '../tables/table.js';
@@ -148,8 +149,10 @@ export class SheetSession {
       }
 
       if (statement.kind === 'definition') {
-        const clash =
-          statement.name in BUILTIN_CONSTANTS ? 'E-RESERVED' : env.has(statement.name) || tables.has(statement.name) || imports.has(statement.name) ? 'E-REDEFINED' : undefined;
+        const reserved = statement.name in BUILTIN_CONSTANTS || (statement.params !== undefined && isBuiltinFunction(statement.name));
+        const clash = reserved
+          ? 'E-RESERVED'
+          : env.has(statement.name) || tables.has(statement.name) || imports.has(statement.name) ? 'E-REDEFINED' : undefined;
         if (clash) {
           const d = diagnostic(clash, statement.nameSpan, { name: statement.name });
           results.push({ statement, status: 'error', ...none, diagnostics: [...parseDiagnostics, d] });
@@ -238,6 +241,11 @@ export class SheetSession {
           tableReads,
           diagnostics: ctx.warnings,
         };
+      }
+
+      if (statement.kind === 'definition' && statement.params) {
+        const fn = defineFunction({ ...statement, params: statement.params }, ctx);
+        return { status: 'ok', value: fn, dependencies, tableReads, diagnostics: ctx.warnings };
       }
 
       let value = evaluate(statement.expr, ctx);

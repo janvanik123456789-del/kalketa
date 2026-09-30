@@ -195,8 +195,20 @@ Goniometrické a logaritmické funkce **vyžadují bezrozměrný argument** (neb
 
 ```text
 A_kruh(d) := π·d²/4
-A := A_kruh(20 mm)
+A := A_kruh(20 mm)          ' 314,2 mm²
+σ(M, W) := M/W              ' česky: σ(M; W) := M/W
 ```
+
+*Upřesněno při implementaci F7:*
+- Funkce je hodnota listu. Při definici si zapamatuje hodnoty, které její tělo čte shora (např. `E`). Platí tak pravidlo „shora dolů“: funkce vidí jen to, co je nad ní, a nesmí volat sama sebe (chyba E-RECURSION).
+- Když se změní hodnota, kterou funkce čte, nebo její tělo, přepočte se funkce i všechna volání.
+- Parametry jsou v těle funkce jména, i když se píší jako jednotka (`m`, `t`, `s`, `d`). Mimo funkci je `m` zase metr.
+- Jednotky se kontrolují až při volání: `A_kruh(20 mm)` dá mm², sečtení metrů a sekund v těle je chyba u volání.
+- Funkci jde předat jako argument: `pouzij(g, x) := g(x)`.
+- Jména vestavěných funkcí (`sqrt`, `pick`, …) jsou vyhrazená (E-RESERVED).
+- V editoru napsané „=“ za hlavičkou nové funkce (`A_kruh(d) =`) se změní na „:=“.
+- V tisku se definice ukáže jako vzorec bez dosazení a výsledku, hlavička česky s „;“: `σ(M; W)`.
+- Celá mocnina zachová jednotku, se kterou hodnota přišla: `(20 mm)²` je 400 mm², ne 0,0004 m².
 
 ### 7.3 Podmíněná hodnota
 

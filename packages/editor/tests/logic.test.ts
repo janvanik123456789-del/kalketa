@@ -115,6 +115,12 @@ describe('":=" shortcut', () => {
   it('turns "=" after a new name into ":="', () => {
     expect(defineShortcut('L', 1, none)).toEqual({ text: 'L := ', cursor: 5 });
     expect(defineShortcut('  M_Ed ', 7, none)).toEqual({ text: '  M_Ed := ', cursor: 10 });
+    // The head of a new function, with "," or ";" between parameters.
+    expect(defineShortcut('A_kruh(d)', 9, none)).toEqual({ text: 'A_kruh(d) := ', cursor: 13 });
+    expect(defineShortcut('σ(M; W) ', 8, none)).toEqual({ text: 'σ(M; W) := ', cursor: 11 });
+    // A call with values asks for the result.
+    expect(defineShortcut('A_kruh(20 mm)', 13, none)).toBeUndefined();
+    expect(definedName('σ(M, W) := M/W')).toBe('σ');
     expect(defineShortcut('q12 kN/m', 1, none)).toEqual({ text: 'q := 12 kN/m', cursor: 5 });
   });
 

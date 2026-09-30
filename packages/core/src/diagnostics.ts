@@ -58,6 +58,8 @@ export const DIAGNOSTIC_SEVERITY = {
   'E-FUNC-ARG-DIM': 'error',
   'E-DOMAIN': 'error',
   'E-NAMED-ARG': 'error',
+  'E-NOT-FUNCTION': 'error',
+  'E-RECURSION': 'error',
 
   // Tables
   'E-TABLE-SCHEMA': 'error',

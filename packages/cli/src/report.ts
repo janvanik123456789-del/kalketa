@@ -50,6 +50,10 @@ function formatStatement(r: StatementResult, result: SheetResult, options: Repor
       return s.text;
     case 'definition':
     case 'display': {
+      if (s.kind === 'definition' && s.params) {
+        // A user function: its definition as written.
+        return result.source.slice(s.span.offset, s.span.offset + s.span.length).replace(/\s*'.*$/, '');
+      }
       const label = s.kind === 'definition' ? `${s.name} = ` : '';
       return label + formatValue(r, options) + (s.comment ? `   ' ${s.comment}` : '');
     }

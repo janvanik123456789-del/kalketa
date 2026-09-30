@@ -6,6 +6,7 @@
  * display.
  */
 
+import type { Expr } from '../lang/ast.js';
 import type { Cell, Table } from '../tables/table.js';
 import { DIMENSIONLESS, dimKey, type Dimension } from '../units/dimension.js';
 import type { ResolvedUnit } from '../units/unitExpr.js';
@@ -54,7 +55,16 @@ export interface RowValue {
   readonly origin: RowOrigin;
 }
 
-export type Value = Quantity | BooleanValue | TextValue | TableValue | RowValue;
+/** A user function (A_kruh(d) := π·d²/4) with the values its body reads from above. */
+export interface FunctionValue {
+  readonly type: 'function';
+  readonly name: string;
+  readonly params: readonly string[];
+  readonly body: Expr;
+  readonly captured: ReadonlyMap<string, Value>;
+}
+
+export type Value = Quantity | BooleanValue | TextValue | TableValue | RowValue | FunctionValue;
 
 export function quantity(si: number, dim: Dimension = DIMENSIONLESS, extra: Partial<Pick<Quantity, 'absolute' | 'hint'>> = {}): Quantity {
   return {
@@ -79,6 +89,12 @@ export function fingerprint(value: Value): string {
       return `T:${value.table.fingerprint}`;
     case 'row':
       return `r:${value.table.fingerprint}:${value.origin.rows.join(',')}:${value.origin.weight ?? ''}`;
+    case 'function': {
+      // The body without source positions, and the values it reads.
+      const body = JSON.stringify(value.body, (key, v: unknown) => (key === 'span' || key === 'nameSpan' ? undefined : v));
+      const captured = [...value.captured].map(([name, v]) => `${name}=${fingerprint(v)}`).join(';');
+      return `f:${value.name}(${value.params.join(',')}):${body}:${captured}`;
+    }
   }
 }
 

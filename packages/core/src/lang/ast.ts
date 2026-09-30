@@ -34,6 +34,12 @@ export type Expr =
   | { readonly kind: 'call'; readonly name: string; readonly args: readonly Expr[]; readonly named: readonly NamedArg[]; readonly span: Span }
   | { readonly kind: 'member'; readonly object: Expr; readonly name: string; readonly span: Span };
 
+/** Parameter of a user function. */
+export interface Param {
+  readonly name: string;
+  readonly span: Span;
+}
+
 /** Named call argument: "by: G" in find_min(T, by: G). */
 export interface NamedArg {
   readonly name: string;
@@ -62,6 +68,8 @@ export type Statement =
       readonly nameSpan: Span;
       readonly expr: Expr;
       readonly target?: UnitExpr;
+      /** Parameters of a user function: A_kruh(d) := π·d²/4. */
+      readonly params?: readonly Param[];
     })
   | (StatementBase & { readonly kind: 'display'; readonly expr: Expr; readonly target?: UnitExpr })
   | (StatementBase & {

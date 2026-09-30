@@ -13,7 +13,7 @@ import { mkdtempSync } from 'node:fs';
 import { readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, dirname, extname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { stat } from 'node:fs/promises';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -728,8 +728,20 @@ async function layersWithRealInput(picture: string) {
   const dropped = (await contents.executeJavaScript(
     `[...document.querySelectorAll('.layer-view.active .row[data-line="3"] figcaption')].map((f) => f.textContent.replace(/\\s+/g, ' ').trim()).join('|')`,
   )) as string;
+  // A picture file copied in a file manager (Explorer and Linux file managers put its file:// URI on the clipboard).
+  const copiedFile = join(mkdtempSync(join(tmpdir(), 'calccanvas-')), 'Detail uložení.png');
+  await writeFile(copiedFile, png);
+  await clipboard.write([new ClipboardItem({ 'text/uri-list': pathToFileURL(copiedFile).href })]);
+  await clickOn('.layer-view.active .row[data-line="1"]');
+  await pressKey('V', ['control']);
+  await pause(800);
+  await clickOn('.sheet-scroll');
+  await pause(300);
+  const fileCopied = (await contents.executeJavaScript(
+    `[...document.querySelectorAll('.layer-view.active figcaption')].some((f) => f.textContent.includes('Detail uložení'))`,
+  )) as boolean;
   await takePicture(picture.replace(/[.]png$/, '-pictures.png'));
-  const pictures = pasted.img && resized && dropped === 'Obr. 1: Schéma nosníku';
+  const pictures = pasted.img && resized && dropped === 'Obr. 1: Schéma nosníku' && fileCopied;
 
   // A sheet with a block: the block is listed, its use shows the block and computes.
   const blockFile = process.env['CALCCANVAS_SMOKE_BLOCKS'];
@@ -746,7 +758,7 @@ async function layersWithRealInput(picture: string) {
     blocksOk = shown.errors === 0 && shown.text.includes('Prosty nosnik 1.2') && shown.text.includes('45');
     await takePicture(picture.replace(/[.]png$/, '-blocks.png'));
   }
-  return { ...state, newKeepsExample, citations, aiReadOnly, split, mainHidden, twoLayers, addKinds, aiDeletable, aiMenu, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, help, pasted, resized, dropped, pictures, blocksOk };
+  return { ...state, newKeepsExample, citations, aiReadOnly, split, mainHidden, twoLayers, addKinds, aiDeletable, aiMenu, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, help, pasted, resized, dropped, fileCopied, pictures, blocksOk };
 }
 
 /**

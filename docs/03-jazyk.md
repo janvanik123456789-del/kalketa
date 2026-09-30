@@ -433,6 +433,21 @@ check "Rozpočet": N_celk ≤ 2_500_000 CZK   source "zadání investora"
 
 Výchozí zobrazení pro tisk je **vzorec → dosazení → výsledek** (standard technických výpočtů, převzato z Calcpadu i UzonCalc). Pomocné výpočty jde přesunout do pracovní vrstvy, a pak se netisknou vůbec.
 
+### 11.1 Obrázky v listu
+
+Obrázek je v listu samostatný řádek zapsaný jako v Markdownu (stejně jako v poznámkách):
+
+```
+![Schéma nosníku](images/sheet/schema-nosniku.png){width=60%}
+```
+
+- Popis v hranatých závorkách je nepovinný. Obrázek s popisem se v tisku čísluje: **Obr. 1: Schéma nosníku**.
+- `{width=60%}` je šířka v procentech šířky textu, obrázek je vycentrovaný. Bez ní má obrázek svou velikost (nejvýš šířku textu).
+- Soubor obrázku je uložený **uvnitř souboru výpočtu** (`images/sheet/…`, u vrstev `layers/<id>/images/…`). Výpočet tak jde předat jako jeden soubor.
+- **Vložení:** přetažením souboru na list (obrázek se vloží za řádek pod myší), Ctrl+V (zkopírovaný obrázek, snímek obrazovky, nebo soubor obrázku zkopírovaný v Průzkumníku či ve správci souborů v Linuxu) a Vložit → Obrázek…
+- Snímek obrazovky dostane šířku podle své velikosti na obrazovce (96 dpi), nejvýš celou šířku textu. **Velikost se mění tažením za roh** vybraného obrázku; řádek se upraví sám.
+- Chybný zápis hlásí `E-PICTURE-SYNTAX`, chybějící soubor se v tisku ukáže jako červený rámeček s cestou.
+
 ---
 
 ## 12. Chyby a varování

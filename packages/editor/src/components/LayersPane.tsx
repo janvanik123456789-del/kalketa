@@ -16,14 +16,17 @@ interface PaneProps {
   readonly catalog: Catalog;
   /** Auxiliary calculations the sheet takes values from. */
   readonly used: ReadonlySet<string>;
+  /** Layers open in the workspace. */
+  readonly open: readonly string[];
   nameOf(layer: Layer): string;
   onActivate(id: string): void;
+  onOpenBeside(id: string): void;
   onChange(layers: Layer[]): void;
   onAdd(kind: (typeof NEW_LAYER_KINDS)[number]): void;
   onDelete(id: string): void;
 }
 
-export function LayersPane({ layers, active, catalog, used, nameOf, onActivate, onChange, onAdd, onDelete }: PaneProps) {
+export function LayersPane({ layers, active, catalog, used, open, nameOf, onActivate, onOpenBeside, onChange, onAdd, onDelete }: PaneProps) {
   const set = (id: string, change: Parameters<typeof updateLayer>[2]) => onChange(updateLayer(layers, id, change));
   return (
     <aside className="layers-pane">
@@ -33,14 +36,18 @@ export function LayersPane({ layers, active, catalog, used, nameOf, onActivate, 
           const main = layer.kind === 'sheet';
           const printable = layer.kind === 'calc' || layer.kind === 'sources' || layer.kind === 'ai';
           return (
-            <li key={layer.id} className={`layer-item${layer.id === active ? ' active' : ''}${layer.visible ? '' : ' hidden'}`} data-layer={layer.id}>
+            <li key={layer.id} className={`layer-item${layer.id === active ? ' active' : open.includes(layer.id) ? ' open' : ''}${layer.visible ? '' : ' hidden'}`} data-layer={layer.id}>
               <div className="layer-head">
                 <button type="button" className="layer-name" onClick={() => onActivate(layer.id)} title={t(catalog, 'layers.open')}>
                   <span className="glyph">{LAYER_GLYPH[layer.kind]}</span> {nameOf(layer)}
                   {layer.name && layer.name !== t(catalog, `layer.kind.${layer.kind}`) && <span className="kind"> · {t(catalog, `layer.kind.${layer.kind}`)}</span>}
                 </button>
-                {!main && (
-                  <span className="layer-actions">
+                <span className="layer-actions">
+                  <button type="button" title={t(catalog, 'layers.openBeside')} onClick={() => onOpenBeside(layer.id)}>
+                    ⧉
+                  </button>
+                  {!main && (
+                    <>
                     <button type="button" disabled={i <= 1} title={t(catalog, 'layers.up')} onClick={() => onChange(moveLayer(layers, layer.id, -1))}>
                       ↑
                     </button>
@@ -57,20 +64,19 @@ export function LayersPane({ layers, active, catalog, used, nameOf, onActivate, 
                     >
                       ✎
                     </button>
-                    {isRemovable(layer) && (
-                      <button type="button" title={t(catalog, 'layers.delete')} onClick={() => onDelete(layer.id)}>
-                        ✕
-                      </button>
-                    )}
-                  </span>
-                )}
+                    </>
+                  )}
+                  {isRemovable(layer) && (
+                    <button type="button" title={t(catalog, 'layers.delete')} onClick={() => onDelete(layer.id)}>
+                      ✕
+                    </button>
+                  )}
+                </span>
               </div>
               <div className="layer-flags">
-                {!main && (
-                  <label>
-                    <input type="checkbox" checked={layer.visible} onChange={(e) => set(layer.id, { visible: e.target.checked })} /> {t(catalog, 'layers.visible')}
-                  </label>
-                )}
+                <label title={main ? t(catalog, 'layers.mainHiddenHint') : undefined}>
+                  <input type="checkbox" checked={layer.visible} onChange={(e) => set(layer.id, { visible: e.target.checked })} /> {t(catalog, 'layers.visible')}
+                </label>
                 {layer.kind !== 'ai' && (
                   <label>
                     <input type="checkbox" checked={layer.locked} onChange={(e) => set(layer.id, { locked: e.target.checked })} /> {t(catalog, 'layers.locked')}
@@ -103,20 +109,30 @@ export function LayersPane({ layers, active, catalog, used, nameOf, onActivate, 
 interface TabsProps {
   readonly layers: readonly Layer[];
   readonly active: string;
+  /** Layers open in the workspace. */
+  readonly open: readonly string[];
   readonly catalog: Catalog;
   nameOf(layer: Layer): string;
   onActivate(id: string): void;
+  onOpenBeside(id: string): void;
   onAdd(): void;
 }
 
-/** Tabs of the visible layers, like sheets of a workbook. */
-export function LayerTabs({ layers, active, catalog, nameOf, onActivate, onAdd }: TabsProps) {
+/** Tabs of the visible layers, like sheets of a workbook. Ctrl+click opens one side by side. */
+export function LayerTabs({ layers, active, open, catalog, nameOf, onActivate, onOpenBeside, onAdd }: TabsProps) {
   return (
     <nav className="layer-tabs" aria-label={t(catalog, 'layers.tabs')}>
       {layers
-        .filter((l) => l.visible || l.id === active)
+        .filter((l) => l.visible || open.includes(l.id))
         .map((layer) => (
-          <button key={layer.id} type="button" className={`layer-tab${layer.id === active ? ' active' : ''}`} data-layer={layer.id} onClick={() => onActivate(layer.id)}>
+          <button
+            key={layer.id}
+            type="button"
+            className={`layer-tab${layer.id === active ? ' active' : open.includes(layer.id) ? ' open' : ''}`}
+            data-layer={layer.id}
+            title={t(catalog, 'layers.tabHint')}
+            onClick={(e) => (e.ctrlKey || e.metaKey ? onOpenBeside(layer.id) : onActivate(layer.id))}
+          >
             <span className="glyph">{LAYER_GLYPH[layer.kind]}</span> {nameOf(layer)}
             {layer.locked ? ' 🔒' : ''}
           </button>

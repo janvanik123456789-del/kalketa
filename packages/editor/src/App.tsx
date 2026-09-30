@@ -22,7 +22,7 @@ import { createTable, importTableFile, type TableChange } from './tableActions.j
 import { AboutDialog, CustomizeDialog, PropertiesDialog, SettingsDialog, ShortcutsDialog } from './components/Dialogs.js';
 import { Inspector } from './components/Inspector.js';
 import { ask, askConfirm, AskHost } from './components/Ask.js';
-import { LayersPane, LayerTabs } from './components/LayersPane.js';
+import { LAYER_GLYPH, LayersPane, LayerTabs } from './components/LayersPane.js';
 import { NotesView } from './components/NotesView.js';
 import { MenuBar, type Menu, type MenuItem } from './components/MenuBar.js';
 import { SheetView, type EditRange } from './components/SheetView.js';
@@ -41,6 +41,8 @@ const RECENT_KEY = 'calccanvas.recent';
 const RECENT_LIMIT = 8;
 const SIZE_LIMIT_KEY = 'calccanvas.sizeLimitMb';
 const DEFAULT_SIZE_LIMIT_MB = 50;
+/** Layers open side by side at most. */
+const MAX_PANES = 3;
 
 // Small remembered preferences; storage may be unavailable.
 function stored(key: string): string | null {
@@ -96,11 +98,13 @@ export function App() {
   const [zoomChoice, setZoomChoice] = useState(() => stored('calccanvas.zoom') ?? 'fit2');
   const [pane, setPane] = useState<Pane>(() => (['details', 'tables', 'layers', 'none'].includes(stored('calccanvas.pane') ?? '') ? (stored('calccanvas.pane') as Pane) : 'details'));
   const [paneWidth, setPaneWidth] = useState(() => Number(stored('calccanvas.paneWidth')) || 380);
-  const [activeId, setActiveId] = useState(MAIN_LAYER);
+  // Layers open side by side, and which of them is being worked on.
+  const [panes, setPanes] = useState<string[]>([MAIN_LAYER]);
+  const [activePane, setActivePane] = useState(0);
   const [sizeLimit, setSizeLimit] = useState(() => Number(stored(SIZE_LIMIT_KEY)) || DEFAULT_SIZE_LIMIT_MB);
   const [toolbars, setToolbars] = useState<ToolbarLayout>(() => parseLayout(stored(TOOLBARS_KEY)));
   const [scrollWidth, setScrollWidth] = useState(1000);
-  const scrollRef = useRef<HTMLElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const ui = catalogFor(language);
   // The user writes numbers the way the program language does: 50,5 in Czech.
@@ -112,18 +116,33 @@ export function App() {
   const { tables, diagnostics: tableDiagnostics } = useMemo(() => buildTables.current(doc), [doc.tables]);
   const evaluation = useMemo(() => sessions.current.evaluate(doc.source, doc.layers, tables), [doc.source, doc.layers, tables]);
 
-  // The layer being worked on. The printed sheet and auxiliary calculations
-  // are edited as pages; data layers as tables; notes as text.
-  const layer = doc.layers.find((l) => l.id === activeId) ?? doc.layers[0]!;
-  const isCalc = layer.kind === 'sheet' || layer.kind === 'calc';
-  const text = layer.kind === 'sheet' ? doc.source : (layer.text ?? '');
-  const result = (layer.kind === 'calc' ? evaluation.aux.get(layer.id) : undefined) ?? evaluation.main;
+  // Open layers side by side; the active one is being worked on. The printed
+  // sheet and auxiliary calculations are edited as pages, data layers as
+  // tables, notes as text.
+  const layerById = (id: string) => doc.layers.find((l) => l.id === id);
+  const firstVisible = (layers: readonly Layer[]) => (layers.find((l) => l.visible) ?? layers[0]!).id;
+  const openPanes = panes.filter((id) => layerById(id));
+  if (openPanes.length === 0) openPanes.push(firstVisible(doc.layers));
+  const activeIndex = Math.min(activePane, openPanes.length - 1);
+  const layer = layerById(openPanes[activeIndex]!)!;
+  const textOf = (l: Layer) => (l.kind === 'sheet' ? doc.source : (l.text ?? ''));
+  const resultOf = (l: Layer) => (l.kind === 'calc' ? evaluation.aux.get(l.id) : undefined) ?? evaluation.main;
+  const text = textOf(layer);
+  const result = resultOf(layer);
   const nameOf = (l: Layer) => layerName(l, ui);
   const layerTables = useMemo(() => tablesByLayer(doc.layers, doc.tables.keys()), [doc.layers, doc.tables]);
   const resolveFile = useCallback((path: string) => fileUri(doc, path), [doc]);
-  const print = useMemo(
-    () => buildPrintDocument(result, { catalog: printCatalog, registry: defaultRegistry, digits: doc.layout.digits, title: '', showHidden: true, resolveFile }),
-    [result, printCatalog, doc.layout.digits, resolveFile],
+  const openKey = openPanes.join('|');
+  const prints = useMemo(
+    () =>
+      new Map(
+        openPanes.flatMap((id) => {
+          const l = layerById(id);
+          if (l?.kind !== 'sheet' && l?.kind !== 'calc') return [];
+          return [[id, buildPrintDocument(resultOf(l), { catalog: printCatalog, registry: defaultRegistry, digits: doc.layout.digits, title: '', showHidden: true, resolveFile })] as const];
+        }),
+      ),
+    [evaluation, openKey, printCatalog, doc.layout.digits, resolveFile],
   );
 
   useEffect(() => {
@@ -153,19 +172,64 @@ export function App() {
 
   /** `group` merges quick successive changes (typing in one line) into one undo step. */
   const change = (next: SheetDocument, group?: string) => setHistory((h) => record(h, next, group));
-  /** Changes the text of the active layer; a locked layer stays as it is. */
-  const setSource = (source: string, group?: string, files?: ReadonlyMap<string, Uint8Array>) => {
-    if (layer.kind === 'ai') return setNotice(t(ui, 'notes.aiReadOnly'));
-    if (layer.locked) return setNotice(t(ui, 'layers.lockedNotice'));
+  /** Changes the text of a layer; the AI notes and locked layers stay as they are. */
+  const setLayerText = (l: Layer, source: string, group?: string, files?: ReadonlyMap<string, Uint8Array>) => {
+    if (l.kind === 'ai') return setNotice(t(ui, 'notes.aiReadOnly'));
+    if (l.locked) return setNotice(t(ui, 'layers.lockedNotice'));
     const withFiles = files ? { ...doc, files: new Map([...doc.files, ...files]) } : doc;
-    change(layer.kind === 'sheet' ? { ...withFiles, source } : { ...withFiles, layers: updateLayer(doc.layers, layer.id, { text: source }) }, group);
+    change(l.kind === 'sheet' ? { ...withFiles, source } : { ...withFiles, layers: updateLayer(doc.layers, l.id, { text: source }) }, group);
   };
-  const setLayers = (layers: Layer[]) => change({ ...doc, layers });
+  /** Changes the text of the active layer. */
+  const setSource = (source: string, group?: string, files?: ReadonlyMap<string, Uint8Array>) => setLayerText(layer, source, group, files);
 
-  const activate = (id: string) => {
-    setActiveId(id);
+  const setLayers = (layers: Layer[]) => {
+    change({ ...doc, layers });
+    // A layer the user just hid leaves the workspace.
+    const hidden = layers.filter((l) => !l.visible && layerById(l.id)?.visible).map((l) => l.id);
+    if (hidden.length > 0) {
+      const rest = openPanes.filter((id) => !hidden.includes(id));
+      setPanes(rest.length > 0 ? rest : [firstVisible(layers)]);
+      setActivePane(0);
+    }
+  };
+
+  const leaveEditing = () => {
     setEditing(undefined);
     setSelected(undefined);
+  };
+
+  /** Shows a layer in the active panel, or switches to the panel that has it. */
+  const activate = (id: string) => {
+    const open = openPanes.indexOf(id);
+    if (open >= 0) setActivePane(open);
+    else setPanes(openPanes.map((p, i) => (i === activeIndex ? id : p)));
+    leaveEditing();
+  };
+
+  /** Opens a layer in a panel of its own next to the others. */
+  const openBeside = (id: string) => {
+    const open = openPanes.indexOf(id);
+    if (open >= 0) {
+      setActivePane(open);
+    } else {
+      const next = openPanes.length < MAX_PANES ? [...openPanes, id] : [...openPanes.slice(0, -1), id];
+      setPanes(next);
+      setActivePane(next.length - 1);
+    }
+    leaveEditing();
+  };
+
+  const closePane = (index: number) => {
+    if (openPanes.length <= 1) return;
+    setPanes(openPanes.filter((_, i) => i !== index));
+    setActivePane(index < activeIndex || (index === activeIndex && index > 0) ? activeIndex - 1 : activeIndex);
+    leaveEditing();
+  };
+
+  const toggleBeside = (id: string) => {
+    const open = openPanes.indexOf(id);
+    if (open >= 0) closePane(open);
+    else openBeside(id);
   };
 
   const newLayer = async (kind: AddableLayerKind) => {
@@ -182,7 +246,7 @@ export function App() {
     // Pictures of the layer go with it; tables of a data layer move to another data layer.
     const files = new Map([...doc.files].filter(([path]) => !path.startsWith(`layers/${id}/`)));
     change({ ...doc, layers: removeLayer(doc.layers, id), files });
-    if (activeId === id) activate(MAIN_LAYER);
+    setPanes(openPanes.filter((p) => p !== id));
   };
 
   /** A new table belongs to the active data layer, else to the first one. */
@@ -197,15 +261,16 @@ export function App() {
     setEditing({ start, end: start + lines.split('\n').length - 1 });
   };
 
-  const pick = (statement: Statement, key: string) => {
+  const pickIn = (l: Layer, statement: Statement, key: string) => {
     const info = pickOf(statement);
-    const next = info ? replacePickKey(text, info, key) : undefined;
-    if (next !== undefined) setSource(next);
+    const next = info ? replacePickKey(textOf(l), info, key) : undefined;
+    if (next !== undefined) setLayerText(l, next);
   };
 
   const replaceDocument = (next: SheetDocument, ref: FileRef | undefined, diagnostics: Diagnostic[] = []) => {
     sessions.current = new LayerSessions(defaultRegistry);
-    setActiveId(MAIN_LAYER);
+    setPanes([firstVisible(next.layers)]);
+    setActivePane(0);
     setHistory(reset(next));
     setSavedDoc(next);
     setFileRef(ref);
@@ -357,7 +422,9 @@ export function App() {
   const geometry = pageGeometry(doc.layout.paper, doc.layout.orientation);
   const pageWidthPx = geometry.width * MM_TO_PX;
   const fitPages = zoomChoice.startsWith('fit') ? Number(zoomChoice.slice(3)) : 0;
-  const zoom = fitPages > 0 ? Math.max(0.3, Math.min(2, (scrollWidth - 48 - PAGE_GAP_PX * (fitPages - 1)) / (fitPages * pageWidthPx))) : Number(zoomChoice) || 1;
+  // Panels side by side share the width; "fit" fits pages into one panel.
+  const panelWidth = scrollWidth / openPanes.length;
+  const zoom = fitPages > 0 ? Math.max(0.3, Math.min(2, (panelWidth - 48 - PAGE_GAP_PX * (fitPages - 1)) / (fitPages * pageWidthPx))) : Number(zoomChoice) || 1;
 
   const setZoom = (choice: string) => {
     setZoomChoice(choice);
@@ -534,6 +601,16 @@ export function App() {
         sep,
         { kind: 'submenu', label: t(ui, 'menu.pane'), items: [cmd('view.paneDetails'), cmd('view.paneTables'), cmd('view.paneLayers'), cmd('view.paneNone')] },
         cmd('view.tableEditor'),
+        {
+          kind: 'submenu',
+          label: t(ui, 'menu.sideBySide'),
+          items: doc.layers.map((l) => ({
+            kind: 'action' as const,
+            label: `${LAYER_GLYPH[l.kind]} ${nameOf(l)}`,
+            checked: openPanes.includes(l.id) && openPanes.length > 1,
+            run: () => toggleBeside(l.id),
+          })),
+        },
         sep,
         {
           kind: 'submenu',
@@ -557,6 +634,75 @@ export function App() {
     { label: t(ui, 'menu.tools'), items: [cmd('tools.settings')] },
     { label: t(ui, 'menu.help'), items: [cmd('help.shortcuts'), sep, cmd('help.about')] },
   ];
+
+  const layerContent = (l: Layer, active: boolean) => {
+    if (l.kind === 'data') {
+      return (
+        <TablesView
+          key={l.id}
+          doc={doc}
+          catalog={ui}
+          diagnostics={tableDiagnostics}
+          resolveFile={resolveFile}
+          names={layerTables.get(l.id) ?? []}
+          assign={assignTable}
+          onChange={(next) => (l.locked ? setNotice(t(ui, 'layers.lockedNotice')) : change(next))}
+        />
+      );
+    }
+    if (l.kind === 'ai' || l.kind === 'sources') {
+      return (
+        <NotesView
+          key={l.id}
+          layer={l}
+          title={nameOf(l)}
+          catalog={ui}
+          readOnly={l.locked}
+          resolveFile={resolveFile}
+          onChange={(next, files) => setLayerText(l, next, `${l.id}:notes`, files)}
+        />
+      );
+    }
+    const source = textOf(l);
+    return (
+      <main
+        className="sheet-scroll"
+        onMouseDown={(e) => {
+          if (e.target === e.currentTarget || (e.target as HTMLElement).classList.contains('pages')) setEditing(undefined);
+        }}
+        onWheel={(e) => {
+          if (!e.ctrlKey) return;
+          e.preventDefault();
+          zoomBy(e.deltaY < 0 ? 1 : -1);
+        }}
+      >
+        <SheetView
+          key={l.id}
+          source={source}
+          result={resultOf(l)}
+          print={prints.get(l.id)!}
+          printCatalog={printCatalog}
+          editing={active ? editing : undefined}
+          selected={active ? selected : undefined}
+          resolveFile={resolveFile}
+          onEdit={(range) => (l.locked && range ? setNotice(t(ui, 'layers.lockedNotice')) : setEditing(range))}
+          onSelect={setSelected}
+          onReplace={replace}
+          onInsertAfter={(line) => {
+            setLayerText(l, insertLineAfter(source, line));
+            setEditing({ start: line + 1, end: line + 1 });
+          }}
+          onDelete={(start, end) => setLayerText(l, deleteLines(source, start, end))}
+          onPick={(statement, key) => pickIn(l, statement, key)}
+          geometry={geometry}
+          zoom={zoom}
+          title={l.kind === 'calc' ? nameOf(l) : (/^[ \t]*#(?!#)[ \t]*(.+?)[ \t]*$/m.exec(doc.source)?.[1] ?? doc.manifest.title)}
+          uiCatalog={printCatalog}
+          decimalComma={decimalComma}
+        />
+      </main>
+    );
+  };
 
   // The status bar counts all calculation layers: an error in an auxiliary layer matters too.
   const diagnostics = allDiagnostics(evaluation);
@@ -585,7 +731,9 @@ export function App() {
                     catalog={ui}
                     used={evaluation.used}
                     nameOf={nameOf}
+                    open={openPanes}
                     onActivate={activate}
+                    onOpenBeside={openBeside}
                     onChange={setLayers}
                     onAdd={(kind) => void newLayer(kind)}
                     onDelete={(id) => void deleteLayer(id)}
@@ -603,7 +751,7 @@ export function App() {
                     onSelect={(statement) => {
                       setSelected(statement);
                       const line = result.statements[statement]?.statement.span.line;
-                      document.querySelector(`.row[data-line="${line}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                      document.querySelector(`.layer-view.active .row[data-line="${line}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
                     }}
                   />
                 ) : (
@@ -619,73 +767,43 @@ export function App() {
             {notice}
           </div>
         )}
-        {!tableEditor && layer.locked && layer.kind !== 'ai' && <div className="notice locked">{t(ui, 'layers.lockedNotice')}</div>}
-        {!tableEditor && !layer.visible && <div className="notice">{t(ui, 'layers.hiddenNotice')}</div>}
         {tableEditor ? (
           <TablesView doc={doc} catalog={ui} diagnostics={tableDiagnostics} resolveFile={resolveFile} onChange={(next) => change(next)} assign={assignTable} />
-        ) : layer.kind === 'data' ? (
-          <TablesView
-            key={layer.id}
-            doc={doc}
-            catalog={ui}
-            diagnostics={tableDiagnostics}
-            resolveFile={resolveFile}
-            names={layerTables.get(layer.id) ?? []}
-            assign={assignTable}
-            onChange={(next) => (layer.locked ? setNotice(t(ui, 'layers.lockedNotice')) : change(next))}
-          />
-        ) : !isCalc ? (
-          <NotesView
-            key={layer.id}
-            layer={layer}
-            title={nameOf(layer)}
-            catalog={ui}
-            readOnly={layer.locked}
-            resolveFile={resolveFile}
-            onChange={(next, files) => setSource(next, `${layer.id}:notes`, files)}
-          />
         ) : (
-          <div className="workspace">
-            <main
-              ref={scrollRef}
-              className="sheet-scroll"
-              onMouseDown={(e) => {
-                if (e.target === e.currentTarget || (e.target as HTMLElement).classList.contains('pages')) setEditing(undefined);
-              }}
-              onWheel={(e) => {
-                if (!e.ctrlKey) return;
-                e.preventDefault();
-                zoomBy(e.deltaY < 0 ? 1 : -1);
-              }}
-            >
-              <SheetView
-                key={layer.id}
-                source={text}
-                result={result}
-                print={print}
-                printCatalog={printCatalog}
-                editing={editing}
-                selected={selected}
-                resolveFile={resolveFile}
-                onEdit={(range) => (layer.locked && range ? setNotice(t(ui, 'layers.lockedNotice')) : setEditing(range))}
-                onSelect={setSelected}
-                onReplace={replace}
-                onInsertAfter={(line) => {
-                  setSource(insertLineAfter(text, line));
-                  setEditing({ start: line + 1, end: line + 1 });
-                }}
-                onDelete={(start, end) => setSource(deleteLines(text, start, end))}
-                onPick={pick}
-                geometry={geometry}
-                zoom={zoom}
-                title={layer.kind === 'calc' ? nameOf(layer) : (/^[ \t]*#(?!#)[ \t]*(.+?)[ \t]*$/m.exec(doc.source)?.[1] ?? doc.manifest.title)}
-                uiCatalog={printCatalog}
-                decimalComma={decimalComma}
-              />
-            </main>
+          <div ref={scrollRef} className="workspace">
+            {openPanes.map((id, i) => {
+              const l = layerById(id)!;
+              return (
+                <section
+                  key={id}
+                  className={`layer-view${i === activeIndex ? ' active' : ''}`}
+                  data-layer={id}
+                  onMouseDownCapture={() => {
+                    if (i === activeIndex) return;
+                    setActivePane(i);
+                    leaveEditing();
+                  }}
+                >
+                  {openPanes.length > 1 && (
+                    <header className="layer-view-head">
+                      <span className="glyph">{LAYER_GLYPH[l.kind]}</span> {nameOf(l)}
+                      <span className="grow" />
+                      <button type="button" title={t(ui, 'layers.closePane')} onClick={() => closePane(i)}>
+                        ✕
+                      </button>
+                    </header>
+                  )}
+                  {l.locked && l.kind !== 'ai' && <div className="notice locked">{t(ui, 'layers.lockedNotice')}</div>}
+                  {!l.visible && <div className="notice">{t(ui, 'layers.hiddenNotice')}</div>}
+                  {layerContent(l, i === activeIndex)}
+                </section>
+              );
+            })}
           </div>
         )}
-        {!tableEditor && <LayerTabs layers={doc.layers} active={layer.id} catalog={ui} nameOf={nameOf} onActivate={activate} onAdd={() => choosePane('layers')} />}
+        {!tableEditor && (
+          <LayerTabs layers={doc.layers} active={layer.id} open={openPanes} catalog={ui} nameOf={nameOf} onActivate={activate} onOpenBeside={openBeside} onAdd={() => choosePane('layers')} />
+        )}
       </ToolbarFrame>
       <footer className="statusbar">
         <span className={errors > 0 ? 'bad' : ''}>

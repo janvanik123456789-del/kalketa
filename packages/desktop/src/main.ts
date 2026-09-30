@@ -227,7 +227,7 @@ async function runSmokeTest(pdfPath: string): Promise<void> {
     await writeFile(pdfPath, pdf);
     ok =
       state.bridge && state.menus === 6 && state.toolbars > 0 && state.rows > 10 && state.summary > 0 && state.math > 0 && reshapedColumns === 3 && pdf.length > 1000 &&
-      layers.tabs === 5 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.aiReadOnly && layers.addKinds === 3 && !layers.aiDeletable && layers.q.includes('16,73');
+      layers.tabs === 5 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.aiReadOnly && layers.mainHidden && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.q.includes('16,73');
     console.log(JSON.stringify({ ok, ...state, reshapedColumns, layers, pdfBytes: pdf.length }));
   } catch (err) {
     console.log(JSON.stringify({ ok: false, error: (err as Error).message }));
@@ -272,7 +272,7 @@ async function reshapeWithRealMouse(): Promise<number> {
 // pipeline like the user's mouse and keyboard.
 const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function clickOn(selector: string): Promise<void> {
+async function clickOn(selector: string, modifiers: Array<'control'> = []): Promise<void> {
   const contents = window!.webContents;
   const point = (await contents.executeJavaScript(`(() => {
     const element = document.querySelector(${JSON.stringify(selector)});
@@ -282,8 +282,8 @@ async function clickOn(selector: string): Promise<void> {
     return { x: Math.round(r.left + Math.min(r.width / 2, 40)), y: Math.round(r.top + r.height / 2) };
   })()`)) as { x: number; y: number } | undefined;
   if (!point) throw new Error(`Not found: ${selector}`);
-  contents.sendInputEvent({ type: 'mouseDown', ...point, button: 'left', clickCount: 1 });
-  contents.sendInputEvent({ type: 'mouseUp', ...point, button: 'left', clickCount: 1 });
+  contents.sendInputEvent({ type: 'mouseDown', ...point, button: 'left', clickCount: 1, modifiers });
+  contents.sendInputEvent({ type: 'mouseUp', ...point, button: 'left', clickCount: 1, modifiers });
   await pause(150);
 }
 
@@ -346,10 +346,25 @@ async function layersWithRealInput(picture: string) {
     used: document.querySelectorAll('.layer-note').length,
     errors: Number(document.querySelector('.statusbar span')?.textContent.replace(/\\D+/g, '') ?? -1),
     addKinds: document.querySelectorAll('.layer-add button').length,
-    aiDeletable: document.querySelectorAll('.layer-item[data-layer="ai"] .layer-actions button').length > 3,
+    aiDeletable: document.querySelectorAll('.layer-item[data-layer="ai"] .layer-actions button').length > 4,
     q: [...document.querySelectorAll('.row')].find((r) => r.textContent.includes('q_d'))?.textContent ?? '',
   })`)) as { tabs: number; used: number; errors: number; addKinds: number; aiDeletable: boolean; q: string };
-  return { ...state, citations, aiReadOnly };
+
+  // Side by side: Ctrl+click on the tab of the auxiliary calculation.
+  await clickOn('.layer-tab:nth-child(4)', ['control']);
+  await clickOn('.layer-view:nth-child(2) .page .row');
+  const split = (await contents.executeJavaScript(
+    `[...document.querySelectorAll('.layer-view')].map((v) => v.dataset.layer + (v.classList.contains('active') ? '*' : '') + ':' + v.querySelectorAll('.page').length).join(' ')`,
+  )) as string;
+  await takePicture(picture.replace(/\.png$/, '-split.png'));
+
+  // Work only in the layers: hide the printed sheet.
+  await clickOn('.layer-item[data-layer="main"] .layer-flags input');
+  const mainHidden = (await contents.executeJavaScript(
+    `!document.querySelector('.layer-view[data-layer="main"], .layer-tab[data-layer="main"]') && document.querySelectorAll('.layer-view').length === 1`,
+  )) as boolean;
+  await takePicture(picture.replace(/\.png$/, '-nomain.png'));
+  return { ...state, citations, aiReadOnly, split, mainHidden };
 }
 
 /**

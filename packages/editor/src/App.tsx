@@ -184,8 +184,15 @@ export function App() {
   useEffect(() => {
     const element = scrollRef.current;
     if (!element) return;
-    const observer = new ResizeObserver(() => setScrollWidth(element.clientWidth));
+    // "Fit pages" needs the width pages really get: inside a panel, without its scroll bar.
+    const measure = () => {
+      const sheet = element.querySelector<HTMLElement>('.sheet-scroll');
+      setScrollWidth(sheet ? sheet.clientWidth : element.clientWidth / Math.max(1, element.children.length));
+    };
+    const observer = new ResizeObserver(measure);
     observer.observe(element);
+    element.querySelectorAll('.sheet-scroll').forEach((sheet) => observer.observe(sheet));
+    measure();
     return () => observer.disconnect();
   });
 
@@ -495,8 +502,9 @@ export function App() {
   const pageWidthPx = geometry.width * MM_TO_PX;
   const fitPages = zoomChoice.startsWith('fit') ? Number(zoomChoice.slice(3)) : 0;
   // Panels side by side share the width; "fit" fits pages into one panel.
-  const panelWidth = scrollWidth / openPanes.length;
-  const zoom = fitPages > 0 ? Math.max(0.3, Math.min(2, (panelWidth - 48 - PAGE_GAP_PX * (fitPages - 1)) / (fitPages * pageWidthPx))) : Number(zoomChoice) || 1;
+  const panelWidth = scrollWidth;
+  // The chosen number of pages side by side is kept even in a narrow panel (down to 20 %).
+  const zoom = fitPages > 0 ? Math.max(0.2, Math.min(2, (panelWidth - 48 - PAGE_GAP_PX * (fitPages - 1)) / (fitPages * pageWidthPx))) : Number(zoomChoice) || 1;
 
   const setZoom = (choice: string) => {
     setZoomChoice(choice);

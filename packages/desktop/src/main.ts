@@ -309,8 +309,13 @@ async function runSmokeTest(pdfPath: string): Promise<void> {
       errors: document.querySelector('.statusbar')?.textContent ?? '',
       menus: document.querySelectorAll('.menubar-item').length,
       toolbars: document.querySelectorAll('.toolbar-box').length,
-      language: document.documentElement.lang
-    })`)) as { bridge: boolean; rows: number; summary: number; math: number; errors: string; menus: number; toolbars: number; language: string };
+      language: document.documentElement.lang,
+      // "Two pages side by side" (the default zoom): the first two pages share a row.
+      sideBySide: (() => {
+        const pages = [...document.querySelectorAll('.page')].map((p) => p.getBoundingClientRect());
+        return pages.length > 1 && Math.abs(pages[0].top - pages[1].top) < 2 && pages[1].left > pages[0].right;
+      })()
+    })`)) as { bridge: boolean; rows: number; summary: number; math: number; errors: string; menus: number; toolbars: number; language: string; sideBySide: boolean };
     const reshapedColumns = await reshapeWithRealMouse();
     const layers = await layersWithRealInput(pdfPath.replace(/\.pdf$/i, '') + '-layers.png');
     const printer = await printWindow('<!doctype html><meta charset="utf-8"><h1>CalcCanvas</h1><math><mfrac><mi>a</mi><mn>2</mn></mfrac></math>');
@@ -318,7 +323,7 @@ async function runSmokeTest(pdfPath: string): Promise<void> {
     printer.destroy();
     await writeFile(pdfPath, pdf);
     ok =
-      state.bridge && state.menus === 7 && state.toolbars > 0 && state.rows > 10 && state.summary > 0 && state.math > 0 && reshapedColumns === 3 && pdf.length > 1000 &&
+      state.bridge && state.sideBySide && state.menus === 7 && state.toolbars > 0 && state.rows > 10 && state.summary > 0 && state.math > 0 && reshapedColumns === 3 && pdf.length > 1000 &&
       layers.tabs === 5 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.aiReadOnly && layers.multi && layers.functions && layers.mainHidden && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.q.includes('16,73');
     console.log(JSON.stringify({ ok, ...state, reshapedColumns, layers, pdfBytes: pdf.length }));
   } catch (err) {

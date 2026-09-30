@@ -10,7 +10,8 @@
     "build": "tsc -p tsconfig.json",
     "start": "electron .",
     "icon": "electron scripts/make-icon.mjs",
-    "dist": "electron-builder --win"
+    "dist": "electron-builder --win",
+    "dist:linux": "electron-builder --linux"
   },
   "devDependencies": {
     "electron": "^44.4.5",
@@ -40,7 +41,8 @@
         "ext": "calc",
         "name": "CalcCanvas",
         "description": "CalcCanvas calculation",
-        "role": "Editor"
+        "role": "Editor",
+        "mimeType": "application/x-calccanvas"
       }
     ],
     "win": {
@@ -60,6 +62,20 @@
     },
     "portable": {
       "artifactName": "CalcCanvas-${version}-portable.exe"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "icon": "build/icon.png",
+      "category": "Science",
+      "synopsis": "Engineering calculations with units, tables and print",
+      "executableArgs": [
+        "--no-sandbox"
+      ]
+    },
+    "appImage": {
+      "artifactName": "CalcCanvas-${version}-x86_64.AppImage"
     }
   }
 }

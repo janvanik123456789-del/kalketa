@@ -2,7 +2,7 @@
 
 **Verze:** 2.0 (návrh)
 **Datum:** 2026-09-29
-**Stav:** Návrh k diskusi. Nahrazuje `calc-canvas/01-philosophy.md`.
+**Stav:** Návrh k diskusi. Nahrazuje `calc-canvas/01-philosophy.md`. Upraveno 2026-09-30: libovolný počet vrstev (kap. 4).
 
 ---
 
@@ -47,19 +47,60 @@ Program je **oborově neutrální**. Má posloužit stejně dobře:
 
 ## 4. List a vrstvy
 
+*Upřesněno 2026-09-30:* počet vrstev není pevný. Nový list má **tři výchozí vrstvy** a uživatel si **libovolně přidává další**.
+
 ```text
 List "Nosník N1"
-├── Vrstva 1 – TISK        stránkový dokument (A4), konečný počet stran,
-│                          čte se shora dolů, podepisuje se
-├── Vrstva 2 – VÝPOČET     vzorce, proměnné, jednotky, podmínky
-├── Vrstva 3 – DATA        tabulky s obrázky k řádkům, zdroje dat
-├── Vrstva 4 – PRACOVNÍ    neomezený prostor: varianty, pomocné výpočty,
-│                          poznámky, rozpracované věci
-└── Vrstva 5 – AI          volitelná, poznámky a návrhy LLM
+├── 1  List (tisk)         výpočet: stránkový dokument (A4), konečný počet stran,
+│                          čte se shora dolů, podepisuje se          [výchozí]
+├── 2  Databáze            data: tabulky s obrázky k řádkům, zdroje  [výchozí]
+├── 3  Poznámky AI         návrhy a kontroly LLM, nikdy nemění výpočet [výchozí]
+├── 4  Zatížení            pomocný výpočet, list z něj bere hodnoty  [přidaná]
+└── 5  Teorie              podklady: výtahy, obrázky, citace, odkazy [přidaná]
 ```
 
+**Druhy vrstev:**
+
+| Druh | Obsah |
+|---|---|
+| **Výpočet** | řádky výpočtu. Hlavní je „List (tisk)“, další jsou pomocné výpočty a varianty. |
+| **Data** | typované tabulky s obrázky k řádkům (kap. 5). Vrstev s daty může být více (katalog, měření…). |
+| **Poznámky AI** | návrhy a kontroly LLM (kap. 9). |
+| **Podklady** | teorie, zadání, odůvodnění: text, vybrané obrázky, citace a odkazy (kap. 4.2). |
+| **Externí výpočet** *(později)* | skript v Pythonu nebo výsledky z jiného programu (FEM, Excel) převzaté jako tabulka s údajem o původu (kap. 4.1). |
+
+**Vlastnosti každé vrstvy:** název, pořadí, zobrazit/skrýt, **zamknout** proti nechtěné změně (vhodné pro převzatá data) a **tisknout jako přílohu** ano/ne.
+
 - **Tisková vrstva je stránková**, stejně jako v Mathcadu. Má konečný počet stran.
-- **Ostatní vrstvy nejsou omezené.** Ve spodních vrstvách je místo i pro volné plátno.
+- **Ostatní vrstvy nejsou omezené.** Mají místo i pro volné plátno.
+- **Tiskne se vždy List (tisk).** Ostatní vrstvy jen tehdy, když je uživatel označí jako přílohu, a vždy až za listem jako „Příloha A, B…“.
+
+### 4.1 Pomocné výpočty
+
+Hlavní list smí používat výsledky pomocných výpočetních vrstev. Hodí se to hlavně tam, kde hlavní program **něco neumí nebo nepočítá dost přesně**, případně když by rozsáhlý mezivýpočet zbytečně zahltil hlavní list.
+
+- Hodnota převzatá z pomocné vrstvy nese v tisku **odkaz na svůj původ** (`q = 12,5 kN/m ← Příloha A: Zatížení`).
+- Pomocná vrstva, ze které tisknutý list čerpá, se **automaticky tiskne jako příloha**. Kontrolor musí vidět celý postup.
+- Pomocný výpočet v jiném nástroji (Python, jiný program) musí být **reprodukovatelný**. Uloží se skript nebo vstupní soubor, verze nástroje a výsledek. Program vždy označí hodnotu jako „vypočteno externě“.
+- Dohledání původu (kap. 3, princip 4) prochází i přes pomocné vrstvy.
+
+### 4.2 Podklady: výtahy, ne celé dokumenty
+
+Do vrstvy Podklady se **nevkládají celé PDF**. Soubor by zbytečně narostl, u skenu by text stejně nešel použít a u norem by šlo o šíření chráněného díla.
+
+Vrstva obsahuje:
+- **výtah:** text vložený nebo přepsaný uživatelem. Převod skenu (OCR) nebo zpracování přes LLM přijde později a jeho výsledek se sem uloží jako text,
+- **vybrané obrázky:** výřez grafu, tabulky nebo schématu, ne celá stránka,
+- **citaci:** název, vydání, strana, článek,
+- **odkaz na originál:** cestu k souboru nebo webovou adresu, bez vložení samotného souboru.
+
+### 4.3 Velikost souboru
+
+Soubor výpočtu může obsahovat tabulky a obrázky v řádu MB. Když překročí rozumnou mez (výchozí 50 MB, lze změnit v nastavení), program **upozorní**, které vrstvy a soubory zabírají nejvíc místa.
+
+### 4.4 Další vlastnosti vrstev
+
+- **Z tisku jde prokliknout do hloubky:** kliknutí na `Wy = 194 cm³` ukáže řádek tabulky, ze kterého hodnota pochází, obrázek a zdroj.
 - **Z tisku jde prokliknout do hloubky:** kliknutí na `Wy = 194 cm³` ukáže řádek tabulky, ze kterého hodnota pochází, obrázek a zdroj.
 - **Přesnost výpočtu a formát tisku jsou oddělené.** Výpočet běží v plné přesnosti. Tisková vrstva určuje jednotky zobrazení, počet platných číslic a zaokrouhlení (pro celý list a podle potřeby pro jednotlivé veličiny).
 
@@ -142,6 +183,7 @@ Blok s jasnými vstupy a výstupy (např. „prostý nosník“, „dimenzován�
 - List je **jeden soubor-kontejner** (ZIP, stejně jako `.docx`), který obsahuje výpočet, tabulky, obrázky a metadata.
 - **Výpočet uvnitř je čitelný text:** jde porovnávat verze, verzovat v gitu a snadno s ním pracuje i LLM.
 - Tabulky jsou uvnitř v otevřeném formátu (CSV nebo podobném), aby šly otevřít i bez programu.
+- Každá vrstva má v kontejneru vlastní složku `layers/<id>/` a seznam vrstev (druh, název, pořadí, zámek, příloha) je v `manifest.json`. Soubory bez tohoto seznamu (formát verze 1) se otevřou se třemi výchozími vrstvami: `sheet.cc` je List, `tables/` je Databáze.
 
 ---
 

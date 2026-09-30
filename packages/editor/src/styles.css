@@ -278,3 +278,15 @@ button.icon:hover { color: var(--accent); }
 .layer-view.active .layer-view-head { color: var(--ink); font-weight: 600; box-shadow: inset 0 -2px 0 var(--accent); }
 .layer-tab.open { background: #f7f9fc; border-color: #b9c3d0; }
 .layer-item.open { border-color: #9fb6da; }
+
+/* Open calculations: tabs above the workspace */
+.doc-tabs { display: flex; align-items: flex-end; gap: 2px; padding: 4px 8px 0; background: var(--toolbar); border-bottom: 1px solid #aab2bd; flex: none; flex-wrap: wrap; row-gap: 3px; user-select: none; }
+.doc-tab { display: flex; align-items: center; max-width: 260px; border: 1px solid var(--line); border-bottom: none; border-radius: 4px 4px 0 0; background: #e6e9ee; font-size: 12px; margin-bottom: -1px; }
+.doc-tab.active { background: var(--bg); border-color: #aab2bd; border-bottom: 1px solid var(--bg); }
+.doc-tab-title { border: none; background: none; padding: 4px 4px 4px 12px; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.doc-tab.active .doc-tab-title { font-weight: 600; }
+.doc-dirty { color: var(--accent); }
+.doc-tab-close { border: 1px solid transparent; background: none; border-radius: 3px; padding: 0 4px; margin-right: 4px; cursor: pointer; color: var(--muted); font-size: 11px; }
+.doc-tab-close:hover { border-color: #b9c3d0; background: #fff; color: var(--ink); }
+.doc-tab-new { border: 1px solid transparent; background: none; padding: 2px 8px; margin-bottom: 2px; cursor: pointer; border-radius: 3px; }
+.doc-tab-new:hover { border-color: #b9c3d0; background: #fff; }

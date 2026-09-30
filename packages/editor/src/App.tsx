@@ -13,13 +13,15 @@ import { buildPrintDocument, printHtml } from '@calccanvas/render';
 import { addLayer, allDiagnostics, appendixLayers, isRemovable, LayerSessions, MAIN_LAYER, removeLayer, tablesByLayer, updateLayer, type AddableLayerKind, type Layer, type SheetDocument } from '@calccanvas/sheet';
 import { buildCommands, shortcutOf, type Command } from './commands.js';
 import { desktop, emptyDocument, exampleDocument, fileName, fileUri, largestParts, openBytes, pickAndOpen, saveDocument, tableCache, type FileRef, type OpenedFile } from './document.js';
-import { createHistory, record, redo, reset, undo } from './logic/history.js';
+import { record, redo, undo, type History } from './logic/history.js';
+import { closeTab, cycleTab, isDirty, newTab, openTab, type DocTab, type Tabs } from './logic/documents.js';
 import { pageGeometry } from './logic/pages.js';
 import { pickOf, replacePickKey } from './logic/pick.js';
 import { deleteLines, insertLineAfter, replaceLines, segments } from './logic/segments.js';
 import { parseLayout, setVisible, type ToolbarLayout } from './logic/toolbars.js';
 import { createTable, importTableFile, type TableChange } from './tableActions.js';
 import { AboutDialog, CustomizeDialog, PropertiesDialog, SettingsDialog, ShortcutsDialog } from './components/Dialogs.js';
+import { DocumentTabs } from './components/DocumentTabs.js';
 import { Inspector } from './components/Inspector.js';
 import { ask, askConfirm, AskHost } from './components/Ask.js';
 import { LAYER_GLYPH, LayersPane, LayerTabs } from './components/LayersPane.js';
@@ -30,6 +32,7 @@ import { TablesView } from './components/TablesView.js';
 import { ToolbarFrame, toolbarName } from './components/Toolbars.js';
 
 type Pane = 'details' | 'tables' | 'layers' | 'none';
+type Tab = DocTab<SheetDocument, FileRef>;
 type DialogKind = 'settings' | 'properties' | 'customize' | 'shortcuts' | 'about';
 
 const MM_TO_PX = 96 / 25.4;
@@ -83,11 +86,26 @@ function recentFiles(): string[] {
 }
 
 export function App() {
-  const [history, setHistory] = useState(() => createHistory(exampleDocument()));
+  // Open calculations, one tab each. Everything below that belongs to one
+  // document (history, file, open layers) is read from the active tab.
+  const [docs, setDocs] = useState<Tabs<SheetDocument, FileRef>>(() => {
+    const first = newTab<SheetDocument, FileRef>(exampleDocument(), MAIN_LAYER);
+    return { tabs: [first], active: first.id };
+  });
+  const tab = docs.tabs.find((d) => d.id === docs.active) ?? docs.tabs[0]!;
+  /** Changes the active document's tab; later changes of the same event build on earlier ones. */
+  const updateTab = (f: (d: Tab) => Tab) => {
+    const id = tab.id;
+    setDocs((s) => ({ ...s, tabs: s.tabs.map((d) => (d.id === id ? f(d) : d)) }));
+  };
+  const history = tab.history;
+  const setHistory = (f: (h: History<SheetDocument>) => History<SheetDocument>) => updateTab((d) => ({ ...d, history: f(d.history) }));
   const doc = history.present;
-  const [savedDoc, setSavedDoc] = useState<SheetDocument>(doc);
-  const dirty = doc !== savedDoc;
-  const [fileRef, setFileRef] = useState<FileRef | undefined>();
+  const dirty = isDirty(tab);
+  const anyDirty = docs.tabs.some(isDirty);
+  const fileRef = tab.fileRef;
+  const setSavedDoc = (saved: SheetDocument) => updateTab((d) => ({ ...d, savedDoc: saved }));
+  const setFileRef = (ref: FileRef) => updateTab((d) => ({ ...d, fileRef: ref, ...(ref.kind === 'path' ? { path: ref.path } : {}) }));
   const [recent, setRecent] = useState(recentFiles);
   const [language, setLanguage] = useState(initialLanguage);
   const [tableEditor, setTableEditor] = useState(false);
@@ -98,9 +116,11 @@ export function App() {
   const [zoomChoice, setZoomChoice] = useState(() => stored('calccanvas.zoom') ?? 'fit2');
   const [pane, setPane] = useState<Pane>(() => (['details', 'tables', 'layers', 'none'].includes(stored('calccanvas.pane') ?? '') ? (stored('calccanvas.pane') as Pane) : 'details'));
   const [paneWidth, setPaneWidth] = useState(() => Number(stored('calccanvas.paneWidth')) || 380);
-  // Layers open side by side, and which of them is being worked on.
-  const [panes, setPanes] = useState<string[]>([MAIN_LAYER]);
-  const [activePane, setActivePane] = useState(0);
+  // Layers open side by side in this document, and which of them is being worked on.
+  const panes = tab.panes;
+  const setPanes = (next: readonly string[]) => updateTab((d) => ({ ...d, panes: next }));
+  const activePane = tab.activePane;
+  const setActivePane = (index: number) => updateTab((d) => ({ ...d, activePane: index }));
   const [sizeLimit, setSizeLimit] = useState(() => Number(stored(SIZE_LIMIT_KEY)) || DEFAULT_SIZE_LIMIT_MB);
   const [toolbars, setToolbars] = useState<ToolbarLayout>(() => parseLayout(stored(TOOLBARS_KEY)));
   const [scrollWidth, setScrollWidth] = useState(1000);
@@ -110,11 +130,20 @@ export function App() {
   // The user writes numbers the way the program language does: 50,5 in Czech.
   const decimalComma = formatNumber(1.5, ui).includes(',');
   const printCatalog = catalogFor(doc.manifest.language ?? language);
-  const sessions = useRef(new LayerSessions(defaultRegistry));
-  const buildTables = useRef(tableCache(defaultRegistry));
+  // Incremental calculation state of each open document.
+  const engines = useRef(new Map<number, { sessions: LayerSessions; tables: ReturnType<typeof tableCache> }>());
+  let engine = engines.current.get(tab.id);
+  if (!engine) {
+    engine = { sessions: new LayerSessions(defaultRegistry), tables: tableCache(defaultRegistry) };
+    engines.current.set(tab.id, engine);
+  }
+  const { sessions, tables: buildTables } = engine;
+  useEffect(() => {
+    for (const id of engines.current.keys()) if (!docs.tabs.some((d) => d.id === id)) engines.current.delete(id);
+  }, [docs.tabs]);
 
-  const { tables, diagnostics: tableDiagnostics } = useMemo(() => buildTables.current(doc), [doc.tables]);
-  const evaluation = useMemo(() => sessions.current.evaluate(doc.source, doc.layers, tables), [doc.source, doc.layers, tables]);
+  const { tables, diagnostics: tableDiagnostics } = useMemo(() => buildTables(doc), [buildTables, doc.tables]);
+  const evaluation = useMemo(() => sessions.evaluate(doc.source, doc.layers, tables), [sessions, doc.source, doc.layers, tables]);
 
   // Open layers side by side; the active one is being worked on. The printed
   // sheet and auxiliary calculations are edited as pages, data layers as
@@ -159,12 +188,12 @@ export function App() {
 
   useEffect(() => {
     document.title = `${doc.manifest.title}${dirty ? ' •' : ''} — CalcCanvas`;
-    desktop?.setCloseGuard({ dirty, message: t(ui, 'editor.closeUnsaved'), discard: t(ui, 'editor.discard'), cancel: t(ui, 'editor.cancel') });
-    if (!dirty || desktop) return;
+    desktop?.setCloseGuard({ dirty: anyDirty, message: t(ui, 'editor.closeUnsaved'), discard: t(ui, 'editor.discard'), cancel: t(ui, 'editor.cancel') });
+    if (!anyDirty || desktop) return;
     const warn = (e: BeforeUnloadEvent) => e.preventDefault();
     window.addEventListener('beforeunload', warn);
     return () => window.removeEventListener('beforeunload', warn);
-  }, [doc.manifest.title, dirty, ui]);
+  }, [doc.manifest.title, dirty, anyDirty, ui]);
 
   // ------------------------------------------------------------------------
   // Document changes (all go through the undo history)
@@ -267,17 +296,33 @@ export function App() {
     if (next !== undefined) setLayerText(l, next);
   };
 
-  const replaceDocument = (next: SheetDocument, ref: FileRef | undefined, diagnostics: Diagnostic[] = []) => {
-    sessions.current = new LayerSessions(defaultRegistry);
-    setPanes([firstVisible(next.layers)]);
-    setActivePane(0);
-    setHistory(reset(next));
-    setSavedDoc(next);
-    setFileRef(ref);
-    setEditing(undefined);
-    setSelected(undefined);
+  /** Shows a document in a tab of its own (or switches to it when that file is already open). */
+  const openDocument = (next: SheetDocument, ref: FileRef | undefined, diagnostics: Diagnostic[] = []) => {
+    const path = ref?.kind === 'path' ? ref.path : undefined;
+    const added = newTab<SheetDocument, FileRef>(next, firstVisible(next.layers), ref ? { ref, ...(path !== undefined ? { path } : {}) } : undefined);
+    setDocs((s) => openTab(s, added));
+    leaveEditing();
     setNotice(diagnostics.length > 0 ? diagnostics.map((d) => formatDiagnostic(d, ui)).join(' ') : undefined);
-    if (ref?.kind === 'path') addRecent(ref.path);
+    if (path) addRecent(path);
+  };
+
+  const switchDocument = (id: number) => {
+    if (id === tab.id) return;
+    setDocs((s) => ({ ...s, active: id }));
+    leaveEditing();
+    setNotice(undefined);
+  };
+
+  const closeDocument = async (id: number) => {
+    const target = docs.tabs.find((d) => d.id === id);
+    if (!target) return;
+    if (isDirty(target) && !(await askConfirm(t(ui, 'docs.closeUnsaved', { name: target.history.present.manifest.title })))) return;
+    setDocs((s) => closeTab(s, id, () => newTab<SheetDocument, FileRef>(emptyDocument(t(ui, 'editor.untitled'), language), MAIN_LAYER)));
+    leaveEditing();
+  };
+
+  const closeAllDocuments = async () => {
+    for (const d of docs.tabs) await closeDocument(d.id);
   };
 
   const addRecent = (path: string) =>
@@ -293,7 +338,7 @@ export function App() {
       setNotice([t(ui, 'editor.openFailed'), ...opened.diagnostics.map((d) => formatDiagnostic(d, ui))].join(' '));
       return;
     }
-    replaceDocument(opened.document, opened.ref, opened.diagnostics);
+    openDocument(opened.document, opened.ref, opened.diagnostics);
   };
 
   // Files opened by double click or from the command line (desktop only).
@@ -480,15 +525,19 @@ export function App() {
     zoomChoice,
     pane,
     tableEditor,
+    documents: docs.tabs.length,
     actions: {
-      newDocument: () => replaceDocument(emptyDocument(t(ui, 'editor.untitled'), language), undefined),
+      newDocument: () => openDocument(emptyDocument(t(ui, 'editor.untitled'), language), undefined),
       open: () => void pickAndOpen({ sheets: t(ui, 'editor.sheetFiles') }).then(show),
       save: () => void save(),
       saveAs: () => void save(true),
+      closeDocument: () => void closeDocument(tab.id),
+      closeAllDocuments: () => void closeAllDocuments(),
+      cycleDocument: (direction) => switchDocument(cycleTab(docs, direction)),
       properties: () => setDialog('properties'),
       print: printout,
       exportPdf: () => void desktop?.exportPdf({ html: printoutHtml(), suggestedName: fileName(doc) }),
-      example: () => replaceDocument(exampleDocument(), undefined),
+      example: () => openDocument(exampleDocument(), undefined),
       exit: () => window.close(),
       undo: () => {
         setEditing(undefined);
@@ -574,6 +623,7 @@ export function App() {
         sep,
         cmd('file.save'),
         cmd('file.saveAs'),
+        cmd('file.close'),
         sep,
         cmd('file.properties'),
         sep,
@@ -632,6 +682,22 @@ export function App() {
       ],
     },
     { label: t(ui, 'menu.tools'), items: [cmd('tools.settings')] },
+    {
+      label: t(ui, 'menu.window'),
+      items: [
+        cmd('window.next'),
+        cmd('window.previous'),
+        sep,
+        cmd('window.closeAll'),
+        sep,
+        ...docs.tabs.map((d, i) => ({
+          kind: 'action' as const,
+          label: `&${i + 1} ${d.history.present.manifest.title}${isDirty(d) ? ' •' : ''}`,
+          checked: d.id === tab.id,
+          run: () => switchDocument(d.id),
+        })),
+      ],
+    },
     { label: t(ui, 'menu.help'), items: [cmd('help.shortcuts'), sep, cmd('help.about')] },
   ];
 
@@ -762,6 +828,14 @@ export function App() {
           )
         }
       >
+        <DocumentTabs
+          tabs={docs.tabs.map((d) => ({ id: d.id, title: d.history.present.manifest.title, dirty: isDirty(d), ...(d.path !== undefined ? { path: d.path } : {}) }))}
+          active={tab.id}
+          catalog={ui}
+          onSelect={switchDocument}
+          onClose={(id) => void closeDocument(id)}
+          onNew={() => commands.get('file.new')?.run()}
+        />
         {notice && (
           <div className="notice" role="status" onClick={() => setNotice(undefined)}>
             {notice}
@@ -775,7 +849,7 @@ export function App() {
               const l = layerById(id)!;
               return (
                 <section
-                  key={id}
+                  key={`${tab.id}:${id}`}
                   className={`layer-view${i === activeIndex ? ' active' : ''}`}
                   data-layer={id}
                   onMouseDownCapture={() => {

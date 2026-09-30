@@ -226,8 +226,8 @@ async function runSmokeTest(pdfPath: string): Promise<void> {
     printer.destroy();
     await writeFile(pdfPath, pdf);
     ok =
-      state.bridge && state.menus === 6 && state.toolbars > 0 && state.rows > 10 && state.summary > 0 && state.math > 0 && reshapedColumns === 3 && pdf.length > 1000 &&
-      layers.tabs === 5 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.aiReadOnly && layers.mainHidden && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.q.includes('16,73');
+      state.bridge && state.menus === 7 && state.toolbars > 0 && state.rows > 10 && state.summary > 0 && state.math > 0 && reshapedColumns === 3 && pdf.length > 1000 &&
+      layers.tabs === 5 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.aiReadOnly && layers.multi && layers.mainHidden && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.q.includes('16,73');
     console.log(JSON.stringify({ ok, ...state, reshapedColumns, layers, pdfBytes: pdf.length }));
   } catch (err) {
     console.log(JSON.stringify({ ok: false, error: (err as Error).message }));
@@ -364,7 +364,22 @@ async function layersWithRealInput(picture: string) {
     `!document.querySelector('.layer-view[data-layer="main"], .layer-tab[data-layer="main"]') && document.querySelectorAll('.layer-view').length === 1`,
   )) as boolean;
   await takePicture(picture.replace(/\.png$/, '-nomain.png'));
-  return { ...state, citations, aiReadOnly, split, mainHidden };
+
+  // More calculations at once: a new one in its own tab, back to the first, Ctrl+Tab, Ctrl+W.
+  await clickOn('.doc-tab-new');
+  const second = (await contents.executeJavaScript(
+    `[document.querySelectorAll('.doc-tab').length, document.querySelectorAll('.layer-tab:not(.add)').length]`,
+  )) as [number, number];
+  await takePicture(picture.replace(/[.]png$/, '-docs.png'));
+  await clickOn('.doc-tab:nth-child(1) .doc-tab-title');
+  const firstKept = (await contents.executeJavaScript(
+    `document.querySelectorAll('.layer-tab:not(.add)').length === 4 && !!document.querySelector('.doc-tab:nth-child(1).active .doc-dirty')`,
+  )) as boolean;
+  await pressKey('Tab', ['control']);
+  await pressKey('W', ['control']);
+  const documents = (await contents.executeJavaScript(`document.querySelectorAll('.doc-tab').length`)) as number;
+  const multi = second[0] === 2 && second[1] === 3 && firstKept && documents === 1;
+  return { ...state, citations, aiReadOnly, split, mainHidden, second, firstKept, documents, multi };
 }
 
 /**

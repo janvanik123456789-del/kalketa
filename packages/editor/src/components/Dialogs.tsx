@@ -187,6 +187,7 @@ const CATEGORIES: readonly { readonly category: CommandCategory; readonly label:
   { category: 'view', label: (c) => t(c, 'menu.view') },
   { category: 'insert', label: (c) => t(c, 'menu.insert') },
   { category: 'tools', label: (c) => t(c, 'menu.tools') },
+  { category: 'window', label: (c) => t(c, 'menu.window') },
   { category: 'help', label: (c) => t(c, 'menu.help') },
   { category: 'symbol', label: (c) => t(c, 'customize.symbols') },
 ];

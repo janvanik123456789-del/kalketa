@@ -6,7 +6,7 @@
 import { t, type Catalog, type UiKey } from '@calccanvas/i18n';
 import { GREEK_SYMBOLS, OPERATOR_SYMBOLS } from './logic/toolbars.js';
 
-export type CommandCategory = 'file' | 'edit' | 'view' | 'insert' | 'tools' | 'help' | 'symbol';
+export type CommandCategory = 'file' | 'edit' | 'view' | 'insert' | 'tools' | 'window' | 'help' | 'symbol';
 
 export interface Command {
   readonly id: string;
@@ -32,11 +32,16 @@ export interface CommandContext {
   readonly zoomChoice: string;
   readonly pane: 'details' | 'tables' | 'layers' | 'none';
   readonly tableEditor: boolean;
+  /** Number of open calculations. */
+  readonly documents: number;
   readonly actions: {
     newDocument(): void;
     open(): void;
     save(): void;
     saveAs(): void;
+    closeDocument(): void;
+    closeAllDocuments(): void;
+    cycleDocument(direction: 1 | -1): void;
     properties(): void;
     print(): void;
     exportPdf(): void;
@@ -73,6 +78,7 @@ export function buildCommands(ctx: CommandContext): Map<string, Command> {
   add('file.open', 'file', a.open, { shortcut: 'Ctrl+O' });
   add('file.save', 'file', a.save, { shortcut: 'Ctrl+S' });
   add('file.saveAs', 'file', a.saveAs, { shortcut: 'Ctrl+Shift+S' });
+  add('file.close', 'file', a.closeDocument, { shortcut: 'Ctrl+W' });
   add('file.properties', 'file', a.properties);
   add('file.print', 'file', a.print, { shortcut: 'Ctrl+P' });
   add('file.pdf', 'file', a.exportPdf, { enabled: ctx.desktop });
@@ -113,6 +119,9 @@ export function buildCommands(ctx: CommandContext): Map<string, Command> {
   add('insert.layerSources', 'insert', () => a.addLayer('sources'));
 
   add('tools.settings', 'tools', a.settings);
+  add('window.next', 'window', () => a.cycleDocument(1), { shortcut: 'Ctrl+Tab', enabled: ctx.documents > 1 });
+  add('window.previous', 'window', () => a.cycleDocument(-1), { shortcut: 'Ctrl+Shift+Tab', enabled: ctx.documents > 1 });
+  add('window.closeAll', 'window', a.closeAllDocuments);
   add('help.shortcuts', 'help', a.shortcuts);
   add('help.about', 'help', a.about);
 

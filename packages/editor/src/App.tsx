@@ -508,10 +508,60 @@ export function App() {
       setLayerText(into, `${current.trimEnd()}\n\n${lines.join('\n\n')}\n`, undefined, files);
       return;
     }
-    const at = afterLine ?? (into.id === layer.id ? currentRange()?.end : undefined) ?? current.split('\n').length;
+    // Without a place given: after the row being edited or selected, else after the last row in view.
+    const at = afterLine ?? (into.id === layer.id ? currentRange()?.end : undefined) ?? lastRowInView(into.id) ?? current.split('\n').length;
     setLayerText(into, insertLineAfter(current, at, lines.join('\n')), undefined, files);
     setEditing(undefined);
+    reveal.current = { layer: into.id, line: at + 1 };
   };
+
+  /** The new picture is scrolled into view and briefly highlighted. */
+  const reveal = useRef<{ layer: string; line: number } | undefined>(undefined);
+  useEffect(() => {
+    const wanted = reveal.current;
+    if (!wanted) return;
+    const row = document.querySelector(`.layer-view[data-layer="${wanted.layer}"] .row[data-line="${wanted.line}"]`);
+    if (!row) return;
+    reveal.current = undefined;
+    row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    row.classList.add('just-inserted');
+    window.setTimeout(() => row.classList.remove('just-inserted'), 1600);
+  });
+
+  const layerRows = (layerId: string) => [...document.querySelectorAll<HTMLElement>(`.layer-view[data-layer="${layerId}"] .row[data-line]`)];
+  /** Last line of the row that starts at `row` (a statement may span several lines). */
+  const rowEnd = (rows: readonly HTMLElement[], row: HTMLElement, total: number) => {
+    const next = rows[rows.indexOf(row) + 1];
+    return next ? Number(next.dataset['line']) - 1 : total;
+  };
+  const lastRowInView = (layerId: string): number | undefined => {
+    const view = document.querySelector(`.layer-view[data-layer="${layerId}"] .sheet-scroll`)?.getBoundingClientRect();
+    const rows = layerRows(layerId);
+    const last = rows
+      .filter((r) => {
+        const box = r.getBoundingClientRect();
+        return view !== undefined && box.top >= view.top && box.bottom <= view.bottom;
+      })
+      .at(-1);
+    const target = doc.layers.find((l) => l.id === layerId);
+    return last && target ? rowEnd(rows, last, textOf(target).split('\n').length) : undefined;
+  };
+  /** The line after which something dropped at (x, y) goes: after the row at or above the pointer on that page. */
+  const lineAtPoint = (layerId: string, x: number, y: number): number | undefined => {
+    const rows = layerRows(layerId);
+    const target = doc.layers.find((l) => l.id === layerId);
+    if (!target || rows.length === 0) return undefined;
+    const pages = [...new Set(rows.map((r) => r.closest('.page')))].filter((p): p is Element => p !== null);
+    // The page under the pointer, or the last page that starts above it (pages side by side or below each other).
+    const page = pages.filter((p) => {
+      const box = p.getBoundingClientRect();
+      return box.top <= y && box.left <= x;
+    }).at(-1);
+    const above = rows.filter((r) => r.closest('.page') === page && r.getBoundingClientRect().top <= y).at(-1) ?? (page ? rows.filter((r) => r.closest('.page') === page)[0] : undefined);
+    return above ? rowEnd(rows, above, textOf(target).split('\n').length) : 0;
+  };
+  const lineAtRef = useRef(lineAtPoint);
+  lineAtRef.current = lineAtPoint;
 
   const insertPictureFile = async () => {
     const file = await chooseFile('image/*');
@@ -716,9 +766,8 @@ export function App() {
       if (!hasFiles(e)) return;
       e.preventDefault();
       const files = [...(e.dataTransfer?.files ?? [])];
-      const row = (e.target as Element | null)?.closest?.('.row[data-line]');
-      const line = row ? Number(row.getAttribute('data-line')) : undefined;
       const target = layerOfRef.current(e.target);
+      const line = target ? lineAtRef.current(target.id, e.clientX, e.clientY) : undefined;
       void Promise.all(files.map(fromFile)).then((pictures) => {
         const found = pictures.filter((p): p is IncomingPicture => p !== undefined);
         void picturesRef.current(found, target, line);

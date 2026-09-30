@@ -721,8 +721,10 @@ async function layersWithRealInput(picture: string) {
     const data = new DataTransfer();
     data.items.add(new File([bytes], 'Schéma nosníku.png', { type: 'image/png' }));
     const row = document.querySelector('.layer-view.active .row[data-line="2"]');
-    row.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: data }));
-    row.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: data }));
+    const box = row.getBoundingClientRect();
+    const at = { clientX: box.left + 20, clientY: box.top + box.height / 2 };
+    row.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: data, ...at }));
+    row.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: data, ...at }));
   })()`);
   await pause(800);
   const dropped = (await contents.executeJavaScript(
@@ -740,8 +742,22 @@ async function layersWithRealInput(picture: string) {
   const fileCopied = (await contents.executeJavaScript(
     `[...document.querySelectorAll('.layer-view.active figcaption')].some((f) => f.textContent.includes('Detail uložení'))`,
   )) as boolean;
+  // Ctrl+V with no row being edited (the sheet only shown) puts the picture at the end.
+  const countPictures = () => contents.executeJavaScript(`document.querySelectorAll('.layer-view.active .picture').length`) as Promise<number>;
+  const before = await countPictures();
+  await clipboard.write([new ClipboardItem({ 'image/png': new Blob([new Uint8Array(png)], { type: 'image/png' }) })]);
+  await clickOn('.sheet-scroll');
+  await pressKey('V', ['control']);
+  await pause(800);
+  const shownAfterPaste = (await contents.executeJavaScript(`(() => {
+    const row = document.querySelector('.layer-view.active .row.just-inserted');
+    const view = document.querySelector('.layer-view.active .sheet-scroll').getBoundingClientRect();
+    const box = row?.getBoundingClientRect();
+    return !!row?.querySelector('.picture') && box.top >= view.top && box.bottom <= view.bottom;
+  })()`)) as boolean;
+  const pastedIdle = (await countPictures()) === before + 1 && shownAfterPaste;
   await takePicture(picture.replace(/[.]png$/, '-pictures.png'));
-  const pictures = pasted.img && resized && dropped === 'Obr. 1: Schéma nosníku' && fileCopied;
+  const pictures = pasted.img && resized && dropped === 'Obr. 1: Schéma nosníku' && fileCopied && pastedIdle;
 
   // A sheet with a block: the block is listed, its use shows the block and computes.
   const blockFile = process.env['CALCCANVAS_SMOKE_BLOCKS'];
@@ -758,7 +774,7 @@ async function layersWithRealInput(picture: string) {
     blocksOk = shown.errors === 0 && shown.text.includes('Prosty nosnik 1.2') && shown.text.includes('45');
     await takePicture(picture.replace(/[.]png$/, '-blocks.png'));
   }
-  return { ...state, newKeepsExample, citations, aiReadOnly, split, mainHidden, twoLayers, addKinds, aiDeletable, aiMenu, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, help, pasted, resized, dropped, fileCopied, pictures, blocksOk };
+  return { ...state, newKeepsExample, citations, aiReadOnly, split, mainHidden, twoLayers, addKinds, aiDeletable, aiMenu, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictures, blocksOk };
 }
 
 /**

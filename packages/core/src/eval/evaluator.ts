@@ -187,7 +187,7 @@ function arithmetic(op: BinaryOperator, left: Value, right: Value, leftExpr: Exp
       warnOnAbsoluteTemperature(a, leftExpr.span, ctx);
       warnOnAbsoluteTemperature(b, rightExpr.span, ctx);
       // Scaling by a plain number keeps the unit: 1.35 · g_k stays in kN/m.
-      const scaled = isDimensionless(b.dim) && !b.hint ? a : op === '*' && isDimensionless(a.dim) && !a.hint ? b : undefined;
+      const scaled = scaledOperand(op, a, b);
       const hint = scaled?.hint && !isDimensionless(scaled.dim) ? { hint: scaled.hint } : {};
       if (op === '*') return quantity(a.si * b.si, multiplyDims(a.dim, b.dim), hint);
       if (b.si === 0) fail('E-DIV-ZERO', rightExpr.span);
@@ -221,7 +221,7 @@ function complexBinary(op: BinaryOperator, a: Quantity, b: Quantity, leftExpr: E
     case '*':
     case '/': {
       if (a.absolute || b.absolute) fail('E-COMPLEX-ARG', span);
-      const scaled = isDimensionless(b.dim) && !b.hint ? a : op === '*' && isDimensionless(a.dim) && !a.hint ? b : undefined;
+      const scaled = scaledOperand(op, a, b);
       const hint = scaled?.hint && !isDimensionless(scaled.dim) ? scaled.hint : undefined;
       if (op === '*') return make(ar * br - ai * bi, ar * bi + ai * br, multiplyDims(a.dim, b.dim), hint);
       const d = br * br + bi * bi;
@@ -252,6 +252,20 @@ function complexBinary(op: BinaryOperator, a: Quantity, b: Quantity, leftExpr: E
       void leftExpr;
       return fail('E-COMPLEX-ORDER', span, { operator: op });
   }
+}
+
+/**
+ * The operand whose unit a product or quotient keeps. Scaling by a plain
+ * number keeps the unit: 1.35 · g_k stays in kN/m, 70 % · 5.8 CZK/kWh stays in
+ * CZK/kWh. Between two plain numbers the one with a unit symbol (%) wins.
+ */
+function scaledOperand(op: '*' | '/', a: Quantity, b: Quantity): Quantity | undefined {
+  const plainA = isDimensionless(a.dim);
+  const plainB = isDimensionless(b.dim);
+  if (!plainA && plainB) return a;
+  if (plainA && !plainB) return op === '*' ? b : undefined;
+  if (plainA && plainB) return !b.hint ? a : op === '*' && !a.hint ? b : undefined;
+  return undefined;
 }
 
 function addSubtract(op: '+' | '-', a: Quantity, b: Quantity, span: Span): Quantity {

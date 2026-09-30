@@ -187,8 +187,8 @@ Od nejvyšší priority (**převzato z Calcpadu, standardní školní matematika
 | Řádek tabulky | `pick(Profily, "IPE 200")` | F2 |
 | Tabulka | `Profily_IPE` | F2 |
 | Komplexní číslo | `(3 + 4j) Ω`, `4i` | F9 ✓ |
-| Řada / vektor | `[100; 120; 150] CZK`, `range(1, 25)` | F10 |
-| Datum a období | `2026-09-29`, `25 roků` | F10 |
+| Řada / vektor | `[100; 120; 150] CZK`, `range(1, 25)` | F10 ✓ |
+| Datum a období | `2026-09-29`, `25 yr` | F10 ✓ |
 
 ---
 
@@ -216,6 +216,31 @@ S := U·conj(I) | VA             ' zdánlivý výkon
 - Komplexní čísla nemají pořadí: `<`, `≤` i posudek s nimi je chyba s radou porovnat `abs(…)` (E-COMPLEX-ORDER). Kde dávají smysl jen reálná čísla (goniometrické funkce, tabulky, řešič, absolutní teplota), je chyba E-COMPLEX-ARG, nikdy tiché zahození imaginární části.
 - `sqrt(-4)` zůstává chybou; odmocnina z komplexního čísla dá hlavní hodnotu.
 - Jména `i` a `j` zůstávají volná pro proměnné (`1000·(1 + i)`); imaginární jednotka je jen hned za číslem.
+
+### 7.1b Řady, finance a data (F10)
+
+```text
+roky := range(1, 25)                         ' [1; 2; …; 25]
+uspora := 43316 CZK·1.03^(roky - 1)          ' počítá se po prvcích
+CF := [-258875 CZK, uspora]                  ' řada uvnitř řady se rozvine
+CF[1] =                                      ' první prvek (počítá se od 1)
+NPV := npv(4 %, CF)                          ' první tok je teď (t = 0)
+IRR := irr(CF) | %
+doba := payback(CF)                          ' roky, lineárně v roce návratu
+splatka := pmt(5 %, 20, 1000000 CZK)         ' anuita
+rok := sum(Vyroba.E)                         ' sloupec tabulky jako řada
+```
+
+- Řada má všechny prvky stejné dimenze. S číslem nebo stejně dlouhou řadou se počítá po prvcích (`+ − · / ^`). Řady se neporovnávají (`<` je chyba).
+- Funkce: `range(od, do[, krok])`, `sum`, `mean`, `len`, `cumsum`, `min`/`max` přes řadu, `npv`, `irr`, `pmt`, `payback`.
+- `[m]` zůstává jednotkou; řada je vše ostatní v hranatých závorkách a smí mít jednotku za sebou: `[1, 2] m`.
+- V tisku se dlouhá řada zkrátí: „[1; 2; 3; 4; 5; …; 24; 25] (25)“.
+
+**Data:** `2026-09-29` (bez mezer; s mezerami je to odčítání) je absolutní čas jako absolutní teplota:
+`datum − datum` dá dny, `datum + 30 d` dá datum, `(d_2 − d_1) | yr` dá roky, dvě data sečíst ani násobit nejde.
+Funkce `date(2026, 9, 29)`, `year`, `month`, `day`; jednotky `wk` a `yr` (365,25 d; ne `a`, to je příliš časté jméno).
+Tabulky mají sloupce typu `date` (`2026-09-29` i `29.9.2026`); kurz k datu: `find_max(Kurzy, by: datum, where: r.datum ≤ d).EUR`.
+Data se píší v jazyce tisku: „29. 9. 2026“.
 
 ### 7.2 Uživatelské funkce (F7)
 

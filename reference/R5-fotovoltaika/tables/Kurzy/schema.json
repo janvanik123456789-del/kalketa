@@ -1,0 +1,19 @@
+{
+  "name": "Kurzy",
+  "key": "datum",
+  "columns": [
+    {
+      "name": "datum",
+      "type": "date"
+    },
+    {
+      "name": "EUR",
+      "type": "quantity"
+    }
+  ],
+  "source": {
+    "title": "Kurz CZK za 1 EUR v pracovních dnech (orientační hodnoty)",
+    "retrieved": "2026-09-30",
+    "note": "Hodnoty zapsány pro testovací účely."
+  }
+}

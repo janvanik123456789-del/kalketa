@@ -9,3 +9,4 @@ Jádro je hotové, až projdou všechny bez kódu specifického pro jeden obor.
 |---|---|---|
 | R1-nosnik | stavař | výběr profilu z tabulky, posudky, nejlehčí vyhovující profil |
 | R4-kabel | elektrikář | 2D interpolace korekčních součinitelů, nejmenší vyhovující průřez, komplexní impedance a úbytek napětí |
+| R5-fotovoltaika | ekonom | vlastní měna, kurz k datu z tabulky, řady peněžních toků, NPV, IRR, doba a datum návratnosti |

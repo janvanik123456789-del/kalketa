@@ -4,6 +4,11 @@
  * after the head of a new function: "A_kruh(d) =" becomes "A_kruh(d) :=".
  */
 
+import { FUNCTION_NAMES } from '@calccanvas/core';
+
+/** Table functions are also built in: pick(T, …) = asks for the result. */
+const TABLE_FUNCTIONS: readonly string[] = ['pick', 'interpolate', 'find_min', 'find_max'];
+
 const NAME = String.raw`[\p{L}][\p{L}\p{Nd}\p{M}_]*`;
 const PARAMS = String.raw`\(\s*${NAME}(?:\s*[,;]\s*${NAME})*\s*\)`;
 const LEADING_NAME = new RegExp(String.raw`^\s*(${NAME})\s*(?:${PARAMS})?\s*$`, 'u');
@@ -23,7 +28,11 @@ export function defineShortcut(text: string, cursor: number, isDefinedElsewhere:
   const after = text.slice(cursor);
   const match = LEADING_NAME.exec(before);
   if (!match || after.trimStart().startsWith('=')) return undefined;
-  if (isDefinedElsewhere(match[1]!)) return undefined;
+  const name = match[1]!;
+  if (isDefinedElsewhere(name) || FUNCTION_NAMES.includes(name) || TABLE_FUNCTIONS.includes(name)) return undefined;
+  // "payback(CF) =" with CF defined above is a call that asks for the result.
+  const params = /\(([^()]*)\)/.exec(before)?.[1]?.split(/[,;]/).map((p) => p.trim()) ?? [];
+  if (params.some((p) => isDefinedElsewhere(p))) return undefined;
   const head = `${before.trimEnd()} := `;
   return { text: head + after.trimStart(), cursor: head.length };
 }

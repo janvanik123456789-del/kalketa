@@ -121,6 +121,9 @@ describe('":=" shortcut', () => {
     // A call with values asks for the result.
     expect(defineShortcut('A_kruh(20 mm)', 13, none)).toBeUndefined();
     expect(definedName('σ(M, W) := M/W')).toBe('σ');
+    // Calls ask for the result: built-in functions, and arguments defined elsewhere.
+    expect(defineShortcut('payback(CF) ', 12, none)).toBeUndefined();
+    expect(defineShortcut('f(CF) ', 6, (n) => n === 'CF')).toBeUndefined();
     expect(defineShortcut('q12 kN/m', 1, none)).toEqual({ text: 'q := 12 kN/m', cursor: 5 });
   });
 

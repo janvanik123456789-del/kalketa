@@ -463,7 +463,8 @@ function utilizationOf(op: BinaryOperator, left: Quantity, right: Quantity): num
   // Ratios of absolute temperatures or of negative values mean nothing.
   if (left.absolute || right.absolute) return undefined;
   if (op === '<' || op === '<=') return left.si >= 0 && right.si > 0 ? left.si / right.si : undefined;
-  return right.si >= 0 && left.si > 0 ? right.si / left.si : undefined;
+  // "x ≥ 0" has no utilization: the limit must be above zero.
+  return right.si > 0 && left.si > 0 ? right.si / left.si : undefined;
 }
 
 function checkSummary(results: readonly StatementResult[]): CheckSummaryItem[] {

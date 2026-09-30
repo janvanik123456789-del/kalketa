@@ -9,6 +9,8 @@ import {
   parseLayout,
   removeToolbar,
   renameToolbar,
+  gridRows,
+  setColumns,
   setItems,
   setVisible,
 } from '../src/logic/toolbars.js';
@@ -63,6 +65,25 @@ describe('toolbar layout', () => {
     expect(layout.toolbars.find((t) => t.id === added.id)).toMatchObject({ name: 'Oblíbené', items: ['file.save', '|', 'sym:π'], builtin: false });
     expect(removeToolbar(layout, added.id).toolbars.some((t) => t.id === added.id)).toBe(false);
     expect(removeToolbar(layout, 'standard').toolbars.some((t) => t.id === 'standard')).toBe(true);
+  });
+
+  it('reshapes toolbars into grids, within sensible limits', () => {
+    let layout = setColumns(defaultLayout(), 'greek', 4.4);
+    const greek = layout.toolbars.find((t) => t.id === 'greek')!;
+    expect(greek.columns).toBe(4);
+    expect(gridRows(greek.items, 4)).toBe(6); // 21 letters
+    layout = setColumns(layout, 'greek', 99);
+    expect(layout.toolbars.find((t) => t.id === 'greek')!.columns).toBe(21);
+    layout = setColumns(layout, 'standard', 0);
+    expect(layout.toolbars.find((t) => t.id === 'standard')!.columns).toBe(1);
+    expect(gridRows(['a', '|', 'b', 'c'], 2)).toBe(2); // separators take no cell
+  });
+
+  it('keeps the grid shape when stored', () => {
+    const layout = setColumns(defaultLayout(), 'operators', 3);
+    expect(parseLayout(JSON.stringify(layout)).toolbars.find((t) => t.id === 'operators')!.columns).toBe(3);
+    const broken = JSON.stringify({ ...layout, toolbars: layout.toolbars.map((t) => (t.id === 'operators' ? { ...t, columns: -2 } : t)) });
+    expect(parseLayout(broken).toolbars.find((t) => t.id === 'operators')!.columns).toBeUndefined();
   });
 
   it('survives damaged storage and adds new built-in toolbars', () => {

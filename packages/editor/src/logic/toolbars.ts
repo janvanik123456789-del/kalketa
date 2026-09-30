@@ -21,6 +21,11 @@ export interface ToolbarState {
   readonly items: readonly string[];
   readonly visible: boolean;
   readonly place: ToolbarPlace;
+  /**
+   * Buttons per row when the toolbar is a grid: floating toolbars, and
+   * toolbars docked at the left or right edge (default one column there).
+   */
+  readonly columns?: number;
 }
 
 export interface ToolbarLayout {
@@ -127,6 +132,19 @@ export function setVisible(layout: ToolbarLayout, id: string, visible: boolean):
   return compactBands(update(layout, id, (t) => ({ ...t, visible })));
 }
 
+/** Reshapes a toolbar into a grid of `columns` buttons per row. */
+export function setColumns(layout: ToolbarLayout, id: string, columns: number): ToolbarLayout {
+  return update(layout, id, (t) => {
+    const buttons = t.items.filter((i) => i !== SEPARATOR).length;
+    return { ...t, columns: Math.max(1, Math.min(Math.round(columns), Math.max(1, buttons))) };
+  });
+}
+
+/** Rows of a grid with the given number of columns. */
+export function gridRows(items: readonly string[], columns: number): number {
+  return Math.ceil(items.filter((i) => i !== SEPARATOR).length / Math.max(1, columns));
+}
+
 export function setItems(layout: ToolbarLayout, id: string, items: readonly string[]): ToolbarLayout {
   return update(layout, id, (t) => ({ ...t, items }));
 }
@@ -163,7 +181,12 @@ export function parseLayout(json: string | null): ToolbarLayout {
     const stored = JSON.parse(json) as ToolbarLayout;
     if (stored.version !== 1 || !Array.isArray(stored.toolbars)) return fallback;
     const valid = stored.toolbars.filter(
-      (t) => typeof t.id === 'string' && Array.isArray(t.items) && t.items.every((i: unknown) => typeof i === 'string') && isPlace(t.place),
+      (t) =>
+        typeof t.id === 'string' &&
+        Array.isArray(t.items) &&
+        t.items.every((i: unknown) => typeof i === 'string') &&
+        isPlace(t.place) &&
+        (t.columns === undefined || (Number.isInteger(t.columns) && t.columns > 0)),
     );
     const missing = fallback.toolbars.filter((b) => !valid.some((t) => t.id === b.id));
     return compactBands({ version: 1, toolbars: [...valid, ...missing] });

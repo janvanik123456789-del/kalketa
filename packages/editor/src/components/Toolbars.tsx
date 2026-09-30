@@ -1,14 +1,28 @@
 /**
  * Dockable toolbars (classic CAD style). Each toolbar has a grip; dragging it
  * to an edge of the window docks it there (in a band of that edge), dropping
- * it elsewhere leaves it floating in its own small window.
+ * it elsewhere leaves it floating in its own small window. Floating toolbars
+ * and toolbars at the side edges can be reshaped into a grid by dragging a
+ * handle.
  */
 
 import { useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 import { t, type Catalog, type UiKey } from '@calccanvas/i18n';
 import { plainLabel, type Command } from '../commands.js';
 import { commandIcon } from '../icons.js';
-import { bandsOf, compactBands, dockToolbar, floating, floatToolbar, SEPARATOR, setVisible, type Dock, type ToolbarLayout, type ToolbarState } from '../logic/toolbars.js';
+import {
+  bandsOf,
+  compactBands,
+  dockToolbar,
+  floating,
+  floatToolbar,
+  SEPARATOR,
+  setColumns,
+  setVisible,
+  type Dock,
+  type ToolbarLayout,
+  type ToolbarState,
+} from '../logic/toolbars.js';
 
 export function toolbarName(toolbar: ToolbarState, catalog: Catalog): string {
   return toolbar.name ?? (toolbar.builtin ? t(catalog, `toolbar.${toolbar.id}` as UiKey) : toolbar.id);
@@ -34,10 +48,25 @@ export interface ToolbarFrameProps {
 }
 
 const DOCK_SNAP_PX = 40;
+/** Width of one button cell in a grid toolbar (button + gap). */
+const CELL_PX = 30;
+/** Floating toolbars start as a grid of at most this many columns. */
+const DEFAULT_FLOAT_COLUMNS = 8;
 
 export function ToolbarFrame({ layout, commands, catalog, onLayout, children, aside }: ToolbarFrameProps) {
   const [drag, setDrag] = useState<Drag | undefined>();
   const docks = { top: useRef<HTMLDivElement>(null), bottom: useRef<HTMLDivElement>(null), left: useRef<HTMLDivElement>(null), right: useRef<HTMLDivElement>(null) };
+
+  // Reshaping sends many updates during one drag; each builds on the latest layout.
+  const latest = useRef(layout);
+  latest.current = layout;
+  const reshape = (id: string, columns: number) => {
+    const current = latest.current.toolbars.find((tb) => tb.id === id)?.columns;
+    const next = setColumns(latest.current, id, columns);
+    if (next.toolbars.find((tb) => tb.id === id)?.columns === current) return;
+    latest.current = next;
+    onLayout(next);
+  };
 
   const startDrag = (id: string, e: ReactMouseEvent, box: HTMLElement) => {
     e.preventDefault();
@@ -49,7 +78,7 @@ export function ToolbarFrame({ layout, commands, catalog, onLayout, children, as
       window.removeEventListener('mousemove', move);
       window.removeEventListener('mouseup', up);
       setDrag(undefined);
-      onLayout(drop(layout, id, m.clientX, m.clientY, state.offsetX, state.offsetY));
+      onLayout(drop(latest.current, id, m.clientX, m.clientY, state.offsetX, state.offsetY));
     };
     window.addEventListener('mousemove', move);
     window.addEventListener('mouseup', up);
@@ -95,11 +124,12 @@ export function ToolbarFrame({ layout, commands, catalog, onLayout, children, as
             <ToolbarBox
               key={toolbar.id}
               toolbar={toolbar}
-              vertical={edge === 'left' || edge === 'right'}
+              edge={edge}
               commands={commands}
               catalog={catalog}
               ghost={drag?.id === toolbar.id}
               onGrip={(e, box) => startDrag(toolbar.id, e, box)}
+              onColumns={(columns) => reshape(toolbar.id, columns)}
             />
           ))}
         </div>
@@ -126,6 +156,7 @@ export function ToolbarFrame({ layout, commands, catalog, onLayout, children, as
           catalog={catalog}
           ghost={drag?.id === toolbar.id}
           onGrip={(e, box) => startDrag(toolbar.id, e, box)}
+          onColumns={(columns) => reshape(toolbar.id, columns)}
           onHide={() => onLayout(setVisible(layout, toolbar.id, false))}
           onDock={() => onLayout(dockToolbar(layout, toolbar.id, 'top', Number.MAX_SAFE_INTEGER))}
         />
@@ -154,24 +185,49 @@ interface BoxProps {
   readonly toolbar: ToolbarState;
   readonly commands: ReadonlyMap<string, Command>;
   readonly catalog: Catalog;
-  readonly vertical?: boolean;
   readonly ghost?: boolean;
   onGrip(e: ReactMouseEvent, box: HTMLElement): void;
+  /** Reshapes the toolbar into a grid with this many columns. */
+  onColumns(columns: number): void;
 }
 
-function ToolbarBox({ toolbar, commands, catalog, vertical, ghost, onGrip }: BoxProps) {
+/**
+ * Starts reshaping: each CELL_PX the pointer moves sideways adds or removes a
+ * column. `direction` is -1 for toolbars docked at the right edge, which grow
+ * towards the sheet (to the left).
+ */
+function startReshape(e: ReactMouseEvent, columns: number, direction: 1 | -1, onColumns: (columns: number) => void): void {
+  e.preventDefault();
+  e.stopPropagation();
+  const startX = e.clientX;
+  const move = (m: MouseEvent) => onColumns(columns + Math.round(((m.clientX - startX) * direction) / CELL_PX));
+  const up = () => {
+    window.removeEventListener('mousemove', move);
+    window.removeEventListener('mouseup', up);
+  };
+  window.addEventListener('mousemove', move);
+  window.addEventListener('mouseup', up);
+}
+
+function ToolbarBox({ toolbar, commands, catalog, edge, ghost, onGrip, onColumns }: BoxProps & { edge: Dock }) {
   const box = useRef<HTMLDivElement>(null);
+  const vertical = edge === 'left' || edge === 'right';
+  // Only toolbars at the side edges widen into several columns.
+  const columns = vertical ? (toolbar.columns ?? 1) : undefined;
   return (
     <div ref={box} className={`toolbar-box${vertical ? ' vertical' : ''}${ghost ? ' ghost' : ''}`} data-toolbar={toolbar.id} role="toolbar" aria-label={toolbarName(toolbar, catalog)}>
       <span className="toolbar-grip" title={toolbarName(toolbar, catalog)} onMouseDown={(e) => box.current && onGrip(e, box.current)} />
-      <Buttons items={toolbar.items} commands={commands} />
+      <Buttons items={toolbar.items} commands={commands} {...(columns !== undefined && columns > 1 ? { columns } : {})} />
+      {columns !== undefined && <span className="reshape-handle bottom" onMouseDown={(e) => startReshape(e, columns, edge === 'right' ? -1 : 1, onColumns)} />}
     </div>
   );
 }
 
-function FloatingToolbar({ toolbar, commands, catalog, ghost, onGrip, onHide, onDock }: BoxProps & { onHide(): void; onDock(): void }) {
+function FloatingToolbar({ toolbar, commands, catalog, ghost, onGrip, onColumns, onHide, onDock }: BoxProps & { onHide(): void; onDock(): void }) {
   const box = useRef<HTMLDivElement>(null);
   if (toolbar.place.kind !== 'float') return null;
+  const buttons = toolbar.items.filter((i) => i !== SEPARATOR).length;
+  const columns = toolbar.columns ?? Math.max(1, Math.min(buttons, DEFAULT_FLOAT_COLUMNS));
   return (
     <div ref={box} className={`float-toolbar${ghost ? ' ghost' : ''}`} style={{ left: toolbar.place.x, top: toolbar.place.y }} role="toolbar" aria-label={toolbarName(toolbar, catalog)}>
       <div className="float-title" onMouseDown={(e) => box.current && onGrip(e, box.current)} onDoubleClick={onDock}>
@@ -181,38 +237,43 @@ function FloatingToolbar({ toolbar, commands, catalog, ghost, onGrip, onHide, on
         </button>
       </div>
       <div className="float-buttons">
-        <Buttons items={toolbar.items} commands={commands} />
+        <Buttons items={toolbar.items} commands={commands} columns={columns} />
       </div>
+      <span className="reshape-handle corner" onMouseDown={(e) => startReshape(e, columns, 1, onColumns)} />
     </div>
   );
 }
 
-function Buttons({ items, commands }: { items: readonly string[]; commands: ReadonlyMap<string, Command> }) {
+/** Buttons in a row or column, or in a grid of `columns` (separators then take no cell). */
+function Buttons({ items, commands, columns }: { items: readonly string[]; commands: ReadonlyMap<string, Command>; columns?: number }) {
+  const grid = columns !== undefined;
+  const buttons = items.map((id, i) => {
+    if (id === SEPARATOR) return grid ? null : <span key={i} className="toolbar-separator" />;
+    const cmd = commands.get(id);
+    if (!cmd) return null;
+    const icon = commandIcon(id);
+    const tip = plainLabel(cmd.label) + (cmd.shortcut ? ` (${cmd.shortcut})` : '');
+    return (
+      <button
+        key={i}
+        type="button"
+        className={`tool-button${cmd.checked ? ' checked' : ''}${icon ? '' : ' glyph'}`}
+        title={tip}
+        aria-label={tip}
+        aria-pressed={cmd.checked}
+        disabled={!cmd.enabled}
+        // Keep the focus in the line being edited, so symbols go where the caret is.
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={cmd.run}
+      >
+        {icon ?? cmd.glyph ?? plainLabel(cmd.label)}
+      </button>
+    );
+  });
+  if (!grid) return <>{buttons}</>;
   return (
-    <>
-      {items.map((id, i) => {
-        if (id === SEPARATOR) return <span key={i} className="toolbar-separator" />;
-        const cmd = commands.get(id);
-        if (!cmd) return null;
-        const icon = commandIcon(id);
-        const tip = plainLabel(cmd.label) + (cmd.shortcut ? ` (${cmd.shortcut})` : '');
-        return (
-          <button
-            key={i}
-            type="button"
-            className={`tool-button${cmd.checked ? ' checked' : ''}${icon ? '' : ' glyph'}`}
-            title={tip}
-            aria-label={tip}
-            aria-pressed={cmd.checked}
-            disabled={!cmd.enabled}
-            // Keep the focus in the line being edited, so symbols go where the caret is.
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={cmd.run}
-          >
-            {icon ?? cmd.glyph ?? plainLabel(cmd.label)}
-          </button>
-        );
-      })}
-    </>
+    <div className="button-grid" style={{ gridTemplateColumns: `repeat(${columns}, ${CELL_PX - 2}px)` }}>
+      {buttons}
+    </div>
   );
 }

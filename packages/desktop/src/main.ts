@@ -467,6 +467,13 @@ async function layersWithRealInput(picture: string) {
     `!document.querySelector('.layer-view[data-layer="main"], .layer-tab[data-layer="main"]') && document.querySelectorAll('.layer-view').length === 1`,
   )) as boolean;
   await takePicture(picture.replace(/\.png$/, '-nomain.png'));
+  // Two layers side by side with the sheet hidden: open the last layer beside the one shown.
+  await clickOn('.layer-item:last-child .layer-actions button:first-child');
+  await pause(300);
+  const twoLayers = (await contents.executeJavaScript(
+    `[...document.querySelectorAll('.layer-view')].map((v) => v.getAttribute('data-layer')).join(' ')`,
+  )) as string;
+  await takePicture(picture.replace(/\.png$/, '-twolayers.png'));
 
   // More calculations at once: a new one in its own tab, back to the first, Ctrl+Tab, Ctrl+W.
   await clickOn('.doc-tab-new');
@@ -580,7 +587,7 @@ async function layersWithRealInput(picture: string) {
     blocksOk = shown.blocks === 1 && shown.errors === 0 && shown.text.includes('Prosty nosnik 1.2') && shown.text.includes('45');
     await takePicture(picture.replace(/[.]png$/, '-blocks.png'));
   }
-  return { ...state, newKeepsExample, citations, aiReadOnly, split, mainHidden, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, help, blocksOk };
+  return { ...state, newKeepsExample, citations, aiReadOnly, split, mainHidden, twoLayers, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, help, blocksOk };
 }
 
 /**

@@ -10,12 +10,14 @@ interface Props {
   readonly table: Table;
   readonly current: string;
   readonly resolveFile: (path: string) => string | undefined;
+  /** Number format of the sheet's language (1 943 / 1,5). */
+  readonly format: (value: number) => string;
   onChoose(key: string): void;
 }
 
 const SHOWN_COLUMNS = 4;
 
-export function PickControl({ table, current, resolveFile, onChoose }: Props) {
+export function PickControl({ table, current, resolveFile, format, onChoose }: Props) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -76,7 +78,7 @@ export function PickControl({ table, current, resolveFile, onChoose }: Props) {
                       const shown = cell?.type === 'quantity' ? toDisplay(cell, defaultRegistry, c.resolvedUnit) : undefined;
                       return (
                         <td key={c.name} className="num">
-                          {shown ? String(Number(shown.value.toPrecision(6))) : ''}
+                          {shown ? format(shown.value) : ''}
                         </td>
                       );
                     })}

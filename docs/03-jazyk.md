@@ -88,8 +88,9 @@ Ohyb: σ = 193.3 MPa ≤ fy = 235 MPa   využití 82 %  ✓   [EN 1993-1-1, 6.2.
 21 %
 ```
 
-- Desetinná **tečka**. Čárka odděluje argumenty funkcí.
-  *Proč:* česká desetinná čárka by kolidovala s oddělovačem argumentů. Zobrazení v tisku může desetinnou čárku použít (nastavení listu).
+- **V souboru** je desetinná **tečka** a čárka odděluje argumenty funkcí, aby list šel otevřít v libovolném jazyce.
+- **Při psaní** se používá zápis jazyka programu (upraveno 2026-09-30 na přání uživatele). V češtině se píše `50,5` a argumenty se oddělují **středníkem** jako v českém Excelu: `max(1,5; 2)`. Editor řádek při úpravě převádí mezi oběma zápisy, texty v uvozovkách a komentáře nemění. Tečka napsaná ze zvyku (`50.5`) se přijme také. Čárka s mezerou (`max(1, 2)`) se bere jako oddělovač argumentů.
+- Tisk používá formát čísel jazyka tisku (`50,5` v češtině).
 - Jednotka **bezprostředně za číslem** je vždy jednotka (**převzato z Calcpadu**).
 
 ### 4.2 Jednotka, nebo proměnná?

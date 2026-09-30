@@ -11,7 +11,7 @@ export const CORE_VERSION = '0.1.0';
 
 export * from './diagnostics.js';
 export type * from './lang/ast.js';
-export { tokenize, type Token, type TokenType } from './lang/lexer.js';
+export { tokenize, type Token, type TokenType, type LexOptions } from './lang/lexer.js';
 export { parse, type ParseOptions, type ParseResult } from './lang/parser.js';
 export * from './units/dimension.js';
 export { UnitRegistry, defaultRegistry, type UnitDef } from './units/registry.js';
@@ -24,3 +24,4 @@ export * from './graph/session.js';
 export * from './tables/table.js';
 export { TABLE_FUNCTIONS, ROW_VARIABLE } from './eval/tables.js';
 export * from './provenance/trace.js';
+export { toDecimalComma, fromDecimalComma } from './lang/notation.js';

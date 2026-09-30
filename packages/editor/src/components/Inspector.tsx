@@ -4,17 +4,19 @@
  * jumps to its line.
  */
 
-import { traceStatement, type SheetResult, type TraceNode } from '@calccanvas/core';
+import { toDecimalComma, traceStatement, type SheetResult, type TraceNode } from '@calccanvas/core';
 import { formatDiagnostic, formatNumber, t, type Catalog } from '@calccanvas/i18n';
 
 interface Props {
   readonly result: SheetResult;
   readonly statement: number | undefined;
   readonly catalog: Catalog;
+  /** Formulas are shown in the user's notation (50,5). */
+  readonly decimalComma: boolean;
   onSelect(statement: number): void;
 }
 
-export function Inspector({ result, statement, catalog, onSelect }: Props) {
+export function Inspector({ result, statement, catalog, decimalComma, onSelect }: Props) {
   const r = statement !== undefined ? result.statements[statement] : undefined;
   if (!r || (r.statement.kind !== 'definition' && r.statement.kind !== 'display' && r.statement.kind !== 'check' && r.statement.kind !== 'invalid')) {
     return (
@@ -47,7 +49,7 @@ export function Inspector({ result, statement, catalog, onSelect }: Props) {
         <section>
           <h3>{t(catalog, 'editor.origin')}</h3>
           <ul className="trace">
-            <TraceItem node={trace} catalog={catalog} onSelect={onSelect} />
+            <TraceItem node={trace} catalog={catalog} decimalComma={decimalComma} onSelect={onSelect} />
           </ul>
         </section>
       )}
@@ -56,7 +58,7 @@ export function Inspector({ result, statement, catalog, onSelect }: Props) {
   );
 }
 
-function TraceItem({ node, catalog, onSelect }: { node: TraceNode; catalog: Catalog; onSelect(statement: number): void }) {
+function TraceItem({ node, catalog, decimalComma, onSelect }: { node: TraceNode; catalog: Catalog; decimalComma: boolean; onSelect(statement: number): void }) {
   const value = node.display
     ? `${formatNumber(node.display.value, catalog)}${node.display.unit ? ` ${node.display.unit}` : ''}`
     : node.value?.type === 'row'
@@ -70,7 +72,7 @@ function TraceItem({ node, catalog, onSelect }: { node: TraceNode; catalog: Cata
       <button type="button" className="trace-node" disabled={node.statement === undefined} onClick={() => node.statement !== undefined && onSelect(node.statement)}>
         <span className="name">{node.name || '·'}</span>
         {value && <span className="value"> = {value}</span>}
-        {computed && node.expression && <span className="formula"> ← {node.expression}</span>}
+        {computed && node.expression && <span className="formula"> ← {decimalComma ? toDecimalComma(node.expression) : node.expression}</span>}
         {node.line !== undefined && <span className="line"> ({node.line})</span>}
       </button>
       {(node.tables.length > 0 || node.inputs.length > 0) && (
@@ -89,7 +91,7 @@ function TraceItem({ node, catalog, onSelect }: { node: TraceNode; catalog: Cata
             </li>
           ))}
           {node.inputs.map((input, i) => (
-            <TraceItem key={`i${i}`} node={input} catalog={catalog} onSelect={onSelect} />
+            <TraceItem key={`i${i}`} node={input} catalog={catalog} decimalComma={decimalComma} onSelect={onSelect} />
           ))}
         </ul>
       )}

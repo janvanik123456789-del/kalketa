@@ -5,8 +5,8 @@
  */
 
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
-import type { SheetResult, Statement } from '@calccanvas/core';
-import { t, type Catalog } from '@calccanvas/i18n';
+import { fromDecimalComma, toDecimalComma, type SheetResult, type Statement } from '@calccanvas/core';
+import { formatNumber, t, type Catalog } from '@calccanvas/i18n';
 import { renderBlockHtml, renderSummary, type PrintBlock, type PrintDocument } from '@calccanvas/render';
 import { paginate, type PageGeometry } from '../logic/pages.js';
 import { segments, type Segment } from '../logic/segments.js';
@@ -44,6 +44,8 @@ interface Props {
   /** Title in the page header. */
   readonly title: string;
   readonly uiCatalog: Catalog;
+  /** Show and accept numbers with a decimal comma (50,5; arguments separated by ";"). */
+  readonly decimalComma: boolean;
 }
 
 export function SheetView(props: Props) {
@@ -135,6 +137,7 @@ export function SheetView(props: Props) {
             <RowEditor
               seg={seg}
               initialCursor={editing?.cursor}
+              decimalComma={props.decimalComma}
               result={result}
               onChange={(text) => props.onReplace(seg.start, seg.end, text)}
               onEnter={() => props.onInsertAfter(seg.end)}
@@ -147,8 +150,8 @@ export function SheetView(props: Props) {
               onDone={() => props.onEdit(undefined)}
             />
           ) : null}
-          {block ? <Block block={block} catalog={props.printCatalog} /> : !isEditing && <PlainLine text={seg.text} />}
-          {!isEditing && statement && <PickFor statement={statement.statement} result={result} resolveFile={props.resolveFile} onPick={props.onPick} />}
+          {block ? <Block block={block} catalog={props.printCatalog} /> : !isEditing && <PlainLine text={props.decimalComma ? toDecimalComma(seg.text) : seg.text} />}
+          {!isEditing && statement && <PickFor statement={statement.statement} result={result} catalog={props.printCatalog} resolveFile={props.resolveFile} onPick={props.onPick} />}
         </div>
       </div>
     );
@@ -164,16 +167,17 @@ function PlainLine({ text }: { text: string }) {
   return <code className="raw">{text}</code>;
 }
 
-function PickFor(props: { statement: Statement; result: SheetResult; resolveFile: (path: string) => string | undefined; onPick: Props['onPick'] }) {
+function PickFor(props: { statement: Statement; result: SheetResult; catalog: Catalog; resolveFile: (path: string) => string | undefined; onPick: Props['onPick'] }) {
   const pick = pickOf(props.statement);
   const table = pick ? props.result.tables.get(pick.table) : undefined;
   if (!pick || !table) return null;
-  return <PickControl table={table} current={pick.key} resolveFile={props.resolveFile} onChoose={(key) => props.onPick(props.statement, key)} />;
+  return <PickControl table={table} current={pick.key} resolveFile={props.resolveFile} format={(value) => formatNumber(value, props.catalog, { digits: 6 })} onChoose={(key) => props.onPick(props.statement, key)} />;
 }
 
 interface RowEditorProps {
   readonly seg: Segment;
   readonly initialCursor: number | undefined;
+  readonly decimalComma: boolean;
   readonly result: SheetResult;
   onChange(text: string): void;
   onEnter(): void;
@@ -182,7 +186,10 @@ interface RowEditorProps {
   onDone(): void;
 }
 
-function RowEditor({ seg, initialCursor, result, onChange, onEnter, onDeleteEmpty, onMove, onDone }: RowEditorProps) {
+function RowEditor({ seg, initialCursor, decimalComma, result, onChange, onEnter, onDeleteEmpty, onMove, onDone }: RowEditorProps) {
+  // The line is edited in the user's notation (50,5) and stored in file notation (50.5).
+  const shown = decimalComma ? toDecimalComma(seg.text) : seg.text;
+  const store = (text: string) => onChange(decimalComma ? fromDecimalComma(text) : text);
   const ref = useRef<HTMLTextAreaElement>(null);
   const [original] = useState(seg.text);
   const pendingCursor = useRef<number | undefined>(undefined);
@@ -238,15 +245,15 @@ function RowEditor({ seg, initialCursor, result, onChange, onEnter, onDeleteEmpt
       className="row-editor"
       spellCheck={false}
       rows={1}
-      value={seg.text}
+      value={shown}
       onChange={(e) => {
         // A single "=" just typed (by keyboard, paste or dictation) may become ":=".
         const area = e.target;
         const at = area.selectionStart - 1;
-        const typedEquals = area.value.length === seg.text.length + 1 && area.value[at] === '=' && area.value.slice(0, at) + area.value.slice(at + 1) === seg.text;
-        const edit = typedEquals ? defineShortcut(seg.text, at, definedElsewhere) : undefined;
+        const typedEquals = area.value.length === shown.length + 1 && area.value[at] === '=' && area.value.slice(0, at) + area.value.slice(at + 1) === shown;
+        const edit = typedEquals ? defineShortcut(shown, at, definedElsewhere) : undefined;
         if (edit) pendingCursor.current = edit.cursor;
-        onChange(edit ? edit.text : area.value);
+        store(edit ? edit.text : area.value);
       }}
       onKeyDown={onKeyDown}
     />

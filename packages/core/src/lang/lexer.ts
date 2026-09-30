@@ -50,7 +50,16 @@ const isIdentStart = (ch: string): boolean => /[\p{L}°%‰]/u.test(ch);
 // Superscript digits are not part of a name (L² is L squared), subscripts are (T₁).
 const isIdentPart = (ch: string): boolean => /[\p{L}\p{Nd}\p{M}_°₀-₉]/u.test(ch);
 
-export function tokenize(source: string): LexResult {
+export interface LexOptions {
+  /**
+   * Local notation of languages with a decimal comma: "50,5" is a number and
+   * ";" separates arguments. The sheet file itself always uses "50.5" and ",".
+   */
+  readonly decimalComma?: boolean;
+}
+
+export function tokenize(source: string, options: LexOptions = {}): LexResult {
+  const decimalComma = options.decimalComma ?? false;
   const tokens: Token[] = [];
   const diagnostics: Diagnostic[] = [];
   let pos = 0;
@@ -151,6 +160,12 @@ export function tokenize(source: string): LexResult {
       continue;
     }
 
+    if (decimalComma && ch === ';') {
+      pos++;
+      push(',', start, ';');
+      continue;
+    }
+
     const op = OPERATORS.find(([text]) => source.startsWith(text, pos));
     if (op) {
       pos += op[0].length;
@@ -175,7 +190,8 @@ export function tokenize(source: string): LexResult {
       }
     };
     digits();
-    if (source[pos] === '.' && isDigit(source[pos + 1])) {
+    const separator = source[pos];
+    if ((separator === '.' || (decimalComma && separator === ',')) && isDigit(source[pos + 1])) {
       text += '.';
       pos++;
       digits();

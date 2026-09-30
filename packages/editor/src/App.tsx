@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { defaultRegistry, rowLabel, SheetSession, type Diagnostic, type Statement } from '@calccanvas/core';
-import { catalogFor, CATALOGS, formatDiagnostic, t } from '@calccanvas/i18n';
+import { catalogFor, CATALOGS, formatDiagnostic, formatNumber, t } from '@calccanvas/i18n';
 import { buildPrintDocument, printHtml } from '@calccanvas/render';
 import type { SheetDocument } from '@calccanvas/sheet';
 import { buildCommands, shortcutOf, type Command } from './commands.js';
@@ -91,6 +91,8 @@ export function App() {
   const scrollRef = useRef<HTMLElement>(null);
 
   const ui = catalogFor(language);
+  // The user writes numbers the way the program language does: 50,5 in Czech.
+  const decimalComma = formatNumber(1.5, ui).includes(',');
   const printCatalog = catalogFor(doc.manifest.language ?? language);
   const session = useRef(new SheetSession());
   const buildTables = useRef(tableCache(defaultRegistry));
@@ -537,6 +539,7 @@ export function App() {
                 zoom={zoom}
                 title={/^[ \t]*#(?!#)[ \t]*(.+?)[ \t]*$/m.exec(doc.source)?.[1] ?? doc.manifest.title}
                 uiCatalog={printCatalog}
+                decimalComma={decimalComma}
               />
             </main>
             {pane !== 'none' && (
@@ -548,6 +551,7 @@ export function App() {
                       result={result}
                       statement={selected}
                       catalog={ui}
+                      decimalComma={decimalComma}
                       onSelect={(statement) => {
                         setSelected(statement);
                         const line = result.statements[statement]?.statement.span.line;

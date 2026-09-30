@@ -1,0 +1,30 @@
+{
+  "name": "Stridace",
+  "key": "typ",
+  "columns": [
+    {
+      "name": "typ",
+      "type": "text"
+    },
+    {
+      "name": "P_ac",
+      "type": "quantity",
+      "unit": "kW"
+    },
+    {
+      "name": "U_max",
+      "type": "quantity",
+      "unit": "V"
+    },
+    {
+      "name": "cena",
+      "type": "quantity",
+      "unit": "CZK"
+    }
+  ],
+  "source": {
+    "title": "Střídače (orientační hodnoty)",
+    "retrieved": "2026-09-30",
+    "note": "Hodnoty zapsány pro testovací účely."
+  }
+}

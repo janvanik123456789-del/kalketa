@@ -1,0 +1,20 @@
+{
+  "name": "Osluneni",
+  "key": "mesic",
+  "columns": [
+    {
+      "name": "mesic",
+      "type": "text"
+    },
+    {
+      "name": "H",
+      "type": "quantity",
+      "unit": "kWh/kWp"
+    }
+  ],
+  "source": {
+    "title": "Měrná měsíční výroba, jih, sklon 35° (orientační hodnoty)",
+    "retrieved": "2026-09-30",
+    "note": "Hodnoty zapsány pro testovací účely."
+  }
+}

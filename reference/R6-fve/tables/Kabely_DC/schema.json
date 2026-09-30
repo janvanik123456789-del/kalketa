@@ -1,0 +1,35 @@
+{
+  "name": "Kabely_DC",
+  "key": "typ",
+  "columns": [
+    {
+      "name": "typ",
+      "type": "text"
+    },
+    {
+      "name": "S",
+      "type": "quantity",
+      "unit": "mm²"
+    },
+    {
+      "name": "I_z",
+      "type": "quantity",
+      "unit": "A"
+    },
+    {
+      "name": "R",
+      "type": "quantity",
+      "unit": "Ω/km"
+    },
+    {
+      "name": "cena",
+      "type": "quantity",
+      "unit": "CZK/m"
+    }
+  ],
+  "source": {
+    "title": "Solární kabely DC (orientační hodnoty)",
+    "retrieved": "2026-09-30",
+    "note": "Hodnoty zapsány pro testovací účely."
+  }
+}

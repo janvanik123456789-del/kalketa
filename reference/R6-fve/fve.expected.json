@@ -1,0 +1,84 @@
+{
+  "sheet": "fve.cc",
+  "verifiedBy": "Ruční výpočet čistou aritmetikou mimo CalcCanvas (Python): výběr střídače a kabelu filtrem nad tabulkami, k = 0,91·0,85 (bod mřížky), ΔU = 2·R·L·I, E = ΣH·P_dc·PR, náklady s kurzem z pátku 2. 10. 2026, peněžní toky a NPV/IRR/doba návratnosti jako v R5.",
+  "relativeTolerance": 1e-09,
+  "values": {
+    "P_dc": {
+      "value": 9.9,
+      "unit": "kWp"
+    },
+    "U_mp": {
+      "value": 456.5,
+      "unit": "V"
+    },
+    "stridac": {
+      "row": "S-10"
+    },
+    "k": {
+      "value": 0.7735,
+      "unit": ""
+    },
+    "kabel": {
+      "row": "SOLAR 4"
+    },
+    "ΔU": {
+      "value": 3.2224500000000003,
+      "unit": "V"
+    },
+    "ΔU_rel": {
+      "value": 0.7059036144578315,
+      "unit": "%"
+    },
+    "E_rok": {
+      "value": 8458.955999999998,
+      "unit": "kWh"
+    },
+    "C": {
+      "value": 159872.5,
+      "unit": "CZK"
+    },
+    "NPV": {
+      "value": 648003.42832854,
+      "unit": "CZK"
+    },
+    "IRR": {
+      "value": 36.48770147350139,
+      "unit": "%"
+    },
+    "doba": {
+      "value": 2.870036194232207,
+      "unit": ""
+    },
+    "navrat": {
+      "value": 21777.280719943315,
+      "unit": "date"
+    }
+  },
+  "checks": [
+    {
+      "label": "Výkon střídače",
+      "passed": true,
+      "utilization": 0.825
+    },
+    {
+      "label": "Napětí řetězce",
+      "passed": true,
+      "utilization": 0.570625
+    },
+    {
+      "label": "Zatížitelnost DC kabelu",
+      "passed": true,
+      "utilization": 0.39849856026326613
+    },
+    {
+      "label": "Úbytek napětí DC",
+      "passed": true,
+      "utilization": 0.7059036144578313
+    },
+    {
+      "label": "Doba návratnosti",
+      "passed": true,
+      "utilization": 0.2870036194232207
+    }
+  ]
+}

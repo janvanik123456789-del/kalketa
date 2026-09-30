@@ -1,0 +1,28 @@
+{
+  "name": "Korekce",
+  "key": "bod",
+  "columns": [
+    {
+      "name": "bod",
+      "type": "text"
+    },
+    {
+      "name": "θ",
+      "type": "quantity",
+      "unit": "°C"
+    },
+    {
+      "name": "n",
+      "type": "quantity"
+    },
+    {
+      "name": "k",
+      "type": "quantity"
+    }
+  ],
+  "source": {
+    "title": "Korekce zatížitelnosti na teplotu a seskupení (orientační hodnoty)",
+    "retrieved": "2026-09-30",
+    "note": "Hodnoty zapsány pro testovací účely."
+  }
+}

@@ -12,3 +12,4 @@ Jádro je hotové, až projdou všechny bez kódu specifického pro jeden obor.
 | R3-roztok | chemik | tabulka látek (molární hmotnost), ředění, disociační rovnováha řešičem, pH |
 | R4-kabel | elektrikář | 2D interpolace korekčních součinitelů, nejmenší vyhovující průřez, komplexní impedance a úbytek napětí |
 | R5-fotovoltaika | ekonom | vlastní měna, kurz k datu z tabulky, řady peněžních toků, NPV, IRR, doba a datum návratnosti |
+| R6-fve | průřezový | FVE elektricky i ekonomicky v jednom listu: šest tabulek, výběr střídače a kabelu podle více podmínek, 2D korekce, výroba ze sloupce tabulky, měna s kurzem k datu, NPV, IRR, doba a datum návratnosti |

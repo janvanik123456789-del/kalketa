@@ -1,0 +1,34 @@
+{
+  "name": "Panely",
+  "key": "typ",
+  "columns": [
+    {
+      "name": "typ",
+      "type": "text"
+    },
+    {
+      "name": "P_max",
+      "type": "quantity",
+      "unit": "Wp"
+    },
+    {
+      "name": "U_mp",
+      "type": "quantity",
+      "unit": "V"
+    },
+    {
+      "name": "I_mp",
+      "type": "quantity",
+      "unit": "A"
+    },
+    {
+      "name": "cena_EUR",
+      "type": "quantity"
+    }
+  ],
+  "source": {
+    "title": "Fotovoltaické panely (orientační hodnoty, cena bez DPH v EUR)",
+    "retrieved": "2026-09-30",
+    "note": "Hodnoty zapsány pro testovací účely."
+  }
+}

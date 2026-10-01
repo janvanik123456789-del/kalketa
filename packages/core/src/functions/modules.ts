@@ -265,6 +265,7 @@ export const SERIES: readonly FunctionDef[] = [
   {
     name: 'sum',
     module: 'series',
+    // Also sum(f(k), k: a .. b), evaluated by eval/calculus.ts.
     params: 'v',
     arity: [1, 1],
     call: (a) => {
@@ -457,6 +458,12 @@ export const LOGIC: readonly FunctionDef[] = [
     // Only the chosen branch is evaluated.
     call: (a) => (asBoolean(a.value(0), a.expr(0).span) ? a.value(1) : a.value(2)),
   },
+];
+
+/** Functions with a variable of their own: evaluated by eval/calculus.ts (sum is listed with series). */
+export const CALCULUS: readonly FunctionDef[] = [
+  { name: 'integral', module: 'calculus', params: 'f(x), x: a .. b', arity: [1, 1] },
+  { name: 'derivative', module: 'calculus', params: 'f(x), x: a, order: 1', arity: [1, 1] },
 ];
 
 /** Table functions: evaluated by the table code (they read named arguments and rows). */

@@ -17,6 +17,7 @@ import { CalcError, fail, type Span } from '../diagnostics.js';
 import type { Expr, Statement } from '../lang/ast.js';
 import type { FunctionValue, Value } from '../values/value.js';
 import type { EvalContext } from './evaluator.js';
+import { BINDING_FUNCTIONS } from '../lang/parser.js';
 import { BUILTIN_CONSTANTS, builtinFunctions } from './functions.js';
 import { ROW_VARIABLE, TABLE_FUNCTIONS } from './tables.js';
 
@@ -38,32 +39,43 @@ interface FreeName {
 /** Names an expression reads that are not bound inside it, with their first use. */
 export function freeNames(expr: Expr, bound: ReadonlySet<string>): Map<string, FreeName> {
   const found = new Map<string, FreeName>();
-  const visit = (e: Expr, rowScope: boolean): void => {
+  const visit = (e: Expr, rowScope: boolean, names: ReadonlySet<string>): void => {
     switch (e.kind) {
       case 'variable':
-        if (bound.has(e.name) || e.name in BUILTIN_CONSTANTS || (rowScope && e.name === ROW_VARIABLE)) return;
+        if (names.has(e.name) || e.name in BUILTIN_CONSTANTS || (rowScope && e.name === ROW_VARIABLE)) return;
         if (!found.has(e.name)) found.set(e.name, { span: e.span, call: false });
         return;
       case 'unary':
-        return visit(e.operand, rowScope);
+        return visit(e.operand, rowScope, names);
       case 'binary':
-        visit(e.left, rowScope);
-        return visit(e.right, rowScope);
+        visit(e.left, rowScope, names);
+        return visit(e.right, rowScope, names);
       case 'member':
-        return visit(e.object, rowScope);
+        return visit(e.object, rowScope, names);
+      case 'vector':
+        return e.items.forEach((item) => visit(item, rowScope, names));
+      case 'index':
+        visit(e.object, rowScope, names);
+        return visit(e.index, rowScope, names);
+      case 'range':
+        visit(e.low, rowScope, names);
+        return visit(e.high, rowScope, names);
       case 'call': {
-        if (!isBuiltinFunction(e.name) && !bound.has(e.name) && !found.has(e.name)) found.set(e.name, { span: e.span, call: true });
-        e.args.forEach((a) => visit(a, rowScope));
+        if (!isBuiltinFunction(e.name) && !names.has(e.name) && !found.has(e.name)) found.set(e.name, { span: e.span, call: true });
+        // integral(f(x), x: a .. b): x is the call's own inside f(x).
+        const own = BINDING_FUNCTIONS.has(e.name) ? e.named.filter((n) => n.name !== 'order').map((n) => n.name) : [];
+        const inner = own.length ? new Set([...names, ...own]) : names;
+        e.args.forEach((a) => visit(a, rowScope, inner));
         // "where:" and "by:" of table functions read the row variable r.
         const rows = rowScope || TABLE_FUNCTIONS.has(e.name);
-        e.named.forEach((n) => visit(n.value, rows));
+        e.named.forEach((n) => visit(n.value, rows, names));
         return;
       }
       default:
         return;
     }
   };
-  visit(expr, false);
+  visit(expr, false, bound);
   return found;
 }
 

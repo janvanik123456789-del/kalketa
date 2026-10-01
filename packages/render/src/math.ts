@@ -19,6 +19,10 @@ export type MathNode =
   | { readonly k: 'sup'; readonly b: MathNode; readonly e: MathNode }
   | { readonly k: 'sub'; readonly b: MathNode; readonly s: MathNode }
   | { readonly k: 'sqrt'; readonly c: MathNode }
+  /** Base with limits beside it: ∫ from a to b. */
+  | { readonly k: 'subsup'; readonly b: MathNode; readonly s: MathNode; readonly e: MathNode }
+  /** Base with limits under and over it: ∑ from k = 1 to n. */
+  | { readonly k: 'underover'; readonly b: MathNode; readonly u: MathNode; readonly o: MathNode }
   | { readonly k: 'paren'; readonly c: MathNode };
 
 export const mi = (t: string, normal = false): MathNode => (normal ? { k: 'i', t, normal } : { k: 'i', t });
@@ -31,6 +35,8 @@ export const frac = (n: MathNode, d: MathNode): MathNode => ({ k: 'frac', n, d }
 export const sup = (b: MathNode, e: MathNode): MathNode => ({ k: 'sup', b, e });
 export const sub = (b: MathNode, s: MathNode): MathNode => ({ k: 'sub', b, s });
 export const sqrt = (c: MathNode): MathNode => ({ k: 'sqrt', c });
+export const subsup = (b: MathNode, s: MathNode, e: MathNode): MathNode => ({ k: 'subsup', b, s, e });
+export const underover = (b: MathNode, u: MathNode, o: MathNode): MathNode => ({ k: 'underover', b, u, o });
 export const paren = (c: MathNode): MathNode => ({ k: 'paren', c });
 
 /**
@@ -71,6 +77,10 @@ function ml(node: MathNode): string {
       return `<msub>${ml(node.b)}${ml(node.s)}</msub>`;
     case 'sqrt':
       return `<msqrt>${ml(node.c)}</msqrt>`;
+    case 'subsup':
+      return `<msubsup>${ml(node.b)}${ml(node.s)}${ml(node.e)}</msubsup>`;
+    case 'underover':
+      return `<munderover>${ml(node.b)}${ml(node.u)}${ml(node.o)}</munderover>`;
     case 'paren':
       return `<mrow><mo>(</mo>${ml(node.c)}<mo>)</mo></mrow>`;
   }
@@ -95,6 +105,9 @@ export function toText(node: MathNode): string {
       return `${toText(node.b)}_${toText(node.s)}`;
     case 'sqrt':
       return `√(${toText(node.c)})`;
+    case 'subsup':
+    case 'underover':
+      return `${toText(node.b)}[${toText(node.k === 'subsup' ? node.s : node.u)}..${toText(node.k === 'subsup' ? node.e : node.o)}]`;
     case 'paren':
       return `(${toText(node.c)})`;
   }

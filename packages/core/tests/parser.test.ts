@@ -38,6 +38,8 @@ function show(expr: Expr): string {
       return `[${expr.items.map(show).join(', ')}]`;
     case 'index':
       return `${show(expr.object)}[${show(expr.index)}]`;
+    case 'range':
+      return `${show(expr.low)}..${show(expr.high)}`;
   }
 }
 

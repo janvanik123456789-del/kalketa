@@ -37,6 +37,8 @@ export type Expr =
   | { readonly kind: 'member'; readonly object: Expr; readonly name: string; readonly span: Span }
   /** A series: [100, 120, 150] (a series inside is spread: [−I, savings]). */
   | { readonly kind: 'vector'; readonly items: readonly Expr[]; readonly span: Span }
+  /** From .. to: the interval of a bound variable, integral(f(x), x: 0 m .. L). */
+  | { readonly kind: 'range'; readonly low: Expr; readonly high: Expr; readonly span: Span }
   /** An item of a series, counted from 1: CF[1]. */
   | { readonly kind: 'index'; readonly object: Expr; readonly index: Expr; readonly span: Span };
 

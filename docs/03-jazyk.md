@@ -258,6 +258,23 @@ Funkce `date(2026, 9, 29)`, `year`, `month`, `day`; jednotky `wk` a `yr` (365,25
 Tabulky mají sloupce typu `date` (`2026-09-29` i `29.9.2026`); kurz k datu: `find_max(Kurzy, by: datum, where: r.datum ≤ d).EUR`.
 Data se píší v jazyce tisku: „29. 9. 2026“.
 
+### 7.1c Integrály, derivace a součty
+
+```text
+F := integral(q·x·(L − x)/2, x: 0 m .. L)       ' ∫₀ᴸ … dx
+φ := derivative(w(x), x: L/2)                    ' d/dx w(x) v bodě x = L/2
+κ := derivative(w(x), x: L/2, order: 2)          ' druhá derivace
+S := sum(1/k², k: 1 .. 100)                      ' Σ přes k
+```
+
+- **Proměnná je vlastní** (jako v Calcpadu): `x` uvnitř volání nečte ani nemění `x` listu. Jméno proměnné se pozná, i když zní jako jednotka: v `integral(3·t², t: 0 s .. 2 s)` je `t` čas, ne tuna.
+- **Jednotky** (jako v EngineeringPaper.xyz): integrál má jednotku integrandu krát proměnnou (`∫ q dx` z kN/m a m dá kN), derivace jednotku výrazu lomeno proměnnou (mm/m, u druhé mm/m²). Meze integrálu musí mít stejný rozměr.
+- **Integrál:** adaptivní Gauss–Kronrod 7–15 (jako `$Area` v Calcpadu), relativní přesnost 10⁻¹⁰. Zvládá i slabé singularity v krajích (∫₀¹ 1/√x dx = 2). Když přesnosti nedosáhne (nespojitost, singularita), dá odhad s varováním `W-CALCULUS-ACCURACY`. Opačné meze dají opačné znaménko.
+- **Derivace:** centrální diference s Riddersovou (Richardsonovou) extrapolací (jako `$Slope` v Calcpadu), řád 1 nebo 2 (`order: 2`). Funkce musí být v okolí bodu spojitá a hladká.
+- **Součet** `sum(f(k), k: a .. b)` přes celá čísla; `sum(řada)` zůstává.
+- **Tisk:** ∫ s mezemi a dx, d/dx s bodem (|ₓ₌ₐ), Σ s indexem. V řádku dosazení se dosadí hodnoty (meze, q, L…), proměnná zůstane symbolem.
+- Chyby: chybí proměnná nebo rozsah (`E-CALCULUS-FORM`), rozsah `a .. b` mimo proměnnou (`E-RANGE-PLACE`), meze s různou jednotkou (`E-UNIT-MISMATCH`), řád derivace jiný než 1 nebo 2 (`E-DOMAIN`).
+
 ### 7.2 Uživatelské funkce (F7)
 
 ```text

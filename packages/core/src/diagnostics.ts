@@ -67,6 +67,9 @@ export const DIAGNOSTIC_SEVERITY = {
   'E-FUNC-ARG-DIM': 'error',
   'E-DOMAIN': 'error',
   'E-NAMED-ARG': 'error',
+  'E-CALCULUS-FORM': 'error',
+  'E-RANGE-PLACE': 'error',
+  'W-CALCULUS-ACCURACY': 'warning',
   'E-NOT-FUNCTION': 'error',
   'E-RECURSION': 'error',
 

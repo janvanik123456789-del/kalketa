@@ -16,6 +16,8 @@ import { quantity, type Quantity, type Value, type VectorValue } from '../values
 import { dateValue, isDate } from '../values/date.js';
 import { asBoolean, asComplex, asQuantity } from './coerce.js';
 import { BUILTIN_CONSTANTS, callFunction, FUNCTION_NAMES } from './functions.js';
+import { callCalculus, isBindingCall } from './calculus.js';
+import { BINDING_FUNCTIONS } from '../lang/parser.js';
 import { callTableFunction, memberOf, TABLE_FUNCTIONS } from './tables.js';
 import { applyFunction, lookupFunction } from './userFunctions.js';
 import type { BlockCaller, BlockInput } from './blocks.js';
@@ -84,12 +86,17 @@ function evaluateRaw(expr: Expr, ctx: EvalContext): Value {
       return evaluateBinary(expr.operator, expr.left, expr.right, expr.span, ctx);
     case 'call': {
       if (TABLE_FUNCTIONS.has(expr.name)) return callTableFunction(expr, ctx, evaluate);
+      // integral(f(x), x: a .. b), derivative(f(x), x: a), sum(f(k), k: 1 .. n): a variable of their own.
+      if (BINDING_FUNCTIONS.has(expr.name) && (expr.name !== 'sum' || isBindingCall(expr))) return callCalculus(expr, ctx, evaluate);
       if (ctx.blocks?.has(expr.name)) return callBlock(expr, ctx);
       if (!FUNCTION_NAMES.includes(expr.name)) return applyFunction(lookupFunction(expr, ctx), expr, ctx, evaluate);
       const extra = expr.named[0];
       if (extra) fail('E-NAMED-ARG', extra.nameSpan, { function: expr.name, argument: extra.name, problem: 'unknown' });
       return callFunction(expr, (arg) => evaluate(arg, ctx));
     }
+    case 'range':
+      // A range belongs to a variable: x: 0 m .. L.
+      return fail('E-RANGE-PLACE', expr.span);
     case 'member':
       return memberOf(evaluate(expr.object, ctx), expr.name, expr.span, expr.object.span, ctx);
     case 'vector':

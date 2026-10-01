@@ -14,10 +14,10 @@ import { baseUnitSymbol } from '../units/display.js';
 import type { Quantity, Value } from '../values/value.js';
 import { asComplex, asQuantity } from '../eval/coerce.js';
 
-export type FunctionModuleId = 'math' | 'trig' | 'complex' | 'series' | 'statistics' | 'finance' | 'dates' | 'logic' | 'tables';
+export type FunctionModuleId = 'math' | 'trig' | 'calculus' | 'complex' | 'series' | 'statistics' | 'finance' | 'dates' | 'logic' | 'tables';
 
 /** Modules in the order help lists them. */
-export const FUNCTION_MODULES: readonly FunctionModuleId[] = ['math', 'trig', 'complex', 'series', 'statistics', 'finance', 'dates', 'logic', 'tables'];
+export const FUNCTION_MODULES: readonly FunctionModuleId[] = ['math', 'trig', 'calculus', 'complex', 'series', 'statistics', 'finance', 'dates', 'logic', 'tables'];
 
 export type CallExpr = Extract<Expr, { kind: 'call' }>;
 export type Evaluate = (expr: Expr) => Value;

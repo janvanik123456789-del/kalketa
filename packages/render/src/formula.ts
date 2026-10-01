@@ -8,7 +8,7 @@
 
 import type { BinaryOperator, Expr, UnitExpr } from '@calccanvas/core';
 import { formatUnit } from '@calccanvas/core';
-import { frac, mi, mn, mo, mtext, mu, nameNode, paren, row, sqrt, sub, sup, type MathNode } from './math.js';
+import { frac, mi, mn, mo, mtext, mu, nameNode, paren, row, sqrt, sub, sup, type MathNode, subsup, underover } from './math.js';
 
 export interface FormulaOptions {
   /** Formats a number literal written in the sheet (full precision, locale separators). */
@@ -104,7 +104,9 @@ export function hasSubstitutableParts(expr: Expr): boolean {
     case 'binary':
       return hasSubstitutableParts(expr.left) || hasSubstitutableParts(expr.right);
     case 'call':
-      return expr.args.some(hasSubstitutableParts);
+      return expr.args.some(hasSubstitutableParts) || expr.named.some((n) => hasSubstitutableParts(n.value));
+    case 'range':
+      return hasSubstitutableParts(expr.low) || hasSubstitutableParts(expr.high);
     case 'vector':
       return expr.items.some(hasSubstitutableParts);
     default:
@@ -165,6 +167,8 @@ function render(expr: Expr, o: FormulaOptions): Rendered {
       });
       return { node: row(mo('['), ...parts, mo(']')), prec: ATOM };
     }
+    case 'range':
+      return { node: row(render(expr.low, o).node, mo('…'), render(expr.high, o).node), prec: ATOM };
     case 'index': {
       // CF[1] is written CF₁.
       const object = render(expr.object, o);
@@ -192,6 +196,8 @@ function renderBinary(op: BinaryOperator, left: Rendered, right: Rendered): Rend
 }
 
 function renderCall(expr: Extract<Expr, { kind: 'call' }>, o: FormulaOptions): Rendered {
+  const calculus = renderCalculus(expr, o);
+  if (calculus) return calculus;
   const args = expr.args.map((a) => render(a, o).node);
   if (expr.name === 'sqrt' && args.length === 1) return { node: sqrt(args[0]!), prec: ATOM };
   if (expr.name === 'abs' && args.length === 1) return { node: row(mo('|'), args[0]!, mo('|')), prec: ATOM };
@@ -210,6 +216,33 @@ function renderCall(expr: Extract<Expr, { kind: 'call' }>, o: FormulaOptions): R
       ? sub(mi(expr.name.split('_')[0]!, true), mi(expr.name.split('_').slice(1).join(','), true))
       : mi(expr.name, true);
   return { node: row(name, paren(row(...parts))), prec: ATOM };
+}
+
+/**
+ * integral(f, x: a .. b) as ∫ₐᵇ f dx, derivative(f, x: a) as d/dx f at x = a,
+ * sum(f, k: 1 .. n) as Σ. The variable stays a symbol when values are put in.
+ */
+function renderCalculus(expr: Extract<Expr, { kind: 'call' }>, o: FormulaOptions): Rendered | undefined {
+  if (!['integral', 'derivative', 'sum'].includes(expr.name) || expr.args.length !== 1) return undefined;
+  const variable = expr.named.find((n) => n.name !== 'order');
+  if (!variable) return undefined;
+  const inner: FormulaOptions = { ...o, substitute: (e) => (e.kind === 'variable' && e.name === variable.name ? undefined : o.substitute?.(e)) };
+  const body = render(expr.args[0]!, inner);
+  const x = nameNode(variable.name);
+  const d = mi('d', true);
+  if (expr.name === 'derivative') {
+    if (variable.value.kind === 'range') return undefined;
+    const second = expr.named.some((n) => n.name === 'order' && n.value.kind === 'number' && n.value.value === 2);
+    const operator = second ? frac(sup(d, mn('2')), row(d, sup(x, mn('2')))) : frac(d, row(d, x));
+    // The point: d/dx f |x = a.
+    const at = sub(mo('|'), row(x, mo('='), render(variable.value, o).node));
+    return { node: row(operator, wrap(body, body.prec < 5), at), prec: 5 };
+  }
+  if (variable.value.kind !== 'range') return undefined;
+  const low = render(variable.value.low, o).node;
+  const high = render(variable.value.high, o).node;
+  if (expr.name === 'integral') return { node: row(subsup(mo('∫'), low, high), wrap(body, body.prec < 5), THIN_SPACE, d, x), prec: 5 };
+  return { node: row(underover(mo('∑'), row(x, mo('='), low), high), wrap(body, body.prec < 5)), prec: 5 };
 }
 
 function wrap(r: Rendered, needed: boolean): MathNode {

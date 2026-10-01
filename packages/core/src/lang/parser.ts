@@ -38,6 +38,10 @@ export const DIMENSIONLESS_NAME = 'dimensionless';
 const CONTINUATION_KEYWORDS = new Set(['and', 'or', 'source', 'in', 'guess']);
 const COMPARISONS: ReadonlySet<TokenType> = new Set(['==', '!=', '<', '<=', '>', '>=']);
 
+
+/** Functions with a variable of their own, named after the expression: integral(f(x), x: a .. b). */
+export const BINDING_FUNCTIONS: ReadonlySet<string> = new Set(['integral', 'derivative', 'sum']);
+
 export function parse(source: string, options: ParseOptions): ParseResult {
   const lexed = tokenize(source);
   const diagnostics: Diagnostic[] = [...lexed.diagnostics];
@@ -566,13 +570,25 @@ class LineParser {
       this.next();
       const args: Expr[] = [];
       const named: NamedArg[] = [];
+      // integral(3·t², t: 0 s .. 2 s): the variable is named after the expression that uses it, so look
+      // ahead for it; inside the call it is a name, not a unit (t would be tonnes), as after solve t:.
+      const bound = BINDING_FUNCTIONS.has(name) ? this.namesAhead().filter((n) => !this.defined.has(n)) : [];
+      bound.forEach((n) => this.defined.add(n));
       if (this.peek().type !== ')') {
         do {
           if (this.peek().type === 'ident' && this.peek(1).type === ':') {
             const label = this.next();
             this.next();
             if (named.some((n) => n.name === label.text)) fail('E-NAMED-ARG', label.span, { function: name, argument: label.text, problem: 'duplicate' });
-            named.push({ name: label.text, nameSpan: label.span, value: this.parseExpression() });
+            const value = this.parseExpression();
+            // A range: x: 0 m .. L.
+            if (this.peek().type === '..') {
+              this.next();
+              const high = this.parseExpression();
+              named.push({ name: label.text, nameSpan: label.span, value: { kind: 'range', low: value, high, span: spanOf(value, high) } });
+            } else {
+              named.push({ name: label.text, nameSpan: label.span, value });
+            }
           } else {
             if (named.length > 0) fail('E-NAMED-ARG', this.peek().span, { function: name, argument: '', problem: 'positional-after-named' });
             args.push(this.parseExpression());
@@ -580,6 +596,7 @@ class LineParser {
         } while (this.peek().type === ',' && this.next());
       }
       const close = this.expect(')', ')');
+      bound.forEach((n) => this.defined.delete(n));
       return { kind: 'call', name, args, named, span: spanOf(token, close) };
     }
     if (!this.defined.has(name) && this.isUnit(name)) {
@@ -754,6 +771,22 @@ class LineParser {
   private isKeyword(word: string): boolean {
     const token = this.peek();
     return token.type === 'ident' && token.text === word;
+  }
+
+  /** Names given as "name:" in the parentheses that start here, at their own level (not in nested calls). */
+  private namesAhead(): string[] {
+    const names: string[] = [];
+    let depth = 0;
+    for (let i = this.pos; i < this.tokens.length; i++) {
+      const token = this.tokens[i]!;
+      if (token.type === '(' || token.type === '[') depth++;
+      else if (token.type === ')' || token.type === ']') {
+        if (depth === 0) break;
+        depth--;
+      } else if (token.type === 'newline' && depth === 0) break;
+      else if (depth === 0 && token.type === 'ident' && this.tokens[i + 1]?.type === ':') names.push(token.text);
+    }
+    return names;
   }
 
   private peek(ahead = 0): Token {

@@ -189,14 +189,16 @@ export function SheetView(props: Props) {
     const picture = parsePicture(seg.text);
     if (!picture) return [];
     const c = props.uiCatalog;
-    const set = (change: Partial<{ caption: string; width: number | undefined; side: 'left' | 'right' | undefined; wrap: 'left' | 'right' | undefined }>) => {
-      const { width, side, wrap, ...rest } = { ...picture, ...change };
-      props.onReplace(seg.start, seg.end, formatPicture({ ...rest, ...(width !== undefined ? { width } : {}), ...(side ? { side } : {}), ...(wrap ? { wrap } : {}) }));
+    type Side = 'left' | 'right' | undefined;
+    const set = (change: Partial<{ caption: string; width: number | undefined; side: Side; wrap: Side; align: Side }>) => {
+      const { width, side, wrap, align, ...rest } = { ...picture, ...change };
+      props.onReplace(seg.start, seg.end, formatPicture({ ...rest, ...(width !== undefined ? { width } : {}), ...(side ? { side } : {}), ...(wrap ? { wrap } : {}), ...(align ? { align } : {}) }));
     };
+    const setAlign = (align: Side) => set({ align, side: undefined, wrap: undefined });
     // Beside the text a picture takes at most a good part of the width, so the lines keep room.
     const narrow = picture.width === undefined || picture.width > 60 ? { width: 40 } : {};
-    const setSide = (side: 'left' | 'right' | undefined) => set({ side, wrap: undefined, ...(side ? narrow : {}) });
-    const setWrap = (wrap: 'left' | 'right') => set({ wrap, side: undefined, ...narrow });
+    const setSide = (side: Side) => set({ side, wrap: undefined, align: undefined, ...(side ? narrow : {}) });
+    const setWrap = (wrap: 'left' | 'right') => set({ wrap, side: undefined, align: undefined, ...narrow });
     return [
       {
         kind: 'action',
@@ -225,12 +227,16 @@ export function SheetView(props: Props) {
           },
         ],
       },
-      ...(picture.wrap || picture.side ? [{ kind: 'action' as const, label: t(c, 'picture.unwrap'), run: () => setSide(undefined) }] : []),
+      // Without the flow the picture stays on its side.
+      ...(picture.wrap || picture.side ? [{ kind: 'action' as const, label: t(c, 'picture.unwrap'), run: () => setAlign(picture.wrap ?? picture.side) }] : []),
       {
         kind: 'submenu',
         label: t(c, 'picture.place'),
         items: [
-          { kind: 'action', label: t(c, 'picture.center'), checked: picture.side === undefined && picture.wrap === undefined, run: () => setSide(undefined) },
+          { kind: 'action', label: t(c, 'picture.alignLeft'), checked: picture.align === 'left', run: () => setAlign('left') },
+          { kind: 'action', label: t(c, 'picture.center'), checked: !picture.side && !picture.wrap && !picture.align, run: () => setAlign(undefined) },
+          { kind: 'action', label: t(c, 'picture.alignRight'), checked: picture.align === 'right', run: () => setAlign('right') },
+          { kind: 'separator' },
           { kind: 'action', label: t(c, 'picture.right'), checked: picture.side === 'right', run: () => setSide('right') },
           { kind: 'action', label: t(c, 'picture.left'), checked: picture.side === 'left', run: () => setSide('left') },
           { kind: 'separator' },
@@ -419,14 +425,14 @@ function PictureBlock({ block, catalog, onLoad, onResize }: { block: Extract<Pri
     const bodyBox = body.getBoundingClientRect();
     const bodyWidth = bodyBox.width;
     // A centred picture grows on both sides; a side picture from the page edge it stands at.
-    const place = block.side ?? block.wrap;
+    const place = block.side ?? block.wrap ?? block.align;
     const edge = place === 'right' ? bodyBox.right : place === 'left' ? bodyBox.left : undefined;
     const group = element.closest<HTMLElement>('.side-group');
     const floating = block.wrap ? element.closest<HTMLElement>('.row') : null;
     let current = width ?? Math.round((rect.width / bodyWidth) * 100);
     const move = (event: MouseEvent) => {
       const span = edge === undefined ? 2 * Math.abs(event.clientX - centre) : Math.abs(event.clientX - edge);
-      current = Math.max(10, Math.min(edge === undefined ? 100 : 70, Math.round((span / bodyWidth) * 100)));
+      current = Math.max(10, Math.min(edge === undefined || block.align ? 100 : 70, Math.round((span / bodyWidth) * 100)));
       group?.style.setProperty('--side', `${current}%`);
       if (floating) floating.style.width = `${current}%`;
       setDragged(current);
@@ -443,7 +449,7 @@ function PictureBlock({ block, catalog, onLoad, onResize }: { block: Extract<Pri
 
   return (
     <div className="block-view">
-      <figure ref={figure} className={`block picture${width === undefined ? ' natural' : ''}`} data-line={block.line} style={width !== undefined ? { width: `${width}%` } : undefined}>
+      <figure ref={figure} className={`block picture${width === undefined ? ' natural' : ''}${block.align ? ` align-${block.align}` : ''}`} data-line={block.line} style={width !== undefined ? { width: `${width}%` } : undefined}>
         {block.src ? <img src={block.src} alt={block.caption} draggable={false} onLoad={onLoad} /> : <div className="missing-image">{t(catalog, 'print.pictureMissing', { path: block.path })}</div>}
         {block.label && (
           <figcaption>

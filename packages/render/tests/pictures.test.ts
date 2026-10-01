@@ -43,6 +43,9 @@ describe('pictures in the sheet', () => {
     expect(parsePicture('![S](a.png){side=top}')).toBeUndefined();
     expect(parsePicture('![S](a.png){wrap=right width=30%}')).toEqual({ caption: 'S', path: 'a.png', width: 30, wrap: 'right' });
     expect(parsePicture('![S](a.png){side=left wrap=right}')).toBeUndefined();
+    expect(parsePicture('![S](a.png){width=35% align=right}')).toEqual({ caption: 'S', path: 'a.png', width: 35, align: 'right' });
+    expect(parsePicture('![S](a.png){align=right wrap=left}')).toBeUndefined();
+    expect(formatPicture({ caption: 'S', path: 'a.png', align: 'left' })).toBe('![S](a.png){align=left}');
     expect(formatPicture({ caption: 'S', path: 'a.png', width: 30, wrap: 'right' })).toBe('![S](a.png){width=30% wrap=right}');
     expect(formatPicture({ caption: 'S', path: 'a.png', width: 35, side: 'left' })).toBe('![S](a.png){width=35% side=left}');
   });

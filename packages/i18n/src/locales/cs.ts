@@ -424,6 +424,8 @@ export const cs: Catalog = {
     'picture.wrapLeft': 'Vlevo s obtékáním',
     'cmd.insert.clear': 'Konec o&btékání',
     'picture.unwrap': 'Zrušit &obtékání',
+    'picture.alignLeft': 'Vlevo',
+    'picture.alignRight': 'Vpravo',
     'settings.sizeLimit': 'Upozornit, když soubor výpočtu přesáhne (MB)',
   },
 };

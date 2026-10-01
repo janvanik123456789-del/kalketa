@@ -455,7 +455,9 @@ async function clickOn(selector: string, modifiers: Array<'control'> = [], butto
 async function clickMenu(label: string): Promise<void> {
   const found = (await smokeWindow!.webContents.executeJavaScript(`(() => {
     document.querySelectorAll('[data-smoke]').forEach((e) => e.removeAttribute('data-smoke'));
-    const row = [...document.querySelectorAll('.menu-panel .menu-row')].reverse().find((r) => r.querySelector('.menu-label').textContent.trim().startsWith(${JSON.stringify(label)}));
+    const rows = [...document.querySelectorAll('.menu-panel .menu-row')].reverse();
+    const text = (r) => r.querySelector('.menu-label').textContent.trim();
+    const row = rows.find((r) => text(r) === ${JSON.stringify(label)}) ?? rows.find((r) => text(r).startsWith(${JSON.stringify(label)}));
     row?.setAttribute('data-smoke', '');
     return !!row;
   })()`)) as boolean;
@@ -881,7 +883,20 @@ async function layersWithRealInput(picture: string) {
   await clickOn('.layer-view.active .row.wrap-right figure img');
   await clickMenu('Zrušit obtékání');
   await pause(400);
-  const unwrapped = (await contents.executeJavaScript(`!document.querySelector('.layer-view.active .row.wrap-right') && !!document.querySelector('.layer-view.active .row[data-line="2"] figure')`)) as boolean;
+  // Without the flow the picture stays at the right edge; Placement > Left moves it to the left one.
+  const edges = () =>
+    contents.executeJavaScript(`(() => {
+      const f = document.querySelector('.layer-view.active .row[data-line="2"] figure')?.getBoundingClientRect();
+      const b = document.querySelector('.layer-view.active .page-body')?.getBoundingClientRect();
+      return f && b ? { left: Math.abs(f.left - b.left) < 3, right: Math.abs(f.right - b.right) < 3, wrap: !!document.querySelector('.layer-view.active .row.wrap-right, .layer-view.active .row.wrap-left') } : undefined;
+    })()`) as Promise<{ left: boolean; right: boolean; wrap: boolean } | undefined>;
+  const afterUnwrap = await edges();
+  await clickOn('.layer-view.active .row[data-line="2"] figure img');
+  await clickMenu('Umístění');
+  await clickMenu('Vlevo');
+  await pause(400);
+  const afterLeft = await edges();
+  const unwrapped = !!afterUnwrap && !afterUnwrap.wrap && afterUnwrap.right && !!afterLeft && afterLeft.left && !afterLeft.right && !afterLeft.wrap;
   const besideText = sideGroup.rows === '3,4' && sideGroup.picture && sideGroup.side !== '' && widened > parseFloat(sideGroup.side) && movedPicture && wrapped && cleared && unwrapped;
   const pictures = pasted.img && resized && dropped === 'Obr. 1: Schéma nosníku' && fileCopied && pastedIdle && pictureMenu.menu >= 5 && pictureMenu.full && pictureMenu.caption.includes('Detail kotvení') && besideText;
 

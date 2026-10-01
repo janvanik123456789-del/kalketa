@@ -79,6 +79,8 @@ export type PrintBlock =
       readonly beside?: readonly number[];
       /** On this side with the following lines flowing around it. */
       readonly wrap?: 'left' | 'right';
+      /** At this edge, alone on its lines. */
+      readonly align?: 'left' | 'right';
     }
   | {
       readonly kind: 'equation';
@@ -205,6 +207,7 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
           ...(s.width !== undefined ? { width: s.width } : {}),
           ...(s.side ? { side: s.side, beside: besideLines(result, r) } : {}),
           ...(s.wrap ? { wrap: s.wrap } : {}),
+          ...(s.align ? { align: s.align } : {}),
         });
         break;
       }

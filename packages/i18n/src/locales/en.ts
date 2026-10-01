@@ -424,6 +424,8 @@ export const en: Catalog = {
     'picture.wrapLeft': 'Left, text flows around',
     'cmd.insert.clear': 'End of text &flow around picture',
     'picture.unwrap': 'Stop text &flowing around',
+    'picture.alignLeft': 'Left',
+    'picture.alignRight': 'Right',
     'settings.sizeLimit': 'Warn when the calculation file exceeds (MB)',
   },
 };

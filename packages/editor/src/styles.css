@@ -184,6 +184,8 @@ kbd { font: 12px Consolas, monospace; background: #fff; border: 1px solid #c4cad
 .content { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .block-view .block { margin: 0.8mm 0; }
 .block-view .block.picture { margin: 1.5mm auto; }
+.block-view .block.picture.align-left { margin-left: 0; }
+.block-view .block.picture.align-right { margin-right: 0; }
 .block-view h2, .block-view h3, .block-view h4 { margin-top: 2mm; }
 .blank { height: 14px; }
 code.raw { display: block; padding: 3px 0; color: var(--muted); font: 12px/1.5 Consolas, "Courier New", monospace; white-space: pre-wrap; }

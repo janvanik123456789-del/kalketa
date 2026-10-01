@@ -787,6 +787,8 @@ export interface PictureLine {
   readonly side?: 'left' | 'right';
   /** On this side with the lines flowing around it: beside it down to its bottom, full width below. */
   readonly wrap?: 'left' | 'right';
+  /** At the left or right edge, alone on its lines (no text beside it); centred without it. */
+  readonly align?: 'left' | 'right';
 }
 
 const PICTURE = /^!\[([^\]]*)\]\(([^()\s]+)\)\s*(?:\{([^}]*)\})?$/;
@@ -798,21 +800,24 @@ export function parsePicture(text: string): PictureLine | undefined {
   let width: number | undefined;
   let side: 'left' | 'right' | undefined;
   let wrap: 'left' | 'right' | undefined;
+  let align: 'left' | 'right' | undefined;
   for (const option of (match[3] ?? '').split(/[\s,;]+/).filter(Boolean)) {
     const widthOption = /^width=(\d+(?:\.\d+)?)%$/.exec(option);
-    const placeOption = /^(side|wrap)=(left|right)$/.exec(option);
+    const placeOption = /^(side|wrap|align)=(left|right)$/.exec(option);
     if (widthOption && width === undefined) width = Number(widthOption[1]);
-    else if (placeOption && side === undefined && wrap === undefined) {
-      if (placeOption[1] === 'side') side = placeOption[2] as 'left' | 'right';
-      else wrap = placeOption[2] as 'left' | 'right';
+    else if (placeOption && side === undefined && wrap === undefined && align === undefined) {
+      const at = placeOption[2] as 'left' | 'right';
+      if (placeOption[1] === 'side') side = at;
+      else if (placeOption[1] === 'wrap') wrap = at;
+      else align = at;
     } else return undefined;
   }
   if (width !== undefined && !(width > 0 && width <= 100)) return undefined;
-  return { caption: match[1]!.trim(), path: match[2]!, ...(width !== undefined ? { width } : {}), ...(side ? { side } : {}), ...(wrap ? { wrap } : {}) };
+  return { caption: match[1]!.trim(), path: match[2]!, ...(width !== undefined ? { width } : {}), ...(side ? { side } : {}), ...(wrap ? { wrap } : {}), ...(align ? { align } : {}) };
 }
 
 /** The line of a picture, as parsePicture reads it. */
 export function formatPicture(picture: PictureLine): string {
-  const options = [picture.width === undefined ? '' : `width=${Math.round(picture.width)}%`, picture.side ? `side=${picture.side}` : '', picture.wrap ? `wrap=${picture.wrap}` : ''].filter(Boolean);
+  const options = [picture.width === undefined ? '' : `width=${Math.round(picture.width)}%`, picture.side ? `side=${picture.side}` : '', picture.wrap ? `wrap=${picture.wrap}` : '', picture.align ? `align=${picture.align}` : ''].filter(Boolean);
   return `![${picture.caption.replace(/[\[\]\n]/g, ' ').trim()}](${picture.path})${options.length ? `{${options.join(' ')}}` : ''}`;
 }

@@ -783,21 +783,31 @@ export interface PictureLine {
   readonly path: string;
   /** Share of the text width in percent; absent for the picture's own size. */
   readonly width?: number;
+  /** Beside the lines that follow it (up to a blank line or a heading) instead of centred. */
+  readonly side?: 'left' | 'right';
 }
 
-const PICTURE = /^!\[([^\]]*)\]\(([^()\s]+)\)\s*(?:\{\s*width\s*=\s*(\d+(?:\.\d+)?)\s*%\s*\})?$/;
+const PICTURE = /^!\[([^\]]*)\]\(([^()\s]+)\)\s*(?:\{([^}]*)\})?$/;
 
-/** "![Schéma](images/sheet/a.png){width=60%}" -> its parts; undefined when malformed. */
+/** "![Schéma](images/sheet/a.png){width=40% side=right}" -> its parts; undefined when malformed. */
 export function parsePicture(text: string): PictureLine | undefined {
   const match = PICTURE.exec(text.trim());
   if (!match) return undefined;
-  const width = match[3] === undefined ? undefined : Number(match[3]);
+  let width: number | undefined;
+  let side: 'left' | 'right' | undefined;
+  for (const option of (match[3] ?? '').split(/[\s,;]+/).filter(Boolean)) {
+    const widthOption = /^width=(\d+(?:\.\d+)?)%$/.exec(option);
+    const sideOption = /^side=(left|right)$/.exec(option);
+    if (widthOption && width === undefined) width = Number(widthOption[1]);
+    else if (sideOption && side === undefined) side = sideOption[1] as 'left' | 'right';
+    else return undefined;
+  }
   if (width !== undefined && !(width > 0 && width <= 100)) return undefined;
-  return { caption: match[1]!.trim(), path: match[2]!, ...(width !== undefined ? { width } : {}) };
+  return { caption: match[1]!.trim(), path: match[2]!, ...(width !== undefined ? { width } : {}), ...(side ? { side } : {}) };
 }
 
 /** The line of a picture, as parsePicture reads it. */
 export function formatPicture(picture: PictureLine): string {
-  const width = picture.width === undefined ? '' : `{width=${Math.round(picture.width)}%}`;
-  return `![${picture.caption.replace(/[\[\]\n]/g, ' ').trim()}](${picture.path})${width}`;
+  const options = [picture.width === undefined ? '' : `width=${Math.round(picture.width)}%`, picture.side ? `side=${picture.side}` : ''].filter(Boolean);
+  return `![${picture.caption.replace(/[\[\]\n]/g, ' ').trim()}](${picture.path})${options.length ? `{${options.join(' ')}}` : ''}`;
 }

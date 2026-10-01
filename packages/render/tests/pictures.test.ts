@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { defaultRegistry, evaluateSheet, formatPicture, parsePicture } from '@calccanvas/core';
 import { catalogFor } from '@calccanvas/i18n';
-import { buildPrintDocument, renderBlockHtml } from '../src/index.js';
+import { buildPrintDocument, renderBlockHtml, renderBlocksHtml } from '../src/index.js';
 
 const cs = catalogFor('cs');
 
@@ -35,5 +35,25 @@ describe('pictures in the sheet', () => {
 
   it('report a malformed picture line', () => {
     expect(evaluateSheet('![Schéma](images/a.png){width=abc}').diagnostics.map((d) => d.code)).toEqual(['E-PICTURE-SYNTAX']);
+  });
+
+  it('read a side and write the options together', () => {
+    expect(parsePicture('![S](a.png){width=40% side=right}')).toEqual({ caption: 'S', path: 'a.png', width: 40, side: 'right' });
+    expect(parsePicture('![S](a.png){side=left}')).toEqual({ caption: 'S', path: 'a.png', side: 'left' });
+    expect(parsePicture('![S](a.png){side=top}')).toBeUndefined();
+    expect(formatPicture({ caption: 'S', path: 'a.png', width: 35, side: 'left' })).toBe('![S](a.png){width=35% side=left}');
+  });
+
+  it('set the lines that follow beside a side picture, up to a blank line or a heading', () => {
+    const source = '## Zadání\n![Schéma](images/sheet/s.png){width=40% side=right}\nL := 5 m\nq := 12 kN/m\n\nM := q·L²/8\n## Dál';
+    const doc = buildPrintDocument(evaluateSheet(source), { catalog: cs, registry: defaultRegistry, digits: 4, title: 'X', resolveFile: (path) => `data:${path}` });
+    const picture = doc.blocks.find((b) => b.kind === 'picture');
+    expect(picture?.kind === 'picture' && picture.beside).toEqual([3, 4]);
+    const html = renderBlocksHtml(doc.blocks, cs);
+    const group = html.slice(html.indexOf('<div class="side-group side-right" style="--side:40%">'));
+    const rows = group.slice(0, group.indexOf('<div class="side-picture">'));
+    expect(rows).toContain('data-line="3"');
+    expect(rows).toContain('data-line="4"');
+    expect(rows).not.toContain('data-line="6"');
   });
 });

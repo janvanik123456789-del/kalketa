@@ -73,6 +73,10 @@ export type PrintBlock =
       readonly label?: string;
       /** Share of the text width in percent. */
       readonly width?: number;
+      /** Beside the lines that follow: the picture on this side, the lines next to it. */
+      readonly side?: 'left' | 'right';
+      /** First lines of the statements set beside the picture. */
+      readonly beside?: readonly number[];
     }
   | {
       readonly kind: 'equation';
@@ -195,6 +199,7 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
           ...(src ? { src } : {}),
           ...(label ? { label } : {}),
           ...(s.width !== undefined ? { width: s.width } : {}),
+          ...(s.side ? { side: s.side, beside: besideLines(result, r) } : {}),
         });
         break;
       }
@@ -298,6 +303,27 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
     ...(position !== 'none' && rows.length > 0 ? { summary: { position, rows, allPassed: rows.every((r) => r.passed) } } : {}),
     blocks,
   };
+}
+
+/**
+ * The statements set beside a side picture: those that follow it without a
+ * blank line between, up to a heading, another picture or a page break.
+ */
+function besideLines(result: SheetResult, picture: StatementResult): number[] {
+  const endLine = (r: StatementResult) => {
+    const { offset, length, line } = r.statement.span;
+    return line + (result.source.slice(offset, offset + length).match(/\n/g)?.length ?? 0);
+  };
+  const lines: number[] = [];
+  let previous = picture;
+  for (const r of result.statements.slice(result.statements.indexOf(picture) + 1)) {
+    const s = r.statement;
+    if (s.span.line !== endLine(previous) + 1) break;
+    if (s.kind === 'heading' || s.kind === 'picture' || (s.kind === 'directive' && s.name === 'page')) break;
+    lines.push(s.span.line);
+    previous = r;
+  }
+  return lines;
 }
 
 /** Lines of one definition: given value, or formula / substitution / result. */

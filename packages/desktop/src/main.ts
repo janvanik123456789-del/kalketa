@@ -785,7 +785,45 @@ async function layersWithRealInput(picture: string) {
   })()`)) as boolean;
   const pastedIdle = (await countPictures()) === before + 1 && shownAfterPaste;
   await takePicture(picture.replace(/[.]png$/, '-pictures.png'));
-  const pictures = pasted.img && resized && dropped === 'Obr. 1: Schéma nosníku' && fileCopied && pastedIdle && pictureMenu.menu >= 5 && pictureMenu.full && pictureMenu.caption.includes('Detail kotvení');
+  // A picture beside the text: a new calculation, a picture after the heading, Placement > Right.
+  await clickOn('.doc-tab-new');
+  await clickOn('.layer-view.active .row[data-line="1"]');
+  await pressKey('End');
+  await pressKey('Enter');
+  await typeText('L := 5 m');
+  await pressKey('Enter');
+  await typeText('q := 12 kN/m');
+  await clickOn('.layer-view.active .row[data-line="1"]');
+  await clipboard.write([new ClipboardItem({ 'image/png': new Blob([new Uint8Array(png)], { type: 'image/png' }) })]);
+  await pressKey('V', ['control']);
+  for (let waited = 0; waited < 4000 && !(await contents.executeJavaScript(`!!document.querySelector('.layer-view.active .row[data-line="2"] figure')`)); waited += 200) await pause(200);
+  await clickOn('.sheet-scroll');
+  await clickOn('.layer-view.active .row[data-line="2"] figure img');
+  await clickMenu('Umístění');
+  await clickMenu('Vpravo vedle textu');
+  await pause(400);
+  const sideGroup = (await contents.executeJavaScript(`(() => {
+    const group = document.querySelector('.layer-view.active .side-group.side-right');
+    return { rows: [...(group?.querySelectorAll('.side-rows .row') ?? [])].map((r) => r.dataset.line).join(','), picture: !!group?.querySelector('.side-picture figure'), side: group?.style.getPropertyValue('--side') ?? '' };
+  })()`)) as { rows: string; picture: boolean; side: string };
+  // Dragging the inner corner of a right-side picture to the left widens its column.
+  await clickOn('.layer-view.active .side-picture figure img');
+  await pressKey('Escape');
+  const inner = (await contents.executeJavaScript(`(() => {
+    const r = document.querySelector('.layer-view.active .side-picture .picture-handle.sw').getBoundingClientRect();
+    return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+  })()`)) as { x: number; y: number };
+  contents.sendInputEvent({ type: 'mouseDown', ...inner, button: 'left', clickCount: 1 });
+  for (let step = 1; step <= 4; step++) {
+    contents.sendInputEvent({ type: 'mouseMove', x: inner.x - step * 10, y: inner.y, button: 'left' } as Electron.MouseInputEvent);
+    await pause(40);
+  }
+  contents.sendInputEvent({ type: 'mouseUp', x: inner.x - 40, y: inner.y, button: 'left', clickCount: 1 });
+  await pause(400);
+  const widened = (await contents.executeJavaScript(`parseFloat(document.querySelector('.layer-view.active .side-group')?.style.getPropertyValue('--side') ?? '0')`)) as number;
+  await takePicture(picture.replace(/[.]png$/, '-side.png'));
+  const besideText = sideGroup.rows === '3,4' && sideGroup.picture && sideGroup.side !== '' && widened > parseFloat(sideGroup.side);
+  const pictures = pasted.img && resized && dropped === 'Obr. 1: Schéma nosníku' && fileCopied && pastedIdle && pictureMenu.menu >= 5 && pictureMenu.full && pictureMenu.caption.includes('Detail kotvení') && besideText;
 
   // A sheet with a block: the block is listed, its use shows the block and computes.
   const blockFile = process.env['CALCCANVAS_SMOKE_BLOCKS'];
@@ -802,7 +840,7 @@ async function layersWithRealInput(picture: string) {
     blocksOk = shown.errors === 0 && shown.text.includes('Prosty nosnik 1.2') && shown.text.includes('45');
     await takePicture(picture.replace(/[.]png$/, '-blocks.png'));
   }
-  return { ...state, newKeepsExample, citations, aiReadOnly, split, mainHidden, twoLayers, addKinds, aiDeletable, aiMenu, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, pictures, blocksOk };
+  return { ...state, newKeepsExample, citations, aiReadOnly, split, mainHidden, twoLayers, addKinds, aiDeletable, aiMenu, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, besideText, pictures, blocksOk };
 }
 
 /**

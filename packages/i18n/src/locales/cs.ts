@@ -416,6 +416,10 @@ export const cs: Catalog = {
     'picture.replace': '&Nahradit obrázek…',
     'picture.editLine': '&Upravit zápis',
     'picture.delete': '&Odstranit obrázek',
+    'picture.place': '&Umístění',
+    'picture.center': 'Na střed',
+    'picture.right': 'Vpravo vedle textu',
+    'picture.left': 'Vlevo vedle textu',
     'settings.sizeLimit': 'Upozornit, když soubor výpočtu přesáhne (MB)',
   },
 };

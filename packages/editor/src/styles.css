@@ -126,6 +126,8 @@ button, select, input { font: inherit; }
 .button-row button, .button-column button { min-width: 0; }
 table.shortcuts td { padding: 2px 16px 2px 0; }
 .row .picture { position: relative; }
+.side-group .side-picture .gutter { display: none; }
+.side-group .side-rows, .side-group .side-picture { min-width: 0; }
 .row.just-inserted { animation: just-inserted 1.6s ease-out; }
 @keyframes just-inserted { from { background: #fff3b0; } to { background: transparent; } }
 /* Handles keep their size on screen whatever the zoom of the pages. */

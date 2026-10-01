@@ -446,6 +446,8 @@ Obrázek je v listu samostatný řádek zapsaný jako v Markdownu (stejně jako 
 - Soubor obrázku je uložený **uvnitř souboru výpočtu** (`images/sheet/…`, u vrstev `layers/<id>/images/…`). Výpočet tak jde předat jako jeden soubor.
 - **Vložení:** přetažením souboru na list (obrázek se vloží za řádek pod myší), Ctrl+V (zkopírovaný obrázek, snímek obrazovky, nebo soubor obrázku zkopírovaný v Průzkumníku či ve správci souborů v Linuxu) a Vložit → Obrázek…
 - Snímek obrazovky dostane šířku podle své velikosti na obrazovce (96 dpi), nejvýš celou šířku textu. **Velikost se mění tažením za roh** vybraného obrázku; řádek se upraví sám.
+- **Obrázek vedle textu:** `{width=40% side=right}` (nebo `side=left`) postaví obrázek vpravo (vlevo) vedle řádků, které za ním následují, až po nejbližší prázdný řádek, nadpis, další obrázek nebo `@page`. Řádky a obrázek tvoří dva sloupce, které zůstanou na jedné stránce. Je-li skupina vyšší než stránka, obrázek se vrátí doprostřed nad řádky. Šířka je podíl sloupce s obrázkem (nejvýš 70 % při tažení).
+- **Myší:** klik na obrázek ho vybere (úchyty ve čtyřech rozích) a otevře nabídku vedle něj: Popisek, Šířka, Umístění (na střed / vpravo / vlevo vedle textu), Nahradit obrázek, Upravit zápis, Odstranit. Pravé tlačítko otevře nabídku u kurzoru, dvojklik otevře zápis řádku.
 - Chybný zápis hlásí `E-PICTURE-SYNTAX`, chybějící soubor se v tisku ukáže jako červený rámeček s cestou.
 
 ---

@@ -416,6 +416,10 @@ export const en: Catalog = {
     'picture.replace': '&Replace picture…',
     'picture.editLine': '&Edit line',
     'picture.delete': '&Delete picture',
+    'picture.place': '&Placement',
+    'picture.center': 'Centred',
+    'picture.right': 'Right, beside the text',
+    'picture.left': 'Left, beside the text',
     'settings.sizeLimit': 'Warn when the calculation file exceeds (MB)',
   },
 };

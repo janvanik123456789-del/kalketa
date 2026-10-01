@@ -42,7 +42,7 @@ const SEVERITY_MARK: Readonly<Record<Message['severity'], string>> = { error: 'â
 export function renderHtml(doc: PrintDocument, options: HtmlOptions): string {
   const { catalog } = options;
   const summary = doc.summary ? renderSummary(doc.summary.rows, doc.summary.allPassed, catalog) : '';
-  const body = doc.blocks.map((b) => renderBlockHtml(b, catalog)).join('\n');
+  const body = renderBlocksHtml(doc.blocks, catalog);
   return `<!doctype html>
 <html lang="${esc(doc.language)}">
 <head>
@@ -72,6 +72,36 @@ ${(options.appendices ?? []).join('\n')}
 export interface BlockHtmlOptions {
   /** Operator on the defining line; the editor shows "â‰”", print shows "=". */
   readonly defineOperator?: string;
+}
+
+/**
+ * Blocks as HTML; a side picture and the blocks beside it go into two
+ * columns that stay together on one page.
+ */
+export function renderBlocksHtml(blocks: readonly PrintBlock[], catalog: Catalog): string {
+  const out: string[] = [];
+  for (let i = 0; i < blocks.length; i++) {
+    const block = blocks[i]!;
+    if (block.kind !== 'picture' || !block.side || !block.beside?.length) {
+      out.push(renderBlockHtml(block, catalog));
+      continue;
+    }
+    const beside = new Set(block.beside);
+    const rows: string[] = [];
+    while (i + 1 < blocks.length) {
+      const next = blocks[i + 1]!;
+      if (!('line' in next) || !beside.has(next.line)) break;
+      rows.push(renderBlockHtml(next, catalog));
+      i++;
+    }
+    out.push(sideGroupHtml(rows.join('\n'), renderBlockHtml(block, catalog), block.side, block.width));
+  }
+  return out.join('\n');
+}
+
+/** Two columns: the lines and the picture on its side; `width` is the picture's share in percent. */
+export function sideGroupHtml(rows: string, picture: string, side: 'left' | 'right', width: number | undefined): string {
+  return `<div class="side-group side-${side}" style="--side:${width ?? 40}%"><div class="side-rows">${rows}</div><div class="side-picture">${picture}</div></div>`;
 }
 
 /** One block of the print model as HTML; shared by print and the editor. */
@@ -217,6 +247,10 @@ h3, h4, h5, h6 { font-size: 11pt; margin: 4mm 0 1.5mm; break-after: avoid; }
 .picture.natural img { width: auto; max-width: 100%; }
 .picture figcaption { margin-top: 1.5mm; font-size: 9pt; }
 .picture .figure-label { font-weight: 600; }
+.side-group { display: grid; grid-template-columns: minmax(0, 1fr) var(--side); column-gap: 5mm; align-items: start; break-inside: avoid; }
+.side-group.side-left { grid-template-columns: var(--side) minmax(0, 1fr); }
+.side-group.side-left .side-picture { order: -1; }
+.side-picture .block.picture { width: 100% !important; margin: 1.5mm 0; }
 .picture .missing-image { padding: 4mm; border: 1px dashed #c62828; color: #c62828; font-size: 9pt; }
 .block { margin: 1.5mm 0 2.5mm; break-inside: avoid; }
 table.eq { border-collapse: collapse; }

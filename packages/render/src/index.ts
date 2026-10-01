@@ -8,14 +8,14 @@
 
 import type { SheetResult, UnitRegistry } from '@calccanvas/core';
 import { t, type Catalog } from '@calccanvas/i18n';
-import { appendixHtml, renderBlockHtml, renderHtml } from './html.js';
+import { appendixHtml, renderBlocksHtml, renderHtml } from './html.js';
 import { buildPrintDocument } from './model.js';
 import { notesHtml } from './notes.js';
 
 export * from './math.js';
 export { formulaNode, hasSubstitutableParts, type FormulaOptions } from './formula.js';
 export * from './model.js';
-export { renderHtml, renderBlockHtml, renderSummary, appendixHtml, BLOCK_CSS, type HtmlOptions, type BlockHtmlOptions } from './html.js';
+export { renderHtml, renderBlockHtml, renderBlocksHtml, sideGroupHtml, renderSummary, appendixHtml, BLOCK_CSS, type HtmlOptions, type BlockHtmlOptions } from './html.js';
 export { notesHtml, notesImages, NOTES_CSS, type NotesOptions } from './notes.js';
 
 /** A layer printed after the sheet. */
@@ -67,7 +67,7 @@ export function printHtml(result: SheetResult, settings: PrintSettings): string 
       return appendixHtml(title, `<div class="notes">${notes}</div>`);
     }
     const inner = buildPrintDocument(appendix.result, { ...common, title: appendix.name, summary: 'none' });
-    return appendixHtml(title, inner.blocks.map((b) => renderBlockHtml(b, settings.catalog)).join('\n'));
+    return appendixHtml(title, renderBlocksHtml(inner.blocks, settings.catalog));
   });
 
   return renderHtml(doc, {

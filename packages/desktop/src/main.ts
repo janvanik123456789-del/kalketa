@@ -841,7 +841,32 @@ async function layersWithRealInput(picture: string) {
   const movedPicture = markShown && ((await contents.executeJavaScript(
     `!!document.querySelector('.layer-view.active .row[data-line="4"] figure') && /L/.test(document.querySelector('.layer-view.active .row[data-line="2"]')?.textContent ?? '')`,
   )) as boolean);
-  const besideText = sideGroup.rows === '3,4' && sideGroup.picture && sideGroup.side !== '' && widened > parseFloat(sideGroup.side) && movedPicture;
+  // Placement > Right, text flows around; dragged above the values, they stand beside it.
+  await clickOn('.layer-view.active .row[data-line="4"] figure img');
+  await clickMenu('Umístění');
+  await clickMenu('Vpravo s obtékáním');
+  await pause(300);
+  const lift = (await contents.executeJavaScript(`(() => {
+    const img = document.querySelector('.layer-view.active .row[data-line="4"] figure img').getBoundingClientRect();
+    const l = document.querySelector('.layer-view.active .row[data-line="2"]').getBoundingClientRect();
+    return { x: Math.round(img.left + img.width / 2), y: Math.round(img.top + img.height / 2), tx: Math.round(l.left + l.width / 2), ty: Math.round(l.top + 2) };
+  })()`)) as { x: number; y: number; tx: number; ty: number };
+  contents.sendInputEvent({ type: 'mouseDown', x: lift.x, y: lift.y, button: 'left', clickCount: 1 });
+  for (let step = 1; step <= 8; step++) {
+    contents.sendInputEvent({ type: 'mouseMove', x: Math.round(lift.x + ((lift.tx - lift.x) * step) / 8), y: Math.round(lift.y + ((lift.ty - lift.y) * step) / 8), button: 'left' } as Electron.MouseInputEvent);
+    await pause(40);
+  }
+  await takePicture(picture.replace(/[.]png$/, '-wrapdrag.png'));
+  contents.sendInputEvent({ type: 'mouseUp', x: lift.tx, y: lift.ty, button: 'left', clickCount: 1 });
+  await pause(600);
+  await takePicture(picture.replace(/[.]png$/, '-wrap.png'));
+  const wrapped = (await contents.executeJavaScript(`(() => {
+    const pic = document.querySelector('.layer-view.active .row.wrap-right[data-line="2"]')?.getBoundingClientRect();
+    const l = document.querySelector('.layer-view.active .row[data-line="3"]')?.getBoundingClientRect();
+    const body = document.querySelector('.layer-view.active .page-body')?.getBoundingClientRect();
+    return !!pic && !!l && !!body && l.right <= pic.left + 1 && l.width < body.width * 0.8 && l.top < pic.bottom;
+  })()`)) as boolean;
+  const besideText = sideGroup.rows === '3,4' && sideGroup.picture && sideGroup.side !== '' && widened > parseFloat(sideGroup.side) && movedPicture && wrapped;
   const pictures = pasted.img && resized && dropped === 'Obr. 1: Schéma nosníku' && fileCopied && pastedIdle && pictureMenu.menu >= 5 && pictureMenu.full && pictureMenu.caption.includes('Detail kotvení') && besideText;
 
   // A sheet with a block: the block is listed, its use shows the block and computes.
@@ -859,7 +884,7 @@ async function layersWithRealInput(picture: string) {
     blocksOk = shown.errors === 0 && shown.text.includes('Prosty nosnik 1.2') && shown.text.includes('45');
     await takePicture(picture.replace(/[.]png$/, '-blocks.png'));
   }
-  return { ...state, newKeepsExample, citations, aiReadOnly, split, mainHidden, twoLayers, addKinds, aiDeletable, aiMenu, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, besideText, pictures, blocksOk };
+  return { ...state, newKeepsExample, citations, aiReadOnly, split, mainHidden, twoLayers, addKinds, aiDeletable, aiMenu, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, besideText, pictures, blocksOk };
 }
 
 /**

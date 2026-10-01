@@ -77,6 +77,8 @@ export type PrintBlock =
       readonly side?: 'left' | 'right';
       /** First lines of the statements set beside the picture. */
       readonly beside?: readonly number[];
+      /** On this side with the following lines flowing around it. */
+      readonly wrap?: 'left' | 'right';
     }
   | {
       readonly kind: 'equation';
@@ -200,6 +202,7 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
           ...(label ? { label } : {}),
           ...(s.width !== undefined ? { width: s.width } : {}),
           ...(s.side ? { side: s.side, beside: besideLines(result, r) } : {}),
+          ...(s.wrap ? { wrap: s.wrap } : {}),
         });
         break;
       }

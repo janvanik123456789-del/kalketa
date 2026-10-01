@@ -107,7 +107,19 @@ export function SheetView(props: Props) {
     const body = root?.querySelector<HTMLElement>('.page-body');
     if (!root || !body) return;
     const measured = [...root.querySelectorAll<HTMLElement>('[data-item]')];
-    const heights = measured.map((el) => el.offsetHeight);
+    // How far each item pushes the flow down on its page: rows beside a wrapped picture push nothing until they pass its bottom.
+    let reached = 0;
+    let page: Element | null = null;
+    const heights = measured.map((el) => {
+      if (el.parentElement !== page) {
+        page = el.parentElement;
+        reached = 0;
+      }
+      const bottom = el.offsetTop + el.offsetHeight;
+      const advance = Math.max(0, bottom - reached);
+      reached = Math.max(reached, bottom);
+      return advance;
+    });
     const tall = measured.filter((el) => el.classList.contains('side-group') && el.offsetHeight > body.clientHeight).map((el) => Number(el.dataset['picture']));
     if (tall.some((line) => !tooTall.has(line))) setTooTall(new Set([...tooTall, ...tall]));
     const next = paginate(heights, body.clientHeight, breakAfter);
@@ -177,13 +189,14 @@ export function SheetView(props: Props) {
     const picture = parsePicture(seg.text);
     if (!picture) return [];
     const c = props.uiCatalog;
-    const set = (change: Partial<{ caption: string; width: number | undefined; side: 'left' | 'right' | undefined }>) => {
-      const { width, side, ...rest } = { ...picture, ...change };
-      props.onReplace(seg.start, seg.end, formatPicture({ ...rest, ...(width !== undefined ? { width } : {}), ...(side ? { side } : {}) }));
+    const set = (change: Partial<{ caption: string; width: number | undefined; side: 'left' | 'right' | undefined; wrap: 'left' | 'right' | undefined }>) => {
+      const { width, side, wrap, ...rest } = { ...picture, ...change };
+      props.onReplace(seg.start, seg.end, formatPicture({ ...rest, ...(width !== undefined ? { width } : {}), ...(side ? { side } : {}), ...(wrap ? { wrap } : {}) }));
     };
     // Beside the text a picture takes at most a good part of the width, so the lines keep room.
-    const setSide = (side: 'left' | 'right' | undefined) =>
-      set({ side, ...(side && (picture.width === undefined || picture.width > 60) ? { width: 40 } : {}) });
+    const narrow = picture.width === undefined || picture.width > 60 ? { width: 40 } : {};
+    const setSide = (side: 'left' | 'right' | undefined) => set({ side, wrap: undefined, ...(side ? narrow : {}) });
+    const setWrap = (wrap: 'left' | 'right') => set({ wrap, side: undefined, ...narrow });
     return [
       {
         kind: 'action',
@@ -216,9 +229,12 @@ export function SheetView(props: Props) {
         kind: 'submenu',
         label: t(c, 'picture.place'),
         items: [
-          { kind: 'action', label: t(c, 'picture.center'), checked: picture.side === undefined, run: () => setSide(undefined) },
+          { kind: 'action', label: t(c, 'picture.center'), checked: picture.side === undefined && picture.wrap === undefined, run: () => setSide(undefined) },
           { kind: 'action', label: t(c, 'picture.right'), checked: picture.side === 'right', run: () => setSide('right') },
           { kind: 'action', label: t(c, 'picture.left'), checked: picture.side === 'left', run: () => setSide('left') },
+          { kind: 'separator' },
+          { kind: 'action', label: t(c, 'picture.wrapRight'), checked: picture.wrap === 'right', run: () => setWrap('right') },
+          { kind: 'action', label: t(c, 'picture.wrapLeft'), checked: picture.wrap === 'left', run: () => setWrap('left') },
         ],
       },
       {
@@ -298,7 +314,8 @@ export function SheetView(props: Props) {
       <div
         key={`${seg.start}:${isEditing ? 'e' : seg.text}`}
         data-item={measured ? '' : undefined}
-        className={`row${isEditing ? ' editing' : ''}${selected ? ' selected' : ''}${statement?.status === 'error' ? ' has-error' : ''}`}
+        className={`row${isEditing ? ' editing' : ''}${selected ? ' selected' : ''}${statement?.status === 'error' ? ' has-error' : ''}${block?.kind === 'picture' && block.wrap ? ` wrap-${block.wrap}` : ''}`}
+        style={block?.kind === 'picture' && block.wrap ? { width: `${block.width ?? 40}%` } : undefined}
         data-line={seg.start}
         onMouseDown={(e) => {
           if (isEditing || (e.target as HTMLElement).closest('.pick-control')) return;
@@ -399,13 +416,16 @@ function PictureBlock({ block, catalog, onLoad, onResize }: { block: Extract<Pri
     const bodyBox = body.getBoundingClientRect();
     const bodyWidth = bodyBox.width;
     // A centred picture grows on both sides; a side picture from the page edge it stands at.
-    const edge = block.side === 'right' ? bodyBox.right : block.side === 'left' ? bodyBox.left : undefined;
+    const place = block.side ?? block.wrap;
+    const edge = place === 'right' ? bodyBox.right : place === 'left' ? bodyBox.left : undefined;
     const group = element.closest<HTMLElement>('.side-group');
+    const floating = block.wrap ? element.closest<HTMLElement>('.row') : null;
     let current = width ?? Math.round((rect.width / bodyWidth) * 100);
     const move = (event: MouseEvent) => {
       const span = edge === undefined ? 2 * Math.abs(event.clientX - centre) : Math.abs(event.clientX - edge);
       current = Math.max(10, Math.min(edge === undefined ? 100 : 70, Math.round((span / bodyWidth) * 100)));
       group?.style.setProperty('--side', `${current}%`);
+      if (floating) floating.style.width = `${current}%`;
       setDragged(current);
     };
     const up = () => {

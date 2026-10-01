@@ -420,6 +420,8 @@ export const cs: Catalog = {
     'picture.center': 'Na střed',
     'picture.right': 'Vpravo vedle textu',
     'picture.left': 'Vlevo vedle textu',
+    'picture.wrapRight': 'Vpravo s obtékáním',
+    'picture.wrapLeft': 'Vlevo s obtékáním',
     'settings.sizeLimit': 'Upozornit, když soubor výpočtu přesáhne (MB)',
   },
 };

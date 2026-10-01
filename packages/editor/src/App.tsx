@@ -1036,7 +1036,11 @@ export function App() {
           onDelete={(start, end) => setLayerText(l, deleteLines(source, start, end))}
           onPick={(statement, key) => pickIn(l, statement, key)}
           onReplacePicture={(start, end) => void replacePictureFile(l, start, end)}
-          onMoveLines={(start, end, after) => setLayerText(l, moveLines(source, start, end, after))}
+          onMoveLines={(start, end, after) => {
+            setLayerText(l, moveLines(source, start, end, after));
+            // The selection is kept by statement order, which the move changes.
+            setSelected(undefined);
+          }}
           geometry={geometry}
           zoom={zoom}
           title={l.kind === 'calc' ? nameOf(l) : (/^[ \t]*#(?!#)[ \t]*(.+?)[ \t]*$/m.exec(doc.source)?.[1] ?? doc.manifest.title)}

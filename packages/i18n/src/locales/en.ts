@@ -420,6 +420,8 @@ export const en: Catalog = {
     'picture.center': 'Centred',
     'picture.right': 'Right, beside the text',
     'picture.left': 'Left, beside the text',
+    'picture.wrapRight': 'Right, text flows around',
+    'picture.wrapLeft': 'Left, text flows around',
     'settings.sizeLimit': 'Warn when the calculation file exceeds (MB)',
   },
 };

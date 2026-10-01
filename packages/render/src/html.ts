@@ -121,7 +121,8 @@ export function renderBlockHtml(block: PrintBlock, catalog: Catalog, options: Bl
         : `<div class="missing-image">${esc(t(catalog, 'print.pictureMissing', { path: block.path }))}</div>`;
       const caption = block.label ? `<figcaption><span class="figure-label">${esc(block.label)}:</span> ${esc(block.caption)}</figcaption>` : '';
       const size = block.width !== undefined ? ` style="width:${block.width}%"` : '';
-      return `<figure class="block picture${block.width === undefined ? ' natural' : ''}" data-line="${block.line}"${size}>${image}${caption}</figure>`;
+      const wrap = block.wrap ? ` wrap-${block.wrap}` : '';
+      return `<figure class="block picture${block.width === undefined ? ' natural' : ''}${wrap}" data-line="${block.line}"${size}>${image}${caption}</figure>`;
     }
     case 'equation':
       return `<section class="block equation" data-line="${block.line}">
@@ -247,6 +248,11 @@ h3, h4, h5, h6 { font-size: 11pt; margin: 4mm 0 1.5mm; break-after: avoid; }
 .picture.natural img { width: auto; max-width: 100%; }
 .picture figcaption { margin-top: 1.5mm; font-size: 9pt; }
 .picture .figure-label { font-weight: 600; }
+/* Lines flow around a wrapped picture: each block keeps whole beside it (a formula is never broken), below it the full width. */
+.block.picture.wrap-right { float: right; margin: 1mm 0 2mm 5mm; }
+.block.picture.wrap-left { float: left; margin: 1mm 5mm 2mm 0; }
+.block, h2, h3, h4 { display: flow-root; }
+.page-break { clear: both; }
 .side-group { display: grid; grid-template-columns: minmax(0, 1fr) var(--side); column-gap: 5mm; align-items: start; break-inside: avoid; }
 .side-group.side-left { grid-template-columns: var(--side) minmax(0, 1fr); }
 .side-group.side-left .side-picture { order: -1; }

@@ -785,6 +785,8 @@ export interface PictureLine {
   readonly width?: number;
   /** Beside the lines that follow it (up to a blank line or a heading) instead of centred. */
   readonly side?: 'left' | 'right';
+  /** On this side with the lines flowing around it: beside it down to its bottom, full width below. */
+  readonly wrap?: 'left' | 'right';
 }
 
 const PICTURE = /^!\[([^\]]*)\]\(([^()\s]+)\)\s*(?:\{([^}]*)\})?$/;
@@ -795,19 +797,22 @@ export function parsePicture(text: string): PictureLine | undefined {
   if (!match) return undefined;
   let width: number | undefined;
   let side: 'left' | 'right' | undefined;
+  let wrap: 'left' | 'right' | undefined;
   for (const option of (match[3] ?? '').split(/[\s,;]+/).filter(Boolean)) {
     const widthOption = /^width=(\d+(?:\.\d+)?)%$/.exec(option);
-    const sideOption = /^side=(left|right)$/.exec(option);
+    const placeOption = /^(side|wrap)=(left|right)$/.exec(option);
     if (widthOption && width === undefined) width = Number(widthOption[1]);
-    else if (sideOption && side === undefined) side = sideOption[1] as 'left' | 'right';
-    else return undefined;
+    else if (placeOption && side === undefined && wrap === undefined) {
+      if (placeOption[1] === 'side') side = placeOption[2] as 'left' | 'right';
+      else wrap = placeOption[2] as 'left' | 'right';
+    } else return undefined;
   }
   if (width !== undefined && !(width > 0 && width <= 100)) return undefined;
-  return { caption: match[1]!.trim(), path: match[2]!, ...(width !== undefined ? { width } : {}), ...(side ? { side } : {}) };
+  return { caption: match[1]!.trim(), path: match[2]!, ...(width !== undefined ? { width } : {}), ...(side ? { side } : {}), ...(wrap ? { wrap } : {}) };
 }
 
 /** The line of a picture, as parsePicture reads it. */
 export function formatPicture(picture: PictureLine): string {
-  const options = [picture.width === undefined ? '' : `width=${Math.round(picture.width)}%`, picture.side ? `side=${picture.side}` : ''].filter(Boolean);
+  const options = [picture.width === undefined ? '' : `width=${Math.round(picture.width)}%`, picture.side ? `side=${picture.side}` : '', picture.wrap ? `wrap=${picture.wrap}` : ''].filter(Boolean);
   return `![${picture.caption.replace(/[\[\]\n]/g, ' ').trim()}](${picture.path})${options.length ? `{${options.join(' ')}}` : ''}`;
 }

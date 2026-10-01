@@ -4,7 +4,7 @@
  * every keystroke.
  */
 
-import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type MouseEvent as ReactMouseEvent } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 import { formatPicture, fromDecimalComma, parsePicture, toDecimalComma, type SheetResult, type Statement } from '@calccanvas/core';
 import { formatNumber, t, type Catalog } from '@calccanvas/i18n';
 import { isCanvasPath, renderBlockHtml, renderSummary, type PrintBlock, type PrintDocument } from '@calccanvas/render';
@@ -42,8 +42,12 @@ interface Props {
   onPick(statement: Statement, key: string): void;
   /** Moves lines start..end after line `after` (a picture dragged elsewhere). */
   onMoveLines(start: number, end: number, after: number): void;
-  /** Opens the canvas window for a canvas shown in the sheet. */
+  /** Starts editing a canvas shown in the sheet (in the sheet or in the window, as set). */
   onEditCanvas(path: string): void;
+  /** Opens a canvas in the large window. */
+  onEditCanvasWindow(path: string): void;
+  /** The canvas being edited right in the sheet, drawn by the caller in place of its picture. */
+  readonly inlineCanvas?: { readonly path: string; render(): ReactNode };
   /** Lets the user choose another file for the picture on lines start..end. */
   onReplacePicture(start: number, end: number): void;
   /** Page size and margins of the printout. */
@@ -202,7 +206,13 @@ export function SheetView(props: Props) {
     const setSide = (side: Side) => set({ side, wrap: undefined, align: undefined, ...(side ? narrow : {}) });
     const setWrap = (wrap: 'left' | 'right') => set({ wrap, side: undefined, align: undefined, ...narrow });
     return [
-      ...(isCanvasPath(picture.path) ? [{ kind: 'action' as const, label: t(c, 'picture.editCanvas'), run: () => props.onEditCanvas(picture.path) }, { kind: 'separator' as const }] : []),
+      ...(isCanvasPath(picture.path)
+        ? [
+            { kind: 'action' as const, label: t(c, 'picture.editCanvas'), run: () => props.onEditCanvas(picture.path) },
+            { kind: 'action' as const, label: t(c, 'picture.editCanvasWindow'), run: () => props.onEditCanvasWindow(picture.path) },
+            { kind: 'separator' as const },
+          ]
+        : []),
       {
         kind: 'action',
         label: t(c, 'picture.caption'),
@@ -380,6 +390,7 @@ export function SheetView(props: Props) {
           {block?.kind === 'picture' ? (
             <PictureBlock
               block={block}
+              editing={props.inlineCanvas?.path === block.path ? props.inlineCanvas.render() : undefined}
               catalog={props.printCatalog}
               onLoad={() => relayout((n) => n + 1)}
               onResize={(width) => {
@@ -414,7 +425,20 @@ function Block({ block, catalog }: { block: PrintBlock; catalog: Catalog }) {
  * A picture as printed, with a handle in its corner: dragging it sets the
  * width as a share of the text width (the picture stays centred).
  */
-function PictureBlock({ block, catalog, onLoad, onResize }: { block: Extract<PrintBlock, { kind: 'picture' }>; catalog: Catalog; onLoad(): void; onResize(width: number): void }) {
+function PictureBlock({
+  block,
+  editing,
+  catalog,
+  onLoad,
+  onResize,
+}: {
+  block: Extract<PrintBlock, { kind: 'picture' }>;
+  /** A canvas being edited takes the place of its picture. */
+  editing?: ReactNode;
+  catalog: Catalog;
+  onLoad(): void;
+  onResize(width: number): void;
+}) {
   const [dragged, setDragged] = useState<number | undefined>();
   const figure = useRef<HTMLElement>(null);
   const width = dragged ?? block.width;
@@ -455,13 +479,13 @@ function PictureBlock({ block, catalog, onLoad, onResize }: { block: Extract<Pri
   return (
     <div className="block-view">
       <figure ref={figure} className={`block picture${width === undefined ? ' natural' : ''}${block.align ? ` align-${block.align}` : ''}`} data-line={block.line} style={width !== undefined ? { width: `${width}%` } : undefined}>
-        {block.src ? <img src={block.src} alt={block.caption} draggable={false} onLoad={onLoad} /> : <div className="missing-image">{t(catalog, 'print.pictureMissing', { path: block.path })}</div>}
+        {editing ?? (block.src ? <img src={block.src} alt={block.caption} draggable={false} onLoad={onLoad} /> : <div className="missing-image">{t(catalog, 'print.pictureMissing', { path: block.path })}</div>)}
         {block.label && (
           <figcaption>
             <span className="figure-label">{block.label}:</span> {block.caption}
           </figcaption>
         )}
-        {(['nw', 'ne', 'sw', 'se'] as const).map((corner) => (
+        {!editing && (['nw', 'ne', 'sw', 'se'] as const).map((corner) => (
           <span key={corner} className={`picture-handle ${corner}`} title={t(catalog, 'editor.pictureResize')} onMouseDown={startResize} />
         ))}
         {dragged !== undefined && <span className="picture-size">{dragged} %</span>}

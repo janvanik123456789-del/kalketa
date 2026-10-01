@@ -1,10 +1,13 @@
 /**
- * The canvas window: a drawing with shapes, arrows, text and pictures placed
- * freely, like a slide. It edits a copy of the scene with its own undo; Done
- * gives the scene (and any new pictures) back to the sheet.
+ * Editing a canvas: a drawing with shapes, arrows, text and pictures placed
+ * freely, like a slide. Either right in the sheet (the drawing stays where it
+ * is, a tool bar appears over the sheet) or in a large window. It edits a copy
+ * of the scene with its own undo; Done gives the scene (and any new pictures)
+ * back to the sheet.
  */
 
 import { useEffect, useLayoutEffect, useRef, useState, type DragEvent as ReactDragEvent, type MouseEvent as ReactMouseEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { t, type Catalog } from '@calccanvas/i18n';
 import { sceneBody, type CanvasItem, type CanvasScene } from '@calccanvas/render';
 import { addItem, boxOf, drawn, endMoved, findItem, itemAt, moved, newId, removeItem, reordered, replaceItem, resized, snap, type Corner, type Tool } from '../logic/canvasEdit.js';
@@ -23,6 +26,10 @@ interface Props {
   taken(path: string): boolean;
   onDone(scene: CanvasScene, files: ReadonlyMap<string, Uint8Array>): void;
   onCancel(): void;
+  /** 'inline': in the sheet, sized like the picture it replaces; 'window': a large window. */
+  readonly mode?: 'inline' | 'window';
+  /** From the sheet into the large window, with what was drawn so far. */
+  onExpand?(scene: CanvasScene, files: ReadonlyMap<string, Uint8Array>): void;
 }
 
 type Drag =
@@ -45,6 +52,7 @@ const TOOLS: readonly { tool: Tool; glyph: string; key: string }[] = [
 
 export function CanvasEditor(props: Props) {
   const c = props.catalog;
+  const inline = props.mode === 'inline';
   const [history, setHistory] = useState<{ past: CanvasScene[]; present: CanvasScene; future: CanvasScene[] }>({ past: [], present: props.scene, future: [] });
   const scene = history.present;
   const [selected, setSelected] = useState<string | undefined>();
@@ -61,9 +69,14 @@ export function CanvasEditor(props: Props) {
   const stageBox = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(4);
 
-  // Pixels per millimetre: the drawing fills the space of the window.
+  // Pixels per millimetre on screen: in the window the drawing fills the space; in the sheet it has the size of the picture.
   useLayoutEffect(() => {
     const fit = () => {
+      if (inline) {
+        const box = svg.current?.getBoundingClientRect();
+        if (box && box.width > 0) setScale(box.width / scene.width);
+        return;
+      }
       const box = stageBox.current?.getBoundingClientRect();
       if (!box) return;
       setScale(Math.max(1, Math.min(8, (box.width - 40) / scene.width, (box.height - 40) / scene.height)));
@@ -87,9 +100,10 @@ export function CanvasEditor(props: Props) {
   };
 
   const point = (e: { clientX: number; clientY: number }, free = false) => {
+    // From the box on screen, so the zoom of the sheet does not matter.
     const box = svg.current!.getBoundingClientRect();
-    const x = (e.clientX - box.left) / scale;
-    const y = (e.clientY - box.top) / scale;
+    const x = ((e.clientX - box.left) / box.width) * scene.width;
+    const y = ((e.clientY - box.top) / box.height) * scene.height;
     return free ? { x, y } : { x: snap(x, 0.5), y: snap(y, 0.5) };
   };
 
@@ -99,6 +113,8 @@ export function CanvasEditor(props: Props) {
   const down = (e: ReactMouseEvent) => {
     if (e.button !== 0) return;
     e.preventDefault();
+    // In the sheet the row under the drawing must not take the click.
+    e.stopPropagation();
     const handle = (e.target as Element).closest('[data-handle]')?.getAttribute('data-handle');
     const at = point(e, e.altKey);
     before.current = scene;
@@ -216,7 +232,7 @@ export function CanvasEditor(props: Props) {
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       // Keys belong to the canvas unless a field or a question over it has them.
-      if ((e.target as HTMLElement).matches?.('input, textarea, select') || document.querySelectorAll('.dialog-backdrop').length > 1) return;
+      if ((e.target as HTMLElement).matches?.('input, textarea, select') || document.querySelectorAll('.dialog-backdrop').length > (inline ? 0 : 1)) return;
       const ctrl = e.ctrlKey || e.metaKey;
       if (ctrl && e.key.toLowerCase() === 'z') {
         e.preventDefault();
@@ -237,6 +253,8 @@ export function CanvasEditor(props: Props) {
       } else if (e.key === 'Escape') {
         e.preventDefault();
         if (selected) setSelected(undefined);
+        // In the sheet Esc ends editing and keeps the drawing; the window closes without saving.
+        else if (inline) props.onDone(scene, files);
         else props.onCancel();
       } else if (!ctrl && !e.altKey) {
         const chosen = TOOLS.find((x) => x.key === e.key.toUpperCase());
@@ -258,6 +276,39 @@ export function CanvasEditor(props: Props) {
     };
   });
 
+  // In the sheet a click anywhere else ends editing and keeps the drawing.
+  const toolbar = useRef<HTMLDivElement>(null);
+  const doneRef = useRef(() => props.onDone(scene, files));
+  doneRef.current = () => props.onDone(scene, files);
+  useEffect(() => {
+    if (!inline) return;
+    const outside = (e: MouseEvent) => {
+      const target = e.target as Element;
+      if (svg.current?.contains(target) || toolbar.current?.contains(target) || target.closest('.dialog-backdrop, .context-menu, .menu-panel')) return;
+      doneRef.current();
+    };
+    // Listening starts after the double click that opened the editing.
+    const timer = window.setTimeout(() => window.addEventListener('mousedown', outside, true));
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener('mousedown', outside, true);
+    };
+  }, [inline]);
+
+  // The tool bar of editing in the sheet sits over the top of the sheet, outside its zoom.
+  const [barAt, setBarAt] = useState<{ left: number; top: number; maxWidth: number } | undefined>();
+  useLayoutEffect(() => {
+    if (!inline) return;
+    const place = () => {
+      const area = svg.current?.closest('.sheet-scroll')?.getBoundingClientRect();
+      // Within the sheet: the bar wraps rather than covering a side panel.
+      if (area) setBarAt({ left: area.left + 8, top: area.top + 6, maxWidth: area.width - 16 });
+    };
+    place();
+    window.addEventListener('resize', place);
+    return () => window.removeEventListener('resize', place);
+  }, [inline]);
+
   const drop = (e: ReactDragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -268,13 +319,8 @@ export function CanvasEditor(props: Props) {
   const handleSize = 9 / scale;
   const selection = item ? selectionMarks(item, handleSize) : null;
 
-  return (
-    <div className="dialog-backdrop canvas-backdrop">
-      <div className="canvas-window" role="dialog" aria-modal="true" aria-label={t(c, 'canvas.title')}>
-        <div className="dialog-title">
-          <span>{t(c, 'canvas.title')}</span>
-        </div>
-        <div className="canvas-toolbar">
+  const tools = (
+    <>
           {TOOLS.map((x) => (
             <button key={x.tool} type="button" className={tool === x.tool ? 'active' : ''} title={`${t(c, `canvas.tool.${x.tool}` as Parameters<typeof t>[1])} (${x.key})`} data-tool={x.tool} onClick={() => setTool(x.tool)}>
               {x.glyph}
@@ -330,16 +376,19 @@ export function CanvasEditor(props: Props) {
           <button type="button" disabled={history.future.length === 0} title={t(c, 'canvas.redo')} onClick={redo}>
             ↷
           </button>
-        </div>
-        <div className="canvas-stage" ref={stageBox} onDragOver={(e) => e.preventDefault()} onDrop={drop}>
+    </>
+  );
+
+  const stage = (
           <svg
             ref={svg}
             className={`canvas-svg tool-${tool}`}
-            width={scene.width * scale}
-            height={scene.height * scale}
+            width={inline ? '100%' : scene.width * scale}
+            height={inline ? undefined : scene.height * scale}
             viewBox={`0 0 ${scene.width} ${scene.height}`}
             onMouseDown={down}
             onDoubleClick={(e) => {
+              e.stopPropagation();
               const at = point(e, true);
               const hit = itemAt(scene, at.x, at.y);
               if (hit) void editText(hit);
@@ -356,6 +405,40 @@ export function CanvasEditor(props: Props) {
             {selection}
             <rect className="canvas-size-handle" data-handle="size" x={scene.width - handleSize} y={scene.height - handleSize} width={handleSize} height={handleSize} />
           </svg>
+  );
+
+  if (inline) {
+    return (
+      <>
+        {createPortal(
+          <div ref={toolbar} className="canvas-toolbar canvas-inline-bar" style={barAt} onMouseDown={(e) => e.stopPropagation()}>
+            {tools}
+            <span className="canvas-sep" />
+            <button type="button" title={t(c, 'canvas.expand')} onClick={() => props.onExpand?.(scene, files)}>
+              ⤢
+            </button>
+            <button type="button" className="canvas-done" data-canvas="done" onClick={() => props.onDone(scene, files)}>
+              {t(c, 'canvas.done')}
+            </button>
+          </div>,
+          document.body,
+        )}
+        <div className="canvas-inline" onDragOver={(e) => e.preventDefault()} onDrop={drop}>
+          {stage}
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <div className="dialog-backdrop canvas-backdrop">
+      <div className="canvas-window" role="dialog" aria-modal="true" aria-label={t(c, 'canvas.title')}>
+        <div className="dialog-title">
+          <span>{t(c, 'canvas.title')}</span>
+        </div>
+        <div className="canvas-toolbar">{tools}</div>
+        <div className="canvas-stage" ref={stageBox} onDragOver={(e) => e.preventDefault()} onDrop={drop}>
+          {stage}
         </div>
         <div className="dialog-buttons canvas-buttons">
           <span className="canvas-info">

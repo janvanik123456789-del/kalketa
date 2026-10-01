@@ -948,11 +948,20 @@ async function layersWithRealInput(picture: string) {
     contents.sendInputEvent({ type: 'mouseUp', ...figure, button: 'left', clickCount: 2 });
     await pause(500);
     const reopened = (await contents.executeJavaScript(`document.querySelectorAll('.canvas-svg g > rect, .canvas-svg g > line, .canvas-svg g > text').length`)) as number;
+    const inlineEditing = (await contents.executeJavaScript(`!!document.querySelector('.page .canvas-inline .canvas-svg') && !!document.querySelector('.canvas-inline-bar') && !document.querySelector('.canvas-window')`)) as boolean;
     await takePicture(picture.replace(/[.]png$/, '-canvas.png'));
     await pressKey('Escape');
     await pause(300);
+    // The menu of the drawing opens it in the large window too.
+    await clickOn('[data-canvas-figure] img');
+    await clickMenu('Upravit plátno v okně');
+    await pause(400);
+    const windowEditing = (await contents.executeJavaScript(`!!document.querySelector('.canvas-window .canvas-svg') && document.querySelectorAll('.canvas-window .canvas-svg g > rect, .canvas-window .canvas-svg g > line, .canvas-window .canvas-svg g > text').length === 3`)) as boolean;
+    await takePicture(picture.replace(/[.]png$/, '-canvas-window.png'));
+    await pressKey('Escape');
+    await pause(300);
     canvasOk =
-      /<rect x="[\d.]+" y="[\d.]+" width="[\d.]+"/.test(items) && shown.includes('<rect') && shown.includes('marker-end') && shown.includes('L = 5 m') && reopened === 3 && !(await contents.executeJavaScript(`!!document.querySelector('.canvas-window')`));
+      /<rect x="[\d.]+" y="[\d.]+" width="[\d.]+"/.test(items) && shown.includes('<rect') && shown.includes('marker-end') && shown.includes('L = 5 m') && reopened === 3 && inlineEditing && windowEditing && !(await contents.executeJavaScript(`!!document.querySelector('.canvas-window, .canvas-inline')`));
   }
   const besideText = sideGroup.rows === '3,4' && sideGroup.picture && sideGroup.side !== '' && widened > parseFloat(sideGroup.side) && movedPicture && wrapped && cleared && unwrapped && canvasOk;
   const pictures = pasted.img && resized && dropped === 'Obr. 1: Schéma nosníku' && fileCopied && pastedIdle && pictureMenu.menu >= 5 && pictureMenu.full && pictureMenu.caption.includes('Detail kotvení') && besideText;

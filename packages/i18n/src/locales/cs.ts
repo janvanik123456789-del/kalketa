@@ -448,6 +448,11 @@ export const cs: Catalog = {
     'canvas.hint': 'tažením za pravý dolní roh změníte velikost plátna, dvojklik na text ho upraví, Alt vypne mřížku',
     'canvas.done': 'Hotovo',
     'canvas.textPrompt': 'Text',
+    'canvas.expand': 'Zvětšit do okna',
+    'picture.editCanvasWindow': 'Upravit plátno v &okně…',
+    'settings.canvasMode': 'Plátno upravovat',
+    'settings.canvasInline': 'přímo v listu',
+    'settings.canvasWindow': 've velkém okně',
     'settings.sizeLimit': 'Upozornit, když soubor výpočtu přesáhne (MB)',
   },
 };

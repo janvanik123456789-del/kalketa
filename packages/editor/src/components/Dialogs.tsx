@@ -88,14 +88,31 @@ export interface Settings {
   readonly language: string;
   /** Saving a larger file shows a warning (megabytes). */
   readonly sizeLimit: number;
+  /** Where a canvas is edited by a double click: right in the sheet, or in a large window. */
+  readonly canvasMode: 'inline' | 'window';
 }
 
-export function SettingsDialog({ catalog, language, sizeLimit, onApply, onClose }: { catalog: Catalog; language: string; sizeLimit: number; onApply(settings: Settings): void; onClose(): void }) {
+export function SettingsDialog({
+  catalog,
+  language,
+  sizeLimit,
+  canvasMode,
+  onApply,
+  onClose,
+}: {
+  catalog: Catalog;
+  language: string;
+  sizeLimit: number;
+  canvasMode: 'inline' | 'window';
+  onApply(settings: Settings): void;
+  onClose(): void;
+}) {
   const [value, setValue] = useState(language);
   const [limit, setLimit] = useState(String(sizeLimit));
+  const [canvas, setCanvas] = useState(canvasMode);
   const apply = () => {
     const mb = Number(limit.replace(',', '.'));
-    onApply({ language: value, sizeLimit: Number.isFinite(mb) && mb > 0 ? mb : sizeLimit });
+    onApply({ language: value, sizeLimit: Number.isFinite(mb) && mb > 0 ? mb : sizeLimit, canvasMode: canvas });
     onClose();
   };
   return (
@@ -114,6 +131,13 @@ export function SettingsDialog({ catalog, language, sizeLimit, onApply, onClose 
       <label className="field">
         <span>{t(catalog, 'settings.sizeLimit')}</span>
         <input type="number" min="1" step="1" value={limit} onChange={(e) => setLimit(e.target.value)} />
+      </label>
+      <label className="field">
+        <span>{t(catalog, 'settings.canvasMode')}</span>
+        <select value={canvas} onChange={(e) => setCanvas(e.target.value === 'window' ? 'window' : 'inline')}>
+          <option value="inline">{t(catalog, 'settings.canvasInline')}</option>
+          <option value="window">{t(catalog, 'settings.canvasWindow')}</option>
+        </select>
       </label>
     </Dialog>
   );

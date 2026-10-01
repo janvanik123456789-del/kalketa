@@ -448,6 +448,11 @@ export const en: Catalog = {
     'canvas.hint': 'drag the bottom right corner to resize the canvas, double-click a text to edit it, Alt turns the grid off',
     'canvas.done': 'Done',
     'canvas.textPrompt': 'Text',
+    'canvas.expand': 'Open in a large window',
+    'picture.editCanvasWindow': 'Edit canvas in a &window…',
+    'settings.canvasMode': 'Edit a canvas',
+    'settings.canvasInline': 'right in the sheet',
+    'settings.canvasWindow': 'in a large window',
     'settings.sizeLimit': 'Warn when the calculation file exceeds (MB)',
   },
 };

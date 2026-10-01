@@ -119,6 +119,17 @@ button, select, input { font: inherit; }
 .canvas-handle { fill: #fff; stroke: var(--accent); stroke-width: 0.3; cursor: nwse-resize; }
 .canvas-size-handle { fill: #aab2bd; cursor: nwse-resize; }
 .canvas-buttons { align-items: center; }
+/* Editing in the sheet: the drawing stays in its place, the tool bar floats over the top of the sheet. */
+.canvas-inline { line-height: 0; outline: 2px solid var(--accent); outline-offset: 1px; }
+.canvas-inline .canvas-svg { box-shadow: none; display: block; width: 100%; height: auto; }
+.canvas-inline-bar { position: fixed; z-index: 120; border: 1px solid #aab2bd; border-radius: 4px; box-shadow: 0 3px 12px rgb(0 0 0 / 18%); }
+.canvas-inline-bar .canvas-done { min-width: 70px; border-color: var(--accent); background: #fff; font-size: 13px; }
+.canvas-inline-bar { gap: 2px; padding: 3px 6px; }
+.canvas-inline-bar button { min-width: 26px; height: 26px; font-size: 14px; }
+.canvas-inline-bar button.swatch { min-width: 16px; width: 16px; height: 16px; }
+.canvas-inline-bar .canvas-sep { margin: 0 2px; }
+/* The sheet moves down under the tool bar while a drawing is edited in it. */
+.sheet-scroll:has(.canvas-inline) { padding-top: 48px; }
 .canvas-info { flex: 1; color: var(--muted); font-size: 12px; }
 .dialog-backdrop { position: fixed; inset: 0; z-index: 300; background: rgb(0 0 0 / 18%); display: flex; align-items: center; justify-content: center; }
 .dialog { background: #f7f8fa; border: 1px solid #8f99a6; box-shadow: 0 8px 30px rgb(0 0 0 / 30%); min-width: 380px; max-width: 90vw; max-height: 90vh; display: flex; flex-direction: column; }

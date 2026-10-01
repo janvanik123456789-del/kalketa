@@ -458,10 +458,11 @@ Obrázek je v listu samostatný řádek zapsaný jako v Markdownu (stejně jako 
 
 Plátno je kresba s volně umístěnými prvky, jako snímek v PowerPointu. V listu se chová jako obrázek: `![Schéma](canvases/platno-1.json){width=90%}`. Má tedy stejné umístění, obtékání, změnu velikosti, přesun a číslování „Obr.“ jako obrázky. Grafika je tak oddělená od výpočtu: výpočet zůstává řádek po řádku, kresba žije ve svém okně.
 
-- **Vložit → Plátno…** vloží prázdné plátno (90 % šířky textu) a hned otevře grafické okno. **Dvojklik** na plátno v listu nebo **Upravit plátno…** v jeho nabídce ho otevře znovu.
+- **Vložit → Plátno…** vloží prázdné plátno (90 % šířky textu) a hned ho otevře k úpravě. **Dvojklik** na plátno nebo **Upravit plátno…** v jeho nabídce ho otevře znovu.
+- **Úprava přímo v listu (výchozí):** kresba zůstane na svém místě ve stránce, nad listem se objeví lišta nástrojů. Klik mimo plátno, Esc nebo **Hotovo** úpravu uloží a ukončí. Tlačítko **⤢ Zvětšit do okna** (nebo **Upravit plátno v okně…** v nabídce) přenese úpravu do velkého okna pro jemnou práci. Co dělá dvojklik, se volí v **Nástroje → Nastavení → Plátno upravovat** (přímo v listu / ve velkém okně); je to nastavení programu, na soubor ani tisk nemá vliv.
 - **Nástroje:** Výběr a posun (V), Text (T), Čára (L), Šipka (A), Obdélník (R), Elipsa (E), Obrázek (také Ctrl+V a přetažení souboru). Barva, tloušťka čáry, výplň a velikost písma platí pro nový prvek i pro vybraný.
 - **Myší:** tažením se prvek posune, za rohy se mění velikost (obrázek drží poměr stran), u čáry a šipky se tahají konce; mřížka po 0,5 mm (Alt ji vypne). Pravý dolní roh plochy mění velikost plátna. Dvojklik na text ho upraví.
-- **Klávesy:** Delete smaže, šipky posunou o 0,5 mm (se Shiftem o 5 mm), Ctrl+Z / Ctrl+Y, Esc zruší výběr a pak zavře okno bez uložení. **Hotovo** uloží.
+- **Klávesy:** Delete smaže, šipky posunou o 0,5 mm (se Shiftem o 5 mm), Ctrl+Z / Ctrl+Y, Esc zruší výběr; potom v listu úpravu uloží a ukončí, ve velkém okně ho zavře bez uložení (Storno). **Hotovo** uloží.
 - **Uložení:** scéna je v souboru výpočtu jako `canvases/<jméno>.json` (rozměry v milimetrech), obrázky plátna v `canvases/<jméno>/`. Pro editor i tisk se kreslí jako SVG, ostré při každém zoomu i v PDF.
 - **Další krok:** živé hodnoty z výpočtu v textu plátna (např. `{L}` → „5 m“), kóty a tvary.
 

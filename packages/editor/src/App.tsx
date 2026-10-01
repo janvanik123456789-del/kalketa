@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { defaultRegistry, formatPicture, parsePicture, rowLabel, type Diagnostic, type Statement } from '@calccanvas/core';
 import { catalogFor, CATALOGS, formatDiagnostic, formatNumber, t, type Catalog } from '@calccanvas/i18n';
-import { buildPrintDocument, emptyScene, printHtml, readScene, writeScene } from '@calccanvas/render';
+import { buildPrintDocument, emptyScene, printHtml, readScene, writeScene, type CanvasScene } from '@calccanvas/render';
 import { addLayer, allDiagnostics, appendixLayers, blockAppendices, documentBlocks, isRemovable, LayerSessions, MAIN_LAYER, removeLayer, tablesByLayer, updateLayer, type AddableLayerKind, type Layer, type SheetDocument } from '@calccanvas/sheet';
 import { buildCommands, shortcutOf, type Command } from './commands.js';
 import { chooseFile, desktop, emptyDocument, exampleDocument, fileName, fileUri, largestParts, openBytes, pickAndOpen, saveDocument, tableCache, type FileRef, type OpenedFile } from './document.js';
@@ -46,6 +46,7 @@ const TOOLBARS_KEY = 'calccanvas.toolbars';
 const RECENT_KEY = 'calccanvas.recent';
 const RECENT_LIMIT = 8;
 const SIZE_LIMIT_KEY = 'calccanvas.sizeLimitMb';
+const CANVAS_MODE_KEY = 'calccanvas.canvasMode';
 const DEFAULT_SIZE_LIMIT_MB = 50;
 /** Layers open side by side at most. */
 const MAX_PANES = 3;
@@ -579,7 +580,38 @@ export function App() {
   };
 
   /** The canvas open in the canvas window (its path in the calculation file). */
-  const [canvasPath, setCanvasPath] = useState<string | undefined>();
+  const [canvasEdit, setCanvasEdit] = useState<{ path: string; mode: 'inline' | 'window' } | undefined>();
+  const canvasPath = canvasEdit?.path;
+  /** Where a canvas is edited by default (Tools > Settings): right in the sheet, or in a large window. */
+  const [canvasMode, setCanvasMode] = useState<'inline' | 'window'>(() => (stored(CANVAS_MODE_KEY) === 'window' ? 'window' : 'inline'));
+  const openCanvas = (path: string, mode: 'inline' | 'window' = canvasMode) => {
+    // Whatever was selected in the sheet steps back while the drawing is edited.
+    setSelected(undefined);
+    setEditing(undefined);
+    setCanvasEdit({ path, mode });
+  };
+  const saveCanvas = (path: string, scene: CanvasScene, files: ReadonlyMap<string, Uint8Array>) =>
+    change({ ...doc, files: new Map([...doc.files, ...files, [path, writeScene(scene)]]) });
+  const canvasEditor = (path: string, mode: 'inline' | 'window') => (
+    <CanvasEditor
+      key={`${mode}:${path}`}
+      mode={mode}
+      scene={readScene(doc.files.get(path))}
+      catalog={ui}
+      resolveFile={resolveFile}
+      folder={path.replace(/\.json$/, '')}
+      taken={(p) => doc.files.has(p)}
+      onDone={(scene, files) => {
+        saveCanvas(path, scene, files);
+        setCanvasEdit(undefined);
+      }}
+      onCancel={() => setCanvasEdit(undefined)}
+      onExpand={(scene, files) => {
+        saveCanvas(path, scene, files);
+        setCanvasEdit({ path, mode: 'window' });
+      }}
+    />
+  );
 
   /** Insert > Canvas: an empty drawing as wide as the text, put in like a picture, opened at once. */
   const insertCanvas = () => {
@@ -594,7 +626,7 @@ export function App() {
     setLayerText(into, insertLineAfter(current, at, formatPicture({ caption: '', path, width: 90 })), undefined, new Map([[path, writeScene(scene)]]));
     setEditing(undefined);
     reveal.current = { layer: into.id, line: at + 1 };
-    setCanvasPath(path);
+    openCanvas(path);
   };
 
   const insertPictureFile = async () => {
@@ -1059,7 +1091,9 @@ export function App() {
           onDelete={(start, end) => setLayerText(l, deleteLines(source, start, end))}
           onPick={(statement, key) => pickIn(l, statement, key)}
           onReplacePicture={(start, end) => void replacePictureFile(l, start, end)}
-          onEditCanvas={setCanvasPath}
+          onEditCanvas={(path) => openCanvas(path)}
+          onEditCanvasWindow={(path) => openCanvas(path, 'window')}
+          {...(canvasEdit?.mode === 'inline' ? { inlineCanvas: { path: canvasEdit.path, render: () => canvasEditor(canvasEdit.path, 'inline') } } : {})}
           onMoveLines={(start, end, after) => {
             setLayerText(l, moveLines(source, start, end, after));
             // The selection is kept by statement order, which the move changes.
@@ -1218,7 +1252,10 @@ export function App() {
           catalog={ui}
           language={language}
           sizeLimit={sizeLimit}
+          canvasMode={canvasMode}
           onApply={(next) => {
+            setCanvasMode(next.canvasMode);
+            remember(CANVAS_MODE_KEY, next.canvasMode);
             setLanguage(next.language);
             remember(LANGUAGE_KEY, next.language);
             setSizeLimit(next.sizeLimit);
@@ -1230,21 +1267,7 @@ export function App() {
       {dialog === 'properties' && <PropertiesDialog catalog={ui} doc={doc} onApply={(next) => change(next)} onClose={() => setDialog(undefined)} />}
       {dialog === 'customize' && <CustomizeDialog catalog={ui} layout={toolbars} commands={commands} onApply={changeToolbars} onClose={() => setDialog(undefined)} />}
       {dialog === 'shortcuts' && <ShortcutsDialog catalog={ui} commands={commands} onClose={() => setDialog(undefined)} />}
-      {canvasPath && (
-        <CanvasEditor
-          key={canvasPath}
-          scene={readScene(doc.files.get(canvasPath))}
-          catalog={ui}
-          resolveFile={resolveFile}
-          folder={canvasPath.replace(/\.json$/, '')}
-          taken={(path) => doc.files.has(path)}
-          onDone={(scene, files) => {
-            change({ ...doc, files: new Map([...doc.files, ...files, [canvasPath, writeScene(scene)]]) });
-            setCanvasPath(undefined);
-          }}
-          onCancel={() => setCanvasPath(undefined)}
-        />
-      )}
+      {canvasEdit?.mode === 'window' && canvasEditor(canvasEdit.path, 'window')}
       {dialog === 'functions' && (
         <FunctionsDialog
           catalog={ui}

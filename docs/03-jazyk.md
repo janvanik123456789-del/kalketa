@@ -217,6 +217,8 @@ Funkce jsou v **registru funkcí** rozdělené do modulů. Každá funkce má v 
 | Tabulky | `pick`, `interpolate`, `find_min`, `find_max` (kap. 8) |
 | Grafy | `plot` (7.1e) |
 
+**Lišta Funkce** (nahoře, jako palety Mathcadu) vloží zápis funkce s kurzorem tam, kde se pokračuje: ∫ `integral(‸; x: 0 .. 1)`, d/dx, ∑, matice 2×2, |x|, if, řešič (nový řádek `solve`), graf a nápověda F1. Meze a proměnnou stačí přepsat; lištu jde jako ostatní přesunout, skrýt nebo upravit (Nástroje → Přizpůsobit).
+
 Počet argumentů kontroluje registr jednotně (`E-FUNC-ARITY`). `mod` a `hypot` zachovají jednotku (`mod(1250 mm, 1 m) = 250 mm`), `median` a `stdev` jednotku řady.
 
 Goniometrické a logaritmické funkce **vyžadují bezrozměrný argument** (nebo úhel). Jinak je to chyba (**stejně jako Calcpad**).

@@ -40,6 +40,34 @@ const dock = (d: Dock, band: number, order: number): ToolbarPlace => ({ kind: 'd
 export const GREEK_SYMBOLS = ['α', 'β', 'γ', 'δ', 'ε', 'η', 'θ', 'λ', 'μ', 'ν', 'π', 'ρ', 'σ', 'τ', 'φ', 'ψ', 'ω', 'Δ', 'Σ', 'Φ', 'Ω'];
 export const OPERATOR_SYMBOLS = ['·', '÷', '≤', '≥', '≠', '√', '²', '³', '⁻¹', '°', 'Δ°C', '_', '|'];
 
+/**
+ * Functions written for the user, as on the palettes of Mathcad: the template
+ * of the call, with ‸ where the cursor goes. A line template (solve) becomes
+ * a line of its own.
+ */
+export interface FunctionTemplate {
+  readonly id: string;
+  readonly glyph?: string;
+  readonly text: string;
+  readonly line?: boolean;
+}
+
+export const FUNCTION_TEMPLATES: readonly FunctionTemplate[] = [
+  { id: 'integral', glyph: '∫', text: 'integral(‸, x: 0 .. 1)' },
+  { id: 'derivative', glyph: 'd/dx', text: 'derivative(‸, x: 0)' },
+  { id: 'sum', glyph: '∑', text: 'sum(‸, k: 1 .. 10)' },
+  { id: 'matrix', text: '[‸, 0 | 0, 0]' },
+  { id: 'abs', glyph: '|x|', text: 'abs(‸)' },
+  { id: 'if', glyph: 'if', text: 'if(‸, a, b)' },
+  { id: 'solve', text: 'solve x: ‸ == 0', line: true },
+];
+
+/** The template without its cursor mark, and where the cursor goes. */
+export function templateParts(template: string): { text: string; cursor: number } {
+  const cursor = template.indexOf('‸');
+  return cursor < 0 ? { text: template, cursor: template.length } : { text: template.replace('‸', ''), cursor };
+}
+
 export function defaultLayout(): ToolbarLayout {
   return {
     version: 1,
@@ -64,6 +92,13 @@ export function defaultLayout(): ToolbarLayout {
         visible: true,
         place: dock('top', 0, 2),
         items: ['view.zoomOut', 'view.zoomIn', SEPARATOR, 'view.fit1', 'view.fit2', 'view.fit3', SEPARATOR, 'view.paneDetails', 'view.paneTables'],
+      },
+      {
+        id: 'functions',
+        builtin: true,
+        visible: true,
+        place: dock('top', 0, 3),
+        items: [...FUNCTION_TEMPLATES.map((f) => `fn:${f.id}`), SEPARATOR, 'insert.chart', 'help.functions'],
       },
       { id: 'operators', builtin: true, visible: true, place: dock('left', 0, 0), items: OPERATOR_SYMBOLS.map((s) => `sym:${s}`) },
       { id: 'greek', builtin: true, visible: true, place: dock('left', 1, 0), items: GREEK_SYMBOLS.map((s) => `sym:${s}`) },

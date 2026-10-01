@@ -13,6 +13,7 @@ import {
   setColumns,
   setItems,
   setVisible,
+  templateParts,
 } from '../src/logic/toolbars.js';
 
 const ids = (bands: { id: string }[][]) => bands.map((b) => b.map((t) => t.id));
@@ -20,20 +21,20 @@ const ids = (bands: { id: string }[][]) => bands.map((b) => b.map((t) => t.id));
 describe('toolbar layout', () => {
   it('starts with standard toolbars at the top and symbols at the left', () => {
     const layout = defaultLayout();
-    expect(ids(bandsOf(layout, 'top'))).toEqual([['standard', 'insert', 'view']]);
+    expect(ids(bandsOf(layout, 'top'))).toEqual([['standard', 'insert', 'view', 'functions']]);
     expect(ids(bandsOf(layout, 'left'))).toEqual([['operators'], ['greek']]);
     expect(bandsOf(layout, 'right')).toEqual([]);
   });
 
   it('docks a toolbar into an existing band at a position', () => {
     const layout = dockToolbar(defaultLayout(), 'greek', 'top', 0, 1);
-    expect(ids(bandsOf(layout, 'top'))).toEqual([['standard', 'greek', 'insert', 'view']]);
+    expect(ids(bandsOf(layout, 'top'))).toEqual([['standard', 'greek', 'insert', 'view', 'functions']]);
     expect(ids(bandsOf(layout, 'left'))).toEqual([['operators']]);
   });
 
   it('creates a new band past the last one', () => {
     const layout = dockToolbar(defaultLayout(), 'view', 'top', 5);
-    expect(ids(bandsOf(layout, 'top'))).toEqual([['standard', 'insert'], ['view']]);
+    expect(ids(bandsOf(layout, 'top'))).toEqual([['standard', 'insert', 'functions'], ['view']]);
   });
 
   it('moves toolbars to any edge and removes empty bands', () => {
@@ -47,9 +48,9 @@ describe('toolbar layout', () => {
   it('floats toolbars and docks them back', () => {
     let layout = floatToolbar(defaultLayout(), 'insert', 300.4, 200.6);
     expect(floating(layout).map((t) => [t.id, t.place])).toEqual([['insert', { kind: 'float', x: 300, y: 201 }]]);
-    expect(ids(bandsOf(layout, 'top'))).toEqual([['standard', 'view']]);
+    expect(ids(bandsOf(layout, 'top'))).toEqual([['standard', 'view', 'functions']]);
     layout = dockToolbar(layout, 'insert', 'top', 0, 0);
-    expect(ids(bandsOf(layout, 'top'))).toEqual([['insert', 'standard', 'view']]);
+    expect(ids(bandsOf(layout, 'top'))).toEqual([['insert', 'standard', 'view', 'functions']]);
   });
 
   it('hides and shows toolbars', () => {
@@ -86,12 +87,18 @@ describe('toolbar layout', () => {
     expect(parseLayout(broken).toolbars.find((t) => t.id === 'operators')!.columns).toBeUndefined();
   });
 
+  it('writes functions with the cursor where the user goes on', () => {
+    expect(templateParts('integral(‸, x: 0 .. 1)')).toEqual({ text: 'integral(, x: 0 .. 1)', cursor: 9 });
+    expect(templateParts('abs')).toEqual({ text: 'abs', cursor: 3 });
+    expect(defaultLayout().toolbars.find((t) => t.id === 'functions')!.items).toContain('fn:integral');
+  });
+
   it('survives damaged storage and adds new built-in toolbars', () => {
     expect(parseLayout(null)).toEqual(defaultLayout());
     expect(parseLayout('{nonsense')).toEqual(defaultLayout());
     const custom = addToolbar(defaultLayout(), 'X');
     const stored = JSON.stringify({ ...custom.layout, toolbars: custom.layout.toolbars.filter((t) => t.id !== 'greek') });
     const parsed = parseLayout(stored);
-    expect(parsed.toolbars.map((t) => t.id).sort()).toEqual(['custom1', 'greek', 'insert', 'operators', 'standard', 'view']);
+    expect(parsed.toolbars.map((t) => t.id).sort()).toEqual(['custom1', 'functions', 'greek', 'insert', 'operators', 'standard', 'view']);
   });
 });

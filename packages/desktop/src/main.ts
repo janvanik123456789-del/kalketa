@@ -406,7 +406,7 @@ async function runSmokeTest(pdfPath: string): Promise<void> {
     await writeFile(pdfPath, pdf);
     ok =
       state.bridge && state.sideBySide && state.menus === 7 && state.toolbars > 0 && state.rows > 10 && state.summary > 0 && state.math > 0 && reshapedColumns === 3 && pdf.length > 1000 &&
-      layers.newKeepsExample && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.charts && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
+      layers.newKeepsExample && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.charts && layers.functionBar && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
     console.log(JSON.stringify({ ok, ...state, reshapedColumns, layers, pdfBytes: pdf.length }));
   } catch (err) {
     console.log(JSON.stringify({ ok: false, error: (err as Error).message }));
@@ -709,6 +709,23 @@ async function layersWithRealInput(picture: string) {
     await takePicture(picture.replace(/[.]png$/, '-chart.png'));
   }
   const charts = !!chartBox && chartBox.paths > 0 && /^x = [\d,]+ \| Mt\(x\) = /.test(chartTip);
+
+  // The Functions toolbar: ∫ writes the integral with the cursor inside, the user types the integrand.
+  await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .page .row')].at(-1).id = 'smoke-last-row'`);
+  // The chart line may still be open (the click beside it landed on the chart): go on from it.
+  const chartOpen = (await contents.executeJavaScript(`!!document.querySelector('textarea.row-editor')`)) as boolean;
+  await clickOn(chartOpen ? 'textarea.row-editor' : '#smoke-last-row');
+  await pause(300);
+  await pressKey('End');
+  await pressKey('Enter');
+  await pause(200);
+  await clickOn('.tool-button[title^="Integrál"]');
+  await typeText('x²');
+  const templateLine = (await contents.executeJavaScript(`document.querySelector('textarea.row-editor')?.value ?? ''`)) as string;
+  await clickOn('.sheet-scroll');
+  await pause(400);
+  const templateRows = (await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .page .row')].map((r) => r.textContent.replace(/\\s+/g, ''))`)) as string[];
+  const functionBar = templateLine === 'integral(x²; x: 0 .. 1)' && templateRows.some((r) => r.includes('∫') && r.endsWith('=0,3333'));
 
   // Pictures: a picture on the clipboard, Ctrl+V in the sheet (real keys).
   const bitmap = Buffer.alloc(240 * 120 * 4);
@@ -1050,7 +1067,7 @@ async function layersWithRealInput(picture: string) {
     blocksOk = shown.errors === 0 && shown.text.includes('Prosty nosnik 1.2') && shown.text.includes('45');
     await takePicture(picture.replace(/[.]png$/, '-blocks.png'));
   }
-  return { ...state, newKeepsExample, citations, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, canvasOk, besideText, pictures, blocksOk };
+  return { ...state, newKeepsExample, citations, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, canvasOk, besideText, pictures, blocksOk };
 }
 
 /**

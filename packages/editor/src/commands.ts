@@ -4,7 +4,7 @@
  */
 
 import { t, type Catalog, type UiKey } from '@kalketa/i18n';
-import { GREEK_SYMBOLS, OPERATOR_SYMBOLS } from './logic/toolbars.js';
+import { FUNCTION_TEMPLATES, GREEK_SYMBOLS, OPERATOR_SYMBOLS } from './logic/toolbars.js';
 
 export type CommandCategory = 'file' | 'edit' | 'view' | 'insert' | 'tools' | 'window' | 'help' | 'symbol';
 
@@ -68,6 +68,8 @@ export interface CommandContext {
     functions(): void;
     about(): void;
     insertSymbol(symbol: string): void;
+    /** A function template with ‸ where the cursor goes; `line` puts it on a line of its own. */
+    insertTemplate(template: string, line?: boolean): void;
     insertPicture(): void;
     insertCanvas(): void;
   };
@@ -145,6 +147,16 @@ export function buildCommands(ctx: CommandContext): Map<string, Command> {
       glyph: symbol,
       enabled: true,
       run: () => a.insertSymbol(symbol),
+    });
+  }
+  for (const fn of FUNCTION_TEMPLATES) {
+    list.push({
+      id: `fn:${fn.id}`,
+      category: 'symbol',
+      label: t(c, `cmd.fn.${fn.id}` as UiKey),
+      ...(fn.glyph ? { glyph: fn.glyph } : {}),
+      enabled: true,
+      run: () => a.insertTemplate(fn.text, fn.line),
     });
   }
   return new Map(list.map((cmd) => [cmd.id, cmd]));

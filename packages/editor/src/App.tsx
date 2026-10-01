@@ -7,7 +7,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
-import { defaultRegistry, formatPicture, parsePicture, rowLabel, type Diagnostic, type Statement } from '@kalketa/core';
+import { defaultRegistry, formatPicture, parsePicture, rowLabel, toDecimalComma, type Diagnostic, type Statement } from '@kalketa/core';
 import { catalogFor, CATALOGS, formatDiagnostic, formatNumber, t, type Catalog } from '@kalketa/i18n';
 import { buildPrintDocument, printHtml } from '@kalketa/render';
 import { emptyScene, readScene, writeScene, type CanvasScene } from '@kalketa/canvas';
@@ -20,7 +20,7 @@ import { closeTab, cycleTab, fileNameOf, isDirty, newTab, openTab, type DocTab, 
 import { pageGeometry } from './logic/pages.js';
 import { pickOf, replacePickKey } from './logic/pick.js';
 import { deleteLines, insertLineAfter, moveLines, replaceLines, segments } from './logic/segments.js';
-import { parseLayout, setVisible, type ToolbarLayout } from './logic/toolbars.js';
+import { parseLayout, setVisible, templateParts, type ToolbarLayout } from './logic/toolbars.js';
 import { createTable, importTableFile, type TableChange } from './tableActions.js';
 import { captionOf, fromFile, pictureLine, picturePath, pixelWidth, widthFor, type IncomingPicture } from './logic/pictures.js';
 import { importBlockFile } from './blockActions.js';
@@ -690,6 +690,23 @@ export function App() {
     }
   };
 
+  /** A function from the Functions toolbar: into the line being edited at the cursor, else as a new line. */
+  const insertTemplate = (template: string, line = false) => {
+    const { text: source, cursor } = templateParts(template);
+    const area = document.querySelector<HTMLTextAreaElement>('textarea.row-editor');
+    if (area && !line) {
+      // The line shows decimal-comma notation; commas become semicolons, lengths stay.
+      const shown = decimalComma ? toDecimalComma(source) : source;
+      const start = area.selectionStart;
+      area.focus();
+      area.setRangeText(shown, start, area.selectionEnd, 'end');
+      area.setSelectionRange(start + cursor, start + cursor);
+      area.dispatchEvent(new Event('input', { bubbles: true }));
+    } else {
+      insertLine(source, cursor);
+    }
+  };
+
   const clipboard = (action: 'cut' | 'copy' | 'paste') => {
     // Edit > Paste puts a picture from the clipboard into the sheet too.
     if (action === 'paste' && desktop) {
@@ -827,6 +844,7 @@ export function App() {
       functions: () => setDialog('functions'),
       about: () => setDialog('about'),
       insertSymbol,
+      insertTemplate,
       insertPicture: () => void insertPictureFile(),
       insertCanvas,
     },

@@ -115,6 +115,24 @@ const ICONS: Readonly<Record<string, ReactElement>> = {
       <path {...S} d="M5 14c2-6 4-9 6-9s3.5 4 6 6" />
     </>
   ),
+  'fn:matrix': (
+    <>
+      <path {...S} d="M6 3.5H4v13h2M14 3.5h2v13h-2" />
+      <path {...S} d="M7.5 7.5h.01M12.5 7.5h.01M7.5 12.5h.01M12.5 12.5h.01" strokeWidth={2.4} />
+    </>
+  ),
+  'fn:solve': (
+    <>
+      <path {...S} d="M3 6l4 5M7 6l-4 5M9.5 7.5h4M9.5 10h4" />
+      <path {...S} d="M15 5.5c0-1.5 3-1.5 3 0 0 1.3-1.5 1.6-1.5 3M16.5 11h.01" />
+    </>
+  ),
+  'help.functions': (
+    <>
+      <path {...S} d="M8 3.5c-2 0-2 1.5-2 3v8c0 1.5-.5 2.5-2 2.5M4 9h4.5" />
+      <path {...S} d="M11 8l5 6M16 8l-5 6" />
+    </>
+  ),
   'insert.importTable': (
     <>
       <path {...S} d="M6.5 7.5h11v10h-11zM6.5 11h11M6.5 14.5h11M11 7.5v10" />

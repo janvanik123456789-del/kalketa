@@ -216,6 +216,8 @@ export const UI_KEYS = [
   'customize.hint',
   'customize.symbols',
   'about.text',
+  'about.thirdParty',
+  'about.thirdPartyHint',
   'help.shortcutsTitle',
   'layer.kind.sheet',
   'trace.layer',

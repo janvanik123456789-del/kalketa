@@ -163,6 +163,7 @@ table.functions tr { cursor: pointer; }
 table.functions tr:hover { background: var(--hover, rgba(0, 0, 0, 0.06)); }
 kbd { font: 12px Consolas, monospace; background: #fff; border: 1px solid #c4cad2; border-radius: 3px; padding: 0 5px; }
 .about { display: flex; gap: 16px; align-items: flex-start; max-width: 420px; }
+.notices { max-height: 65vh; overflow: auto; margin: 0; padding: 8px; background: #fff; border: 1px solid var(--line); font: 11px/1.4 Consolas, "DejaVu Sans Mono", monospace; white-space: pre-wrap; }
 
 /* Sheet */
 .workspace { flex: 1; display: flex; min-height: 0; }

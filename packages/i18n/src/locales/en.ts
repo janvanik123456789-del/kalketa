@@ -460,6 +460,8 @@ export const en: Catalog = {
     'settings.canvasMode': 'Edit a canvas',
     'settings.canvasInline': 'right in the sheet',
     'settings.canvasWindow': 'in a large window',
+    'about.thirdParty': 'Third-party licences',
+    'about.thirdPartyHint': 'The program contains software by other authors, used under their licences.',
     'settings.sizeLimit': 'Warn when the calculation file exceeds (MB)',
   },
 };

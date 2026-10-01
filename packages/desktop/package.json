@@ -74,6 +74,12 @@
     },
     "appImage": {
       "artifactName": "CalcCanvas-${version}-x86_64.AppImage"
-    }
+    },
+    "extraFiles": [
+      {
+        "from": "../editor/src/generated/third-party-notices.txt",
+        "to": "THIRD-PARTY-NOTICES.txt"
+      }
+    ]
   }
 }

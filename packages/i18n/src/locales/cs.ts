@@ -460,6 +460,8 @@ export const cs: Catalog = {
     'settings.canvasMode': 'Plátno upravovat',
     'settings.canvasInline': 'přímo v listu',
     'settings.canvasWindow': 've velkém okně',
+    'about.thirdParty': 'Licence třetích stran',
+    'about.thirdPartyHint': 'Program obsahuje software jiných autorů, používaný podle jejich licencí.',
     'settings.sizeLimit': 'Upozornit, když soubor výpočtu přesáhne (MB)',
   },
 };

@@ -14,9 +14,10 @@
     "build": "tsc -b",
     "calc": "node packages/cli/dist/main.js",
     "editor": "npm run dev --workspace @calccanvas/editor",
-    "build:editor": "npm run build --workspace @calccanvas/editor",
+    "build:editor": "npm run notices && npm run build --workspace @calccanvas/editor",
     "build:desktop": "npm run build:editor && npm run build --workspace @calccanvas/desktop",
-    "desktop": "npm run build:desktop && npm start --workspace @calccanvas/desktop"
+    "desktop": "npm run build:desktop && npm start --workspace @calccanvas/desktop",
+    "notices": "node scripts/third-party-notices.mjs"
   },
   "engines": {
     "node": ">=24"

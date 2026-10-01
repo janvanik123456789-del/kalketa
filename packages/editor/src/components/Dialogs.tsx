@@ -422,6 +422,14 @@ export function FunctionsDialog({ catalog, separator, onInsert, onClose }: { cat
 }
 
 export function AboutDialog({ catalog, onClose }: { catalog: Catalog; onClose(): void }) {
+  const [notices, setNotices] = useState<string | undefined>();
+  if (notices !== undefined) {
+    return (
+      <Dialog title={t(catalog, 'about.thirdParty')} catalog={catalog} wide onClose={() => setNotices(undefined)}>
+        <pre className="notices">{notices}</pre>
+      </Dialog>
+    );
+  }
   return (
     <Dialog title={plainLabel(t(catalog, 'cmd.help.about'))} catalog={catalog} onClose={onClose}>
       <div className="about">
@@ -429,6 +437,11 @@ export function AboutDialog({ catalog, onClose }: { catalog: Catalog; onClose():
         <div>
           <strong>CalcCanvas 0.1</strong>
           <p>{t(catalog, 'about.text')}</p>
+          <p className="hint">{t(catalog, 'about.thirdPartyHint')}</p>
+          {/* Loaded when asked for: the notices are long and not needed otherwise. */}
+          <button type="button" data-about="notices" onClick={() => void import('../generated/third-party-notices.txt?raw').then((m) => setNotices(m.default))}>
+            {t(catalog, 'about.thirdParty')}
+          </button>
         </div>
       </div>
     </Dialog>

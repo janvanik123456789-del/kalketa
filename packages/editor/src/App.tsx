@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { defaultRegistry, formatPicture, parsePicture, rowLabel, type Diagnostic, type Statement } from '@calccanvas/core';
 import { catalogFor, CATALOGS, formatDiagnostic, formatNumber, t, type Catalog } from '@calccanvas/i18n';
-import { buildPrintDocument, printHtml } from '@calccanvas/render';
+import { buildPrintDocument, emptyScene, printHtml, readScene, writeScene } from '@calccanvas/render';
 import { addLayer, allDiagnostics, appendixLayers, blockAppendices, documentBlocks, isRemovable, LayerSessions, MAIN_LAYER, removeLayer, tablesByLayer, updateLayer, type AddableLayerKind, type Layer, type SheetDocument } from '@calccanvas/sheet';
 import { buildCommands, shortcutOf, type Command } from './commands.js';
 import { chooseFile, desktop, emptyDocument, exampleDocument, fileName, fileUri, largestParts, openBytes, pickAndOpen, saveDocument, tableCache, type FileRef, type OpenedFile } from './document.js';
@@ -22,6 +22,7 @@ import { parseLayout, setVisible, type ToolbarLayout } from './logic/toolbars.js
 import { createTable, importTableFile, type TableChange } from './tableActions.js';
 import { captionOf, fromFile, pictureLine, picturePath, pixelWidth, widthFor, type IncomingPicture } from './logic/pictures.js';
 import { importBlockFile } from './blockActions.js';
+import { CanvasEditor } from './components/CanvasEditor.js';
 import { AboutDialog, CustomizeDialog, FunctionsDialog, PropertiesDialog, SettingsDialog, ShortcutsDialog } from './components/Dialogs.js';
 import { DocumentTabs } from './components/DocumentTabs.js';
 import { Inspector } from './components/Inspector.js';
@@ -577,6 +578,25 @@ export function App() {
     setLayerText(target, replaceLines(current, start, end, formatPicture({ ...old, path })), undefined, new Map([[path, picture.bytes]]));
   };
 
+  /** The canvas open in the canvas window (its path in the calculation file). */
+  const [canvasPath, setCanvasPath] = useState<string | undefined>();
+
+  /** Insert > Canvas: an empty drawing as wide as the text, put in like a picture, opened at once. */
+  const insertCanvas = () => {
+    const into = layer.kind === 'sheet' || layer.kind === 'calc' ? layer : doc.layers[0]!;
+    let n = 1;
+    while (doc.files.has(`canvases/platno-${n}.json`)) n++;
+    const path = `canvases/platno-${n}.json`;
+    const textWidth = geometry.width - geometry.margin.left - geometry.margin.right;
+    const scene = emptyScene(Math.round(textWidth * 0.9), Math.round(textWidth * 0.45));
+    const current = textOf(into);
+    const at = (into.id === layer.id ? currentRange()?.end : undefined) ?? lastRowInView(into.id) ?? current.split('\n').length;
+    setLayerText(into, insertLineAfter(current, at, formatPicture({ caption: '', path, width: 90 })), undefined, new Map([[path, writeScene(scene)]]));
+    setEditing(undefined);
+    reveal.current = { layer: into.id, line: at + 1 };
+    setCanvasPath(path);
+  };
+
   const insertPictureFile = async () => {
     const file = await chooseFile('image/*');
     const picture = file ? await fromFile(file) : undefined;
@@ -762,6 +782,7 @@ export function App() {
       about: () => setDialog('about'),
       insertSymbol,
       insertPicture: () => void insertPictureFile(),
+      insertCanvas,
     },
   });
 
@@ -769,7 +790,7 @@ export function App() {
   // screenshot, a picture copied in another program, or a picture file copied
   // in Explorer or a Linux file manager.
   const dialogOpen = useRef(false);
-  dialogOpen.current = dialog !== undefined;
+  dialogOpen.current = dialog !== undefined || canvasPath !== undefined;
   const picturesRef = useRef(insertPictures);
   picturesRef.current = insertPictures;
   const layerOfElement = (element: EventTarget | null): Layer | undefined => {
@@ -837,7 +858,7 @@ export function App() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       // Function keys work alone (F1 help); other shortcuts need Ctrl.
-      if (dialog || !(e.ctrlKey || e.metaKey || /^F\d+$/.test(e.key))) return;
+      if (dialogOpen.current || !(e.ctrlKey || e.metaKey || /^F\d+$/.test(e.key))) return;
       const key = shortcutOf(e);
       const target = e.target as HTMLElement;
       const inRow = target.matches?.('textarea.row-editor');
@@ -939,7 +960,7 @@ export function App() {
     },
     {
       label: t(ui, 'menu.insert'),
-      items: [cmd('insert.heading'), cmd('insert.text'), cmd('insert.definition'), cmd('insert.check'), cmd('insert.pick'), cmd('insert.pageBreak'), cmd('insert.clear'), sep, cmd('insert.picture'), cmd('insert.newTable'), cmd('insert.importTable'), cmd('insert.block'),
+      items: [cmd('insert.heading'), cmd('insert.text'), cmd('insert.definition'), cmd('insert.check'), cmd('insert.pick'), cmd('insert.pageBreak'), cmd('insert.clear'), sep, cmd('insert.picture'), cmd('insert.canvas'), cmd('insert.newTable'), cmd('insert.importTable'), cmd('insert.block'),
         ...(doc.blocks.size > 0
           ? [
               {
@@ -1038,6 +1059,7 @@ export function App() {
           onDelete={(start, end) => setLayerText(l, deleteLines(source, start, end))}
           onPick={(statement, key) => pickIn(l, statement, key)}
           onReplacePicture={(start, end) => void replacePictureFile(l, start, end)}
+          onEditCanvas={setCanvasPath}
           onMoveLines={(start, end, after) => {
             setLayerText(l, moveLines(source, start, end, after));
             // The selection is kept by statement order, which the move changes.
@@ -1208,6 +1230,21 @@ export function App() {
       {dialog === 'properties' && <PropertiesDialog catalog={ui} doc={doc} onApply={(next) => change(next)} onClose={() => setDialog(undefined)} />}
       {dialog === 'customize' && <CustomizeDialog catalog={ui} layout={toolbars} commands={commands} onApply={changeToolbars} onClose={() => setDialog(undefined)} />}
       {dialog === 'shortcuts' && <ShortcutsDialog catalog={ui} commands={commands} onClose={() => setDialog(undefined)} />}
+      {canvasPath && (
+        <CanvasEditor
+          key={canvasPath}
+          scene={readScene(doc.files.get(canvasPath))}
+          catalog={ui}
+          resolveFile={resolveFile}
+          folder={canvasPath.replace(/\.json$/, '')}
+          taken={(path) => doc.files.has(path)}
+          onDone={(scene, files) => {
+            change({ ...doc, files: new Map([...doc.files, ...files, [canvasPath, writeScene(scene)]]) });
+            setCanvasPath(undefined);
+          }}
+          onCancel={() => setCanvasPath(undefined)}
+        />
+      )}
       {dialog === 'functions' && (
         <FunctionsDialog
           catalog={ui}

@@ -454,6 +454,17 @@ Obrázek je v listu samostatný řádek zapsaný jako v Markdownu (stejně jako 
 - **Myší:** klik na obrázek ho vybere (úchyty ve čtyřech rozích) a otevře nabídku vedle něj: Popisek, Šířka, Umístění (na střed / vpravo / vlevo vedle textu), Nahradit obrázek, Upravit zápis, Odstranit. Pravé tlačítko otevře nabídku u kurzoru, dvojklik otevře zápis řádku.
 - Chybný zápis hlásí `E-PICTURE-SYNTAX`, chybějící soubor se v tisku ukáže jako červený rámeček s cestou.
 
+### 11.2 Plátno (grafické okno)
+
+Plátno je kresba s volně umístěnými prvky, jako snímek v PowerPointu. V listu se chová jako obrázek: `![Schéma](canvases/platno-1.json){width=90%}`. Má tedy stejné umístění, obtékání, změnu velikosti, přesun a číslování „Obr.“ jako obrázky. Grafika je tak oddělená od výpočtu: výpočet zůstává řádek po řádku, kresba žije ve svém okně.
+
+- **Vložit → Plátno…** vloží prázdné plátno (90 % šířky textu) a hned otevře grafické okno. **Dvojklik** na plátno v listu nebo **Upravit plátno…** v jeho nabídce ho otevře znovu.
+- **Nástroje:** Výběr a posun (V), Text (T), Čára (L), Šipka (A), Obdélník (R), Elipsa (E), Obrázek (také Ctrl+V a přetažení souboru). Barva, tloušťka čáry, výplň a velikost písma platí pro nový prvek i pro vybraný.
+- **Myší:** tažením se prvek posune, za rohy se mění velikost (obrázek drží poměr stran), u čáry a šipky se tahají konce; mřížka po 0,5 mm (Alt ji vypne). Pravý dolní roh plochy mění velikost plátna. Dvojklik na text ho upraví.
+- **Klávesy:** Delete smaže, šipky posunou o 0,5 mm (se Shiftem o 5 mm), Ctrl+Z / Ctrl+Y, Esc zruší výběr a pak zavře okno bez uložení. **Hotovo** uloží.
+- **Uložení:** scéna je v souboru výpočtu jako `canvases/<jméno>.json` (rozměry v milimetrech), obrázky plátna v `canvases/<jméno>/`. Pro editor i tisk se kreslí jako SVG, ostré při každém zoomu i v PDF.
+- **Další krok:** živé hodnoty z výpočtu v textu plátna (např. `{L}` → „5 m“), kóty a tvary.
+
 ---
 
 ## 12. Chyby a varování

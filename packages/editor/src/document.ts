@@ -5,6 +5,7 @@
 
 import { documentTables, newDocument, readSheetFile, writeSheetFile, type SheetDocument, type StoredTable } from '@calccanvas/sheet';
 import type { Diagnostic, Table, UnitRegistry } from '@calccanvas/core';
+import { isCanvasPath, readScene, sceneDataUri } from '@calccanvas/render';
 
 import exampleSheet from '../../../reference/R1-nosnik/nosnik.cc?raw';
 import profilesSchema from '../../../reference/R1-nosnik/tables/Profily_IPE/schema.json?raw';
@@ -61,6 +62,16 @@ const MIME: Readonly<Record<string, string>> = {
 const uriCache = new WeakMap<Uint8Array, string>();
 export function fileUri(doc: SheetDocument, path: string): string | undefined {
   const data = doc.files.get(path);
+  // A canvas is drawn from its scene; pictures inside it resolve the same way.
+  if (isCanvasPath(path)) {
+    if (!data) return undefined;
+    let uri = uriCache.get(data);
+    if (!uri) {
+      uri = sceneDataUri(readScene(data), (inner) => (isCanvasPath(inner) ? undefined : fileUri(doc, inner)));
+      uriCache.set(data, uri);
+    }
+    return uri;
+  }
   const mime = MIME[path.split('.').pop()?.toLowerCase() ?? ''];
   if (!data || !mime) return undefined;
   let uri = uriCache.get(data);

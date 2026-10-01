@@ -7,7 +7,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type MouseEvent as ReactMouseEvent } from 'react';
 import { formatPicture, fromDecimalComma, parsePicture, toDecimalComma, type SheetResult, type Statement } from '@calccanvas/core';
 import { formatNumber, t, type Catalog } from '@calccanvas/i18n';
-import { renderBlockHtml, renderSummary, type PrintBlock, type PrintDocument } from '@calccanvas/render';
+import { isCanvasPath, renderBlockHtml, renderSummary, type PrintBlock, type PrintDocument } from '@calccanvas/render';
 import { paginate, type PageGeometry } from '../logic/pages.js';
 import { segments, type Segment } from '../logic/segments.js';
 import { defineShortcut } from '../logic/shortcuts.js';
@@ -42,6 +42,8 @@ interface Props {
   onPick(statement: Statement, key: string): void;
   /** Moves lines start..end after line `after` (a picture dragged elsewhere). */
   onMoveLines(start: number, end: number, after: number): void;
+  /** Opens the canvas window for a canvas shown in the sheet. */
+  onEditCanvas(path: string): void;
   /** Lets the user choose another file for the picture on lines start..end. */
   onReplacePicture(start: number, end: number): void;
   /** Page size and margins of the printout. */
@@ -200,6 +202,7 @@ export function SheetView(props: Props) {
     const setSide = (side: Side) => set({ side, wrap: undefined, align: undefined, ...(side ? narrow : {}) });
     const setWrap = (wrap: 'left' | 'right') => set({ wrap, side: undefined, align: undefined, ...narrow });
     return [
+      ...(isCanvasPath(picture.path) ? [{ kind: 'action' as const, label: t(c, 'picture.editCanvas'), run: () => props.onEditCanvas(picture.path) }, { kind: 'separator' as const }] : []),
       {
         kind: 'action',
         label: t(c, 'picture.caption'),
@@ -343,7 +346,9 @@ export function SheetView(props: Props) {
         onDoubleClick={(e) => {
           if (block?.kind === 'picture' && (e.target as HTMLElement).closest('figure')) {
             setPictureMenu(undefined);
-            props.onEdit({ start: seg.start, end: seg.end });
+            // A canvas opens in its window; a picture opens its line.
+            if (isCanvasPath(block.path)) props.onEditCanvas(block.path);
+            else props.onEdit({ start: seg.start, end: seg.end });
           }
         }}
         onContextMenu={(e) => {

@@ -897,7 +897,64 @@ async function layersWithRealInput(picture: string) {
   await pause(400);
   const afterLeft = await edges();
   const unwrapped = !!afterUnwrap && !afterUnwrap.wrap && afterUnwrap.right && !!afterLeft && afterLeft.left && !afterLeft.right && !afterLeft.wrap;
-  const besideText = sideGroup.rows === '3,4' && sideGroup.picture && sideGroup.side !== '' && widened > parseFloat(sideGroup.side) && movedPicture && wrapped && cleared && unwrapped;
+  // Canvas: Insert > Canvas, a rectangle and an arrow drawn, a text typed, the rectangle moved, Done.
+  const drawDrag = async (from: { x: number; y: number }, to: { x: number; y: number }, name: string) => {
+    contents.sendInputEvent({ type: 'mouseDown', ...from, button: 'left', clickCount: 1 });
+    for (let step = 1; step <= 6; step++) {
+      contents.sendInputEvent({ type: 'mouseMove', x: Math.round(from.x + ((to.x - from.x) * step) / 6), y: Math.round(from.y + ((to.y - from.y) * step) / 6), button: 'left' } as Electron.MouseInputEvent);
+      await pause(30);
+    }
+    await takePicture(picture.replace(/[.]png$/, `-${name}.png`));
+    contents.sendInputEvent({ type: 'mouseUp', ...to, button: 'left', clickCount: 1 });
+    await pause(250);
+  };
+  await clickOn('.menubar-item:nth-child(4) > button');
+  await clickMenu('Plátno');
+  await pause(400);
+  const stage = (await contents.executeJavaScript(`(() => { const r = document.querySelector('.canvas-svg')?.getBoundingClientRect(); return r && { x: r.left, y: r.top, w: r.width, h: r.height }; })()`)) as { x: number; y: number; w: number; h: number } | undefined;
+  let canvasOk = false;
+  if (stage) {
+    const at = (fx: number, fy: number) => ({ x: Math.round(stage.x + stage.w * fx), y: Math.round(stage.y + stage.h * fy) });
+    await clickOn('.canvas-toolbar [data-tool="rect"]');
+    await drawDrag(at(0.1, 0.2), at(0.4, 0.7), 'canvas-rect');
+    await clickOn('.canvas-toolbar [data-tool="arrow"]');
+    await drawDrag(at(0.5, 0.8), at(0.8, 0.3), 'canvas-arrow');
+    await clickOn('.canvas-toolbar [data-tool="text"]');
+    const textAt = at(0.55, 0.15);
+    contents.sendInputEvent({ type: 'mouseDown', ...textAt, button: 'left', clickCount: 1 });
+    contents.sendInputEvent({ type: 'mouseUp', ...textAt, button: 'left', clickCount: 1 });
+    await pause(300);
+    await typeText('L = 5 m');
+    await pressKey('Enter');
+    await pause(300);
+    await clickOn('.canvas-toolbar [data-tool="select"]');
+    await drawDrag(at(0.25, 0.45), at(0.3, 0.45), 'canvas-move');
+    const items = (await contents.executeJavaScript(`document.querySelector('.canvas-svg g').innerHTML`)) as string;
+    await clickOn('[data-canvas="done"]');
+    await pause(500);
+    await clickOn('.sheet-scroll');
+    await takePicture(picture.replace(/[.]png$/, '-canvas-sheet.png'));
+    await takePicture(picture.replace(/[.]png$/, '-canvas-sheet.png'));
+    const shown = (await contents.executeJavaScript(`(() => {
+      const img = [...document.querySelectorAll('.layer-view.active figure img')].find((i) => i.src.startsWith('data:image/svg+xml'));
+      return img ? decodeURIComponent(img.src.slice(img.src.indexOf(',') + 1)) : '';
+    })()`)) as string;
+    // A double click on the drawing opens it again with its three items.
+    await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active figure img')].find((i) => i.src.startsWith('data:image/svg+xml'))?.closest('figure')?.setAttribute('data-canvas-figure', '')`);
+    const figure = (await contents.executeJavaScript(`(() => { const r = document.querySelector('[data-canvas-figure] img').getBoundingClientRect(); return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) }; })()`)) as { x: number; y: number };
+    contents.sendInputEvent({ type: 'mouseDown', ...figure, button: 'left', clickCount: 1 });
+    contents.sendInputEvent({ type: 'mouseUp', ...figure, button: 'left', clickCount: 1 });
+    contents.sendInputEvent({ type: 'mouseDown', ...figure, button: 'left', clickCount: 2 });
+    contents.sendInputEvent({ type: 'mouseUp', ...figure, button: 'left', clickCount: 2 });
+    await pause(500);
+    const reopened = (await contents.executeJavaScript(`document.querySelectorAll('.canvas-svg g > rect, .canvas-svg g > line, .canvas-svg g > text').length`)) as number;
+    await takePicture(picture.replace(/[.]png$/, '-canvas.png'));
+    await pressKey('Escape');
+    await pause(300);
+    canvasOk =
+      /<rect x="[\d.]+" y="[\d.]+" width="[\d.]+"/.test(items) && shown.includes('<rect') && shown.includes('marker-end') && shown.includes('L = 5 m') && reopened === 3 && !(await contents.executeJavaScript(`!!document.querySelector('.canvas-window')`));
+  }
+  const besideText = sideGroup.rows === '3,4' && sideGroup.picture && sideGroup.side !== '' && widened > parseFloat(sideGroup.side) && movedPicture && wrapped && cleared && unwrapped && canvasOk;
   const pictures = pasted.img && resized && dropped === 'Obr. 1: Schéma nosníku' && fileCopied && pastedIdle && pictureMenu.menu >= 5 && pictureMenu.full && pictureMenu.caption.includes('Detail kotvení') && besideText;
 
   // A sheet with a block: the block is listed, its use shows the block and computes.
@@ -915,7 +972,7 @@ async function layersWithRealInput(picture: string) {
     blocksOk = shown.errors === 0 && shown.text.includes('Prosty nosnik 1.2') && shown.text.includes('45');
     await takePicture(picture.replace(/[.]png$/, '-blocks.png'));
   }
-  return { ...state, newKeepsExample, citations, aiReadOnly, split, mainHidden, twoLayers, addKinds, aiDeletable, aiMenu, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, besideText, pictures, blocksOk };
+  return { ...state, newKeepsExample, citations, aiReadOnly, split, mainHidden, twoLayers, addKinds, aiDeletable, aiMenu, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, canvasOk, besideText, pictures, blocksOk };
 }
 
 /**

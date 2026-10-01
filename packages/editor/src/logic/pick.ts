@@ -3,7 +3,7 @@
  * table's rows; choosing a row rewrites the key in the source.
  */
 
-import type { Statement } from '@calccanvas/core';
+import type { Statement } from '@kalketa/core';
 
 export interface PickInfo {
   readonly table: string;

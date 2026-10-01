@@ -1,9 +1,9 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { defaultRegistry, evaluateSheet, parse, type Expr, type Table } from '@calccanvas/core';
-import { catalogFor } from '@calccanvas/i18n';
-import { loadTable } from '@calccanvas/sheet';
+import { defaultRegistry, evaluateSheet, parse, type Expr, type Table } from '@kalketa/core';
+import { catalogFor } from '@kalketa/i18n';
+import { loadTable } from '@kalketa/sheet';
 import { buildPrintDocument, formulaNode, nameNode, printHtml, toMathML, toText, type EquationLine, type FormulaOptions, type PrintBlock } from '../src/index.js';
 
 const cs = catalogFor('cs');

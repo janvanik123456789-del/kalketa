@@ -10,14 +10,14 @@ export default defineConfig(({ command }) => ({
   plugins: [react(), ...(command === 'build' ? [contentSecurityPolicy()] : [])],
   resolve: {
     // The editor uses the other packages' sources directly; no build step needed.
-    // Exact names, so '@calccanvas/canvas' does not also catch '@calccanvas/canvas/editor'.
+    // Exact names, so '@kalketa/canvas' does not also catch '@kalketa/canvas/editor'.
     alias: [
-      { find: /^@calccanvas\/core$/, replacement: src('core') },
-      { find: /^@calccanvas\/i18n$/, replacement: src('i18n') },
-      { find: /^@calccanvas\/sheet$/, replacement: src('sheet') },
-      { find: /^@calccanvas\/render$/, replacement: src('render') },
-      { find: /^@calccanvas\/canvas$/, replacement: src('canvas') },
-      { find: /^@calccanvas\/canvas\/editor$/, replacement: fileURLToPath(new URL('../canvas/src/editor/index.ts', import.meta.url)) },
+      { find: /^@kalketa\/core$/, replacement: src('core') },
+      { find: /^@kalketa\/i18n$/, replacement: src('i18n') },
+      { find: /^@kalketa\/sheet$/, replacement: src('sheet') },
+      { find: /^@kalketa\/render$/, replacement: src('render') },
+      { find: /^@kalketa\/canvas$/, replacement: src('canvas') },
+      { find: /^@kalketa\/canvas\/editor$/, replacement: fileURLToPath(new URL('../canvas/src/editor/index.ts', import.meta.url)) },
     ],
   },
   server: { port: 5173, strictPort: true, fs: { allow: ['../..'] } },
@@ -27,7 +27,7 @@ export default defineConfig(({ command }) => ({
 function contentSecurityPolicy(): Plugin {
   const policy = "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; frame-src 'self' about: data:; connect-src 'self'";
   return {
-    name: 'calccanvas-csp',
+    name: 'kalketa-csp',
     transformIndexHtml: (html) => html.replace('<head>', `<head>\n    <meta http-equiv="Content-Security-Policy" content="${policy}" />`),
   };
 }

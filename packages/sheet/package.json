@@ -1,5 +1,5 @@
 {
-  "name": "@calccanvas/sheet",
+  "name": "@kalketa/sheet",
   "version": "0.0.0",
   "private": true,
   "description": "The sheet's data layer: importing (CSV, Excel) and storing tables.",
@@ -13,7 +13,7 @@
     }
   },
   "dependencies": {
-    "@calccanvas/core": "*",
+    "@kalketa/core": "*",
     "exceljs": "^4.4.0",
     "fflate": "^0.8.3"
   }

@@ -1,12 +1,12 @@
 /**
- * @calccanvas/sheet — the sheet's data layer: importing and storing tables.
+ * @kalketa/sheet — the sheet's data layer: importing and storing tables.
  *
  * Works on strings and bytes only; the caller (CLI, editor) does the file I/O.
  * On disk a table is tables/<Name>/schema.json + data.csv, the same layout the
  * .calc container will use (F4).
  */
 
-import { buildTable, type BlockSource, type Diagnostic, type SheetResult, type Table, type TableBuildResult, type TableSchema, type UnitRegistry } from '@calccanvas/core';
+import { buildTable, type BlockSource, type Diagnostic, type SheetResult, type Table, type TableBuildResult, type TableSchema, type UnitRegistry } from '@kalketa/core';
 import type { SheetDocument } from './container.js';
 import { LayerSessions, type LayerEvaluation } from './layers.js';
 import { parseCsv, writeCsv } from './csv.js';

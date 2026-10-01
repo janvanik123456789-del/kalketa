@@ -1,6 +1,6 @@
 {
   "sheet": "nosnik.cc",
-  "verifiedBy": "Ruční výpočet prostého nosníku (M = qL²/8, σ = M/W, w = 5qL⁴/384EI) čistou aritmetikou mimo CalcCanvas. Návrh: ohybu vyhoví už IPE 180 (W ≥ 159,6 cm³), průhybu až I ≥ 2325 cm⁴, tedy IPE 220. Využití = σ/f_y, resp. w/w_lim.",
+  "verifiedBy": "Ruční výpočet prostého nosníku (M = qL²/8, σ = M/W, w = 5qL⁴/384EI) čistou aritmetikou mimo Kalketa. Návrh: ohybu vyhoví už IPE 180 (W ≥ 159,6 cm³), průhybu až I ≥ 2325 cm⁴, tedy IPE 220. Využití = σ/f_y, resp. w/w_lim.",
   "relativeTolerance": 1e-9,
   "values": {
     "profil": { "row": "IPE 200" },

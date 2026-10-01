@@ -1,9 +1,9 @@
 {
-  "name": "@calccanvas/desktop",
+  "name": "@kalketa/desktop",
   "version": "0.1.0",
   "private": true,
-  "description": "CalcCanvas as a standalone desktop application (Electron).",
-  "author": "CalcCanvas",
+  "description": "Kalketa as a standalone desktop application (Electron).",
+  "author": "Kalketa",
   "type": "module",
   "main": "dist/main.js",
   "scripts": {
@@ -17,10 +17,10 @@
     "electron": "^44.4.5",
     "electron-builder": "^26.15.3"
   },
-  "homepage": "https://calccanvas.local",
+  "homepage": "https://kalketa.local",
   "build": {
-    "appId": "cz.calccanvas.desktop",
-    "productName": "CalcCanvas",
+    "appId": "cz.kalketa.desktop",
+    "productName": "Kalketa",
     "electronVersion": "44.4.5",
     "directories": {
       "output": "release",
@@ -38,11 +38,11 @@
     ],
     "fileAssociations": [
       {
-        "ext": "calc",
-        "name": "CalcCanvas",
-        "description": "CalcCanvas calculation",
+        "ext": "kalk",
+        "name": "Kalketa",
+        "description": "Kalketa calculation",
         "role": "Editor",
-        "mimeType": "application/x-calccanvas"
+        "mimeType": "application/x-kalketa"
       }
     ],
     "win": {
@@ -58,10 +58,10 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "CalcCanvas"
+      "shortcutName": "Kalketa"
     },
     "portable": {
-      "artifactName": "CalcCanvas-${version}-portable.exe"
+      "artifactName": "Kalketa-${version}-portable.exe"
     },
     "linux": {
       "target": [
@@ -70,10 +70,10 @@
       "icon": "build/icon.png",
       "category": "Science",
       "synopsis": "Engineering calculations with units, tables and print",
-      "executableName": "calccanvas"
+      "executableName": "kalketa"
     },
     "appImage": {
-      "artifactName": "CalcCanvas-${version}-x86_64.AppImage"
+      "artifactName": "Kalketa-${version}-x86_64.AppImage"
     },
     "extraFiles": [
       {

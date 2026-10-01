@@ -4,7 +4,7 @@
  * after the head of a new function: "A_kruh(d) =" becomes "A_kruh(d) :=".
  */
 
-import { builtinFunctions } from '@calccanvas/core';
+import { builtinFunctions } from '@kalketa/core';
 
 const NAME = String.raw`[\p{L}][\p{L}\p{Nd}\p{M}_]*`;
 const PARAMS = String.raw`\(\s*${NAME}(?:\s*[,;]\s*${NAME})*\s*\)`;

@@ -4,7 +4,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
-import { rowLabel, toDisplay, defaultRegistry, type Table } from '@calccanvas/core';
+import { rowLabel, toDisplay, defaultRegistry, type Table } from '@kalketa/core';
 
 interface Props {
   readonly table: Table;

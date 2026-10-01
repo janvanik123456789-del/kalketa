@@ -3,9 +3,9 @@
  * the browser, images as data URIs.
  */
 
-import { documentTables, newDocument, readSheetFile, writeSheetFile, type SheetDocument, type StoredTable } from '@calccanvas/sheet';
-import type { Diagnostic, Table, UnitRegistry } from '@calccanvas/core';
-import { isCanvasPath, readScene, sceneDataUri } from '@calccanvas/canvas';
+import { documentTables, newDocument, readSheetFile, writeSheetFile, type SheetDocument, type StoredTable } from '@kalketa/sheet';
+import type { Diagnostic, Table, UnitRegistry } from '@kalketa/core';
+import { isCanvasPath, readScene, sceneDataUri } from '@kalketa/canvas';
 
 import exampleSheet from '../../../reference/R1-nosnik/nosnik.cc?raw';
 import profilesSchema from '../../../reference/R1-nosnik/tables/Profily_IPE/schema.json?raw';
@@ -120,7 +120,7 @@ export interface DesktopFile {
 }
 
 /** The desktop bridge, or undefined when running in a browser. */
-export const desktop: DesktopBridge | undefined = (window as unknown as { calccanvasDesktop?: DesktopBridge }).calccanvasDesktop;
+export const desktop: DesktopBridge | undefined = (window as unknown as { kalketaDesktop?: DesktopBridge }).kalketaDesktop;
 
 interface FileHandle {
   readonly name: string;
@@ -136,7 +136,7 @@ interface FsWindow {
 /** Where the document is saved: a path (desktop) or a browser file handle. */
 export type FileRef = { readonly kind: 'path'; readonly path: string } | { readonly kind: 'handle'; readonly handle: FileHandle };
 
-const CALC_TYPES = [{ description: 'CalcCanvas', accept: { 'application/zip': ['.calc'] } }];
+const CALC_TYPES = [{ description: 'Kalketa', accept: { 'application/zip': ['.kalk', '.calc'] } }];
 
 export interface OpenedFile {
   readonly document?: SheetDocument;
@@ -163,7 +163,7 @@ export async function pickAndOpen(labels: { sheets: string }): Promise<OpenedFil
   const fs = window as unknown as FsWindow;
   if (fs.showOpenFilePicker) {
     try {
-      const [handle] = await fs.showOpenFilePicker({ types: [...CALC_TYPES, { description: 'CalcCanvas text', accept: { 'text/plain': ['.cc'] } }] });
+      const [handle] = await fs.showOpenFilePicker({ types: [...CALC_TYPES, { description: 'Kalketa text', accept: { 'text/plain': ['.cc'] } }] });
       if (!handle) return undefined;
       const file = await handle.getFile();
       return openBytes(file.name, new Uint8Array(await file.arrayBuffer()), { kind: 'handle', handle });
@@ -171,7 +171,7 @@ export async function pickAndOpen(labels: { sheets: string }): Promise<OpenedFil
       return undefined; // cancelled
     }
   }
-  const file = await chooseFile('.calc,.cc');
+  const file = await chooseFile('.kalk,.calc,.cc');
   return file ? openBytes(file.name, new Uint8Array(await file.arrayBuffer())) : undefined;
 }
 

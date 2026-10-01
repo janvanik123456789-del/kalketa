@@ -1,9 +1,9 @@
 /**
- * @calccanvas/i18n — turns diagnostics into messages and formats numbers
+ * @kalketa/i18n — turns diagnostics into messages and formats numbers
  * in the user's language.
  */
 
-import type { Diagnostic } from '@calccanvas/core';
+import type { Diagnostic } from '@kalketa/core';
 import type { Catalog } from './catalog.js';
 import { cs } from './locales/cs.js';
 import { en } from './locales/en.js';

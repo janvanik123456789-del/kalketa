@@ -7,7 +7,7 @@
  * same sheet and settings give the same bytes (rendering doc, ch. 39).
  */
 
-import { t, type Catalog } from '@calccanvas/i18n';
+import { t, type Catalog } from '@kalketa/i18n';
 import { esc, toMathML, type MathNode } from './math.js';
 import { NOTES_CSS } from './notes.js';
 import type { EquationLine, Message, PrintBlock, PrintDocument, SummaryRow } from './model.js';
@@ -47,7 +47,7 @@ export function renderHtml(doc: PrintDocument, options: HtmlOptions): string {
 <html lang="${esc(doc.language)}">
 <head>
 <meta charset="utf-8">
-<meta name="generator" content="CalcCanvas">
+<meta name="generator" content="Kalketa">
 <title>${esc(doc.title)}</title>
 <style>
 ${stylesheet(doc, options)}

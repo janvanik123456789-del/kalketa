@@ -17,22 +17,22 @@
     ],
     "esModuleInterop": true,
     "paths": {
-      "@calccanvas/core": [
+      "@kalketa/core": [
         "../core/src/index.ts"
       ],
-      "@calccanvas/i18n": [
+      "@kalketa/i18n": [
         "../i18n/src/index.ts"
       ],
-      "@calccanvas/sheet": [
+      "@kalketa/sheet": [
         "../sheet/src/index.ts"
       ],
-      "@calccanvas/render": [
+      "@kalketa/render": [
         "../render/src/index.ts"
       ],
-      "@calccanvas/canvas": [
+      "@kalketa/canvas": [
         "../canvas/src/index.ts"
       ],
-      "@calccanvas/canvas/editor": [
+      "@kalketa/canvas/editor": [
         "../canvas/src/editor/index.ts"
       ]
     }

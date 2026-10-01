@@ -3,7 +3,7 @@
  * catalog; no code changes are needed elsewhere.
  */
 
-import type { DiagnosticCode, FunctionModuleId, Severity } from '@calccanvas/core';
+import type { DiagnosticCode, FunctionModuleId, Severity } from '@kalketa/core';
 
 export interface Catalog {
   /** BCP 47 tag, also used for number formatting (cs -> 1 234,5). */

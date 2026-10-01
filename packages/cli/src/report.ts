@@ -11,8 +11,8 @@ import {
   type Statement,
   type StatementResult,
   type TraceNode,
-} from '@calccanvas/core';
-import { formatDiagnostic, formatNumber, formatValue as formatQuantityValue, t, type Catalog } from '@calccanvas/i18n';
+} from '@kalketa/core';
+import { formatDiagnostic, formatNumber, formatValue as formatQuantityValue, t, type Catalog } from '@kalketa/i18n';
 
 export interface ReportOptions {
   readonly catalog: Catalog;

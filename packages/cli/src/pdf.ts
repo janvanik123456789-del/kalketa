@@ -11,7 +11,7 @@ import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const CANDIDATES: readonly string[] = [
-  process.env['CALCCANVAS_BROWSER'] ?? '',
+  process.env['KALKETA_BROWSER'] ?? '',
   'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
   'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
   'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
@@ -31,9 +31,9 @@ export function findBrowser(): string | undefined {
 export function htmlToPdf(html: string, pdfPath: string): void {
   const browser = findBrowser();
   if (!browser) {
-    throw new Error('No Edge, Chrome or Chromium found. Set CALCCANVAS_BROWSER to its path, or open the HTML and print it to PDF.');
+    throw new Error('No Edge, Chrome or Chromium found. Set KALKETA_BROWSER to its path, or open the HTML and print it to PDF.');
   }
-  const dir = mkdtempSync(join(tmpdir(), 'calccanvas-'));
+  const dir = mkdtempSync(join(tmpdir(), 'kalketa-'));
   try {
     const htmlPath = join(dir, 'print.html');
     writeFileSync(htmlPath, html);

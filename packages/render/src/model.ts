@@ -21,8 +21,8 @@ import {
   type StatementResult,
   type UnitRegistry,
   type Value,
-} from '@calccanvas/core';
-import { formatDate, formatDiagnostic, formatNumber, t, type Catalog } from '@calccanvas/i18n';
+} from '@kalketa/core';
+import { formatDate, formatDiagnostic, formatNumber, t, type Catalog } from '@kalketa/i18n';
 import { formulaNode, hasSubstitutableParts, THIN_SPACE, type FormulaOptions, type Substituted } from './formula.js';
 import { mi, mn, mo, mtext, mu, nameNode, paren, row, sup, toText, type MathNode, table } from './math.js';
 

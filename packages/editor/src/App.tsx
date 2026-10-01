@@ -1,5 +1,5 @@
 /**
- * The CalcCanvas editor window: classic menu bar, dockable toolbars, the sheet
+ * The Kalketa editor window: classic menu bar, dockable toolbars, the sheet
  * on pages, a side panel and a status bar.
  *
  * The document (sheet text + tables + files) is the only state that matters;
@@ -7,12 +7,12 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
-import { defaultRegistry, formatPicture, parsePicture, rowLabel, type Diagnostic, type Statement } from '@calccanvas/core';
-import { catalogFor, CATALOGS, formatDiagnostic, formatNumber, t, type Catalog } from '@calccanvas/i18n';
-import { buildPrintDocument, printHtml } from '@calccanvas/render';
-import { emptyScene, readScene, writeScene, type CanvasScene } from '@calccanvas/canvas';
-import { CanvasEditor } from '@calccanvas/canvas/editor';
-import { addLayer, allDiagnostics, appendixLayers, blockAppendices, documentBlocks, isRemovable, LayerSessions, MAIN_LAYER, removeLayer, tablesByLayer, updateLayer, type AddableLayerKind, type Layer, type SheetDocument } from '@calccanvas/sheet';
+import { defaultRegistry, formatPicture, parsePicture, rowLabel, type Diagnostic, type Statement } from '@kalketa/core';
+import { catalogFor, CATALOGS, formatDiagnostic, formatNumber, t, type Catalog } from '@kalketa/i18n';
+import { buildPrintDocument, printHtml } from '@kalketa/render';
+import { emptyScene, readScene, writeScene, type CanvasScene } from '@kalketa/canvas';
+import { CanvasEditor } from '@kalketa/canvas/editor';
+import { addLayer, allDiagnostics, appendixLayers, blockAppendices, documentBlocks, isRemovable, LayerSessions, MAIN_LAYER, removeLayer, tablesByLayer, updateLayer, type AddableLayerKind, type Layer, type SheetDocument } from '@kalketa/sheet';
 import { buildCommands, shortcutOf, type Command } from './commands.js';
 import { chooseFile, desktop, emptyDocument, exampleDocument, fileName, fileUri, largestParts, openBytes, pickAndOpen, saveDocument, tableCache, type FileRef, type OpenedFile } from './document.js';
 import { record, redo, undo, type History } from './logic/history.js';
@@ -42,12 +42,12 @@ type DialogKind = 'settings' | 'properties' | 'customize' | 'shortcuts' | 'funct
 const MM_TO_PX = 96 / 25.4;
 const PAGE_GAP_PX = 24;
 const ZOOM_STEPS = [0.3, 0.4, 0.5, 0.6, 0.75, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2];
-const LANGUAGE_KEY = 'calccanvas.uiLanguage';
-const TOOLBARS_KEY = 'calccanvas.toolbars';
-const RECENT_KEY = 'calccanvas.recent';
+const LANGUAGE_KEY = 'kalketa.uiLanguage';
+const TOOLBARS_KEY = 'kalketa.toolbars';
+const RECENT_KEY = 'kalketa.recent';
 const RECENT_LIMIT = 8;
-const SIZE_LIMIT_KEY = 'calccanvas.sizeLimitMb';
-const CANVAS_MODE_KEY = 'calccanvas.canvasMode';
+const SIZE_LIMIT_KEY = 'kalketa.sizeLimitMb';
+const CANVAS_MODE_KEY = 'kalketa.canvasMode';
 const DEFAULT_SIZE_LIMIT_MB = 50;
 /** Layers open side by side at most. */
 const MAX_PANES = 3;
@@ -55,7 +55,8 @@ const MAX_PANES = 3;
 // Small remembered preferences; storage may be unavailable.
 function stored(key: string): string | null {
   try {
-    return localStorage.getItem(key);
+    // Settings saved before the program was renamed (calccanvas.*) are read as well.
+    return localStorage.getItem(key) ?? localStorage.getItem(key.replace(/^kalketa\./, 'calccanvas.'));
   } catch {
     return null;
   }
@@ -127,10 +128,10 @@ export function App() {
   const [selected, setSelected] = useState<number | undefined>();
   const [notice, setNotice] = useState<string | undefined>();
   const [dialog, setDialog] = useState<DialogKind | undefined>();
-  const [zoomChoice, setZoomChoice] = useState(() => stored('calccanvas.zoom') ?? 'fit2');
+  const [zoomChoice, setZoomChoice] = useState(() => stored('kalketa.zoom') ?? 'fit2');
   // The layer tabs do what the Layers panel did, so the panel no longer opens by itself at start.
-  const [pane, setPane] = useState<Pane>(() => (['details', 'tables', 'none'].includes(stored('calccanvas.pane') ?? '') ? (stored('calccanvas.pane') as Pane) : stored('calccanvas.pane') === 'layers' ? 'none' : 'details'));
-  const [paneWidth, setPaneWidth] = useState(() => Number(stored('calccanvas.paneWidth')) || 380);
+  const [pane, setPane] = useState<Pane>(() => (['details', 'tables', 'none'].includes(stored('kalketa.pane') ?? '') ? (stored('kalketa.pane') as Pane) : stored('kalketa.pane') === 'layers' ? 'none' : 'details'));
+  const [paneWidth, setPaneWidth] = useState(() => Number(stored('kalketa.paneWidth')) || 380);
   // Layers open side by side in this document, and which of them is being worked on.
   const panes = tab.panes;
   const setPanes = (next: readonly string[]) => updateTab((d) => ({ ...d, panes: next }));
@@ -218,7 +219,7 @@ export function App() {
   }, [language]);
 
   useEffect(() => {
-    document.title = `${label}${dirty ? ' •' : ''} — CalcCanvas`;
+    document.title = `${label}${dirty ? ' •' : ''} — Kalketa`;
     desktop?.setCloseGuard({ dirty: anyDirty, message: t(ui, 'editor.closeUnsaved'), discard: t(ui, 'editor.discard'), cancel: t(ui, 'editor.cancel') });
     if (!anyDirty || desktop) return;
     const warn = (e: BeforeUnloadEvent) => e.preventDefault();
@@ -710,7 +711,7 @@ export function App() {
 
   const setZoom = (choice: string) => {
     setZoomChoice(choice);
-    remember('calccanvas.zoom', choice);
+    remember('kalketa.zoom', choice);
   };
   const zoomBy = (direction: 1 | -1) => {
     const next = direction > 0 ? ZOOM_STEPS.find((z) => z > zoom + 0.01) : [...ZOOM_STEPS].reverse().find((z) => z < zoom - 0.01);
@@ -718,7 +719,7 @@ export function App() {
   };
   const choosePane = (next: Pane) => {
     setPane(next);
-    remember('calccanvas.pane', next);
+    remember('kalketa.pane', next);
   };
   const changeToolbars = (layout: ToolbarLayout) => {
     setToolbars(layout);
@@ -737,7 +738,7 @@ export function App() {
     const up = () => {
       window.removeEventListener('mousemove', move);
       window.removeEventListener('mouseup', up);
-      remember('calccanvas.paneWidth', String(width));
+      remember('kalketa.paneWidth', String(width));
     };
     window.addEventListener('mousemove', move);
     window.addEventListener('mouseup', up);
@@ -1284,7 +1285,7 @@ export function App() {
         />
       )}
       {dialog === 'about' && <AboutDialog catalog={ui} onClose={() => setDialog(undefined)} />}
-      <AskHost catalog={ui} title="CalcCanvas" />
+      <AskHost catalog={ui} title="Kalketa" />
     </div>
   );
 }

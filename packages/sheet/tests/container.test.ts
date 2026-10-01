@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { strToU8, unzipSync, zipSync } from 'fflate';
 import { describe, expect, it } from 'vitest';
-import { defaultRegistry } from '@calccanvas/core';
+import { defaultRegistry } from '@kalketa/core';
 import {
   evaluateDocument,
   FORMAT_VERSION,
@@ -73,7 +73,7 @@ describe('.calc container', () => {
     expect(await writeSheetFile(doc)).toEqual(await writeSheetFile(r1Document()));
   });
 
-  it('keeps everything readable without CalcCanvas', async () => {
+  it('keeps everything readable without Kalketa', async () => {
     const entries = unzipSync(await writeSheetFile(r1Document()));
     expect(Object.keys(entries).sort()).toEqual([
       'future/something.bin',

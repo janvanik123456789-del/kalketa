@@ -1,5 +1,5 @@
 {
-  "name": "@calccanvas/canvas",
+  "name": "@kalketa/canvas",
   "version": "0.0.0",
   "private": true,
   "description": "Canvas module: drawings placed in the sheet like pictures. The scene format and its SVG (no DOM), and the editor (React).",

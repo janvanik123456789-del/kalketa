@@ -1,13 +1,13 @@
 /**
- * @calccanvas/render — the print layer: evaluated sheet -> classical
+ * @kalketa/render — the print layer: evaluated sheet -> classical
  * technical calculation (HTML with MathML, ready for print and PDF).
  *
  * Pipeline (rendering doc, ch. 37): SheetResult -> PrintDocument (semantic
  * lines) -> HTML. Pure functions; no file access.
  */
 
-import type { SheetResult, UnitRegistry } from '@calccanvas/core';
-import { t, type Catalog } from '@calccanvas/i18n';
+import type { SheetResult, UnitRegistry } from '@kalketa/core';
+import { t, type Catalog } from '@kalketa/i18n';
 import { appendixHtml, renderBlocksHtml, renderHtml } from './html.js';
 import { buildPrintDocument } from './model.js';
 import { notesHtml } from './notes.js';

@@ -1,8 +1,8 @@
 {
-  "name": "@calccanvas/editor",
+  "name": "@kalketa/editor",
   "version": "0.0.0",
   "private": true,
-  "description": "The CalcCanvas editor (React). Runs in the browser; desktop shell later.",
+  "description": "The Kalketa editor (React). Runs in the browser; desktop shell later.",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,11 +10,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@calccanvas/canvas": "*",
-    "@calccanvas/core": "*",
-    "@calccanvas/i18n": "*",
-    "@calccanvas/render": "*",
-    "@calccanvas/sheet": "*",
+    "@kalketa/canvas": "*",
+    "@kalketa/core": "*",
+    "@kalketa/i18n": "*",
+    "@kalketa/render": "*",
+    "@kalketa/sheet": "*",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },

@@ -1,6 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { BLOCK_CSS } from '@calccanvas/render';
+import { BLOCK_CSS } from '@kalketa/render';
 import { App } from './App.js';
 import './styles.css';
 

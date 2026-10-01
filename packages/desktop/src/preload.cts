@@ -11,20 +11,20 @@ interface OpenedFile {
   readonly bytes: Uint8Array;
 }
 
-contextBridge.exposeInMainWorld('calccanvasDesktop', {
-  openDialog: (labels: { sheets: string }): Promise<OpenedFile | undefined> => ipcRenderer.invoke('calccanvas:open-dialog', labels),
-  openPath: (path: string): Promise<OpenedFile | undefined> => ipcRenderer.invoke('calccanvas:open-path', path),
-  save: (request: { path?: string; current?: string; suggestedName: string; bytes: Uint8Array; openElsewhere?: string }): Promise<string | undefined> => ipcRenderer.invoke('calccanvas:save', request),
-  print: (html: string): Promise<boolean> => ipcRenderer.invoke('calccanvas:print', html),
-  exportPdf: (request: { html: string; suggestedName: string }): Promise<string | undefined> => ipcRenderer.invoke('calccanvas:export-pdf', request),
-  newWindow: (): Promise<void> => ipcRenderer.invoke('calccanvas:new-window'),
-  setCloseGuard: (guard: { dirty: boolean; message: string; discard: string; cancel: string }): void => ipcRenderer.send('calccanvas:close-guard', guard),
-  setOpenFiles: (paths: string[]): void => ipcRenderer.send('calccanvas:open-files', paths),
+contextBridge.exposeInMainWorld('kalketaDesktop', {
+  openDialog: (labels: { sheets: string }): Promise<OpenedFile | undefined> => ipcRenderer.invoke('kalketa:open-dialog', labels),
+  openPath: (path: string): Promise<OpenedFile | undefined> => ipcRenderer.invoke('kalketa:open-path', path),
+  save: (request: { path?: string; current?: string; suggestedName: string; bytes: Uint8Array; openElsewhere?: string }): Promise<string | undefined> => ipcRenderer.invoke('kalketa:save', request),
+  print: (html: string): Promise<boolean> => ipcRenderer.invoke('kalketa:print', html),
+  exportPdf: (request: { html: string; suggestedName: string }): Promise<string | undefined> => ipcRenderer.invoke('kalketa:export-pdf', request),
+  newWindow: (): Promise<void> => ipcRenderer.invoke('kalketa:new-window'),
+  setCloseGuard: (guard: { dirty: boolean; message: string; discard: string; cancel: string }): void => ipcRenderer.send('kalketa:close-guard', guard),
+  setOpenFiles: (paths: string[]): void => ipcRenderer.send('kalketa:open-files', paths),
   onShowFile: (listener: (path: string) => void): void => {
-    ipcRenderer.on('calccanvas:show-file', (_event, path: string) => listener(path));
+    ipcRenderer.on('kalketa:show-file', (_event, path: string) => listener(path));
   },
-  clipboardPictures: (): Promise<{ name: string; type: string; bytes: Uint8Array }[]> => ipcRenderer.invoke('calccanvas:clipboard-pictures'),
+  clipboardPictures: (): Promise<{ name: string; type: string; bytes: Uint8Array }[]> => ipcRenderer.invoke('kalketa:clipboard-pictures'),
   onOpenFile: (listener: (file: OpenedFile) => void): void => {
-    ipcRenderer.on('calccanvas:open-file', (_event, file: OpenedFile) => listener(file));
+    ipcRenderer.on('kalketa:open-file', (_event, file: OpenedFile) => listener(file));
   },
 });

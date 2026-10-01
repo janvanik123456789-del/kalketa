@@ -7,8 +7,8 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { defaultRegistry, evaluateSheet, type Table } from '@calccanvas/core';
-import { loadTable } from '@calccanvas/sheet';
+import { defaultRegistry, evaluateSheet, type Table } from '@kalketa/core';
+import { loadTable } from '@kalketa/sheet';
 
 type ExpectedValue = { value: number; unit: string } | { boolean: boolean } | { row: string };
 

@@ -7,7 +7,7 @@
  * never guesses a unit silently.
  */
 
-import { diagnostic, NO_SPAN, type ColumnSchema, type Diagnostic, type TableSchema, type UnitRegistry } from '@calccanvas/core';
+import { diagnostic, NO_SPAN, type ColumnSchema, type Diagnostic, type TableSchema, type UnitRegistry } from '@kalketa/core';
 
 export interface InferResult {
   readonly schema: TableSchema;

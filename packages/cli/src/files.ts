@@ -1,5 +1,5 @@
 /**
- * File access for the CLI. A sheet is either a .calc file (ZIP container) or
+ * File access for the CLI. A sheet is either a .kalk file (ZIP container) or
  * an unpacked folder with the same layout:
  *
  *   nosnik.cc                    (sheet.cc inside the container)
@@ -12,9 +12,9 @@
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, extname, join, relative, sep } from 'node:path';
-import type { Diagnostic } from '@calccanvas/core';
+import type { Diagnostic } from '@kalketa/core';
 import {
-  FILE_EXTENSION,
+  SHEET_FILE_EXTENSIONS,
   isSafePath,
   newDocument,
   readSheetEntries,
@@ -24,7 +24,7 @@ import {
   writeSheetFile,
   type SheetDocument,
   type TableFiles,
-} from '@calccanvas/sheet';
+} from '@kalketa/sheet';
 
 /** Files and folders next to a sheet that belong to it. */
 const CARRIED_FILES = ['layout.json', 'layers.json'];
@@ -35,9 +35,9 @@ export interface OpenResult {
   readonly diagnostics: Diagnostic[];
 }
 
-/** Opens a .calc file or a .cc file with its folder. */
+/** Opens a .kalk file or a .cc file with its folder. */
 export async function openSheet(path: string): Promise<OpenResult> {
-  if (extname(path).toLowerCase() === FILE_EXTENSION) {
+  if (SHEET_FILE_EXTENSIONS.includes(extname(path).toLowerCase())) {
     return readSheetFile(new Uint8Array(readFileSync(path)));
   }
   return readFolder(path);
@@ -45,7 +45,7 @@ export async function openSheet(path: string): Promise<OpenResult> {
 
 /**
  * Reads a .cc file and what belongs to it in its folder. The folder holds the
- * same entries as the .calc container, except that the sheet is named after
+ * same entries as the .kalk container, except that the sheet is named after
  * the file and there is no manifest.
  */
 export async function readFolder(sheetFile: string): Promise<OpenResult> {

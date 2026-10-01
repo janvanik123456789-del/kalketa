@@ -1,45 +1,45 @@
 #!/usr/bin/env node
 /**
- * calccanvas run <sheet> [--lang cs] [--digits 4]
- *   Evaluates a sheet and prints the results. <sheet> is a .calc file or a
+ * kalketa run <sheet> [--lang cs] [--digits 4]
+ *   Evaluates a sheet and prints the results. <sheet> is a .kalk file or a
  *   .cc file with its tables next to it. Exit code 1 when the sheet has errors.
  *
- * calccanvas trace <sheet> <name> [--lang cs]
+ * kalketa trace <sheet> <name> [--lang cs]
  *   Shows where a result comes from: formulas, inputs, table rows and sources.
  *
- * calccanvas print <sheet> [--out file.html] [--pdf file.pdf] [--lang cs]
+ * kalketa print <sheet> [--out file.html] [--pdf file.pdf] [--lang cs]
  *   Prints the sheet as a classical technical calculation (HTML, optionally PDF).
  *   The printout uses the sheet's own language when it has one.
  *
- * calccanvas pack <file.cc> [--out file.calc] [--title "…"]
- * calccanvas unpack <file.calc> [--into folder]
- *   Converts between an unpacked folder and a .calc file.
+ * kalketa pack <file.cc> [--out file.kalk] [--title "…"]
+ * kalketa unpack <file.kalk> [--into folder]
+ *   Converts between an unpacked folder and a .kalk file.
  *
- * calccanvas import-table <file.csv|file.xlsx> --name <Table> [--sheet <Excel sheet>]
+ * kalketa import-table <file.csv|file.xlsx> --name <Table> [--sheet <Excel sheet>]
  *                         [--into <sheet folder>] [--source "<title>"]
  *   Imports a table into a sheet folder (tables/<Table>/schema.json + data.csv).
  */
 
-import { isCanvasPath, readScene, sceneDataUri } from '@calccanvas/canvas';
+import { isCanvasPath, readScene, sceneDataUri } from '@kalketa/canvas';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { basename, extname, join } from 'node:path';
 import { parseArgs } from 'node:util';
-import { defaultRegistry, traceName, type Diagnostic } from '@calccanvas/core';
-import { catalogFor, formatDiagnostic, t, type Catalog, type UiKey } from '@calccanvas/i18n';
-import { appendixLayers, blockAppendices, evaluateDocument, FILE_EXTENSION, importTable, parseCsv, readWorkbook } from '@calccanvas/sheet';
+import { defaultRegistry, traceName, type Diagnostic } from '@kalketa/core';
+import { catalogFor, formatDiagnostic, t, type Catalog, type UiKey } from '@kalketa/i18n';
+import { appendixLayers, blockAppendices, evaluateDocument, FILE_EXTENSION, importTable, parseCsv, readWorkbook } from '@kalketa/sheet';
 import { openSheet, saveSheetFile, writeFolder, writeTable } from './files.js';
 import { htmlToPdf } from './pdf.js';
 import { formatReport, formatTrace } from './report.js';
-import { printHtml } from '@calccanvas/render';
+import { printHtml } from '@kalketa/render';
 
 const USAGE = [
   'Usage:',
-  '  calccanvas run <sheet.calc|sheet.cc> [--lang <language>] [--digits <n>]',
-  '  calccanvas trace <sheet.calc|sheet.cc> <name> [--lang <language>]',
-  '  calccanvas print <sheet.calc|sheet.cc> [--out <file.html>] [--pdf <file.pdf>] [--lang <language>]',
-  '  calccanvas pack <sheet.cc> [--out <file.calc>] [--title <title>]',
-  '  calccanvas unpack <sheet.calc> [--into <folder>]',
-  '  calccanvas import-table <file.csv|file.xlsx> --name <Table> [--sheet <name>] [--into <folder>] [--source <title>]',
+  '  kalketa run <sheet.kalk|sheet.cc> [--lang <language>] [--digits <n>]',
+  '  kalketa trace <sheet.kalk|sheet.cc> <name> [--lang <language>]',
+  '  kalketa print <sheet.kalk|sheet.cc> [--out <file.html>] [--pdf <file.pdf>] [--lang <language>]',
+  '  kalketa pack <sheet.cc> [--out <file.kalk>] [--title <title>]',
+  '  kalketa unpack <sheet.kalk> [--into <folder>]',
+  '  kalketa import-table <file.csv|file.xlsx> --name <Table> [--sheet <name>] [--into <folder>] [--source <title>]',
 ].join('\n');
 
 async function main(argv: string[]): Promise<number> {

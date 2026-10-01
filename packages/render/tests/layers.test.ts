@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { defaultRegistry, evaluateSheet, type ImportedValue } from '@calccanvas/core';
-import { catalogFor } from '@calccanvas/i18n';
-import { addLayer, appendixLayers, evaluateDocument, newDocument, updateLayer, type Layer } from '@calccanvas/sheet';
+import { defaultRegistry, evaluateSheet, type ImportedValue } from '@kalketa/core';
+import { catalogFor } from '@kalketa/i18n';
+import { addLayer, appendixLayers, evaluateDocument, newDocument, updateLayer, type Layer } from '@kalketa/sheet';
 import { buildPrintDocument, notesHtml, notesImages, printHtml } from '../src/index.js';
 
 const cs = catalogFor('cs');

@@ -3,7 +3,7 @@
  * cross or the middle mouse button closes, "+" starts a new calculation.
  */
 
-import { t, type Catalog } from '@calccanvas/i18n';
+import { t, type Catalog } from '@kalketa/i18n';
 
 export interface DocumentTabInfo {
   readonly id: number;

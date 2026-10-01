@@ -1,4 +1,4 @@
-# CalcCanvas — Filozofie programu
+# Kalketa — Filozofie programu
 
 **Verze:** 2.0 (návrh)
 **Datum:** 2026-09-29

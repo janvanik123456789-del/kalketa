@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { defaultRegistry } from '@calccanvas/core';
-import { catalogFor } from '@calccanvas/i18n';
-import { blockAppendices, evaluateDocument, newDocument } from '@calccanvas/sheet';
+import { defaultRegistry } from '@kalketa/core';
+import { catalogFor } from '@kalketa/i18n';
+import { blockAppendices, evaluateDocument, newDocument } from '@kalketa/sheet';
 import { printHtml } from '../src/index.js';
 
 describe('blocks in print', () => {

@@ -3,7 +3,7 @@
  * and keyboard shortcuts all run commands from here, so they never disagree.
  */
 
-import { t, type Catalog, type UiKey } from '@calccanvas/i18n';
+import { t, type Catalog, type UiKey } from '@kalketa/i18n';
 import { GREEK_SYMBOLS, OPERATOR_SYMBOLS } from './logic/toolbars.js';
 
 export type CommandCategory = 'file' | 'edit' | 'view' | 'insert' | 'tools' | 'window' | 'help' | 'symbol';

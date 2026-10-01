@@ -1,8 +1,8 @@
 {
-  "name": "calccanvas-monorepo",
+  "name": "kalketa-monorepo",
   "private": true,
   "version": "0.0.0",
-  "description": "CalcCanvas — obecný technický výpočtář s daty v listu",
+  "description": "Kalketa — obecný technický výpočtář s daty v listu",
   "type": "module",
   "workspaces": [
     "packages/*"
@@ -13,10 +13,10 @@
     "typecheck": "tsc -b && tsc -p tsconfig.tests.json && tsc -p packages/editor/tsconfig.json && tsc -p packages/desktop/tsconfig.json",
     "build": "tsc -b",
     "calc": "node packages/cli/dist/main.js",
-    "editor": "npm run dev --workspace @calccanvas/editor",
-    "build:editor": "npm run notices && npm run build --workspace @calccanvas/editor",
-    "build:desktop": "npm run build:editor && npm run build --workspace @calccanvas/desktop",
-    "desktop": "npm run build:desktop && npm start --workspace @calccanvas/desktop",
+    "editor": "npm run dev --workspace @kalketa/editor",
+    "build:editor": "npm run notices && npm run build --workspace @kalketa/editor",
+    "build:desktop": "npm run build:editor && npm run build --workspace @kalketa/desktop",
+    "desktop": "npm run build:desktop && npm start --workspace @kalketa/desktop",
     "notices": "node scripts/third-party-notices.mjs"
   },
   "engines": {

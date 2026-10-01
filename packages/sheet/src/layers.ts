@@ -10,8 +10,8 @@
  *   sources  theory, requirements, reasons: text, cropped figures, citations, links
  */
 
-import type { BlockSource, Diagnostic, ImportedValue, SheetResult, Table, UnitRegistry } from '@calccanvas/core';
-import { SheetSession } from '@calccanvas/core';
+import type { BlockSource, Diagnostic, ImportedValue, SheetResult, Table, UnitRegistry } from '@kalketa/core';
+import { SheetSession } from '@kalketa/core';
 
 export type LayerKind = 'sheet' | 'calc' | 'data' | 'ai' | 'sources';
 

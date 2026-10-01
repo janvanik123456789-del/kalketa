@@ -27,7 +27,7 @@ describe('pravidla architektury', () => {
   it('core nezávisí na jiných balíčcích projektu', () => {
     const bad = files.flatMap((f) =>
       importsOf(f)
-        .filter((i) => i.startsWith('@calccanvas/'))
+        .filter((i) => i.startsWith('@kalketa/'))
         .map((i) => `${relative(ROOT, f)} → ${i}`),
     );
     expect(bad).toEqual([]);
@@ -56,7 +56,7 @@ function packageImports(pkg: string): { file: string; imports: string[] }[] {
 describe('modul plátna je samostatný', () => {
   it('plátno nepoužívá jiné balíčky projektu ani soubory mimo svůj balíček', () => {
     const bad = packageImports('canvas').flatMap(({ file, imports }) =>
-      imports.filter((i) => i.startsWith('@calccanvas/') || (i.startsWith('.') && !resolve(ROOT, file, '..', i).startsWith(join(ROOT, 'packages', 'canvas', 'src')))).map((i) => `${file} → ${i}`),
+      imports.filter((i) => i.startsWith('@kalketa/') || (i.startsWith('.') && !resolve(ROOT, file, '..', i).startsWith(join(ROOT, 'packages', 'canvas', 'src')))).map((i) => `${file} → ${i}`),
     );
     expect(bad).toEqual([]);
   });
@@ -70,7 +70,7 @@ describe('modul plátna je samostatný', () => {
 
   it('jádro, list, tisk ani překlady plátno neznají', () => {
     const bad = ['core', 'sheet', 'render', 'i18n'].flatMap((pkg) =>
-      packageImports(pkg).flatMap(({ file, imports }) => imports.filter((i) => i.startsWith('@calccanvas/canvas')).map((i) => `${file} → ${i}`)),
+      packageImports(pkg).flatMap(({ file, imports }) => imports.filter((i) => i.startsWith('@kalketa/canvas')).map((i) => `${file} → ${i}`)),
     );
     expect(bad).toEqual([]);
   });
@@ -78,7 +78,7 @@ describe('modul plátna je samostatný', () => {
   it('editor a příkazová řádka berou plátno jen přes jeho rozhraní', () => {
     const bad = ['editor', 'cli'].flatMap((pkg) =>
       packageImports(pkg).flatMap(({ file, imports }) =>
-        imports.filter((i) => (i.startsWith('@calccanvas/canvas/') && i !== '@calccanvas/canvas/editor') || i.includes('/canvas/src/')).map((i) => `${file} → ${i}`),
+        imports.filter((i) => (i.startsWith('@kalketa/canvas/') && i !== '@kalketa/canvas/editor') || i.includes('/canvas/src/')).map((i) => `${file} → ${i}`),
       ),
     );
     expect(bad).toEqual([]);

@@ -3,8 +3,8 @@
  * All operations return new values; nothing is mutated.
  */
 
-import type { ColumnSchema, TableSchema } from '@calccanvas/core';
-import { parseCsv, writeCsv, type StoredTable } from '@calccanvas/sheet';
+import type { ColumnSchema, TableSchema } from '@kalketa/core';
+import { parseCsv, writeCsv, type StoredTable } from '@kalketa/sheet';
 
 export interface EditableTable {
   readonly schema: TableSchema;

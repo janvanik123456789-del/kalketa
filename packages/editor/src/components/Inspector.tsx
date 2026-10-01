@@ -4,8 +4,8 @@
  * jumps to its line.
  */
 
-import { toDecimalComma, traceStatement, type SheetResult, type TraceNode } from '@calccanvas/core';
-import { formatDiagnostic, formatValue, t, type Catalog } from '@calccanvas/i18n';
+import { toDecimalComma, traceStatement, type SheetResult, type TraceNode } from '@kalketa/core';
+import { formatDiagnostic, formatValue, t, type Catalog } from '@kalketa/i18n';
 
 interface Props {
   readonly result: SheetResult;

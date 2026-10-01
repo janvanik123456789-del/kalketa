@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { defaultRegistry, evaluateSheet } from '@calccanvas/core';
-import { catalogFor } from '@calccanvas/i18n';
+import { defaultRegistry, evaluateSheet } from '@kalketa/core';
+import { catalogFor } from '@kalketa/i18n';
 import { buildPrintDocument, toText } from '../src/index.js';
 
 const cs = catalogFor('cs');

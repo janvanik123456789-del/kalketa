@@ -1,6 +1,6 @@
 import { strToU8, unzipSync, zipSync } from 'fflate';
 import { describe, expect, it } from 'vitest';
-import { defaultRegistry } from '@calccanvas/core';
+import { defaultRegistry } from '@kalketa/core';
 import { blockAppendices, evaluateDocument, FORMAT_VERSION, newDocument, readSheetFile, writeSheetFile, type SheetDocument } from '../src/index.js';
 
 const NOSNIK = '# Prostý nosník\n@version 1.2\ninput L := 5 m\ninput q := 12 kN/m\nM_max := q·L²/8 | kN·m';

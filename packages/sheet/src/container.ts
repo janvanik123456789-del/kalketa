@@ -10,26 +10,30 @@
  *   images/...         pictures of table rows and of the printout
  *   (anything else)    kept unchanged, so newer files survive older programs
  *
- * Everything inside is an open format and readable without CalcCanvas.
+ * Everything inside is an open format and readable without Kalketa.
  * Entries are written in a fixed order with a fixed timestamp, so the same
  * content always gives the same bytes.
  */
 
-import { diagnostic, NO_SPAN, type Diagnostic } from '@calccanvas/core';
+import { diagnostic, NO_SPAN, type Diagnostic } from '@kalketa/core';
 import { strFromU8, strToU8, unzipSync, zipSync, type Zippable } from 'fflate';
 import { defaultLayers, withAiLayer, type Layer, type LayerKind } from './layers.js';
 
-export const FORMAT_ID = 'calccanvas-sheet';
+export const FORMAT_ID = 'kalketa-sheet';
+/** Files written before the program was renamed (it was CalcCanvas) say this; they are read the same way. */
+export const LEGACY_FORMAT_IDS: readonly string[] = ['calccanvas-sheet'];
 /**
  * 1: sheet + tables. 2: adds layers (layers.json, layers/<id>/). 3: adds blocks
  * (blocks/<Name>/). Older files still open; an older program refuses a newer
  * file rather than calculating it without its blocks.
  */
 export const FORMAT_VERSION = 3;
-export const FILE_EXTENSION = '.calc';
+export const FILE_EXTENSION = '.kalk';
+/** Extensions of calculation files: .kalk, and .calc from before the rename. */
+export const SHEET_FILE_EXTENSIONS: readonly string[] = ['.kalk', '.calc'];
 
 export interface Manifest {
-  readonly format: typeof FORMAT_ID;
+  readonly format: string;
   readonly formatVersion: number;
   readonly title: string;
   /** Language of the printout (BCP 47), independent of the program's language. */
@@ -109,7 +113,7 @@ const ZIP_MTIME = new Date('1980-01-01T00:00:00Z');
 export function newDocument(title: string, source = '', now = new Date()): SheetDocument {
   const stamp = now.toISOString();
   return {
-    manifest: { format: FORMAT_ID, formatVersion: FORMAT_VERSION, title, created: stamp, modified: stamp, generator: 'CalcCanvas' },
+    manifest: { format: FORMAT_ID, formatVersion: FORMAT_VERSION, title, created: stamp, modified: stamp, generator: 'Kalketa' },
     source,
     layout: DEFAULT_LAYOUT,
     tables: new Map(),
@@ -163,7 +167,7 @@ export async function readSheetEntries(raw: Readonly<Record<string, Uint8Array>>
   } catch {
     return invalid('json', MANIFEST);
   }
-  if (manifest.format !== FORMAT_ID) return invalid('format', String(manifest.format));
+  if (manifest.format !== FORMAT_ID && !LEGACY_FORMAT_IDS.includes(String(manifest.format))) return invalid('format', String(manifest.format));
   if (typeof manifest.formatVersion !== 'number' || manifest.formatVersion > FORMAT_VERSION) {
     diagnostics.push(diagnostic('E-FILE-VERSION', NO_SPAN, { found: String(manifest.formatVersion), supported: FORMAT_VERSION }));
     return { diagnostics };

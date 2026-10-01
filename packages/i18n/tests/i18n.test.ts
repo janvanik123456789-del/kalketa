@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { builtinFunctions, DIAGNOSTIC_SEVERITY, diagnostic, evaluateSheet, FUNCTION_MODULES, type DiagnosticCode } from '@calccanvas/core';
+import { builtinFunctions, DIAGNOSTIC_SEVERITY, diagnostic, evaluateSheet, FUNCTION_MODULES, type DiagnosticCode } from '@kalketa/core';
 import { CATALOGS, catalogFor, formatDiagnostic, formatNumber } from '../src/index.js';
 
 const span = { offset: 0, length: 1, line: 1, column: 1 };

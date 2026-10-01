@@ -4,9 +4,9 @@
  */
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { builtinFunctions, FUNCTION_MODULES, signature } from '@calccanvas/core';
-import { CATALOGS, t, type Catalog } from '@calccanvas/i18n';
-import type { SheetDocument } from '@calccanvas/sheet';
+import { builtinFunctions, FUNCTION_MODULES, signature } from '@kalketa/core';
+import { CATALOGS, t, type Catalog } from '@kalketa/i18n';
+import type { SheetDocument } from '@kalketa/sheet';
 import { plainLabel, type Command, type CommandCategory } from '../commands.js';
 import { commandIcon } from '../icons.js';
 import {
@@ -435,7 +435,7 @@ export function AboutDialog({ catalog, onClose }: { catalog: Catalog; onClose():
       <div className="about">
         <img src="./icon.svg" alt="" width="64" height="64" />
         <div>
-          <strong>CalcCanvas 0.1</strong>
+          <strong>Kalketa 0.1</strong>
           <p>{t(catalog, 'about.text')}</p>
           <p className="hint">{t(catalog, 'about.thirdPartyHint')}</p>
           {/* Loaded when asked for: the notices are long and not needed otherwise. */}

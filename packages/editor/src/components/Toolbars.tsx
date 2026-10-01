@@ -7,7 +7,7 @@
  */
 
 import { useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
-import { t, type Catalog, type UiKey } from '@calccanvas/i18n';
+import { t, type Catalog, type UiKey } from '@kalketa/i18n';
 import { plainLabel, type Command } from '../commands.js';
 import { commandIcon } from '../icons.js';
 import {

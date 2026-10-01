@@ -9,19 +9,19 @@
       "node"
     ],
     "paths": {
-      "@calccanvas/core": [
+      "@kalketa/core": [
         "./packages/core/src/index.ts"
       ],
-      "@calccanvas/i18n": [
+      "@kalketa/i18n": [
         "./packages/i18n/src/index.ts"
       ],
-      "@calccanvas/sheet": [
+      "@kalketa/sheet": [
         "./packages/sheet/src/index.ts"
       ],
-      "@calccanvas/render": [
+      "@kalketa/render": [
         "./packages/render/src/index.ts"
       ],
-      "@calccanvas/canvas": [
+      "@kalketa/canvas": [
         "./packages/canvas/src/index.ts"
       ]
     }

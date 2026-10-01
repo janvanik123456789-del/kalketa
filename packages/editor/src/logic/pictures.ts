@@ -4,7 +4,7 @@
  * ![caption](path){width=60%}.
  */
 
-import { formatPicture } from '@calccanvas/core';
+import { formatPicture } from '@kalketa/core';
 
 /** A picture on its way into the sheet. */
 export interface IncomingPicture {

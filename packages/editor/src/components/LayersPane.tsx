@@ -3,8 +3,8 @@
  * under the workspace that switches between the visible ones.
  */
 
-import { t, type Catalog } from '@calccanvas/i18n';
-import { isRemovable, moveLayer, updateLayer, type Layer, type LayerKind } from '@calccanvas/sheet';
+import { t, type Catalog } from '@kalketa/i18n';
+import { isRemovable, moveLayer, updateLayer, type Layer, type LayerKind } from '@kalketa/sheet';
 import { useState } from 'react';
 import type { Command } from '../commands.js';
 import { ContextMenu, type MenuItem } from './MenuBar.js';

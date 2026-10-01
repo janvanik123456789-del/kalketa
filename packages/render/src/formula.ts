@@ -6,8 +6,8 @@
  * precedence. Division is set as a fraction, which needs no parentheses.
  */
 
-import type { BinaryOperator, Expr, UnitExpr } from '@calccanvas/core';
-import { formatUnit } from '@calccanvas/core';
+import type { BinaryOperator, Expr, UnitExpr } from '@kalketa/core';
+import { formatUnit } from '@kalketa/core';
 import { frac, mi, mn, mo, mtext, mu, nameNode, paren, row, sqrt, sub, sup, type MathNode, subsup, underover, table } from './math.js';
 
 export interface FormulaOptions {

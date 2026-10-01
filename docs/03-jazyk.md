@@ -1,4 +1,4 @@
-# CalcCanvas — Jazyk výpočtu
+# Kalketa — Jazyk výpočtu
 
 **Verze:** 0.1 (návrh pro fázi F1 a F2)
 **Datum:** 2026-09-29
@@ -448,7 +448,7 @@ check "Rozpočet": N_celk ≤ 2_500_000 CZK   source "zadání investora"
 - Využití se počítá jen pro jedno porovnání kladných hodnot. Podmínka typu `a and b` nebo s absolutními teplotami jen vyhoví / nevyhoví.
 - Popisek (`"Ohyb":`) i `source` jsou volitelné. `check` a `source` jsou vyhrazená slova.
 - Podmínka, kterou nešlo vyhodnotit (chyba ve vstupech), se v souhrnu vede jako **nevyhodnocená a nevyhovující**, aby nemohla zapadnout.
-- **Dohledání původu** (`calccanvas trace list.cc σ`): strom vzorců a vstupů až k řádkům tabulek a jejich zdrojům. Řádky, které `find_min` jen zkoušel, se za zdroj nepovažují, jen vybraný řádek.
+- **Dohledání původu** (`kalketa trace list.cc σ`): strom vzorců a vstupů až k řádkům tabulek a jejich zdrojům. Řádky, které `find_min` jen zkoušel, se za zdroj nepovažují, jen vybraný řádek.
 - `source` je volitelný text nebo odkaz do tabulky zdrojů listu.
 - Program z podmínek sestaví souhrnnou tabulku (viz filozofie, kap. 6.1).
 - Nesplněná podmínka **není chyba výpočtu**. Výpočet proběhne a v tisku je výrazně označená.

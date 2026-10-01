@@ -1,6 +1,6 @@
 {
   "sheet": "fve.cc",
-  "verifiedBy": "Ruční výpočet čistou aritmetikou mimo CalcCanvas (Python): výběr střídače a kabelu filtrem nad tabulkami, k = 0,91·0,85 (bod mřížky), ΔU = 2·R·L·I, E = ΣH·P_dc·PR, náklady s kurzem z pátku 2. 10. 2026, peněžní toky a NPV/IRR/doba návratnosti jako v R5.",
+  "verifiedBy": "Ruční výpočet čistou aritmetikou mimo Kalketa (Python): výběr střídače a kabelu filtrem nad tabulkami, k = 0,91·0,85 (bod mřížky), ΔU = 2·R·L·I, E = ΣH·P_dc·PR, náklady s kurzem z pátku 2. 10. 2026, peněžní toky a NPV/IRR/doba návratnosti jako v R5.",
   "relativeTolerance": 1e-09,
   "values": {
     "P_dc": {

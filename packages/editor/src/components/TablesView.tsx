@@ -4,9 +4,9 @@
  */
 
 import { useState } from 'react';
-import type { ColumnSchema, ColumnType, Diagnostic } from '@calccanvas/core';
-import { formatDiagnostic, t, type Catalog } from '@calccanvas/i18n';
-import { toIdentifier, type SheetDocument, type StoredTable } from '@calccanvas/sheet';
+import type { ColumnSchema, ColumnType, Diagnostic } from '@kalketa/core';
+import { formatDiagnostic, t, type Catalog } from '@kalketa/i18n';
+import { toIdentifier, type SheetDocument, type StoredTable } from '@kalketa/sheet';
 import { chooseFile } from '../document.js';
 import { ask } from './Ask.js';
 import { commandIcon } from '../icons.js';

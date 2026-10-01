@@ -8,9 +8,9 @@
  */
 
 import { useRef } from 'react';
-import { t, type Catalog } from '@calccanvas/i18n';
-import { NOTES_CSS, notesHtml } from '@calccanvas/render';
-import type { Layer } from '@calccanvas/sheet';
+import { t, type Catalog } from '@kalketa/i18n';
+import { NOTES_CSS, notesHtml } from '@kalketa/render';
+import type { Layer } from '@kalketa/sheet';
 import { chooseFile } from '../document.js';
 import { ask } from './Ask.js';
 

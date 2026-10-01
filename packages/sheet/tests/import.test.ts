@@ -1,6 +1,6 @@
 import ExcelJS from 'exceljs';
 import { describe, expect, it } from 'vitest';
-import { defaultRegistry, evaluateSheet } from '@calccanvas/core';
+import { defaultRegistry, evaluateSheet } from '@kalketa/core';
 import { detectDelimiter, importCsv, importTable, inferTable, loadTable, parseCsv, readWorkbook, splitHeader, toIdentifier, writeCsv } from '../src/index.js';
 
 const registry = defaultRegistry;

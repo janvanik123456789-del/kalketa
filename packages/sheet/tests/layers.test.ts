@@ -1,6 +1,6 @@
 import { strToU8, unzipSync, zipSync } from 'fflate';
 import { describe, expect, it } from 'vitest';
-import { defaultRegistry } from '@calccanvas/core';
+import { defaultRegistry } from '@kalketa/core';
 import {
   addLayer,
   defaultLayers,
@@ -131,7 +131,7 @@ describe('.calc format version 2', () => {
 
   it('opens version 1 files with the three default layers', async () => {
     const v1 = zipSync({
-      'manifest.json': strToU8(JSON.stringify({ format: 'calccanvas-sheet', formatVersion: 1, title: 'Old', created: '', modified: '', generator: 'x' })),
+      'manifest.json': strToU8(JSON.stringify({ format: 'kalketa-sheet', formatVersion: 1, title: 'Old', created: '', modified: '', generator: 'x' })),
       'sheet.cc': strToU8('a := 1'),
     });
     const read = await readSheetFile(v1);

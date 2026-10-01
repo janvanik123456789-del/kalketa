@@ -1,6 +1,6 @@
 {
   "sheet": "fotovoltaika.cc",
-  "verifiedBy": "Ruční výpočet čistou aritmetikou mimo CalcCanvas (Python): kurz z posledního pracovního dne před sobotou 3. 10. 2026; úspora v roce t = 9800·0,995^(t−1)·(0,7·5,8 + 0,3·1,2)·1,03^(t−1) Kč; NPV = Σ CF_t/1,04^t od t = 0; IRR bisekcí; doba návratnosti lineárně v roce, kdy kumulovaný tok přejde přes nulu; datum návratu = datum nákupu + doba·365,25 dne.",
+  "verifiedBy": "Ruční výpočet čistou aritmetikou mimo Kalketa (Python): kurz z posledního pracovního dne před sobotou 3. 10. 2026; úspora v roce t = 9800·0,995^(t−1)·(0,7·5,8 + 0,3·1,2)·1,03^(t−1) Kč; NPV = Σ CF_t/1,04^t od t = 0; IRR bisekcí; doba návratnosti lineárně v roce, kdy kumulovaný tok přejde přes nulu; datum návratu = datum nákupu + doba·365,25 dne.",
   "relativeTolerance": 1e-09,
   "values": {
     "kurz": {

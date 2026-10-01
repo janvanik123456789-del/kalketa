@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defaultRegistry, parse } from '@calccanvas/core';
+import { defaultRegistry, parse } from '@kalketa/core';
 import { deleteLines, insertLineAfter, moveLines, replaceLines, segments } from '../src/logic/segments.js';
 import { pageGeometry, paginate } from '../src/logic/pages.js';
 import { createHistory, MERGE_WINDOW_MS, record, redo, undo } from '../src/logic/history.js';

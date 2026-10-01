@@ -1,5 +1,5 @@
 {
-  "name": "@calccanvas/render",
+  "name": "@kalketa/render",
   "version": "0.0.0",
   "private": true,
   "description": "Print layer: evaluated sheet to a classical technical calculation (HTML + MathML).",
@@ -13,7 +13,7 @@
     }
   },
   "dependencies": {
-    "@calccanvas/core": "*",
-    "@calccanvas/i18n": "*"
+    "@kalketa/core": "*",
+    "@kalketa/i18n": "*"
   }
 }

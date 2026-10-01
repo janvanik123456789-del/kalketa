@@ -1,5 +1,5 @@
 /**
- * @calccanvas/core — the calculation engine.
+ * @kalketa/core — the calculation engine.
  *
  * Rules (docs/02-architektura.md, ch. 2):
  *  - no dependencies on other packages of the project,

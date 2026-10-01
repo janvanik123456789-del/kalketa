@@ -1,4 +1,4 @@
-# CalcCanvas — Architektura a plán realizace
+# Kalketa — Architektura a plán realizace
 
 **Verze:** 1.0 (návrh)
 **Datum:** 2026-09-29
@@ -29,10 +29,10 @@
 
 ## 2. Struktura repozitáře
 
-Nový čistý repozitář `calccanvas/`. Stávající tři složky zůstanou beze změny jako archiv, kód se z nich přebírá jen s procházejícími testy (kap. 8).
+Nový čistý repozitář `kalketa/`. Stávající tři složky zůstanou beze změny jako archiv, kód se z nich přebírá jen s procházejícími testy (kap. 8).
 
 ```text
-calccanvas/
+kalketa/
 ├── packages/
 │   ├── core/            ← výpočetní jádro, ŽÁDNÉ závislosti na UI ani souborech
 │   │   ├── lang/        lexer, parser, AST
@@ -56,7 +56,7 @@ calccanvas/
 │   │   ├── src/         formát scény s verzí, SVG, úpravy (bez DOM a Reactu)
 │   │   └── src/editor/  editor plátna v React (v listu i v okně), vlastní texty a styly
 │   ├── editor/          ← React aplikace
-│   ├── cli/             ← `calccanvas run list.calc`, `calccanvas test`, export PDF
+│   ├── cli/             ← `kalketa run list.kalk`, `kalketa test`, export PDF
 │   ├── i18n/            ← katalogy zpráv (cs, en, …), formát čísel podle jazyka
 │   └── ai/              ← (později) rozhraní pro LLM, volitelné
 │
@@ -77,7 +77,7 @@ editor ──► canvas, canvas/editor   (jen tato dvě rozhraní)
 **Modul plátna (`canvas`)** je samostatný: nepoužívá žádný jiný balíček projektu a jádro, list, tisk ani překlady o něm nevědí. Hlavní program ho zná jen přes úzké rozhraní:
 - v listu je plátno obyčejný řádek obrázku `![…](canvases/<jméno>.json)`, v souboru je scéna jako JSON,
 - `isCanvasPath`, `readScene`, `writeScene`, `emptyScene`, `sceneDataUri` (scéna → SVG pro editor i tisk z příkazové řádky),
-- `<CanvasEditor>` z `@calccanvas/canvas/editor`; vše, co od hostitele potřebuje (jazyk, dotaz na text, výběr souboru, prostor pro lištu, obrázky ze souboru), dostává přes vstupy.
+- `<CanvasEditor>` z `@kalketa/canvas/editor`; vše, co od hostitele potřebuje (jazyk, dotaz na text, výběr souboru, prostor pro lištu, obrázky ze souboru), dostává přes vstupy.
 
 Formát scény má číslo verze; `migrate` převádí starší scény na aktuální, prvky novější verze se jen nevykreslí. Pravidla hlídá `tests/architecture.test.ts`. Stejným vzorem mohou vzniknout další moduly (grafy, výkresy DXF).
 
@@ -124,10 +124,10 @@ Zásady jazyka:
 
 ## 4. Formát souboru listu
 
-Přípona `.calc`, obsahem je ZIP kontejner:
+Přípona `.kalk` (soubory z doby před přejmenováním mají `.calc` a otevírají se stejně), obsahem je ZIP kontejner:
 
 ```text
-nosnik-N1.calc
+nosnik-N1.kalk
 ├── manifest.json          verze formátu, název, autor, revize, otisk obsahu
 ├── sheet.cc               výpočet v textovém jazyce (kap. 3)
 ├── layout.json            tisková vrstva: stránky, pořadí, formát čísel
@@ -147,12 +147,12 @@ nosnik-N1.calc
 
 **Upřesněno při implementaci F4:**
 
-- `manifest.json`: `format: "calccanvas-sheet"`, `formatVersion`, název, jazyk tisku, autor, datum vytvoření a změny, program, který soubor zapsal, a **otisk obsahu** (SHA-256 všech ostatních položek). Když se obsah změní mimo program, při otevření se zobrazí varování (`W-FILE-HASH`).
+- `manifest.json`: `format: "kalketa-sheet"`, `formatVersion`, název, jazyk tisku, autor, datum vytvoření a změny, program, který soubor zapsal, a **otisk obsahu** (SHA-256 všech ostatních položek). Když se obsah změní mimo program, při otevření se zobrazí varování (`W-FILE-HASH`).
 - Soubor z **novější verze formátu** se odmítne s jasnou zprávou (`E-FILE-VERSION`), nikdy se nečte napůl.
 - **Neznámé položky se zachovají** (např. data z budoucí verze nebo vrstva AI), takže je starší program při uložení nesmaže.
 - Stejný obsah dává **stejné bajty** (pevné pořadí a časová značka položek). Hodí se pro porovnávání a git.
 - Cesty uvnitř archivu se kontrolují (žádné `..`, absolutní cesty ani zpětná lomítka), aby rozbalení nemohlo zapisovat mimo cílovou složku.
-- Příkazová řádka: `pack` (složka → `.calc`), `unpack` (`.calc` → složka), `run` a `trace` čtou obojí.
+- Příkazová řádka: `pack` (složka → `.kalk`), `unpack` (`.kalk` → složka), `run` a `trace` čtou obojí.
 
 ---
 

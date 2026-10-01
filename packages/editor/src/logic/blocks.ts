@@ -2,7 +2,7 @@
  * The line that uses a block, written from the block's "input" lines.
  */
 
-import { defaultRegistry, parse } from '@calccanvas/core';
+import { defaultRegistry, parse } from '@kalketa/core';
 
 /** Inputs of a block as "name: value" in the block's own notation. */
 export function blockCall(name: string, source: string): string {

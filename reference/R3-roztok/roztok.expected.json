@@ -1,6 +1,6 @@
 {
   "sheet": "roztok.cc",
-  "verifiedBy": "Ruční výpočet čistou aritmetikou mimo CalcCanvas (Python): m = c·V·M; w = m/(m + ρ·V); V_2 = c·V/c_2; x z kvadratické rovnice x² + K_a·x − K_a·c_0 = 0 (kladný kořen, list ho hledá řešičem); pH = −log10(x); α = x/c_0.",
+  "verifiedBy": "Ruční výpočet čistou aritmetikou mimo Kalketa (Python): m = c·V·M; w = m/(m + ρ·V); V_2 = c·V/c_2; x z kvadratické rovnice x² + K_a·x − K_a·c_0 = 0 (kladný kořen, list ho hledá řešičem); pH = −log10(x); α = x/c_0.",
   "relativeTolerance": 1e-09,
   "values": {
     "m": {

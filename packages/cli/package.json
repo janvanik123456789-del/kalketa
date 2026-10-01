@@ -1,17 +1,17 @@
 {
-  "name": "@calccanvas/cli",
+  "name": "@kalketa/cli",
   "version": "0.0.0",
   "private": true,
   "description": "Command line interface: evaluate a sheet, import tables.",
   "type": "module",
   "bin": {
-    "calccanvas": "dist/main.js"
+    "kalketa": "dist/main.js"
   },
   "dependencies": {
-    "@calccanvas/core": "*",
-    "@calccanvas/i18n": "*",
-    "@calccanvas/sheet": "*",
-    "@calccanvas/render": "*",
-    "@calccanvas/canvas": "*"
+    "@kalketa/core": "*",
+    "@kalketa/i18n": "*",
+    "@kalketa/sheet": "*",
+    "@kalketa/render": "*",
+    "@kalketa/canvas": "*"
   }
 }

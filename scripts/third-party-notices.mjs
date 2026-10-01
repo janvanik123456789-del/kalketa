@@ -26,7 +26,7 @@ const found = new Map();
 const visit = (deps) => {
   for (const [name, info] of Object.entries(deps ?? {})) {
     if (!info.version) continue;
-    if (!name.startsWith('@calccanvas/')) found.set(`${name}@${info.version}`, { name, version: info.version, path: info.path });
+    if (!name.startsWith('@kalketa/')) found.set(`${name}@${info.version}`, { name, version: info.version, path: info.path });
     visit(info.dependencies);
   }
 };

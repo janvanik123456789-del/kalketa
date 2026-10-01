@@ -7,11 +7,11 @@ export default defineConfig({
   resolve: {
     // Tests run against the sources, no build needed.
     alias: {
-      '@calccanvas/core': src('core'),
-      '@calccanvas/i18n': src('i18n'),
-      '@calccanvas/sheet': src('sheet'),
-      '@calccanvas/render': src('render'),
-      '@calccanvas/canvas': src('canvas'),
+      '@kalketa/core': src('core'),
+      '@kalketa/i18n': src('i18n'),
+      '@kalketa/sheet': src('sheet'),
+      '@kalketa/render': src('render'),
+      '@kalketa/canvas': src('canvas'),
     },
   },
   test: {

@@ -2,9 +2,9 @@
  * Creating and importing tables; used by the table editor and by the Insert menu.
  */
 
-import { defaultRegistry } from '@calccanvas/core';
-import { formatDiagnostic, t, type Catalog } from '@calccanvas/i18n';
-import { importTable, parseCsv, readWorkbook, toIdentifier, type SheetDocument, type StoredTable } from '@calccanvas/sheet';
+import { defaultRegistry } from '@kalketa/core';
+import { formatDiagnostic, t, type Catalog } from '@kalketa/i18n';
+import { importTable, parseCsv, readWorkbook, toIdentifier, type SheetDocument, type StoredTable } from '@kalketa/sheet';
 import { chooseFile } from './document.js';
 import { ask } from './components/Ask.js';
 import { fromEditable, newTable } from './logic/tableEdit.js';

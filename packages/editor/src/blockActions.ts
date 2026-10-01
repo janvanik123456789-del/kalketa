@@ -4,9 +4,9 @@
  * everything it uses; its "input" lines become the arguments of the call.
  */
 
-import { blockVersion } from '@calccanvas/core';
-import { t, type Catalog } from '@calccanvas/i18n';
-import { readSheetFile, toIdentifier, type SheetDocument } from '@calccanvas/sheet';
+import { blockVersion } from '@kalketa/core';
+import { t, type Catalog } from '@kalketa/i18n';
+import { readSheetFile, toIdentifier, type SheetDocument } from '@kalketa/sheet';
 import { ask, askConfirm } from './components/Ask.js';
 import { chooseFile } from './document.js';
 import { blockCall } from './logic/blocks.js';
@@ -18,12 +18,12 @@ export interface BlockChange {
   readonly call: string;
 }
 
-/** Lets the user pick a .calc or .cc file and adds its calculation as a block. */
+/** Lets the user pick a .kalk (or older .calc) or .cc file and adds its calculation as a block. */
 export async function importBlockFile(doc: SheetDocument, catalog: Catalog): Promise<BlockChange | { readonly failed: string } | undefined> {
-  const file = await chooseFile('.calc,.cc');
+  const file = await chooseFile('.kalk,.calc,.cc');
   if (!file) return undefined;
   let source: string;
-  if (file.name.toLowerCase().endsWith('.calc')) {
+  if (/\.(kalk|calc)$/i.test(file.name)) {
     const read = await readSheetFile(new Uint8Array(await file.arrayBuffer()));
     if (!read.document) return { failed: file.name };
     source = read.document.source;

@@ -5,7 +5,7 @@
  * source text stays the single source of truth.
  */
 
-import type { Statement } from '@calccanvas/core';
+import type { Statement } from '@kalketa/core';
 
 export interface Segment {
   /** First and last source line, 1-based, inclusive. */

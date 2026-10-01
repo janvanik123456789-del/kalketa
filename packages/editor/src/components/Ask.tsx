@@ -5,7 +5,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import type { Catalog } from '@calccanvas/i18n';
+import type { Catalog } from '@kalketa/i18n';
 import { Dialog } from './Dialogs.js';
 
 type Request =

@@ -1,4 +1,4 @@
-# CalcCanvas
+# Kalketa
 
 Obecný technický výpočtář jako Mathcad, který umí dobře pracovat s daty.
 Tabulky, obrázky a zdroje jsou součástí výpočtu (listu), ne programu.
@@ -33,8 +33,8 @@ npm run build:editor
 node packages/cli/dist/main.js run reference/R1-nosnik/nosnik.cc --lang cs
 node packages/cli/dist/main.js trace reference/R1-nosnik/nosnik.cc σ --lang cs
 node packages/cli/dist/main.js print reference/R1-nosnik/nosnik.cc --lang cs --out nosnik.html --pdf nosnik.pdf
-node packages/cli/dist/main.js pack reference/R1-nosnik/nosnik.cc --out nosnik.calc
-node packages/cli/dist/main.js unpack nosnik.calc --into nosnik
+node packages/cli/dist/main.js pack reference/R1-nosnik/nosnik.cc --out nosnik.kalk
+node packages/cli/dist/main.js unpack nosnik.kalk --into nosnik
 node packages/cli/dist/main.js import-table katalog.xlsx --name Profily --into nosnik
 ```
 
@@ -43,7 +43,7 @@ node packages/cli/dist/main.js import-table katalog.xlsx --name Profily --into n
 ```text
 packages/core/   výpočetní jádro (bez UI, souborů a znalosti oboru)
 packages/i18n/   překlady hlášení a popisků, formát čísel
-packages/sheet/  tabulky (CSV, Excel), soubor listu .calc
+packages/sheet/  tabulky (CSV, Excel), soubor listu .kalk
 packages/render/ tisková vrstva: klasický technický výpočet (HTML + MathML)
 packages/cli/    příkazová řádka
 packages/editor/ editor (React): list s živým přepočtem, tabulky, původ hodnot, tisk

@@ -1,5 +1,5 @@
 /**
- * CalcCanvas desktop application (Electron main process).
+ * Kalketa desktop application (Electron main process).
  *
  * Each window shows the editor (packages/editor); Window > New window opens
  * another one, e.g. to compare two calculations on two monitors. The editor
@@ -10,7 +10,7 @@
 
 import { app, BrowserWindow, clipboard, ClipboardItem, dialog, ipcMain, Menu, nativeImage, shell, type IpcMainInvokeEvent } from 'electron';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync } from 'node:fs';
+import { cpSync, existsSync, mkdtempSync } from 'node:fs';
 import { readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, dirname, extname, join, resolve } from 'node:path';
@@ -18,7 +18,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { stat } from 'node:fs/promises';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const SHEET_EXTENSIONS = ['.calc', '.cc'];
+// .calc: calculation files from before the program was renamed (it was CalcCanvas).
+const SHEET_EXTENSIONS = ['.kalk', '.calc', '.cc'];
 const PICTURE_TYPES: Readonly<Record<string, string>> = {
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
@@ -89,16 +90,29 @@ const editors = new Map<number, { readonly window: BrowserWindow; readonly guard
 let lastFocused: BrowserWindow | undefined;
 /** The first window, which the smoke test drives. */
 let smokeWindow: BrowserWindow | undefined;
-const smokeTest = process.env['CALCCANVAS_SMOKE_TEST'];
+// The program was called CalcCanvas: its settings (tool bars, language, recent files) move over once.
+{
+  const current = app.getPath('userData');
+  const previous = current.replace(/Kalketa/g, 'CalcCanvas').replace(/kalketa/g, 'calccanvas');
+  if (previous !== current && existsSync(previous) && !existsSync(current)) {
+    try {
+      cpSync(previous, current, { recursive: true });
+    } catch {
+      // Not moved: the program starts with default settings.
+    }
+  }
+}
+
+const smokeTest = process.env['KALKETA_SMOKE_TEST'];
 /** File given on the command line or by double click, before the window was ready. */
 let pendingOpen: string | undefined = sheetArgument(process.argv);
 
 // The smoke test runs with a fresh profile, so it neither sees nor changes the
 // user's toolbars, language or recent files.
-if (smokeTest) app.setPath('userData', mkdtempSync(join(tmpdir(), 'calccanvas-smoke-')));
+if (smokeTest) app.setPath('userData', mkdtempSync(join(tmpdir(), 'kalketa-smoke-')));
 
 function editorEntry(): { url?: string; file?: string } {
-  const devUrl = process.env['CALCCANVAS_DEV_URL'];
+  const devUrl = process.env['KALKETA_DEV_URL'];
   if (devUrl) return { url: devUrl };
   return { file: app.isPackaged ? join(process.resourcesPath, 'editor', 'index.html') : join(HERE, '../../editor/dist/index.html') };
 }
@@ -114,7 +128,7 @@ function createWindow(options: { blank?: boolean } = {}): BrowserWindow {
     ...position,
     minWidth: 900,
     minHeight: 600,
-    title: 'CalcCanvas',
+    title: 'Kalketa',
     backgroundColor: '#eef0f3',
     show: false,
     webPreferences: {
@@ -194,7 +208,7 @@ function ownerOf(path: string): BrowserWindow | undefined {
 function reveal(owner: BrowserWindow, path: string): void {
   if (owner.isMinimized()) owner.restore();
   owner.focus();
-  owner.webContents.send('calccanvas:show-file', path);
+  owner.webContents.send('kalketa:show-file', path);
 }
 
 /**
@@ -223,9 +237,9 @@ async function sendOpen(path: string): Promise<void> {
     const window = targetWindow();
     if (!window) return;
     const file = await openFor(window, path);
-    if (file) window.webContents.send('calccanvas:open-file', file);
+    if (file) window.webContents.send('kalketa:open-file', file);
   } catch (err) {
-    dialog.showErrorBox('CalcCanvas', `${path}\n${(err as Error).message}`);
+    dialog.showErrorBox('Kalketa', `${path}\n${(err as Error).message}`);
   }
 }
 
@@ -245,18 +259,18 @@ function fromEditor(event: IpcMainInvokeEvent): BrowserWindow {
 }
 
 function registerBridge(): void {
-  ipcMain.handle('calccanvas:open-dialog', async (event, labels: { sheets: string }) => {
+  ipcMain.handle('kalketa:open-dialog', async (event, labels: { sheets: string }) => {
     const owner = fromEditor(event);
     const result = await dialog.showOpenDialog(owner, {
       properties: ['openFile'],
-      filters: [{ name: String(labels?.sheets ?? 'CalcCanvas'), extensions: ['calc', 'cc'] }],
+      filters: [{ name: String(labels?.sheets ?? 'Kalketa'), extensions: ['kalk', 'calc', 'cc'] }],
     });
     const path = result.filePaths[0];
     return result.canceled || !path ? undefined : openFor(owner, path);
   });
 
   // Recent files: only sheet files can be opened this way.
-  ipcMain.handle('calccanvas:open-path', async (event, path: unknown) => {
+  ipcMain.handle('kalketa:open-path', async (event, path: unknown) => {
     const owner = fromEditor(event);
     if (typeof path !== 'string' || !SHEET_EXTENSIONS.includes(extname(path).toLowerCase())) return undefined;
     try {
@@ -266,13 +280,14 @@ function registerBridge(): void {
     }
   });
 
-  ipcMain.handle('calccanvas:save', async (event, request: { path?: string; current?: string; suggestedName: string; bytes: Uint8Array; openElsewhere?: string }) => {
+  ipcMain.handle('kalketa:save', async (event, request: { path?: string; current?: string; suggestedName: string; bytes: Uint8Array; openElsewhere?: string }) => {
     const owner = fromEditor(event);
-    let path = typeof request.path === 'string' && extname(request.path).toLowerCase() === '.calc' ? request.path : undefined;
+    // A file from before the rename (.calc) is saved where it is; new files get .kalk.
+    let path = typeof request.path === 'string' && ['.kalk', '.calc'].includes(extname(request.path).toLowerCase()) ? request.path : undefined;
     if (!path) {
       const result = await dialog.showSaveDialog(owner, {
-        defaultPath: `${request.suggestedName}.calc`,
-        filters: [{ name: 'CalcCanvas', extensions: ['calc'] }],
+        defaultPath: `${request.suggestedName}.kalk`,
+        filters: [{ name: 'Kalketa', extensions: ['kalk'] }],
       });
       if (result.canceled || !result.filePath) return undefined;
       path = result.filePath;
@@ -289,7 +304,7 @@ function registerBridge(): void {
     return path;
   });
 
-  ipcMain.handle('calccanvas:print', async (event, html: string) => {
+  ipcMain.handle('kalketa:print', async (event, html: string) => {
     fromEditor(event);
     const printer = await printWindow(html);
     return new Promise<boolean>((resolve) => {
@@ -300,7 +315,7 @@ function registerBridge(): void {
     });
   });
 
-  ipcMain.handle('calccanvas:export-pdf', async (event, request: { html: string; suggestedName: string }) => {
+  ipcMain.handle('kalketa:export-pdf', async (event, request: { html: string; suggestedName: string }) => {
     const owner = fromEditor(event);
     const result = await dialog.showSaveDialog(owner, {
       defaultPath: `${request.suggestedName}.pdf`,
@@ -319,7 +334,7 @@ function registerBridge(): void {
     return result.filePath;
   });
 
-  ipcMain.on('calccanvas:close-guard', (event, guard: CloseGuard) => {
+  ipcMain.on('kalketa:close-guard', (event, guard: CloseGuard) => {
     const editor = editors.get(event.sender.id);
     if (!editor) return;
     editor.guard.dirty = Boolean(guard?.dirty);
@@ -329,13 +344,13 @@ function registerBridge(): void {
   });
 
   // Each window tells which files it has open (after opening, saving as, closing).
-  ipcMain.on('calccanvas:open-files', (event, paths: unknown) => {
+  ipcMain.on('kalketa:open-files', (event, paths: unknown) => {
     const editor = editors.get(event.sender.id);
     if (!editor || !Array.isArray(paths)) return;
     editor.files = new Set(paths.filter((p): p is string => typeof p === 'string').map(fileKey));
   });
 
-  ipcMain.handle('calccanvas:clipboard-pictures', async (event) => {
+  ipcMain.handle('kalketa:clipboard-pictures', async (event) => {
     fromEditor(event);
     const pictures: { name: string; type: string; bytes: Uint8Array }[] = [];
     for (const path of (await clipboardFiles()).slice(0, 20)) {
@@ -353,14 +368,14 @@ function registerBridge(): void {
     return image ? [{ name: '', type: 'image/png', bytes: image }] : [];
   });
 
-  ipcMain.handle('calccanvas:new-window', (event) => {
+  ipcMain.handle('kalketa:new-window', (event) => {
     fromEditor(event);
     createWindow({ blank: true });
   });
 }
 
 /**
- * Automated check without showing a window (CALCCANVAS_SMOKE_TEST=<pdf path>):
+ * Automated check without showing a window (KALKETA_SMOKE_TEST=<pdf path>):
  * the editor loaded, the bridge is present, the example sheet evaluated, and a
  * PDF can be produced. Prints a JSON line and exits with 0 or 1.
  */
@@ -369,7 +384,7 @@ async function runSmokeTest(pdfPath: string): Promise<void> {
   try {
     await new Promise((resolve) => setTimeout(resolve, 500));
     const state = (await smokeWindow!.webContents.executeJavaScript(`({
-      bridge: typeof window.calccanvasDesktop === 'object',
+      bridge: typeof window.kalketaDesktop === 'object',
       rows: document.querySelectorAll('.row').length,
       summary: document.querySelectorAll('.summary-box tbody tr').length,
       math: document.querySelectorAll('math').length,
@@ -385,7 +400,7 @@ async function runSmokeTest(pdfPath: string): Promise<void> {
     })`)) as { bridge: boolean; rows: number; summary: number; math: number; errors: string; menus: number; toolbars: number; language: string; sideBySide: boolean };
     const reshapedColumns = await reshapeWithRealMouse();
     const layers = await layersWithRealInput(pdfPath.replace(/\.pdf$/i, '') + '-layers.png');
-    const printer = await printWindow('<!doctype html><meta charset="utf-8"><h1>CalcCanvas</h1><math><mfrac><mi>a</mi><mn>2</mn></mfrac></math>');
+    const printer = await printWindow('<!doctype html><meta charset="utf-8"><h1>Kalketa</h1><math><mfrac><mi>a</mi><mn>2</mn></mfrac></math>');
     const pdf = await printer.webContents.printToPDF({ preferCSSPageSize: true });
     printer.destroy();
     await writeFile(pdfPath, pdf);
@@ -604,12 +619,12 @@ async function layersWithRealInput(picture: string) {
   await pause(500);
   const newWindow = other
     ? ((await other.webContents.executeJavaScript(
-        `document.querySelectorAll('.doc-tab').length === 1 && !document.title.includes('Posouzení') && typeof window.calccanvasDesktop === 'object'`,
+        `document.querySelectorAll('.doc-tab').length === 1 && !document.title.includes('Posouzení') && typeof window.kalketaDesktop === 'object'`,
       )) as boolean)
     : false;
 
   // A file is open in one window only: the second window has it, the first one asks for it twice.
-  const smokeFile = process.env['CALCCANVAS_SMOKE_FILE'];
+  const smokeFile = process.env['KALKETA_SMOKE_FILE'];
   let oneCopy: boolean | undefined;
   if (smokeFile && other) {
     const selector = `.doc-tab[title=${JSON.stringify(smokeFile)}]`;
@@ -619,7 +634,7 @@ async function layersWithRealInput(picture: string) {
     await pause(800);
     lastFocused = smokeWindow;
     await sendOpen(smokeFile); // as by a double click in Explorer
-    const viaRecent = await smokeWindow!.webContents.executeJavaScript(`window.calccanvasDesktop.openPath(${JSON.stringify(smokeFile)})`);
+    const viaRecent = await smokeWindow!.webContents.executeJavaScript(`window.kalketaDesktop.openPath(${JSON.stringify(smokeFile)})`);
     await pause(500);
     // The window and the tab are called by the file name.
     const named = other.getTitle().startsWith(basename(smokeFile)) &&
@@ -756,7 +771,7 @@ async function layersWithRealInput(picture: string) {
     `[...document.querySelectorAll('.layer-view.active .row[data-line="3"] figcaption')].map((f) => f.textContent.replace(/\\s+/g, ' ').trim()).join('|')`,
   )) as string;
   // A picture file copied in a file manager (Explorer and Linux file managers put its file:// URI on the clipboard).
-  const copiedFile = join(mkdtempSync(join(tmpdir(), 'calccanvas-')), 'Detail uložení.png');
+  const copiedFile = join(mkdtempSync(join(tmpdir(), 'kalketa-')), 'Detail uložení.png');
   await writeFile(copiedFile, png);
   await clipboard.write([new ClipboardItem({ 'text/uri-list': pathToFileURL(copiedFile).href })]);
   await clickOn('.layer-view.active .row[data-line="1"]');
@@ -983,7 +998,7 @@ async function layersWithRealInput(picture: string) {
   await pause(300);
 
   // A sheet with a block: the block is listed, its use shows the block and computes.
-  const blockFile = process.env['CALCCANVAS_SMOKE_BLOCKS'];
+  const blockFile = process.env['KALKETA_SMOKE_BLOCKS'];
   let blocksOk: boolean | undefined;
   if (blockFile) {
     lastFocused = smokeWindow;
@@ -1022,7 +1037,7 @@ async function printWindow(html: string): Promise<BrowserWindow> {
   return printer;
 }
 
-// One running instance: double-clicking another .calc file opens it there.
+// One running instance: double-clicking another .kalk file opens it there.
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {

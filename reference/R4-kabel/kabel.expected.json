@@ -1,6 +1,6 @@
 {
   "sheet": "kabel.cc",
-  "verifiedBy": "Ruční výpočet čistou aritmetikou mimo CalcCanvas (Python): I_B = P/(√3·U·cos φ); k lineárně mezi 30 °C a 35 °C při n = 3 (t = 0,6); nejmenší průřez s I_z·k ≥ I_B; ΔU = √3·|Z|·I_B s Z = (R + jX)·L, protože |Z·I| = |Z|·|I|.",
+  "verifiedBy": "Ruční výpočet čistou aritmetikou mimo Kalketa (Python): I_B = P/(√3·U·cos φ); k lineárně mezi 30 °C a 35 °C při n = 3 (t = 0,6); nejmenší průřez s I_z·k ≥ I_B; ΔU = √3·|Z|·I_B s Z = (R + jX)·L, protože |Z·I| = |Z|·|I|.",
   "relativeTolerance": 1e-09,
   "values": {
     "I_B": {

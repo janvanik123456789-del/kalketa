@@ -47,16 +47,18 @@ Program je **oborově neutrální**. Má posloužit stejně dobře:
 
 ## 4. List a vrstvy
 
-*Upřesněno 2026-09-30:* počet vrstev není pevný. Nový list má **tři výchozí vrstvy** a uživatel si **libovolně přidává další**.
+*Upřesněno 2026-09-30:* počet vrstev není pevný. Nový list má **dvě výchozí vrstvy** a uživatel si **libovolně přidává další**.
+
+*Upřesněno 2026-10-01:* **Poznámky AI vznikají až s připojenou AI**, ve chvíli, kdy do nich AI poprvé něco zapíše. Bez AI je list nemá; prázdné Poznámky AI ze starších souborů se při otevření vynechají. List má nejvýš jednu vrstvu AI a člověk ji nemůže upravit ani smazat.
 
 ```text
 List "Nosník N1"
 ├── 1  List (tisk)         výpočet: stránkový dokument (A4), konečný počet stran,
 │                          čte se shora dolů, podepisuje se          [výchozí]
 ├── 2  Databáze            data: tabulky s obrázky k řádkům, zdroje  [výchozí]
-├── 3  Poznámky AI         návrhy a kontroly LLM, nikdy nemění výpočet [výchozí]
-├── 4  Zatížení            pomocný výpočet, list z něj bere hodnoty  [přidaná]
-└── 5  Teorie              podklady: výtahy, obrázky, citace, odkazy [přidaná]
+├── 3  Zatížení            pomocný výpočet, list z něj bere hodnoty  [přidaná]
+├── 4  Teorie              podklady: výtahy, obrázky, citace, odkazy [přidaná]
+└── 5  Poznámky AI         návrhy a kontroly LLM, nikdy nemění výpočet [s připojenou AI]
 ```
 
 **Druhy vrstev:**
@@ -65,7 +67,7 @@ List "Nosník N1"
 |---|---|
 | **Výpočet** | řádky výpočtu. Hlavní je „List (tisk)“, další jsou pomocné výpočty a varianty. |
 | **Data** | typované tabulky s obrázky k řádkům (kap. 5). Vrstev s daty může být více (katalog, měření…). |
-| **Poznámky AI** | návrhy a kontroly LLM (kap. 9). |
+| **Poznámky AI** | návrhy a kontroly LLM (kap. 9); vrstvu založí až připojená AI, člověk ji jen čte. |
 | **Podklady** | teorie, zadání, odůvodnění: text, vybrané obrázky, citace a odkazy (kap. 4.2). |
 | **Externí výpočet** *(později)* | skript v Pythonu nebo výsledky z jiného programu (FEM, Excel) převzaté jako tabulka s údajem o původu (kap. 4.1). |
 

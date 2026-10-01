@@ -406,7 +406,7 @@ async function runSmokeTest(pdfPath: string): Promise<void> {
     await writeFile(pdfPath, pdf);
     ok =
       state.bridge && state.sideBySide && state.menus === 7 && state.toolbars > 0 && state.rows > 10 && state.summary > 0 && state.math > 0 && reshapedColumns === 3 && pdf.length > 1000 &&
-      layers.newKeepsExample && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer4 layer5' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
+      layers.newKeepsExample && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
     console.log(JSON.stringify({ ok, ...state, reshapedColumns, layers, pdfBytes: pdf.length }));
   } catch (err) {
     console.log(JSON.stringify({ ok: false, error: (err as Error).message }));
@@ -531,28 +531,13 @@ async function layersWithRealInput(picture: string) {
   const citations = (await contents.executeJavaScript(`document.querySelectorAll('.notes blockquote.citation').length`)) as number;
   await takePicture(picture.replace(/\.png$/, '-notes.png'));
 
-  // AI notes can only be read: no text field, and typing changes nothing.
-  // Empty AI notes have no tab (space by importance); the View menu still opens them beside.
+  // No AI is connected: the sheet has no AI notes, neither as a tab nor in View > Layers side by side.
   const aiTabWhileEmpty = (await contents.executeJavaScript(`!!document.querySelector('.layer-tab[data-layer="ai"]')`)) as boolean;
   await clickOn('.menubar-item:nth-child(3) > button');
   await clickMenu('Vrstvy vedle sebe');
-  await clickMenu('✦');
-  await clickOn('.notes-view.ai .notes-preview');
-  await typeText('ruční zásah');
-  const aiReadOnly = (await contents.executeJavaScript(
-    `!!document.querySelector('.notes-view.ai') && !document.querySelector('.notes-view.ai textarea') && !document.body.textContent.includes('ruční zásah') && ![...document.querySelectorAll('textarea')].some((a) => a.value.includes('ruční zásah'))`,
-  )) as boolean;
-  await takePicture(picture.replace(/\.png$/, '-ai.png'));
-  // The AI notes cannot be deleted: their menu has no Delete.
-  await clickOn('.layer-tab[data-layer="ai"]', [], 'right');
-  const aiDeletable = (await contents.executeJavaScript(
-    `[...document.querySelectorAll('.context-menu .menu-row')].some((r) => r.textContent.includes('Odstranit'))`,
-  )) as boolean;
-  const aiMenu = (await contents.executeJavaScript(`document.querySelectorAll('.context-menu .menu-row').length`)) as number;
+  const aiTabAfterClose = (await contents.executeJavaScript(`[...document.querySelectorAll('.menu-panel .menu-row')].some((r) => r.textContent.includes('✦'))`)) as boolean;
   await pressKey('Escape');
-  // Closing the empty AI notes takes their tab away again.
-  await clickOn('.layer-view[data-layer="ai"] .layer-view-head button');
-  const aiTabAfterClose = (await contents.executeJavaScript(`!!document.querySelector('.layer-tab[data-layer="ai"]')`)) as boolean;
+  await pressKey('Escape');
   await clickOn('.layer-tab[data-layer="main"]');
   await takePicture(picture);
   const state = (await contents.executeJavaScript(`({
@@ -997,6 +982,28 @@ async function layersWithRealInput(picture: string) {
   await pressKey('Escape');
   await pause(300);
 
+  // A file whose AI notes an AI wrote: they have a tab, can only be read, and cannot be deleted.
+  const aiFile = process.env['KALKETA_SMOKE_AI'];
+  let aiReadOnly = false;
+  let aiDeletable = true;
+  let aiMenu = 0;
+  if (aiFile) {
+    lastFocused = smokeWindow;
+    await sendOpen(aiFile);
+    await pause(1000);
+    await clickOn('.layer-tab[data-layer="ai"]');
+    await clickOn('.notes-view.ai .notes-preview');
+    await typeText('ruční zásah');
+    aiReadOnly = (await contents.executeJavaScript(
+      `!!document.querySelector('.notes-view.ai') && document.querySelector('.notes-view.ai').textContent.includes('Průhyb vyhovuje') && !document.querySelector('.notes-view.ai textarea') && !document.body.textContent.includes('ruční zásah') && ![...document.querySelectorAll('textarea')].some((a) => a.value.includes('ruční zásah'))`,
+    )) as boolean;
+    await takePicture(picture.replace(/[.]png$/, '-ai.png'));
+    await clickOn('.layer-tab[data-layer="ai"]', [], 'right');
+    aiDeletable = (await contents.executeJavaScript(`[...document.querySelectorAll('.context-menu .menu-row')].some((r) => r.textContent.includes('Odstranit'))`)) as boolean;
+    aiMenu = (await contents.executeJavaScript(`document.querySelectorAll('.context-menu .menu-row').length`)) as number;
+    await pressKey('Escape');
+  }
+
   // A sheet with a block: the block is listed, its use shows the block and computes.
   const blockFile = process.env['KALKETA_SMOKE_BLOCKS'];
   let blocksOk: boolean | undefined;
@@ -1012,7 +1019,7 @@ async function layersWithRealInput(picture: string) {
     blocksOk = shown.errors === 0 && shown.text.includes('Prosty nosnik 1.2') && shown.text.includes('45');
     await takePicture(picture.replace(/[.]png$/, '-blocks.png'));
   }
-  return { ...state, newKeepsExample, citations, aiReadOnly, split, mainHidden, twoLayers, addKinds, aiDeletable, aiMenu, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, licences, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, canvasOk, besideText, pictures, blocksOk };
+  return { ...state, newKeepsExample, citations, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, canvasOk, besideText, pictures, blocksOk };
 }
 
 /**

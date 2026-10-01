@@ -79,7 +79,6 @@ describe('.calc container', () => {
       'future/something.bin',
       'images/Profily_IPE/IPE_200.svg',
       'layers.json',
-      'layers/ai/notes.md',
       'layout.json',
       'manifest.json',
       'sheet.cc',

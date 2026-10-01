@@ -14,16 +14,16 @@ import {
   tablesByLayer,
   updateLayer,
   withAiLayer,
+  withoutEmptyAiLayer,
   writeSheetFile,
   type SheetDocument,
 } from '../src/index.js';
 
 describe('layer list', () => {
-  it('starts with the printed sheet, a database and AI notes', () => {
+  it('starts with the printed sheet and a database; AI notes come with an AI', () => {
     expect(defaultLayers().map((l) => [l.id, l.kind])).toEqual([
       ['main', 'sheet'],
       ['data', 'data'],
-      ['ai', 'ai'],
     ]);
   });
 
@@ -33,17 +33,20 @@ describe('layer list', () => {
     layers = updateLayer(layers, id, { name: 'Teorie ohybu', locked: true });
     expect(layers.at(-1)).toMatchObject({ name: 'Teorie ohybu', locked: true });
     layers = moveLayer(layers, id, -1);
-    expect(layers.map((l) => l.id)).toEqual(['main', 'data', id, 'ai']);
-    expect(moveLayer(layers, 'data', -1).map((l) => l.id)).toEqual(['main', 'data', id, 'ai']);
+    expect(layers.map((l) => l.id)).toEqual(['main', id, 'data']);
+    expect(moveLayer(layers, 'data', 1).map((l) => l.id)).toEqual(['main', id, 'data']);
     expect(removeLayer(layers, 'main').map((l) => l.id)).toContain('main');
-    expect(removeLayer(layers, id).map((l) => l.id)).toEqual(['main', 'data', 'ai']);
+    expect(removeLayer(layers, id).map((l) => l.id)).toEqual(['main', 'data']);
   });
 
-  it('always has exactly one AI notes layer, which cannot be removed', () => {
-    expect(removeLayer(defaultLayers(), 'ai').map((l) => l.id)).toContain('ai');
-    const without = defaultLayers().filter((l) => l.kind !== 'ai');
-    expect(withAiLayer(without).filter((l) => l.kind === 'ai')).toHaveLength(1);
-    expect(withAiLayer(defaultLayers())).toEqual(defaultLayers());
+  it('has at most one AI notes layer, added by an AI, which people cannot remove', () => {
+    const withAi = withAiLayer(defaultLayers());
+    expect(withAi.filter((l) => l.kind === 'ai')).toHaveLength(1);
+    expect(withAiLayer(withAi)).toEqual(withAi);
+    expect(removeLayer(withAi, 'ai').map((l) => l.id)).toContain('ai');
+    // Empty AI notes are left out; notes the AI wrote stay.
+    expect(withoutEmptyAiLayer(withAi).some((l) => l.kind === 'ai')).toBe(false);
+    expect(withoutEmptyAiLayer(updateLayer(withAi, 'ai', { text: 'Kontrola: OK' })).some((l) => l.kind === 'ai')).toBe(true);
     // @ts-expect-error people cannot add another AI layer
     addLayer(defaultLayers(), 'ai', 'AI 2');
   });
@@ -83,7 +86,7 @@ describe('auxiliary calculation layers', () => {
   it('know which of them the sheet uses', () => {
     const doc = sheetWithLoads();
     const { evaluation } = evaluateDocument(doc, defaultRegistry);
-    expect([...evaluation.used]).toEqual([doc.layers[3]!.id]);
+    expect([...evaluation.used]).toEqual([doc.layers.find((l) => l.name === 'Zatížení')!.id]);
   });
 
   it('see earlier auxiliary layers, and the sheet sees what they use indirectly', () => {
@@ -139,17 +142,19 @@ describe('.calc format version 2', () => {
     expect(read.document!.layers).toEqual(defaultLayers().map((l) => (l.kind === 'ai' ? { ...l, text: '' } : l)));
   });
 
-  it('adds the AI notes layer to files that lack it', async () => {
+  it('leaves out the empty AI notes of older files and keeps notes an AI wrote', async () => {
     const good = await writeSheetFile(newDocument('T'));
     const entries = unzipSync(good);
-    entries['layers.json'] = strToU8(JSON.stringify([{ id: 'main', kind: 'sheet' }, { id: 'ai', kind: 'calc', name: 'Moje' }]));
-    const read = await readSheetFile(zipSync(entries));
+    entries['layers.json'] = strToU8(JSON.stringify([{ id: 'main', kind: 'sheet' }, { id: 'ai', kind: 'ai' }]));
+    const empty = await readSheetFile(zipSync(entries));
     // Edited outside the program: only the content hash warning.
-    expect(read.diagnostics.map((d) => d.code)).toEqual(['W-FILE-HASH']);
-    expect(read.document!.layers.map((l) => [l.id, l.kind])).toEqual([
-      ['main', 'sheet'],
-      ['ai', 'calc'],
-      ['ai2', 'ai'],
+    expect(empty.diagnostics.map((d) => d.code)).toEqual(['W-FILE-HASH']);
+    expect(empty.document!.layers.map((l) => l.kind)).toEqual(['sheet']);
+    entries['layers/ai/notes.md'] = strToU8('Kontrola průhybu: OK');
+    const written = await readSheetFile(zipSync(entries));
+    expect(written.document!.layers.map((l) => [l.kind, l.text ?? ''])).toEqual([
+      ['sheet', ''],
+      ['ai', 'Kontrola průhybu: OK'],
     ]);
   });
 

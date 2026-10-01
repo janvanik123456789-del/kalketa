@@ -17,7 +17,7 @@
 
 import { diagnostic, NO_SPAN, type Diagnostic } from '@kalketa/core';
 import { strFromU8, strToU8, unzipSync, zipSync, type Zippable } from 'fflate';
-import { defaultLayers, withAiLayer, type Layer, type LayerKind } from './layers.js';
+import { defaultLayers, withoutEmptyAiLayer, type Layer, type LayerKind } from './layers.js';
 
 export const FORMAT_ID = 'kalketa-sheet';
 /** Files written before the program was renamed (it was CalcCanvas) say this; they are read the same way. */
@@ -185,7 +185,7 @@ export async function readSheetEntries(raw: Readonly<Record<string, Uint8Array>>
     }
   }
 
-  // Version 1 files have no layer list: they get the three default layers.
+  // Version 1 files have no layer list: they get the default layers.
   let layers: Layer[] = defaultLayers();
   if (raw[LAYERS]) {
     try {
@@ -246,7 +246,7 @@ export async function readSheetEntries(raw: Readonly<Record<string, Uint8Array>>
     });
   }
 
-  layers = layers.map((l) => (layerTextPath(l) ? { ...l, text: layerTexts.get(l.id) ?? '' } : l));
+  layers = withoutEmptyAiLayer(layers.map((l) => (layerTextPath(l) ? { ...l, text: layerTexts.get(l.id) ?? '' } : l)));
   const document: SheetDocument = { manifest, source: strFromU8(sheetBytes), layout, tables, files, layers, blocks };
   if (manifest.contentHash && manifest.contentHash !== (await hashEntries(sheetEntries(document)))) {
     diagnostics.push(diagnostic('W-FILE-HASH', NO_SPAN));
@@ -340,5 +340,6 @@ function parseLayers(value: unknown): Layer[] {
   });
   const sheets = layers.filter((l) => l.kind === 'sheet');
   if (sheets.length !== 1 || layers[0]?.kind !== 'sheet') throw new Error('sheet layer');
-  return withAiLayer(layers);
+  // At most one AI notes layer.
+  return layers.filter((l, i) => l.kind !== 'ai' || layers.findIndex((x) => x.kind === 'ai') === i);
 }

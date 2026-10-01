@@ -35,12 +35,12 @@ export const MAIN_LAYER = 'main';
 export const DEFAULT_DATA_LAYER = 'data';
 export const DEFAULT_AI_LAYER = 'ai';
 
+/** The layers of a new sheet: the printed sheet and a data layer. The AI notes come with an AI (withAiLayer). */
 export function defaultLayers(): Layer[] {
   const base = { visible: true, locked: false, appendix: false } as const;
   return [
     { ...base, id: MAIN_LAYER, kind: 'sheet' },
     { ...base, id: DEFAULT_DATA_LAYER, kind: 'data', tables: [] },
-    { ...base, id: DEFAULT_AI_LAYER, kind: 'ai', text: '' },
   ];
 }
 
@@ -74,14 +74,22 @@ export function isRemovable(layer: Layer): boolean {
 }
 
 /**
- * Makes sure a sheet has its AI notes layer (files written before it existed,
- * or by other programs); it is added at the end.
+ * The AI notes layer, added at the end when an AI is connected and has
+ * something to write; a sheet has at most one.
  */
 export function withAiLayer(layers: readonly Layer[]): Layer[] {
   if (layers.some((l) => l.kind === 'ai')) return [...layers];
   let id = DEFAULT_AI_LAYER;
   for (let n = 2; layers.some((l) => l.id === id); n++) id = `${DEFAULT_AI_LAYER}${n}`;
   return [...layers, { id, kind: 'ai', visible: true, locked: false, appendix: false, text: '' }];
+}
+
+/**
+ * Without empty AI notes: a sheet has them only while an AI has written into
+ * them (files from before kept an empty one for every sheet).
+ */
+export function withoutEmptyAiLayer(layers: readonly Layer[]): Layer[] {
+  return layers.filter((l) => l.kind !== 'ai' || (l.text ?? '').trim() !== '' || l.appendix);
 }
 
 /** Removes a layer; the printed sheet and the AI notes stay. Tables of a removed data layer move to the first data layer. */

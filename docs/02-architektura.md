@@ -258,6 +258,23 @@ Každá fáze končí procházejícími testy. **MVP = referenční výpočet R1
 
 ### Možná (nápady odložené, zatím beze změny)
 
+- **Plátno – dokončení** (1. 10. 2026, odloženo; první verze stačí). Vše v modulu `canvas`, rozhraní k hlavnímu programu se rozšíří jen tam, kde je to uvedeno:
+  - **živé hodnoty z výpočtu** v textu plátna (`{L}` → „5 m“, mění se se zadáním); rozhraní: hostitel předá funkci „jméno → hotový text“, plátno nezávisí na jádru,
+  - **kóty**: čára s hodnotou mezi dvěma body, i živou (`{L}`), styl kót (šipky, pomocné čáry),
+  - výběr více prvků (obdélníkem a Shiftem), posun a mazání skupiny, seskupení,
+  - zarovnání a rozmístění (vlevo, na střed, rovnoměrně), přichytávání k prvkům,
+  - víceřádkový text psaný přímo do kresby místo dialogu, tučné písmo, zarovnání textu,
+  - otočení prvků, ořez obrázku, průhlednost,
+  - další tvary: mnohoúhelník, oblouk, křivka, šrafa; knihovny značek (podpory, klouby, zatížení, elektrické značky),
+  - kopírování a vkládání prvků (i mezi plátny), export plátna jako SVG nebo PNG.
+- **Další vkládané prvky mimo výpočet** (1. 10. 2026), každý jako samostatný modul stejným vzorem jako plátno:
+  - **graf** funkce nebo řady z výpočtu či tabulky (průběh M(x), návratnost), živý,
+  - **tabulka do tisku** (přehled hodnot z výpočtu nebo výřez z databázové vrstvy),
+  - **rámeček** (předpoklad, upozornění, citace normy),
+  - **vzorec jen k zobrazení** (normový vztah bez výpočtu),
+  - **výřez z PDF** (kus stránky normy nebo katalogu jako obrázek s odkazem na zdroj),
+  - **výkres DXF** (import 2D výkresu z CAD jako vektor),
+  - **rohové razítko, revize a podpisy**, **obsah a seznam obrázků**, **QR kód s otiskem revize**.
 - **Stránky vedle sebe podle zoomu** (30. 9. 2026). Dnes se stránky zalamují podle šířky panelu a tlačítka 1/2/3 stránky dopočítají zoom, aby se vešlo N stránek. Možná úprava: hlavním ovládáním je zoom a počet stránek z něj vyplyne, tlačítka 1/2/3 zůstanou jako „přizpůsobit na N stránek“. Pravidlo: po „přizpůsobit“ se drží počet stránek a zoom se dopočítá, po ruční změně zoomu se drží zoom. K tomu patří:
   - ukotvení na aktivní řádek při přeskládání, aby řádek po otevření bočního panelu nebo vrstvy vedle neuskočil,
   - malá tolerance na hranici šířky, aby nepřeskakoval počet sloupců,

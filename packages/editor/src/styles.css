@@ -126,6 +126,8 @@ button, select, input { font: inherit; }
 .button-row button, .button-column button { min-width: 0; }
 table.shortcuts td { padding: 2px 16px 2px 0; }
 .row .picture { position: relative; }
+.drop-mark { position: fixed; z-index: 150; height: 3px; background: var(--accent); border-radius: 2px; pointer-events: none; box-shadow: 0 0 0 1px #fff; }
+.row .picture img:active { cursor: grabbing; }
 .side-group .side-picture .gutter { display: none; }
 .side-group .side-rows, .side-group .side-picture { min-width: 0; }
 .row.just-inserted { animation: just-inserted 1.6s ease-out; }

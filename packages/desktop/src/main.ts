@@ -822,7 +822,26 @@ async function layersWithRealInput(picture: string) {
   await pause(400);
   const widened = (await contents.executeJavaScript(`parseFloat(document.querySelector('.layer-view.active .side-group')?.style.getPropertyValue('--side') ?? '0')`)) as number;
   await takePicture(picture.replace(/[.]png$/, '-side.png'));
-  const besideText = sideGroup.rows === '3,4' && sideGroup.picture && sideGroup.side !== '' && widened > parseFloat(sideGroup.side);
+  // Dragging the picture with the mouse moves it: from above the given values to below them.
+  const grab = (await contents.executeJavaScript(`(() => {
+    const img = document.querySelector('.layer-view.active .row[data-line="2"] figure img').getBoundingClientRect();
+    const q = document.querySelector('.layer-view.active .row[data-line="4"]').getBoundingClientRect();
+    return { x: Math.round(img.left + img.width / 2), y: Math.round(img.top + img.height / 2), tx: Math.round(q.left + q.width / 2), ty: Math.round(q.bottom + 2) };
+  })()`)) as { x: number; y: number; tx: number; ty: number };
+  contents.sendInputEvent({ type: 'mouseDown', x: grab.x, y: grab.y, button: 'left', clickCount: 1 });
+  for (let step = 1; step <= 8; step++) {
+    contents.sendInputEvent({ type: 'mouseMove', x: Math.round(grab.x + ((grab.tx - grab.x) * step) / 8), y: Math.round(grab.y + ((grab.ty - grab.y) * step) / 8), button: 'left' } as Electron.MouseInputEvent);
+    await pause(40);
+  }
+  // A hidden window delivers the moves of a drag only when it paints: the picture makes it paint.
+  await takePicture(picture.replace(/[.]png$/, '-drag.png'));
+  const markShown = (await contents.executeJavaScript(`!!document.querySelector('.drop-mark')`)) as boolean;
+  contents.sendInputEvent({ type: 'mouseUp', x: grab.tx, y: grab.ty, button: 'left', clickCount: 1 });
+  await pause(500);
+  const movedPicture = markShown && ((await contents.executeJavaScript(
+    `!!document.querySelector('.layer-view.active .row[data-line="4"] figure') && /L/.test(document.querySelector('.layer-view.active .row[data-line="2"]')?.textContent ?? '')`,
+  )) as boolean);
+  const besideText = sideGroup.rows === '3,4' && sideGroup.picture && sideGroup.side !== '' && widened > parseFloat(sideGroup.side) && movedPicture;
   const pictures = pasted.img && resized && dropped === 'Obr. 1: Schéma nosníku' && fileCopied && pastedIdle && pictureMenu.menu >= 5 && pictureMenu.full && pictureMenu.caption.includes('Detail kotvení') && besideText;
 
   // A sheet with a block: the block is listed, its use shows the block and computes.
@@ -840,7 +859,7 @@ async function layersWithRealInput(picture: string) {
     blocksOk = shown.errors === 0 && shown.text.includes('Prosty nosnik 1.2') && shown.text.includes('45');
     await takePicture(picture.replace(/[.]png$/, '-blocks.png'));
   }
-  return { ...state, newKeepsExample, citations, aiReadOnly, split, mainHidden, twoLayers, addKinds, aiDeletable, aiMenu, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, besideText, pictures, blocksOk };
+  return { ...state, newKeepsExample, citations, aiReadOnly, split, mainHidden, twoLayers, addKinds, aiDeletable, aiMenu, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, besideText, pictures, blocksOk };
 }
 
 /**

@@ -70,6 +70,15 @@ export function insertLineAfter(source: string, line: number, text = ''): string
   return lines.join('\n');
 }
 
+/** Moves lines start..end so they follow line `after` of the text as it is now (0 = to the top). */
+export function moveLines(source: string, start: number, end: number, after: number): string {
+  if (after >= start - 1 && after <= end) return source;
+  const lines = splitLines(source);
+  const moved = lines.splice(start - 1, end - start + 1);
+  lines.splice(after > end ? after - moved.length : after, 0, ...moved);
+  return lines.join('\n');
+}
+
 export function deleteLines(source: string, start: number, end: number): string {
   const lines = splitLines(source);
   lines.splice(start - 1, end - start + 1);

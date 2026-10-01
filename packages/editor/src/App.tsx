@@ -17,7 +17,7 @@ import { record, redo, undo, type History } from './logic/history.js';
 import { closeTab, cycleTab, fileNameOf, isDirty, newTab, openTab, type DocTab, type Tabs } from './logic/documents.js';
 import { pageGeometry } from './logic/pages.js';
 import { pickOf, replacePickKey } from './logic/pick.js';
-import { deleteLines, insertLineAfter, replaceLines, segments } from './logic/segments.js';
+import { deleteLines, insertLineAfter, moveLines, replaceLines, segments } from './logic/segments.js';
 import { parseLayout, setVisible, type ToolbarLayout } from './logic/toolbars.js';
 import { createTable, importTableFile, type TableChange } from './tableActions.js';
 import { captionOf, fromFile, pictureLine, picturePath, pixelWidth, widthFor, type IncomingPicture } from './logic/pictures.js';
@@ -1036,6 +1036,7 @@ export function App() {
           onDelete={(start, end) => setLayerText(l, deleteLines(source, start, end))}
           onPick={(statement, key) => pickIn(l, statement, key)}
           onReplacePicture={(start, end) => void replacePictureFile(l, start, end)}
+          onMoveLines={(start, end, after) => setLayerText(l, moveLines(source, start, end, after))}
           geometry={geometry}
           zoom={zoom}
           title={l.kind === 'calc' ? nameOf(l) : (/^[ \t]*#(?!#)[ \t]*(.+?)[ \t]*$/m.exec(doc.source)?.[1] ?? doc.manifest.title)}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { defaultRegistry, parse } from '@calccanvas/core';
-import { deleteLines, insertLineAfter, replaceLines, segments } from '../src/logic/segments.js';
+import { deleteLines, insertLineAfter, moveLines, replaceLines, segments } from '../src/logic/segments.js';
 import { pageGeometry, paginate } from '../src/logic/pages.js';
 import { createHistory, MERGE_WINDOW_MS, record, redo, undo } from '../src/logic/history.js';
 import { defineShortcut, definedName } from '../src/logic/shortcuts.js';
@@ -50,6 +50,10 @@ describe('segments', () => {
     expect(insertLineAfter('a\nb', 1, 'n')).toBe('a\nn\nb');
     expect(insertLineAfter('a', 0)).toBe('\na');
     expect(deleteLines('a\nb\nc', 1, 2)).toBe('c');
+    expect(moveLines('a\nP\nb\nc', 2, 2, 3)).toBe('a\nb\nP\nc');
+    expect(moveLines('a\nb\nc\nP', 4, 4, 0)).toBe('P\na\nb\nc');
+    expect(moveLines('a\nP\nQ\nb', 2, 3, 4)).toBe('a\nb\nP\nQ');
+    expect(moveLines('a\nP\nb', 2, 2, 1)).toBe('a\nP\nb');
   });
 });
 

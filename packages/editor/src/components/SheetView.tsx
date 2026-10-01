@@ -40,6 +40,8 @@ interface Props {
   onInsertAfter(line: number): void;
   onDelete(start: number, end: number): void;
   onPick(statement: Statement, key: string): void;
+  /** Moves lines start..end after line `after` (a picture dragged elsewhere). */
+  onMoveLines(start: number, end: number, after: number): void;
   /** Lets the user choose another file for the picture on lines start..end. */
   onReplacePicture(start: number, end: number): void;
   /** Page size and margins of the printout. */
@@ -59,6 +61,8 @@ export function SheetView(props: Props) {
   const { source, result, print, editing } = props;
   // The menu of a picture: opened by clicking it (or right click).
   const [pictureMenu, setPictureMenu] = useState<{ seg: Segment; at: { x: number; y: number } } | undefined>();
+  // Where a dragged picture would land: a line across the page body.
+  const [dropMark, setDropMark] = useState<{ x: number; y: number; width: number } | undefined>();
   const segs = segments(source, result.sheet.statements, editing);
   const blockByLine = new Map<number, PrintBlock>();
   for (const block of print.blocks) if ('line' in block) blockByLine.set(block.line, block);
@@ -113,6 +117,61 @@ export function SheetView(props: Props) {
   const pages = starts.map((start, i) => items.slice(start, starts[i + 1] ?? items.length)).filter((page) => page.length > 0);
   const { geometry } = props;
   const mm = (value: number) => `${value}mm`;
+
+  /**
+   * A picture pressed with the mouse: released in place it opens its menu
+   * (beside it, so the menu covers neither the picture nor its handles);
+   * dragged, it moves between the rows of the sheet.
+   */
+  const pressPicture = (e: ReactMouseEvent, seg: Segment, figure: Element) => {
+    const from = { x: e.clientX, y: e.clientY };
+    let dragging = false;
+    let after: number | undefined;
+    const move = (event: MouseEvent) => {
+      if (!dragging && Math.hypot(event.clientX - from.x, event.clientY - from.y) < 5) return;
+      dragging = true;
+      // Off the pages the last place shown stays: releasing there uses it.
+      const place = dropPlace(event.clientX, event.clientY, seg);
+      if (!place) return;
+      after = place.after;
+      setDropMark(place.mark);
+    };
+    const up = () => {
+      window.removeEventListener('mousemove', move);
+      window.removeEventListener('mouseup', up);
+      setDropMark(undefined);
+      if (!dragging) {
+        const box = figure.getBoundingClientRect();
+        setPictureMenu({ seg, at: { x: box.right + 12, y: box.top } });
+      } else if (after !== undefined) {
+        props.onMoveLines(seg.start, seg.end, after);
+      }
+    };
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+  };
+
+  /** The line after which a dragged row lands at (x, y): before the row whose middle is below the pointer, on the page under it. */
+  const dropPlace = (x: number, y: number, dragged: Segment) => {
+    const root = container.current;
+    if (!root) return undefined;
+    const page = [...root.querySelectorAll('.page')].find((p) => {
+      const box = p.getBoundingClientRect();
+      return box.left <= x && x <= box.right && box.top <= y && y <= box.bottom;
+    });
+    const body = page?.querySelector('.page-body')?.getBoundingClientRect();
+    if (!page || !body) return undefined;
+    const rows = [...page.querySelectorAll<HTMLElement>('.row[data-line]')].filter((r) => Number(r.dataset['line']) !== dragged.start);
+    const below = rows.find((r) => {
+      const box = r.getBoundingClientRect();
+      return box.top + box.height / 2 > y;
+    });
+    if (below) return { after: Number(below.dataset['line']) - 1, mark: { x: body.left, y: below.getBoundingClientRect().top, width: body.width } };
+    const last = rows.at(-1);
+    if (!last) return undefined;
+    const end = segs.find((s) => s.start === Number(last.dataset['line']))?.end ?? Number(last.dataset['line']);
+    return { after: end, mark: { x: body.left, y: last.getBoundingClientRect().bottom, width: body.width } };
+  };
 
   const pictureItems = (seg: Segment): MenuItem[] => {
     const picture = parsePicture(seg.text);
@@ -184,6 +243,7 @@ export function SheetView(props: Props) {
   return (
     <>
       {/* Outside the zoomed pages, so the menu has its normal size and sits at the pointer. */}
+      {dropMark && <div className="drop-mark" style={{ left: dropMark.x, top: dropMark.y - 1, width: dropMark.width }} />}
       {pictureMenu && <ContextMenu items={pictureItems(pictureMenu.seg)} commands={NO_COMMANDS} at={pictureMenu.at} onClose={() => setPictureMenu(undefined)} />}
       <div className="pages" ref={container} style={{ zoom: props.zoom, ['--zoom' as string]: props.zoom }}>
         {pages.map((page, p) => (
@@ -244,12 +304,11 @@ export function SheetView(props: Props) {
           if (isEditing || (e.target as HTMLElement).closest('.pick-control')) return;
           e.preventDefault();
           // A click on a picture selects it and offers what can be done with it; the text of the line opens from the menu or by a double click.
-          if (block?.kind === 'picture' && (e.target as HTMLElement).closest('figure') && e.button === 0) {
+          const figure = (e.target as HTMLElement).closest('figure');
+          if (block?.kind === 'picture' && figure && e.button === 0) {
             props.onEdit(undefined);
             props.onSelect(seg.statement);
-            // Beside the picture, so it covers neither the picture nor its corner handles.
-            const box = (e.target as HTMLElement).closest('figure')!.getBoundingClientRect();
-            setPictureMenu({ seg, at: { x: box.right + 12, y: box.top } });
+            pressPicture(e, seg, figure);
             return;
           }
           props.onEdit({ start: seg.start, end: seg.end });

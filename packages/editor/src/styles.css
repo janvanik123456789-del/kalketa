@@ -128,9 +128,17 @@ table.shortcuts td { padding: 2px 16px 2px 0; }
 .row .picture { position: relative; }
 .row.just-inserted { animation: just-inserted 1.6s ease-out; }
 @keyframes just-inserted { from { background: #fff3b0; } to { background: transparent; } }
-.picture-handle { display: none; position: absolute; right: -5px; bottom: -5px; width: 10px; height: 10px; background: var(--accent); border: 1px solid #fff; cursor: nwse-resize; }
-.row:hover .picture-handle, .row.selected .picture-handle, .row.editing .picture-handle { display: block; }
-.row:hover .picture img, .row.selected .picture img { outline: 1px dashed var(--accent); }
+/* Handles keep their size on screen whatever the zoom of the pages. */
+.picture-handle { --size: calc(12px / var(--zoom, 1)); display: none; position: absolute; width: var(--size); height: var(--size); margin: calc(var(--size) / -2); background: #fff; border: calc(2px / var(--zoom, 1)) solid var(--accent); box-sizing: border-box; z-index: 2; }
+.picture-handle.nw { left: 0; top: 0; cursor: nwse-resize; }
+.picture-handle.ne { right: 0; top: 0; margin-left: 0; margin-right: calc(var(--size) / -2); cursor: nesw-resize; }
+.picture-handle.sw { left: 0; bottom: 0; margin-top: 0; margin-bottom: calc(var(--size) / -2); cursor: nesw-resize; }
+.picture-handle.se { right: 0; bottom: 0; margin: 0 calc(var(--size) / -2) calc(var(--size) / -2) 0; cursor: nwse-resize; }
+.row.selected .picture-handle, .row.editing .picture-handle { display: block; }
+.row .picture img { cursor: pointer; }
+.row:hover .picture img { outline: calc(1px / var(--zoom, 1)) dashed var(--accent); }
+.row.selected .picture img { outline: calc(2px / var(--zoom, 1)) solid var(--accent); }
+.picture-size { font-size: calc(11px / var(--zoom, 1)) !important; }
 .picture-size { position: absolute; right: 8px; top: 4px; background: rgb(0 0 0 / 65%); color: #fff; font: 11px sans-serif; padding: 1px 5px; border-radius: 3px; }
 .functions-filter { width: 100%; box-sizing: border-box; margin-bottom: 8px; }
 .functions-list { max-height: 60vh; overflow-y: auto; }

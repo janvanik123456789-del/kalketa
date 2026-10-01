@@ -125,8 +125,12 @@ export function ContextMenu({ items, commands, at, onClose }: { items: readonly 
     const close = (e: MouseEvent) => {
       if (!anchor.current?.contains(e.target as Node)) onClose();
     };
-    window.addEventListener('mousedown', close);
-    return () => window.removeEventListener('mousedown', close);
+    // Listening starts after the event that opened the menu, which is still on its way up to the window.
+    const timer = window.setTimeout(() => window.addEventListener('mousedown', close));
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener('mousedown', close);
+    };
   }, [onClose]);
   return (
     <div ref={anchor} className="context-menu" style={{ left: at.x, top: at.y }} onMouseDown={(e) => e.preventDefault()}>

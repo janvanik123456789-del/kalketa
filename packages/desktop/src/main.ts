@@ -9,6 +9,7 @@
  */
 
 import { app, BrowserWindow, clipboard, ClipboardItem, dialog, ipcMain, Menu, nativeImage, shell, type IpcMainInvokeEvent } from 'electron';
+import { execFileSync } from 'node:child_process';
 import { mkdtempSync } from 'node:fs';
 import { readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -695,7 +696,7 @@ async function layersWithRealInput(picture: string) {
     const figure = row?.querySelector('figure');
     if (!row || !figure) return undefined;
     row.scrollIntoView({ block: 'center' });
-    const r = row.querySelector('.picture-handle').getBoundingClientRect();
+    const r = row.querySelector('.picture-handle.se').getBoundingClientRect();
     return { x: Math.round(r.left + r.width / 2 - 2), y: Math.round(r.top + r.height / 2 - 2), width: figure.getBoundingClientRect().width };
   })()`)) as { x: number; y: number; width: number } | undefined;
   let resized = false;
@@ -715,6 +716,26 @@ async function layersWithRealInput(picture: string) {
     )) as number;
     resized = after > handle.width + 40;
   }
+  // Clicking the picture offers its menu: width 100 % and a caption, chosen with the mouse and typed.
+  await clickOn(`.layer-view.active .row[data-line="${pasted.line}"] figure img`);
+  const menuShown = (await contents.executeJavaScript(`document.querySelectorAll('.context-menu .menu-row').length`)) as number;
+  await takePicture(picture.replace(/[.]png$/, '-picturemenu.png'));
+  await clickMenu('Šířka');
+  await clickMenu('100 %');
+  await pause(300);
+  await clickOn(`.layer-view.active .row[data-line="${pasted.line}"] figure img`);
+  await clickMenu('Popisek');
+  await pause(200);
+  await typeText('Detail kotvení');
+  await pressKey('Enter');
+  await pause(400);
+  const pictureMenu = (await contents.executeJavaScript(`(() => {
+    const row = document.querySelector('.layer-view.active .row[data-line="${pasted.line}"]');
+    const figure = row?.querySelector('figure');
+    const body = row?.closest('.page-body');
+    return { menu: ${menuShown}, full: !!figure && !!body && Math.abs(figure.getBoundingClientRect().width - body.getBoundingClientRect().width) < 3, caption: row?.querySelector('figcaption')?.textContent ?? '' };
+  })()`)) as { menu: number; full: boolean; caption: string };
+  await clickOn('.sheet-scroll');
   // A file dropped on a row goes in after that row (an OS drag cannot be sent as input, so the drop event is dispatched).
   await contents.executeJavaScript(`(async () => {
     const bytes = Uint8Array.from(atob(${JSON.stringify(png.toString('base64'))}), (c) => c.charCodeAt(0));
@@ -745,7 +766,12 @@ async function layersWithRealInput(picture: string) {
   // Ctrl+V with no row being edited (the sheet only shown) puts the picture at the end.
   const countPictures = () => contents.executeJavaScript(`document.querySelectorAll('.layer-view.active .picture').length`) as Promise<number>;
   const before = await countPictures();
-  await clipboard.write([new ClipboardItem({ 'image/png': new Blob([new Uint8Array(png)], { type: 'image/png' }) })]);
+  // On Windows the picture is put there the way other programs do (a bitmap through .NET), not by Electron.
+  if (process.platform === 'win32') {
+    execFileSync('powershell.exe', ['-NoProfile', '-Command', 'Add-Type -AssemblyName System.Windows.Forms, System.Drawing; $b = New-Object System.Drawing.Bitmap 200, 100; $g = [System.Drawing.Graphics]::FromImage($b); $g.Clear([System.Drawing.Color]::SteelBlue); $g.Dispose(); [System.Windows.Forms.Clipboard]::SetImage($b)']);
+  } else {
+    await clipboard.write([new ClipboardItem({ 'image/png': new Blob([new Uint8Array(png)], { type: 'image/png' }) })]);
+  }
   await clickOn('.sheet-scroll');
   await pressKey('V', ['control']);
   await pause(800);
@@ -757,7 +783,7 @@ async function layersWithRealInput(picture: string) {
   })()`)) as boolean;
   const pastedIdle = (await countPictures()) === before + 1 && shownAfterPaste;
   await takePicture(picture.replace(/[.]png$/, '-pictures.png'));
-  const pictures = pasted.img && resized && dropped === 'Obr. 1: Schéma nosníku' && fileCopied && pastedIdle;
+  const pictures = pasted.img && resized && dropped === 'Obr. 1: Schéma nosníku' && fileCopied && pastedIdle && pictureMenu.menu >= 5 && pictureMenu.full && pictureMenu.caption.includes('Detail kotvení');
 
   // A sheet with a block: the block is listed, its use shows the block and computes.
   const blockFile = process.env['CALCCANVAS_SMOKE_BLOCKS'];
@@ -774,7 +800,7 @@ async function layersWithRealInput(picture: string) {
     blocksOk = shown.errors === 0 && shown.text.includes('Prosty nosnik 1.2') && shown.text.includes('45');
     await takePicture(picture.replace(/[.]png$/, '-blocks.png'));
   }
-  return { ...state, newKeepsExample, citations, aiReadOnly, split, mainHidden, twoLayers, addKinds, aiDeletable, aiMenu, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictures, blocksOk };
+  return { ...state, newKeepsExample, citations, aiReadOnly, split, mainHidden, twoLayers, addKinds, aiDeletable, aiMenu, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, pictures, blocksOk };
 }
 
 /**

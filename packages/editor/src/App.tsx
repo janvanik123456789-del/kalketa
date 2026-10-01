@@ -7,7 +7,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
-import { defaultRegistry, rowLabel, type Diagnostic, type Statement } from '@calccanvas/core';
+import { defaultRegistry, formatPicture, parsePicture, rowLabel, type Diagnostic, type Statement } from '@calccanvas/core';
 import { catalogFor, CATALOGS, formatDiagnostic, formatNumber, t, type Catalog } from '@calccanvas/i18n';
 import { buildPrintDocument, printHtml } from '@calccanvas/render';
 import { addLayer, allDiagnostics, appendixLayers, blockAppendices, documentBlocks, isRemovable, LayerSessions, MAIN_LAYER, removeLayer, tablesByLayer, updateLayer, type AddableLayerKind, type Layer, type SheetDocument } from '@calccanvas/sheet';
@@ -335,9 +335,10 @@ export function App() {
     return { ...next, layers: updateLayer(next.layers, target.id, { tables: [...(target.tables ?? []), name] }) };
   };
 
-  const replace = (start: number, end: number, lines: string) => {
-    setSource(replaceLines(text, start, end, lines), `${layer.id}:line:${start}`);
-    setEditing({ start, end: start + lines.split('\n').length - 1 });
+  /** Replaces lines of a layer; a line being edited keeps its editor over all its lines. */
+  const replaceIn = (target: Layer, start: number, end: number, lines: string) => {
+    setLayerText(target, replaceLines(textOf(target), start, end, lines), `${target.id}:line:${start}`);
+    if (target.id === layer.id && editing?.start === start) setEditing({ start, end: start + lines.split('\n').length - 1 });
   };
 
   const pickIn = (l: Layer, statement: Statement, key: string) => {
@@ -563,6 +564,19 @@ export function App() {
   const lineAtRef = useRef(lineAtPoint);
   lineAtRef.current = lineAtPoint;
 
+  /** Another file for an existing picture; caption and width stay. */
+  const replacePictureFile = async (target: Layer, start: number, end: number) => {
+    const file = await chooseFile('image/*');
+    const picture = file ? await fromFile(file) : undefined;
+    const current = textOf(target);
+    const line = current.split('\n').slice(start - 1, end).join('\n');
+    const old = parsePicture(line);
+    if (!picture || !old) return;
+    const folder = target.kind === 'sheet' ? 'images/sheet' : `layers/${target.id}/images`;
+    const path = picturePath(folder, picture.name, picture.type, (p) => doc.files.has(p));
+    setLayerText(target, replaceLines(current, start, end, formatPicture({ ...old, path })), undefined, new Map([[path, picture.bytes]]));
+  };
+
   const insertPictureFile = async () => {
     const file = await chooseFile('image/*');
     const picture = file ? await fromFile(file) : undefined;
@@ -609,6 +623,14 @@ export function App() {
   };
 
   const clipboard = (action: 'cut' | 'copy' | 'paste') => {
+    // Edit > Paste puts a picture from the clipboard into the sheet too.
+    if (action === 'paste' && desktop) {
+      void desktop.clipboardPictures().then((pictures) => {
+        if (pictures.length > 0) void insertPictures(pictures);
+        else void navigator.clipboard.readText().then((text) => document.querySelector('textarea.row-editor') && insertSymbol(text));
+      });
+      return;
+    }
     const area = document.querySelector<HTMLTextAreaElement>('textarea.row-editor');
     if (!area) return;
     area.focus();
@@ -818,6 +840,12 @@ export function App() {
       const target = e.target as HTMLElement;
       const inRow = target.matches?.('textarea.row-editor');
       const inField = !inRow && target.matches?.('input, select, textarea');
+      // Outside text fields Ctrl+V takes pictures from the clipboard directly (no paste event there to rely on).
+      if (key === 'Ctrl+V' && !inRow && !inField && desktop) {
+        e.preventDefault();
+        void desktop.clipboardPictures().then((pictures) => void picturesRef.current(pictures));
+        return;
+      }
       // Clipboard keys stay native; in other fields undo/redo stay native too.
       if (['Ctrl+X', 'Ctrl+C', 'Ctrl+V', 'Ctrl+A'].includes(key)) return;
       if (inField && ['Ctrl+Z', 'Ctrl+Y'].includes(key)) return;
@@ -1000,13 +1028,14 @@ export function App() {
           resolveFile={resolveFile}
           onEdit={(range) => (l.locked && range ? setNotice(t(ui, 'layers.lockedNotice')) : setEditing(range))}
           onSelect={setSelected}
-          onReplace={replace}
+          onReplace={(start, end, lines) => replaceIn(l, start, end, lines)}
           onInsertAfter={(line) => {
             setLayerText(l, insertLineAfter(source, line));
             setEditing({ start: line + 1, end: line + 1 });
           }}
           onDelete={(start, end) => setLayerText(l, deleteLines(source, start, end))}
           onPick={(statement, key) => pickIn(l, statement, key)}
+          onReplacePicture={(start, end) => void replacePictureFile(l, start, end)}
           geometry={geometry}
           zoom={zoom}
           title={l.kind === 'calc' ? nameOf(l) : (/^[ \t]*#(?!#)[ \t]*(.+?)[ \t]*$/m.exec(doc.source)?.[1] ?? doc.manifest.title)}

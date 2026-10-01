@@ -409,6 +409,13 @@ export const cs: Catalog = {
     'layers.hiddenTab': 'Skrytá vrstva: kliknutím ji zobrazíte.',
     'cmd.insert.picture': '&Obrázek…',
     'editor.pictureResize': 'Tažením změníte velikost',
+    'picture.caption': '&Popisek…',
+    'picture.captionPrompt': 'Popisek obrázku (prázdný = bez čísla a popisku)',
+    'picture.width': '&Šířka',
+    'picture.natural': 'Původní velikost',
+    'picture.replace': '&Nahradit obrázek…',
+    'picture.editLine': '&Upravit zápis',
+    'picture.delete': '&Odstranit obrázek',
     'settings.sizeLimit': 'Upozornit, když soubor výpočtu přesáhne (MB)',
   },
 };

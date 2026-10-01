@@ -409,6 +409,13 @@ export const en: Catalog = {
     'layers.hiddenTab': 'Hidden layer: click to show it.',
     'cmd.insert.picture': '&Picture…',
     'editor.pictureResize': 'Drag to resize',
+    'picture.caption': '&Caption…',
+    'picture.captionPrompt': 'Caption of the picture (empty = no number and caption)',
+    'picture.width': '&Width',
+    'picture.natural': 'Own size',
+    'picture.replace': '&Replace picture…',
+    'picture.editLine': '&Edit line',
+    'picture.delete': '&Delete picture',
     'settings.sizeLimit': 'Warn when the calculation file exceeds (MB)',
   },
 };

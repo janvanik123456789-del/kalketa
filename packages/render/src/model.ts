@@ -16,12 +16,14 @@ import {
   toDisplay,
   type Diagnostic,
   type Expr,
+  type PlotResult,
   type Quantity,
   type SheetResult,
   type StatementResult,
   type UnitRegistry,
   type Value,
 } from '@kalketa/core';
+import { chartLayout, chartSvg, type ChartLayout, type ChartSpec } from '@kalketa/chart';
 import { formatDate, formatDiagnostic, formatNumber, t, type Catalog } from '@kalketa/i18n';
 import { formulaNode, hasSubstitutableParts, THIN_SPACE, type FormulaOptions, type Substituted } from './formula.js';
 import { mi, mn, mo, mtext, mu, nameNode, paren, row, sup, toText, type MathNode, table } from './math.js';
@@ -115,6 +117,23 @@ export type PrintBlock =
       readonly evaluated: boolean;
       readonly utilization?: string;
       readonly source?: string;
+      readonly messages: readonly Message[];
+    }
+  | {
+      readonly kind: 'chart';
+      readonly line: number;
+      /** The chart drawn as SVG. */
+      readonly svg: string;
+      /** What the SVG shows and where, for reading values under the pointer in the editor. */
+      readonly spec: ChartSpec;
+      readonly layout: ChartLayout;
+      readonly xUnit: string;
+      readonly yUnit: string;
+      readonly xDates?: boolean;
+      readonly caption: string;
+      /** "Obr. 4" for a chart with a title. */
+      readonly label?: string;
+      readonly comment?: string;
       readonly messages: readonly Message[];
     }
   | { readonly kind: 'error'; readonly line: number; readonly source: string; readonly messages: readonly Message[] }
@@ -216,6 +235,11 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
         break;
       case 'definition':
       case 'display': {
+        if (r.plot && s.kind === 'display' && s.expr.kind === 'call') {
+          const label = r.plot.title ? t(catalog, 'print.figure', { n: String(++figures) }) : undefined;
+          blocks.push(chartBlock(r.plot, s.expr, s.span.line, formulaOptions(), (v) => numberFormat(4)(v).replace('-', '−'), dateFormat, label, s.comment, messages));
+          break;
+        }
         if (r.value?.type === 'row') {
           blocks.push(selectionBlock(r, result, options, formulaOptions(), messages));
           break;
@@ -400,7 +424,7 @@ function resultNode(
 ): MathNode | undefined {
   if (r.status !== 'ok' || !r.value) return undefined;
   if (r.display) return valueNode(r.display.value, r.display.unit, format, r.display.im, date);
-  if (r.displayList) return seriesNode(r.displayList, format, separator);
+  if (r.displayList) return seriesNode(r.displayList, format, separator, date);
   if (r.displayMatrix) return matrixNode(r.displayMatrix, format);
   if (r.value.type === 'boolean') return mtext(r.value.value ? booleans.true : booleans.false);
   return otherValueNode(r.value);
@@ -531,15 +555,16 @@ function isoDate(days: number): string {
 }
 
 /** "[100; 120; 150] CZK"; a long series shows its start and end: "[1; 2; 3; 4; 5; …; 24; 25] (25)". */
-function seriesNode(items: readonly { value: number; unit: string }[], format: (value: number) => string, separator: string): MathNode {
+function seriesNode(items: readonly { value: number; unit: string }[], format: (value: number) => string, separator: string, date?: (days: number) => string): MathNode {
   const shown = items.length > SERIES_SHOWN ? [...items.slice(0, 5), undefined, ...items.slice(-2)] : items;
   const parts: MathNode[] = [];
   // One unit after the brackets; items of different units (a solution x = [u, φ]) each with their own.
   const unit = items[0]?.unit ?? '';
-  const shared = items.every((item) => item.unit === unit);
+  // Dates are written out each ("1. 1. 2026"); they have no unit after the brackets.
+  const shared = unit !== 'date' && items.every((item) => item.unit === unit);
   shown.forEach((item, i) => {
     if (i > 0) parts.push(mo(separator));
-    parts.push(item ? valueNode(item.value, shared ? '' : item.unit, format) : mo('…'));
+    parts.push(item ? valueNode(item.value, shared ? '' : item.unit, format, undefined, date) : mo('…'));
   });
   const count = items.length > SERIES_SHOWN ? [THIN_SPACE, mtext(`(${items.length})`)] : [];
   return row(mo('['), ...parts, mo(']'), ...(shared && unit ? [THIN_SPACE, mu(unit)] : []), ...count);
@@ -579,4 +604,52 @@ function percent(ratio: number, catalog: Catalog): string {
 
 function sourceText(result: SheetResult, span: { offset: number; length: number }): string {
   return result.source.slice(span.offset, span.offset + span.length);
+}
+
+/** Size of a chart in the SVG user space: about the text width of A4 at 96 dpi, so text in it reads like 8 pt. */
+export const CHART_SIZE = { width: 640, height: 300 } as const;
+
+/** A chart line: the curves named after their expressions, the axes after the variable and the units. */
+function chartBlock(
+  plot: PlotResult,
+  call: Extract<Expr, { kind: 'call' }>,
+  line: number,
+  formula: FormulaOptions,
+  format: (value: number) => string,
+  date: (days: number) => string,
+  label: string | undefined,
+  comment: string | undefined,
+  messages: readonly Message[],
+): PrintBlock {
+  const names = call.args.map((arg) => superscripts(toText(formulaNode(arg, formula)).replace(/\s+/g, ' ')));
+  const unit = (u: string) => (u ? ` [${u}]` : '');
+  const spec: ChartSpec = {
+    kind: plot.kind,
+    series: plot.series.map((s, i) => ({ label: names[i] ?? '', xs: s.xs, ys: s.ys })),
+    xTitle: plot.xDates ? plot.variable : `${plot.variable}${unit(plot.xUnit)}`.trim(),
+    // One curve names the axis; more curves are named in the legend.
+    yTitle: (names.length === 1 ? `${names[0]}${unit(plot.yUnit)}` : unit(plot.yUnit)).trim(),
+  };
+  const options = { ...CHART_SIZE, format, ...(plot.xDates ? { formatX: date } : {}), ...(plot.title ? { title: plot.title } : {}) };
+  return {
+    kind: 'chart',
+    line,
+    svg: chartSvg(spec, options),
+    spec,
+    layout: chartLayout(spec, options),
+    xUnit: plot.xUnit,
+    yUnit: plot.yUnit,
+    ...(plot.xDates ? { xDates: true } : {}),
+    caption: plot.title ?? '',
+    ...(label ? { label } : {}),
+    ...(comment ? { comment } : {}),
+    messages,
+  };
+}
+
+const SUPERSCRIPT: Readonly<Record<string, string>> = { '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹', '-': '⁻' };
+
+/** L^2 -> L² in plain text (chart labels). */
+function superscripts(text: string): string {
+  return text.replace(/\^(-?\d+)/g, (_, power: string) => [...power].map((c) => SUPERSCRIPT[c] ?? c).join(''));
 }

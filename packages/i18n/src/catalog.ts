@@ -154,6 +154,7 @@ export const UI_KEYS = [
   'settings.canvasInline',
   'settings.canvasWindow',
   'cmd.insert.canvas',
+  'cmd.insert.chart',
   'picture.editCanvas',
   'picture.alignLeft',
   'picture.alignRight',

@@ -17,6 +17,9 @@
       "path": "packages/canvas"
     },
     {
+      "path": "packages/chart"
+    },
+    {
       "path": "packages/cli"
     }
   ]

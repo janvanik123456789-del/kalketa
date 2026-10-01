@@ -14,6 +14,7 @@ import { compare, evaluate, type EvalContext } from '../eval/evaluator.js';
 import { BUILTIN_CONSTANTS } from '../eval/functions.js';
 import { defineFunction, isBuiltinFunction } from '../eval/userFunctions.js';
 import { solveStatement } from '../eval/solver.js';
+import { isPlotCall, plotStatement, type PlotResult } from '../eval/plot.js';
 import { DIMENSIONLESS_NAME } from '../lang/parser.js';
 import { DIMENSIONLESS, dim, type Dimension } from '../units/dimension.js';
 import type { BlockCaller, BlockSource } from '../eval/blocks.js';
@@ -54,6 +55,8 @@ export interface StatementResult {
   /** A matrix result, item by item. */
   readonly displayMatrix?: { readonly rows: number; readonly cols: number; readonly items: readonly DisplayValue[] };
   readonly check?: CheckResult;
+  /** A chart: plot(M(x), x: 0 m .. L). */
+  readonly plot?: PlotResult;
   /** Values found by a solve statement, in the order of its unknowns. */
   readonly solutions?: readonly { readonly name: string; readonly value: Quantity; readonly display: DisplayValue }[];
   /** Names this statement read, in order of first use (including undefined ones). */
@@ -377,6 +380,12 @@ export class SheetSession {
       if (statement.kind === 'definition' && statement.params) {
         const fn = defineFunction({ ...statement, params: statement.params }, ctx);
         return { status: 'ok', value: fn, dependencies, tableReads, diagnostics: ctx.warnings };
+      }
+
+      if (statement.kind === 'display' && isPlotCall(statement.expr)) {
+        const target = statement.target ? resolveUnit(statement.target, context.registry) : undefined;
+        const plot = plotStatement(statement.expr, ctx, evaluate, target);
+        return { status: 'ok', plot, dependencies, tableReads, diagnostics: ctx.warnings };
       }
 
       let value = evaluate(statement.expr, ctx);

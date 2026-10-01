@@ -126,6 +126,10 @@ export function renderBlockHtml(block: PrintBlock, catalog: Catalog, options: Bl
       const wrap = block.wrap ? ` wrap-${block.wrap}` : block.align ? ` align-${block.align}` : '';
       return `<figure class="block picture${block.width === undefined ? ' natural' : ''}${wrap}" data-line="${block.line}"${size}>${image}${caption}</figure>`;
     }
+    case 'chart': {
+      const caption = block.label ? `<figcaption><span class="figure-label">${esc(block.label)}:</span> ${esc(block.caption)}</figcaption>` : '';
+      return `<figure class="block chart" data-line="${block.line}">${block.svg}${caption}${messages(block.messages)}</figure>`;
+    }
     case 'equation':
       return `<section class="block equation" data-line="${block.line}">
 ${equationTable(block.lines, block.comment, options.defineOperator ?? '=')}${imported(block.imported, catalog)}${blockCalc(block.blockCalc, catalog)}${messages(block.messages)}
@@ -248,7 +252,9 @@ h3, h4, h5, h6 { font-size: 11pt; margin: 4mm 0 1.5mm; break-after: avoid; }
 .picture img { display: block; width: 100%; height: auto; }
 .picture.natural { width: fit-content; max-width: 100%; }
 .picture.natural img { width: auto; max-width: 100%; }
-.picture figcaption { margin-top: 1.5mm; font-size: 9pt; }
+.picture figcaption, .chart figcaption { margin-top: 1.5mm; font-size: 9pt; }
+.block.chart { margin: 3mm auto; text-align: center; max-width: 170mm; break-inside: avoid; }
+.chart .figure-label { font-weight: 600; }
 .picture .figure-label { font-weight: 600; }
 /* Lines flow around a wrapped picture: each block keeps whole beside it (a formula is never broken), below it the full width. */
 .block.picture.align-left { margin-left: 0; margin-right: auto; text-align: left; }

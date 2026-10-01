@@ -215,6 +215,7 @@ Funkce jsou v **registru funkcí** rozdělené do modulů. Každá funkce má v 
 | Data | `date`, `year`, `month`, `day` (7.1b) |
 | Logika | `if(podmínka, a, b)` (7.3) |
 | Tabulky | `pick`, `interpolate`, `find_min`, `find_max` (kap. 8) |
+| Grafy | `plot` (7.1e) |
 
 Počet argumentů kontroluje registr jednotně (`E-FUNC-ARITY`). `mod` a `hypot` zachovají jednotku (`mod(1250 mm, 1 m) = 250 mm`), `median` a `stdev` jednotku řady.
 
@@ -297,6 +298,27 @@ A[1, 2]                                    ' prvek: řádek, sloupec (od 1)
 - **Řada má jeden rozměr** (kvůli financím a součtům); vektor s různými jednotkami se píše jako sloupec `[1 kN | 0 kN·m]`. Výsledek s různými jednotkami (řešení soustavy) se v tisku ukáže s jednotkou u každého prvku.
 - **Tisk:** matice jako tabulka v hranatých závorkách, společná jednotka za závorkou; zapsaná matice (jen čísla) se ukáže jednou, jako zadaná hodnota.
 - Chyby: nesouhlasí rozměry (`E-MATRIX-SHAPE`), není čtvercová (`E-MATRIX-SQUARE`), jednotky nemají tvar řádek × sloupec (`E-MATRIX-UNITS`), singulární matice (`E-MATRIX-SINGULAR`), vlastní čísla nesymetrické matice (`E-MATRIX-SYMMETRIC`).
+
+### 7.1e Grafy
+
+```text
+M(x) := q·x·(L − x)/2
+plot(M(x), x: 0 m .. L) | kN·m                     ' průběh funkce, jednotka osy y
+plot(M(x), M_pl(x), x: 0 m .. L, title: "Momenty") ' více křivek na jedné ose, s popisem „Obr. n“
+plot(v, x: t, kind: "points")                       ' naměřená data: y pro každý prvek řady x
+plot(Vyroba.E, x: Vyroba.datum, kind: "bar")        ' sloupce tabulky, osa x s daty
+plot(CF, kind: "bar", title: "Peněžní toky")        ' řada proti pořadí 1, 2, 3, …
+```
+
+- **Graf je samostatný řádek** `plot(…)` (jako v Mathcadu a SMath oblast grafu, zápisem blíž Calcpadu `$Plot`). Přepočítá se s výpočtem; do proměnné ani do výrazu ho přiřadit nejde (`E-PLOT-PLACE`).
+- **Proměnná je vlastní** jako u integrálu: `x` v `plot(M(x), x: 0 m .. L)` nečte `x` listu, a jméno se pozná, i když zní jako jednotka (`t`).
+- **Rozsah** `x: a .. b` se rozdělí na 201 bodů (u `points` a `bar` na 11); jinak `samples: n` (2 až 2001). **Řada** `x: t` dá body v jejích prvcích; výraz, který na `x` nezávisí a je řadou stejné délky (sloupec tabulky), dá své prvky v pořadí. Bez proměnné je osa x pořadí prvků.
+- **Jednotky:** osa x má jednotku rozsahu (`0 mm .. 5000 mm` → mm), osa y jednotku za `|`, jinak jednotku první hodnoty. **Graf má jednu osu y:** křivky různých rozměrů jsou chyba (`E-PLOT-UNITS`) s radou nakreslit dva grafy (dvě osy y svádějí ke klamnému čtení). Data na ose x se píší jako data.
+- **Body bez hodnoty** (1/x v nule, odmocnina ze záporného čísla) jsou v křivce mezerou, graf se kvůli nim nezahodí. Chybějící proměnná nebo chybný zápis graf zastaví jako každý jiný řádek.
+- **Druhy:** `kind: "line"` (výchozí; křivka s nejvýš 30 body ukáže i body), `"points"`, `"bar"`. Nejvýš 8 křivek (`E-PLOT-SERIES`).
+- **Vzhled:** barvy v pevném pořadí ověřené pro barvoslepé, k tomu čárkování a tvary bodů, aby se křivky rozlišily i v černobílém tisku; legenda od dvou křivek, do čtyř křivek i jména na konci křivek. Osy s kulatými hodnotami (1, 2, 2,5, 5 × 10ⁿ), čísla podle jazyka tisku. Graf se kreslí jako SVG, ostrý v PDF i při zoomu.
+- **V editoru** ukáže najetí myší svislou čáru a hodnoty všech křivek v nejbližším bodě. **Vložit → Graf** vloží graf poslední funkce jedné proměnné v listu (jinak ukázku `plot(sin(x), x: 0 .. 2·π)`).
+- Chyby: zápis (`E-PLOT-FORM`), druh (`E-PLOT-KIND`), rozsah pozpátku (`E-PLOT-RANGE`), počet bodů (`E-PLOT-SAMPLES`), řady různé délky (`E-PLOT-LENGTH`).
 
 ### 7.2 Uživatelské funkce (F7)
 

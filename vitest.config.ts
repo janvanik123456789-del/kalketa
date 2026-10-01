@@ -12,6 +12,7 @@ export default defineConfig({
       '@kalketa/sheet': src('sheet'),
       '@kalketa/render': src('render'),
       '@kalketa/canvas': src('canvas'),
+      '@kalketa/chart': src('chart'),
     },
   },
   test: {

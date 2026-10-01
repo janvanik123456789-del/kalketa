@@ -40,7 +40,9 @@ const COMPARISONS: ReadonlySet<TokenType> = new Set(['==', '!=', '<', '<=', '>',
 
 
 /** Functions with a variable of their own, named after the expression: integral(f(x), x: a .. b). */
-export const BINDING_FUNCTIONS: ReadonlySet<string> = new Set(['integral', 'derivative', 'sum']);
+export const BINDING_FUNCTIONS: ReadonlySet<string> = new Set(['integral', 'derivative', 'sum', 'plot']);
+/** Named arguments of those functions that are options, not the variable. */
+export const BINDING_OPTIONS: ReadonlySet<string> = new Set(['order', 'kind', 'title', 'samples']);
 
 export function parse(source: string, options: ParseOptions): ParseResult {
   const lexed = tokenize(source);
@@ -573,7 +575,7 @@ class LineParser {
       const named: NamedArg[] = [];
       // integral(3·t², t: 0 s .. 2 s): the variable is named after the expression that uses it, so look
       // ahead for it; inside the call it is a name, not a unit (t would be tonnes), as after solve t:.
-      const bound = BINDING_FUNCTIONS.has(name) ? this.namesAhead().filter((n) => !this.defined.has(n)) : [];
+      const bound = BINDING_FUNCTIONS.has(name) ? this.namesAhead().filter((n) => !this.defined.has(n) && !BINDING_OPTIONS.has(n)) : [];
       bound.forEach((n) => this.defined.add(n));
       if (this.peek().type !== ')') {
         do {

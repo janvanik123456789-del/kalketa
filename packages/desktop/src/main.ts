@@ -406,7 +406,7 @@ async function runSmokeTest(pdfPath: string): Promise<void> {
     await writeFile(pdfPath, pdf);
     ok =
       state.bridge && state.sideBySide && state.menus === 7 && state.toolbars > 0 && state.rows > 10 && state.summary > 0 && state.math > 0 && reshapedColumns === 3 && pdf.length > 1000 &&
-      layers.newKeepsExample && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
+      layers.newKeepsExample && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.charts && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
     console.log(JSON.stringify({ ok, ...state, reshapedColumns, layers, pdfBytes: pdf.length }));
   } catch (err) {
     console.log(JSON.stringify({ ok: false, error: (err as Error).message }));
@@ -678,6 +678,37 @@ async function layersWithRealInput(picture: string) {
   const complex = userFunction.rows.some((r) => r.replace(/\s+/g, '').includes('(27,6−36,8j)A'));
   const ownUnits = userFunction.rows.some((r) => r.replace(/\s+/g, '').includes('100EUR=2500CZK'));
   const help = listed > 50 && userFunction.rows.some((r) => r.replace(/\s+/g, '').includes('hypot(3m;4m)=5m'));
+
+  // Charts: Insert > Chart plots the last function of the sheet; the pointer over it reads the values.
+  await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .page .row')].at(-1).id = 'smoke-last-row'`);
+  await clickOn('#smoke-last-row');
+  await pressKey('End');
+  await pressKey('Enter');
+  await typeText('M_t(x) = 6·x·(4 - x)');
+  await clickOn('.menubar-item:nth-child(4) > button');
+  await clickMenu('Graf');
+  await clickOn('.sheet-scroll');
+  await pause(500);
+  const chartBox = (await contents.executeJavaScript(`(() => {
+    const svg = document.querySelector('.layer-view.active .block.chart svg');
+    svg?.scrollIntoView({ block: 'center' });
+    const r = svg?.getBoundingClientRect();
+    return r ? { x: Math.round(r.left + r.width * 0.55), y: Math.round(r.top + r.height * 0.5), paths: svg.querySelectorAll('path').length } : undefined;
+  })()`)) as { x: number; y: number; paths: number } | undefined;
+  let chartTip = '';
+  if (chartBox) {
+    await pause(200);
+    for (let step = 0; step < 4; step++) {
+      contents.sendInputEvent({ type: 'mouseMove', x: chartBox.x - 12 + step * 4, y: chartBox.y });
+      await pause(60);
+    }
+    // The hidden window handles pointer moves when it paints.
+    await takePicture(picture.replace(/[.]png$/, '-chart.png'));
+    await pause(200);
+    chartTip = (await contents.executeJavaScript(`[...document.querySelectorAll('.chart-tooltip div')].map((d) => d.textContent).join(' | ')`)) as string;
+    await takePicture(picture.replace(/[.]png$/, '-chart.png'));
+  }
+  const charts = !!chartBox && chartBox.paths > 0 && /^x = [\d,]+ \| Mt\(x\) = /.test(chartTip);
 
   // Pictures: a picture on the clipboard, Ctrl+V in the sheet (real keys).
   const bitmap = Buffer.alloc(240 * 120 * 4);
@@ -1019,7 +1050,7 @@ async function layersWithRealInput(picture: string) {
     blocksOk = shown.errors === 0 && shown.text.includes('Prosty nosnik 1.2') && shown.text.includes('45');
     await takePicture(picture.replace(/[.]png$/, '-blocks.png'));
   }
-  return { ...state, newKeepsExample, citations, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, canvasOk, besideText, pictures, blocksOk };
+  return { ...state, newKeepsExample, citations, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, canvasOk, besideText, pictures, blocksOk };
 }
 
 /**

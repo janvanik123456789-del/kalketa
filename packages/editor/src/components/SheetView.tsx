@@ -6,7 +6,8 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 import { formatPicture, fromDecimalComma, parsePicture, toDecimalComma, type SheetResult, type Statement } from '@kalketa/core';
-import { formatNumber, t, type Catalog } from '@kalketa/i18n';
+import { formatDate, formatNumber, t, type Catalog } from '@kalketa/i18n';
+import { labelParts, xPosition, xValueAt } from '@kalketa/chart';
 import { renderBlockHtml, renderSummary, type PrintBlock, type PrintDocument } from '@kalketa/render';
 import { isCanvasPath } from '@kalketa/canvas';
 import { paginate, type PageGeometry } from '../logic/pages.js';
@@ -399,6 +400,8 @@ export function SheetView(props: Props) {
                 if (picture) props.onReplace(seg.start, seg.end, formatPicture({ ...picture, width }));
               }}
             />
+          ) : block?.kind === 'chart' ? (
+            <ChartBlock block={block} catalog={props.printCatalog} />
           ) : block ? (
             <Block block={block} catalog={props.printCatalog} />
           ) : (
@@ -419,6 +422,57 @@ function Block({ block, catalog }: { block: PrintBlock; catalog: Catalog }) {
         __html: renderBlockHtml(block, catalog, { defineOperator: '≔' }),
       }}
     />
+  );
+}
+
+/**
+ * A chart as printed; the pointer over it reads the values: a vertical line
+ * at the nearest point and the value of every curve there.
+ */
+function ChartBlock({ block, catalog }: { block: Extract<PrintBlock, { kind: 'chart' }>; catalog: Catalog }) {
+  const [hover, setHover] = useState<{ left: number; top: number; height: number; lines: string[] } | undefined>();
+  const read = (e: ReactMouseEvent<HTMLDivElement>) => {
+    const svg = e.currentTarget.querySelector('svg');
+    if (!svg) return;
+    const box = svg.getBoundingClientRect();
+    // The page may be zoomed: client px -> px of the block -> units of the SVG.
+    const own = e.currentTarget.getBoundingClientRect();
+    const toBlock = e.currentTarget.offsetWidth / own.width;
+    const unit = box.width / block.layout.width;
+    const px = (e.clientX - box.left) / unit;
+    const { plot } = block.layout;
+    if (px < plot.left - 4 || px > plot.right + 4) return setHover(undefined);
+    const x = xValueAt(block.layout, px);
+    const near = block.spec.series[0]!.xs.reduce((best, v, i, xs) => (Math.abs(v - x) < Math.abs(xs[best]! - x) ? i : best), 0);
+    const at = block.spec.series[0]!.xs[near]!;
+    const number = (v: number) => formatNumber(v, catalog, { digits: 4 }).replace('-', '−');
+    const withUnit = (v: number, u: string) => (Number.isFinite(v) ? `${number(v)}${u ? ` ${u}` : ''}` : '–');
+    const xText = block.xDates ? formatDate(at, catalog) : withUnit(at, block.xUnit);
+    const head = block.spec.xTitle.split(' [')[0] || '#';
+    const lines = [`${head} = ${xText}`, ...block.spec.series.map((s) => `${s.label} = ${withUnit(s.ys[s.xs.indexOf(at)] ?? NaN, block.yUnit)}`)];
+    setHover({
+      left: (box.left - own.left + xPosition(block.layout, at) * unit) * toBlock,
+      top: (box.top - own.top + plot.top * unit) * toBlock,
+      height: (plot.bottom - plot.top) * unit * toBlock,
+      lines,
+    });
+  };
+  return (
+    <div className="chart-view" onMouseMove={read} onMouseLeave={() => setHover(undefined)}>
+      <Block block={block} catalog={catalog} />
+      {hover && (
+        <>
+          <div className="chart-crosshair" style={{ left: hover.left, top: hover.top, height: hover.height }} />
+          <div className={`chart-tooltip${hover.left > 360 ? ' left' : ''}`} style={{ left: hover.left, top: hover.top }}>
+            {hover.lines.map((l, i) => (
+              <div key={i}>
+                {labelParts(l).map((p, j) => (p.sub ? <sub key={j}>{p.text}</sub> : p.text))}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 

@@ -55,6 +55,7 @@ kalketa/
 │   ├── canvas/          ← samostatný modul plátna (kresby v listu)
 │   │   ├── src/         formát scény s verzí, SVG, úpravy (bez DOM a Reactu)
 │   │   └── src/editor/  editor plátna v React (v listu i v okně), vlastní texty a styly
+│   ├── chart/           ← samostatný modul grafů: čísla a popisky → SVG (bez DOM, jednotek a Reactu)
 │   ├── editor/          ← React aplikace
 │   ├── cli/             ← `kalketa run list.kalk`, `kalketa test`, export PDF
 │   ├── i18n/            ← katalogy zpráv (cs, en, …), formát čísel podle jazyka
@@ -72,6 +73,7 @@ editor ──► render ──► sheet ──► core
    ai ──────────────► sheet ──► core
 editor ──► canvas, canvas/editor   (jen tato dvě rozhraní)
   cli ──► canvas
+render ──► chart ◄── editor        (graf jako SVG; editor jen čte rozvržení pro odečet hodnot)
 ```
 
 **Modul plátna (`canvas`)** je samostatný: nepoužívá žádný jiný balíček projektu a jádro, list, tisk ani překlady o něm nevědí. Hlavní program ho zná jen přes úzké rozhraní:
@@ -79,7 +81,9 @@ editor ──► canvas, canvas/editor   (jen tato dvě rozhraní)
 - `isCanvasPath`, `readScene`, `writeScene`, `emptyScene`, `sceneDataUri` (scéna → SVG pro editor i tisk z příkazové řádky),
 - `<CanvasEditor>` z `@kalketa/canvas/editor`; vše, co od hostitele potřebuje (jazyk, dotaz na text, výběr souboru, prostor pro lištu, obrázky ze souboru), dostává přes vstupy.
 
-Formát scény má číslo verze; `migrate` převádí starší scény na aktuální, prvky novější verze se jen nevykreslí. Pravidla hlídá `tests/architecture.test.ts`. Stejným vzorem mohou vzniknout další moduly (grafy, výkresy DXF).
+Formát scény má číslo verze; `migrate` převádí starší scény na aktuální, prvky novější verze se jen nevykreslí. Pravidla hlídá `tests/architecture.test.ts`. Stejným vzorem mohou vzniknout další moduly (výkresy DXF).
+
+**Modul grafů (`chart`)** vznikl stejným vzorem: nezná jádro, jednotky ani React. Jádro (`eval/plot.ts`) graf jen spočítá: navzorkuje výrazy a vrátí čísla v jednotkách os (`PlotResult`). Tisk z nich udělá popisky (jméno výrazu, „x [m]“) a zavolá `chartSvg`; editor si z bloku vezme rozvržení (`chartLayout`) a pod myší odečítá hodnoty. Graf je v listu obyčejný řádek `plot(…)`, takže se přepočítá s výpočtem jako každý jiný řádek.
 
 - **core nezávisí na ničem** z projektu, nesahá na soubory ani síť a je deterministický.
 - **core nezná žádný obor.** Kód pro konkrétní obor (IPE, kabely, NPV…) patří do tabulek a bloků v `reference/` nebo do knihoven, ne do `core`.
@@ -268,13 +272,20 @@ Každá fáze končí procházejícími testy. **MVP = referenční výpočet R1
   - další tvary: mnohoúhelník, oblouk, křivka, šrafa; knihovny značek (podpory, klouby, zatížení, elektrické značky),
   - kopírování a vkládání prvků (i mezi plátny), export plátna jako SVG nebo PNG.
 - **Další vkládané prvky mimo výpočet** (1. 10. 2026), každý jako samostatný modul stejným vzorem jako plátno:
-  - **graf** funkce nebo řady z výpočtu či tabulky (průběh M(x), návratnost), živý,
+  - ~~**graf** funkce nebo řady z výpočtu či tabulky~~ – první verze hotová (1. 10. 2026, kap. 7.1e jazyka),
   - **tabulka do tisku** (přehled hodnot z výpočtu nebo výřez z databázové vrstvy),
   - **rámeček** (předpoklad, upozornění, citace normy),
   - **vzorec jen k zobrazení** (normový vztah bez výpočtu),
   - **výřez z PDF** (kus stránky normy nebo katalogu jako obrázek s odkazem na zdroj),
   - **výkres DXF** (import 2D výkresu z CAD jako vektor),
   - **rohové razítko, revize a podpisy**, **obsah a seznam obrázků**, **QR kód s otiskem revize**.
+- **Grafy – další vývoj** (1. 10. 2026; první verze „klasika“ hotová, kap. 7.1e jazyka):
+  - **graf spojený s obrázkem nebo plátnem**: průběh momentu, posouvající síly a průhybu nakreslený pod schématem nosníku se skutečnými podporami a zatížením (prostý nosník, konzola, spojitý nosník); osa x grafu = osa nosníku na plátně, takže se graf a kresba vždy kryjí. Rozhraní: plátno dostane od hostitele „vrstvu grafu“ (body v mm), plátno dál nezávisí na jádru,
+  - knihovna značek pro plátno (podpory, klouby, vetknutí, síly, spojité zatížení), ze které si graf vezme polohy podpor,
+  - popis extrémů přímo v grafu (M_max = 54 kN·m v x = 3 m), vyznačení hodnot v bodech, šrafovaná plocha pod křivkou (obrazec momentů),
+  - umístění grafu jako obrázku: šířka tažením za roh, vedle textu, obtékání (dnes je graf vždy na celou šířku),
+  - další druhy: dvě osy x vedle sebe (malé násobky místo druhé osy y), logaritmické osy, parametrický graf (x(t), y(t)), vrstevnice a mapa barev pro funkci dvou proměnných, interakční diagram (N–M),
+  - graf přímo z tabulky jedním klikem (Vložit → Graf nad vybranými sloupci), tabulka hodnot ke grafu do tisku.
 - **Stránky vedle sebe podle zoomu** (30. 9. 2026). Dnes se stránky zalamují podle šířky panelu a tlačítka 1/2/3 stránky dopočítají zoom, aby se vešlo N stránek. Možná úprava: hlavním ovládáním je zoom a počet stránek z něj vyplyne, tlačítka 1/2/3 zůstanou jako „přizpůsobit na N stránek“. Pravidlo: po „přizpůsobit“ se drží počet stránek a zoom se dopočítá, po ruční změně zoomu se drží zoom. K tomu patří:
   - ukotvení na aktivní řádek při přeskládání, aby řádek po otevření bočního panelu nebo vrstvy vedle neuskočil,
   - malá tolerance na hranici šířky, aby nepřeskakoval počet sloupců,

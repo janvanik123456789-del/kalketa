@@ -466,6 +466,9 @@ export const CALCULUS: readonly FunctionDef[] = [
   { name: 'derivative', module: 'calculus', params: 'f(x), x: a, order: 1', arity: [1, 1] },
 ];
 
+/** Charts: a line of its own, sampled by the session (eval/plot.ts). */
+export const CHARTS: readonly FunctionDef[] = [{ name: 'plot', module: 'charts', params: 'f(x), x: a .. b, kind: "line", title: "…"', arity: [1, 8] }];
+
 /** Table functions: evaluated by the table code (they read named arguments and rows). */
 export const TABLES: readonly FunctionDef[] = [
   { name: 'pick', module: 'tables', params: 'T, "key"', arity: [1, 2] },

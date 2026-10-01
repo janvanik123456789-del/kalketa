@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@kalketa/canvas": "*",
+    "@kalketa/chart": "*",
     "@kalketa/core": "*",
     "@kalketa/i18n": "*",
     "@kalketa/render": "*",

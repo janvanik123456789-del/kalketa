@@ -32,6 +32,9 @@
       "@kalketa/canvas": [
         "../canvas/src/index.ts"
       ],
+      "@kalketa/chart": [
+        "../chart/src/index.ts"
+      ],
       "@kalketa/canvas/editor": [
         "../canvas/src/editor/index.ts"
       ]

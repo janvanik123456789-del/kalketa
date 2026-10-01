@@ -19,6 +19,7 @@ import { BUILTIN_CONSTANTS, callFunction, FUNCTION_NAMES } from './functions.js'
 import { composedHint, unitNames, type UnitNames } from '../units/compose.js';
 import { PREFERRED_UNITS } from '../units/registry.js';
 import { callCalculus, isBindingCall } from './calculus.js';
+import { PLOT_FUNCTION } from './plot.js';
 import { BINDING_FUNCTIONS } from '../lang/parser.js';
 import { asMatrix, at, inverseOf, matrix, normalized } from '../functions/linear.js';
 import { callTableFunction, memberOf, TABLE_FUNCTIONS } from './tables.js';
@@ -91,6 +92,8 @@ function evaluateRaw(expr: Expr, ctx: EvalContext): Value {
     case 'call': {
       if (TABLE_FUNCTIONS.has(expr.name)) return callTableFunction(expr, ctx, evaluate);
       // integral(f(x), x: a .. b), derivative(f(x), x: a), sum(f(k), k: 1 .. n): a variable of their own.
+      // A chart is a line of its own: plot(M(x), x: 0 m .. L).
+      if (expr.name === PLOT_FUNCTION) fail('E-PLOT-PLACE', expr.span, {});
       if (BINDING_FUNCTIONS.has(expr.name) && (expr.name !== 'sum' || isBindingCall(expr))) return callCalculus(expr, ctx, evaluate);
       if (ctx.blocks?.has(expr.name)) return callBlock(expr, ctx);
       if (!FUNCTION_NAMES.includes(expr.name)) return applyFunction(lookupFunction(expr, ctx), expr, ctx, evaluate);

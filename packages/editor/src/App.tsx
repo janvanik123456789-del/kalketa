@@ -647,7 +647,7 @@ export function App() {
     return `${base}_${n}`;
   };
 
-  const insert = (kind: 'heading' | 'text' | 'definition' | 'check' | 'pick' | 'pageBreak' | 'clear') => {
+  const insert = (kind: 'heading' | 'text' | 'definition' | 'check' | 'pick' | 'pageBreak' | 'clear' | 'chart') => {
     switch (kind) {
       case 'heading':
         return insertLine('## ');
@@ -667,6 +667,15 @@ export function App() {
         return insertLine('@page', undefined, false);
       case 'clear':
         return insertLine('@clear', undefined, false);
+      case 'chart': {
+        // A chart of the last function of one variable in the sheet, else an example to rewrite.
+        const fn = [...result.statements].reverse().find((r) => r.statement.kind === 'definition' && r.statement.params?.length === 1)?.statement;
+        if (fn?.kind === 'definition' && fn.params) {
+          const p = fn.params[0]!.name;
+          return insertLine(`plot(${fn.name}(${p}), ${p}: 0 .. 10)`);
+        }
+        return insertLine('plot(sin(x), x: 0 .. 2·π)');
+      }
     }
   };
 
@@ -997,7 +1006,7 @@ export function App() {
     },
     {
       label: t(ui, 'menu.insert'),
-      items: [cmd('insert.heading'), cmd('insert.text'), cmd('insert.definition'), cmd('insert.check'), cmd('insert.pick'), cmd('insert.pageBreak'), cmd('insert.clear'), sep, cmd('insert.picture'), cmd('insert.canvas'), cmd('insert.newTable'), cmd('insert.importTable'), cmd('insert.block'),
+      items: [cmd('insert.heading'), cmd('insert.text'), cmd('insert.definition'), cmd('insert.check'), cmd('insert.pick'), cmd('insert.pageBreak'), cmd('insert.clear'), sep, cmd('insert.picture'), cmd('insert.canvas'), cmd('insert.chart'), cmd('insert.newTable'), cmd('insert.importTable'), cmd('insert.block'),
         ...(doc.blocks.size > 0
           ? [
               {

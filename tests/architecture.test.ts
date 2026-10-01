@@ -84,3 +84,19 @@ describe('modul plátna je samostatný', () => {
     expect(bad).toEqual([]);
   });
 });
+
+describe('modul grafů je samostatný', () => {
+  it('grafy nepoužívají jiné balíčky projektu, React ani soubory mimo svůj balíček', () => {
+    const bad = packageImports('chart').flatMap(({ file, imports }) =>
+      imports
+        .filter((i) => i.startsWith('@kalketa/') || i.startsWith('react') || (i.startsWith('.') && !resolve(ROOT, file, '..', i).startsWith(join(ROOT, 'packages', 'chart', 'src'))))
+        .map((i) => `${file} → ${i}`),
+    );
+    expect(bad).toEqual([]);
+  });
+
+  it('jádro grafy nezná: dává jen čísla v jednotkách os', () => {
+    const bad = packageImports('core').flatMap(({ file, imports }) => imports.filter((i) => i.startsWith('@kalketa/chart')).map((i) => `${file} → ${i}`));
+    expect(bad).toEqual([]);
+  });
+});

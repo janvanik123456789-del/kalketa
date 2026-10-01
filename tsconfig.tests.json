@@ -23,6 +23,9 @@
       ],
       "@kalketa/canvas": [
         "./packages/canvas/src/index.ts"
+      ],
+      "@kalketa/chart": [
+        "./packages/chart/src/index.ts"
       ]
     }
   },

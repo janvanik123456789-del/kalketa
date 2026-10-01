@@ -5,7 +5,7 @@
  * a registry; this file joins the registry to the evaluator.
  */
 
-import { CALCULUS, COMPLEX, DATES, FINANCE, LOGIC, MATH, SERIES, STATISTICS, TABLES, TRIG } from '../functions/modules.js';
+import { CALCULUS, CHARTS, COMPLEX, DATES, FINANCE, LOGIC, MATH, SERIES, STATISTICS, TABLES, TRIG } from '../functions/modules.js';
 import { FunctionRegistry, type CallExpr, type Evaluate } from '../functions/registry.js';
 import { LINEAR } from '../functions/linear.js';
 import type { Value } from '../values/value.js';
@@ -15,7 +15,7 @@ export const BUILTIN_CONSTANTS: Readonly<Record<string, number>> = {
 };
 
 /** All built-in functions, table functions included (they are only described here). */
-export const builtinFunctions = new FunctionRegistry([MATH, TRIG, CALCULUS, LINEAR, COMPLEX, SERIES, STATISTICS, FINANCE, DATES, LOGIC, TABLES]);
+export const builtinFunctions = new FunctionRegistry([MATH, TRIG, CALCULUS, LINEAR, COMPLEX, SERIES, STATISTICS, FINANCE, DATES, LOGIC, TABLES, CHARTS]);
 
 /** Functions that compute from plain arguments (not table functions). */
 export const FUNCTION_NAMES: readonly string[] = builtinFunctions

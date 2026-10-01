@@ -13,6 +13,7 @@
     }
   },
   "dependencies": {
+    "@kalketa/chart": "*",
     "@kalketa/core": "*",
     "@kalketa/i18n": "*"
   }

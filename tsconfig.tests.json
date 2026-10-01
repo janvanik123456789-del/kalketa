@@ -20,6 +20,9 @@
       ],
       "@calccanvas/render": [
         "./packages/render/src/index.ts"
+      ],
+      "@calccanvas/canvas": [
+        "./packages/canvas/src/index.ts"
       ]
     }
   },
@@ -30,6 +33,7 @@
     "reference"
   ],
   "exclude": [
-    "packages/editor/src"
+    "packages/editor/src",
+    "packages/canvas/src/editor"
   ]
 }

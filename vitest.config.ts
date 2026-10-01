@@ -11,6 +11,7 @@ export default defineConfig({
       '@calccanvas/i18n': src('i18n'),
       '@calccanvas/sheet': src('sheet'),
       '@calccanvas/render': src('render'),
+      '@calccanvas/canvas': src('canvas'),
     },
   },
   test: {

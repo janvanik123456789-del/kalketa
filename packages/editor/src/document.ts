@@ -5,7 +5,7 @@
 
 import { documentTables, newDocument, readSheetFile, writeSheetFile, type SheetDocument, type StoredTable } from '@calccanvas/sheet';
 import type { Diagnostic, Table, UnitRegistry } from '@calccanvas/core';
-import { isCanvasPath, readScene, sceneDataUri } from '@calccanvas/render';
+import { isCanvasPath, readScene, sceneDataUri } from '@calccanvas/canvas';
 
 import exampleSheet from '../../../reference/R1-nosnik/nosnik.cc?raw';
 import profilesSchema from '../../../reference/R1-nosnik/tables/Profily_IPE/schema.json?raw';

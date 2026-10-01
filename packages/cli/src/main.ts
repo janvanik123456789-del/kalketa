@@ -20,6 +20,7 @@
  *   Imports a table into a sheet folder (tables/<Table>/schema.json + data.csv).
  */
 
+import { isCanvasPath, readScene, sceneDataUri } from '@calccanvas/canvas';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { basename, extname, join } from 'node:path';
 import { parseArgs } from 'node:util';
@@ -98,7 +99,7 @@ async function main(argv: string[]): Promise<number> {
       digits: values.digits !== undefined && argv.includes('--digits') ? digits : doc.layout.digits,
       paper: doc.layout.paper,
       orientation: doc.layout.orientation,
-      resolveFile: (path) => dataUri(path, doc.files.get(path)),
+      resolveFile: (path) => dataUri(path, doc.files.get(path), doc.files),
       appendices: [...appendixLayers(doc.layers, evaluation, (layer) => t(printCatalog, `layer.kind.${layer.kind}` as UiKey)), ...blockAppendices(evaluation.main)],
     });
     const htmlOut = values.out ?? file.slice(0, -extname(file).length) + '.html';
@@ -178,7 +179,9 @@ const MIME: Readonly<Record<string, string>> = {
 };
 
 /** Embeds a file of the sheet into the HTML, so the printout is self-contained. */
-function dataUri(path: string, data: Uint8Array | undefined): string | undefined {
+function dataUri(path: string, data: Uint8Array | undefined, files?: ReadonlyMap<string, Uint8Array>): string | undefined {
+  // A canvas is drawn from its scene, its pictures from the same files.
+  if (data && isCanvasPath(path)) return sceneDataUri(readScene(data), (inner) => (isCanvasPath(inner) ? undefined : dataUri(inner, files?.get(inner))));
   const mime = MIME[extname(path).toLowerCase()];
   if (!data || !mime) return undefined;
   return `data:${mime};base64,${Buffer.from(data).toString('base64')}`;

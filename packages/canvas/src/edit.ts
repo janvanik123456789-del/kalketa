@@ -3,7 +3,7 @@
  * window keeps its own undo history by keeping the scenes.
  */
 
-import type { CanvasItem, CanvasScene } from '@calccanvas/render';
+import type { CanvasItem, CanvasScene } from './scene.js';
 
 export type Tool = 'select' | 'text' | 'line' | 'arrow' | 'rect' | 'ellipse';
 export type Corner = 'nw' | 'ne' | 'sw' | 'se';

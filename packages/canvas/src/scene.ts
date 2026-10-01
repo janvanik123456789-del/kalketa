@@ -5,6 +5,7 @@
  * the drawing is drawn as SVG, sharp at any zoom and in PDF.
  */
 
+/** Version of the scene format; older scenes are brought up to it when read (migrate). */
 export const CANVAS_VERSION = 1;
 
 export interface Stroke {
@@ -46,10 +47,21 @@ export function readScene(bytes: Uint8Array | undefined): CanvasScene {
   try {
     const value = JSON.parse(new TextDecoder().decode(bytes)) as Partial<CanvasScene>;
     if (typeof value.width !== 'number' || typeof value.height !== 'number' || !Array.isArray(value.items)) return emptyScene();
-    return { version: CANVAS_VERSION, width: value.width, height: value.height, items: value.items };
+    return migrate({ version: typeof value.version === 'number' ? value.version : 1, width: value.width, height: value.height, items: value.items });
   } catch {
     return emptyScene();
   }
+}
+
+/**
+ * Brings a scene of an older format version up to the current one. Each new
+ * version adds a step here, so files saved by older versions keep working.
+ * A scene from a newer version is kept as it is; items this version does not
+ * know are not drawn.
+ */
+export function migrate(scene: CanvasScene): CanvasScene {
+  // Version 1 is the first one: nothing to bring up yet.
+  return scene.version > CANVAS_VERSION ? scene : { ...scene, version: CANVAS_VERSION };
 }
 
 export function writeScene(scene: CanvasScene): Uint8Array {
@@ -103,6 +115,9 @@ export function itemSvg(item: CanvasItem, resolveFile: (path: string) => string 
         ? `<image x="${n(item.x)}" y="${n(item.y)}" width="${n(item.w)}" height="${n(item.h)}" href="${esc(href)}" xlink:href="${esc(href)}" preserveAspectRatio="xMidYMid meet"/>`
         : `<rect x="${n(item.x)}" y="${n(item.y)}" width="${n(item.w)}" height="${n(item.h)}" fill="none" stroke="#c62828" stroke-dasharray="2 1" stroke-width="0.3"/>`;
     }
+    default:
+      // An item of a newer format version.
+      return '';
   }
 }
 

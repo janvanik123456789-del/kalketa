@@ -52,6 +52,9 @@ calccanvas/
 │   │   └── import/      CSV, Excel
 │   │
 │   ├── render/          ← převod výsledků na tiskovou podobu (HTML + KaTeX)
+│   ├── canvas/          ← samostatný modul plátna (kresby v listu)
+│   │   ├── src/         formát scény s verzí, SVG, úpravy (bez DOM a Reactu)
+│   │   └── src/editor/  editor plátna v React (v listu i v okně), vlastní texty a styly
 │   ├── editor/          ← React aplikace
 │   ├── cli/             ← `calccanvas run list.calc`, `calccanvas test`, export PDF
 │   ├── i18n/            ← katalogy zpráv (cs, en, …), formát čísel podle jazyka
@@ -67,7 +70,16 @@ calccanvas/
 editor ──► render ──► sheet ──► core
   cli ──────────────► sheet ──► core
    ai ──────────────► sheet ──► core
+editor ──► canvas, canvas/editor   (jen tato dvě rozhraní)
+  cli ──► canvas
 ```
+
+**Modul plátna (`canvas`)** je samostatný: nepoužívá žádný jiný balíček projektu a jádro, list, tisk ani překlady o něm nevědí. Hlavní program ho zná jen přes úzké rozhraní:
+- v listu je plátno obyčejný řádek obrázku `![…](canvases/<jméno>.json)`, v souboru je scéna jako JSON,
+- `isCanvasPath`, `readScene`, `writeScene`, `emptyScene`, `sceneDataUri` (scéna → SVG pro editor i tisk z příkazové řádky),
+- `<CanvasEditor>` z `@calccanvas/canvas/editor`; vše, co od hostitele potřebuje (jazyk, dotaz na text, výběr souboru, prostor pro lištu, obrázky ze souboru), dostává přes vstupy.
+
+Formát scény má číslo verze; `migrate` převádí starší scény na aktuální, prvky novější verze se jen nevykreslí. Pravidla hlídá `tests/architecture.test.ts`. Stejným vzorem mohou vzniknout další moduly (grafy, výkresy DXF).
 
 - **core nezávisí na ničem** z projektu, nesahá na soubory ani síť a je deterministický.
 - **core nezná žádný obor.** Kód pro konkrétní obor (IPE, kabely, NPV…) patří do tabulek a bloků v `reference/` nebo do knihoven, ne do `core`.

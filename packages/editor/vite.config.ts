@@ -10,12 +10,15 @@ export default defineConfig(({ command }) => ({
   plugins: [react(), ...(command === 'build' ? [contentSecurityPolicy()] : [])],
   resolve: {
     // The editor uses the other packages' sources directly; no build step needed.
-    alias: {
-      '@calccanvas/core': src('core'),
-      '@calccanvas/i18n': src('i18n'),
-      '@calccanvas/sheet': src('sheet'),
-      '@calccanvas/render': src('render'),
-    },
+    // Exact names, so '@calccanvas/canvas' does not also catch '@calccanvas/canvas/editor'.
+    alias: [
+      { find: /^@calccanvas\/core$/, replacement: src('core') },
+      { find: /^@calccanvas\/i18n$/, replacement: src('i18n') },
+      { find: /^@calccanvas\/sheet$/, replacement: src('sheet') },
+      { find: /^@calccanvas\/render$/, replacement: src('render') },
+      { find: /^@calccanvas\/canvas$/, replacement: src('canvas') },
+      { find: /^@calccanvas\/canvas\/editor$/, replacement: fileURLToPath(new URL('../canvas/src/editor/index.ts', import.meta.url)) },
+    ],
   },
   server: { port: 5173, strictPort: true, fs: { allow: ['../..'] } },
 }));

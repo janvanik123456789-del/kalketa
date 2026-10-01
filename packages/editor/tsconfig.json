@@ -7,15 +7,38 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "jsx": "react-jsx",
-    "lib": ["ES2023", "DOM", "DOM.Iterable"],
-    "types": ["vite/client"],
+    "lib": [
+      "ES2023",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "types": [
+      "vite/client"
+    ],
     "esModuleInterop": true,
     "paths": {
-      "@calccanvas/core": ["../core/src/index.ts"],
-      "@calccanvas/i18n": ["../i18n/src/index.ts"],
-      "@calccanvas/sheet": ["../sheet/src/index.ts"],
-      "@calccanvas/render": ["../render/src/index.ts"]
+      "@calccanvas/core": [
+        "../core/src/index.ts"
+      ],
+      "@calccanvas/i18n": [
+        "../i18n/src/index.ts"
+      ],
+      "@calccanvas/sheet": [
+        "../sheet/src/index.ts"
+      ],
+      "@calccanvas/render": [
+        "../render/src/index.ts"
+      ],
+      "@calccanvas/canvas": [
+        "../canvas/src/index.ts"
+      ],
+      "@calccanvas/canvas/editor": [
+        "../canvas/src/editor/index.ts"
+      ]
     }
   },
-  "include": ["src", "vite.config.ts"]
+  "include": [
+    "src",
+    "vite.config.ts"
+  ]
 }

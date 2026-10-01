@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { emptyScene, readScene, sceneSvg, writeScene, type CanvasItem } from '@calccanvas/render';
-import { addItem, drawn, endMoved, itemAt, moved, newId, reordered, resized } from '../src/logic/canvasEdit.js';
+import { addItem, drawn, emptyScene, endMoved, itemAt, migrate, moved, newId, readScene, reordered, resized, sceneSvg, writeScene, type CanvasItem } from '../src/index.js';
 
 const rect: CanvasItem = { id: 'i1', type: 'rect', x: 10, y: 10, w: 20, h: 10, stroke: { color: '#000', width: 0.5 }, fill: 'none' };
 
@@ -13,6 +12,14 @@ describe('canvas scene', () => {
     expect(svg).toContain('marker-end="url(#cc-arrow-c00)"');
     expect(readScene(writeScene(scene))).toEqual(scene);
     expect(readScene(new TextEncoder().encode('nonsense')).items).toEqual([]);
+  });
+
+  it('reads scenes of other format versions', () => {
+    // A scene saved without a version is version 1; a newer one is kept, its unknown items are not drawn.
+    expect(readScene(new TextEncoder().encode('{"width":50,"height":20,"items":[]}')).version).toBe(1);
+    const newer = migrate({ version: 99, width: 50, height: 20, items: [{ id: 'x', type: 'hologram' } as unknown as CanvasItem] });
+    expect(newer.version).toBe(99);
+    expect(sceneSvg(newer)).not.toContain('undefined');
   });
 
   it('escapes text and draws pictures from the files of the sheet', () => {

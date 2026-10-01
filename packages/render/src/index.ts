@@ -17,7 +17,6 @@ export { formulaNode, hasSubstitutableParts, type FormulaOptions } from './formu
 export * from './model.js';
 export { renderHtml, renderBlockHtml, renderBlocksHtml, sideGroupHtml, renderSummary, appendixHtml, BLOCK_CSS, type HtmlOptions, type BlockHtmlOptions } from './html.js';
 export { notesHtml, notesImages, NOTES_CSS, type NotesOptions } from './notes.js';
-export * from './canvas.js';
 
 /** A layer printed after the sheet. */
 export type PrintAppendix =

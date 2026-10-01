@@ -8,16 +8,22 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type DragEvent as ReactDragEvent, type MouseEvent as ReactMouseEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { t, type Catalog } from '@calccanvas/i18n';
-import { sceneBody, type CanvasItem, type CanvasScene } from '@calccanvas/render';
-import { addItem, boxOf, drawn, endMoved, findItem, itemAt, moved, newId, removeItem, reordered, replaceItem, resized, snap, type Corner, type Tool } from '../logic/canvasEdit.js';
-import { fromFile, isPictureType, picturePath, pixelWidth, type IncomingPicture } from '../logic/pictures.js';
-import { chooseFile } from '../document.js';
-import { ask } from './Ask.js';
+import { sceneBody, type CanvasItem, type CanvasScene } from '../scene.js';
+import { addItem, boxOf, drawn, endMoved, findItem, itemAt, moved, newId, removeItem, reordered, replaceItem, resized, snap, type Corner, type Tool } from '../edit.js';
+import { fromFile, isPictureType, picturePath, pixelSize, type CanvasPicture } from './pictures.js';
+import { canvasTexts, type CanvasTextKey } from './texts.js';
+import './canvas.css';
 
-interface Props {
+export interface CanvasEditorProps {
   readonly scene: CanvasScene;
-  readonly catalog: Catalog;
+  /** Language of the texts, e.g. "cs". */
+  readonly language: string;
+  /** Asks for a line of text in the host's own dialog; undefined when cancelled. */
+  ask(label: string, initial?: string): Promise<string | undefined>;
+  /** Lets the user choose a picture file. */
+  chooseImage(): Promise<File | undefined>;
+  /** Where the tool bar of editing in the sheet goes: the box of the host's sheet area (the window when absent). */
+  area?(): DOMRect | undefined;
   /** Pictures already in the calculation file. */
   resolveFile(path: string): string | undefined;
   /** Folder for pictures put on this canvas, e.g. canvases/platno-1. */
@@ -50,8 +56,9 @@ const TOOLS: readonly { tool: Tool; glyph: string; key: string }[] = [
   { tool: 'ellipse', glyph: '◯', key: 'E' },
 ];
 
-export function CanvasEditor(props: Props) {
-  const c = props.catalog;
+export function CanvasEditor(props: CanvasEditorProps) {
+  const texts = canvasTexts(props.language);
+  const text = (key: CanvasTextKey) => texts[key];
   const inline = props.mode === 'inline';
   const [history, setHistory] = useState<{ past: CanvasScene[]; present: CanvasScene; future: CanvasScene[] }>({ past: [], present: props.scene, future: [] });
   const scene = history.present;
@@ -172,32 +179,43 @@ export function CanvasEditor(props: Props) {
   });
 
   // ---------------------------------------------------------------- actions
+  /** While the host's dialog asks for a text, keys and clicks are its own. */
+  const asking = useRef(false);
+  const ask = async (label: string, initial?: string) => {
+    asking.current = true;
+    try {
+      return await props.ask(label, initial);
+    } finally {
+      asking.current = false;
+    }
+  };
+
   const addText = async (at: { x: number; y: number }) => {
-    const text = await ask(t(c, 'canvas.textPrompt'));
-    if (!text?.trim()) return;
+    const value = await ask(text('textPrompt'));
+    if (!value?.trim()) return;
     const id = newId(scene);
-    commit(addItem(scene, { id, type: 'text', x: at.x, y: at.y, text: text.trim(), size: fontSize, color: colour }));
+    commit(addItem(scene, { id, type: 'text', x: at.x, y: at.y, text: value.trim(), size: fontSize, color: colour }));
     setSelected(id);
     setTool('select');
   };
 
   const editText = async (target: CanvasItem) => {
     if (target.type !== 'text') return;
-    const text = await ask(t(c, 'canvas.textPrompt'), target.text);
-    if (text === undefined) return;
-    commit(text.trim() ? replaceItem(scene, { ...target, text: text.trim() }) : removeItem(scene, target.id));
+    const value = await ask(text('textPrompt'), target.text);
+    if (value === undefined) return;
+    commit(value.trim() ? replaceItem(scene, { ...target, text: value.trim() }) : removeItem(scene, target.id));
   };
 
-  const addPictures = async (pictures: readonly IncomingPicture[]) => {
+  const addPictures = async (pictures: readonly CanvasPicture[]) => {
     let next = scene;
     const added = new Map(files);
     for (const picture of pictures) {
       const path = picturePath(props.folder, picture.name || 'obrazek', picture.type, (p) => props.taken(p) || added.has(p));
       added.set(path, picture.bytes);
-      const px = (await pixelWidth(picture)) ?? 300;
-      const ratio = await pixelRatio(picture);
-      const w = Math.min(next.width * 0.8, (px * 25.4) / 96);
-      const h = w / ratio;
+      // At 96 dpi, as large as on screen, at most most of the canvas.
+      const size = (await pixelSize(picture)) ?? { width: 300, height: 225 };
+      const w = Math.min(next.width * 0.8, (size.width * 25.4) / 96);
+      const h = (w * size.height) / size.width;
       const id = newId(next);
       next = addItem(next, { id, type: 'image', x: (next.width - w) / 2, y: Math.max(0, (next.height - h) / 2), w, h, src: path });
       setSelected(id);
@@ -207,7 +225,7 @@ export function CanvasEditor(props: Props) {
   };
 
   const pictureFile = async () => {
-    const file = await chooseFile('image/*');
+    const file = await props.chooseImage();
     const picture = file ? await fromFile(file) : undefined;
     if (picture) await addPictures([picture]);
   };
@@ -232,7 +250,7 @@ export function CanvasEditor(props: Props) {
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       // Keys belong to the canvas unless a field or a question over it has them.
-      if ((e.target as HTMLElement).matches?.('input, textarea, select') || document.querySelectorAll('.dialog-backdrop').length > (inline ? 0 : 1)) return;
+      if (asking.current || (e.target as HTMLElement).matches?.('input, textarea, select')) return;
       const ctrl = e.ctrlKey || e.metaKey;
       if (ctrl && e.key.toLowerCase() === 'z') {
         e.preventDefault();
@@ -266,7 +284,7 @@ export function CanvasEditor(props: Props) {
       if (pictures.length === 0) return;
       e.preventDefault();
       e.stopImmediatePropagation();
-      void Promise.all(pictures.map(fromFile)).then((list) => void addPictures(list.filter((p): p is IncomingPicture => p !== undefined)));
+      void Promise.all(pictures.map(fromFile)).then((list) => void addPictures(list.filter((p): p is CanvasPicture => p !== undefined)));
     };
     window.addEventListener('keydown', key);
     window.addEventListener('paste', paste, true);
@@ -284,7 +302,7 @@ export function CanvasEditor(props: Props) {
     if (!inline) return;
     const outside = (e: MouseEvent) => {
       const target = e.target as Element;
-      if (svg.current?.contains(target) || toolbar.current?.contains(target) || target.closest('.dialog-backdrop, .context-menu, .menu-panel')) return;
+      if (asking.current || svg.current?.contains(target) || toolbar.current?.contains(target)) return;
       doneRef.current();
     };
     // Listening starts after the double click that opened the editing.
@@ -300,9 +318,9 @@ export function CanvasEditor(props: Props) {
   useLayoutEffect(() => {
     if (!inline) return;
     const place = () => {
-      const area = svg.current?.closest('.sheet-scroll')?.getBoundingClientRect();
+      const area = props.area?.() ?? new DOMRect(0, 0, window.innerWidth, window.innerHeight);
       // Within the sheet: the bar wraps rather than covering a side panel.
-      if (area) setBarAt({ left: area.left + 8, top: area.top + 6, maxWidth: area.width - 16 });
+      setBarAt({ left: area.left + 8, top: area.top + 6, maxWidth: area.width - 16 });
     };
     place();
     window.addEventListener('resize', place);
@@ -312,7 +330,7 @@ export function CanvasEditor(props: Props) {
   const drop = (e: ReactDragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    void Promise.all([...e.dataTransfer.files].map(fromFile)).then((list) => void addPictures(list.filter((p): p is IncomingPicture => p !== undefined)));
+    void Promise.all([...e.dataTransfer.files].map(fromFile)).then((list) => void addPictures(list.filter((p): p is CanvasPicture => p !== undefined)));
   };
 
   // ---------------------------------------------------------------- view
@@ -322,28 +340,28 @@ export function CanvasEditor(props: Props) {
   const tools = (
     <>
           {TOOLS.map((x) => (
-            <button key={x.tool} type="button" className={tool === x.tool ? 'active' : ''} title={`${t(c, `canvas.tool.${x.tool}` as Parameters<typeof t>[1])} (${x.key})`} data-tool={x.tool} onClick={() => setTool(x.tool)}>
+            <button key={x.tool} type="button" className={tool === x.tool ? 'active' : ''} title={`${text(`tool.${x.tool}`)} (${x.key})`} data-tool={x.tool} onClick={() => setTool(x.tool)}>
               {x.glyph}
             </button>
           ))}
-          <button type="button" title={t(c, 'canvas.picture')} onClick={() => void pictureFile()}>
+          <button type="button" title={text('picture')} onClick={() => void pictureFile()}>
             🖼
           </button>
           <span className="canvas-sep" />
           {COLOURS.map((value) => (
             <button key={value} type="button" className={`swatch${colour === value ? ' active' : ''}`} style={{ background: value }} title={value} onClick={() => restyle({ colour: value })} />
           ))}
-          <select value={lineWidth} title={t(c, 'canvas.lineWidth')} onChange={(e) => restyle({ width: Number(e.target.value) })}>
+          <select value={lineWidth} title={text('lineWidth')} onChange={(e) => restyle({ width: Number(e.target.value) })}>
             {WIDTHS.map((w) => (
               <option key={w} value={w}>
                 {String(w).replace('.', ',')} mm
               </option>
             ))}
           </select>
-          <label title={t(c, 'canvas.fill')}>
-            <input type="checkbox" checked={filled} onChange={(e) => restyle({ fill: e.target.checked })} /> {t(c, 'canvas.fill')}
+          <label title={text('fill')}>
+            <input type="checkbox" checked={filled} onChange={(e) => restyle({ fill: e.target.checked })} /> {text('fill')}
           </label>
-          <select value={fontSize} title={t(c, 'canvas.fontSize')} onChange={(e) => restyle({ size: Number(e.target.value) })}>
+          <select value={fontSize} title={text('fontSize')} onChange={(e) => restyle({ size: Number(e.target.value) })}>
             {[2.5, 3, 3.5, 4, 5, 6, 8].map((s) => (
               <option key={s} value={s}>
                 {String(s).replace('.', ',')} mm
@@ -351,16 +369,16 @@ export function CanvasEditor(props: Props) {
             ))}
           </select>
           <span className="canvas-sep" />
-          <button type="button" disabled={!item} title={t(c, 'canvas.front')} onClick={() => item && commit(reordered(scene, item.id, 'front'))}>
+          <button type="button" disabled={!item} title={text('front')} onClick={() => item && commit(reordered(scene, item.id, 'front'))}>
             ⬒
           </button>
-          <button type="button" disabled={!item} title={t(c, 'canvas.back')} onClick={() => item && commit(reordered(scene, item.id, 'back'))}>
+          <button type="button" disabled={!item} title={text('back')} onClick={() => item && commit(reordered(scene, item.id, 'back'))}>
             ⬓
           </button>
           <button
             type="button"
             disabled={!item}
-            title={t(c, 'canvas.delete')}
+            title={text('delete')}
             onClick={() => {
               if (!item) return;
               commit(removeItem(scene, item.id));
@@ -370,10 +388,10 @@ export function CanvasEditor(props: Props) {
             🗑
           </button>
           <span className="canvas-sep" />
-          <button type="button" disabled={history.past.length === 0} title={t(c, 'canvas.undo')} onClick={undo}>
+          <button type="button" disabled={history.past.length === 0} title={text('undo')} onClick={undo}>
             ↶
           </button>
-          <button type="button" disabled={history.future.length === 0} title={t(c, 'canvas.redo')} onClick={redo}>
+          <button type="button" disabled={history.future.length === 0} title={text('redo')} onClick={redo}>
             ↷
           </button>
     </>
@@ -414,11 +432,11 @@ export function CanvasEditor(props: Props) {
           <div ref={toolbar} className="canvas-toolbar canvas-inline-bar" style={barAt} onMouseDown={(e) => e.stopPropagation()}>
             {tools}
             <span className="canvas-sep" />
-            <button type="button" title={t(c, 'canvas.expand')} onClick={() => props.onExpand?.(scene, files)}>
+            <button type="button" title={text('expand')} onClick={() => props.onExpand?.(scene, files)}>
               ⤢
             </button>
             <button type="button" className="canvas-done" data-canvas="done" onClick={() => props.onDone(scene, files)}>
-              {t(c, 'canvas.done')}
+              {text('done')}
             </button>
           </div>,
           document.body,
@@ -431,24 +449,22 @@ export function CanvasEditor(props: Props) {
   }
 
   return (
-    <div className="dialog-backdrop canvas-backdrop">
-      <div className="canvas-window" role="dialog" aria-modal="true" aria-label={t(c, 'canvas.title')}>
-        <div className="dialog-title">
-          <span>{t(c, 'canvas.title')}</span>
-        </div>
+    <div className="canvas-backdrop">
+      <div className="canvas-window" role="dialog" aria-modal="true" aria-label={text('title')}>
+        <div className="canvas-title">{text('title')}</div>
         <div className="canvas-toolbar">{tools}</div>
         <div className="canvas-stage" ref={stageBox} onDragOver={(e) => e.preventDefault()} onDrop={drop}>
           {stage}
         </div>
-        <div className="dialog-buttons canvas-buttons">
+        <div className="canvas-buttons">
           <span className="canvas-info">
-            {t(c, 'canvas.size')}: {scene.width} × {scene.height} mm · {t(c, 'canvas.hint')}
+            {text('size')}: {scene.width} × {scene.height} mm · {text('hint')}
           </span>
-          <button type="button" className="default" data-canvas="done" onClick={() => props.onDone(scene, files)}>
-            {t(c, 'canvas.done')}
+          <button type="button" className="canvas-done" data-canvas="done" onClick={() => props.onDone(scene, files)}>
+            {text('done')}
           </button>
           <button type="button" onClick={props.onCancel}>
-            {t(c, 'dlg.cancel')}
+            {text('cancel')}
           </button>
         </div>
       </div>
@@ -495,16 +511,4 @@ function newPictureUri(path: string, bytes: Uint8Array): string {
     pictureUris.set(bytes, uri);
   }
   return uri;
-}
-
-/** Width / height of a picture; 4:3 when it cannot be decoded. */
-async function pixelRatio(picture: IncomingPicture): Promise<number> {
-  try {
-    const bitmap = await createImageBitmap(new Blob([picture.bytes as BlobPart], { type: picture.type }));
-    const ratio = bitmap.width / bitmap.height;
-    bitmap.close();
-    return ratio || 4 / 3;
-  } catch {
-    return 4 / 3;
-  }
 }

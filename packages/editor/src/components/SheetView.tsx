@@ -7,7 +7,8 @@
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 import { formatPicture, fromDecimalComma, parsePicture, toDecimalComma, type SheetResult, type Statement } from '@calccanvas/core';
 import { formatNumber, t, type Catalog } from '@calccanvas/i18n';
-import { isCanvasPath, renderBlockHtml, renderSummary, type PrintBlock, type PrintDocument } from '@calccanvas/render';
+import { renderBlockHtml, renderSummary, type PrintBlock, type PrintDocument } from '@calccanvas/render';
+import { isCanvasPath } from '@calccanvas/canvas';
 import { paginate, type PageGeometry } from '../logic/pages.js';
 import { segments, type Segment } from '../logic/segments.js';
 import { defineShortcut } from '../logic/shortcuts.js';

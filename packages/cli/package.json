@@ -11,6 +11,7 @@
     "@calccanvas/core": "*",
     "@calccanvas/i18n": "*",
     "@calccanvas/sheet": "*",
-    "@calccanvas/render": "*"
+    "@calccanvas/render": "*",
+    "@calccanvas/canvas": "*"
   }
 }

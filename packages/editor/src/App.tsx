@@ -9,7 +9,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { defaultRegistry, formatPicture, parsePicture, rowLabel, type Diagnostic, type Statement } from '@calccanvas/core';
 import { catalogFor, CATALOGS, formatDiagnostic, formatNumber, t, type Catalog } from '@calccanvas/i18n';
-import { buildPrintDocument, emptyScene, printHtml, readScene, writeScene, type CanvasScene } from '@calccanvas/render';
+import { buildPrintDocument, printHtml } from '@calccanvas/render';
+import { emptyScene, readScene, writeScene, type CanvasScene } from '@calccanvas/canvas';
+import { CanvasEditor } from '@calccanvas/canvas/editor';
 import { addLayer, allDiagnostics, appendixLayers, blockAppendices, documentBlocks, isRemovable, LayerSessions, MAIN_LAYER, removeLayer, tablesByLayer, updateLayer, type AddableLayerKind, type Layer, type SheetDocument } from '@calccanvas/sheet';
 import { buildCommands, shortcutOf, type Command } from './commands.js';
 import { chooseFile, desktop, emptyDocument, exampleDocument, fileName, fileUri, largestParts, openBytes, pickAndOpen, saveDocument, tableCache, type FileRef, type OpenedFile } from './document.js';
@@ -22,7 +24,6 @@ import { parseLayout, setVisible, type ToolbarLayout } from './logic/toolbars.js
 import { createTable, importTableFile, type TableChange } from './tableActions.js';
 import { captionOf, fromFile, pictureLine, picturePath, pixelWidth, widthFor, type IncomingPicture } from './logic/pictures.js';
 import { importBlockFile } from './blockActions.js';
-import { CanvasEditor } from './components/CanvasEditor.js';
 import { AboutDialog, CustomizeDialog, FunctionsDialog, PropertiesDialog, SettingsDialog, ShortcutsDialog } from './components/Dialogs.js';
 import { DocumentTabs } from './components/DocumentTabs.js';
 import { Inspector } from './components/Inspector.js';
@@ -597,7 +598,10 @@ export function App() {
       key={`${mode}:${path}`}
       mode={mode}
       scene={readScene(doc.files.get(path))}
-      catalog={ui}
+      language={ui.locale}
+      ask={ask}
+      chooseImage={() => chooseFile('image/*')}
+      area={() => document.querySelector('.layer-view.active .sheet-scroll')?.getBoundingClientRect()}
       resolveFile={resolveFile}
       folder={path.replace(/\.json$/, '')}
       taken={(p) => doc.files.has(p)}

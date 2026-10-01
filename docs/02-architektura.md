@@ -279,13 +279,13 @@ Každá fáze končí procházejícími testy. **MVP = referenční výpočet R1
   - **výřez z PDF** (kus stránky normy nebo katalogu jako obrázek s odkazem na zdroj),
   - **výkres DXF** (import 2D výkresu z CAD jako vektor),
   - **rohové razítko, revize a podpisy**, **obsah a seznam obrázků**, **QR kód s otiskem revize**.
-- **Grafy – další vývoj** (1. 10. 2026; první verze „klasika“ hotová, kap. 7.1e jazyka):
-  - **graf spojený s obrázkem nebo plátnem**: průběh momentu, posouvající síly a průhybu nakreslený pod schématem nosníku se skutečnými podporami a zatížením (prostý nosník, konzola, spojitý nosník); osa x grafu = osa nosníku na plátně, takže se graf a kresba vždy kryjí. Rozhraní: plátno dostane od hostitele „vrstvu grafu“ (body v mm), plátno dál nezávisí na jádru,
-  - knihovna značek pro plátno (podpory, klouby, vetknutí, síly, spojité zatížení), ze které si graf vezme polohy podpor,
-  - popis extrémů přímo v grafu (M_max = 54 kN·m v x = 3 m), vyznačení hodnot v bodech, šrafovaná plocha pod křivkou (obrazec momentů),
-  - umístění grafu jako obrázku: šířka tažením za roh, vedle textu, obtékání (dnes je graf vždy na celou šířku),
-  - další druhy: dvě osy x vedle sebe (malé násobky místo druhé osy y), logaritmické osy, parametrický graf (x(t), y(t)), vrstevnice a mapa barev pro funkci dvou proměnných, interakční diagram (N–M),
-  - graf přímo z tabulky jedním klikem (Vložit → Graf nad vybranými sloupci), tabulka hodnot ke grafu do tisku.
+- **Grafy – další vývoj** (1. 10. 2026; první verze „klasika“ hotová a jako základní graf zůstává, kap. 7.1e jazyka).
+  **Rozhodnuto 1. 10. 2026:** žádné druhé plátno jen pro grafy. Lepší grafy ve dvou rovinách:
+  1. **Samostatný graf zůstává v modulu `chart`** a je dál řádkem `plot(…)` ve výpočtu (text, dohledatelný, vždy živý). Vylepšení: místní nabídka po kliknutí na graf jako u obrázku (popis os, rozsah os, druh, vyznačení extrémů jako M_max = 54 kN·m v x = 3 m, hodnoty v bodech, šrafovaná plocha pod křivkou – obrazec momentů), umístění jako u obrázku (šířka tažením za roh, vedle textu, obtékání). Nastavení se zapisuje do řádku `plot(…)` jako volby.
+  2. **Složené obrázky na stávajícím plátně:** plátno dostane prvek **graf** (odkaz na řádek `plot(…)` listu). Plátno graf nepočítá, nakreslí ho hostitel (stejně jako živé hodnoty `{L}`), takže plátno dál nezávisí na jádru. Graf jde přichytit k ose nosníku: průběh M, V a průhybu pod schématem nosníku se skutečnými podporami a zatížením (prostý nosník, konzola, spojitý nosník) se s kresbou vždy kryje.
+  Proč ne samostatné plátno pro grafy: zdvojil by se výběr, posun, mřížka, texty, zpět/znovu i ukládání a časem by se rozcházely; uživatel by musel předem volit mezi dvěma plátny; moment pod nosníkem stejně potřebuje kresbu i graf v jednom obrázku.
+  **Pořadí:** (1) místní nabídka grafu, umístění jako obrázek, vyznačení extrémů; (2) knihovna značek na plátně (podpory, klouby, vetknutí, síly, spojité zatížení); (3) prvek graf na plátně přichycený k ose nosníku.
+  Později: další druhy (malé násobky místo druhé osy y, logaritmické osy, parametrický graf x(t), y(t), vrstevnice a mapa barev pro funkci dvou proměnných, interakční diagram N–M), graf přímo z tabulky (Vložit → Graf nad vybranými sloupci), tabulka hodnot ke grafu do tisku.
 - **Stránky vedle sebe podle zoomu** (30. 9. 2026). Dnes se stránky zalamují podle šířky panelu a tlačítka 1/2/3 stránky dopočítají zoom, aby se vešlo N stránek. Možná úprava: hlavním ovládáním je zoom a počet stránek z něj vyplyne, tlačítka 1/2/3 zůstanou jako „přizpůsobit na N stránek“. Pravidlo: po „přizpůsobit“ se drží počet stránek a zoom se dopočítá, po ruční změně zoomu se drží zoom. K tomu patří:
   - ukotvení na aktivní řádek při přeskládání, aby řádek po otevření bočního panelu nebo vrstvy vedle neuskočil,
   - malá tolerance na hranici šířky, aby nepřeskakoval počet sloupců,

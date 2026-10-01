@@ -175,6 +175,33 @@ kbd { font: 12px Consolas, monospace; background: #fff; border: 1px solid #c4cad
 .page-body { height: 100%; position: relative; display: flow-root; }
 .page-head { position: absolute; top: 8mm; left: 20mm; font: 8pt sans-serif; color: #888; }
 .page-foot { position: absolute; bottom: 8mm; right: 16mm; font: 8pt sans-serif; color: #888; }
+.page-foot-left { position: absolute; bottom: 8mm; left: 20mm; font: 8pt sans-serif; color: #888; }
+/* File > Revisions */
+.status-revision { border: none; background: none; padding: 0 4px; font: inherit; color: inherit; cursor: pointer; }
+.status-revision.changed { color: #8a5a00; }
+.revisions { display: flex; flex-direction: column; gap: 10px; font-size: 13px; }
+.revisions p { margin: 0; }
+.rev-hash { font-family: Consolas, monospace; color: #555; }
+.rev-freeze { display: flex; gap: 8px; align-items: center; }
+.rev-freeze label { display: flex; gap: 6px; align-items: center; }
+.rev-freeze .grow { flex: 1; }
+.rev-freeze .rev-note { flex: 1; }
+.rev-label { width: 5em; }
+.rev-problem { color: #c62828; }
+.rev-list { border-collapse: collapse; width: 100%; }
+.rev-list th, .rev-list td { text-align: left; padding: 3px 8px; border-bottom: 1px solid var(--line); }
+.rev-list .rev-name { font-weight: 600; }
+.rev-actions { white-space: nowrap; text-align: right; }
+.rev-actions button { min-width: 0 !important; margin-left: 4px; }
+.rev-comparison { border: 1px solid var(--line); background: #fff; padding: 8px 12px; max-height: 40vh; overflow: auto; }
+.rev-comparison h4 { margin: 6px 0 4px; font-size: 12px; }
+.rev-comparison table { border-collapse: collapse; }
+.rev-comparison td { padding: 2px 8px 2px 0; }
+.rev-comparison .code { font-family: Consolas, monospace; }
+.rev-comparison tr.bad td { color: #c62828; }
+.rev-ratio { color: #555; }
+.rev-verify { display: flex; gap: 8px; align-items: center; }
+.rev-verified { font-weight: 600; }
 .summary-box { padding-bottom: 3mm; }
 .row { display: flex; align-items: flex-start; border-radius: 3px; cursor: text; position: relative; }
 /* Line numbers sit in the left margin, so the text width equals the printout. */

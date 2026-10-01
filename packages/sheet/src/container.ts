@@ -8,6 +8,7 @@
  *   tables/<Name>/     schema.json + data.csv
  *   blocks/<Name>/     block.cc (calculation with "input" lines) + block.json (version, origin)
  *   images/...         pictures of table rows and of the printout
+ *   revisions/<label>/ frozen revisions: revision.json + the entries above as they were
  *   (anything else)    kept unchanged, so newer files survive older programs
  *
  * Everything inside is an open format and readable without Kalketa.
@@ -18,6 +19,7 @@
 import { diagnostic, NO_SPAN, type Diagnostic } from '@kalketa/core';
 import { strFromU8, strToU8, unzipSync, zipSync, type Zippable } from 'fflate';
 import { defaultLayers, withoutEmptyAiLayer, type Layer, type LayerKind } from './layers.js';
+import { readRevisions, revisionEntries, type Revision } from './revisions.js';
 
 export const FORMAT_ID = 'kalketa-sheet';
 /** Files written before the program was renamed (it was CalcCanvas) say this; they are read the same way. */
@@ -83,6 +85,8 @@ export interface SheetDocument {
   readonly layers: readonly Layer[];
   /** Blocks by name; the sheet calls them like functions. */
   readonly blocks: ReadonlyMap<string, StoredBlock>;
+  /** Frozen revisions, oldest first; not part of the content hash (each has its own). */
+  readonly revisions: readonly Revision[];
 }
 
 export interface ReadResult {
@@ -120,6 +124,7 @@ export function newDocument(title: string, source = '', now = new Date()): Sheet
     files: new Map(),
     layers: defaultLayers(),
     blocks: new Map(),
+    revisions: [],
   };
 }
 
@@ -130,7 +135,7 @@ export async function writeSheetFile(doc: SheetDocument): Promise<Uint8Array> {
 
   const zippable: Zippable = {};
   zippable[MANIFEST] = [json(manifest), { mtime: ZIP_MTIME }];
-  for (const [path, data] of entries) zippable[path] = [data, { mtime: ZIP_MTIME }];
+  for (const [path, data] of [...entries, ...revisionEntries(doc.revisions)]) zippable[path] = [data, { mtime: ZIP_MTIME }];
   return zipSync(zippable, { level: 6 });
 }
 
@@ -148,8 +153,9 @@ export async function readSheetFile(bytes: Uint8Array): Promise<ReadResult> {
  * Reads a document from its entries (path -> bytes), as found in the ZIP
  * container or in an unpacked folder.
  */
-export async function readSheetEntries(raw: Readonly<Record<string, Uint8Array>>): Promise<ReadResult> {
+export async function readSheetEntries(entries: Readonly<Record<string, Uint8Array>>): Promise<ReadResult> {
   const diagnostics: Diagnostic[] = [];
+  const raw: Record<string, Uint8Array> = { ...entries };
   const invalid = (problem: string, value = '') => {
     diagnostics.push(diagnostic('E-FILE-INVALID', NO_SPAN, { problem, value }));
     return { diagnostics };
@@ -175,6 +181,10 @@ export async function readSheetEntries(raw: Readonly<Record<string, Uint8Array>>
 
   const sheetBytes = raw[SHEET];
   if (!sheetBytes) return invalid('missing', SHEET);
+
+  // Revisions come out first; a revision changed outside the program is reported.
+  const { revisions, damaged } = await readRevisions(raw);
+  for (const label of damaged) diagnostics.push(diagnostic('W-REVISION-HASH', NO_SPAN, { revision: label }));
 
   let layout = DEFAULT_LAYOUT;
   if (raw[LAYOUT]) {
@@ -247,7 +257,7 @@ export async function readSheetEntries(raw: Readonly<Record<string, Uint8Array>>
   }
 
   layers = withoutEmptyAiLayer(layers.map((l) => (layerTextPath(l) ? { ...l, text: layerTexts.get(l.id) ?? '' } : l)));
-  const document: SheetDocument = { manifest, source: strFromU8(sheetBytes), layout, tables, files, layers, blocks };
+  const document: SheetDocument = { manifest, source: strFromU8(sheetBytes), layout, tables, files, layers, blocks, revisions };
   if (manifest.contentHash && manifest.contentHash !== (await hashEntries(sheetEntries(document)))) {
     diagnostics.push(diagnostic('W-FILE-HASH', NO_SPAN));
   }
@@ -283,7 +293,7 @@ export function sheetEntries(doc: SheetDocument): [string, Uint8Array][] {
   return entries;
 }
 
-async function hashEntries(entries: readonly [string, Uint8Array][]): Promise<string> {
+export async function hashEntries(entries: readonly [string, Uint8Array][]): Promise<string> {
   const parts: Uint8Array[] = [];
   for (const [path, data] of entries) parts.push(strToU8(`${path}\0${data.length}\0`), data);
   const total = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));

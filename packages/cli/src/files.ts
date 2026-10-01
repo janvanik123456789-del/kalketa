@@ -19,6 +19,7 @@ import {
   newDocument,
   readSheetEntries,
   readSheetFile,
+  revisionEntries,
   sheetEntries,
   tableFolder,
   writeSheetFile,
@@ -28,7 +29,7 @@ import {
 
 /** Files and folders next to a sheet that belong to it. */
 const CARRIED_FILES = ['layout.json', 'layers.json'];
-const CARRIED_FOLDERS = ['tables', 'images', 'layers', 'ai', 'blocks'];
+const CARRIED_FOLDERS = ['tables', 'images', 'layers', 'ai', 'blocks', 'revisions'];
 
 export interface OpenResult {
   readonly document?: SheetDocument;
@@ -65,7 +66,8 @@ export async function readFolder(sheetFile: string): Promise<OpenResult> {
 /** Writes a document as a folder; returns the written paths. */
 export function writeFolder(doc: SheetDocument, dir: string, sheetName: string): string[] {
   const written: string[] = [];
-  for (const [path, data] of sheetEntries(doc)) {
+  // Revisions go along as revisions/<label>/, so pack gives them back.
+  for (const [path, data] of [...sheetEntries(doc), ...revisionEntries(doc.revisions)]) {
     const name = path === 'sheet.cc' ? `${sheetName}.cc` : path;
     if (!isSafePath(name)) throw new Error(`Unsafe path: ${name}`);
     const target = join(dir, name);

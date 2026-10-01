@@ -58,6 +58,8 @@ interface Props {
   readonly zoom: number;
   /** Title in the page header. */
   readonly title: string;
+  /** Left of the page footer: the revision and fingerprint, as printed. */
+  readonly footer?: string;
   readonly uiCatalog: Catalog;
   /** Show and accept numbers with a decimal comma (50,5; arguments separated by ";"). */
   readonly decimalComma: boolean;
@@ -296,6 +298,7 @@ export function SheetView(props: Props) {
           >
             <div className="page-head">{props.title}</div>
             <div className="page-body">{page.map((item) => (item.kind === 'summary' ? summaryItem() : item.kind === 'side' ? sideItem(item.picture, item.rows, item.block) : rowItem(item.seg)))}</div>
+            {props.footer && <div className="page-foot-left">{props.footer}</div>}
             <div className="page-foot">
               {t(props.uiCatalog, 'print.page')} {p + 1} {t(props.uiCatalog, 'print.of')} {pages.length}
             </div>

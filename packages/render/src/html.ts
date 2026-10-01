@@ -18,6 +18,8 @@ export interface HtmlOptions {
   readonly orientation?: 'portrait' | 'landscape';
   /** Appendices after the sheet, already rendered (see appendixHtml). */
   readonly appendices?: readonly string[];
+  /** Left of the page footer: the revision and fingerprint (see revisionFooter). */
+  readonly footer?: string;
 }
 
 /** An appendix: its own page(s) with a title, e.g. "Příloha A: Zatížení". */
@@ -230,7 +232,8 @@ function stylesheet(doc: PrintDocument, options: HtmlOptions): string {
   size: ${page};
   margin: 18mm 16mm 18mm 20mm;
   @top-left { content: ${cssString(doc.title)}; font: 8pt sans-serif; color: #555; }
-  @bottom-right { content: ${pageLabel} counter(page) ${of} counter(pages); font: 8pt sans-serif; color: #555; }
+  @bottom-right { content: ${pageLabel} counter(page) ${of} counter(pages); font: 8pt sans-serif; color: #555; }${options.footer ? `
+  @bottom-left { content: ${cssString(options.footer)}; font: 8pt sans-serif; color: #555; }` : ''}
 }
 :root { color-scheme: light; }
 body { font: 10.5pt/1.45 "Segoe UI", "Helvetica Neue", Arial, sans-serif; color: #111; background: #fff; margin: 0 auto; max-width: 180mm; padding: 8mm 0; }

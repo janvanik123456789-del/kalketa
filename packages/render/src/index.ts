@@ -7,7 +7,7 @@
  */
 
 import type { SheetResult, UnitRegistry } from '@kalketa/core';
-import { t, type Catalog } from '@kalketa/i18n';
+import { formatDate, t, type Catalog } from '@kalketa/i18n';
 import { appendixHtml, renderBlocksHtml, renderHtml } from './html.js';
 import { buildPrintDocument } from './model.js';
 import { notesHtml } from './notes.js';
@@ -35,6 +35,29 @@ export interface PrintSettings {
   readonly resolveFile?: (path: string) => string | undefined;
   /** Layers printed after the sheet, in this order, as Appendix A, B, … */
   readonly appendices?: readonly PrintAppendix[];
+  /** Left of the page footer: the revision and fingerprint (revisionFooter). */
+  readonly footer?: string;
+}
+
+/** Where the printed content stands among the revisions of the sheet. */
+export interface FooterRevision {
+  /** First 8 hex digits of the content fingerprint, "3f9c 21ab". */
+  readonly hash: string;
+  /** The content is this revision. */
+  readonly revision?: { readonly label: string; readonly created: string };
+  /** The content changed after this revision (a draft). */
+  readonly after?: string;
+}
+
+/** "Revize A (1. 10. 2026) · otisk 3f9c 21ab", "Rozpracováno po revizi A · otisk …", or the fingerprint alone. */
+export function revisionFooter(catalog: Catalog, state: FooterRevision): string {
+  const hash = t(catalog, 'print.fingerprint', { hash: state.hash });
+  if (state.revision) {
+    const date = state.revision.created ? formatDate(Math.floor(Date.parse(state.revision.created) / 86_400_000), catalog) : '';
+    return `${t(catalog, 'print.revision', { label: state.revision.label, date })} · ${hash}`;
+  }
+  if (state.after) return `${t(catalog, 'print.draftAfter', { label: state.after })} · ${hash}`;
+  return hash.charAt(0).toUpperCase() + hash.slice(1);
 }
 
 /** "Příloha A: Zatížení" for the n-th appendix. */
@@ -75,5 +98,6 @@ export function printHtml(result: SheetResult, settings: PrintSettings): string 
     appendices: rendered,
     ...(settings.paper ? { paper: settings.paper } : {}),
     ...(settings.orientation ? { orientation: settings.orientation } : {}),
+    ...(settings.footer ? { footer: settings.footer } : {}),
   });
 }

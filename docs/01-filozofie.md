@@ -179,6 +179,15 @@ Blok s jasnými vstupy a výstupy (např. „prostý nosník“, „dimenzován�
   *Upřesněno 30. 9. 2026:* zatím se varianty řeší kopiemi souboru (Uložit jako) v záložkách nebo oknech vedle sebe; porovnání otevřených výpočtů je možný dodělek (F11), postavený na stejném porovnání jako revize.
 - **Export do PDF s otiskem (hashem):** z vytištěného výpočtu jde ověřit, kterou revizi listu představuje.
 
+*Hotovo 1. 10. 2026 (Soubor → Revize…):*
+- **Zmrazení:** revize A, B, … (nebo vlastní označení, např. P1) s poznámkou a autorem. Revize je úplný snímek obsahu (výpočet, vrstvy, tabulky, bloky, obrázky) uložený přímo v souboru `.kalk` ve složce `revisions/<označení>/`. Výpočet jde dál upravovat; zmrazený obsah se nemění.
+- **Otisk:** SHA-256 celého obsahu, v tisku a v PDF vlevo dole na každé stránce: „Revize A (1. 10. 2026) · otisk 3f9c 21ab“, po změnách „Rozpracováno po revizi A · otisk …“, bez revizí jen „Otisk …“. Stavový řádek ukazuje „Revize A“ nebo „Revize A + změny“.
+- **Ověření:** otisk z papíru (stačí 8 znaků) se zadá do dialogu a program řekne, které revizi patří, nebo že nepatří žádné. Revize změněná mimo program se při otevření ohlásí (`W-REVISION-HASH`).
+- **Porovnání:** libovolné dvě revize nebo revize s aktuálním obsahem: změněné zadání a vzorce (zápis před → po), změněné výsledky (hodnota před → po a změna v %), posudky (využití a ✓/✗) a tabulky. Jiná jednotka zobrazení ani jiné mezery se za změnu nepočítají.
+- **Otevřít** revizi: otevře se jako nový výpočet v záložce (např. pro tisk staré revize nebo pro porovnání vedle sebe).
+- Příkazová řádka (`kalketa print`) tiskne stejnou patičku; `unpack`/`pack` revize zachová.
+- Možné doplňky: tisk porovnání jako protokol změn, porovnání otevřených výpočtů (F11) stejným mechanismem, podpis revize, QR kód s otiskem.
+
 ---
 
 ## 8. Soubor listu

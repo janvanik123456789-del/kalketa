@@ -24,6 +24,7 @@ export { evaluate, type EvalContext } from './eval/evaluator.js';
 export { FUNCTION_NAMES, BUILTIN_CONSTANTS, builtinFunctions } from './eval/functions.js';
 export { FUNCTION_MODULES, FunctionRegistry, signature, type FunctionDef, type FunctionModuleId } from './functions/registry.js';
 export * from './graph/session.js';
+export * from './graph/compare.js';
 export { isPlotCall, MAX_PLOT_SERIES, type PlotKind, type PlotResult, type PlotSeries } from './eval/plot.js';
 export * from './tables/table.js';
 export { TABLE_FUNCTIONS, ROW_VARIABLE } from './eval/tables.js';

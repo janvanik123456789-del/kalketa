@@ -44,6 +44,7 @@ export interface CommandContext {
     newWindow(): void;
     cycleDocument(direction: 1 | -1): void;
     properties(): void;
+    revisions(): void;
     print(): void;
     exportPdf(): void;
     example(): void;
@@ -87,6 +88,7 @@ export function buildCommands(ctx: CommandContext): Map<string, Command> {
   add('file.saveAs', 'file', a.saveAs, { shortcut: 'Ctrl+Shift+S' });
   add('file.close', 'file', a.closeDocument, { shortcut: 'Ctrl+W' });
   add('file.properties', 'file', a.properties);
+  add('file.revisions', 'file', a.revisions);
   add('file.print', 'file', a.print, { shortcut: 'Ctrl+P' });
   add('file.pdf', 'file', a.exportPdf, { enabled: ctx.desktop });
   add('file.example', 'file', a.example);

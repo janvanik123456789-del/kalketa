@@ -26,11 +26,11 @@ import { basename, extname, join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { defaultRegistry, traceName, type Diagnostic } from '@kalketa/core';
 import { catalogFor, formatDiagnostic, t, type Catalog, type UiKey } from '@kalketa/i18n';
-import { appendixLayers, blockAppendices, evaluateDocument, FILE_EXTENSION, importTable, parseCsv, readWorkbook } from '@kalketa/sheet';
+import { appendixLayers, blockAppendices, evaluateDocument, FILE_EXTENSION, importTable, parseCsv, readWorkbook, revisionState, shortHash } from '@kalketa/sheet';
 import { openSheet, saveSheetFile, writeFolder, writeTable } from './files.js';
 import { htmlToPdf } from './pdf.js';
 import { formatReport, formatTrace } from './report.js';
-import { printHtml } from '@kalketa/render';
+import { printHtml, revisionFooter } from '@kalketa/render';
 
 const USAGE = [
   'Usage:',
@@ -89,6 +89,8 @@ async function main(argv: string[]): Promise<number> {
     if (!doc) return 1;
     const { result, evaluation, tableDiagnostics } = evaluateDocument(doc, defaultRegistry);
     printDiagnostics(tableDiagnostics, catalog);
+    // The footer names the revision and the fingerprint of what is printed.
+    const revision = await revisionState(doc);
     // The printout is in the sheet's language; --lang only applies when it has none.
     const printCatalog = doc.manifest.language ? catalogFor(doc.manifest.language) : catalog;
     const html = printHtml(result, {
@@ -101,6 +103,10 @@ async function main(argv: string[]): Promise<number> {
       orientation: doc.layout.orientation,
       resolveFile: (path) => dataUri(path, doc.files.get(path), doc.files),
       appendices: [...appendixLayers(doc.layers, evaluation, (layer) => t(printCatalog, `layer.kind.${layer.kind}` as UiKey)), ...blockAppendices(evaluation.main)],
+      footer: revisionFooter(printCatalog, {
+        hash: shortHash(revision.hash),
+        ...(revision.current ? { revision: { label: revision.current.label, created: revision.current.created } } : revision.latest ? { after: revision.latest.label } : {}),
+      }),
     });
     const htmlOut = values.out ?? file.slice(0, -extname(file).length) + '.html';
     writeFileSync(htmlOut, html);

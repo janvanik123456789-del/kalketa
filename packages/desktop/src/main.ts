@@ -406,7 +406,7 @@ async function runSmokeTest(pdfPath: string): Promise<void> {
     await writeFile(pdfPath, pdf);
     ok =
       state.bridge && state.sideBySide && state.menus === 7 && state.toolbars > 0 && state.rows > 10 && state.summary > 0 && state.math > 0 && reshapedColumns === 3 && pdf.length > 1000 &&
-      layers.newKeepsExample && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.charts && layers.functionBar && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
+      layers.newKeepsExample && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.charts && layers.functionBar && layers.revisions && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
     console.log(JSON.stringify({ ok, ...state, reshapedColumns, layers, pdfBytes: pdf.length }));
   } catch (err) {
     console.log(JSON.stringify({ ok: false, error: (err as Error).message }));
@@ -726,6 +726,58 @@ async function layersWithRealInput(picture: string) {
   await pause(400);
   const templateRows = (await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .page .row')].map((r) => r.textContent.replace(/\\s+/g, ''))`)) as string[];
   const functionBar = templateLine === 'integral(x²; x: 0 .. 1)' && templateRows.some((r) => r.includes('∫') && r.endsWith('=0,3333'));
+
+  // Revisions: File > Revisions freezes A; a new line makes a draft; the comparison and the footer say so.
+  await clickOn('.menubar-item:nth-child(1) > button');
+  await clickMenu('Revize…');
+  await pause(300);
+  await clickOn('.rev-note');
+  await typeText('k odevzdání');
+  await clickOn('.rev-freeze-button');
+  // The fingerprint is computed a moment after a change; the hidden window runs timers slowly.
+  await pause(1500);
+  await takePicture(picture.replace(/[.]png$/, '-revisions.png'));
+  const frozen = (await contents.executeJavaScript(`({
+    rows: document.querySelectorAll('.rev-list tbody tr').length,
+    hash: document.querySelector('.rev-list .rev-hash')?.textContent ?? '',
+    state: document.querySelector('.rev-state')?.textContent ?? '',
+  })`)) as { rows: number; hash: string; state: string };
+  await clickOn('.rev-verify input');
+  await typeText(frozen.hash);
+  await pause(200);
+  const verifiedText = (await contents.executeJavaScript(`document.querySelector('.rev-verified')?.textContent ?? ''`)) as string;
+  await pressKey('Escape');
+  await pause(300);
+  const statusAfterFreeze = (await contents.executeJavaScript(`document.querySelector('.status-revision')?.textContent ?? ''`)) as string;
+  await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .page .row')].at(-1).id = 'smoke-last-row'`);
+  const rowOpen = (await contents.executeJavaScript(`!!document.querySelector('textarea.row-editor')`)) as boolean;
+  await clickOn(rowOpen ? 'textarea.row-editor' : '#smoke-last-row');
+  await pause(300);
+  await pressKey('End');
+  await pressKey('Enter');
+  await typeText('z_r := 7 kN');
+  await clickOn('.statusbar');
+  await pause(1500);
+  await takePicture(picture.replace(/[.]png$/, '-revisions.png'));
+  const statusDraft = (await contents.executeJavaScript(`document.querySelector('.status-revision')?.textContent ?? ''`)) as string;
+  const footerDraft = (await contents.executeJavaScript(`document.querySelector('.layer-view.active .page-foot-left')?.textContent ?? ''`)) as string;
+  await clickOn('.status-revision');
+  await pause(300);
+  await clickOn('.rev-compare-button');
+  await pause(600);
+  const comparedText = (await contents.executeJavaScript(`document.querySelector('.rev-comparison')?.textContent ?? ''`)) as string;
+  await takePicture(picture.replace(/[.]png$/, '-revisions.png'));
+  await takePicture(picture.replace(/[.]png$/, '-revisions.png'));
+  await pressKey('Escape');
+  const revisions =
+    frozen.rows === 1 &&
+    /^[0-9a-f]{4} [0-9a-f]{4}$/.test(frozen.hash) &&
+    frozen.state.includes('revizi A') &&
+    verifiedText.includes('revizi A') &&
+    statusAfterFreeze === 'Revize A' &&
+    statusDraft === 'Revize A + změny' &&
+    footerDraft.startsWith('Rozpracováno po revizi A · otisk ') &&
+    comparedText.includes('z_r := 7 kN');
 
   // Pictures: a picture on the clipboard, Ctrl+V in the sheet (real keys).
   const bitmap = Buffer.alloc(240 * 120 * 4);
@@ -1067,7 +1119,7 @@ async function layersWithRealInput(picture: string) {
     blocksOk = shown.errors === 0 && shown.text.includes('Prosty nosnik 1.2') && shown.text.includes('45');
     await takePicture(picture.replace(/[.]png$/, '-blocks.png'));
   }
-  return { ...state, newKeepsExample, citations, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, canvasOk, besideText, pictures, blocksOk };
+  return { ...state, newKeepsExample, citations, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, canvasOk, besideText, pictures, blocksOk };
 }
 
 /**

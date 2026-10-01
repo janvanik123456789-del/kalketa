@@ -113,6 +113,7 @@ export const DIAGNOSTIC_SEVERITY = {
   'E-FILE-INVALID': 'error',
   'E-FILE-VERSION': 'error',
   'W-FILE-HASH': 'warning',
+  'W-REVISION-HASH': 'warning',
 } as const satisfies Record<string, Severity>;
 
 export type DiagnosticCode = keyof typeof DIAGNOSTIC_SEVERITY;

@@ -9,10 +9,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { defaultRegistry, formatPicture, parsePicture, rowLabel, toDecimalComma, type Diagnostic, type Statement } from '@kalketa/core';
 import { catalogFor, CATALOGS, formatDiagnostic, formatNumber, t, type Catalog } from '@kalketa/i18n';
-import { buildPrintDocument, printHtml } from '@kalketa/render';
+import { buildPrintDocument, printHtml, revisionFooter } from '@kalketa/render';
 import { emptyScene, readScene, writeScene, type CanvasScene } from '@kalketa/canvas';
 import { CanvasEditor } from '@kalketa/canvas/editor';
-import { addLayer, allDiagnostics, appendixLayers, blockAppendices, documentBlocks, isRemovable, LayerSessions, MAIN_LAYER, removeLayer, tablesByLayer, updateLayer, type AddableLayerKind, type Layer, type SheetDocument } from '@kalketa/sheet';
+import { addLayer, allDiagnostics, appendixLayers, blockAppendices, documentBlocks, isRemovable, LayerSessions, MAIN_LAYER, removeLayer, freezeRevision, removeRevision, revisionDocument, revisionState, shortHash, tablesByLayer, updateLayer, type AddableLayerKind, type Layer, type RevisionState, type SheetDocument } from '@kalketa/sheet';
 import { buildCommands, shortcutOf, type Command } from './commands.js';
 import { chooseFile, desktop, emptyDocument, exampleDocument, fileName, fileUri, largestParts, openBytes, pickAndOpen, saveDocument, tableCache, type FileRef, type OpenedFile } from './document.js';
 import { record, redo, undo, type History } from './logic/history.js';
@@ -26,6 +26,7 @@ import { captionOf, fromFile, pictureLine, picturePath, pixelWidth, widthFor, ty
 import { importBlockFile } from './blockActions.js';
 import { AboutDialog, CustomizeDialog, FunctionsDialog, PropertiesDialog, SettingsDialog, ShortcutsDialog } from './components/Dialogs.js';
 import { DocumentTabs } from './components/DocumentTabs.js';
+import { RevisionsDialog } from './components/Revisions.js';
 import { Inspector } from './components/Inspector.js';
 import { ask, askConfirm, AskHost } from './components/Ask.js';
 import { LAYER_GLYPH, LayersPane, LayerTabs } from './components/LayersPane.js';
@@ -37,7 +38,7 @@ import { ToolbarFrame, toolbarName } from './components/Toolbars.js';
 
 type Pane = 'details' | 'tables' | 'layers' | 'none';
 type Tab = DocTab<SheetDocument, FileRef>;
-type DialogKind = 'settings' | 'properties' | 'customize' | 'shortcuts' | 'functions' | 'about';
+type DialogKind = 'settings' | 'properties' | 'revisions' | 'customize' | 'shortcuts' | 'functions' | 'about';
 
 const MM_TO_PX = 96 / 25.4;
 const PAGE_GAP_PX = 24;
@@ -439,6 +440,23 @@ export function App() {
     if (target || !desktop) setSavedDoc(doc);
   };
 
+  // Where the content stands among its revisions; its fingerprint goes into the footer of the printout.
+  const [revState, setRevState] = useState<RevisionState | undefined>();
+  useEffect(() => {
+    let live = true;
+    const timer = setTimeout(() => void revisionState(doc).then((s) => live && setRevState(s)), 300);
+    return () => {
+      live = false;
+      clearTimeout(timer);
+    };
+  }, [doc]);
+  const footer = revState
+    ? revisionFooter(printCatalog, {
+        hash: shortHash(revState.hash),
+        ...(revState.current ? { revision: { label: revState.current.label, created: revState.current.created } } : revState.latest ? { after: revState.latest.label } : {}),
+      })
+    : undefined;
+
   const printoutHtml = () =>
     printHtml(evaluation.main, {
       catalog: printCatalog,
@@ -450,6 +468,7 @@ export function App() {
       resolveFile,
       ...(doc.manifest.author ? { subtitle: doc.manifest.author } : {}),
       appendices: [...appendixLayers(doc.layers, evaluation, (l) => layerName(l, printCatalog)), ...blockAppendices(evaluation.main)],
+      ...(footer ? { footer } : {}),
     });
 
   const printout = () => {
@@ -803,6 +822,7 @@ export function App() {
       newWindow: () => void desktop?.newWindow(),
       cycleDocument: (direction) => switchDocument(cycleTab(docs, direction)),
       properties: () => setDialog('properties'),
+      revisions: () => setDialog('revisions'),
       print: printout,
       exportPdf: () => void desktop?.exportPdf({ html: printoutHtml(), suggestedName: fileName(doc) }),
       example: () => openDocument(exampleDocument(), undefined),
@@ -973,6 +993,7 @@ export function App() {
         cmd('file.close'),
         sep,
         cmd('file.properties'),
+        cmd('file.revisions'),
         sep,
         cmd('file.print'),
         ...(desktop ? [cmd('file.pdf')] : []),
@@ -1110,6 +1131,7 @@ export function App() {
           result={resultOf(l)}
           print={prints.get(l.id)!}
           printCatalog={printCatalog}
+          {...(footer && l.kind === 'sheet' ? { footer } : {})}
           editing={active ? editing : undefined}
           selected={active ? selected : undefined}
           resolveFile={resolveFile}
@@ -1275,6 +1297,11 @@ export function App() {
             {t(ui, 'checks.title')}: {checks.length - failedChecks}/{checks.length} ✓
           </span>
         )}
+        {revState?.latest && (
+          <button type="button" className={`status-revision${revState.current ? '' : ' changed'}`} onClick={() => setDialog('revisions')}>
+            {t(ui, revState.current ? 'rev.status' : 'rev.statusChanged', { label: (revState.current ?? revState.latest).label })}
+          </button>
+        )}
         <span className="grow" />
         <span>{Math.round(zoom * 100)} %</span>
         <span>{dirty ? t(ui, 'editor.unsaved') : t(ui, 'editor.saved')}</span>
@@ -1293,6 +1320,25 @@ export function App() {
             setSizeLimit(next.sizeLimit);
             remember(SIZE_LIMIT_KEY, String(next.sizeLimit));
           }}
+          onClose={() => setDialog(undefined)}
+        />
+      )}
+      {dialog === 'revisions' && (
+        <RevisionsDialog
+          catalog={ui}
+          doc={doc}
+          current={evaluation.main}
+          state={revState}
+          onFreeze={async (label, note) => change(await freezeRevision(doc, { label, ...(note ? { note } : {}) }))}
+          onRemove={(label) => change(removeRevision(doc, label))}
+          onOpen={(revision) =>
+            void revisionDocument(revision).then((read) => {
+              if (!read.document) return;
+              setDialog(undefined);
+              const title = t(ui, 'rev.openedTitle', { title: read.document.manifest.title, label: revision.label });
+              openDocument({ ...read.document, manifest: { ...read.document.manifest, title } }, undefined, read.diagnostics);
+            })
+          }
           onClose={() => setDialog(undefined)}
         />
       )}

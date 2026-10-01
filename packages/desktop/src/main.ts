@@ -774,7 +774,9 @@ async function layersWithRealInput(picture: string) {
   }
   await clickOn('.sheet-scroll');
   await pressKey('V', ['control']);
-  await pause(800);
+  // Reading the clipboard through the desktop takes a moment (longer on X11); wait for the picture.
+  for (let waited = 0; waited < 4000 && (await countPictures()) === before; waited += 200) await pause(200);
+  await pause(300);
   const shownAfterPaste = (await contents.executeJavaScript(`(() => {
     const row = document.querySelector('.layer-view.active .row.just-inserted');
     const view = document.querySelector('.layer-view.active .sheet-scroll').getBoundingClientRect();

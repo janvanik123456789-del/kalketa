@@ -12,12 +12,13 @@ import { baseUnitSymbol } from '../units/display.js';
 import type { UnitRegistry } from '../units/registry.js';
 import { resolveUnit, type ResolvedUnit } from '../units/unitExpr.js';
 import type { TableRead } from '../tables/table.js';
-import { quantity, type Quantity, type Value, type VectorValue } from '../values/value.js';
+import { quantity, type MatrixValue, type Quantity, type Value, type VectorValue } from '../values/value.js';
 import { dateValue, isDate } from '../values/date.js';
 import { asBoolean, asComplex, asQuantity } from './coerce.js';
 import { BUILTIN_CONSTANTS, callFunction, FUNCTION_NAMES } from './functions.js';
 import { callCalculus, isBindingCall } from './calculus.js';
 import { BINDING_FUNCTIONS } from '../lang/parser.js';
+import { asMatrix, at, inverseOf, matrix, normalized } from '../functions/linear.js';
 import { callTableFunction, memberOf, TABLE_FUNCTIONS } from './tables.js';
 import { applyFunction, lookupFunction } from './userFunctions.js';
 import type { BlockCaller, BlockInput } from './blocks.js';
@@ -79,6 +80,7 @@ function evaluateRaw(expr: Expr, ctx: EvalContext): Value {
       if (expr.operator === 'not') return { type: 'boolean', value: !asBoolean(operand, expr.operand.span) };
       const negate = (q: Quantity): Quantity => ({ ...q, si: -q.si, ...(q.im ? { im: -q.im } : {}) });
       if (operand.type === 'vector') return expr.operator === '-' ? { type: 'vector', items: operand.items.map(negate) } : operand;
+      if (operand.type === 'matrix') return expr.operator === '-' ? { ...operand, items: operand.items.map(negate) } : operand;
       const q = asComplex(operand, expr.operand.span);
       return expr.operator === '-' ? negate(q) : q;
     }
@@ -101,8 +103,21 @@ function evaluateRaw(expr: Expr, ctx: EvalContext): Value {
       return memberOf(evaluate(expr.object, ctx), expr.name, expr.span, expr.object.span, ctx);
     case 'vector':
       return vectorOf(expr, ctx);
+    case 'matrix':
+      return matrixOf(expr, ctx);
     case 'index': {
       const object = evaluate(expr.object, ctx);
+      if (object.type === 'matrix') {
+        // A[i, j], counted from 1.
+        if (!expr.column) return fail('E-INDEX', expr.span, { index: '?', length: `${object.rows}×${object.cols}` });
+        const position = (e: Expr, size: number) => {
+          const q = asQuantity(evaluate(e, ctx), e.span);
+          if (!isDimensionless(q.dim) || !Number.isInteger(q.si) || q.si < 1 || q.si > size) fail('E-INDEX', e.span, { index: q.si, length: size });
+          return q.si - 1;
+        };
+        return at(object, position(expr.index, object.rows), position(expr.column, object.cols));
+      }
+      if (expr.column) fail('E-TYPE', expr.object.span, { expected: 'matrix', found: object.type === 'quantity' ? 'number' : object.type });
       if (object.type !== 'vector') return fail('E-TYPE', expr.object.span, { expected: 'vector', found: object.type === 'quantity' ? 'number' : object.type });
       const index = asQuantity(evaluate(expr.index, ctx), expr.index.span);
       if (!isDimensionless(index.dim) || !Number.isInteger(index.si) || index.si < 1 || index.si > object.items.length) {
@@ -111,6 +126,17 @@ function evaluateRaw(expr: Expr, ctx: EvalContext): Value {
       return object.items[index.si - 1]!;
     }
   }
+}
+
+/** [a, b | c, d]: a matrix row by row; every row as long, items with their own units. */
+function matrixOf(expr: Extract<Expr, { kind: 'matrix' }>, ctx: EvalContext): MatrixValue {
+  const cols = expr.rows[0]!.length;
+  const items: Quantity[] = [];
+  for (const row of expr.rows) {
+    if (row.length !== cols) fail('E-MATRIX-SHAPE', expr.span, { operator: '|', left: String(cols), right: String(row.length) });
+    for (const item of row) items.push(asQuantity(evaluate(item, ctx), item.span));
+  }
+  return matrix(expr.rows.length, cols, items);
 }
 
 /** [a, b, c]: all items of one dimension; a series among them is spread. */
@@ -155,6 +181,7 @@ function evaluateBinary(op: BinaryOperator, leftExpr: Expr, rightExpr: Expr, spa
     return { type: 'boolean', value: op === '==' ? equal : !equal };
   }
 
+  if (left.type === 'matrix' || right.type === 'matrix') return matrixBinary(op, left, right, leftExpr, rightExpr, span, ctx);
   if (left.type === 'vector' || right.type === 'vector') return vectorBinary(op, left, right, leftExpr, rightExpr, span, ctx);
   return arithmetic(op, left, right, leftExpr, rightExpr, span, ctx);
 }
@@ -174,6 +201,61 @@ function vectorBinary(op: BinaryOperator, left: Value, right: Value, leftExpr: E
   const items: Quantity[] = [];
   for (let i = 0; i < n; i++) items.push(asComplex(arithmetic(op, at(left, i), at(right, i), leftExpr, rightExpr, span, ctx), span));
   return { type: 'vector', items };
+}
+
+/**
+ * Matrices: + and − item by item (same shape), times or over a number,
+ * A·B and A·v as matrix products, A^n and A^-1. A series next to a matrix is
+ * a column (A·v), or a row on the left (v·A).
+ */
+function matrixBinary(op: BinaryOperator, left: Value, right: Value, leftExpr: Expr, rightExpr: Expr, span: Span, ctx: EvalContext): Value {
+  const shape = (m: MatrixValue) => `${m.rows}×${m.cols}`;
+  const each = (m: MatrixValue, f: (q: Quantity, k: number) => Value): MatrixValue => ({ ...m, items: m.items.map((q, k) => asComplex(f(q, k), span)) });
+  if (op === '^') {
+    if (left.type !== 'matrix') return fail('E-TYPE', rightExpr.span, { expected: 'number', found: 'matrix' });
+    const n = asQuantity(right, rightExpr.span);
+    if (!isDimensionless(n.dim) || !Number.isInteger(n.si) || n.si < -1) fail('E-DOMAIN', rightExpr.span, { function: '^' });
+    if (n.si === -1) return inverseOf(left, leftExpr.span, '^');
+    if (left.rows !== left.cols) fail('E-MATRIX-SQUARE', leftExpr.span, { function: '^', rows: left.rows, cols: left.cols });
+    if (n.si === 0) return matrix(left.rows, left.cols, left.items.map((_, k) => quantity(Math.floor(k / left.cols) === k % left.cols ? 1 : 0)));
+    let power: MatrixValue = left;
+    for (let k = 1; k < n.si; k++) power = product(power, left, leftExpr, rightExpr, span, ctx);
+    return power;
+  }
+  if (op === '+' || op === '-') {
+    if (left.type !== 'matrix' || right.type !== 'matrix') return fail('E-MATRIX-SHAPE', span, { operator: op, left: left.type === 'matrix' ? shape(left) : left.type, right: right.type === 'matrix' ? shape(right) : right.type });
+    if (left.rows !== right.rows || left.cols !== right.cols) fail('E-MATRIX-SHAPE', span, { operator: op, left: shape(left), right: shape(right) });
+    return each(left, (q, k) => arithmetic(op, q, right.items[k]!, leftExpr, rightExpr, span, ctx));
+  }
+  if (op === '*' || op === '/') {
+    // A number scales every item; a matrix or series multiplies as a matrix.
+    if (right.type === 'quantity') return each(left as MatrixValue, (q) => arithmetic(op, q, right, leftExpr, rightExpr, span, ctx));
+    if (op === '/') return fail('E-TYPE', rightExpr.span, { expected: 'number', found: right.type });
+    if (left.type === 'quantity') return each(right as MatrixValue, (q) => arithmetic(op, left, q, leftExpr, rightExpr, span, ctx));
+    const a = left.type === 'vector' ? matrix(1, left.items.length, left.items) : asMatrix(left, leftExpr.span);
+    const b = asMatrix(right, rightExpr.span);
+    const result = product(a, b, leftExpr, rightExpr, span, ctx);
+    // v·A gives a row, A·v a column: both come out as series.
+    return result.rows === 1 && left.type === 'vector' ? { type: 'vector', items: result.items } : normalized(result);
+  }
+  return fail('E-TYPE', span, { expected: 'number', found: 'matrix' });
+}
+
+/** A·B: every item a sum of products, whose units must agree. */
+function product(a: MatrixValue, b: MatrixValue, leftExpr: Expr, rightExpr: Expr, span: Span, ctx: EvalContext): MatrixValue {
+  if (a.cols !== b.rows) fail('E-MATRIX-SHAPE', span, { operator: '·', left: `${a.rows}×${a.cols}`, right: `${b.rows}×${b.cols}` });
+  const items: Quantity[] = [];
+  for (let i = 0; i < a.rows; i++) {
+    for (let j = 0; j < b.cols; j++) {
+      let sum: Quantity | undefined;
+      for (let k = 0; k < a.cols; k++) {
+        const term = asComplex(arithmetic('*', at(a, i, k), at(b, k, j), leftExpr, rightExpr, span, ctx), span);
+        sum = sum ? asComplex(addSubtract('+', sum, term, span), span) : term;
+      }
+      items.push(sum!);
+    }
+  }
+  return matrix(a.rows, b.cols, items);
 }
 
 /** Two numbers (real or complex): + − · / ^ and comparisons. */

@@ -24,7 +24,7 @@ import {
 } from '@calccanvas/core';
 import { formatDate, formatDiagnostic, formatNumber, t, type Catalog } from '@calccanvas/i18n';
 import { formulaNode, hasSubstitutableParts, THIN_SPACE, type FormulaOptions, type Substituted } from './formula.js';
-import { mi, mn, mo, mtext, mu, nameNode, paren, row, sup, toText, type MathNode } from './math.js';
+import { mi, mn, mo, mtext, mu, nameNode, paren, row, sup, toText, type MathNode, table } from './math.js';
 
 export interface PrintOptions {
   readonly catalog: Catalog;
@@ -334,6 +334,24 @@ function besideLines(result: SheetResult, picture: StatementResult): number[] {
   return lines;
 }
 
+/** Numbers written out: 5, -2, 12 kN/m, and series and matrices of them, with a unit after the brackets. */
+function isGiven(expr: Expr): boolean {
+  switch (expr.kind) {
+    case 'number':
+      return true;
+    case 'unary':
+      return expr.operator !== 'not' && isGiven(expr.operand);
+    case 'vector':
+      return expr.items.length > 0 && expr.items.every(isGiven);
+    case 'matrix':
+      return expr.rows.every((r) => r.every(isGiven));
+    case 'binary':
+      return expr.operator === '*' && expr.right.kind === 'unit' && (expr.left.kind === 'vector' || expr.left.kind === 'matrix') && isGiven(expr.left);
+    default:
+      return false;
+  }
+}
+
 /** Lines of one definition: given value, or formula / substitution / result. */
 function equationLines(
   r: StatementResult,
@@ -346,8 +364,8 @@ function equationLines(
 ): EquationLine[] {
   const withLhs = (line: Omit<EquationLine, 'lhs'>, first: boolean): EquationLine => (first && lhs ? { ...line, lhs } : line);
   const result = resultNode(r, format, formulaOptions().booleans, formulaOptions().argumentSeparator, formulaOptions().date);
-  const given =
-    expr.kind === 'number' || (expr.kind === 'unary' && expr.operand.kind === 'number') || expr.kind === 'string' || expr.kind === 'boolean' || expr.kind === 'date';
+  // A value written out (5 m, [4, -2 | -2, 4] kN/m) is shown once, not as a formula and again as its result.
+  const given = isGiven(expr) || expr.kind === 'string' || expr.kind === 'boolean' || expr.kind === 'date';
 
   // A conversion shows both units: "100 EUR = 2 500 CZK".
   const conversion = !lhs && expr.kind === 'number' && expr.unit !== undefined && r.display !== undefined && r.display.unit !== formatUnit(expr.unit);
@@ -383,6 +401,7 @@ function resultNode(
   if (r.status !== 'ok' || !r.value) return undefined;
   if (r.display) return valueNode(r.display.value, r.display.unit, format, r.display.im, date);
   if (r.displayList) return seriesNode(r.displayList, format, separator);
+  if (r.displayMatrix) return matrixNode(r.displayMatrix, format);
   if (r.value.type === 'boolean') return mtext(r.value.value ? booleans.true : booleans.false);
   return otherValueNode(r.value);
 }
@@ -515,16 +534,31 @@ function isoDate(days: number): string {
 function seriesNode(items: readonly { value: number; unit: string }[], format: (value: number) => string, separator: string): MathNode {
   const shown = items.length > SERIES_SHOWN ? [...items.slice(0, 5), undefined, ...items.slice(-2)] : items;
   const parts: MathNode[] = [];
+  // One unit after the brackets; items of different units (a solution x = [u, φ]) each with their own.
+  const unit = items[0]?.unit ?? '';
+  const shared = items.every((item) => item.unit === unit);
   shown.forEach((item, i) => {
     if (i > 0) parts.push(mo(separator));
-    parts.push(item ? valueNode(item.value, '', format) : mo('…'));
+    parts.push(item ? valueNode(item.value, shared ? '' : item.unit, format) : mo('…'));
   });
-  const unit = items[0]?.unit ?? '';
   const count = items.length > SERIES_SHOWN ? [THIN_SPACE, mtext(`(${items.length})`)] : [];
-  return row(mo('['), ...parts, mo(']'), ...(unit ? [THIN_SPACE, mu(unit)] : []), ...count);
+  return row(mo('['), ...parts, mo(']'), ...(shared && unit ? [THIN_SPACE, mu(unit)] : []), ...count);
 }
 
 const SERIES_SHOWN = 12;
+
+/** A matrix in brackets; one unit for all items stands after it, else each item has its own. */
+function matrixNode(m: { rows: number; cols: number; items: readonly { value: number; unit: string; im?: number }[] }, format: (value: number) => string): MathNode {
+  const unit = m.items[0]?.unit ?? '';
+  const shared = m.items.every((item) => item.unit === unit);
+  const cells = Array.from({ length: m.rows }, (_, i) =>
+    Array.from({ length: m.cols }, (_, j) => {
+      const item = m.items[i * m.cols + j]!;
+      return valueNode(item.value, shared ? '' : item.unit, format, item.im);
+    }),
+  );
+  return row(mo('['), table(cells), mo(']'), ...(shared && unit ? [THIN_SPACE, mu(unit)] : []));
+}
 
 /** "A_kruh(d)" or "σ(M; W)". */
 function functionHead(name: string, params: readonly { readonly name: string }[], separator: string): MathNode {

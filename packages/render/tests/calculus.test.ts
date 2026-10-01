@@ -32,3 +32,21 @@ describe('calculus in print', () => {
     expect(toMathML(sum!.rhs)).toContain('<munderover><mo>∑</mo>');
   });
 });
+
+describe('matrices in print', () => {
+  it('prints a matrix as a table in brackets, one unit after it when all items share it', () => {
+    const [given] = lines('K := [4, -2 | -2, 4] kN/m');
+    expect(toMathML(given!.rhs)).toContain('<mtable>');
+    const result = lines('K := [4, -2 | -2, 4] kN/m\nK =').at(-1)!;
+    expect(toText(result.rhs).replace(/\s+/g, ' ')).toBe('[4, −2 | −2, 4] kN/m');
+    const mixed = lines('K := [12 kN/m, 6 kN | 6 kN, 4 kN·m]\nK =').at(-1)!;
+    expect(toText(mixed.rhs).replace(/\s+/g, ' ')).toContain('12 kN/m, 6 kN | 6 kN, 4 kN·m');
+  });
+
+  it('prints a series of different units item by item', () => {
+    const x = lines('K := [12 kN/m, 6 kN | 6 kN, 4 kN·m]\nF := [1 kN | 0 kN·m]\nlsolve(K, F)').at(-1)!;
+    const text = toText(x.rhs).replace(/\s+/g, ' ');
+    expect(text).toContain('m;');
+    expect(text.endsWith(']')).toBe(true);
+  });
+});

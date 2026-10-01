@@ -54,8 +54,11 @@ export function freeNames(expr: Expr, bound: ReadonlySet<string>): Map<string, F
         return visit(e.object, rowScope, names);
       case 'vector':
         return e.items.forEach((item) => visit(item, rowScope, names));
+      case 'matrix':
+        return e.rows.forEach((r) => r.forEach((item) => visit(item, rowScope, names)));
       case 'index':
         visit(e.object, rowScope, names);
+        if (e.column) visit(e.column, rowScope, names);
         return visit(e.index, rowScope, names);
       case 'range':
         visit(e.low, rowScope, names);

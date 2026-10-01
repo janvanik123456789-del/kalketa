@@ -8,7 +8,7 @@
 
 import type { BinaryOperator, Expr, UnitExpr } from '@calccanvas/core';
 import { formatUnit } from '@calccanvas/core';
-import { frac, mi, mn, mo, mtext, mu, nameNode, paren, row, sqrt, sub, sup, type MathNode, subsup, underover } from './math.js';
+import { frac, mi, mn, mo, mtext, mu, nameNode, paren, row, sqrt, sub, sup, type MathNode, subsup, underover, table } from './math.js';
 
 export interface FormulaOptions {
   /** Formats a number literal written in the sheet (full precision, locale separators). */
@@ -82,6 +82,8 @@ function clashingMembers(expr: Expr): Set<string> {
         return;
       case 'vector':
         return e.items.forEach(visit);
+      case 'matrix':
+        return e.rows.forEach((r) => r.forEach(visit));
       case 'index':
         visit(e.object);
         return visit(e.index);
@@ -169,10 +171,12 @@ function render(expr: Expr, o: FormulaOptions): Rendered {
     }
     case 'range':
       return { node: row(render(expr.low, o).node, mo('…'), render(expr.high, o).node), prec: ATOM };
+    case 'matrix':
+      return { node: row(mo('['), table(expr.rows.map((r) => r.map((item) => render(item, o).node))), mo(']')), prec: ATOM };
     case 'index': {
       // CF[1] is written CF₁.
       const object = render(expr.object, o);
-      const index = render(expr.index, o).node;
+      const index = expr.column ? row(render(expr.index, o).node, mo(','), render(expr.column, o).node) : render(expr.index, o).node;
       return { node: expr.object.kind === 'variable' ? sub(object.node, index) : row(wrap(object, object.prec < ATOM), mo('['), index, mo(']')), prec: ATOM };
     }
   }

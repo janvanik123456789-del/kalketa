@@ -67,7 +67,11 @@ function TraceItem({ node, catalog, decimalComma, onSelect, onLayer }: { node: T
       ? node.value.label
       : node.value?.type === 'boolean'
         ? (catalog.terms[String(node.value.value)] ?? String(node.value.value))
-        : '';
+        : node.value?.type === 'matrix'
+          ? `${node.value.rows}×${node.value.cols}`
+          : node.value?.type === 'vector'
+            ? `[${node.value.items.length}]`
+            : '';
   const computed = node.inputs.length > 0 || node.tables.length > 0;
   return (
     <li>

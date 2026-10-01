@@ -498,11 +498,12 @@ class LineParser {
         const name = this.expect('ident', 'member-name');
         expr = { kind: 'member', object: expr, name: name.text, span: spanOf(expr, name) };
       } else if (token.type === '[' && expr.kind !== 'number') {
-        // CF[1]: an item of a series.
+        // CF[1]: an item of a series; A[i, j]: an item of a matrix.
         this.next();
         const index = this.parseExpression();
+        const column = this.peek().type === ',' ? (this.next(), this.parseExpression()) : undefined;
         const close = this.expect(']', ']');
-        expr = { kind: 'index', object: expr, index, span: spanOf(expr, close) };
+        expr = { kind: 'index', object: expr, index, ...(column ? { column } : {}), span: spanOf(expr, close) };
       } else {
         return expr;
       }
@@ -609,13 +610,20 @@ class LineParser {
   /** [a, b, c] with an optional unit after it: [100, 120] CZK. */
   private parseVector(): Expr {
     const open = this.next();
-    const items: Expr[] = [];
+    // Items separated by commas, rows of a matrix by | (as in Calcpad): [4, -2 | -2, 4].
+    const rows: Expr[][] = [[]];
     if (this.peek().type !== ']') {
-      do items.push(this.parseExpression());
-      while (this.peek().type === ',' && this.next());
+      for (;;) {
+        rows.at(-1)!.push(this.parseExpression());
+        if (this.peek().type === ',') this.next();
+        else if (this.peek().type === '|') {
+          this.next();
+          rows.push([]);
+        } else break;
+      }
     }
     const close = this.expect(']', ']');
-    const vector: Expr = { kind: 'vector', items, span: spanOf(open, close) };
+    const vector: Expr = rows.length > 1 ? { kind: 'matrix', rows, span: spanOf(open, close) } : { kind: 'vector', items: rows[0]!, span: spanOf(open, close) };
     const next = this.peek();
     if (next.type === 'ident' && !KEYWORDS.has(next.text) && !this.defined.has(next.text) && this.isUnit(next.text)) {
       const unit = this.parseUnitChain();

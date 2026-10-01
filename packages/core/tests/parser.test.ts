@@ -40,6 +40,8 @@ function show(expr: Expr): string {
       return `${show(expr.object)}[${show(expr.index)}]`;
     case 'range':
       return `${show(expr.low)}..${show(expr.high)}`;
+    case 'matrix':
+      return `[${expr.rows.map((r) => r.map(show).join(', ')).join(' | ')}]`;
   }
 }
 

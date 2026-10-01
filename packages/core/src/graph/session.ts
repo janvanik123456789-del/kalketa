@@ -51,6 +51,8 @@ export interface StatementResult {
   readonly display?: DisplayValue;
   /** Items of a series, all in one unit. */
   readonly displayList?: readonly DisplayValue[];
+  /** A matrix result, item by item. */
+  readonly displayMatrix?: { readonly rows: number; readonly cols: number; readonly items: readonly DisplayValue[] };
   readonly check?: CheckResult;
   /** Values found by a solve statement, in the order of its unknowns. */
   readonly solutions?: readonly { readonly name: string; readonly value: Quantity; readonly display: DisplayValue }[];
@@ -385,11 +387,12 @@ export class SheetSession {
       let target: ResolvedUnit | undefined;
       if (statement.target) {
         target = resolveUnit(statement.target, context.registry);
-        if (value.type === 'vector') {
+        if (value.type === 'vector' || value.type === 'matrix') {
           const unit = target;
           const wrong = value.items.find((q) => !sameDim(unit.dim, q.dim));
           if (wrong) throw new CalcError(diagnostic('E-TARGET-UNIT', statement.target.span, { unit: unit.symbol, found: baseUnitSymbol(wrong.dim) }));
-          value = { type: 'vector', items: value.items.map((q) => ({ ...q, hint: unit })) };
+          const items = value.items.map((q) => ({ ...q, hint: unit }));
+          value = value.type === 'vector' ? { type: 'vector', items } : { ...value, items };
         } else if (value.type !== 'quantity' || !sameDim(target.dim, value.dim)) {
           const found = value.type === 'quantity' ? baseUnitSymbol(value.dim) : value.type;
           throw new CalcError(diagnostic('E-TARGET-UNIT', statement.target.span, { unit: target.symbol, found }));
@@ -402,11 +405,14 @@ export class SheetSession {
       // A series is shown in one unit: the target, else the unit of its first item.
       const unit = target ?? (value.type === 'vector' ? value.items.find((q) => q.hint)?.hint : undefined);
       const displayList = value.type === 'vector' ? value.items.map((q) => toDisplay(q, context.registry, unit)) : undefined;
+      // A matrix item by item, each in its own unit (a target unit for all of them).
+      const displayMatrix = value.type === 'matrix' ? { rows: value.rows, cols: value.cols, items: value.items.map((q) => toDisplay(q, context.registry, target)) } : undefined;
       return {
         status: 'ok',
         value,
         ...(display ? { display } : {}),
         ...(displayList ? { displayList } : {}),
+        ...(displayMatrix ? { displayMatrix } : {}),
         dependencies,
         tableReads,
         diagnostics: ctx.warnings,

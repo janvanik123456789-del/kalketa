@@ -275,6 +275,25 @@ S := sum(1/k², k: 1 .. 100)                      ' Σ přes k
 - **Tisk:** ∫ s mezemi a dx, d/dx s bodem (|ₓ₌ₐ), Σ s indexem. V řádku dosazení se dosadí hodnoty (meze, q, L…), proměnná zůstane symbolem.
 - Chyby: chybí proměnná nebo rozsah (`E-CALCULUS-FORM`), rozsah `a .. b` mimo proměnnou (`E-RANGE-PLACE`), meze s různou jednotkou (`E-UNIT-MISMATCH`), řád derivace jiný než 1 nebo 2 (`E-DOMAIN`).
 
+### 7.1d Matice a vektory
+
+```text
+K := [12 kN/m, 6 kN | 6 kN, 4 kN·m]      ' řádky oddělené |, prvky čárkou (česky středníkem)
+F := [1 kN | 0 kN·m]                      ' sloupec: prvky s různými jednotkami
+x := lsolve(K, F)                          ' x = [u; φ] = [0,3333 m; −0,5]
+A := [4, -2 | -2, 4] kN/m                  ' jednotka za závorkou platí pro všechny prvky
+A[1, 2]                                    ' prvek: řádek, sloupec (od 1)
+ω² := eigenvals(K_s, M_s)                  ' vlastní kmitání: K·φ = ω²·M·φ
+```
+
+- **Zápis** jako v Calcpadu: řádky oddělené `|`. Matice s jedním řádkem je obyčejná řada `[a, b, c]`. **Jednotky po prvcích** (jako v EngineeringPaper.xyz): matice tuhosti může mít kN/m, kN i kN·m; jednotka za závorkou platí pro všechny prvky; `| kN` převede všechny prvky.
+- **Operace:** `+` a `−` po prvcích (stejné rozměry), `·` a `/` číslem po prvcích, `A·B` a `A·v` jako maticový součin (jednotky v každém součtu musí souhlasit), `v·A` bere řadu jako řádek, `A^n`, `A^-1`. Řada se řadou se dál násobí po prvcích (peněžní toky); skalární součin je `dot(a, b)`.
+- **Funkce** (modul „Matice a vektory“ v nápovědě F1): `transpose`, `det`, `inverse`, `lsolve(A, b)` (LU rozklad s výběrem hlavního prvku, `b` může být i matice), `identity(n)`, `rows`, `cols`, `row(A, i)`, `col(A, j)`, `diag`, `trace`, `dot`, `cross`, `norm`, `eigenvals(A)` / `eigenvals(K, M)` (Jacobiho rotace, zobecněná úloha přes Choleského rozklad M), `eigenvecs` (sloupce, největší prvek 1).
+- **Jednotky výsledků:** `det`, `inverse` a `lsolve` potřebují matici, jejíž jednotky mají tvar *jednotka řádku × jednotka sloupce* (matice tuhosti ho má). Z ní plynou jednotky výsledku: řešení K·x = F má u posunu m a u pootočení žádnou jednotku. Vlastní čísla potřebují jednu jednotku pro celou matici; `eigenvals(K, M)` z N/m a kg dá 1/s² (ω²).
+- **Řada má jeden rozměr** (kvůli financím a součtům); vektor s různými jednotkami se píše jako sloupec `[1 kN | 0 kN·m]`. Výsledek s různými jednotkami (řešení soustavy) se v tisku ukáže s jednotkou u každého prvku.
+- **Tisk:** matice jako tabulka v hranatých závorkách, společná jednotka za závorkou; zapsaná matice (jen čísla) se ukáže jednou, jako zadaná hodnota.
+- Chyby: nesouhlasí rozměry (`E-MATRIX-SHAPE`), není čtvercová (`E-MATRIX-SQUARE`), jednotky nemají tvar řádek × sloupec (`E-MATRIX-UNITS`), singulární matice (`E-MATRIX-SINGULAR`), vlastní čísla nesymetrické matice (`E-MATRIX-SYMMETRIC`).
+
 ### 7.2 Uživatelské funkce (F7)
 
 ```text

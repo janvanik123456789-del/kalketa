@@ -154,9 +154,19 @@ function formatValue(r: StatementResult, options: ReportOptions): string {
   if (r.displayList) {
     const sep = formatNumber(1.5, options.catalog).includes(',') ? '; ' : ', ';
     const unit = r.displayList[0]?.unit ?? '';
-    const numbers = r.displayList.map((d) => formatDisplay(d.value, '', options));
+    const shared = r.displayList.every((d) => d.unit === unit);
+    const numbers = r.displayList.map((d) => formatDisplay(d.value, shared ? '' : d.unit, options));
     const shown = numbers.length > 12 ? [...numbers.slice(0, 5), '…', ...numbers.slice(-2)] : numbers;
-    return `[${shown.join(sep)}]${unit ? ` ${unit}` : ''}${numbers.length > 12 ? ` (${numbers.length})` : ''}`;
+    return `[${shown.join(sep)}]${shared && unit ? ` ${unit}` : ''}${numbers.length > 12 ? ` (${numbers.length})` : ''}`;
+  }
+  if (r.displayMatrix) {
+    // [4; -2 | -2; 4] kN/m: one unit after the brackets when all items share it.
+    const m = r.displayMatrix;
+    const sep = formatNumber(1.5, options.catalog).includes(',') ? '; ' : ', ';
+    const unit = m.items[0]?.unit ?? '';
+    const shared = m.items.every((d) => d.unit === unit);
+    const rows = Array.from({ length: m.rows }, (_, i) => m.items.slice(i * m.cols, (i + 1) * m.cols).map((d) => formatDisplay(d.value, shared ? '' : d.unit, options, d.im)).join(sep));
+    return `[${rows.join(' | ')}]${shared && unit ? ` ${unit}` : ''}`;
   }
   return '?';
 }

@@ -89,7 +89,19 @@ export interface VectorValue {
   readonly items: readonly Quantity[];
 }
 
-export type Value = Quantity | BooleanValue | TextValue | TableValue | RowValue | FunctionValue | RecordValue | VectorValue;
+/**
+ * A matrix, row by row: [4, -2 | -2, 4] kN/m. Each item has its own unit, as
+ * a stiffness matrix with kN/m, kN and kN·m has.
+ */
+export interface MatrixValue {
+  readonly type: 'matrix';
+  readonly rows: number;
+  readonly cols: number;
+  /** Row by row: the item in row i, column j (from 0) is items[i·cols + j]. */
+  readonly items: readonly Quantity[];
+}
+
+export type Value = Quantity | BooleanValue | TextValue | TableValue | RowValue | FunctionValue | RecordValue | VectorValue | MatrixValue;
 
 export function quantity(si: number, dim: Dimension = DIMENSIONLESS, extra: Partial<Pick<Quantity, 'absolute' | 'hint' | 'im'>> = {}): Quantity {
   return {
@@ -123,6 +135,8 @@ export function fingerprint(value: Value): string {
     }
     case 'vector':
       return `v:${value.items.map(fingerprint).join('|')}`;
+    case 'matrix':
+      return `m${value.rows}x${value.cols}:${value.items.map(fingerprint).join('|')}`;
     case 'record':
       return `B:${value.block}:${value.version}:${[...value.values].map(([name, v]) => `${name}=${fingerprint(v)}`).join(';')}`;
   }

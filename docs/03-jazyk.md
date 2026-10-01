@@ -430,6 +430,7 @@ check "Rozpočet": N_celk ≤ 2_500_000 CZK   source "zadání investora"
 | `@hide` | spočítat, ale netisknout (pomocné výpočty) |
 | `@digits 3` | počet platných číslic |
 | `@page` | zalomení stránky |
+| `@clear` | konec obtékání: další řádky začnou pod obtékaným obrázkem (Vložit → Konec obtékání) |
 
 Výchozí zobrazení pro tisk je **vzorec → dosazení → výsledek** (standard technických výpočtů, převzato z Calcpadu i UzonCalc). Pomocné výpočty jde přesunout do pracovní vrstvy, a pak se netisknou vůbec.
 
@@ -447,7 +448,7 @@ Obrázek je v listu samostatný řádek zapsaný jako v Markdownu (stejně jako 
 - **Vložení:** přetažením souboru na list (obrázek se vloží za řádek pod myší), Ctrl+V (zkopírovaný obrázek, snímek obrazovky, nebo soubor obrázku zkopírovaný v Průzkumníku či ve správci souborů v Linuxu) a Vložit → Obrázek…
 - Snímek obrazovky dostane šířku podle své velikosti na obrazovce (96 dpi), nejvýš celou šířku textu. **Velikost se mění tažením za roh** vybraného obrázku; řádek se upraví sám.
 - **Obrázek vedle textu:** `{width=40% side=right}` (nebo `side=left`) postaví obrázek vpravo (vlevo) vedle řádků, které za ním následují, až po nejbližší prázdný řádek, nadpis, další obrázek nebo `@page`. Řádky a obrázek tvoří dva sloupce, které zůstanou na jedné stránce. Je-li skupina vyšší než stránka, obrázek se vrátí doprostřed nad řádky. Šířka je podíl sloupce s obrázkem (nejvýš 70 % při tažení).
-- **Obtékání:** `{width=35% wrap=right}` (nebo `wrap=left`) postaví obrázek na okraj a následující řádky jdou vedle něj až do jeho spodního okraje, pod ním v plné šířce. Obtéká se po celých řádcích výpočtu, vzorec se nikdy nerozdělí; řádek, který se vedle obrázku nevejde, se zúží. `side` a `wrap` se navzájem vylučují; volí se pro každý obrázek zvlášť (Umístění), takže soubor vypadá všude stejně.
+- **Obtékání:** `{width=35% wrap=right}` (nebo `wrap=left`) postaví obrázek na okraj a následující řádky jdou vedle něj až do jeho spodního okraje, pod ním v plné šířce. Obtéká se po celých řádcích výpočtu, vzorec se nikdy nerozdělí; řádek, který se vedle obrázku nevejde, se zúží. Obtékání jde ukončit na zvoleném řádku řádkem `@clear`, u obrázku zrušit v nabídce položkou **Zrušit obtékání** (obrázek se vrátí doprostřed). `side` a `wrap` se navzájem vylučují; volí se pro každý obrázek zvlášť (Umístění), takže soubor vypadá všude stejně.
 - **Přesun:** obrázek se chytne myší a přetáhne mezi jiné řádky; modrá čára ukazuje, kam přistane.
 - **Myší:** klik na obrázek ho vybere (úchyty ve čtyřech rozích) a otevře nabídku vedle něj: Popisek, Šířka, Umístění (na střed / vpravo / vlevo vedle textu), Nahradit obrázek, Upravit zápis, Odstranit. Pravé tlačítko otevře nabídku u kurzoru, dvojklik otevře zápis řádku.
 - Chybný zápis hlásí `E-PICTURE-SYNTAX`, chybějící soubor se v tisku ukáže jako červený rámeček s cestou.

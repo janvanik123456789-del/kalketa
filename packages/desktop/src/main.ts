@@ -866,7 +866,23 @@ async function layersWithRealInput(picture: string) {
     const body = document.querySelector('.layer-view.active .page-body')?.getBoundingClientRect();
     return !!pic && !!l && !!body && l.right <= pic.left + 1 && l.width < body.width * 0.8 && l.top < pic.bottom;
   })()`)) as boolean;
-  const besideText = sideGroup.rows === '3,4' && sideGroup.picture && sideGroup.side !== '' && widened > parseFloat(sideGroup.side) && movedPicture && wrapped;
+  // Insert > End of flow after L: q goes below the picture. Then the picture menu cancels the flow.
+  await clickOn('.layer-view.active .row[data-line="3"]');
+  await clickOn('.menubar-item:nth-child(4) > button');
+  await clickMenu('Konec obtékání');
+  await clickOn('.sheet-scroll');
+  await pause(400);
+  const cleared = (await contents.executeJavaScript(`(() => {
+    const pic = document.querySelector('.layer-view.active .row.wrap-right')?.getBoundingClientRect();
+    const q = [...document.querySelectorAll('.layer-view.active .row')].find((r) => r.textContent.includes('12'))?.getBoundingClientRect();
+    return !!pic && !!q && q.top >= pic.bottom - 1 && !!document.querySelector('.layer-view.active .row.clear-row');
+  })()`)) as boolean;
+  await takePicture(picture.replace(/[.]png$/, '-clear.png'));
+  await clickOn('.layer-view.active .row.wrap-right figure img');
+  await clickMenu('Zrušit obtékání');
+  await pause(400);
+  const unwrapped = (await contents.executeJavaScript(`!document.querySelector('.layer-view.active .row.wrap-right') && !!document.querySelector('.layer-view.active .row[data-line="2"] figure')`)) as boolean;
+  const besideText = sideGroup.rows === '3,4' && sideGroup.picture && sideGroup.side !== '' && widened > parseFloat(sideGroup.side) && movedPicture && wrapped && cleared && unwrapped;
   const pictures = pasted.img && resized && dropped === 'Obr. 1: Schéma nosníku' && fileCopied && pastedIdle && pictureMenu.menu >= 5 && pictureMenu.full && pictureMenu.caption.includes('Detail kotvení') && besideText;
 
   // A sheet with a block: the block is listed, its use shows the block and computes.
@@ -884,7 +900,7 @@ async function layersWithRealInput(picture: string) {
     blocksOk = shown.errors === 0 && shown.text.includes('Prosty nosnik 1.2') && shown.text.includes('45');
     await takePicture(picture.replace(/[.]png$/, '-blocks.png'));
   }
-  return { ...state, newKeepsExample, citations, aiReadOnly, split, mainHidden, twoLayers, addKinds, aiDeletable, aiMenu, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, besideText, pictures, blocksOk };
+  return { ...state, newKeepsExample, citations, aiReadOnly, split, mainHidden, twoLayers, addKinds, aiDeletable, aiMenu, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, besideText, pictures, blocksOk };
 }
 
 /**

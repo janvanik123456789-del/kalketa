@@ -590,7 +590,7 @@ export function App() {
     return `${base}_${n}`;
   };
 
-  const insert = (kind: 'heading' | 'text' | 'definition' | 'check' | 'pick' | 'pageBreak') => {
+  const insert = (kind: 'heading' | 'text' | 'definition' | 'check' | 'pick' | 'pageBreak' | 'clear') => {
     switch (kind) {
       case 'heading':
         return insertLine('## ');
@@ -608,6 +608,8 @@ export function App() {
       }
       case 'pageBreak':
         return insertLine('@page', undefined, false);
+      case 'clear':
+        return insertLine('@clear', undefined, false);
     }
   };
 
@@ -937,7 +939,7 @@ export function App() {
     },
     {
       label: t(ui, 'menu.insert'),
-      items: [cmd('insert.heading'), cmd('insert.text'), cmd('insert.definition'), cmd('insert.check'), cmd('insert.pick'), cmd('insert.pageBreak'), sep, cmd('insert.picture'), cmd('insert.newTable'), cmd('insert.importTable'), cmd('insert.block'),
+      items: [cmd('insert.heading'), cmd('insert.text'), cmd('insert.definition'), cmd('insert.check'), cmd('insert.pick'), cmd('insert.pageBreak'), cmd('insert.clear'), sep, cmd('insert.picture'), cmd('insert.newTable'), cmd('insert.importTable'), cmd('insert.block'),
         ...(doc.blocks.size > 0
           ? [
               {

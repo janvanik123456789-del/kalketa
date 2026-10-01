@@ -115,6 +115,8 @@ export function renderBlockHtml(block: PrintBlock, catalog: Catalog, options: Bl
       return `<p class="text">${esc(block.text)}</p>`;
     case 'page-break':
       return '<div class="page-break"></div>';
+    case 'clear':
+      return '<div class="clear"></div>';
     case 'picture': {
       const image = block.src
         ? `<img src="${esc(block.src)}" alt="${esc(block.caption)}">`
@@ -252,7 +254,7 @@ h3, h4, h5, h6 { font-size: 11pt; margin: 4mm 0 1.5mm; break-after: avoid; }
 .block.picture.wrap-right { float: right; margin: 1mm 0 2mm 5mm; }
 .block.picture.wrap-left { float: left; margin: 1mm 5mm 2mm 0; }
 .block, h2, h3, h4 { display: flow-root; }
-.page-break { clear: both; }
+.page-break, .clear { clear: both; }
 .side-group { display: grid; grid-template-columns: minmax(0, 1fr) var(--side); column-gap: 5mm; align-items: start; break-inside: avoid; }
 .side-group.side-left { grid-template-columns: var(--side) minmax(0, 1fr); }
 .side-group.side-left .side-picture { order: -1; }

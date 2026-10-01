@@ -149,6 +149,8 @@ export const UI_KEYS = [
   'editor.pictureResize',
   'picture.caption',
   'picture.place',
+  'picture.unwrap',
+  'cmd.insert.clear',
   'picture.wrapRight',
   'picture.wrapLeft',
   'picture.center',

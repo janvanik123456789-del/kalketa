@@ -225,6 +225,7 @@ export function SheetView(props: Props) {
           },
         ],
       },
+      ...(picture.wrap || picture.side ? [{ kind: 'action' as const, label: t(c, 'picture.unwrap'), run: () => setSide(undefined) }] : []),
       {
         kind: 'submenu',
         label: t(c, 'picture.place'),
@@ -310,11 +311,13 @@ export function SheetView(props: Props) {
     const isEditing = editing?.start === seg.start;
     const block = statement ? blockByLine.get(seg.start) : undefined;
     const selected = seg.statement !== undefined && seg.statement === props.selected;
+    // @clear ends the flow around a wrapped picture: this row and all below start under it.
+    const clear = /^\s*@clear\b/.test(seg.text);
     return (
       <div
         key={`${seg.start}:${isEditing ? 'e' : seg.text}`}
         data-item={measured ? '' : undefined}
-        className={`row${isEditing ? ' editing' : ''}${selected ? ' selected' : ''}${statement?.status === 'error' ? ' has-error' : ''}${block?.kind === 'picture' && block.wrap ? ` wrap-${block.wrap}` : ''}`}
+        className={`row${isEditing ? ' editing' : ''}${selected ? ' selected' : ''}${statement?.status === 'error' ? ' has-error' : ''}${block?.kind === 'picture' && block.wrap ? ` wrap-${block.wrap}` : ''}${clear ? ' clear-row' : ''}`}
         style={block?.kind === 'picture' && block.wrap ? { width: `${block.width ?? 40}%` } : undefined}
         data-line={seg.start}
         onMouseDown={(e) => {

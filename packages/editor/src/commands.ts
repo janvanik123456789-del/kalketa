@@ -58,7 +58,7 @@ export interface CommandContext {
     setPane(pane: 'details' | 'tables' | 'layers' | 'none'): void;
     toggleTableEditor(): void;
     customize(): void;
-    insert(kind: 'heading' | 'text' | 'definition' | 'check' | 'pick' | 'pageBreak'): void;
+    insert(kind: 'heading' | 'text' | 'definition' | 'check' | 'pick' | 'pageBreak' | 'clear'): void;
     newTable(): void;
     importTable(): void;
     insertBlock(): void;
@@ -116,6 +116,7 @@ export function buildCommands(ctx: CommandContext): Map<string, Command> {
   add('insert.check', 'insert', () => a.insert('check'));
   add('insert.pick', 'insert', () => a.insert('pick'));
   add('insert.pageBreak', 'insert', () => a.insert('pageBreak'), { shortcut: 'Ctrl+Enter' });
+  add('insert.clear', 'insert', () => a.insert('clear'));
   add('insert.picture', 'insert', a.insertPicture);
   add('insert.newTable', 'insert', a.newTable);
   add('insert.importTable', 'insert', a.importTable);

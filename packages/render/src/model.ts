@@ -116,7 +116,9 @@ export type PrintBlock =
       readonly messages: readonly Message[];
     }
   | { readonly kind: 'error'; readonly line: number; readonly source: string; readonly messages: readonly Message[] }
-  | { readonly kind: 'page-break' };
+  | { readonly kind: 'page-break' }
+  /** @clear: what follows goes below a wrapped picture. */
+  | { readonly kind: 'clear' };
 
 export interface SummaryRow {
   readonly label: string;
@@ -478,6 +480,9 @@ function applyDirective(name: string, args: string, mode: Mode, blocks: PrintBlo
     }
     case 'page':
       blocks.push({ kind: 'page-break' });
+      break;
+    case 'clear':
+      blocks.push({ kind: 'clear' });
       break;
   }
 }

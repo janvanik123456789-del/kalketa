@@ -59,4 +59,12 @@ describe('pictures in the sheet', () => {
     expect(rows).toContain('data-line="4"');
     expect(rows).not.toContain('data-line="6"');
   });
+
+  it('end the flow around a wrapped picture at @clear', () => {
+    const result = evaluateSheet('![S](images/sheet/s.png){width=35% wrap=right}\nL := 5 m\n@clear\n## Výpočet');
+    expect(result.diagnostics).toEqual([]);
+    const html = renderBlocksHtml(buildPrintDocument(result, { catalog: cs, registry: defaultRegistry, digits: 4, title: 'X' }).blocks, cs);
+    expect(html).toContain('wrap-right');
+    expect(html.indexOf('<div class="clear"></div>')).toBeLessThan(html.indexOf('Výpočet'));
+  });
 });

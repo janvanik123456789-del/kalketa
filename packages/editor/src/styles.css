@@ -128,6 +128,8 @@ table.shortcuts td { padding: 2px 16px 2px 0; }
 .row .picture { position: relative; }
 /* A wrapped picture: its row floats, the following rows (flex boxes) keep whole beside it. */
 .row.wrap-right { float: right; margin-left: 4mm; }
+.row.clear-row { clear: both; }
+.row.clear-row:not(.editing) .raw { color: var(--muted); font-size: 8pt; }
 .row.wrap-left { float: left; margin-right: 4mm; }
 .row.wrap-right .gutter, .row.wrap-left .gutter { display: none; }
 .row.wrap-right .block.picture, .row.wrap-left .block.picture { float: none; width: 100% !important; margin: 1mm 0; }

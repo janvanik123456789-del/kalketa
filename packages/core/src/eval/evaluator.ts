@@ -16,6 +16,8 @@ import { quantity, type MatrixValue, type Quantity, type Value, type VectorValue
 import { dateValue, isDate } from '../values/date.js';
 import { asBoolean, asComplex, asQuantity } from './coerce.js';
 import { BUILTIN_CONSTANTS, callFunction, FUNCTION_NAMES } from './functions.js';
+import { composedHint, unitNames, type UnitNames } from '../units/compose.js';
+import { PREFERRED_UNITS } from '../units/registry.js';
 import { callCalculus, isBindingCall } from './calculus.js';
 import { BINDING_FUNCTIONS } from '../lang/parser.js';
 import { asMatrix, at, inverseOf, matrix, normalized } from '../functions/linear.js';
@@ -278,7 +280,9 @@ function arithmetic(op: BinaryOperator, left: Value, right: Value, leftExpr: Exp
       // Scaling by a plain number keeps the unit: 1.35 · g_k stays in kN/m.
       const scaled = scaledOperand(op, a, b);
       const combined = scaled ? undefined : samePowerHint(op, a, b);
-      const hint = keptHint(scaled) ? { hint: scaled!.hint! } : combined ? { hint: combined } : {};
+      // Different units compose: kN/m · m² = kN·m (not joules, which have the same dimension).
+      const composed = scaled || combined || !a.hint || !b.hint || a.absolute || b.absolute ? undefined : composedHint(op, a.hint, b.hint, ownNames(ctx.registry));
+      const hint = keptHint(scaled) ? { hint: scaled!.hint! } : combined ? { hint: combined } : composed ? { hint: composed } : {};
       if (op === '*') return quantity(a.si * b.si, multiplyDims(a.dim, b.dim), hint);
       if (b.si === 0) fail('E-DIV-ZERO', rightExpr.span);
       return quantity(a.si / b.si, divideDims(a.dim, b.dim), hint);
@@ -342,6 +346,17 @@ function complexBinary(op: BinaryOperator, a: Quantity, b: Quantity, leftExpr: E
       void leftExpr;
       return fail('E-COMPLEX-ORDER', span, { operator: op });
   }
+}
+
+const namedByRegistry = new WeakMap<UnitRegistry, UnitNames>();
+/** Unit names of this registry, for composing units of products. */
+function ownNames(registry: UnitRegistry): UnitNames {
+  let named = namedByRegistry.get(registry);
+  if (!named) {
+    named = unitNames((symbol) => registry.resolve(symbol), PREFERRED_UNITS);
+    namedByRegistry.set(registry, named);
+  }
+  return named;
 }
 
 /**

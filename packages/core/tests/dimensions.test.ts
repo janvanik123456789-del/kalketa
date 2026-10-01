@@ -67,8 +67,8 @@ describe('built-in currencies and kWp (a new sheet, nothing declared)', () => {
     expectValue('100 CZK + 50 Kč', 150, 'CZK');
     expectValue('5 € + 2 EUR', 7, '€');
     expectValue('20 $ | USD', 20, 'USD');
-    // A derived result is named by the currency code.
-    expectValue('cena := 4.2 Kč/kWh\n1000 kWh · cena', 4200, 'CZK');
+    // A derived result keeps the currency the price was given in.
+    expectValue('cena := 4.2 Kč/kWh\n1000 kWh · cena', 4200, 'Kč');
   });
 
   it('keep currencies apart until the sheet gives a rate', () => {

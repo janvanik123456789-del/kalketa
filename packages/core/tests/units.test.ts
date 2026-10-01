@@ -149,3 +149,20 @@ describe('quantities', () => {
     expectValue('50 % + 0.25', 75, '%');
   });
 });
+
+describe('units of products compose', () => {
+  it('a moment from kN/m and m is in kN·m, not in joules', () => {
+    expectValue('q := 12 kN/m\nL := 5 m\nM := q·L²/8\nM =', 37.5, 'kN·m');
+    expectValue('F := 10 kN\na := 2 m\nF·a', 20, 'kN·m');
+    expectValue('M := 30 kN·m\nL := 5 m\nM/L', 6, 'kN');
+    expectValue('q := 12 kN/m\nL := 5 m\nq·L', 60, 'kN');
+  });
+
+  it('units with a name of their own stay so, units of one dimension go to SI', () => {
+    expectValue('2 kg · 3 m/s²', 6, 'N');
+    expectValue('σ := 200 MPa\nA := 100 mm²\nσ·A', 20000, 'N');
+    expectValue('d := 20 mm\nL := 0.5 m\nd·L', 0.01, 'm²');
+    // Energy that is energy: a target unit says so.
+    expectValue('P := 2 kW\nt := 3 h\nP·t | kWh', 6, 'kWh');
+  });
+});

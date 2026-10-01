@@ -18,8 +18,8 @@ describe('calculus in print', () => {
     expect(plain(toText(substitution!.rhs))).toBe('∫[0 m..5 m]12 kN/m·x dx');
     // A sum in the integrand gets parentheses.
     expect(plain(toText(lines('a := 2\nintegral(x + a, x: 0 .. 1)')[0]!.rhs))).toBe('∫[0..1](x+a) dx');
-    // N·m is shown as J for now (a separate task); the value is what matters here.
-    expect(plain(toText(result!.rhs))).toContain('150');
+    // kN/m · m · m: a moment in kN·m (once shown in joules).
+    expect(plain(toText(result!.rhs))).toBe('150 kN·m');
     expect(toMathML(formula!.rhs)).toContain('<msubsup><mo>∫</mo>');
   });
 

@@ -105,6 +105,10 @@ Tohle je nejčastější zdroj chyb, proto pravidlo **přísnější než u konk
    *Upraveno při implementaci F1:* původně navržené varování už při definici (`L := 5 m`) by se objevovalo pořád, protože běžná inženýrská jména (L, A, F, T, V, h, d, t, m) jsou zároveň jednotky. Varuje se proto jen tam, kde nejednoznačnost opravdu vznikne.
 4. Vynucení jednotky: `[m]` v hranatých závorkách (**inspirace EPX**, který jednotky vždy píše do hranatých závorek). Ekvivalent Calcpadové tečky `.m`, ale čitelnější.
 
+### 4.2a Jednotka výsledku součinu a podílu
+
+*Upřesněno 2026-10-01:* jednotky činitelů se **skládají**: `q·L²/8` z kN/m a m dá **kN·m**, `M/L` dá kN, `1000 kWh · 4,2 Kč/kWh` dá Kč. Stejné jednotky se krátí. Výjimky, kdy se výsledek ukáže v SI: složená jednotka, pro kterou existuje vlastní název (MPa·mm² → N, kg·m/s² → N), dvě jednotky stejného rozměru (mm²·m → m³) a víc než tři různé jednotky. **Joule se sám nevolí**, protože stejný rozměr má moment (kN·m); energii ukáže cílová jednotka (`| kWh`, `| J`).
+
 ### 4.3 Vnitřní reprezentace
 
 - Hodnota je uložena **v základních jednotkách SI** a k ní vektor exponentů dimenzí (**převzato z postgresql-unit a Calcpadu**).

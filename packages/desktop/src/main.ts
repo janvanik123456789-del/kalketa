@@ -1311,7 +1311,7 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
     pasted === 'Klopení je ztráta stability ohýbaného nosníku. Vloženo ze schránky.' && unpasted === 'Klopení je ztráta stability ohýbaného nosníku.' &&
     typed === 'H2:Klopení|P:Klopení je ztráta stability ohýbaného nosníku.' && theory.heading === 'Klopení' && /^T\d+$/.test(theory.badge) &&
     shown.citesOk.length === 1 && shown.citesOk[0] === theory.badge && shown.citesBad.length === 1 && shown.citesBad[0]!.startsWith('T99') &&
-    shown.citeSummary.includes('ověřené 1, nepodložené 1') &&
+    shown.citeSummary.includes('ověřené 1, nepodložené 1') && shown.answer.includes('Model dostal celé podklady (úseků: 1).') &&
     head.includes('Jiný server') && head.includes('local-smoke-7b') &&
     shown.user === 'Co počítá řádek 3?' && shown.input === '' &&
     /list: [^?;*]+;/.test(shown.answer) && shown.bold !== '' && !shown.answer.includes('**') && shown.code === 'Co počítá řádek 3?' && shown.table === 'IPE 220' && shown.answer.includes('jazyk: Czech') && shown.answer.includes('úsilí: low') && shown.answer.includes('výsledky: ano') && shown.answer.includes('otázka: Co počítá řádek 3?') &&

@@ -346,6 +346,8 @@ export const UI_KEYS = [
   'chat.thinking',
   'chat.waiting',
   'chat.note',
+  'chat.theorySent',
+  'chat.theoryAll',
   'word.style',
   'word.style.normal',
   'word.style.h1',

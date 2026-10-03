@@ -13,7 +13,7 @@ import { app, ipcMain, safeStorage, type IpcMainInvokeEvent } from 'electron';
 import { existsSync, readFileSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import { AI_EFFORTS, allowedProviders, briefing, modelAllowed, NO_POLICY, parseAiPolicy, providerById, type AiPolicy, type AiSheetContext, type ChatTurn } from '@kalketa/ai';
+import { AI_EFFORTS, allowedProviders, modelAllowed, prepareBriefing, NO_POLICY, parseAiPolicy, providerById, type AiPolicy, type AiSheetContext, type ChatTurn } from '@kalketa/ai';
 import { chat, discoverLocal, testConnection, tryModel, type AnswerResult, type ChatResult, type ConnectionResult } from '@kalketa/ai/connect';
 
 export interface AiKeyState {
@@ -148,7 +148,7 @@ export function registerAiBridge(fromEditor: (event: IpcMainInvokeEvent) => unkn
   });
 
   // A conversation turn: pieces of the answer go to the window as they come.
-  ipcMain.handle('kalketa:ai-chat', async (event, ask: ChatAsk): Promise<ChatResult> => {
+  ipcMain.handle('kalketa:ai-chat', async (event, ask: ChatAsk): Promise<ChatResult & { theory?: { sent: readonly string[]; total: number } }> => {
     fromEditor(event);
     const id = allowed(ask.provider);
     const policy = readPolicy();
@@ -159,24 +159,31 @@ export function registerAiBridge(fromEditor: (event: IpcMainInvokeEvent) => unkn
     const send = (piece: { text?: string; thinking?: boolean }) => {
       if (!event.sender.isDestroyed()) event.sender.send('kalketa:ai-chat-event', { id: ask.id, ...piece });
     };
+    // The theory for the question: the last two questions of the user, and what was cited so far.
+    const asked = ask.turns.filter((t) => t.role === 'user').slice(-2).map((t) => t.text).join('\n');
+    const cited = [...new Set(ask.turns.filter((t) => t.role === 'assistant').flatMap((t) => [...t.text.matchAll(/\[(T\d+)\]/g)].map((m) => m[1]!)))];
+    const prepared = prepareBriefing({
+      language: ask.language,
+      sheet: ask.sheet,
+      ...(ask.languageGuide ? { languageGuide: ask.languageGuide } : {}),
+      ...(policy.instructions ? { companyInstructions: policy.instructions } : {}),
+      query: asked,
+      cited,
+    });
     try {
-      return await chat({
+      const result = await chat({
         provider: id,
         model: ask.model,
         ...(typeof ask.url === 'string' ? { url: ask.url } : {}),
         ...(AI_EFFORTS.find((e) => e === ask.effort) ? { effort: AI_EFFORTS.find((e) => e === ask.effort)! } : {}),
         ...(keys.has(id) ? { apiKey: keys.get(id)! } : {}),
-        system: briefing({
-          language: ask.language,
-          sheet: ask.sheet,
-          ...(ask.languageGuide ? { languageGuide: ask.languageGuide } : {}),
-          ...(policy.instructions ? { companyInstructions: policy.instructions } : {}),
-        }),
-        turns: ask.turns,
+        system: prepared.text,
+        turns: ask.turns.map((t) => ({ role: t.role, text: t.text })),
         onText: (text) => send({ text }),
         onThinking: () => send({ thinking: true }),
         signal: controller.signal,
       });
+      return prepared.theory && result.ok ? { ...result, theory: { sent: prepared.theory.sent, total: prepared.theory.total } } : result;
     } finally {
       running.delete(ask.id);
     }

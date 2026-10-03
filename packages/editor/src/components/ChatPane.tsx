@@ -63,7 +63,7 @@ export function ChatPane({ catalog, settings, turns, theory, onTurns, context, o
    * An answer as HTML, each [T3] replaced by a mark: checked against the theory
    * (the title on hover), or unsupported when the section or the quote is not there.
    */
-  const answerHtml = (text: string) => {
+  const answerHtml = (text: string, sent?: ChatTurn['theory']) => {
     const citations = checkCitations(text, theory);
     let i = 0;
     const html = notesHtml(text).replace(/\[(T\d+)\]/g, (whole) => {
@@ -75,7 +75,13 @@ export function ChatPane({ catalog, settings, turns, theory, onTurns, context, o
     });
     const bad = citations.filter((c) => c.status !== 'ok').length;
     const summary = citations.length > 0 ? `<p class="cite-summary">${escapeAttr(t(catalog, 'chat.citations', { ok: String(citations.length - bad), bad: String(bad) }))}</p>` : '';
-    return html + summary;
+    // Which sections the model had: all, or those the search chose for the question.
+    const given = sent
+      ? `<p class="cite-summary">${escapeAttr(
+          sent.sent.length === sent.total ? t(catalog, 'chat.theoryAll', { total: String(sent.total) }) : t(catalog, 'chat.theorySent', { ids: sent.sent.join(', ') || '–', total: String(sent.total) }),
+        )}</p>`
+      : '';
+    return html + summary + given;
   };
 
   if (!desktop) return <div className="chat-pane"><p className="hint">{t(catalog, 'ai.desktopOnly')}</p></div>;
@@ -113,7 +119,7 @@ export function ChatPane({ catalog, settings, turns, theory, onTurns, context, o
         languageGuide,
         turns: asked,
       });
-      if (result.ok) onTurns([...asked, { role: 'assistant', text: result.text }]);
+      if (result.ok) onTurns([...asked, { role: 'assistant', text: result.text, ...(result.theory ? { theory: result.theory } : {}) }]);
       else if (result.problem !== 'cancelled') setError(t(catalog, `ai.problem.${result.problem}` as UiKey, { detail: result.detail ?? '', name: provider.urlEditable ? t(catalog, 'ai.otherServer') : provider.name }));
     } catch (e) {
       setError(t(catalog, 'ai.problem.provider', { detail: e instanceof Error ? e.message : String(e) }));
@@ -145,7 +151,7 @@ export function ChatPane({ catalog, settings, turns, theory, onTurns, context, o
         {turns.map((turn, i) =>
           // Answers come in Markdown (bold, lists, headings); the same safe subset as notes, no HTML passes.
           turn.role === 'assistant' ? (
-            <div key={i} className="chat-turn assistant" dangerouslySetInnerHTML={{ __html: answerHtml(turn.text) }} />
+            <div key={i} className="chat-turn assistant" dangerouslySetInnerHTML={{ __html: answerHtml(turn.text, turn.theory) }} />
           ) : (
             <div key={i} className="chat-turn user">
               {turn.text}

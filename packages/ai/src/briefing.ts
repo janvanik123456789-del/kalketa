@@ -6,11 +6,14 @@
  */
 
 import type { AiSheetContext } from './contract.js';
+import { selectTheory } from './theorySearch.js';
 
 /** One turn of a conversation, as the user and the model wrote it. */
 export interface ChatTurn {
   readonly role: 'user' | 'assistant';
   readonly text: string;
+  /** For an answer: the theory sections the model was given, and how many the theory has. */
+  readonly theory?: { readonly sent: readonly string[]; readonly total: number };
 }
 
 export interface BriefingInput {
@@ -21,6 +24,16 @@ export interface BriefingInput {
   readonly languageGuide?: string;
   /** Company rules for the model (AiPolicy.instructions); they come last and win. */
   readonly companyInstructions?: string;
+  /** What the user asks: from larger theory, the sections for it are chosen. */
+  readonly query?: string;
+  /** Section ids already cited in the conversation; they go along. */
+  readonly cited?: readonly string[];
+}
+
+/** The briefing, and which theory sections it carries. */
+export interface PreparedBriefing {
+  readonly text: string;
+  readonly theory?: { readonly sent: readonly string[]; readonly total: number; readonly whole: boolean };
 }
 
 /** English name of a language, for "answer in Czech". */
@@ -60,7 +73,19 @@ export function numbered(source: string): string {
 }
 
 export function briefing(input: BriefingInput): string {
+  return prepareBriefing(input).text;
+}
+
+export function prepareBriefing(input: BriefingInput): PreparedBriefing {
   const { sheet } = input;
+  const selection = sheet.theory && sheet.theory.length > 0 ? selectTheory(sheet.theory, input.query ?? '', input.cited ?? []) : undefined;
+  const contents =
+    selection && !selection.whole
+      ? `The theory has ${selection.total} sections; those that match the question are given in full below, the others only by title here. If the question needs one of the others, say which, so the user can ask about it.
+${sheet.theory!.filter((s) => s.id).map((s) => `[${s.id}] ${s.title}`).join('\n')}
+
+`
+      : '';
   const parts = [
     `You are the assistant inside Kalketa, a program for engineering calculations. A calculation is a sheet: lines of a small calculation language with units, evaluated by the program's own core and printed like a hand calculation.`,
     `Rules:
@@ -76,11 +101,14 @@ export function briefing(input: BriefingInput): string {
     sheet.theory && sheet.theory.length > 0
       ? `Theory and references the author chose for this calculation (in the sheet's language). Answer from them:
 - Cite the section you use, like [T3]. When you rely on its exact words, quote them verbatim in quotation marks right before the citation: "…" [T3]. The program checks every citation and marks the ones it cannot find as unsupported.
-- Cite only sections listed here, and use their terms. If they do not cover the question, say so, then answer from general knowledge without a citation.
+- Cite only sections given here in full, and use their terms. If they do not cover the question, say so, then answer from general knowledge without a citation.
 
-${theoryText(sheet.theory)}`
+${contents}${selection!.sections.length > 0 ? theoryText(selection!.sections) : '(No section matches the question.)'}`
       : '',
     input.companyInstructions ? `Company rules (they take precedence):\n${input.companyInstructions}` : '',
   ];
-  return parts.filter((p) => p !== '').join('\n\n');
+  return {
+    text: parts.filter((p) => p !== '').join('\n\n'),
+    ...(selection ? { theory: { sent: selection.sections.flatMap((s) => (s.id ? [s.id] : [])), total: selection.total, whole: selection.whole } } : {}),
+  };
 }

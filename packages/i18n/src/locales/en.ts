@@ -500,6 +500,8 @@ export const en: Catalog = {
     'chat.thinking': 'thinking… {seconds} s',
     'chat.waiting': 'waiting for the answer… {seconds} s',
     'chat.note': 'Check what the AI says. The chat is not saved in the file yet.',
+    'chat.theorySent': 'From the sources the model got sections: {ids} (of {total}).',
+    'chat.theoryAll': 'The model got all of the sources (sections: {total}).',
     'word.style': 'Paragraph style',
     'word.style.normal': 'Normal',
     'word.style.h1': 'Heading 1',

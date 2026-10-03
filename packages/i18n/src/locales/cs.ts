@@ -500,6 +500,8 @@ export const cs: Catalog = {
     'chat.thinking': 'přemýšlí… {seconds} s',
     'chat.waiting': 'čekám na odpověď… {seconds} s',
     'chat.note': 'Odpovědi AI ověřte. Rozhovor se zatím neukládá do souboru.',
+    'chat.theorySent': 'Z podkladů dostal model úseky {ids} (z celkem {total}).',
+    'chat.theoryAll': 'Model dostal celé podklady (úseků: {total}).',
     'word.style': 'Styl odstavce',
     'word.style.normal': 'Normální',
     'word.style.h1': 'Nadpis 1',

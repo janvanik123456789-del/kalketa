@@ -319,7 +319,7 @@ Model má odpovídat z teorie, kterou vybral autor výpočtu, ne „z hlavy“. 
 - klíčová slova česky i anglicky, protože model pod kapotou mluví anglicky a hledání podle slov přes jazyky nefunguje,
 - žádná celá PDF: text se vloží nebo převede (OCR, LLM) a člověk ho potvrdí.
 
-**Hledání (RAG):** malá teorie se modelu pošle celá. Větší se prohledává nástrojem `search_theory(dotaz)` podle slov: rychle, deterministicky, offline, s jakýmkoli modelem. Embeddingy mohou přijít později jako volitelné.
+**Hledání (RAG):** malá teorie se modelu pošle celá. Z větší vybere úseky **program** podle slov otázky (kmeny slov bez diakritiky, aby se potkaly tvary „nosník/nosníku“): rychle, deterministicky, offline, s jakýmkoli modelem. Model dostane obsah všech úseků (značky a názvy) a celé jen vybrané; úseky citované dříve v rozhovoru jdou s nimi. Pod odpovědí je vidět, které úseky model dostal. Nástroj `search_theory(dotaz)` pro model může přijít později (lokální modely volají nástroje nespolehlivě). Embeddingy mohou přijít později jako volitelné.
 
 **Vynucení citací:** model musí každé tvrzení o teorii opřít o citovaný úsek (`[T3.2]`). Program ověří, že úsek existuje a že doslovná citace v něm je. Tvrzení bez platné citace se označí jako **nepodložené**, takže je vždy vidět, co model opřel o teorii a co si domyslel.
 

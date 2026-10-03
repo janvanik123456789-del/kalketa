@@ -122,7 +122,10 @@ export interface DesktopBridge {
   /** One short question to a model of a local server: its reply and how long it took. */
   aiTry(provider: string, model: string, url?: string): Promise<{ readonly ok: true; readonly reply: string; readonly ms: number } | { readonly ok: false; readonly problem: string; readonly detail?: string }>;
   /** A conversation turn; the answer arrives in pieces through onAiChatEvent, the promise gives the whole. */
-  aiChat(ask: AiChatAsk): Promise<{ readonly ok: true; readonly text: string; readonly model: string } | { readonly ok: false; readonly problem: string; readonly detail?: string }>;
+  aiChat(ask: AiChatAsk): Promise<
+    | { readonly ok: true; readonly text: string; readonly model: string; readonly theory?: { readonly sent: readonly string[]; readonly total: number } }
+    | { readonly ok: false; readonly problem: string; readonly detail?: string }
+  >;
   aiChatCancel(id: string): Promise<void>;
   onAiChatEvent(listener: (piece: { readonly id: string; readonly text?: string; readonly thinking?: boolean }) => void): void;
   /** Local servers running now, with their models, by provider. */
@@ -145,7 +148,7 @@ export interface AiChatAsk {
     readonly theory?: readonly { readonly id?: string; readonly title: string; readonly text: string }[];
   };
   readonly languageGuide?: string;
-  readonly turns: readonly { readonly role: 'user' | 'assistant'; readonly text: string }[];
+  readonly turns: readonly { readonly role: 'user' | 'assistant'; readonly text: string; readonly theory?: { readonly sent: readonly string[]; readonly total: number } }[];
 }
 
 export interface AiKeyState {

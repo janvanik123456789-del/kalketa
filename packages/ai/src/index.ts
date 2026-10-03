@@ -10,3 +10,4 @@ export * from './settings.js';
 export * from './policy.js';
 export * from './briefing.js';
 export * from './citations.js';
+export * from './theorySearch.js';

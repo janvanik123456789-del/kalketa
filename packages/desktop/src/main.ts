@@ -406,7 +406,7 @@ async function runSmokeTest(pdfPath: string): Promise<void> {
     await writeFile(pdfPath, pdf);
     ok =
       state.bridge && state.sideBySide && state.menus === 7 && state.toolbars > 0 && state.rows > 10 && state.summary > 0 && state.math > 0 && reshapedColumns === 3 && pdf.length > 1000 &&
-      layers.newKeepsExample && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.charts && layers.functionBar && layers.revisions && layers.roots && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
+      layers.newKeepsExample && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.charts && layers.functionBar && layers.revisions && layers.roots && layers.toolIcons && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
     console.log(JSON.stringify({ ok, ...state, reshapedColumns, layers, pdfBytes: pdf.length }));
   } catch (err) {
     console.log(JSON.stringify({ ok: false, error: (err as Error).message }));
@@ -793,6 +793,13 @@ async function layersWithRealInput(picture: string) {
   await takePicture(picture.replace(/[.]png$/, '-roots.png'));
   const rootRows = (await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .page .row')].map((r) => r.textContent.replace(/\\s+/g, ''))`)) as string[];
   const roots = cubeLine === '∛27 =' && rootLine === 'root(16; 4) =' && rootRows.some((r) => r.endsWith('=3') && r.includes('27')) && rootRows.some((r) => r.endsWith('=2') && r.includes('16'));
+  // Operators and functions show drawn icons; the condition and solve stay as text.
+  const toolIcons = (await contents.executeJavaScript(`(() => {
+    const button = (title) => document.querySelector('.tool-button[title^=' + JSON.stringify(title) + ']');
+    const drawn = (title) => !!button(title)?.querySelector('svg.icon');
+    return ['Vložit √', 'Vložit ∛', 'n-tá odmocnina', 'Vložit ²', 'Obecná mocnina', 'Vložit ÷', 'Integrál'].every(drawn) &&
+      !drawn('Podmíněná hodnota') && button('Podmíněná hodnota')?.textContent === 'if' && !drawn('Řešení rovnice');
+  })()`)) as boolean;
 
   const revisions =
     frozen.rows === 1 &&
@@ -1144,7 +1151,7 @@ async function layersWithRealInput(picture: string) {
     blocksOk = shown.errors === 0 && shown.text.includes('Prosty nosnik 1.2') && shown.text.includes('45');
     await takePicture(picture.replace(/[.]png$/, '-blocks.png'));
   }
-  return { ...state, newKeepsExample, citations, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, canvasOk, besideText, pictures, blocksOk };
+  return { ...state, newKeepsExample, citations, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, toolIcons, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, canvasOk, besideText, pictures, blocksOk };
 }
 
 /**

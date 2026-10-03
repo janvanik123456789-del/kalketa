@@ -74,7 +74,7 @@ export const FUNCTION_TEMPLATES: readonly FunctionTemplate[] = [
   { id: 'matrix', text: '[‸, 0 | 0, 0]' },
   { id: 'abs', glyph: '|x|', text: 'abs(‸)' },
   { id: 'if', glyph: 'if', text: 'if(‸, a, b)' },
-  { id: 'solve', text: 'solve x: ‸ == 0', line: true },
+  { id: 'solve', glyph: 'solve', text: 'solve x: ‸ == 0', line: true },
 ];
 
 /** Templates on the Operators toolbar (not on Functions): the n-th root. */

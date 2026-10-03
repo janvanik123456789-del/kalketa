@@ -1,6 +1,6 @@
 /**
- * Toolbar icons: simple 20×20 line drawings. Symbol commands (α, ≤, √ …) show
- * the symbol itself instead of an icon.
+ * Toolbar icons: simple 20×20 line drawings. Operators and functions get a
+ * drawing with boxes for the operands; other symbols (α, ≤ …) show themselves.
  */
 
 import type { ReactElement } from 'react';
@@ -8,6 +8,25 @@ import type { ReactElement } from 'react';
 const S = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round', strokeLinejoin: 'round' } as const;
 
 const page = <path {...S} d="M5 2.5h7l3.5 3.5v11.5H5z M12 2.5V6h3.5" />;
+
+/** Placeholder box for an operand; a thinner line than the symbol itself. */
+function box(x: number, y: number, width: number, height: number): ReactElement {
+  return <rect {...S} strokeWidth={1.2} x={x} y={y} width={width} height={height} rx={0.6} />;
+}
+
+/** Radical sign: small tick, down stroke, long up stroke and the bar over the operand. */
+function radical(x0: number): ReactElement {
+  return <path {...S} d={`M${x0} 11.5l1.8-.8 2.4 5.8L${x0 + 8} 3h${17 - x0 - 8}`} />;
+}
+
+/** A digit or letter drawn in the icon (an index, an exponent, "dx"). */
+function label(x: number, y: number, text: string, size: number): ReactElement {
+  return (
+    <text x={x} y={y} fontSize={size} fontWeight={600} textAnchor="middle" fill="currentColor" fontFamily="system-ui, 'Segoe UI', sans-serif">
+      {text}
+    </text>
+  );
+}
 
 const ICONS: Readonly<Record<string, ReactElement>> = {
   'file.new': (
@@ -115,18 +134,6 @@ const ICONS: Readonly<Record<string, ReactElement>> = {
       <path {...S} d="M5 14c2-6 4-9 6-9s3.5 4 6 6" />
     </>
   ),
-  'fn:matrix': (
-    <>
-      <path {...S} d="M6 3.5H4v13h2M14 3.5h2v13h-2" />
-      <path {...S} d="M7.5 7.5h.01M12.5 7.5h.01M7.5 12.5h.01M12.5 12.5h.01" strokeWidth={2.4} />
-    </>
-  ),
-  'fn:solve': (
-    <>
-      <path {...S} d="M3 6l4 5M7 6l-4 5M9.5 7.5h4M9.5 10h4" />
-      <path {...S} d="M15 5.5c0-1.5 3-1.5 3 0 0 1.3-1.5 1.6-1.5 3M16.5 11h.01" />
-    </>
-  ),
   'help.functions': (
     <>
       <path {...S} d="M8 3.5c-2 0-2 1.5-2 3v8c0 1.5-.5 2.5-2 2.5M4 9h4.5" />
@@ -187,6 +194,99 @@ const ICONS: Readonly<Record<string, ReactElement>> = {
     <>
       <circle {...S} cx="10" cy="10" r="7.5" />
       <path {...S} d="M10 9v5M10 6.2v.1" />
+    </>
+  ),
+
+  // Operators and functions, as on the palettes of Mathcad: a box marks where the operand goes.
+  'sym:√': (
+    <>
+      {radical(2)}
+      {box(11, 6.5, 5.5, 7)}
+    </>
+  ),
+  'sym:∛': (
+    <>
+      {radical(4)}
+      {label(3.4, 8.8, '3', 8.5)}
+      {box(12, 6.5, 5, 7)}
+    </>
+  ),
+  'fn:root': (
+    <>
+      {radical(4)}
+      {box(1.5, 3.5, 3.5, 3.5)}
+      {box(12, 6.5, 5, 7)}
+    </>
+  ),
+  'sym:²': (
+    <>
+      {box(2, 8, 8, 9.5)}
+      {label(14.8, 9.5, '2', 10)}
+    </>
+  ),
+  'sym:³': (
+    <>
+      {box(2, 8, 8, 9.5)}
+      {label(14.8, 9.5, '3', 10)}
+    </>
+  ),
+  'sym:^': (
+    <>
+      {box(2, 8, 8, 9.5)}
+      {box(12.5, 2, 5, 5)}
+    </>
+  ),
+  'sym:⁻¹': (
+    <>
+      {box(1, 8, 7.5, 9.5)}
+      {label(14, 9.5, '−1', 9.5)}
+    </>
+  ),
+  'sym:_': (
+    <>
+      {box(2.5, 3.5, 8, 9)}
+      {box(13, 13, 4.5, 4.5)}
+    </>
+  ),
+  'sym:÷': (
+    <>
+      {box(6.5, 1.8, 7, 5.5)}
+      <path {...S} d="M3 10h14" />
+      {box(6.5, 12.7, 7, 5.5)}
+    </>
+  ),
+  'fn:abs': (
+    <>
+      <path {...S} d="M4 3v14M16 3v14" />
+      {box(7, 6.5, 6, 7)}
+    </>
+  ),
+  'fn:integral': (
+    <>
+      <path {...S} d="M9 3.5c-.4-1.2-2.6-1.3-3 .5L4.6 16c-.3 1.8-2.5 1.7-3 .5" />
+      {box(10, 6.5, 6.5, 7)}
+    </>
+  ),
+  'fn:derivative': (
+    <>
+      {label(10, 8.3, 'd', 9.5)}
+      <path {...S} d="M3.5 10.6h13" />
+      {label(10, 19, 'dx', 9.5)}
+    </>
+  ),
+  'fn:sum': (
+    <>
+      <path {...S} d="M10 3.5H2.5L7 10l-4.5 6.5H10" />
+      {box(12, 6.5, 5.5, 7)}
+    </>
+  ),
+  'fn:matrix': (
+    <>
+      <path {...S} d="M4.5 2.5h-2v15h2M15.5 2.5h2v15h-2" />
+      {box(5.5, 4.5, 3.8, 3.8)}
+      {box(10.7, 4.5, 3.8, 3.8)}
+      {box(5.5, 11.7, 3.8, 3.8)}
+      {box(10.7, 11.7, 3.8, 3.8)}
     </>
   ),
 };

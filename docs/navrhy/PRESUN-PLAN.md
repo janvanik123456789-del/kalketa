@@ -54,10 +54,10 @@ Dohodnuto 2026-10-02. Dělat až v novém adresáři, po ověření přesunu (bo
 
 ### Kroky
 
-- [ ] Získat od uživatele výběr text/ikona (z náhledu)
+- [x] Získat od uživatele výběr text/ikona (z náhledu): text zůstal jen u Podmínky (if) a Řešení rovnice (solve)
 - [x] Jazyk: třetí odmocnina `∛x` jako předpona stejně jako `√` (lexer, parser, výpočet)
 - [x] Jazyk: n-tá odmocnina `root(x, n)` (funkce v `core\src\functions\modules.ts`)
 - [x] Vykreslení: odmocnina s indexem (MathML `<mroot>` v `render\src\math.ts`), text `∛(…)` a `root(…)`
 - [x] Editor: nová tlačítka v toolbaru operátorů (zatím jako text: ∛, ⁿ√, xⁿ; zlomek už je ÷; uložená rozložení lišt je dostanou automaticky) (∛, n-tá odmocnina, obecná mocnina `^`, zlomek `/`) a popisky v `i18n` (cs, en)
-- [ ] Editor: vybrané ikony do `icons.tsx`; u nástrojů s textem zůstane `glyph`
+- [x] Editor: vybrané ikony do `icons.tsx`; u nástrojů s textem zůstane `glyph` (smoke test kontroluje ikony i text)
 - [x] Testy (core, render) a ověření v desktopové aplikaci skutečným klikáním v toolbaru

@@ -1238,7 +1238,9 @@ async function theoryLibraryWithRealInput(contents: Electron.WebContents, pictur
     offered.name === 'Podklady' && offered.key === 'P' && offered.folder === 'user' &&
     missing.includes('Doplňte zdroj') && saved.length === 1 && saved[0] === 'Podklady.kalkt' &&
     listed.length === 1 && listed[0]!.includes('[P] Podklady') && listed[0]!.includes('Moje knihovny') && stillOpen && closed &&
-    answer.head.startsWith('Teorie (1)') && answer.ok.some((c) => /^P:T\d+$/.test(c ?? ''))
+    answer.head.startsWith('Teorie (1)') && answer.ok.some((c) => /^P:T\d+$/.test(c ?? '')) &&
+    // The sections saved into the library from these sources go once, from the library: 1 own + 2 of the library.
+    answer.text.includes('úseků: 3')
   );
 }
 

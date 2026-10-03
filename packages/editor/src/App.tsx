@@ -17,7 +17,7 @@ import { buildCommands, shortcutOf, type Command } from './commands.js';
 import { DEFAULT_AI_SETTINGS, parseAiSettings, type AiSettings, type ChatTurn } from '@kalketa/ai';
 import { ChatPane } from './components/ChatPane.js';
 import { TheoryLibraryDialog } from './components/TheoryLibraryDialog.js';
-import { useTheoryLibraries } from './theoryLibraries.js';
+import { useTheoryLibraries, withoutDuplicates } from './theoryLibraries.js';
 import { languageGuide, sheetContext } from './logic/aiContext.js';
 import { chooseFile, desktop, emptyDocument, exampleDocument, fileName, fileUri, largestParts, openBytes, pickAndOpen, saveDocument, tableCache, type FileRef, type OpenedFile } from './document.js';
 import { record, redo, undo, type History } from './logic/history.js';
@@ -1238,7 +1238,8 @@ export function App() {
                       if (layers.some((x, i) => x !== doc.layers[i])) change({ ...doc, layers });
                       const fromLibraries = libraries.theory();
                       return {
-                        sheet: { ...sheetContext(doc.manifest.title, evaluation.main), theory: [...theorySections(layers), ...fromLibraries.sections], libraries: fromLibraries.libraries },
+                        // A section both in the sources and in a library goes once, from the library.
+                        sheet: { ...sheetContext(doc.manifest.title, evaluation.main), theory: withoutDuplicates(theorySections(layers), fromLibraries.sections), libraries: fromLibraries.libraries },
                         languageGuide: languageGuide(),
                       };
                     }}

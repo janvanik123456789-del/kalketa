@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { CITED_ID } from '@kalketa/ai';
 import { librarySections, linkedLibraries, linkFor, readTheoryLibrary, withCitedSections, withLibraryLink, withoutLibraryLink, type LibraryLink, type SheetDocument, type TheoryLibrary, type TheorySource } from '@kalketa/sheet';
 import { desktop, type TheoryFolder } from './document.js';
+export { withoutDuplicates } from './logic/theoryMerge.js';
 
 export interface FoundLibrary {
   readonly library: TheoryLibrary;

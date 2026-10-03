@@ -410,7 +410,7 @@ async function runSmokeTest(pdfPath: string): Promise<void> {
     await writeFile(pdfPath, pdf);
     ok =
       state.bridge && state.sideBySide && state.menus === 7 && state.toolbars > 0 && state.rows > 10 && state.summary > 0 && state.math > 0 && reshapedColumns === 3 && pdf.length > 1000 &&
-      layers.newKeepsExample && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.notesPicture === 'FIGURE+img BLOCKQUOTE' && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.charts && layers.functionBar && layers.revisions && layers.roots && layers.toolIcons && layers.aiSettings && layers.aiChat && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
+      layers.newKeepsExample && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.notesPicture === 'FIGURE+img BLOCKQUOTE' && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.charts && layers.functionBar && layers.revisions && layers.roots && layers.toolIcons && layers.aiSettings && layers.aiChat && layers.pdfCleanup && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
     console.log(JSON.stringify({ ok, ...state, reshapedColumns, layers, pdfBytes: pdf.length }));
   } catch (err) {
     console.log(JSON.stringify({ ok: false, error: (err as Error).message }));
@@ -1135,6 +1135,8 @@ async function layersWithRealInput(picture: string) {
 
   // The AI chat in the side pane, with the other server (the fake one) picked in Settings.
   const aiChat = await aiChatWithRealInput(contents, picture);
+  // Text copied out of a PDF, pasted into the sources and tidied after a look at the preview.
+  const pdfCleanup = await pdfCleanupWithRealInput(contents, picture);
 
   // A file whose AI notes an AI wrote: they have a tab, can only be read, and cannot be deleted.
   const aiFile = process.env['KALKETA_SMOKE_AI'];
@@ -1173,7 +1175,51 @@ async function layersWithRealInput(picture: string) {
     blocksOk = shown.errors === 0 && shown.text.includes('Prosty nosnik 1.2') && shown.text.includes('45');
     await takePicture(picture.replace(/[.]png$/, '-blocks.png'));
   }
-  return { ...state, newKeepsExample, citations, notesPicture, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, toolIcons, aiSettings, aiChat, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, canvasOk, besideText, pictures, blocksOk };
+  return { ...state, newKeepsExample, citations, notesPicture, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, toolIcons, aiSettings, aiChat, pdfCleanup, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, canvasOk, besideText, pictures, blocksOk };
+}
+
+/** Text as a PDF copy gives it, pasted with Ctrl+V into new sources and tidied with the toolbar button. */
+async function pdfCleanupWithRealInput(contents: Electron.WebContents, picture: string): Promise<boolean> {
+  await clickOn('.menubar-item:nth-child(4) > button');
+  await clickMenu('Nová vrstva');
+  await clickMenu('Podklady');
+  await pressKey('Enter'); // default name
+  await pause(300);
+  contents.focus();
+  await clickOn('.layer-view.active .notes-word .ProseMirror');
+  const lines = ['3. NOSNÍKY A ZATÍŽENÍ', 'Nosník je prvek n a m á h a n ý ohybem a průhyb se posuzuje', 'zvlášť podle normy.', '17', '3.1 Spojité zatížení', 'Zatížení je r o v n o m ě r n ě rozložené.', 'I l l l l ^ - m H x'];
+  clipboard.writeText(lines.join(String.fromCharCode(10)));
+  await pressKey('V', ['control']);
+  await pause(400);
+  const before = (await contents.executeJavaScript(`({
+    warning: !!document.querySelector('.layer-view.active .word-warning'),
+    paragraphs: document.querySelectorAll('.layer-view.active .word-text .ProseMirror p').length,
+  })`)) as { warning: boolean; paragraphs: number };
+  await clickOn('.layer-view.active .word-pdf');
+  await pause(400);
+  const dialog = (await contents.executeJavaScript(`({
+    summary: document.querySelector('.pdf-summary')?.textContent ?? '',
+    suspects: [...document.querySelectorAll('.pdf-suspect code')].map((c) => c.textContent),
+    marked: [...document.querySelectorAll('.pdf-preview mark.joined')].map((m) => m.textContent),
+  })`)) as { summary: string; suspects: string[]; marked: string[] };
+  await takePicture(picture.replace(/[.]png$/, '-pdf.png'));
+  await clickOn('.dialog-buttons button.default');
+  await pause(500);
+  const after = (await contents.executeJavaScript(`({
+    warning: !!document.querySelector('.layer-view.active .word-warning'),
+    headings: [...document.querySelectorAll('.layer-view.active .word-text h1, .layer-view.active .word-text h2')].map((h) => h.tagName + ':' + h.textContent + ':' + (h.getAttribute('data-tid') ?? '')),
+    text: document.querySelector('.layer-view.active .word-text .ProseMirror')?.textContent ?? '',
+  })`)) as { warning: boolean; headings: string[]; text: string };
+  await writeFile(picture.replace(/[.]png$/, '-pdf.json'), JSON.stringify({ before, dialog, after }, null, 2));
+  return (
+    before.warning && before.paragraphs >= 6 &&
+    dialog.summary.includes('nadpisů: 2') && dialog.summary.includes('čísel stran: 1') &&
+    dialog.suspects.length === 1 && dialog.suspects[0] === 'I l l l l ^ - m H x' &&
+    dialog.marked.includes('namáhaný') && dialog.marked.includes('rovnoměrně') &&
+    !after.warning && after.headings.length === 2 &&
+    /^H1:3\. NOSNÍKY A ZATÍŽENÍ:T\d+$/.test(after.headings[0]!) && /^H2:3\.1 Spojité zatížení:T\d+$/.test(after.headings[1]!) &&
+    after.text.includes('Nosník je prvek namáhaný ohybem a průhyb se posuzuje zvlášť podle normy.') && !after.text.includes('I l l l')
+  );
 }
 
 /** A question in the AI chat, by real input: the answer streams in and the model got the sheet. */

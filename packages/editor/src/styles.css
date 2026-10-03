@@ -461,3 +461,14 @@ button.icon:hover { color: var(--accent); }
 .word-text blockquote { margin: 2mm 0; padding: 1mm 0 1mm 3mm; border-left: 1mm solid #9aa6b4; color: #333; font-style: italic; }
 .word-text hr { border: none; border-top: 1px solid #c5ccd5; margin: 3mm 0; }
 .word-text a { color: var(--accent); }
+
+/* Tidying text from a PDF: what changes, shown before it does. */
+.word-warning { margin: 0; padding: 4px 10px; background: #fff7e0; border-bottom: 1px solid #ecd8a0; color: #6b5310; font-size: 12px; }
+.word-tool.word-pdf { padding: 0 8px; font-size: 12px; }
+.pdf-cleanup { display: flex; flex-direction: column; gap: 6px; max-height: 70vh; }
+.pdf-cleanup h4 { margin: 6px 0 2px; font-size: 13px; }
+.pdf-summary { margin: 0; }
+.pdf-suspects { display: flex; flex-direction: column; gap: 2px; max-height: 140px; overflow: auto; border: 1px solid #d5dae1; padding: 4px 6px; background: #fff; }
+.pdf-suspect code { font-size: 12px; }
+.pdf-preview { flex: 1; min-height: 200px; overflow: auto; background: var(--paper); border: 1px solid #d5dae1; padding: 8mm 10mm; }
+.pdf-preview mark.joined { background: #fff1a8; padding: 0 1px; }

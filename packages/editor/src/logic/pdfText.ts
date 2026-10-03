@@ -1,0 +1,213 @@
+/**
+ * Tidying text copied out of a PDF into the sources (docs/01-filozofie.md,
+ * ch. 9.6: text is put in and a person confirms it). A PDF gives one paragraph
+ * per printed line, words spaced out for emphasis ("n a m á h á n o"), page
+ * numbers, numbered titles as plain text and remains of figures. This turns
+ * them back into paragraphs, words and headings, puts a caption "Obr. 31 …"
+ * under the picture above it, and lists lines that look like remains of a
+ * figure: the user decides which of them go.
+ *
+ * Works on the stored notes (the Markdown subset); headings, lists,
+ * citations, tables, code and pictures already there stay as they are.
+ */
+
+export interface PdfCleanup {
+  /** The tidied notes. */
+  readonly text: string;
+  /** Lines that look like remains of figures, in order; removed when listed in `drop` of applySuspects. */
+  readonly suspects: readonly string[];
+  /**
+   * Spaced-out words that were put together. A one-letter preposition next to one
+   * cannot be told from its letters ("n a m á h á n o v daném"): the preview shows
+   * them, so the user can check.
+   */
+  readonly joinedWords: readonly string[];
+  readonly stats: {
+    /** Printed lines joined into paragraphs. */
+    readonly joined: number;
+    readonly paragraphs: number;
+    /** Spaced-out words put together. */
+    readonly words: number;
+    readonly headings: number;
+    readonly pageNumbers: number;
+    readonly captions: number;
+  };
+}
+
+/** A marker a suspect line carries until the user decides; never stored. */
+const SUSPECT = '\u0000suspect:';
+
+const FIGURE = /^!\[([^\]]*)\]\(([^)\s]+)\)(\{[^}]*\})?\s*$/;
+const STRUCTURE = /^(#{1,3}\s|[-*]\s|>|```|\||---\s*$|\*\*\*\s*$|___\s*$)/;
+const NUMBERED_TITLE = /^(\d{1,2}(?:\.\d{1,2}){0,2})\.?\s+(\p{Lu}[^.,;:]{1,90})$/u;
+const CAPTION = /^(Obr\.|Obrázek|Fig\.|Figure)\s*\d+/i;
+
+/** A token of a spaced-out word: one or two letters. */
+const SHORT = /^\p{L}{1,2}$/u;
+
+/**
+ * Letters spaced out for emphasis put together: "n a m á h á n o" → "namáháno",
+ * "po j e d n é" → "po jedné", "k o lm ý" → "kolmý". A run has at least three
+ * tokens, starts and ends with a single letter, is mostly single letters, and
+ * ends before a capital that follows small letters ("s e M 0" stays apart).
+ */
+export function joinSpacedLetters(line: string): { text: string; words: string[] } {
+  const tokens = line.split(' ');
+  const out: string[] = [];
+  const words: string[] = [];
+  let i = 0;
+  while (i < tokens.length) {
+    if (!SHORT.test(tokens[i]!) || tokens[i]!.length !== 1) {
+      out.push(tokens[i]!);
+      i++;
+      continue;
+    }
+    // The longest run of short tokens from here; a capital after small letters ends it.
+    let j = i + 1;
+    while (j < tokens.length && SHORT.test(tokens[j]!) && !(/^\p{Lu}$/u.test(tokens[j]!) && /\p{Ll}/u.test(tokens[j - 1]!))) j++;
+    // It ends with a single letter: "…n é se" leaves "se" to the text after it.
+    let k = j;
+    while (k > i + 1 && tokens[k - 1]!.length !== 1) k--;
+    const run = tokens.slice(i, k);
+    const singles = run.filter((t) => t.length === 1).length;
+    if (run.length >= 3 && singles / run.length >= 0.75) {
+      const word = run.join('');
+      out.push(word);
+      words.push(word);
+      i = k;
+    } else {
+      out.push(tokens[i]!);
+      i++;
+    }
+  }
+  let text = out.join(' ');
+  // A space left before a comma or bracket that closed a spaced-out word: "kombinovaných ." → "kombinovaných."
+  if (words.length > 0) text = text.replace(/(\p{L}) ([.,;:!?)])/gu, '$1$2');
+  return { text, words };
+}
+
+/** A line made of scraps (single letters, symbols): what is left of a figure. */
+function looksLikeScraps(line: string): boolean {
+  const text = line.trim();
+  if (text === '' || /^\d+$/.test(text)) return false;
+  if (text.length <= 3) return true;
+  const tokens = text.split(/\s+/);
+  // Two real words make a line of text, however many spaced-out letters it has.
+  if (tokens.filter((t) => /\p{L}{3,}/u.test(t)).length >= 2) return false;
+  const scraps = tokens.filter((t) => !/\p{L}{3,}/u.test(t)).length;
+  return tokens.length >= 2 && scraps / tokens.length >= 0.8;
+}
+
+export function cleanPdfText(notes: string): PdfCleanup {
+  const stats = { joined: 0, paragraphs: 0, words: 0, headings: 0, pageNumbers: 0, captions: 0 };
+  const suspects: string[] = [];
+  const joinedWords: string[] = [];
+
+  // Blocks as stored: paragraphs between blank lines; one printed line each when copied from a PDF.
+  const blocks = notes
+    .replace(/\r\n/g, '\n')
+    .split(/\n\s*\n/)
+    .map((b) => b.trim())
+    .filter((b) => b !== '');
+
+  type Piece = { kind: 'line'; text: string } | { kind: 'keep'; text: string } | { kind: 'heading'; text: string } | { kind: 'figure'; text: string; caption?: string };
+  const pieces: Piece[] = [];
+  for (const block of blocks) {
+    const first = block.split('\n')[0]!;
+    if (FIGURE.test(block)) {
+      pieces.push({ kind: 'figure', text: block });
+      continue;
+    }
+    if (STRUCTURE.test(first)) {
+      pieces.push({ kind: 'keep', text: block });
+      continue;
+    }
+    for (const raw of block.split('\n')) {
+      // Remains of a figure are found before anything is joined in them.
+      if (looksLikeScraps(raw)) {
+        suspects.push(raw.trim());
+        pieces.push({ kind: 'keep', text: `${SUSPECT}${raw.trim()}` });
+        continue;
+      }
+      const spaced = joinSpacedLetters(raw.trim());
+      stats.words += spaced.words.length;
+      joinedWords.push(...spaced.words);
+      const line = spaced.text;
+      if (/^\d{1,4}$/.test(line)) {
+        stats.pageNumbers++;
+        continue;
+      }
+      const title = NUMBERED_TITLE.exec(line);
+      if (title && block.split('\n').length === 1) {
+        stats.headings++;
+        const level = title[1]!.split('.').filter((p) => p !== '').length;
+        pieces.push({ kind: 'heading', text: `${'#'.repeat(level)} ${line}` });
+        continue;
+      }
+      pieces.push({ kind: 'line', text: line });
+    }
+  }
+
+  // Printed lines back into paragraphs: a short line ending a sentence closes one.
+  const lengths = pieces.filter((p) => p.kind === 'line').map((p) => p.text.length).sort((a, b) => a - b);
+  const typical = lengths[Math.floor(lengths.length * 0.75)] ?? 80;
+  const out: string[] = [];
+  let paragraph: string[] = [];
+  // A caption being read: under a picture (its index in `out`) or on its own.
+  let caption: { figure?: number } | undefined;
+  const close = () => {
+    if (paragraph.length === 0) return;
+    let text = paragraph[0]!;
+    for (const next of paragraph.slice(1)) {
+      // A word broken at the end of a line ("nosní-" + "ku") is put together.
+      text = /\p{L}-$/u.test(text) && /^\p{Ll}/u.test(next) ? text.slice(0, -1) + next : `${text} ${next}`;
+    }
+    stats.joined += paragraph.length - 1;
+    stats.paragraphs++;
+    if (caption?.figure !== undefined) {
+      // "Obr. 31 …" right under a picture is its caption.
+      const m = FIGURE.exec(out[caption.figure]!)!;
+      out[caption.figure] = `![${text.replace(/[[\]]/g, '')}](${m[2]})${m[3] ?? ''}`;
+      stats.captions++;
+    } else {
+      out.push(text);
+    }
+    caption = undefined;
+    paragraph = [];
+  };
+  for (const piece of pieces) {
+    if (piece.kind !== 'line') {
+      close();
+      out.push(piece.text);
+      continue;
+    }
+    const previous = pieces[pieces.indexOf(piece) - 1];
+    // A caption runs on over its lines ("…, b) na dvou podporách," / "c) s převislými konci") until a new sentence starts.
+    if (caption && paragraph.length > 0 && /^\p{Lu}/u.test(piece.text) && !/[,-]$/.test(paragraph[paragraph.length - 1]!)) close();
+    const startsCaption = CAPTION.test(piece.text);
+    if (startsCaption) {
+      close();
+      const figureAbove = previous?.kind === 'figure' && !FIGURE.exec(previous.text)![1];
+      caption = figureAbove ? { figure: out.length - 1 } : {};
+    }
+    paragraph.push(piece.text);
+    const ends = /[.!?:]$/.test(piece.text) && piece.text.length < typical * 0.8;
+    if (ends) close();
+  }
+  close();
+
+  return { text: `${out.join('\n\n')}\n`, suspects, joinedWords, stats };
+}
+
+/** The tidied notes without the suspect lines the user chose to drop; the others stay as text. */
+export function applySuspects(cleaned: PdfCleanup, drop: ReadonlySet<number>): string {
+  let i = 0;
+  return cleaned.text
+    .split('\n\n')
+    .flatMap((block) => {
+      if (!block.startsWith(SUSPECT)) return [block];
+      const n = i++;
+      return drop.has(n) ? [] : [block.slice(SUSPECT.length)];
+    })
+    .join('\n\n');
+}

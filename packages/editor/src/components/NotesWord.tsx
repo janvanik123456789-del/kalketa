@@ -18,6 +18,7 @@ import { desktop } from '../document.js';
 import { docToNotes, notesToDoc } from '../logic/notesDoc.js';
 import { captionOf, isPictureType, type IncomingPicture } from '../logic/pictures.js';
 import { ask } from './Ask.js';
+import { PdfCleanupDialog } from './PdfCleanup.js';
 
 interface Props {
   readonly text: string;
@@ -121,6 +122,10 @@ export function NotesWord({ text, title, catalog, readOnly, resolveFile, onChang
   const emitted = useRef(text);
   const pendingFiles = useRef<Map<string, Uint8Array> | undefined>(undefined);
   const [styleMenu, setStyleMenu] = useState(false);
+  const [cleanup, setCleanup] = useState(false);
+  // The latest onSettle: after a change it must see the new text, not the one of an older render.
+  const settle = useRef(onSettle);
+  settle.current = onSettle;
   const [, setTick] = useState(0);
   // Set once the editor exists: pictures from paste and drop go in through it.
   const place = useRef<(pictures: readonly IncomingPicture[], at?: number) => void>(() => {});
@@ -307,6 +312,10 @@ export function NotesWord({ text, title, catalog, readOnly, resolveFile, onChang
           {commandIcon('insert.picture') ?? '🖼'}
         </Tool>
         <span className="word-sep" />
+        <Tool label={t(catalog, 'pdf.button')} title={t(catalog, 'pdf.buttonTip')} className="word-pdf" disabled={readOnly || !text.trim()} onClick={() => setCleanup(true)}>
+          {t(catalog, 'pdf.button')}
+        </Tool>
+        <span className="word-sep" />
         <Tool label={t(catalog, 'word.undo')} keys="Ctrl+Z" disabled={readOnly || !editor.can().undo()} onClick={() => editor.chain().focus().undo().run()}>
           {commandIcon('edit.undo') ?? '↶'}
         </Tool>
@@ -314,6 +323,20 @@ export function NotesWord({ text, title, catalog, readOnly, resolveFile, onChang
           {commandIcon('edit.redo') ?? '↷'}
         </Tool>
       </div>
+      {text.trim() !== '' && !/^#{1,3}\s/m.test(text) && <p className="word-warning">{t(catalog, 'word.noHeadings')}</p>}
+      {cleanup && (
+        <PdfCleanupDialog
+          catalog={catalog}
+          text={text}
+          resolveFile={resolveFile}
+          onApply={(next) => {
+            // One change; once the program has it, the new headings get their section ids.
+            onChange(next);
+            window.setTimeout(() => settle.current?.(), 0);
+          }}
+          onClose={() => setCleanup(false)}
+        />
+      )}
       <div className="word-scroll">
         <div className="word-page page-like">
           <h2 className="notes-title">{title}</h2>

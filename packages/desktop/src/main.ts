@@ -5,7 +5,8 @@
  * another one, e.g. to compare two calculations on two monitors. The editor
  * has no access to Node or the disk; it gets a small, fixed set of functions
  * through the preload bridge: open and save files, print, export PDF, a new
- * window, and a guard against closing with unsaved changes.
+ * window, a guard against closing with unsaved changes, and the AI settings
+ * (keys stay here, see ai.ts).
  */
 
 import { app, BrowserWindow, clipboard, ClipboardItem, dialog, ipcMain, Menu, nativeImage, shell, type IpcMainInvokeEvent } from 'electron';
@@ -16,6 +17,7 @@ import { tmpdir } from 'node:os';
 import { basename, dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { stat } from 'node:fs/promises';
+import { registerAiBridge } from './ai.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 // .calc: calculation files from before the program was renamed (it was CalcCanvas).
@@ -372,6 +374,8 @@ function registerBridge(): void {
     fromEditor(event);
     createWindow({ blank: true });
   });
+
+  registerAiBridge(fromEditor);
 }
 
 /**
@@ -406,7 +410,7 @@ async function runSmokeTest(pdfPath: string): Promise<void> {
     await writeFile(pdfPath, pdf);
     ok =
       state.bridge && state.sideBySide && state.menus === 7 && state.toolbars > 0 && state.rows > 10 && state.summary > 0 && state.math > 0 && reshapedColumns === 3 && pdf.length > 1000 &&
-      layers.newKeepsExample && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.charts && layers.functionBar && layers.revisions && layers.roots && layers.toolIcons && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
+      layers.newKeepsExample && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.charts && layers.functionBar && layers.revisions && layers.roots && layers.toolIcons && layers.aiSettings && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
     console.log(JSON.stringify({ ok, ...state, reshapedColumns, layers, pdfBytes: pdf.length }));
   } catch (err) {
     console.log(JSON.stringify({ ok: false, error: (err as Error).message }));
@@ -1114,6 +1118,10 @@ async function layersWithRealInput(picture: string) {
   await pressKey('Escape');
   await pause(300);
 
+  // Tools > Settings > AI: off by default; Claude with a wrong key, then a good one
+  // (against the fake API of scripts/smoke.mjs); the key is remembered encrypted and forgotten again.
+  const aiSettings = await aiSettingsWithRealInput(contents, picture);
+
   // A file whose AI notes an AI wrote: they have a tab, can only be read, and cannot be deleted.
   const aiFile = process.env['KALKETA_SMOKE_AI'];
   let aiReadOnly = false;
@@ -1151,7 +1159,79 @@ async function layersWithRealInput(picture: string) {
     blocksOk = shown.errors === 0 && shown.text.includes('Prosty nosnik 1.2') && shown.text.includes('45');
     await takePicture(picture.replace(/[.]png$/, '-blocks.png'));
   }
-  return { ...state, newKeepsExample, citations, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, toolIcons, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, canvasOk, besideText, pictures, blocksOk };
+  return { ...state, newKeepsExample, citations, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, toolIcons, aiSettings, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, canvasOk, besideText, pictures, blocksOk };
+}
+
+/** The AI part of the Settings dialog, driven by real mouse and keyboard input. */
+async function aiSettingsWithRealInput(contents: Electron.WebContents, picture: string): Promise<boolean> {
+  const read = () =>
+    contents.executeJavaScript(`(() => {
+      const section = document.querySelector('.ai-settings');
+      const selects = section ? [...section.querySelectorAll('select')] : [];
+      return {
+        provider: selects[0]?.value ?? '',
+        model: selects[1]?.value ?? '',
+        models: selects[1] ? [...selects[1].options].map((o) => o.value) : [],
+        keyField: !!section?.querySelector('.ai-key'),
+        keyValue: section?.querySelector('.ai-key')?.value ?? '',
+        keyPlaceholder: section?.querySelector('.ai-key')?.placeholder ?? '',
+        forget: !!section?.querySelector('.ai-forget'),
+        status: section?.querySelector('.ai-status')?.textContent ?? '',
+      };
+    })()`) as Promise<{ provider: string; model: string; models: string[]; keyField: boolean; keyValue: string; keyPlaceholder: string; forget: boolean; status: string }>;
+  const openSettings = async () => {
+    await clickOn('.menubar-item:nth-child(5) > button');
+    await clickMenu('Nastavení');
+    await pause(400);
+  };
+  const waitForStatus = async (text: string) => {
+    for (let i = 0; i < 40 && !(await read()).status.includes(text); i++) await pause(150);
+  };
+
+  await openSettings();
+  const off = await read();
+  // The provider list is a plain <select>: a click on its label focuses it without
+  // opening the list, and the arrow key moves to the next provider.
+  await clickOn('.ai-settings label.field > span');
+  await pressKey('Down');
+  await pause(300);
+  const claude = await read();
+  await clickOn('.ai-key');
+  await typeText('sk-smoke-bad');
+  await clickOn('.ai-test');
+  await waitForStatus('nepřijal');
+  const bad = await read();
+  await clickOn('.ai-key');
+  await pressKey('A', ['control']);
+  await typeText('sk-smoke-good');
+  await clickOn('.ai-test');
+  await waitForStatus('Připojeno');
+  const good = await read();
+  await takePicture(picture.replace(/[.]png$/, '-ai-settings.png'));
+  await clickOn('.dialog-buttons button.default');
+  await pause(300);
+  const saved = (await contents.executeJavaScript(`localStorage.getItem('kalketa.ai') ?? ''`)) as string;
+  const keyFile = join(app.getPath('userData'), 'ai-keys.json');
+  const onDisk = existsSync(keyFile) ? await readFile(keyFile, 'utf8') : '';
+  const sealed = onDisk.includes('anthropic') && !onDisk.includes('sk-smoke-good');
+
+  await openSettings();
+  const reopened = await read();
+  await clickOn('.ai-forget');
+  await pause(300);
+  const forgotten = await read();
+  await pressKey('Escape');
+  await pause(300);
+
+  return (
+    off.provider === 'none' && !off.keyField &&
+    claude.provider === 'anthropic' && claude.model === 'claude-opus-5-5' && claude.keyField &&
+    bad.status.includes('nepřijal') &&
+    good.status.includes('Dostupné modely: 2') && good.models.includes('claude-smoke-1') && good.keyValue === '' && good.forget &&
+    saved.includes('"provider":"anthropic"') && sealed &&
+    reopened.provider === 'anthropic' && reopened.keyPlaceholder.startsWith('klíč je zadán') && reopened.forget &&
+    !forgotten.forget && forgotten.keyPlaceholder === ''
+  );
 }
 
 /**

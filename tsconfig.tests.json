@@ -26,6 +26,12 @@
       ],
       "@kalketa/chart": [
         "./packages/chart/src/index.ts"
+      ],
+      "@kalketa/ai": [
+        "./packages/ai/src/index.ts"
+      ],
+      "@kalketa/ai/connect": [
+        "./packages/ai/src/connect.ts"
       ]
     }
   },

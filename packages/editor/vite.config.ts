@@ -18,6 +18,7 @@ export default defineConfig(({ command }) => ({
       { find: /^@kalketa\/render$/, replacement: src('render') },
       { find: /^@kalketa\/canvas$/, replacement: src('canvas') },
       { find: /^@kalketa\/chart$/, replacement: src('chart') },
+      { find: /^@kalketa\/ai$/, replacement: src('ai') },
       { find: /^@kalketa\/canvas\/editor$/, replacement: fileURLToPath(new URL('../canvas/src/editor/index.ts', import.meta.url)) },
     ],
   },

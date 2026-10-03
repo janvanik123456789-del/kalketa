@@ -1,0 +1,22 @@
+{
+  "name": "@kalketa/ai",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Optional AI module: the contract between the program and a language model, providers, settings and company rules. Replaceable as a whole.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./connect": {
+      "types": "./dist/connect.d.ts",
+      "default": "./dist/connect.js"
+    }
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.131.0"
+  }
+}

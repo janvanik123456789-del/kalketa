@@ -13,6 +13,8 @@ export default defineConfig({
       '@kalketa/render': src('render'),
       '@kalketa/canvas': src('canvas'),
       '@kalketa/chart': src('chart'),
+      '@kalketa/ai/connect': fileURLToPath(new URL('./packages/ai/src/connect.ts', import.meta.url)),
+      '@kalketa/ai': src('ai'),
     },
   },
   test: {

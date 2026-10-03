@@ -3,7 +3,9 @@
 //
 // It writes its own test sheets (AI notes, a block) into a temporary folder, so it
 // needs nothing outside the repo and works wherever the repo lives.
+// KALKETA_SMOKE_EXE=<path to Kalketa.exe> runs the same test on a packaged build.
 import { spawn } from 'node:child_process';
+import { createServer } from 'node:http';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
@@ -27,13 +29,39 @@ const blocks = newDocument('Blocks smoke', 'N1 := Prosty_nosnik(L: 6 m, q: 10 kN
 const blocksFile = join(out, 'blocks.kalk');
 writeFileSync(blocksFile, await writeSheetFile({ ...blocks, blocks: new Map([['Prosty_nosnik', { source: beam, version: '1.2', origin: 'Prosty nosnik.kalk' }]]) }));
 
+// A stand-in for the Claude API: accepts one key and lists two models, so the
+// AI settings are tested end to end without the internet or a real key.
+const fakeApi = createServer((request, response) => {
+  const good = request.headers['x-api-key'] === 'sk-smoke-good';
+  response.writeHead(good ? 200 : 401, { 'content-type': 'application/json' });
+  const model = (id, name) => ({ type: 'model', id, display_name: name, created_at: '2026-01-01T00:00:00Z', capabilities: null, max_input_tokens: null, max_tokens: null });
+  response.end(
+    JSON.stringify(
+      good && request.url?.startsWith('/v1/models')
+        ? { data: [model('claude-opus-5-5', 'Claude Opus 5.5'), model('claude-smoke-1', 'Claude Smoke 1')], has_more: false, first_id: 'claude-opus-5-5', last_id: 'claude-smoke-1' }
+        : { type: 'error', error: { type: 'authentication_error', message: 'invalid x-api-key' } },
+    ),
+  );
+});
+await new Promise((ready) => fakeApi.listen(0, '127.0.0.1', ready));
+
 const electron = createRequire(join(desktop, 'package.json'))('electron');
-const env = { ...process.env, KALKETA_SMOKE_TEST: join(out, 'smoke.pdf'), KALKETA_SMOKE_AI: aiFile, KALKETA_SMOKE_BLOCKS: blocksFile };
+const env = {
+  ...process.env,
+  KALKETA_SMOKE_TEST: join(out, 'smoke.pdf'),
+  KALKETA_SMOKE_AI: aiFile,
+  KALKETA_SMOKE_BLOCKS: blocksFile,
+  ANTHROPIC_BASE_URL: `http://127.0.0.1:${fakeApi.address().port}`,
+};
+delete env.ANTHROPIC_API_KEY;
+delete env.ANTHROPIC_AUTH_TOKEN;
 delete env.ELECTRON_RUN_AS_NODE;
-const child = spawn(electron, [desktop], { env, stdio: ['ignore', 'pipe', 'ignore'] });
+const packaged = process.env.KALKETA_SMOKE_EXE;
+const child = spawn(packaged ?? electron, packaged ? [] : [desktop], { env, stdio: ['ignore', 'pipe', 'ignore'] });
 let stdout = '';
 child.stdout.on('data', (chunk) => (stdout += chunk));
 await new Promise((done) => child.on('close', done));
+fakeApi.close();
 
 const line = stdout.split(/\r?\n/).find((l) => l.startsWith('{') && l.includes('"ok"'));
 if (!line) {

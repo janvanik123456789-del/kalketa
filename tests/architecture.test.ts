@@ -100,3 +100,31 @@ describe('modul grafů je samostatný', () => {
     expect(bad).toEqual([]);
   });
 });
+
+describe('modul AI je vyměnitelný', () => {
+  it('AI nepoužívá jiné balíčky projektu, React ani soubory mimo svůj balíček', () => {
+    const bad = packageImports('ai').flatMap(({ file, imports }) =>
+      imports
+        .filter((i) => i.startsWith('@kalketa/') || i.startsWith('react') || (i.startsWith('.') && !resolve(ROOT, file, '..', i).startsWith(join(ROOT, 'packages', 'ai', 'src'))))
+        .map((i) => `${file} → ${i}`),
+    );
+    expect(bad).toEqual([]);
+  });
+
+  it('jen spojení s poskytovatelem (connect) mluví se sítí a zná jeho SDK', () => {
+    const bad = packageImports('ai')
+      .filter(({ file }) => !file.endsWith('/connect.ts'))
+      .flatMap(({ file, imports }) => imports.filter((i) => i.startsWith('@anthropic-ai/') || /^(node:)?(fs|net|http|https)/.test(i) || i === './connect.js').map((i) => `${file} → ${i}`));
+    expect(bad).toEqual([]);
+  });
+
+  it('jádro, list, tisk ani překlady AI neznají; editor nemluví s poskytovatelem', () => {
+    const bad = [
+      ...['core', 'sheet', 'render', 'i18n', 'canvas', 'chart'].flatMap((pkg) =>
+        packageImports(pkg).flatMap(({ file, imports }) => imports.filter((i) => i.startsWith('@kalketa/ai')).map((i) => `${file} → ${i}`)),
+      ),
+      ...packageImports('editor').flatMap(({ file, imports }) => imports.filter((i) => i === '@kalketa/ai/connect' || i.startsWith('@anthropic-ai/')).map((i) => `${file} → ${i}`)),
+    ];
+    expect(bad).toEqual([]);
+  });
+});

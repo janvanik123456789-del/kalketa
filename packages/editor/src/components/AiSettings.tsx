@@ -1,0 +1,141 @@
+/**
+ * The AI part of the Settings dialog: provider, model and API key. Everything
+ * works without it; it is off until the user picks a provider. The key goes to
+ * the desktop application and never comes back to the editor.
+ */
+import { useEffect, useState } from 'react';
+import { AI_OFF, allowedProviders, modelAllowed, NO_POLICY, parseAiPolicy, providerById, type AiPolicy, type AiSettings, type ModelChoice } from '@kalketa/ai';
+import { t, type Catalog, type UiKey } from '@kalketa/i18n';
+import { desktop, type AiKeyState } from '../document.js';
+
+/** What the dialog keeps until OK: the settings and a newly typed key. */
+export interface AiDraft {
+  readonly settings: AiSettings;
+  readonly key: string;
+  readonly remember: boolean;
+}
+
+export function AiSettingsSection({ catalog, draft, onChange }: { catalog: Catalog; draft: AiDraft; onChange(draft: AiDraft): void }) {
+  const [policy, setPolicy] = useState<AiPolicy>(NO_POLICY);
+  const [keyState, setKeyState] = useState<AiKeyState>();
+  const [models, setModels] = useState<readonly ModelChoice[]>();
+  const [status, setStatus] = useState<string>();
+  const provider = providerById(draft.settings.provider);
+
+  useEffect(() => {
+    void desktop?.aiPolicy().then((p) => setPolicy(parseAiPolicy(p)));
+  }, []);
+  useEffect(() => {
+    setKeyState(undefined);
+    setModels(undefined);
+    setStatus(undefined);
+    if (provider) void desktop?.aiKeyState(provider.id).then(setKeyState);
+  }, [provider]);
+
+  if (!desktop) return <p className="hint">{t(catalog, 'ai.desktopOnly')}</p>;
+  if (policy.disabled) return <p className="hint">{t(catalog, 'ai.disabledByPolicy')}</p>;
+
+  const setSettings = (settings: AiSettings) => onChange({ ...draft, settings });
+  const choices = (models ?? provider?.models ?? []).filter((m) => modelAllowed(policy, m.id));
+  // A model picked earlier stays in the list even when the provider no longer offers it.
+  const shown = provider && !choices.some((m) => m.id === draft.settings.model) ? [{ id: draft.settings.model, name: draft.settings.model }, ...choices] : choices;
+
+  const test = async () => {
+    if (!provider) return;
+    setStatus(t(catalog, 'ai.testing'));
+    if (draft.key.trim()) {
+      setKeyState(await desktop!.aiSetKey({ provider: provider.id, key: draft.key, remember: draft.remember }));
+      onChange({ ...draft, key: '' });
+    }
+    const result = await desktop!.aiTest(provider.id);
+    if (result.ok) {
+      setModels(result.models);
+      setStatus(t(catalog, 'ai.connected', { count: String(result.models.length) }));
+    } else {
+      setStatus(t(catalog, `ai.problem.${result.problem}` as UiKey, { detail: result.detail ?? '' }));
+    }
+  };
+
+  const forget = async () => {
+    if (!provider) return;
+    setKeyState(await desktop!.aiForgetKey(provider.id));
+    setStatus(undefined);
+  };
+
+  return (
+    <div className="ai-settings">
+      <h4>{t(catalog, 'ai.section')}</h4>
+      <label className="field">
+        <span>{t(catalog, 'ai.provider')}</span>
+        <select
+          value={draft.settings.provider}
+          onChange={(e) => {
+            const next = providerById(e.target.value);
+            setSettings(next ? { provider: next.id, model: next.defaultModel } : { provider: AI_OFF, model: '' });
+          }}
+        >
+          <option value={AI_OFF}>{t(catalog, 'ai.off')}</option>
+          {allowedProviders(policy).map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      {provider && (
+        <>
+          <label className="field">
+            <span>{t(catalog, 'ai.model')}</span>
+            <select value={draft.settings.model} onChange={(e) => setSettings({ ...draft.settings, model: e.target.value })}>
+              {shown.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          {provider.needsKey && (
+            <>
+              <label className="field">
+                <span>{t(catalog, 'ai.key')}</span>
+                <input
+                  type="password"
+                  className="ai-key"
+                  autoComplete="off"
+                  spellCheck={false}
+                  value={draft.key}
+                  placeholder={keyState?.hasKey ? t(catalog, 'ai.keySet') : ''}
+                  onChange={(e) => onChange({ ...draft, key: e.target.value })}
+                />
+              </label>
+              <label className="field">
+                <span />
+                <span>
+                  <input type="checkbox" className="ai-remember" checked={draft.remember && keyState?.canRemember !== false} disabled={keyState?.canRemember === false} onChange={(e) => onChange({ ...draft, remember: e.target.checked })} />{' '}
+                  {t(catalog, keyState?.canRemember === false ? 'ai.cannotRemember' : 'ai.remember')}
+                </span>
+              </label>
+            </>
+          )}
+          <div className="ai-actions">
+            <button type="button" className="ai-test" onClick={() => void test()} disabled={provider.needsKey && !draft.key.trim() && !keyState?.hasKey}>
+              {t(catalog, 'ai.test')}
+            </button>
+            {keyState?.hasKey && (
+              <button type="button" className="ai-forget" onClick={() => void forget()}>
+                {t(catalog, 'ai.forget')}
+              </button>
+            )}
+            {provider.keyUrl && (
+              <a href={provider.keyUrl} target="_blank" rel="noreferrer">
+                {t(catalog, 'ai.getKey')}
+              </a>
+            )}
+          </div>
+          {status && <p className="hint ai-status">{status}</p>}
+        </>
+      )}
+      <p className="hint">{t(catalog, 'ai.hint')}</p>
+    </div>
+  );
+}

@@ -14,6 +14,7 @@ import { emptyScene, readScene, writeScene, type CanvasScene } from '@kalketa/ca
 import { CanvasEditor } from '@kalketa/canvas/editor';
 import { addLayer, allDiagnostics, appendixLayers, blockAppendices, documentBlocks, isRemovable, LayerSessions, MAIN_LAYER, removeLayer, freezeRevision, removeRevision, revisionDocument, revisionState, shortHash, tablesByLayer, updateLayer, type AddableLayerKind, type Layer, type RevisionState, type SheetDocument } from '@kalketa/sheet';
 import { buildCommands, shortcutOf, type Command } from './commands.js';
+import { DEFAULT_AI_SETTINGS, parseAiSettings, type AiSettings } from '@kalketa/ai';
 import { chooseFile, desktop, emptyDocument, exampleDocument, fileName, fileUri, largestParts, openBytes, pickAndOpen, saveDocument, tableCache, type FileRef, type OpenedFile } from './document.js';
 import { record, redo, undo, type History } from './logic/history.js';
 import { closeTab, cycleTab, fileNameOf, isDirty, newTab, openTab, type DocTab, type Tabs } from './logic/documents.js';
@@ -49,6 +50,8 @@ const RECENT_KEY = 'kalketa.recent';
 const RECENT_LIMIT = 8;
 const SIZE_LIMIT_KEY = 'kalketa.sizeLimitMb';
 const CANVAS_MODE_KEY = 'kalketa.canvasMode';
+/** Provider and model of the AI; keys are kept by the desktop application, not here. */
+const AI_SETTINGS_KEY = 'kalketa.ai';
 const DEFAULT_SIZE_LIMIT_MB = 50;
 /** Layers open side by side at most. */
 const MAX_PANES = 3;
@@ -605,6 +608,13 @@ export function App() {
   const canvasPath = canvasEdit?.path;
   /** Where a canvas is edited by default (Tools > Settings): right in the sheet, or in a large window. */
   const [canvasMode, setCanvasMode] = useState<'inline' | 'window'>(() => (stored(CANVAS_MODE_KEY) === 'window' ? 'window' : 'inline'));
+  const [aiSettings, setAiSettings] = useState<AiSettings>(() => {
+    try {
+      return parseAiSettings(JSON.parse(stored(AI_SETTINGS_KEY) ?? 'null'));
+    } catch {
+      return DEFAULT_AI_SETTINGS;
+    }
+  });
   const openCanvas = (path: string, mode: 'inline' | 'window' = canvasMode) => {
     // Whatever was selected in the sheet steps back while the drawing is edited.
     setSelected(undefined);
@@ -1312,7 +1322,11 @@ export function App() {
           language={language}
           sizeLimit={sizeLimit}
           canvasMode={canvasMode}
+          ai={aiSettings}
           onApply={(next) => {
+            setAiSettings(next.ai);
+            remember(AI_SETTINGS_KEY, JSON.stringify(next.ai));
+            if (next.aiKey && desktop) void desktop.aiSetKey({ provider: next.ai.provider, ...next.aiKey });
             setCanvasMode(next.canvasMode);
             remember(CANVAS_MODE_KEY, next.canvasMode);
             setLanguage(next.language);

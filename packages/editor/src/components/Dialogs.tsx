@@ -21,6 +21,8 @@ import {
 } from '../logic/toolbars.js';
 import { toolbarName } from './Toolbars.js';
 import { ask } from './Ask.js';
+import { AiSettingsSection, type AiDraft } from './AiSettings.js';
+import type { AiSettings } from '@kalketa/ai';
 
 interface DialogProps {
   readonly title: string;
@@ -90,6 +92,9 @@ export interface Settings {
   readonly sizeLimit: number;
   /** Where a canvas is edited by a double click: right in the sheet, or in a large window. */
   readonly canvasMode: 'inline' | 'window';
+  readonly ai: AiSettings;
+  /** A newly typed API key, handed to the desktop application on OK. */
+  readonly aiKey?: { readonly key: string; readonly remember: boolean };
 }
 
 export function SettingsDialog({
@@ -97,6 +102,7 @@ export function SettingsDialog({
   language,
   sizeLimit,
   canvasMode,
+  ai,
   onApply,
   onClose,
 }: {
@@ -104,15 +110,23 @@ export function SettingsDialog({
   language: string;
   sizeLimit: number;
   canvasMode: 'inline' | 'window';
+  ai: AiSettings;
   onApply(settings: Settings): void;
   onClose(): void;
 }) {
   const [value, setValue] = useState(language);
   const [limit, setLimit] = useState(String(sizeLimit));
   const [canvas, setCanvas] = useState(canvasMode);
+  const [aiDraft, setAiDraft] = useState<AiDraft>({ settings: ai, key: '', remember: true });
   const apply = () => {
     const mb = Number(limit.replace(',', '.'));
-    onApply({ language: value, sizeLimit: Number.isFinite(mb) && mb > 0 ? mb : sizeLimit, canvasMode: canvas });
+    onApply({
+      language: value,
+      sizeLimit: Number.isFinite(mb) && mb > 0 ? mb : sizeLimit,
+      canvasMode: canvas,
+      ai: aiDraft.settings,
+      ...(aiDraft.key.trim() ? { aiKey: { key: aiDraft.key, remember: aiDraft.remember } } : {}),
+    });
     onClose();
   };
   return (
@@ -139,6 +153,7 @@ export function SettingsDialog({
           <option value="window">{t(catalog, 'settings.canvasWindow')}</option>
         </select>
       </label>
+      <AiSettingsSection catalog={catalog} draft={aiDraft} onChange={setAiDraft} />
     </Dialog>
   );
 }

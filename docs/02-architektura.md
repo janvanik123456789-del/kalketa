@@ -59,7 +59,7 @@ kalketa/
 │   ├── editor/          ← React aplikace
 │   ├── cli/             ← `kalketa run list.kalk`, `kalketa test`, export PDF
 │   ├── i18n/            ← katalogy zpráv (cs, en, …), formát čísel podle jazyka
-│   └── ai/              ← (později) rozhraní pro LLM, volitelné
+│   └── ai/              ← volitelný modul AI: smlouva, poskytovatelé, nastavení, firemní pravidla (ai/connect: volání poskytovatele)
 │
 ├── reference/           ← referenční výpočty R1–R6 (listy + očekávané výsledky)
 └── docs/                ← filozofie, architektura, návrh jazyka
@@ -84,6 +84,12 @@ render ──► chart ◄── editor        (graf jako SVG; editor jen čte r
 Formát scény má číslo verze; `migrate` převádí starší scény na aktuální, prvky novější verze se jen nevykreslí. Pravidla hlídá `tests/architecture.test.ts`. Stejným vzorem mohou vzniknout další moduly (výkresy DXF).
 
 **Modul grafů (`chart`)** vznikl stejným vzorem: nezná jádro, jednotky ani React. Jádro (`eval/plot.ts`) graf jen spočítá: navzorkuje výrazy a vrátí čísla v jednotkách os (`PlotResult`). Tisk z nich udělá popisky (jméno výrazu, „x [m]“) a zavolá `chartSvg`; editor si z bloku vezme rozvržení (`chartLayout`) a pod myší odečítá hodnoty. Graf je v listu obyčejný řádek `plot(…)`, takže se přepočítá s výpočtem jako každý jiný řádek.
+
+**Modul AI (`ai`)** je celý vyměnitelný (filozofie, kap. 9.1): nepoužívá jiné balíčky projektu ani React a jádro, list, tisk ani překlady o něm nevědí.
+- `@kalketa/ai`: verzovaná smlouva (`AI_CONTRACT_VERSION`, úloha → návrhy), seznam poskytovatelů, nastavení (poskytovatel, model; ve výchozím stavu vypnuto) a firemní pravidla (`AiPolicy`, mají přednost před nastavením). Bez sítě, používá ho editor.
+- `@kalketa/ai/connect`: volání poskytovatele přes jeho oficiální SDK (zatím Claude, `@anthropic-ai/sdk`). Běží jen v hlavním procesu desktopové aplikace; editor ho importovat nesmí.
+- API klíče drží jen hlavní proces (`packages/desktop/src/ai.ts`): zapamatovaný klíč je zašifrovaný systémem (Electron `safeStorage`), editor ho může nastavit nebo smazat, nikdy ho nedostane zpět. Firemní pravidla čte desktop z `ai-policy.json` vedle programu.
+- Smoke test zkouší nastavení AI proti falešnému API (`scripts/smoke.mjs`), bez internetu a skutečného klíče.
 
 - **core nezávisí na ničem** z projektu, nesahá na soubory ani síť a je deterministický.
 - **core nezná žádný obor.** Kód pro konkrétní obor (IPE, kabely, NPV…) patří do tabulek a bloků v `reference/` nebo do knihoven, ne do `core`.

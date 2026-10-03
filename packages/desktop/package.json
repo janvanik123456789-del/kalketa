@@ -81,5 +81,8 @@
         "to": "THIRD-PARTY-NOTICES.txt"
       }
     ]
+  },
+  "dependencies": {
+    "@kalketa/ai": "*"
   }
 }

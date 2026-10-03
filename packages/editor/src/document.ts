@@ -111,7 +111,25 @@ export interface DesktopBridge {
   onShowFile(listener: (path: string) => void): void;
   /** Pictures on the clipboard: picture files copied in a file manager, or a copied picture. */
   clipboardPictures(): Promise<{ name: string; type: string; bytes: Uint8Array }[]>;
+  /** Company rules for the AI (read by the application from next to the program). */
+  aiPolicy(): Promise<unknown>;
+  aiKeyState(provider: string): Promise<AiKeyState>;
+  /** Hands a key to the application; the editor never reads it back. */
+  aiSetKey(request: { provider: string; key: string; remember: boolean }): Promise<AiKeyState>;
+  aiForgetKey(provider: string): Promise<AiKeyState>;
+  /** Asks the provider for its models with the key the application holds. */
+  aiTest(provider: string): Promise<AiConnectionResult>;
 }
+
+export interface AiKeyState {
+  readonly hasKey: boolean;
+  readonly remembered: boolean;
+  readonly canRemember: boolean;
+}
+
+export type AiConnectionResult =
+  | { readonly ok: true; readonly models: readonly { readonly id: string; readonly name: string }[] }
+  | { readonly ok: false; readonly problem: string; readonly detail?: string };
 
 export interface DesktopFile {
   readonly path: string;

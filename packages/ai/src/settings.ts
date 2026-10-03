@@ -1,0 +1,27 @@
+/**
+ * AI settings belong to the program, never to a sheet (ch. 9.1). Keys are not
+ * here: the desktop application keeps them, encrypted when the user wants
+ * them remembered.
+ */
+
+import { providerById } from './providers.js';
+
+export interface AiSettings {
+  /** Provider id, or 'none' when the AI is switched off (the default). */
+  readonly provider: string;
+  readonly model: string;
+}
+
+export const AI_OFF = 'none';
+
+export const DEFAULT_AI_SETTINGS: AiSettings = { provider: AI_OFF, model: '' };
+
+/** Settings read back from storage; anything unknown falls back to the defaults. */
+export function parseAiSettings(value: unknown): AiSettings {
+  if (typeof value !== 'object' || value === null) return DEFAULT_AI_SETTINGS;
+  const raw = value as Record<string, unknown>;
+  const provider = typeof raw['provider'] === 'string' ? providerById(raw['provider']) : undefined;
+  if (!provider) return DEFAULT_AI_SETTINGS;
+  const model = typeof raw['model'] === 'string' && raw['model'].trim() !== '' ? raw['model'] : provider.defaultModel;
+  return { provider: provider.id, model };
+}

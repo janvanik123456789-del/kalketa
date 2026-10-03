@@ -1,0 +1,10 @@
+/**
+ * The AI module (docs/01-filozofie.md, ch. 9). Optional: everything in the
+ * program works without it. This entry has no network code and runs anywhere;
+ * talking to providers is in `@kalketa/ai/connect`.
+ */
+
+export * from './contract.js';
+export * from './providers.js';
+export * from './settings.js';
+export * from './policy.js';

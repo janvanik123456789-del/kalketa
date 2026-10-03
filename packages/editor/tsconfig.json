@@ -37,6 +37,9 @@
       ],
       "@kalketa/canvas/editor": [
         "../canvas/src/editor/index.ts"
+      ],
+      "@kalketa/ai": [
+        "../ai/src/index.ts"
       ]
     }
   },

@@ -17,3 +17,24 @@ describe('what the AI sees of a sheet', () => {
     expect(languageGuide()).toMatch(/Built-in functions: .*sqrt\(/);
   });
 });
+
+describe('what the AI sees of the tables', () => {
+  it('gets the columns with units, the source, the rows and which line read which row', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    const { defaultRegistry } = await import('@kalketa/core');
+    const { loadTable } = await import('@kalketa/sheet');
+    const dir = join(import.meta.dirname, '../../../reference/R1-nosnik');
+    const tables = ['Materialy', 'Profily_IPE'].map((name) => {
+      const loaded = loadTable(readFileSync(join(dir, 'tables', name, 'schema.json'), 'utf8'), readFileSync(join(dir, 'tables', name, 'data.csv'), 'utf8'), defaultRegistry);
+      return loaded.table!;
+    });
+    const result = evaluateSheet(readFileSync(join(dir, 'nosnik.cc'), 'utf8'), { tables });
+    const findings = sheetContext('Posouzení nosníku N1', result).findings;
+    const text = findings.join('\n');
+    expect(text).toContain('Table Profily_IPE, 11 rows, key oznaceni; source: Průřezové charakteristiky');
+    expect(text).toContain('columns: oznaceni | h [mm] | b [mm] | A [cm²] | I_y [cm⁴] | W_y [cm³] | G [kg/m]');
+    expect(text).toContain('1: IPE 80 | 80 | 46 | 7.64 | 80.14 | 20.03 | 6');
+    expect(findings.some((f) => /^line 8 read Profily_IPE row \d+$/.test(f))).toBe(true);
+  });
+});

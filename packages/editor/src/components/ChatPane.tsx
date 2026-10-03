@@ -37,7 +37,14 @@ export interface ChatPaneProps {
 
 export function ChatPane({ catalog, settings, turns, onTurns, context, onOpenSettings }: ChatPaneProps) {
   const [draft, setDraft] = useState('');
-  const [answer, setAnswer] = useState<{ id: string; text: string; thinking: boolean }>();
+  const [answer, setAnswer] = useState<{ id: string; text: string; thinking: boolean; started: number }>();
+  // Seconds since the question, so a model thinking for a minute does not look stuck.
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (!answer || answer.text) return;
+    const timer = setInterval(() => setTick((n) => n + 1), 1000);
+    return () => clearInterval(timer);
+  }, [answer?.id, answer?.text === '']);
   const [error, setError] = useState<string>();
   const list = useRef<HTMLDivElement>(null);
   const provider = providerById(settings.provider);
@@ -66,7 +73,7 @@ export function ChatPane({ catalog, settings, turns, onTurns, context, onOpenSet
     setDraft('');
     setError(undefined);
     const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    setAnswer({ id, text: '', thinking: false });
+    setAnswer({ id, text: '', thinking: false, started: Date.now() });
     const stop = listen(id, (piece) => setAnswer((a) => (a && a.id === id ? { ...a, text: a.text + (piece.text ?? ''), thinking: a.thinking || !!piece.thinking } : a)));
     try {
       const { sheet, languageGuide } = context();
@@ -123,7 +130,9 @@ export function ChatPane({ catalog, settings, turns, onTurns, context, onOpenSet
           (answer.text ? (
             <div className="chat-turn assistant writing" dangerouslySetInnerHTML={{ __html: notesHtml(answer.text) }} />
           ) : (
-            <div className="chat-turn assistant writing">{answer.thinking ? t(catalog, 'chat.thinking') : t(catalog, 'chat.waiting')}</div>
+            <div className="chat-turn assistant writing">
+              {t(catalog, answer.thinking ? 'chat.thinking' : 'chat.waiting', { seconds: String(Math.floor((Date.now() - answer.started) / 1000)) })}
+            </div>
           ))}
         {error && <div className="chat-error">{error}</div>}
       </div>

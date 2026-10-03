@@ -103,6 +103,7 @@ describe('local servers', () => {
     const fetchFn = serving({ '8080': { data: [{ id: 'qwen' }] }, '9000': { data: [{ id: 'llama' }] } });
     expect(await testConnection('server', undefined, { fetch: fetchFn })).toMatchObject({ ok: true, models: [{ id: 'qwen' }] });
     expect(await testConnection('server', undefined, { fetch: fetchFn }, 'http://127.0.0.1:9000/')).toMatchObject({ ok: true, models: [{ id: 'llama' }] });
+    expect(await testConnection('server', undefined, { fetch: fetchFn }, 'http://127.0.0.1:9000/v1')).toMatchObject({ ok: true, models: [{ id: 'llama' }] });
     expect(await testConnection('server', undefined, { fetch: fetchFn }, 'ftp://x')).toEqual({ ok: false, problem: 'badUrl' });
     // LM Studio keeps its own address.
     expect(await testConnection('lmstudio', undefined, { fetch: fetchFn }, 'http://127.0.0.1:9000')).toEqual({ ok: false, problem: 'notRunning' });

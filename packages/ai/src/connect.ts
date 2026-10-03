@@ -37,7 +37,8 @@ const LOCAL_TIMEOUT_MS = 3000;
  */
 export function localUrl(provider: ProviderInfo, url?: string): string {
   const given = provider.urlEditable && url ? serverUrl(url) : undefined;
-  return (given ?? process.env[`KALKETA_AI_URL_${provider.id.toUpperCase()}`] ?? provider.baseUrl ?? '').replace(/\/+$/, '');
+  // "http://host:8080/v1" (as Cline and others write it) and "http://host:8080" mean the same server.
+  return (given ?? process.env[`KALKETA_AI_URL_${provider.id.toUpperCase()}`] ?? provider.baseUrl ?? '').replace(/\/+$/, '').replace(/\/v1$/, '');
 }
 
 /**

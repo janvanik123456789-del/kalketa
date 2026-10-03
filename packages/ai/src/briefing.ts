@@ -100,10 +100,10 @@ ${sheet.theory!.filter((s) => s.id).map((s) => `[${s.id}] ${s.title}`).join('\n'
     sheet.findings && sheet.findings.length > 0 ? `Findings of the program (errors, warnings, checks):\n${sheet.findings.join('\n')}` : 'The program found no errors and no failed checks.',
     sheet.theory && sheet.theory.length > 0
       ? `Theory and references the author chose for this calculation (in the sheet's language). Answer from them:
-- Cite the section you use, like [T3]. When you rely on its exact words, quote them verbatim in quotation marks right before the citation: "…" [T3]. The program checks every citation and marks the ones it cannot find as unsupported.
+- Cite the section you use by its id as given, like [T3] (the sheet's own sources) or [PP:T3] (a theory library). When you rely on its exact words, quote them verbatim in quotation marks right before the citation: "…" [T3]. The program checks every citation and marks the ones it cannot find as unsupported.
 - Cite only sections given here in full, and use their terms. If they do not cover the question, say so, then answer from general knowledge without a citation.
 
-${contents}${selection!.sections.length > 0 ? theoryText(selection!.sections) : '(No section matches the question.)'}`
+${sheet.libraries && sheet.libraries.length > 0 ? `Theory libraries: ${sheet.libraries.map((l) => `[${l.key}] ${l.title} (source: ${l.source})`).join('; ')}.\n\n` : ''}${contents}${selection!.sections.length > 0 ? theoryText(selection!.sections) : '(No section matches the question.)'}`
       : '',
     input.companyInstructions ? `Company rules (they take precedence):\n${input.companyInstructions}` : '',
   ];

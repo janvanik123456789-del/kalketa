@@ -23,7 +23,11 @@ export interface Citation {
 
 // A quotation ("…", „…“ or “…”) right before [T3], or after it behind a colon:
 // "…" [T3], [T3]: "…", **[T3]:** „…“.
-const CITATION = /(?:["„“]([^"„“”\n]{3,400})["“”]\s*)?\[(T\d+)\](?:\**\s*:\s*\**\s*["„“]([^"„“”\n]{3,400})["“”])?/g;
+// A section of the sheet's sources is "T3", one of a theory library "PP:T3".
+const CITATION = /(?:["„“]([^"„“”\n]{3,400})["“”]\s*)?\[((?:[A-Z][A-Z0-9]{0,5}:)?T\d+)\](?:\**\s*:\s*\**\s*["„“]([^"„“”\n]{3,400})["“”])?/g;
+
+/** Every [T3] and [PP:T3] in a text: the ids, in order. */
+export const CITED_ID = /\[((?:[A-Z][A-Z0-9]{0,5}:)?T\d+)\]/g;
 
 /** Letters and digits only, lower case: quotes survive changed spaces, dashes and line breaks. */
 function normalized(text: string): string {

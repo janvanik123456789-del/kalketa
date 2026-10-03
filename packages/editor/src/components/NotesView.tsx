@@ -27,9 +27,11 @@ interface Props {
   onChange(text: string, files?: ReadonlyMap<string, Uint8Array>): void;
   /** The user left the text: a good moment to give new headings their ids. */
   onSettle?(): void;
+  /** Saves the layer as a theory library (.kalkt). */
+  onSaveLibrary?(): void;
 }
 
-export function NotesView({ layer, title, catalog, readOnly, resolveFile, fileExists, onChange, onSettle }: Props) {
+export function NotesView({ layer, title, catalog, readOnly, resolveFile, fileExists, onChange, onSettle, onSaveLibrary }: Props) {
   const text = layer.text ?? '';
 
   /** A picture file and its caption. */
@@ -60,7 +62,7 @@ export function NotesView({ layer, title, catalog, readOnly, resolveFile, fileEx
   return (
     <div className="notes-view word">
       <style>{NOTES_CSS}</style>
-      <NotesWord text={text} title={title} catalog={catalog} readOnly={readOnly} resolveFile={resolveFile} onChange={onChange} {...(onSettle ? { onSettle } : {})} pickImage={pickImage} picturePath={pathFor} />
+      <NotesWord text={text} title={title} catalog={catalog} readOnly={readOnly} resolveFile={resolveFile} onChange={onChange} {...(onSettle ? { onSettle } : {})} pickImage={pickImage} picturePath={pathFor} {...(onSaveLibrary ? { onSaveLibrary } : {})} />
     </div>
   );
 }

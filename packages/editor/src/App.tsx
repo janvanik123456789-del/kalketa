@@ -16,6 +16,8 @@ import { addLayer, allDiagnostics, appendixLayers, blockAppendices, documentBloc
 import { buildCommands, shortcutOf, type Command } from './commands.js';
 import { DEFAULT_AI_SETTINGS, parseAiSettings, type AiSettings, type ChatTurn } from '@kalketa/ai';
 import { ChatPane } from './components/ChatPane.js';
+import { TheoryLibraryDialog } from './components/TheoryLibraryDialog.js';
+import { useTheoryLibraries } from './theoryLibraries.js';
 import { languageGuide, sheetContext } from './logic/aiContext.js';
 import { chooseFile, desktop, emptyDocument, exampleDocument, fileName, fileUri, largestParts, openBytes, pickAndOpen, saveDocument, tableCache, type FileRef, type OpenedFile } from './document.js';
 import { record, redo, undo, type History } from './logic/history.js';
@@ -239,6 +241,7 @@ export function App() {
 
   /** `group` merges quick successive changes (typing in one line) into one undo step. */
   const change = (next: SheetDocument, group?: string) => setHistory((h) => record(h, next, group));
+  const libraries = useTheoryLibraries(doc, tab.path, change);
   /** Changes the text of a layer; the AI notes and locked layers stay as they are. */
   const setLayerText = (l: Layer, source: string, group?: string, files?: ReadonlyMap<string, Uint8Array>) => {
     if (l.kind === 'ai') return setNotice(t(ui, 'notes.aiReadOnly'));
@@ -612,6 +615,8 @@ export function App() {
   const [canvasMode, setCanvasMode] = useState<'inline' | 'window'>(() => (stored(CANVAS_MODE_KEY) === 'window' ? 'window' : 'inline'));
   // Conversations with the AI by document tab; kept until the tab closes (not saved yet).
   const [chats, setChats] = useState<Readonly<Record<string, readonly ChatTurn[]>>>({});
+  // The sources layer being saved as a theory library.
+  const [libraryLayer, setLibraryLayer] = useState<string>();
   const [aiSettings, setAiSettings] = useState<AiSettings>(() => {
     try {
       return parseAiSettings(JSON.parse(stored(AI_SETTINGS_KEY) ?? 'null'));
@@ -1128,6 +1133,7 @@ export function App() {
           readOnly={l.locked}
           resolveFile={resolveFile}
           fileExists={(path) => doc.files.has(path)}
+          {...(desktop && l.kind === 'sources' ? { onSaveLibrary: () => setLibraryLayer(l.id) } : {})}
           onChange={(next, files) => setLayerText(l, next, `${l.id}:notes`, files)}
           onSettle={() => {
             // New headings get their theory ids once the user stops typing in them.
@@ -1213,13 +1219,28 @@ export function App() {
                     catalog={ui}
                     settings={aiSettings}
                     turns={chats[tab.id] ?? []}
-                    onTurns={(turns) => setChats((all) => ({ ...all, [tab.id]: turns }))}
-                    theory={theorySections(doc.layers)}
+                    onTurns={(turns) => {
+                      setChats((all) => ({ ...all, [tab.id]: turns }));
+                      // The calculation keeps copies of the library sections an answer cited.
+                      const last = turns[turns.length - 1];
+                      if (last?.role === 'assistant') {
+                        const next = libraries.recordCited(last.text, doc);
+                        if (next !== doc) change(next);
+                      }
+                    }}
+                    libraries={libraries.entries}
+                    onLibraries={() => void libraries.refresh()}
+                    onToggleLibrary={libraries.toggle}
+                    theory={[...theorySections(doc.layers), ...libraries.theory().sections]}
                     context={() => {
                       // Headings still without an id get one before the model sees them, so its citations stay valid.
                       const layers = withTheoryIds(doc.layers);
                       if (layers.some((x, i) => x !== doc.layers[i])) change({ ...doc, layers });
-                      return { sheet: { ...sheetContext(doc.manifest.title, evaluation.main), theory: theorySections(layers) }, languageGuide: languageGuide() };
+                      const fromLibraries = libraries.theory();
+                      return {
+                        sheet: { ...sheetContext(doc.manifest.title, evaluation.main), theory: [...theorySections(layers), ...fromLibraries.sections], libraries: fromLibraries.libraries },
+                        languageGuide: languageGuide(),
+                      };
                     }}
                     onOpenSettings={() => setDialog('settings')}
                   />
@@ -1346,6 +1367,20 @@ export function App() {
         <span>{Math.round(zoom * 100)} %</span>
         <span>{dirty ? t(ui, 'editor.unsaved') : t(ui, 'editor.saved')}</span>
       </footer>
+      {libraryLayer && doc.layers.some((l) => l.id === libraryLayer) && (
+        <TheoryLibraryDialog
+          catalog={ui}
+          layer={withTheoryIds(doc.layers).find((l) => l.id === libraryLayer)!}
+          files={doc.files}
+          language={doc.manifest.language ?? ui.locale}
+          {...(tab.path !== undefined ? { sheetPath: tab.path } : {})}
+          onSaved={(path) => {
+            setNotice(t(ui, 'library.saved', { path }));
+            void libraries.refresh();
+          }}
+          onClose={() => setLibraryLayer(undefined)}
+        />
+      )}
       {dialog === 'settings' && (
         <SettingsDialog
           catalog={ui}

@@ -53,9 +53,11 @@ const fakeApi = createServer((request, response) => {
       const question = body.messages.at(-1)?.content ?? '';
       const title = /The sheet "([^"]+)"/.exec(system)?.[1] ?? '?';
       // Cites the first theory section with words from it, and a section the sheet does not have.
-      const section = /\[(T\d+)\] [^\n]+\n(\S+ \S+ \S+)/.exec(system);
+      const section = /^\[(T\d+)\] [^\n]+\n(\S+ \S+ \S+)/m.exec(system);
       const cites = section ? `"${section[2]}" [${section[1]}] a [T99]; ` : 'bez teorie; ';
-      const pieces = [`list: **${title}**; `, `jazyk: ${system.includes('Answer in Czech') ? 'Czech' : '?'}; `, `výsledky: ${system.includes('Computed results') ? 'ano' : 'ne'}; `, `úsilí: ${body.reasoning_effort ?? '-'}; `, cites, `otázka: ` + String.fromCharCode(96) + question + String.fromCharCode(96), ['', '', '| Profil | G |', '|---|---:|', '| IPE 220 | 26.2 |'].join(String.fromCharCode(10))];
+      // A section of a theory library, if the briefing has one: cited by its key.
+      const fromLibrary = /^\[([A-Z][A-Z0-9]*:T\d+)\] [^\n]+\n(\S+ \S+)/m.exec(system);
+      const pieces = [`list: **${title}**; `, `jazyk: ${system.includes('Answer in Czech') ? 'Czech' : '?'}; `, `výsledky: ${system.includes('Computed results') ? 'ano' : 'ne'}; `, `úsilí: ${body.reasoning_effort ?? '-'}; `, cites, fromLibrary ? `knihovna: "${fromLibrary[2]}" [${fromLibrary[1]}]; ` : '', `otázka: ` + String.fromCharCode(96) + question + String.fromCharCode(96), ['', '', '| Profil | G |', '|---|---:|', '| IPE 220 | 26.2 |'].join(String.fromCharCode(10))];
       response.writeHead(200, { 'content-type': 'text/event-stream' });
       const event = (data) => `data: ${typeof data === 'string' ? data : JSON.stringify(data)}${String.fromCharCode(10).repeat(2)}`;
       response.write(event({ choices: [{ delta: { reasoning_content: 'thinking' } }] }));
@@ -88,6 +90,8 @@ const env = {
   KALKETA_AI_URL_LMSTUDIO: `http://127.0.0.1:${fakeApi.address().port}/local`,
   KALKETA_AI_URL_OLLAMA: 'http://127.0.0.1:9',
   KALKETA_AI_URL_SERVER: `http://127.0.0.1:${fakeApi.address().port}/local`,
+  // Theory libraries go to a folder of the test, never the user's Documents.
+  KALKETA_THEORY_USER_DIR: join(out, 'teorie'),
 };
 delete env.ANTHROPIC_API_KEY;
 delete env.ANTHROPIC_AUTH_TOKEN;

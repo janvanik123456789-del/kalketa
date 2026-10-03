@@ -20,6 +20,7 @@ export * from './container.js';
 export * from './layers.js';
 export * from './revisions.js';
 export * from './theory.js';
+export * from './theoryLibrary.js';
 
 /** Files of one stored table, relative to the sheet folder. */
 export interface TableFiles {

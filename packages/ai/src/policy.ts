@@ -16,6 +16,8 @@ export interface AiPolicy {
   readonly allowedModels?: readonly string[];
   /** Shared instructions for the model, e.g. "Eurocodes with the Czech national annexes". */
   readonly instructions?: string;
+  /** The company folder of theory libraries (.kalkt), e.g. on a shared drive. */
+  readonly theoryFolder?: string;
 }
 
 export const NO_POLICY: AiPolicy = {};
@@ -50,5 +52,6 @@ export function parseAiPolicy(value: unknown): AiPolicy {
     ...(providers ? { allowedProviders: providers } : {}),
     ...(models ? { allowedModels: models } : {}),
     ...(typeof raw['instructions'] === 'string' ? { instructions: raw['instructions'] } : {}),
+    ...(typeof raw['theoryFolder'] === 'string' && raw['theoryFolder'].trim() ? { theoryFolder: raw['theoryFolder'].trim() } : {}),
   };
 }

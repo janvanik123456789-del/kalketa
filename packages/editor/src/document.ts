@@ -127,10 +127,18 @@ export interface DesktopBridge {
     | { readonly ok: false; readonly problem: string; readonly detail?: string }
   >;
   aiChatCancel(id: string): Promise<void>;
+  /** Theory libraries (.kalkt) in the folders searched for a calculation: next to it, the company's, the user's. */
+  theoryList(sheetPath?: string): Promise<{ readonly path: string; readonly folder: TheoryFolder }[]>;
+  theoryRead(path: string, sheetPath?: string): Promise<Uint8Array>;
+  /** Saves a library into one of the folders; an existing file only with `replace`. */
+  theorySave(request: { folder: TheoryFolder; sheetPath?: string; title: string; bytes: Uint8Array; replace?: boolean }): Promise<{ readonly path: string; readonly exists?: boolean }>;
+  theoryFolders(sheetPath?: string): Promise<{ readonly kind: TheoryFolder; readonly dir: string }[]>;
   onAiChatEvent(listener: (piece: { readonly id: string; readonly text?: string; readonly thinking?: boolean }) => void): void;
   /** Local servers running now, with their models, by provider. */
   aiDiscover(): Promise<Record<string, readonly { readonly id: string; readonly name: string }[]>>;
 }
+
+export type TheoryFolder = 'project' | 'company' | 'user';
 
 export interface AiChatAsk {
   readonly id: string;
@@ -146,6 +154,7 @@ export interface AiChatAsk {
     readonly source: string;
     readonly findings?: readonly string[];
     readonly theory?: readonly { readonly id?: string; readonly title: string; readonly text: string }[];
+    readonly libraries?: readonly { readonly key: string; readonly title: string; readonly source: string }[];
   };
   readonly languageGuide?: string;
   readonly turns: readonly { readonly role: 'user' | 'assistant'; readonly text: string; readonly theory?: { readonly sent: readonly string[]; readonly total: number } }[];

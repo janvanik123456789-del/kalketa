@@ -472,3 +472,14 @@ button.icon:hover { color: var(--accent); }
 .pdf-suspect code { font-size: 12px; }
 .pdf-preview { flex: 1; min-height: 200px; overflow: auto; background: var(--paper); border: 1px solid #d5dae1; padding: 8mm 10mm; }
 .pdf-preview mark.joined { background: #fff1a8; padding: 0 1px; }
+
+/* Theory libraries: saving one, and choosing those the model searches. */
+.word-tool.word-library { padding: 0 8px; font-size: 12px; }
+.library-dialog h4 { margin: 8px 0 6px; font-size: 13px; }
+.library-problems { margin: 6px 0 0; padding-left: 18px; font-size: 12px; }
+.library-problems .error, p.library-problems.error { color: #a12828; }
+.library-problems .warning { color: #6b5310; }
+.chat-libraries { position: relative; }
+.chat-library-button { white-space: nowrap; }
+.chat-library-menu { position: absolute; right: 0; top: 26px; z-index: 20; display: flex; flex-direction: column; gap: 4px; min-width: 260px; max-width: 360px; background: #fff; border: 1px solid #c5ccd5; box-shadow: 0 3px 10px rgb(0 0 0 / 15%); padding: 6px 8px; }
+.chat-library { font-size: 12px; }

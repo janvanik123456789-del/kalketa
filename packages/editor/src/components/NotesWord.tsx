@@ -33,6 +33,8 @@ interface Props {
   pickImage(): Promise<{ readonly picture: IncomingPicture; readonly caption: string } | undefined>;
   /** Where a picture is stored in the sheet (a path no file has yet, also not one of `taken`). */
   picturePath(picture: IncomingPicture, taken: ReadonlySet<string>): string;
+  /** Saves the layer as a theory library (.kalkt); absent where it cannot be done. */
+  onSaveLibrary?(): void;
 }
 
 /** Attributes the stored notes need beyond the editor's own: the section id, the alignment of a table column. */
@@ -117,7 +119,7 @@ function withPictures(doc: JSONContent, resolveFile: (path: string) => string | 
   return doc.content ? { ...doc, content: doc.content.map((c) => withPictures(c, resolveFile)) } : doc;
 }
 
-export function NotesWord({ text, title, catalog, readOnly, resolveFile, onChange, onSettle, pickImage, picturePath }: Props) {
+export function NotesWord({ text, title, catalog, readOnly, resolveFile, onChange, onSettle, pickImage, picturePath, onSaveLibrary }: Props) {
   // What the editor last gave out: a text coming back unchanged is not loaded again.
   const emitted = useRef(text);
   const pendingFiles = useRef<Map<string, Uint8Array> | undefined>(undefined);
@@ -315,6 +317,11 @@ export function NotesWord({ text, title, catalog, readOnly, resolveFile, onChang
         <Tool label={t(catalog, 'pdf.button')} title={t(catalog, 'pdf.buttonTip')} className="word-pdf" disabled={readOnly || !text.trim()} onClick={() => setCleanup(true)}>
           {t(catalog, 'pdf.button')}
         </Tool>
+        {onSaveLibrary && (
+          <Tool label={t(catalog, 'library.button')} title={t(catalog, 'library.buttonTip')} className="word-library" disabled={!text.trim()} onClick={onSaveLibrary}>
+            {t(catalog, 'library.button')}
+          </Tool>
+        )}
         <span className="word-sep" />
         <Tool label={t(catalog, 'word.undo')} keys="Ctrl+Z" disabled={readOnly || !editor.can().undo()} onClick={() => editor.chain().focus().undo().run()}>
           {commandIcon('edit.undo') ?? '↶'}

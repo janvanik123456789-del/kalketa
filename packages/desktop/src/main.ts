@@ -12,12 +12,13 @@
 import { app, BrowserWindow, clipboard, ClipboardItem, dialog, ipcMain, Menu, nativeImage, shell, type IpcMainInvokeEvent } from 'electron';
 import { execFileSync } from 'node:child_process';
 import { cpSync, existsSync, mkdtempSync } from 'node:fs';
-import { readFile, writeFile } from 'node:fs/promises';
+import { readdir, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { stat } from 'node:fs/promises';
 import { registerAiBridge } from './ai.js';
+import { registerTheoryBridge } from './theory.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 // .calc: calculation files from before the program was renamed (it was CalcCanvas).
@@ -376,6 +377,7 @@ function registerBridge(): void {
   });
 
   registerAiBridge(fromEditor);
+  registerTheoryBridge(fromEditor);
 }
 
 /**
@@ -410,7 +412,7 @@ async function runSmokeTest(pdfPath: string): Promise<void> {
     await writeFile(pdfPath, pdf);
     ok =
       state.bridge && state.sideBySide && state.menus === 7 && state.toolbars > 0 && state.rows > 10 && state.summary > 0 && state.math > 0 && reshapedColumns === 3 && pdf.length > 1000 &&
-      layers.newKeepsExample && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.notesPicture === 'FIGURE+img BLOCKQUOTE' && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.charts && layers.functionBar && layers.revisions && layers.roots && layers.toolIcons && layers.aiSettings && layers.aiChat && layers.pdfCleanup && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
+      layers.newKeepsExample && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.notesPicture === 'FIGURE+img BLOCKQUOTE' && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.charts && layers.functionBar && layers.revisions && layers.roots && layers.toolIcons && layers.aiSettings && layers.aiChat && layers.pdfCleanup && layers.theoryLibrary && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
     console.log(JSON.stringify({ ok, ...state, reshapedColumns, layers, pdfBytes: pdf.length }));
   } catch (err) {
     console.log(JSON.stringify({ ok: false, error: (err as Error).message }));
@@ -1137,6 +1139,8 @@ async function layersWithRealInput(picture: string) {
   const aiChat = await aiChatWithRealInput(contents, picture);
   // Text copied out of a PDF, pasted into the sources and tidied after a look at the preview.
   const pdfCleanup = await pdfCleanupWithRealInput(contents, picture);
+  // Those sources saved as a theory library, attached in the chat and cited by its key.
+  const theoryLibrary = await theoryLibraryWithRealInput(contents, picture);
 
   // A file whose AI notes an AI wrote: they have a tab, can only be read, and cannot be deleted.
   const aiFile = process.env['KALKETA_SMOKE_AI'];
@@ -1175,7 +1179,64 @@ async function layersWithRealInput(picture: string) {
     blocksOk = shown.errors === 0 && shown.text.includes('Prosty nosnik 1.2') && shown.text.includes('45');
     await takePicture(picture.replace(/[.]png$/, '-blocks.png'));
   }
-  return { ...state, newKeepsExample, citations, notesPicture, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, toolIcons, aiSettings, aiChat, pdfCleanup, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, canvasOk, besideText, pictures, blocksOk };
+  return { ...state, newKeepsExample, citations, notesPicture, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, toolIcons, aiSettings, aiChat, pdfCleanup, theoryLibrary, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, canvasOk, besideText, pictures, blocksOk };
+}
+
+/** The tidied sources saved as a library (.kalkt) and attached in the chat: the model cites it by its key. */
+async function theoryLibraryWithRealInput(contents: Electron.WebContents, picture: string): Promise<boolean> {
+  await clickOn('.layer-view.active .word-library');
+  await pause(400);
+  const offered = (await contents.executeJavaScript(`({
+    name: document.querySelector('.library-name')?.value ?? '',
+    key: document.querySelector('.library-key')?.value ?? '',
+    folder: document.querySelector('.library-folder')?.value ?? '',
+  })`)) as { name: string; key: string; folder: string };
+  // Without a source the program says what is missing and saves nothing.
+  await clickOn('.dialog-buttons button.default');
+  await pause(300);
+  const missing = (await contents.executeJavaScript(`document.querySelector('.library-problems')?.textContent ?? ''`)) as string;
+  await clickOn('.library-source');
+  await typeText('Testovací skripta');
+  await clickOn('.dialog-buttons button.default');
+  await pause(800);
+  const dir = process.env['KALKETA_THEORY_USER_DIR'] ?? '';
+  const saved = existsSync(dir) ? (await readdir(dir)).filter((f) => f.endsWith('.kalkt')) : [];
+
+  // The chat: Teorie ▾ lists the library; ticked, the model searches it.
+  await clickOn('.tool-button[title^="Rozhovor s AI"]');
+  await pause(300);
+  await clickOn('.chat-library-button');
+  await pause(800);
+  const listed = (await contents.executeJavaScript(`[...document.querySelectorAll('.chat-library')].map((l) => l.textContent)`)) as string[];
+  await clickOn('.chat-library input');
+  await pause(200);
+  await clickOn('.chat-library-button');
+  await clickOn('.chat-input');
+  await typeText('Jak se posuzuje spojité zatížení?');
+  await pressKey('Enter');
+  for (let i = 0; i < 40 && !(await contents.executeJavaScript(`[...document.querySelectorAll('.chat-turn.assistant:not(.writing)')].some((t) => t.textContent.includes('knihovna'))`)); i++) await pause(150);
+  const answer = (await contents.executeJavaScript(`(() => {
+    const turns = [...document.querySelectorAll('.chat-turn.assistant:not(.writing)')];
+    const last = turns[turns.length - 1];
+    return {
+      text: last?.textContent ?? '',
+      ok: [...(last?.querySelectorAll('.cite.ok') ?? [])].map((c) => c.textContent),
+      head: document.querySelector('.chat-library-button')?.textContent ?? '',
+    };
+  })()`)) as { text: string; ok: string[]; head: string };
+  await takePicture(picture.replace(/[.]png$/, '-library.png'));
+  await clickOn('.chat-new');
+  await clickOn('.menubar-item:nth-child(3) > button');
+  await clickMenu('Boční panel');
+  await clickMenu('Podrobnosti');
+  await pause(300);
+  await writeFile(picture.replace(/[.]png$/, '-library.json'), JSON.stringify({ offered, missing, saved, listed, answer }, null, 2));
+  return (
+    offered.name === 'Podklady' && offered.key === 'P' && offered.folder === 'user' &&
+    missing.includes('Doplňte zdroj') && saved.length === 1 && saved[0] === 'Podklady.kalkt' &&
+    listed.length === 1 && listed[0]!.includes('[P] Podklady') && listed[0]!.includes('Moje knihovny') &&
+    answer.head.startsWith('Teorie (1)') && answer.ok.some((c) => /^P:T\d+$/.test(c ?? ''))
+  );
 }
 
 /** Text as a PDF copy gives it, pasted with Ctrl+V into new sources and tidied with the toolbar button. */

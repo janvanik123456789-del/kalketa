@@ -13,7 +13,7 @@ import { app, ipcMain, safeStorage, type IpcMainInvokeEvent } from 'electron';
 import { existsSync, readFileSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import { AI_EFFORTS, allowedProviders, modelAllowed, prepareBriefing, NO_POLICY, parseAiPolicy, providerById, type AiPolicy, type AiSheetContext, type ChatTurn } from '@kalketa/ai';
+import { AI_EFFORTS, allowedProviders, CITED_ID, modelAllowed, prepareBriefing, NO_POLICY, parseAiPolicy, providerById, type AiPolicy, type AiSheetContext, type ChatTurn } from '@kalketa/ai';
 import { chat, discoverLocal, testConnection, tryModel, type AnswerResult, type ChatResult, type ConnectionResult } from '@kalketa/ai/connect';
 
 export interface AiKeyState {
@@ -161,7 +161,7 @@ export function registerAiBridge(fromEditor: (event: IpcMainInvokeEvent) => unkn
     };
     // The theory for the question: the last two questions of the user, and what was cited so far.
     const asked = ask.turns.filter((t) => t.role === 'user').slice(-2).map((t) => t.text).join('\n');
-    const cited = [...new Set(ask.turns.filter((t) => t.role === 'assistant').flatMap((t) => [...t.text.matchAll(/\[(T\d+)\]/g)].map((m) => m[1]!)))];
+    const cited = [...new Set(ask.turns.filter((t) => t.role === 'assistant').flatMap((t) => [...t.text.matchAll(CITED_ID)].map((m) => m[1]!)))];
     const prepared = prepareBriefing({
       language: ask.language,
       sheet: ask.sheet,

@@ -309,6 +309,8 @@ Model má odpovídat z teorie, kterou vybral autor výpočtu, ne „z hlavy“. 
 - **Vyhrazené adresáře**, prohledávané v pořadí: projekt (vedle listů zakázky) → firma (sdílená složka určená firemními pravidly) → uživatel (Dokumenty\Kalketa\Teorie).
 - **Vazba na list:** list si pamatuje identifikátor, verzi a otisk knihovny a **ukládá kopii úseků, které použil nebo citoval** (kap. 5.1). List tak svou teorii dohledá i bez knihovny.
 
+**Knihovna v programu (rozhodnuto 2026-10-03):** vzniká z vrstvy Podklady příkazem „Uložit jako knihovnu teorie“: dialog se zeptá na název, zkratku, verzi, zdroj, obor, jazyk, zda lze sdílet, a do které z prohledávaných složek ji uložit. Ke **výpočtu se připojuje jen pro model** (nabídka „Teorie“ v okně rozhovoru), bez vlastní vrstvy. Úseky knihovny se citují se zkratkou: `[PP:T3]`. Odkaz na knihovnu a kopie citovaných úseků jsou v souboru výpočtu jako `theory/<id>.json`; starší verze programu je ponechá beze změny, formát `.kalk` se proto nemění. Knihovna, jejíž text neodpovídá otisku v manifestu, se nenačte. Firemní složku určuje `theoryFolder` ve firemních pravidlech.
+
 **Pravidla vkládání** (kontrola při importu a uložení, kódy chyb a varování):
 
 - hierarchie nadpisů a rozumná délka úseku (dlouhý se navrhne rozdělit, krátký spojit); identifikátory přiděluje program a nikdy je nepřečísluje,

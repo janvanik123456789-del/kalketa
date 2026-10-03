@@ -5,11 +5,12 @@
  * appears as it is written; Stop ends it.
  */
 import { useEffect, useRef, useState } from 'react';
-import { AI_OFF, checkCitations, providerById, type AiSettings, type ChatTurn, type CitableSection } from '@kalketa/ai';
+import { AI_OFF, checkCitations, CITED_ID, providerById, type AiSettings, type ChatTurn, type CitableSection } from '@kalketa/ai';
 import { t, type Catalog, type UiKey } from '@kalketa/i18n';
 import { notesHtml } from '@kalketa/render';
 import { desktop } from '../document.js';
 import type { AiSheetContext } from '../logic/aiContext.js';
+import type { LibraryEntry } from '../theoryLibraries.js';
 
 function escapeAttr(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -39,9 +40,15 @@ export interface ChatPaneProps {
   /** What the model sees, taken when a question is sent. */
   context(): { readonly sheet: AiSheetContext; readonly languageGuide: string };
   onOpenSettings(): void;
+  /** Theory libraries found or used by the calculation. */
+  readonly libraries?: readonly LibraryEntry[];
+  /** The menu of libraries opens: look into the folders again. */
+  onLibraries?(): void;
+  onToggleLibrary?(id: string, on: boolean): void;
 }
 
-export function ChatPane({ catalog, settings, turns, theory, onTurns, context, onOpenSettings }: ChatPaneProps) {
+export function ChatPane({ catalog, settings, turns, theory, onTurns, context, onOpenSettings, libraries = [], onLibraries, onToggleLibrary }: ChatPaneProps) {
+  const [libraryMenu, setLibraryMenu] = useState(false);
   const [draft, setDraft] = useState('');
   const [answer, setAnswer] = useState<{ id: string; text: string; thinking: boolean; started: number }>();
   // Seconds since the question, so a model thinking for a minute does not look stuck.
@@ -66,7 +73,7 @@ export function ChatPane({ catalog, settings, turns, theory, onTurns, context, o
   const answerHtml = (text: string, sent?: ChatTurn['theory']) => {
     const citations = checkCitations(text, theory);
     let i = 0;
-    const html = notesHtml(text).replace(/\[(T\d+)\]/g, (whole) => {
+    const html = notesHtml(text).replace(CITED_ID, (whole) => {
       const c = citations[i++];
       if (!c) return whole;
       const section = theory.find((s) => s.id === c.id);
@@ -142,6 +149,24 @@ export function ChatPane({ catalog, settings, turns, theory, onTurns, context, o
         <span className="chat-model" title={settings.model}>
           {provider.urlEditable ? t(catalog, 'ai.otherServer') : provider.name} · {settings.model || t(catalog, 'ai.firstModel')}
         </span>
+        {onToggleLibrary && (
+          <span className="chat-libraries">
+            <button type="button" className="chat-library-button" title={t(catalog, 'chat.librariesTip')} onClick={() => (setLibraryMenu((v) => !v), onLibraries?.())}>
+              {t(catalog, 'chat.libraries', { count: String(libraries.filter((l) => l.linked).length) })} ▾
+            </button>
+            {libraryMenu && (
+              <span className="chat-library-menu">
+                {libraries.length === 0 && <span className="hint">{t(catalog, 'chat.noLibraries')}</span>}
+                {libraries.map((l) => (
+                  <label key={l.id} className="chat-library" title={l.found ? '' : t(catalog, 'chat.libraryMissing', { count: String(l.sections) })}>
+                    <input type="checkbox" checked={l.linked} disabled={!l.found && !l.linked} onChange={(e) => onToggleLibrary(l.id, e.target.checked)} /> [{l.key}] {l.title}{' '}
+                    <span className="hint">{l.found ? t(catalog, `library.folder.${l.folder ?? 'user'}` as UiKey) : t(catalog, 'chat.libraryMissing', { count: String(l.sections) })}</span>
+                  </label>
+                ))}
+              </span>
+            )}
+          </span>
+        )}
         <button type="button" className="chat-new" onClick={() => (onTurns([]), setError(undefined))} disabled={!!answer || turns.length === 0}>
           {t(catalog, 'chat.new')}
         </button>

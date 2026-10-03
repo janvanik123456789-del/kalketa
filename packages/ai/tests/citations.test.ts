@@ -22,6 +22,13 @@ describe('citations', () => {
     ]);
   });
 
+  it('takes a quotation after the citation, behind a colon', () => {
+    expect(checkCitations('**Podle [T2]:** „Doporučený limit průhybu stropních nosníků je L/250.“', theory)).toEqual([
+      { id: 'T2', status: 'ok', quote: 'Doporučený limit průhybu stropních nosníků je L/250.' },
+    ]);
+    expect(checkCitations('[T2]: "Limit je L/300."', theory)[0]!.status).toBe('misquoted');
+  });
+
   it('forgives changed spaces, dashes and case in a quote', () => {
     expect(checkCitations('"Ztráta  stability ohýbaného\nnosníku" [T1]', theory)[0]!.status).toBe('ok');
   });

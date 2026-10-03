@@ -17,12 +17,13 @@ export type CitationStatus = 'ok' | 'unknown' | 'misquoted';
 export interface Citation {
   readonly id: string;
   readonly status: CitationStatus;
-  /** The words quoted before it, if any. */
+  /** The words quoted with it (before it, or after it behind a colon), if any. */
   readonly quote?: string;
 }
 
-// An optional quotation ("…", „…“ or “…”) right before [T3].
-const CITATION = /(?:["„“]([^"„“”\n]{3,400})["“”]\s*)?\[(T\d+)\]/g;
+// A quotation ("…", „…“ or “…”) right before [T3], or after it behind a colon:
+// "…" [T3], [T3]: "…", **[T3]:** „…“.
+const CITATION = /(?:["„“]([^"„“”\n]{3,400})["“”]\s*)?\[(T\d+)\](?:\**\s*:\s*\**\s*["„“]([^"„“”\n]{3,400})["“”])?/g;
 
 /** Letters and digits only, lower case: quotes survive changed spaces, dashes and line breaks. */
 function normalized(text: string): string {
@@ -34,7 +35,7 @@ export function checkCitations(answer: string, sections: readonly CitableSection
   const byId = new Map(sections.filter((s) => s.id).map((s) => [s.id!, s]));
   return [...answer.matchAll(CITATION)].map((m) => {
     const id = m[2]!;
-    const quote = m[1]?.trim();
+    const quote = (m[1] ?? m[3])?.trim();
     const section = byId.get(id);
     if (!section) return { id, status: 'unknown', ...(quote ? { quote } : {}) };
     if (quote && !normalized(`${section.title}\n${section.text}`).includes(normalized(quote))) return { id, status: 'misquoted', quote };

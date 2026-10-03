@@ -49,6 +49,25 @@ export interface ChatPaneProps {
 
 export function ChatPane({ catalog, settings, turns, theory, onTurns, context, onOpenSettings, libraries = [], onLibraries, onToggleLibrary }: ChatPaneProps) {
   const [libraryMenu, setLibraryMenu] = useState(false);
+  // The menu of libraries closes like any menu: a click anywhere else, or Esc.
+  useEffect(() => {
+    if (!libraryMenu) return;
+    const outside = (e: MouseEvent) => {
+      if (!(e.target as HTMLElement | null)?.closest?.('.chat-libraries')) setLibraryMenu(false);
+    };
+    const escape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        setLibraryMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', outside);
+    document.addEventListener('keydown', escape, true);
+    return () => {
+      document.removeEventListener('mousedown', outside);
+      document.removeEventListener('keydown', escape, true);
+    };
+  }, [libraryMenu]);
   const [draft, setDraft] = useState('');
   const [answer, setAnswer] = useState<{ id: string; text: string; thinking: boolean; started: number }>();
   // Seconds since the question, so a model thinking for a minute does not look stuck.

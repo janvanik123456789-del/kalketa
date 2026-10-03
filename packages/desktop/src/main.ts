@@ -1210,8 +1210,11 @@ async function theoryLibraryWithRealInput(contents: Electron.WebContents, pictur
   const listed = (await contents.executeJavaScript(`[...document.querySelectorAll('.chat-library')].map((l) => l.textContent)`)) as string[];
   await clickOn('.chat-library input');
   await pause(200);
-  await clickOn('.chat-library-button');
+  const stillOpen = (await contents.executeJavaScript(`!!document.querySelector('.chat-library-menu')`)) as boolean;
+  // A click elsewhere (into the question) closes the menu, so it does not cover the chat.
   await clickOn('.chat-input');
+  await pause(200);
+  const closed = !(await contents.executeJavaScript(`!!document.querySelector('.chat-library-menu')`));
   await typeText('Jak se posuzuje spojité zatížení?');
   await pressKey('Enter');
   for (let i = 0; i < 40 && !(await contents.executeJavaScript(`[...document.querySelectorAll('.chat-turn.assistant:not(.writing)')].some((t) => t.textContent.includes('knihovna'))`)); i++) await pause(150);
@@ -1230,11 +1233,11 @@ async function theoryLibraryWithRealInput(contents: Electron.WebContents, pictur
   await clickMenu('Boční panel');
   await clickMenu('Podrobnosti');
   await pause(300);
-  await writeFile(picture.replace(/[.]png$/, '-library.json'), JSON.stringify({ offered, missing, saved, listed, answer }, null, 2));
+  await writeFile(picture.replace(/[.]png$/, '-library.json'), JSON.stringify({ offered, missing, saved, listed, stillOpen, closed, answer }, null, 2));
   return (
     offered.name === 'Podklady' && offered.key === 'P' && offered.folder === 'user' &&
     missing.includes('Doplňte zdroj') && saved.length === 1 && saved[0] === 'Podklady.kalkt' &&
-    listed.length === 1 && listed[0]!.includes('[P] Podklady') && listed[0]!.includes('Moje knihovny') &&
+    listed.length === 1 && listed[0]!.includes('[P] Podklady') && listed[0]!.includes('Moje knihovny') && stillOpen && closed &&
     answer.head.startsWith('Teorie (1)') && answer.ok.some((c) => /^P:T\d+$/.test(c ?? ''))
   );
 }

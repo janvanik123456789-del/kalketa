@@ -32,6 +32,12 @@ writeFileSync(blocksFile, await writeSheetFile({ ...blocks, blocks: new Map([['P
 // A stand-in for the Claude API: accepts one key and lists two models, so the
 // AI settings are tested end to end without the internet or a real key.
 const fakeApi = createServer((request, response) => {
+  // A local server (stands in for LM Studio): no key, an embedding model that must not be offered.
+  if (request.url === '/local/v1/models') {
+    response.writeHead(200, { 'content-type': 'application/json' });
+    response.end(JSON.stringify({ object: 'list', data: [{ id: 'local-smoke-7b', object: 'model' }, { id: 'text-embedding-smoke', object: 'model' }] }));
+    return;
+  }
   const good = request.headers['x-api-key'] === 'sk-smoke-good';
   response.writeHead(good ? 200 : 401, { 'content-type': 'application/json' });
   const model = (id, name) => ({ type: 'model', id, display_name: name, created_at: '2026-01-01T00:00:00Z', capabilities: null, max_input_tokens: null, max_tokens: null });
@@ -52,6 +58,10 @@ const env = {
   KALKETA_SMOKE_AI: aiFile,
   KALKETA_SMOKE_BLOCKS: blocksFile,
   ANTHROPIC_BASE_URL: `http://127.0.0.1:${fakeApi.address().port}`,
+  // Never the user's own local servers: LM Studio and the other server are the fake one, Ollama does not run.
+  KALKETA_AI_URL_LMSTUDIO: `http://127.0.0.1:${fakeApi.address().port}/local`,
+  KALKETA_AI_URL_OLLAMA: 'http://127.0.0.1:9',
+  KALKETA_AI_URL_SERVER: `http://127.0.0.1:${fakeApi.address().port}/local`,
 };
 delete env.ANTHROPIC_API_KEY;
 delete env.ANTHROPIC_AUTH_TOKEN;

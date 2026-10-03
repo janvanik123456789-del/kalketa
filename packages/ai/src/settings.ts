@@ -4,12 +4,14 @@
  * them remembered.
  */
 
-import { providerById } from './providers.js';
+import { providerById, serverUrl } from './providers.js';
 
 export interface AiSettings {
   /** Provider id, or 'none' when the AI is switched off (the default). */
   readonly provider: string;
   readonly model: string;
+  /** Address of a server whose provider lets the user give one. */
+  readonly url?: string;
 }
 
 export const AI_OFF = 'none';
@@ -23,5 +25,6 @@ export function parseAiSettings(value: unknown): AiSettings {
   const provider = typeof raw['provider'] === 'string' ? providerById(raw['provider']) : undefined;
   if (!provider) return DEFAULT_AI_SETTINGS;
   const model = typeof raw['model'] === 'string' && raw['model'].trim() !== '' ? raw['model'] : provider.defaultModel;
-  return { provider: provider.id, model };
+  const url = provider.urlEditable && typeof raw['url'] === 'string' ? serverUrl(raw['url']) : undefined;
+  return { provider: provider.id, model, ...(url ? { url } : {}) };
 }

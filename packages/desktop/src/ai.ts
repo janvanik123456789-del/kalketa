@@ -3,7 +3,7 @@
  * process: the editor can set or forget a key and ask whether one is there,
  * but never reads it back. A remembered key is encrypted by the operating
  * system (Electron safeStorage); without that, it is kept until the program
- * closes and never written to disk.
+ * closes and never written to disk. Local servers (LM Studio, Ollama) need no key.
  *
  * Company rules come from ai-policy.json next to the program (KALKETA_AI_POLICY
  * may point elsewhere); they are read, never written.
@@ -14,7 +14,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { allowedProviders, NO_POLICY, parseAiPolicy, providerById, type AiPolicy } from '@kalketa/ai';
-import { testConnection, type ConnectionResult } from '@kalketa/ai/connect';
+import { discoverLocal, testConnection, type ConnectionResult } from '@kalketa/ai/connect';
 
 export interface AiKeyState {
   /** A key is set for this provider. */
@@ -118,10 +118,17 @@ export function registerAiBridge(fromEditor: (event: IpcMainInvokeEvent) => unkn
     return keyState(id);
   });
 
-  ipcMain.handle('kalketa:ai-test', async (event, provider: unknown): Promise<ConnectionResult> => {
+  // Local servers running now (LM Studio, Ollama), among those the policy allows.
+  ipcMain.handle('kalketa:ai-discover', async (event) => {
+    fromEditor(event);
+    const permitted = new Set(allowedProviders(readPolicy()).map((p) => p.id));
+    return Object.fromEntries(Object.entries(await discoverLocal()).filter(([id]) => permitted.has(id)));
+  });
+
+  ipcMain.handle('kalketa:ai-test', async (event, provider: unknown, url: unknown): Promise<ConnectionResult> => {
     fromEditor(event);
     const id = allowed(provider);
     await loadKeys();
-    return testConnection(id, keys.get(id));
+    return testConnection(id, keys.get(id), {}, typeof url === 'string' ? url : undefined);
   });
 }

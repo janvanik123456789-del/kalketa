@@ -117,8 +117,10 @@ export interface DesktopBridge {
   /** Hands a key to the application; the editor never reads it back. */
   aiSetKey(request: { provider: string; key: string; remember: boolean }): Promise<AiKeyState>;
   aiForgetKey(provider: string): Promise<AiKeyState>;
-  /** Asks the provider for its models with the key the application holds. */
-  aiTest(provider: string): Promise<AiConnectionResult>;
+  /** Asks the provider for its models with the key the application holds (or at the address given). */
+  aiTest(provider: string, url?: string): Promise<AiConnectionResult>;
+  /** Local servers running now, with their models, by provider. */
+  aiDiscover(): Promise<Record<string, readonly { readonly id: string; readonly name: string }[]>>;
 }
 
 export interface AiKeyState {

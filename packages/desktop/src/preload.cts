@@ -28,7 +28,8 @@ contextBridge.exposeInMainWorld('kalketaDesktop', {
   aiKeyState: (provider: string): Promise<unknown> => ipcRenderer.invoke('kalketa:ai-key-state', provider),
   aiSetKey: (request: { provider: string; key: string; remember: boolean }): Promise<unknown> => ipcRenderer.invoke('kalketa:ai-set-key', request),
   aiForgetKey: (provider: string): Promise<unknown> => ipcRenderer.invoke('kalketa:ai-forget-key', provider),
-  aiTest: (provider: string): Promise<unknown> => ipcRenderer.invoke('kalketa:ai-test', provider),
+  aiTest: (provider: string, url?: string): Promise<unknown> => ipcRenderer.invoke('kalketa:ai-test', provider, url),
+  aiDiscover: (): Promise<unknown> => ipcRenderer.invoke('kalketa:ai-discover'),
   onOpenFile: (listener: (file: OpenedFile) => void): void => {
     ipcRenderer.on('kalketa:open-file', (_event, file: OpenedFile) => listener(file));
   },

@@ -1174,11 +1174,13 @@ async function aiSettingsWithRealInput(contents: Electron.WebContents, picture: 
         models: selects[1] ? [...selects[1].options].map((o) => o.value) : [],
         keyField: !!section?.querySelector('.ai-key'),
         keyValue: section?.querySelector('.ai-key')?.value ?? '',
+        url: section?.querySelector('.ai-url')?.value ?? '',
         keyPlaceholder: section?.querySelector('.ai-key')?.placeholder ?? '',
         forget: !!section?.querySelector('.ai-forget'),
         status: section?.querySelector('.ai-status')?.textContent ?? '',
+        providers: selects[0] ? [...selects[0].options].map((o) => o.textContent) : [],
       };
-    })()`) as Promise<{ provider: string; model: string; models: string[]; keyField: boolean; keyValue: string; keyPlaceholder: string; forget: boolean; status: string }>;
+    })()`) as Promise<{ provider: string; model: string; models: string[]; keyField: boolean; keyValue: string; url: string; keyPlaceholder: string; forget: boolean; status: string; providers: string[] }>;
   const openSettings = async () => {
     await clickOn('.menubar-item:nth-child(5) > button');
     await clickMenu('Nastavení');
@@ -1220,6 +1222,28 @@ async function aiSettingsWithRealInput(contents: Electron.WebContents, picture: 
   await clickOn('.ai-forget');
   await pause(300);
   const forgotten = await read();
+  // Local servers: LM Studio (the fake one) runs and offers its model without a key; Ollama does not run.
+  await clickOn('.ai-settings label.field > span');
+  await pressKey('Down');
+  await waitForStatus('Připojeno');
+  const local = await read();
+  await takePicture(picture.replace(/[.]png$/, '-ai-local.png'));
+  await clickOn('.ai-settings label.field > span');
+  await pressKey('Down');
+  await waitForStatus('neběží');
+  const absent = await read();
+  // Another server: found at its default address; a wrong address is refused before anything is sent.
+  await clickOn('.ai-settings label.field > span');
+  await pressKey('Down');
+  await waitForStatus('Připojeno');
+  const other = await read();
+  await clickOn('.ai-url');
+  await typeText('ftp://server');
+  await clickOn('.ai-test');
+  await waitForStatus('http://');
+  const wrongUrl = await read();
+  // What the dialog showed at each step, for finding a failed check.
+  await writeFile(picture.replace(/[.]png$/, '-ai-settings.json'), JSON.stringify({ off, claude, bad, good, reopened, forgotten, local, absent, other, wrongUrl }, null, 2));
   await pressKey('Escape');
   await pause(300);
 
@@ -1230,7 +1254,12 @@ async function aiSettingsWithRealInput(contents: Electron.WebContents, picture: 
     good.status.includes('Dostupné modely: 2') && good.models.includes('claude-smoke-1') && good.keyValue === '' && good.forget &&
     saved.includes('"provider":"anthropic"') && sealed &&
     reopened.provider === 'anthropic' && reopened.keyPlaceholder.startsWith('klíč je zadán') && reopened.forget &&
-    !forgotten.forget && forgotten.keyPlaceholder === ''
+    !forgotten.forget && forgotten.keyPlaceholder === '' &&
+    local.provider === 'lmstudio' && !local.keyField && local.model === 'local-smoke-7b' && !local.models.includes('text-embedding-smoke') && local.status.includes('Dostupné modely: 1') &&
+    local.providers.some((p) => p.startsWith('LM Studio') && p.includes('běží')) && local.providers.some((p) => p.startsWith('Ollama') && !p.includes('běží')) &&
+    absent.provider === 'ollama' && absent.status.includes('Ollama v tomto počítači neběží') &&
+    other.provider === 'server' && other.model === 'local-smoke-7b' && other.providers.some((p) => p.startsWith('Jiný server') && p.includes('běží')) &&
+    wrongUrl.url === 'ftp://server' && wrongUrl.status.includes('musí začínat http://')
   );
 }
 

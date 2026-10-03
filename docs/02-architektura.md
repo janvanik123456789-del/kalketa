@@ -87,7 +87,7 @@ Formát scény má číslo verze; `migrate` převádí starší scény na aktuá
 
 **Modul AI (`ai`)** je celý vyměnitelný (filozofie, kap. 9.1): nepoužívá jiné balíčky projektu ani React a jádro, list, tisk ani překlady o něm nevědí.
 - `@kalketa/ai`: verzovaná smlouva (`AI_CONTRACT_VERSION`, úloha → návrhy), seznam poskytovatelů, nastavení (poskytovatel, model; ve výchozím stavu vypnuto) a firemní pravidla (`AiPolicy`, mají přednost před nastavením). Bez sítě, používá ho editor.
-- `@kalketa/ai/connect`: volání poskytovatele přes jeho oficiální SDK (zatím Claude, `@anthropic-ai/sdk`). Běží jen v hlavním procesu desktopové aplikace; editor ho importovat nesmí.
+- `@kalketa/ai/connect`: volání poskytovatele. Claude přes oficiální SDK (`@anthropic-ai/sdk`), lokální servery (LM Studio, Ollama, jiný server na zadané adrese, např. llama.cpp) přes jejich rozhraní ve stylu OpenAI (`/v1/models`), bez klíče. Program běžící lokální servery najde sám. Běží jen v hlavním procesu desktopové aplikace; editor ho importovat nesmí.
 - API klíče drží jen hlavní proces (`packages/desktop/src/ai.ts`): zapamatovaný klíč je zašifrovaný systémem (Electron `safeStorage`), editor ho může nastavit nebo smazat, nikdy ho nedostane zpět. Firemní pravidla čte desktop z `ai-policy.json` vedle programu.
 - Smoke test zkouší nastavení AI proti falešnému API (`scripts/smoke.mjs`), bez internetu a skutečného klíče.
 

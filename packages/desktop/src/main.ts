@@ -1181,6 +1181,18 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
   await typeText('## Klopení');
   await pressKey('Enter');
   await typeText('Klopení je ztráta stability ohýbaného nosníku.');
+  // Ctrl+V puts text from the clipboard into the sources, Ctrl+Z takes it back (the editor's own keys).
+  const lastParagraph = `[...document.querySelectorAll('.layer-view.active .word-text .ProseMirror p')].map((p) => p.textContent).filter((t) => t !== '').at(-1) ?? ''`;
+  clipboard.writeText(' Vloženo ze schránky.');
+  // Typing within half a second is one undo step; a person pauses before pasting.
+  await pause(700);
+  await pressKey('V', ['control']);
+  await pause(200);
+  const pasted = (await contents.executeJavaScript(lastParagraph)) as string;
+  await pause(700);
+  await pressKey('Z', ['control']);
+  await pause(200);
+  const unpasted = (await contents.executeJavaScript(lastParagraph)) as string;
   // "## " made a heading, Enter a new paragraph under it.
   const typed = (await contents.executeJavaScript(
     `[...document.querySelectorAll('.layer-view.active .word-text .ProseMirror > *')].filter((e) => e.textContent !== '').map((e) => e.tagName + ':' + e.textContent).join('|')`,
@@ -1238,8 +1250,9 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
   await clickMenu('Boční panel');
   await clickMenu(back);
   await pause(300);
-  await writeFile(picture.replace(/[.]png$/, '-ai-chat.json'), JSON.stringify({ typed, theory, head, shown, cleared }, null, 2));
+  await writeFile(picture.replace(/[.]png$/, '-ai-chat.json'), JSON.stringify({ pasted, unpasted, typed, theory, head, shown, cleared }, null, 2));
   return (
+    pasted === 'Klopení je ztráta stability ohýbaného nosníku. Vloženo ze schránky.' && unpasted === 'Klopení je ztráta stability ohýbaného nosníku.' &&
     typed === 'H2:Klopení|P:Klopení je ztráta stability ohýbaného nosníku.' && theory.heading === 'Klopení' && /^T\d+$/.test(theory.badge) &&
     shown.citesOk.length === 1 && shown.citesOk[0] === theory.badge && shown.citesBad.length === 1 && shown.citesBad[0]!.startsWith('T99') &&
     shown.citeSummary.includes('ověřené 1, nepodložené 1') &&

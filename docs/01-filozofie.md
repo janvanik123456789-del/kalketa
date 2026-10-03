@@ -2,7 +2,7 @@
 
 **Verze:** 2.0 (návrh)
 **Datum:** 2026-09-29
-**Stav:** Návrh k diskusi. Nahrazuje `calc-canvas/01-philosophy.md`. Upraveno 2026-09-30: libovolný počet vrstev (kap. 4). Upraveno 2026-10-02: připojení LLM, průvodce pro model, okno rozhovoru, obrázky, prezentace a web (kap. 9.1–9.5, 11). Upraveno 2026-10-03: teorie k výpočtu, knihovna `.kalkt` a RAG (kap. 9.6).
+**Stav:** Návrh k diskusi. Nahrazuje `calc-canvas/01-philosophy.md`. Upraveno 2026-09-30: libovolný počet vrstev (kap. 4). Upraveno 2026-10-02: připojení LLM, průvodce pro model, okno rozhovoru, obrázky, prezentace a web (kap. 9.1–9.5, 11). Upraveno 2026-10-03: teorie k výpočtu, knihovna `.kalkt` a RAG, vrstva Poznámky AI (kap. 4, 9.6, 9.7).
 
 ---
 
@@ -49,7 +49,7 @@ Program je **oborově neutrální**. Má posloužit stejně dobře:
 
 *Upřesněno 2026-09-30:* počet vrstev není pevný. Nový list má **dvě výchozí vrstvy** a uživatel si **libovolně přidává další**.
 
-*Upřesněno 2026-10-01:* **Poznámky AI vznikají až s připojenou AI**, ve chvíli, kdy do nich AI poprvé něco zapíše. Bez AI je list nemá; prázdné Poznámky AI ze starších souborů se při otevření vynechají. List má nejvýš jednu vrstvu AI a člověk ji nemůže upravit ani smazat.
+*Upřesněno 2026-10-01:* **Poznámky AI vznikají až s připojenou AI**, ve chvíli, kdy do nich AI poprvé něco zapíše. Bez AI je list nemá; prázdné Poznámky AI ze starších souborů se při otevření vynechají. List má nejvýš jednu vrstvu AI. Člověk text AI nepřepisuje, ale smí smazat záznamy i celou vrstvu (kap. 9.7, upřesněno 2026-10-03).
 
 ```text
 List "Nosník N1"
@@ -67,7 +67,7 @@ List "Nosník N1"
 |---|---|
 | **Výpočet** | řádky výpočtu. Hlavní je „List (tisk)“, další jsou pomocné výpočty a varianty. |
 | **Data** | typované tabulky s obrázky k řádkům (kap. 5). Vrstev s daty může být více (katalog, měření…). |
-| **Poznámky AI** | návrhy a kontroly LLM (kap. 9); vrstvu založí až připojená AI, člověk ji jen čte. |
+| **Poznámky AI** | návrhy a kontroly LLM (kap. 9); vrstvu založí až připojená AI; člověk text nepřepisuje, smí ho smazat (kap. 9.7). |
 | **Podklady** | teorie, zadání, odůvodnění: text, vybrané obrázky, citace a odkazy (kap. 4.2). |
 | **Externí výpočet** *(později)* | skript v Pythonu nebo výsledky z jiného programu (FEM, Excel) převzaté jako tabulka s údajem o původu (kap. 4.1). |
 
@@ -263,7 +263,7 @@ Pojistky:
 - **Neprověřené bloky.** Co vytvořila AI, zůstává označené, dokud to člověk blok po bloku neodškrtne jako prověřené. Tisk listu s neprověřenými bloky upozorní, případně stránku označí jako koncept. Podpis patří člověku.
 - **Žádná vymyšlená data.** Model nepíše čísla z hlavy. Profil nebo materiál vybere z tabulky v listu. Když tabulka chybí, navrhne ji se zdrojem a člověk ji ověří.
 - **Předpoklady viditelně.** Co model předpokládal (součinitele, kategorie užívání), se objeví jako vstupy s poznámkou, ne jako skrytá konstanta.
-- **Záměr je součástí dokumentace.** Text zadání jde po přijetí použít jako úvod výpočtu („Předmět výpočtu“). Celý rozhovor zůstává ve vrstvě Poznámky AI a netiskne se.
+- **Záměr je součástí dokumentace.** Text zadání jde po přijetí použít jako úvod výpočtu („Předmět výpočtu“). Rozhovor se podle nastavení ukládá do vrstvy Poznámky AI a netiskne se (kap. 9.7).
 
 ### 9.4 Obrázky a LLM
 
@@ -324,6 +324,42 @@ Model má odpovídat z teorie, kterou vybral autor výpočtu, ne „z hlavy“. 
 **Vynucení citací:** model musí každé tvrzení o teorii opřít o citovaný úsek (`[T3.2]`). Program ověří, že úsek existuje a že doslovná citace v něm je. Tvrzení bez platné citace se označí jako **nepodložené**, takže je vždy vidět, co model opřel o teorii a co si domyslel.
 
 **Autorská práva:** výtahy z norem ve firemní knihovně jsou pro interní použití, sdílení řídí pole „lze sdílet“ v metadatech.
+
+### 9.7 Vrstva Poznámky AI (upřesněno 2026-10-03)
+
+Vrstva je **deník záznamů**, ne jeden dlouhý text:
+
+```text
+layers/ai/
+├── entries.json        seznam záznamů (metadata)
+├── memory.md           paměť listu pro model (anglicky, krátká)
+├── entries/<id>.md     text záznamu (anglicky, Markdown)
+└── images/             výřezy použité v rozhovorech
+```
+
+**Každý záznam nese:**
+
+- druh: rozhovor, kontrola, vysvětlení, návrh změny, návrh tabulky,
+- datum, poskytovatele a model,
+- **otisk listu v té chvíli**; když se list od té doby změnil, záznam se označí jako **zastaralý**,
+- odkazy na řádky a bloky listu, kterých se týká,
+- citace a jejich stav: ověřená, nebo nepodložená (kap. 9.6),
+- stav: otevřený, vyřízený; u návrhu přijatý, nebo odmítnutý. U přijatého návrhu jde dohledat, z jakého rozhovoru přišel.
+
+**Paměť listu:** krátký text, který si model udržuje: záměr výpočtu, dohodnuté předpoklady, co už bylo zkontrolováno. Při dalším otevření listu model nezačíná od nuly a nemusí číst staré rozhovory, což šetří kontext.
+
+**Co smí člověk:** text AI nepřepisuje, aby záznam zůstal autentický. Smí:
+
+- označit záznam jako vyřízený nebo ho skrýt,
+- připsat vlastní poznámku (např. proč návrh odmítl), uloženou zvlášť a označenou jako lidská,
+- **úplně smazat záznam, nebo celou vrstvu AI.**
+
+**Nastavení programu:**
+
+- **Ukládat rozhovory automaticky** do vrstvy AI, nebo jen na pokyn uživatele.
+- **Vynechat poznámky AI při předání listu** (kopie pro zákazníka nebo kontrolora). Vrstva může obsahovat interní debatu, ceny nebo jména. Firemní pravidla mohou tuto volbu vynutit.
+
+**Tisk:** příloha z vrstvy AI není přepis rozhovorů, ale **protokol**: provedené kontroly, jejich výsledek a stav a přijaté návrhy.
 
 ---
 

@@ -960,6 +960,10 @@ export function App() {
       const key = shortcutOf(e);
       const target = e.target as HTMLElement;
       const inRow = target.matches?.('textarea.row-editor');
+      // The word-processor editor of the sources is an editable element, not a textarea: its own
+      // clipboard, undo and editing keys (Ctrl+Enter, Ctrl+D…) stay with it.
+      const inRich = !!target.closest?.('[contenteditable="true"]');
+      if (inRich && !['Ctrl+N', 'Ctrl+O', 'Ctrl+S', 'Ctrl+Shift+S', 'Ctrl+P', 'Ctrl+W', 'Ctrl+Shift+N', 'Ctrl+Tab', 'Ctrl+Shift+Tab', 'Ctrl++', 'Ctrl+=', 'Ctrl+-', 'Ctrl+0', 'F1'].includes(key)) return;
       const inField = !inRow && target.matches?.('input, select, textarea');
       // Outside text fields Ctrl+V takes pictures from the clipboard directly (no paste event there to rely on).
       if (key === 'Ctrl+V' && !inRow && !inField && desktop) {

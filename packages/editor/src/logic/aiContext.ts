@@ -13,6 +13,8 @@ export interface AiSheetContext {
   readonly title: string;
   readonly source: string;
   readonly findings: readonly string[];
+  /** Sections of the sources layers, cited as [T3]. */
+  readonly theory?: readonly { readonly id?: string; readonly title: string; readonly text: string }[];
 }
 
 /** Results are many; the model needs the gist, not every digit. */

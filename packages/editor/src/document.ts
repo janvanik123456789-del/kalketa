@@ -138,7 +138,12 @@ export interface AiChatAsk {
   readonly effort?: string;
   /** The user's language; the model answers in it. */
   readonly language: string;
-  readonly sheet: { readonly title: string; readonly source: string; readonly findings?: readonly string[] };
+  readonly sheet: {
+    readonly title: string;
+    readonly source: string;
+    readonly findings?: readonly string[];
+    readonly theory?: readonly { readonly id?: string; readonly title: string; readonly text: string }[];
+  };
   readonly languageGuide?: string;
   readonly turns: readonly { readonly role: 'user' | 'assistant'; readonly text: string }[];
 }

@@ -1168,6 +1168,33 @@ async function layersWithRealInput(picture: string) {
 /** A question in the AI chat, by real input: the answer streams in and the model got the sheet. */
 async function aiChatWithRealInput(contents: Electron.WebContents, picture: string): Promise<boolean> {
   const pane = (await contents.executeJavaScript(`localStorage.getItem('kalketa.pane') ?? 'details'`)) as string;
+  // Theory in a sources layer: a heading gets its id when the user leaves the text.
+  await clickOn('.menubar-item:nth-child(4) > button');
+  await clickMenu('Nová vrstva');
+  await clickMenu('Podklady');
+  await pressKey('Enter'); // default name
+  await pause(300);
+  // Focus and blur events need a page with focus, as the user's window has.
+  contents.focus();
+  await clickOn('.layer-view.active .notes-text');
+  await typeText('## Klopení');
+  // A new line in a text field: the key and its character, as a keyboard sends them.
+  contents.sendInputEvent({ type: 'keyDown', keyCode: 'Enter' });
+  contents.sendInputEvent({ type: 'char', keyCode: String.fromCharCode(13) });
+  contents.sendInputEvent({ type: 'keyUp', keyCode: 'Enter' });
+  await pause(150);
+  await typeText('Klopení je ztráta stability ohýbaného nosníku.');
+  const typed = (await contents.executeJavaScript(`document.querySelector('.layer-view.active .notes-text')?.value ?? ''`)) as string;
+  // Leaves the text by keyboard (a click elsewhere does the same for the user).
+  await pressKey('Tab');
+  await pause(300);
+  const theory = (await contents.executeJavaScript(`({
+    text: document.querySelector('.layer-view.active .notes-text')?.value ?? '',
+    badge: document.querySelector('.layer-view.active .notes h3 .tid')?.textContent ?? '',
+    focused: (document.activeElement?.tagName ?? '') + '.' + (document.activeElement?.className ?? ''),
+    hasFocus: document.hasFocus(),
+  })`)) as { text: string; badge: string; focused: string; hasFocus: boolean };
+  if (await contents.executeJavaScript(`!!document.querySelector('.layer-tab[data-layer="main"]')`)) await clickOn('.layer-tab[data-layer="main"]');
   // Settings: the provider list from Claude (saved before) down to the other server.
   await clickOn('.menubar-item:nth-child(5) > button');
   await clickMenu('Nastavení');
@@ -1195,9 +1222,12 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
     bold: document.querySelector('.chat-turn.assistant:not(.writing) strong')?.textContent ?? '',
     code: document.querySelector('.chat-turn.assistant:not(.writing) code')?.textContent ?? '',
     table: document.querySelector('.chat-turn.assistant:not(.writing) table.md td')?.textContent ?? '',
+    citesOk: [...document.querySelectorAll('.chat-turn.assistant:not(.writing) .cite.ok')].map((c) => c.textContent),
+    citesBad: [...document.querySelectorAll('.chat-turn.assistant:not(.writing) .cite.bad')].map((c) => c.textContent),
+    citeSummary: document.querySelector('.chat-turn.assistant:not(.writing) .cite-summary')?.textContent ?? '',
     input: document.querySelector('.chat-input')?.value ?? '',
     title: document.querySelector('.doc-tab.active')?.textContent ?? '',
-  })`)) as { user: string; answer: string; bold: string; code: string; table: string; input: string; title: string };
+  })`)) as { user: string; answer: string; bold: string; code: string; table: string; citesOk: string[]; citesBad: string[]; citeSummary: string; input: string; title: string };
   await takePicture(picture.replace(/[.]png$/, '-ai-chat.png'));
   await clickOn('.chat-new');
   await pause(200);
@@ -1208,8 +1238,11 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
   await clickMenu('Boční panel');
   await clickMenu(back);
   await pause(300);
-  await writeFile(picture.replace(/[.]png$/, '-ai-chat.json'), JSON.stringify({ head, shown, cleared }, null, 2));
+  await writeFile(picture.replace(/[.]png$/, '-ai-chat.json'), JSON.stringify({ typed, theory, head, shown, cleared }, null, 2));
   return (
+    typed === '## Klopení\nKlopení je ztráta stability ohýbaného nosníku.' && /^## Klopení \{#T\d+\}\n/.test(theory.text) && /^T\d+$/.test(theory.badge) &&
+    shown.citesOk.length === 1 && shown.citesOk[0] === theory.badge && shown.citesBad.length === 1 && shown.citesBad[0]!.startsWith('T99') &&
+    shown.citeSummary.includes('ověřené 1, nepodložené 1') &&
     head.includes('Jiný server') && head.includes('local-smoke-7b') &&
     shown.user === 'Co počítá řádek 3?' && shown.input === '' &&
     /list: [^?;*]+;/.test(shown.answer) && shown.bold !== '' && !shown.answer.includes('**') && shown.code === 'Co počítá řádek 3?' && shown.table === 'IPE 220' && shown.answer.includes('jazyk: Czech') && shown.answer.includes('úsilí: low') && shown.answer.includes('výsledky: ano') && shown.answer.includes('otázka: Co počítá řádek 3?') &&

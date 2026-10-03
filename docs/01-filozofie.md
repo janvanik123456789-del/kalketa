@@ -2,7 +2,7 @@
 
 **Verze:** 2.0 (návrh)
 **Datum:** 2026-09-29
-**Stav:** Návrh k diskusi. Nahrazuje `calc-canvas/01-philosophy.md`. Upraveno 2026-09-30: libovolný počet vrstev (kap. 4). Upraveno 2026-10-02: připojení LLM, průvodce pro model, okno rozhovoru, obrázky, prezentace a web (kap. 9.1–9.5, 11).
+**Stav:** Návrh k diskusi. Nahrazuje `calc-canvas/01-philosophy.md`. Upraveno 2026-09-30: libovolný počet vrstev (kap. 4). Upraveno 2026-10-02: připojení LLM, průvodce pro model, okno rozhovoru, obrázky, prezentace a web (kap. 9.1–9.5, 11). Upraveno 2026-10-03: teorie k výpočtu, knihovna `.kalkt` a RAG (kap. 9.6).
 
 ---
 
@@ -297,6 +297,33 @@ Výpočet nemusí skončit jen podepsaným tiskem. Může být i **předstupněm
 - Prezentační výstup vzniká ze stejného listu jako tisk, takže čísla jsou stejná a dohledatelná.
 - Vzorový výpočet je **viditelně označený jako orientační** se seznamem předpokladů (cena energie, kurz, degradace panelů…).
 - Do budoucna lze uvažovat o interaktivním exportu, kde zákazník mění jen povolené vstupy (plocha střechy, spotřeba) a vzorce zůstávají zamčené.
+
+### 9.6 Teorie k výpočtu a RAG (upřesněno 2026-10-03)
+
+Model má odpovídat z teorie, kterou vybral autor výpočtu, ne „z hlavy“. Teorie slouží i člověku a dá se volitelně vytisknout jako příloha „Teoretický úvod“.
+
+**Kde teorie je:**
+
+- **Malé (školní) výpočty:** přímo ve vrstvách **Podklady** listu (rozhodnuto 2026-10-03: žádný zvláštní typ vrstvy). Každý nadpis je úsek; program mu po dopsání přidělí stálý identifikátor `{#T3}` (v náhledu a tisku jako štítek) a nikdy ho nepřečísluje. Model dostane malou teorii celou.
+- **Rozsáhlejší teorie:** samostatný soubor **knihovna teorie `.kalkt`**, ZIP kontejner jako `.kalk` (manifest, SHA-256). Obsahuje teorii v Markdownu rozdělenou na úseky se stálými identifikátory, obrázky s popisky, metadata (název, zdroj, vydání, jazyk, obor, zda lze sdílet) a předpočítaný index s otiskem obsahu, takže hledání je hned po otevření připravené.
+- **Vyhrazené adresáře**, prohledávané v pořadí: projekt (vedle listů zakázky) → firma (sdílená složka určená firemními pravidly) → uživatel (Dokumenty\Kalketa\Teorie).
+- **Vazba na list:** list si pamatuje identifikátor, verzi a otisk knihovny a **ukládá kopii úseků, které použil nebo citoval** (kap. 5.1). List tak svou teorii dohledá i bez knihovny.
+
+**Pravidla vkládání** (kontrola při importu a uložení, kódy chyb a varování):
+
+- hierarchie nadpisů a rozumná délka úseku (dlouhý se navrhne rozdělit, krátký spojit); identifikátory přiděluje program a nikdy je nepřečísluje,
+- zdroj povinně: kniha nebo norma, vydání, strana,
+- vzorce **doporučeně v syntaxi Kalkety**: jádro je pak zkontroluje (včetně jednotek) a model je převede přímo na bloky; jinak se vzorce nekontrolují,
+- meze platnosti označené (např. `> platnost: λ ≤ 2`), aby je šlo vytáhnout a zkontrolovat proti výpočtu,
+- obrázky s popisem (použitelné i pro model, který obrázky nečte),
+- klíčová slova česky i anglicky, protože model pod kapotou mluví anglicky a hledání podle slov přes jazyky nefunguje,
+- žádná celá PDF: text se vloží nebo převede (OCR, LLM) a člověk ho potvrdí.
+
+**Hledání (RAG):** malá teorie se modelu pošle celá. Větší se prohledává nástrojem `search_theory(dotaz)` podle slov: rychle, deterministicky, offline, s jakýmkoli modelem. Embeddingy mohou přijít později jako volitelné.
+
+**Vynucení citací:** model musí každé tvrzení o teorii opřít o citovaný úsek (`[T3.2]`). Program ověří, že úsek existuje a že doslovná citace v něm je. Tvrzení bez platné citace se označí jako **nepodložené**, takže je vždy vidět, co model opřel o teorii a co si domyslel.
+
+**Autorská práva:** výtahy z norem ve firemní knihovně jsou pro interní použití, sdílení řídí pole „lze sdílet“ v metadatech.
 
 ---
 

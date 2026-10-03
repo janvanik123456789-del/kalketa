@@ -29,6 +29,8 @@ export interface AiSheetContext {
   readonly source: string;
   /** Diagnostics and checks as codes, e.g. "E_UNIT_MISMATCH line 12". */
   readonly findings?: readonly string[];
+  /** Theory the author chose (the sources layers), by section; cited as [T3]. */
+  readonly theory?: readonly { readonly id?: string; readonly title: string; readonly text: string }[];
 }
 
 export interface AiRequest {

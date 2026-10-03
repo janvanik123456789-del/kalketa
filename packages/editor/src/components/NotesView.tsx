@@ -21,9 +21,11 @@ interface Props {
   readonly readOnly: boolean;
   readonly resolveFile: (path: string) => string | undefined;
   onChange(text: string, files?: ReadonlyMap<string, Uint8Array>): void;
+  /** The user left the text: a good moment to give new headings their ids. */
+  onSettle?(): void;
 }
 
-export function NotesView({ layer, title, catalog, readOnly, resolveFile, onChange }: Props) {
+export function NotesView({ layer, title, catalog, readOnly, resolveFile, onChange, onSettle }: Props) {
   const area = useRef<HTMLTextAreaElement>(null);
   const text = layer.text ?? '';
 
@@ -96,6 +98,7 @@ export function NotesView({ layer, title, catalog, readOnly, resolveFile, onChan
           spellCheck
           placeholder={t(catalog, 'notes.help')}
           onChange={(e) => onChange(e.target.value)}
+          onBlur={() => onSettle?.()}
         />
         <p className="help">{t(catalog, 'notes.help')}</p>
       </div>

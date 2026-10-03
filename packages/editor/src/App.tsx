@@ -12,7 +12,7 @@ import { catalogFor, CATALOGS, formatDiagnostic, formatNumber, t, type Catalog }
 import { buildPrintDocument, printHtml, revisionFooter } from '@kalketa/render';
 import { emptyScene, readScene, writeScene, type CanvasScene } from '@kalketa/canvas';
 import { CanvasEditor } from '@kalketa/canvas/editor';
-import { addLayer, allDiagnostics, appendixLayers, blockAppendices, documentBlocks, isRemovable, LayerSessions, MAIN_LAYER, removeLayer, freezeRevision, removeRevision, revisionDocument, revisionState, shortHash, tablesByLayer, updateLayer, type AddableLayerKind, type Layer, type RevisionState, type SheetDocument } from '@kalketa/sheet';
+import { addLayer, allDiagnostics, appendixLayers, blockAppendices, documentBlocks, isRemovable, LayerSessions, MAIN_LAYER, removeLayer, freezeRevision, removeRevision, revisionDocument, revisionState, shortHash, tablesByLayer, theorySections, updateLayer, withTheoryIds, type AddableLayerKind, type Layer, type RevisionState, type SheetDocument } from '@kalketa/sheet';
 import { buildCommands, shortcutOf, type Command } from './commands.js';
 import { DEFAULT_AI_SETTINGS, parseAiSettings, type AiSettings, type ChatTurn } from '@kalketa/ai';
 import { ChatPane } from './components/ChatPane.js';
@@ -1123,6 +1123,11 @@ export function App() {
           readOnly={l.locked}
           resolveFile={resolveFile}
           onChange={(next, files) => setLayerText(l, next, `${l.id}:notes`, files)}
+          onSettle={() => {
+            // New headings get their theory ids once the user stops typing in them.
+            const layers = withTheoryIds(doc.layers);
+            if (layers.some((x, i) => x !== doc.layers[i])) change({ ...doc, layers }, `${l.id}:notes`);
+          }}
         />
       );
     }
@@ -1203,7 +1208,13 @@ export function App() {
                     settings={aiSettings}
                     turns={chats[tab.id] ?? []}
                     onTurns={(turns) => setChats((all) => ({ ...all, [tab.id]: turns }))}
-                    context={() => ({ sheet: sheetContext(doc.manifest.title, evaluation.main), languageGuide: languageGuide() })}
+                    theory={theorySections(doc.layers)}
+                    context={() => {
+                      // Headings still without an id get one before the model sees them, so its citations stay valid.
+                      const layers = withTheoryIds(doc.layers);
+                      if (layers.some((x, i) => x !== doc.layers[i])) change({ ...doc, layers });
+                      return { sheet: { ...sheetContext(doc.manifest.title, evaluation.main), theory: theorySections(layers) }, languageGuide: languageGuide() };
+                    }}
                     onOpenSettings={() => setDialog('settings')}
                   />
                 ) : pane === 'layers' ? (

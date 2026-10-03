@@ -32,6 +32,25 @@ export function languageName(tag: string): string {
   }
 }
 
+/** Theory longer than this goes in part (searching it comes later, ch. 9.6). */
+const MAX_THEORY_CHARS = 40_000;
+
+/** The theory as the model reads it: "[T3] Title" over each section. */
+export function theoryText(theory: NonNullable<AiSheetContext['theory']>): string {
+  let used = 0;
+  const parts: string[] = [];
+  for (const s of theory) {
+    const part = `${s.id ? `[${s.id}] ` : ''}${s.title}\n${s.text}`.trim();
+    if (used + part.length > MAX_THEORY_CHARS) {
+      parts.push(`(${theory.length - parts.length} more sections not shown)`);
+      break;
+    }
+    parts.push(part);
+    used += part.length;
+  }
+  return parts.join('\n\n');
+}
+
 /** Numbered lines, so the model can point at them. */
 export function numbered(source: string): string {
   return source
@@ -54,6 +73,13 @@ export function briefing(input: BriefingInput): string {
     input.languageGuide ? `Calculation language:\n${input.languageGuide}` : '',
     `The sheet "${sheet.title}" (read-only for you):\n${numbered(sheet.source)}`,
     sheet.findings && sheet.findings.length > 0 ? `Findings of the program (errors, warnings, checks):\n${sheet.findings.join('\n')}` : 'The program found no errors and no failed checks.',
+    sheet.theory && sheet.theory.length > 0
+      ? `Theory and references the author chose for this calculation (in the sheet's language). Answer from them:
+- Cite the section you use, like [T3]. When you rely on its exact words, quote them verbatim in quotation marks right before the citation: "…" [T3]. The program checks every citation and marks the ones it cannot find as unsupported.
+- Cite only sections listed here, and use their terms. If they do not cover the question, say so, then answer from general knowledge without a citation.
+
+${theoryText(sheet.theory)}`
+      : '',
     input.companyInstructions ? `Company rules (they take precedence):\n${input.companyInstructions}` : '',
   ];
   return parts.filter((p) => p !== '').join('\n\n');

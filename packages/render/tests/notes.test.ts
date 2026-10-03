@@ -29,4 +29,8 @@ describe('notes Markdown, as models write it', () => {
   it('leaves a row of pipes without a rule under it as text', () => {
     expect(notesHtml('| a | b |')).toBe('<p>| a | b |</p>');
   });
+
+  it('shows the id of a theory section as a badge', () => {
+    expect(notesHtml('## Klopení {#T3}')).toBe('<h3>Klopení <span class="tid">T3</span></h3>');
+  });
 });

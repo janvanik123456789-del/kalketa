@@ -5,11 +5,15 @@
  * appears as it is written; Stop ends it.
  */
 import { useEffect, useRef, useState } from 'react';
-import { AI_OFF, providerById, type AiSettings, type ChatTurn } from '@kalketa/ai';
+import { AI_OFF, checkCitations, providerById, type AiSettings, type ChatTurn, type CitableSection } from '@kalketa/ai';
 import { t, type Catalog, type UiKey } from '@kalketa/i18n';
 import { notesHtml } from '@kalketa/render';
 import { desktop } from '../document.js';
 import type { AiSheetContext } from '../logic/aiContext.js';
+
+function escapeAttr(text: string): string {
+  return text.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
 
 /** Pieces of answers by request, from the one listener the bridge allows. */
 const listeners = new Map<string, (piece: { readonly text?: string; readonly thinking?: boolean }) => void>();
@@ -29,13 +33,15 @@ export interface ChatPaneProps {
   readonly settings: AiSettings;
   /** The conversation of the active document. */
   readonly turns: readonly ChatTurn[];
+  /** Sections of the sources layers the model may cite. */
+  readonly theory: readonly CitableSection[];
   onTurns(turns: readonly ChatTurn[]): void;
   /** What the model sees, taken when a question is sent. */
   context(): { readonly sheet: AiSheetContext; readonly languageGuide: string };
   onOpenSettings(): void;
 }
 
-export function ChatPane({ catalog, settings, turns, onTurns, context, onOpenSettings }: ChatPaneProps) {
+export function ChatPane({ catalog, settings, turns, theory, onTurns, context, onOpenSettings }: ChatPaneProps) {
   const [draft, setDraft] = useState('');
   const [answer, setAnswer] = useState<{ id: string; text: string; thinking: boolean; started: number }>();
   // Seconds since the question, so a model thinking for a minute does not look stuck.
@@ -52,6 +58,25 @@ export function ChatPane({ catalog, settings, turns, onTurns, context, onOpenSet
   useEffect(() => {
     list.current?.scrollTo({ top: list.current.scrollHeight });
   }, [turns, answer?.text, error]);
+
+  /**
+   * An answer as HTML, each [T3] replaced by a mark: checked against the theory
+   * (the title on hover), or unsupported when the section or the quote is not there.
+   */
+  const answerHtml = (text: string) => {
+    const citations = checkCitations(text, theory);
+    let i = 0;
+    const html = notesHtml(text).replace(/\[(T\d+)\]/g, (whole) => {
+      const c = citations[i++];
+      if (!c) return whole;
+      const section = theory.find((s) => s.id === c.id);
+      const tip = c.status === 'ok' ? `${c.id}: ${section?.title ?? ''}` : t(catalog, c.status === 'unknown' ? 'chat.citeUnknown' : 'chat.citeMisquoted', { id: c.id });
+      return `<span class="cite ${c.status === 'ok' ? 'ok' : 'bad'}" title="${escapeAttr(tip)}">${c.id}${c.status === 'ok' ? '' : ' ?'}</span>`;
+    });
+    const bad = citations.filter((c) => c.status !== 'ok').length;
+    const summary = citations.length > 0 ? `<p class="cite-summary">${escapeAttr(t(catalog, 'chat.citations', { ok: String(citations.length - bad), bad: String(bad) }))}</p>` : '';
+    return html + summary;
+  };
 
   if (!desktop) return <div className="chat-pane"><p className="hint">{t(catalog, 'ai.desktopOnly')}</p></div>;
   if (settings.provider === AI_OFF || !provider) {
@@ -120,7 +145,7 @@ export function ChatPane({ catalog, settings, turns, onTurns, context, onOpenSet
         {turns.map((turn, i) =>
           // Answers come in Markdown (bold, lists, headings); the same safe subset as notes, no HTML passes.
           turn.role === 'assistant' ? (
-            <div key={i} className="chat-turn assistant" dangerouslySetInnerHTML={{ __html: notesHtml(turn.text) }} />
+            <div key={i} className="chat-turn assistant" dangerouslySetInnerHTML={{ __html: answerHtml(turn.text) }} />
           ) : (
             <div key={i} className="chat-turn user">
               {turn.text}
@@ -129,7 +154,7 @@ export function ChatPane({ catalog, settings, turns, onTurns, context, onOpenSet
         )}
         {answer &&
           (answer.text ? (
-            <div className="chat-turn assistant writing" dangerouslySetInnerHTML={{ __html: notesHtml(answer.text) }} />
+            <div className="chat-turn assistant writing" dangerouslySetInnerHTML={{ __html: answerHtml(answer.text) }} />
           ) : (
             <div className="chat-turn assistant writing">
               {t(catalog, answer.thinking ? 'chat.thinking' : 'chat.waiting', { seconds: String(Math.floor((Date.now() - answer.started) / 1000)) })}

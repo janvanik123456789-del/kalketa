@@ -12,6 +12,7 @@
  *     - an indented bullet is a second level
  *   | a | b |  with a |---|---:| line below: a table (colons align the column)
  *   ---   alone on a line: a dividing line
+ *   ## Heading {#T3}   a theory section with its id (shown as a badge)
  *
  * Everything else is shown as text; no HTML from the notes is ever passed on.
  */
@@ -51,7 +52,10 @@ export function notesHtml(text: string, options: NotesOptions = {}): string {
       switch (block.kind) {
         case 'heading': {
           const level = Math.min(block.level + 1, 6);
-          return `<h${level}>${inline(block.text)}</h${level}>`;
+          // {#T3} after a heading is the id of a theory section: shown as a badge, cited as [T3].
+          const id = /\s*\{#(T\d+)\}$/.exec(block.text);
+          const title = id ? block.text.slice(0, id.index) : block.text;
+          return `<h${level}>${inline(title)}${id ? ` <span class="tid">${id[1]}</span>` : ''}</h${level}>`;
         }
         case 'paragraph':
           return `<p>${block.lines.map(inline).join('<br>')}</p>`;
@@ -190,6 +194,7 @@ export const NOTES_CSS = `.notes { font-size: 10.5pt; line-height: 1.5; }
 .notes table.md th, .notes table.md td { border: 1px solid #c5ccd5; padding: 0.8mm 2mm; }
 .notes table.md th { background: #f1f3f6; }
 .notes hr { border: none; border-top: 1px solid #c5ccd5; margin: 3mm 0; }
+.notes .tid { font-size: 0.7em; font-weight: normal; color: #6b7480; border: 1px solid #c5ccd5; border-radius: 3px; padding: 0 1.2mm; vertical-align: middle; }
 .notes li.sub { margin-left: 5mm; list-style-type: circle; }
 .notes code { font-family: Consolas, 'Courier New', monospace; font-size: 0.95em; }
 .notes pre.code { margin: 2mm 0; padding: 1.5mm 2mm; background: #f3f5f8; border: 1px solid #d5dae1; white-space: pre-wrap; }

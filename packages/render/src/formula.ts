@@ -8,7 +8,7 @@
 
 import type { BinaryOperator, Expr, UnitExpr } from '@kalketa/core';
 import { formatUnit } from '@kalketa/core';
-import { frac, mi, mn, mo, mtext, mu, nameNode, paren, row, sqrt, sub, sup, type MathNode, subsup, underover, table } from './math.js';
+import { frac, mi, mn, mo, mtext, mu, nameNode, nroot, paren, row, sqrt, sub, sup, type MathNode, subsup, underover, table } from './math.js';
 
 export interface FormulaOptions {
   /** Formats a number literal written in the sheet (full precision, locale separators). */
@@ -204,6 +204,8 @@ function renderCall(expr: Extract<Expr, { kind: 'call' }>, o: FormulaOptions): R
   if (calculus) return calculus;
   const args = expr.args.map((a) => render(a, o).node);
   if (expr.name === 'sqrt' && args.length === 1) return { node: sqrt(args[0]!), prec: ATOM };
+  if (expr.name === 'cbrt' && args.length === 1) return { node: nroot(args[0]!, mn('3')), prec: ATOM };
+  if (expr.name === 'root' && args.length === 2 && expr.named.length === 0) return { node: nroot(args[0]!, args[1]!), prec: ATOM };
   if (expr.name === 'abs' && args.length === 1) return { node: row(mo('|'), args[0]!, mo('|')), prec: ATOM };
   const parts: MathNode[] = [];
   args.forEach((a, i) => {

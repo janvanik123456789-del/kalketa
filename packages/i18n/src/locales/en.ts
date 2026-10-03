@@ -94,6 +94,8 @@ export const en: Catalog = {
     charts: 'Charts',
   },
   functions: {
+    cbrt: 'Cube root (also ∛x); of a negative number negative: ∛(−8) = −2.',
+    root: 'n-th root of x; an odd root of a negative number is negative, an even one is an error.',
     plot: 'Chart of a function over a range (x: a .. b), of data against a series (x: series) or of a series against its order. Options kind: "line" / "points" / "bar", title: "Caption", samples: number of points; | unit sets the unit of the y axis.',
     integral: 'Definite integral of f(x) from a to b (adaptive Gauss–Kronrod); the unit is that of f times that of x.',
     derivative: 'Derivative of f by x at a (order: 2 for the second derivative); the unit is that of f over that of x.',
@@ -336,6 +338,8 @@ export const en: Catalog = {
     'cmd.help.shortcuts': '&Keyboard shortcuts',
     'cmd.help.about': '&About Kalketa',
     'cmd.symbol': 'Insert {symbol}',
+    'cmd.power': 'General power xⁿ (^)',
+    'cmd.fn.root': 'n-th root root(x, n)',
     'rev.title': 'Revisions of the calculation',
     'rev.stateNone': 'The calculation has no revision yet.',
     'rev.stateSame': 'The content is revision {label}.',

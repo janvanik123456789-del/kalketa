@@ -30,15 +30,30 @@ export interface ToolbarState {
 
 export interface ToolbarLayout {
   readonly version: 1;
+  /** Which built-in buttons the layout knows (see ADDED_ITEMS); older layouts get the newer ones. */
+  readonly items?: number;
   readonly toolbars: readonly ToolbarState[];
 }
+
+/**
+ * Buttons added to built-in toolbars after their first version. A stored
+ * layout gets them once, next to the button they follow; a button the user
+ * removes later stays removed.
+ */
+const ADDED_ITEMS: readonly { readonly since: number; readonly toolbar: string; readonly after: string; readonly ids: readonly string[] }[] = [
+  { since: 2, toolbar: 'operators', after: 'sym:√', ids: ['sym:∛', 'fn:root'] },
+  { since: 2, toolbar: 'operators', after: 'sym:³', ids: ['sym:^'] },
+];
+export const ITEMS_VERSION = 2;
 
 export const SEPARATOR = '|';
 
 const dock = (d: Dock, band: number, order: number): ToolbarPlace => ({ kind: 'dock', dock: d, band, order });
 
 export const GREEK_SYMBOLS = ['α', 'β', 'γ', 'δ', 'ε', 'η', 'θ', 'λ', 'μ', 'ν', 'π', 'ρ', 'σ', 'τ', 'φ', 'ψ', 'ω', 'Δ', 'Σ', 'Φ', 'Ω'];
-export const OPERATOR_SYMBOLS = ['·', '÷', '≤', '≥', '≠', '√', '²', '³', '⁻¹', '°', 'Δ°C', '_', '|'];
+export const OPERATOR_SYMBOLS = ['·', '÷', '≤', '≥', '≠', '√', '∛', '²', '³', '^', '⁻¹', '°', 'Δ°C', '_', '|'];
+/** Symbols shown otherwise than inserted: ^ is a general power. */
+export const SYMBOL_GLYPHS: Readonly<Record<string, string>> = { '^': 'xⁿ' };
 
 /**
  * Functions written for the user, as on the palettes of Mathcad: the template
@@ -62,6 +77,9 @@ export const FUNCTION_TEMPLATES: readonly FunctionTemplate[] = [
   { id: 'solve', text: 'solve x: ‸ == 0', line: true },
 ];
 
+/** Templates on the Operators toolbar (not on Functions): the n-th root. */
+export const OPERATOR_TEMPLATES: readonly FunctionTemplate[] = [{ id: 'root', glyph: 'ⁿ√', text: 'root(‸, n)' }];
+
 /** The template without its cursor mark, and where the cursor goes. */
 export function templateParts(template: string): { text: string; cursor: number } {
   const cursor = template.indexOf('‸');
@@ -71,6 +89,7 @@ export function templateParts(template: string): { text: string; cursor: number 
 export function defaultLayout(): ToolbarLayout {
   return {
     version: 1,
+    items: ITEMS_VERSION,
     toolbars: [
       {
         id: 'standard',
@@ -100,7 +119,7 @@ export function defaultLayout(): ToolbarLayout {
         place: dock('top', 0, 3),
         items: [...FUNCTION_TEMPLATES.map((f) => `fn:${f.id}`), SEPARATOR, 'insert.chart', 'help.functions'],
       },
-      { id: 'operators', builtin: true, visible: true, place: dock('left', 0, 0), items: OPERATOR_SYMBOLS.map((s) => `sym:${s}`) },
+      { id: 'operators', builtin: true, visible: true, place: dock('left', 0, 0), items: OPERATOR_SYMBOLS.flatMap((s) => (s === '∛' ? [`sym:${s}`, 'fn:root'] : [`sym:${s}`])) },
       { id: 'greek', builtin: true, visible: true, place: dock('left', 1, 0), items: GREEK_SYMBOLS.map((s) => `sym:${s}`) },
     ],
   };
@@ -224,7 +243,9 @@ export function parseLayout(json: string | null): ToolbarLayout {
         (t.columns === undefined || (Number.isInteger(t.columns) && t.columns > 0)),
     );
     const missing = fallback.toolbars.filter((b) => !valid.some((t) => t.id === b.id));
-    return compactBands({ version: 1, toolbars: [...valid, ...missing] });
+    const known = typeof stored.items === 'number' ? stored.items : 1;
+    const updated = valid.map((t) => withAddedItems(t, known));
+    return compactBands({ version: 1, items: ITEMS_VERSION, toolbars: [...updated, ...missing] });
   } catch {
     return fallback;
   }
@@ -234,4 +255,17 @@ function isPlace(place: unknown): place is ToolbarPlace {
   const p = place as ToolbarPlace;
   if (p?.kind === 'float') return Number.isFinite(p.x) && Number.isFinite(p.y);
   return p?.kind === 'dock' && ['top', 'bottom', 'left', 'right'].includes(p.dock) && Number.isInteger(p.band) && Number.isInteger(p.order);
+}
+
+/** A built-in toolbar of a layout that knows the buttons up to `known`, with the buttons added since. */
+function withAddedItems(toolbar: ToolbarState, known: number): ToolbarState {
+  if (!toolbar.builtin) return toolbar;
+  let items = [...toolbar.items];
+  for (const added of ADDED_ITEMS) {
+    if (added.since <= known || added.toolbar !== toolbar.id) continue;
+    const fresh = added.ids.filter((id) => !items.includes(id));
+    const at = items.indexOf(added.after);
+    items = at < 0 ? [...items, ...fresh] : [...items.slice(0, at + 1), ...fresh, ...items.slice(at + 1)];
+  }
+  return items.length === toolbar.items.length ? toolbar : { ...toolbar, items };
 }

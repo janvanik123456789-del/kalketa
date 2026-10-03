@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ikony nástrojů</title>
+<style>
+:root{--bg:#f6f6f4;--card:#fff;--fg:#1d1d1b;--mut:#6b6b66;--line:#e2e2dd;--acc:#b8541c}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1b1b1a;--card:#252523;--fg:#ecece8;--mut:#9a9a94;--line:#3a3a37;--acc:#e8915a}}
+:root[data-theme="dark"]{--bg:#1b1b1a;--card:#252523;--fg:#ecece8;--mut:#9a9a94;--line:#3a3a37;--acc:#e8915a}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.45 system-ui,'Segoe UI',sans-serif;padding:24px 16px}
+main{max-width:900px;margin:0 auto}
+h1{font-size:20px;margin:0 0 4px}
+p.sub{color:var(--mut);margin:0 0 20px}
+.bar{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:10px}
+.bar h2{font-size:12px;font-weight:600;color:var(--mut);margin:0 0 6px;text-transform:uppercase;letter-spacing:.04em}
+.strip{display:flex;flex-wrap:wrap;gap:2px}
+.i{display:inline-flex;width:28px;height:28px;align-items:center;justify-content:center;border-radius:4px;font-size:15px}
+.i:hover{background:var(--line)}
+.i svg{width:20px;height:20px}
+.big .i{width:44px;height:44px}
+.big .i svg{width:40px;height:40px}
+table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);margin-top:20px}
+th,td{text-align:left;padding:6px 10px;border-bottom:1px solid var(--line)}
+th{font-size:12px;color:var(--mut);font-weight:600}
+td.c{text-align:center;font-size:15px}
+td svg{width:20px;height:20px;vertical-align:middle}
+.tag{font:12px ui-monospace,Consolas,monospace;color:var(--mut)}
+.new{color:var(--acc);font-weight:600}
+.wrap{overflow-x:auto}
+.opt{display:inline-flex;align-items:center;justify-content:center;min-width:40px;height:32px;padding:0 6px;border:1.5px solid var(--line);border-radius:6px;background:transparent;color:var(--fg);font:15px system-ui,'Segoe UI',sans-serif;cursor:pointer}
+.opt:hover{border-color:var(--mut)}
+.opt.on{border-color:var(--acc);background:color-mix(in srgb,var(--acc) 12%,transparent)}
+</style>
+</head>
+<body>
+<main>
+<h1>Ikony nástrojů (operátory a funkce)</h1>
+<p class="sub">Ve stylu současných ikon: 20 px, čára 1,5. Čtvereček = místo, kam se píše (jako v paletách Mathcadu). <span class="new">Oranžově</span> jsou nové příkazy, které zatím v jazyce nejsou.</p>
+<div class="bar"><h2>Teď (textové znaky)</h2><div class="strip" id="now"></div></div>
+<div class="bar"><h2>Návrh 20 px</h2><div class="strip" id="s20"></div></div>
+<div class="bar big"><h2>Návrh zvětšeno</h2><div class="strip" id="s40"></div></div>
+<div class="bar"><h2>Vedle stávajících ikon toolbaru</h2><div class="strip" id="mix"></div></div>
+<h2 style="font-size:16px;margin:24px 0 4px">Výběr</h2>
+<p class="sub" style="margin-bottom:10px">Klikněte u každého nástroje na variantu, která se vám líbí víc. Toolbar dole se hned překreslí.</p>
+<div class="bar"><h2>Výsledný toolbar</h2><div class="strip" id="pick"></div></div>
+<div class="wrap"><table><thead><tr><th>Nástroj</th><th class="c">Text</th><th class="c">Ikona</th><th>Vloží</th></tr></thead><tbody id="tbl"></tbody></table></div>
+<div class="bar" style="margin-top:10px"><h2>Výběr ke zkopírování</h2><pre id="sum" style="margin:0;white-space:pre-wrap;font:12px ui-monospace,Consolas,monospace"></pre></div>
+</main>
+<script>
+const S = 'fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"';
+const T = (x, y, s, size = 6, anchor = 'middle', extra = '') =>
+  `<text x="${x}" y="${y}" font-size="${size}" font-weight="600" text-anchor="${anchor}" fill="currentColor" font-family="system-ui,Segoe UI,sans-serif" ${extra}>${s}</text>`;
+const box = (x, y, w, h) => `<rect ${S} stroke-width="1.2" x="${x}" y="${y}" width="${w}" height="${h}" rx=".6"/>`;
+// Radical: small tick, down stroke, long up stroke, top bar.
+const radical = (x0 = 2) => `<path ${S} d="M${x0} 11.5l1.8-.8 2.4 5.8L${x0 + 8} 3h${17 - x0 - 8}"/>`;
+
+const ICONS = [
+  { id: 'sym:√', now: '√', name: 'Druhá odmocnina', ins: '√‸', svg: radical(2) + box(11, 6.5, 5.5, 7) },
+  { id: 'sym:∛', now: '∛', name: 'Třetí odmocnina', ins: '∛‸ (nové)', isNew: true, svg: radical(4) + T(3.4, 8.8, '3', 8.5) + box(12, 6.5, 5, 7) },
+  { id: 'fn:root', now: 'ⁿ√', name: 'n-tá odmocnina', ins: 'root(‸, n) (nové)', isNew: true, svg: radical(4) + box(1.5, 3.5, 3.5, 3.5) + box(12, 6.5, 5, 7) },
+  { id: 'sym:²', now: '²', name: 'Druhá mocnina', ins: '²', svg: box(2, 8, 8, 9.5) + T(14.8, 9.5, '2', 10) },
+  { id: 'sym:³', now: '³', name: 'Třetí mocnina', ins: '³', svg: box(2, 8, 8, 9.5) + T(14.8, 9.5, '3', 10) },
+  { id: 'fn:power', now: 'xⁿ', name: 'Obecná mocnina', ins: '‸^n (nové tlačítko)', isNew: true, svg: box(2, 8, 8, 9.5) + box(12.5, 2, 5, 5) },
+  { id: 'sym:⁻¹', now: '⁻¹', name: 'Převrácená hodnota / inverze', ins: '⁻¹', svg: box(1, 8, 7.5, 9.5) + T(14, 9.5, '−1', 9.5) },
+  { id: 'sym:_', now: '_', name: 'Dolní index', ins: '_', svg: box(2.5, 3.5, 8, 9) + box(13, 13, 4.5, 4.5) },
+  { id: 'fn:abs', now: '|x|', name: 'Absolutní hodnota', ins: 'abs(‸)', svg: `<path ${S} d="M4 3v14M16 3v14"/>` + box(7, 6.5, 6, 7) },
+  { id: 'fn:fraction', now: '÷', name: 'Zlomek', ins: '‸/□ (nové tlačítko)', isNew: true, svg: box(6.5, 1.8, 7, 5.5) + `<path ${S} d="M3 10h14"/>` + box(6.5, 12.7, 7, 5.5) },
+  { id: 'fn:integral', now: '∫', name: 'Integrál', ins: 'integral(‸, x: 0 .. 1)', svg: `<path ${S} d="M9 3.5c-.4-1.2-2.6-1.3-3 .5L4.6 16c-.3 1.8-2.5 1.7-3 .5"/>` + box(10, 6.5, 6.5, 7) },
+  { id: 'fn:derivative', now: 'd/dx', name: 'Derivace', ins: 'derivative(‸, x: 0)', svg: T(10, 8.3, 'd', 9.5) + `<path ${S} d="M3.5 10.6h13"/>` + T(10, 19, 'dx', 9.5) },
+  { id: 'fn:sum', now: '∑', name: 'Součet', ins: 'sum(‸, k: 1 .. 10)', svg: `<path ${S} d="M10 3.5H2.5L7 10l-4.5 6.5H10"/>` + box(12, 6.5, 5.5, 7) },
+  { id: 'fn:matrix', now: 'matrix', name: 'Matice', ins: '[‸, 0 | 0, 0]', svg: `<path ${S} d="M4.5 2.5h-2v15h2M15.5 2.5h2v15h-2"/>` + box(5.5, 4.5, 3.8, 3.8) + box(10.7, 4.5, 3.8, 3.8) + box(5.5, 11.7, 3.8, 3.8) + box(10.7, 11.7, 3.8, 3.8) },
+  { id: 'fn:if', now: 'if', name: 'Podmínka', ins: 'if(‸, a, b)', svg: `<path ${S} d="M7 2.5c-2 0-2 1-2 3v2.5L3 10l2 2v2.5c0 2 0 3 2 3"/>` + box(9, 4, 8.5, 4) + box(9, 12, 8.5, 4) },
+  { id: 'fn:solve', now: 'solve', name: 'Řešení rovnice', ins: 'solve x: ‸ == 0', svg: T(1, 13.5, 'x', 12, 'start', 'font-style="italic"') + `<path ${S} d="M8.5 8.5h4M8.5 11.5h4"/>` + T(16.3, 14.5, '?', 12) },
+];
+
+// A few existing toolbar icons for a style check.
+const page = `<path ${S} d="M5 2.5h7l3.5 3.5v11.5H5z M12 2.5V6h3.5" />`;
+const EXISTING = [
+  page + `<path ${S} d="M10 9v5M7.5 11.5h5" />`,
+  `<path ${S} d="M2.5 6V16h13l2-7h-13l-2 7M2.5 6h5l1.5 1.5h6V9" />`,
+  `<path ${S} d="M3 3h11l3 3v11H3z" /><path ${S} d="M6 3v4h7V3M6 17v-5h8v5" />`,
+  `<path ${S} d="M7 5 3 9l4 4M3 9h9a5 5 0 0 1 0 10h-2" />`,
+];
+
+const svg = inner => `<svg viewBox="0 0 20 20" aria-hidden="true">${inner}</svg>`;
+const cell = (inner, title) => `<span class="i" title="${title}">${inner}</span>`;
+const $ = id => document.getElementById(id);
+$('now').innerHTML = ICONS.map(i => cell(i.now, i.name)).join('');
+$('s20').innerHTML = ICONS.map(i => cell(svg(i.svg), i.name)).join('');
+$('s40').innerHTML = ICONS.map(i => cell(svg(i.svg), i.name)).join('');
+$('mix').innerHTML = EXISTING.map(e => cell(svg(e), '')).join('') + ICONS.slice(0, 8).map(i => cell(svg(i.svg), i.name)).join('');
+// Per-tool choice: 'text' or 'icon'. Power starts as text (user's preference).
+const choice = Object.fromEntries(ICONS.map(i => [i.id, i.id === 'fn:power' ? 'text' : 'icon']));
+function render() {
+  $('tbl').innerHTML = ICONS.map(i => {
+    const opt = (kind, inner) => `<td class="c"><button class="opt${choice[i.id] === kind ? ' on' : ''}" data-id="${i.id}" data-kind="${kind}" title="${kind === 'text' ? 'Text' : 'Ikona'}">${inner}</button></td>`;
+    return `<tr><td>${i.name} <span class="tag">${i.id}</span></td>${opt('text', i.now)}${opt('icon', svg(i.svg))}<td class="tag${i.isNew ? ' new' : ''}">${i.ins}</td></tr>`;
+  }).join('');
+  $('pick').innerHTML = ICONS.map(i => cell(choice[i.id] === 'text' ? i.now : svg(i.svg), i.name)).join('');
+  $('sum').textContent = 'Text: ' + (ICONS.filter(i => choice[i.id] === 'text').map(i => i.name).join(', ') || '—')
+    + '\nIkona: ' + (ICONS.filter(i => choice[i.id] === 'icon').map(i => i.name).join(', ') || '—');
+}
+$('tbl').addEventListener('click', e => {
+  const b = e.target.closest('button.opt');
+  if (!b) return;
+  choice[b.dataset.id] = b.dataset.kind;
+  render();
+});
+render();
+</script>
+</body>
+</html>

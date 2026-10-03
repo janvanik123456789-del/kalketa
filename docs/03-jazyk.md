@@ -206,7 +206,7 @@ Funkce jsou v **registru funkcí** rozdělené do modulů. Každá funkce má v 
 
 | Modul | Funkce |
 |---|---|
-| Matematika | `sqrt`, `abs`, `min`, `max`, `hypot(a, b, …)`, `mod(a, b)`, `sign`, `floor`, `ceil`, `round(x)` / `round(x, n)`, `exp`, `ln`, `log10`, `log(x, b)`, `factorial(n)` |
+| Matematika | `sqrt` (také `√x`), `cbrt` (také `∛x`, ze záporného čísla záporná), `root(x, n)` (n-tá odmocnina), `abs`, `min`, `max`, `hypot(a, b, …)`, `mod(a, b)`, `sign`, `floor`, `ceil`, `round(x)` / `round(x, n)`, `exp`, `ln`, `log10`, `log(x, b)`, `factorial(n)` |
 | Goniometrické a hyperbolické | `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `atan2(y, x)`, `sinh`, `cosh`, `tanh`, `asinh`, `acosh`, `atanh` |
 | Komplexní čísla | `re`, `im`, `conj`, `arg`, `polar(r, φ)` (7.1a) |
 | Řady | `range`, `sum`, `len`, `cumsum` (7.1b) |

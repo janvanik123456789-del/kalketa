@@ -93,6 +93,20 @@ describe('toolbar layout', () => {
     expect(defaultLayout().toolbars.find((t) => t.id === 'functions')!.items).toContain('fn:integral');
   });
 
+  it('gives a stored layout the buttons added since, once', () => {
+    const old = defaultLayout();
+    const operators = old.toolbars.find((t) => t.id === 'operators')!;
+    const before = operators.items.filter((i) => !['sym:∛', 'fn:root', 'sym:^'].includes(i));
+    const stored = JSON.stringify({ version: 1, toolbars: old.toolbars.map((t) => (t.id === 'operators' ? { ...t, items: before } : t)) });
+    const parsed = parseLayout(stored);
+    const items = parsed.toolbars.find((t) => t.id === 'operators')!.items;
+    expect(items.slice(items.indexOf('sym:√'), items.indexOf('sym:√') + 3)).toEqual(['sym:√', 'sym:∛', 'fn:root']);
+    expect(items[items.indexOf('sym:³') + 1]).toBe('sym:^');
+    // Removed by the user afterwards: it stays removed.
+    const removed = { ...parsed, toolbars: parsed.toolbars.map((t) => (t.id === 'operators' ? { ...t, items: t.items.filter((i) => i !== 'sym:^') } : t)) };
+    expect(parseLayout(JSON.stringify(removed)).toolbars.find((t) => t.id === 'operators')!.items).not.toContain('sym:^');
+  });
+
   it('survives damaged storage and adds new built-in toolbars', () => {
     expect(parseLayout(null)).toEqual(defaultLayout());
     expect(parseLayout('{nonsense')).toEqual(defaultLayout());

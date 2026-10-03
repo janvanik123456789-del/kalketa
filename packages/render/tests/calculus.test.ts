@@ -50,3 +50,12 @@ describe('matrices in print', () => {
     expect(text.endsWith(']')).toBe(true);
   });
 });
+
+describe('roots in print', () => {
+  it('print a cube root and an n-th root with their index', () => {
+    const [cube] = lines('a := ∛(27 m³)');
+    expect(plain(toText(cube!.rhs))).toBe('∛(27 m³)');
+    expect(toMathML(cube!.rhs)).toContain('<mroot>');
+    expect(toText(lines('b := root(16, 4)')[0]!.rhs)).toBe('root(16, 4)');
+  });
+});

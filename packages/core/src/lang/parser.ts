@@ -551,10 +551,12 @@ class LineParser {
         }
         return this.parseVector();
       }
-      case '√': {
+      case '√':
+      case '∛': {
+        // √x and ∛x: prefixes for sqrt(x) and cbrt(x).
         this.next();
         const operand = this.parsePostfix();
-        return { kind: 'call', name: 'sqrt', args: [operand], named: [], span: spanOf(token, operand) };
+        return { kind: 'call', name: token.type === '√' ? 'sqrt' : 'cbrt', args: [operand], named: [], span: spanOf(token, operand) };
       }
       case 'ident':
         return this.parseName();
@@ -775,7 +777,7 @@ class LineParser {
 
   private startsOperand(token: Token): boolean {
     if (token.type === 'ident') return !CONTINUATION_KEYWORDS.has(token.text);
-    return token.type === 'number' || token.type === '(' || token.type === '[' || token.type === '√' || token.type === 'string' || token.type === 'date';
+    return token.type === 'number' || token.type === '(' || token.type === '[' || token.type === '√' || token.type === '∛' || token.type === 'string' || token.type === 'date';
   }
 
   private isKeyword(word: string): boolean {

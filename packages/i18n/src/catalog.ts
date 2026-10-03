@@ -182,6 +182,8 @@ export const UI_KEYS = [
   'help.functionsFilter',
   'help.functionsInsert',
   'cmd.symbol',
+  'cmd.power',
+  'cmd.fn.root',
   'rev.title',
   'rev.stateNone',
   'rev.stateSame',

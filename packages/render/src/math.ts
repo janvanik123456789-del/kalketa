@@ -19,6 +19,8 @@ export type MathNode =
   | { readonly k: 'sup'; readonly b: MathNode; readonly e: MathNode }
   | { readonly k: 'sub'; readonly b: MathNode; readonly s: MathNode }
   | { readonly k: 'sqrt'; readonly c: MathNode }
+  /** A root with its index: ∛x, ⁿ√x. */
+  | { readonly k: 'root'; readonly c: MathNode; readonly i: MathNode }
   /** Base with limits beside it: ∫ from a to b. */
   | { readonly k: 'subsup'; readonly b: MathNode; readonly s: MathNode; readonly e: MathNode }
   /** Rows of cells: the inside of a matrix. */
@@ -37,6 +39,7 @@ export const frac = (n: MathNode, d: MathNode): MathNode => ({ k: 'frac', n, d }
 export const sup = (b: MathNode, e: MathNode): MathNode => ({ k: 'sup', b, e });
 export const sub = (b: MathNode, s: MathNode): MathNode => ({ k: 'sub', b, s });
 export const sqrt = (c: MathNode): MathNode => ({ k: 'sqrt', c });
+export const nroot = (c: MathNode, i: MathNode): MathNode => ({ k: 'root', c, i });
 export const subsup = (b: MathNode, s: MathNode, e: MathNode): MathNode => ({ k: 'subsup', b, s, e });
 export const table = (rows: readonly (readonly MathNode[])[]): MathNode => ({ k: 'table', rows });
 export const underover = (b: MathNode, u: MathNode, o: MathNode): MathNode => ({ k: 'underover', b, u, o });
@@ -80,6 +83,8 @@ function ml(node: MathNode): string {
       return `<msub>${ml(node.b)}${ml(node.s)}</msub>`;
     case 'sqrt':
       return `<msqrt>${ml(node.c)}</msqrt>`;
+    case 'root':
+      return `<mroot>${ml(node.c)}${ml(node.i)}</mroot>`;
     case 'table':
       return `<mtable>${node.rows.map((r) => `<mtr>${r.map((c) => `<mtd>${ml(c)}</mtd>`).join('')}</mtr>`).join('')}</mtable>`;
     case 'subsup':
@@ -110,6 +115,8 @@ export function toText(node: MathNode): string {
       return `${toText(node.b)}_${toText(node.s)}`;
     case 'sqrt':
       return `√(${toText(node.c)})`;
+    case 'root':
+      return toText(node.i) === '3' ? `∛(${toText(node.c)})` : `root(${toText(node.c)}, ${toText(node.i)})`;
     case 'table':
       return node.rows.map((r) => r.map(toText).join(', ')).join(' | ');
     case 'subsup':
@@ -122,7 +129,7 @@ export function toText(node: MathNode): string {
 
 function wrapText(node: MathNode): string {
   const text = toText(node);
-  const simple = node.k === 'i' || node.k === 'n' || node.k === 'u' || node.k === 'paren' || node.k === 'sub' || node.k === 'sqrt';
+  const simple = node.k === 'i' || node.k === 'n' || node.k === 'u' || node.k === 'paren' || node.k === 'sub' || node.k === 'sqrt' || node.k === 'root';
   return simple ? text : `(${text})`;
 }
 

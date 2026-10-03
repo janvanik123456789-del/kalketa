@@ -4,7 +4,7 @@
  */
 
 import { t, type Catalog, type UiKey } from '@kalketa/i18n';
-import { FUNCTION_TEMPLATES, GREEK_SYMBOLS, OPERATOR_SYMBOLS } from './logic/toolbars.js';
+import { FUNCTION_TEMPLATES, GREEK_SYMBOLS, OPERATOR_SYMBOLS, OPERATOR_TEMPLATES, SYMBOL_GLYPHS } from './logic/toolbars.js';
 
 export type CommandCategory = 'file' | 'edit' | 'view' | 'insert' | 'tools' | 'window' | 'help' | 'symbol';
 
@@ -145,13 +145,13 @@ export function buildCommands(ctx: CommandContext): Map<string, Command> {
     list.push({
       id: `sym:${symbol}`,
       category: 'symbol',
-      label: t(c, 'cmd.symbol', { symbol }),
-      glyph: symbol,
+      label: symbol === '^' ? t(c, 'cmd.power') : t(c, 'cmd.symbol', { symbol }),
+      glyph: SYMBOL_GLYPHS[symbol] ?? symbol,
       enabled: true,
       run: () => a.insertSymbol(symbol),
     });
   }
-  for (const fn of FUNCTION_TEMPLATES) {
+  for (const fn of [...FUNCTION_TEMPLATES, ...OPERATOR_TEMPLATES]) {
     list.push({
       id: `fn:${fn.id}`,
       category: 'symbol',

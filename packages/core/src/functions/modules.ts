@@ -51,6 +51,32 @@ export const MATH: readonly FunctionDef[] = [
     },
   },
   {
+    name: 'cbrt',
+    module: 'math',
+    params: 'x',
+    arity: [1, 1],
+    // Also ∛x. A negative number has a real cube root: ∛(−8) = −2.
+    call: (a) => {
+      const x = a.quantity(0);
+      return quantity(Math.cbrt(x.si), powerDim(x.dim, 1 / 3));
+    },
+  },
+  {
+    name: 'root',
+    module: 'math',
+    params: 'x, n',
+    arity: [2, 2],
+    call: (a) => {
+      const n = a.number(1);
+      if (!Number.isInteger(n) || n < 2) a.domain(1);
+      const x = a.quantity(0);
+      // An odd root of a negative number is real; an even one is not.
+      if (x.si < 0 && n % 2 === 0) a.domain(0);
+      const value = n === 3 ? Math.cbrt(x.si) : Math.sign(x.si) * Math.abs(x.si) ** (1 / n);
+      return quantity(value, powerDim(x.dim, 1 / n));
+    },
+  },
+  {
     name: 'abs',
     module: 'math',
     params: 'x',

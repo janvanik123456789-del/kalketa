@@ -94,6 +94,8 @@ export const cs: Catalog = {
     charts: 'Grafy',
   },
   functions: {
+    cbrt: 'Třetí odmocnina (také ∛x); ze záporného čísla záporná: ∛(−8) = −2.',
+    root: 'n-tá odmocnina x; lichá ze záporného čísla je záporná, sudá ze záporného je chyba.',
     plot: 'Graf funkce v rozsahu (x: a .. b), dat proti řadě (x: řada) nebo řady proti pořadí. Volby kind: "line" / "points" / "bar", title: "Popis", samples: počet bodů; | jednotka určí jednotku osy y.',
     integral: 'Určitý integrál f(x) od a do b (adaptivní Gauss–Kronrod); jednotka výsledku je jednotka f krát jednotka x.',
     derivative: 'Derivace f podle x v bodě a (order: 2 pro druhou derivaci); jednotka je jednotka f lomeno jednotkou x.',
@@ -336,6 +338,8 @@ export const cs: Catalog = {
     'cmd.help.shortcuts': '&Klávesové zkratky',
     'cmd.help.about': '&O programu Kalketa',
     'cmd.symbol': 'Vložit {symbol}',
+    'cmd.power': 'Obecná mocnina xⁿ (^)',
+    'cmd.fn.root': 'n-tá odmocnina root(x; n)',
     'rev.title': 'Revize výpočtu',
     'rev.stateNone': 'Výpočet zatím nemá žádnou revizi.',
     'rev.stateSame': 'Obsah odpovídá revizi {label}.',

@@ -1188,9 +1188,10 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
   const shown = (await contents.executeJavaScript(`({
     user: document.querySelector('.chat-turn.user')?.textContent ?? '',
     answer: document.querySelector('.chat-turn.assistant:not(.writing)')?.textContent ?? '',
+    bold: document.querySelector('.chat-turn.assistant:not(.writing) strong')?.textContent ?? '',
     input: document.querySelector('.chat-input')?.value ?? '',
     title: document.querySelector('.doc-tab.active')?.textContent ?? '',
-  })`)) as { user: string; answer: string; input: string; title: string };
+  })`)) as { user: string; answer: string; bold: string; input: string; title: string };
   await takePicture(picture.replace(/[.]png$/, '-ai-chat.png'));
   await clickOn('.chat-new');
   await pause(200);
@@ -1205,7 +1206,7 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
   return (
     head.includes('Jiný server') && head.includes('local-smoke-7b') &&
     shown.user === 'Co počítá řádek 3?' && shown.input === '' &&
-    /list: [^?;]+;/.test(shown.answer) && shown.answer.includes('jazyk: Czech') && shown.answer.includes('výsledky: ano') && shown.answer.includes('otázka: Co počítá řádek 3?') &&
+    /list: [^?;*]+;/.test(shown.answer) && shown.bold !== '' && !shown.answer.includes('**') && shown.answer.includes('jazyk: Czech') && shown.answer.includes('výsledky: ano') && shown.answer.includes('otázka: Co počítá řádek 3?') &&
     cleared === 0
   );
 }

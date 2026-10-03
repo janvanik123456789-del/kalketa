@@ -7,6 +7,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { AI_OFF, providerById, type AiSettings, type ChatTurn } from '@kalketa/ai';
 import { t, type Catalog, type UiKey } from '@kalketa/i18n';
+import { notesHtml } from '@kalketa/render';
 import { desktop } from '../document.js';
 import type { AiSheetContext } from '../logic/aiContext.js';
 
@@ -108,12 +109,22 @@ export function ChatPane({ catalog, settings, turns, onTurns, context, onOpenSet
       </div>
       <div className="chat-messages" ref={list}>
         {turns.length === 0 && !answer && <p className="hint">{t(catalog, 'chat.empty')}</p>}
-        {turns.map((turn, i) => (
-          <div key={i} className={`chat-turn ${turn.role}`}>
-            {turn.text}
-          </div>
-        ))}
-        {answer && <div className="chat-turn assistant writing">{answer.text || (answer.thinking ? t(catalog, 'chat.thinking') : t(catalog, 'chat.waiting'))}</div>}
+        {turns.map((turn, i) =>
+          // Answers come in Markdown (bold, lists, headings); the same safe subset as notes, no HTML passes.
+          turn.role === 'assistant' ? (
+            <div key={i} className="chat-turn assistant" dangerouslySetInnerHTML={{ __html: notesHtml(turn.text) }} />
+          ) : (
+            <div key={i} className="chat-turn user">
+              {turn.text}
+            </div>
+          ),
+        )}
+        {answer &&
+          (answer.text ? (
+            <div className="chat-turn assistant writing" dangerouslySetInnerHTML={{ __html: notesHtml(answer.text) }} />
+          ) : (
+            <div className="chat-turn assistant writing">{answer.thinking ? t(catalog, 'chat.thinking') : t(catalog, 'chat.waiting')}</div>
+          ))}
         {error && <div className="chat-error">{error}</div>}
       </div>
       <div className="chat-input-row">

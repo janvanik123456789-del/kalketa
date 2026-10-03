@@ -52,7 +52,7 @@ const fakeApi = createServer((request, response) => {
       const system = body.messages[0]?.content ?? '';
       const question = body.messages.at(-1)?.content ?? '';
       const title = /The sheet "([^"]+)"/.exec(system)?.[1] ?? '?';
-      const pieces = [`list: ${title}; `, `jazyk: ${system.includes('Answer in Czech') ? 'Czech' : '?'}; `, `výsledky: ${system.includes('Computed results') ? 'ano' : 'ne'}; `, `otázka: ${question}`];
+      const pieces = [`list: **${title}**; `, `jazyk: ${system.includes('Answer in Czech') ? 'Czech' : '?'}; `, `výsledky: ${system.includes('Computed results') ? 'ano' : 'ne'}; `, `otázka: ${question}`];
       response.writeHead(200, { 'content-type': 'text/event-stream' });
       const event = (data) => `data: ${typeof data === 'string' ? data : JSON.stringify(data)}${String.fromCharCode(10).repeat(2)}`;
       response.write(event({ choices: [{ delta: { reasoning_content: 'thinking' } }] }));

@@ -393,7 +393,12 @@ button.icon:hover { color: var(--accent); }
 .chat-messages { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
 .chat-turn { white-space: pre-wrap; overflow-wrap: anywhere; padding: 6px 8px; border-radius: 6px; line-height: 1.4; max-width: 92%; }
 .chat-turn.user { align-self: flex-end; background: #dfe9f6; }
-.chat-turn.assistant { align-self: flex-start; background: #fff; border: 1px solid #d5dae1; }
+.chat-turn.assistant { align-self: flex-start; background: #fff; border: 1px solid #d5dae1; white-space: normal; }
+.chat-turn.assistant > :first-child { margin-top: 0; }
+.chat-turn.assistant > :last-child { margin-bottom: 0; }
+.chat-turn.assistant p, .chat-turn.assistant ul { margin: 0 0 6px; }
+.chat-turn.assistant ul { padding-left: 18px; }
+.chat-turn.assistant h1, .chat-turn.assistant h2, .chat-turn.assistant h3 { font-size: 13px; margin: 8px 0 4px; }
 .chat-turn.writing { color: #48505a; }
 .chat-error { color: #a12828; font-size: 12px; }
 .chat-input-row { display: flex; gap: 6px; align-items: stretch; }

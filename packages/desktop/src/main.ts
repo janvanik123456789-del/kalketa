@@ -1238,6 +1238,7 @@ async function aiSettingsWithRealInput(contents: Electron.WebContents, picture: 
   await waitForStatus('Připojeno');
   const other = await read();
   await clickOn('.ai-url');
+  await pressKey('A', ['control']);
   await typeText('ftp://server');
   await clickOn('.ai-test');
   await waitForStatus('http://');
@@ -1258,7 +1259,7 @@ async function aiSettingsWithRealInput(contents: Electron.WebContents, picture: 
     local.provider === 'lmstudio' && !local.keyField && local.model === 'local-smoke-7b' && !local.models.includes('text-embedding-smoke') && local.status.includes('Dostupné modely: 1') &&
     local.providers.some((p) => p.startsWith('LM Studio') && p.includes('běží')) && local.providers.some((p) => p.startsWith('Ollama') && !p.includes('běží')) &&
     absent.provider === 'ollama' && absent.status.includes('Ollama v tomto počítači neběží') &&
-    other.provider === 'server' && other.model === 'local-smoke-7b' && other.providers.some((p) => p.startsWith('Jiný server') && p.includes('běží')) &&
+    other.provider === 'server' && other.model === 'local-smoke-7b' && other.url === 'http://127.0.0.1:8080/v1' && other.providers.some((p) => p.startsWith('Jiný server') && p.includes('běží')) &&
     wrongUrl.url === 'ftp://server' && wrongUrl.status.includes('musí začínat http://')
   );
 }

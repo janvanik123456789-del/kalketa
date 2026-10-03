@@ -26,8 +26,10 @@ export function AiSettingsSection({ catalog, draft, onChange }: { catalog: Catal
   const provider = providerById(draft.settings.provider);
   // A server at an address the user gives has no product name: it is named in the UI language.
   const nameOf = (p: ProviderInfo) => (p.urlEditable ? t(catalog, 'ai.otherServer') : p.name);
-  // Only an address the user typed is sent; otherwise the application uses the default.
-  const url = provider?.urlEditable ? draft.settings.url?.trim() || undefined : undefined;
+  // The field shows the address in full, editable; only one other than the default is
+  // sent, so the application keeps its own default (and the smoke test its fake server).
+  const shownUrl = provider?.urlEditable ? (draft.settings.url ?? provider.baseUrl ?? '') : '';
+  const url = provider?.urlEditable && shownUrl.trim() !== provider.baseUrl ? shownUrl.trim() : undefined;
 
   useEffect(() => {
     void desktop?.aiPolicy().then((p) => setPolicy(parseAiPolicy(p)));
@@ -106,8 +108,7 @@ export function AiSettingsSection({ catalog, draft, onChange }: { catalog: Catal
                 type="text"
                 className="ai-url"
                 spellCheck={false}
-                value={draft.settings.url ?? ''}
-                placeholder={provider.baseUrl}
+                value={shownUrl}
                 onChange={(e) => setSettings({ ...draft.settings, url: e.target.value })}
                 onBlur={() => void test()}
               />

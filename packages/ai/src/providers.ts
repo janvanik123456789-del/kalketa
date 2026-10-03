@@ -47,7 +47,7 @@ export const PROVIDERS: readonly ProviderInfo[] = [
   },
   { id: 'lmstudio', name: 'LM Studio', api: 'openai-compatible', needsKey: false, local: true, baseUrl: 'http://127.0.0.1:1234', defaultModel: '', models: [] },
   { id: 'ollama', name: 'Ollama', api: 'openai-compatible', needsKey: false, local: true, baseUrl: 'http://127.0.0.1:11434', defaultModel: '', models: [] },
-  { id: 'server', name: 'Other server', api: 'openai-compatible', needsKey: false, local: true, baseUrl: 'http://127.0.0.1:8080', urlEditable: true, defaultModel: '', models: [] },
+  { id: 'server', name: 'Other server', api: 'openai-compatible', needsKey: false, local: true, baseUrl: 'http://127.0.0.1:8080/v1', urlEditable: true, defaultModel: '', models: [] },
 ];
 
 /** An address a server may have: http or https, nothing else. */

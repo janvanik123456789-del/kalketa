@@ -52,8 +52,18 @@ function cellText(cell: Cell, unit: { factor: number; offset?: number } | undefi
   return '?';
 }
 
+/**
+ * A row by its key ("IPE 200"), not by a number: numbers of table rows and of
+ * calculation lines are easily mixed up.
+ */
+function rowName(table: Table | undefined, row: number): string {
+  const key = table ? table.columns.findIndex((c) => c.name === table.key) : -1;
+  const cell = table?.rows[row]?.[key];
+  return cell && cell.type === 'text' ? `"${cell.value}"` : `row #${row + 1}`;
+}
+
 function tablesSeen(result: SheetResult): string[] {
-  // Rows each line read: "line 8 read Profily_IPE row 6".
+  // Rows each line read: 'line 8 read Profily_IPE "IPE 200"'.
   const used = new Map<string, Set<number>>();
   const reads: string[] = [];
   for (const s of result.statements) {
@@ -62,11 +72,13 @@ function tablesSeen(result: SheetResult): string[] {
         if (!used.has(read.table)) used.set(read.table, new Set());
         used.get(read.table)!.add(row);
       }
-      reads.push(`line ${s.statement.span.line} read ${read.table} row ${read.rows.map((r) => r + 1).join(' and ')}${read.column ? ` column ${read.column}` : ''}`);
+      const table = result.tables.get(read.table);
+      const rows = read.rows.map((r) => rowName(table, r)).join(read.weight !== undefined ? ' and (interpolated) ' : ' and ');
+      reads.push(`line ${s.statement.span.line} read ${read.table} ${rows}${read.column ? ` column ${read.column}` : ''}`);
     }
   }
   const tables = [...result.tables.values()].flatMap((table) => tableText(table, used.get(table.name) ?? new Set()));
-  return tables.length > 0 ? ['Tables of the sheet (rows numbered from 1):', ...tables, ...[...new Set(reads)]] : [];
+  return tables.length > 0 ? ['Tables of the sheet (a row is named by its key, never by a line number):', ...tables, ...[...new Set(reads)]] : [];
 }
 
 function tableText(table: Table, used: ReadonlySet<number>): string[] {
@@ -75,7 +87,7 @@ function tableText(table: Table, used: ReadonlySet<number>): string[] {
   const head = `Table ${table.name}, ${table.rows.length} rows, key ${table.key}${source}`;
   const whole = table.rows.length <= WHOLE_TABLE_ROWS;
   const shown = table.rows.map((row, i) => ({ row, i })).filter(({ i }) => whole || i < EXCERPT_ROWS || used.has(i));
-  const lines = shown.map(({ row, i }) => `${i + 1}: ${row.map((cell, c) => cellText(cell, table.columns[c]?.resolvedUnit)).join(' | ')}`);
+  const lines = shown.map(({ row }) => row.map((cell, c) => cellText(cell, table.columns[c]?.resolvedUnit)).join(' | '));
   return [head, `columns: ${columns.join(' | ')}`, ...lines, ...(whole ? [] : [`(${table.rows.length - shown.length} more rows not shown)`])];
 }
 

@@ -10,6 +10,8 @@
  *   **bold**, *italic*, `code`
  *   ``` lines shown as written ```   (e.g. proposed lines of a calculation)
  *     - an indented bullet is a second level
+ *   | a | b |  with a |---|---:| line below: a table (colons align the column)
+ *   ---   alone on a line: a dividing line
  *
  * Everything else is shown as text; no HTML from the notes is ever passed on.
  */
@@ -26,8 +28,20 @@ type Block =
   | { readonly kind: 'paragraph'; readonly lines: string[] }
   | { readonly kind: 'list'; readonly items: { readonly text: string; readonly sub: boolean }[] }
   | { readonly kind: 'code'; readonly lines: string[] }
+  | { readonly kind: 'table'; readonly head: string[]; readonly align: Align[]; readonly rows: string[][] }
+  | { readonly kind: 'rule' }
   | { readonly kind: 'quote'; readonly lines: string[] }
   | { readonly kind: 'figure'; readonly caption: string; readonly path: string };
+
+type Align = 'left' | 'right' | 'center';
+
+/** |---|:---:|---:| under the head of a table. */
+const TABLE_RULE = /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$/;
+const TABLE_ROW = /^\s*\|.*\|\s*$/;
+
+function cells(line: string): string[] {
+  return line.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map((c) => c.trim());
+}
 
 const FIGURE = /^!\[([^\]]*)\]\(([^)\s]+)\)\s*(?:\{[^}]*\})?\s*$/;
 
@@ -45,6 +59,15 @@ export function notesHtml(text: string, options: NotesOptions = {}): string {
           return `<ul>${block.items.map((item) => `<li${item.sub ? ' class="sub"' : ''}>${inline(item.text)}</li>`).join('')}</ul>`;
         case 'code':
           return `<pre class="code"><code>${esc(block.lines.join('\n'))}</code></pre>`;
+        case 'rule':
+          return '<hr>';
+        case 'table': {
+          // Only the three fixed alignments ever reach the style attribute.
+          const cell = (tag: string, text: string, i: number) => `<${tag}${block.align[i] && block.align[i] !== 'left' ? ` style="text-align:${block.align[i]}"` : ''}>${inline(text)}</${tag}>`;
+          const head = `<tr>${block.head.map((h, i) => cell('th', h, i)).join('')}</tr>`;
+          const rows = block.rows.map((r) => `<tr>${block.head.map((_, i) => cell('td', r[i] ?? '', i)).join('')}</tr>`).join('');
+          return `<table class="md"><thead>${head}</thead><tbody>${rows}</tbody></table>`;
+        }
         case 'quote':
           return `<blockquote class="citation">${block.lines.map(inline).join('<br>')}</blockquote>`;
         case 'figure': {
@@ -71,7 +94,9 @@ function parseBlocks(text: string): Block[] {
   };
 
   let code: string[] | undefined;
-  for (const raw of text.split(/\r?\n/)) {
+  const lines = text.split(/\r?\n/);
+  for (let n = 0; n < lines.length; n++) {
+    const raw = lines[n]!;
     const line = raw.trimEnd();
     // ``` opens and closes a block shown as written (e.g. proposed lines of a calculation).
     if (/^\s*```/.test(line)) {
@@ -90,6 +115,23 @@ function parseBlocks(text: string): Block[] {
     }
     if (line.trim() === '') {
       flush();
+      continue;
+    }
+    // A table: a row of cells with a |---| line under it, then rows until one is not a row.
+    if (TABLE_ROW.test(line) && TABLE_RULE.test(lines[n + 1] ?? '')) {
+      flush();
+      const head = cells(line);
+      const align = cells(lines[n + 1]!).map((c): Align => (c.startsWith(':') && c.endsWith(':') ? 'center' : c.endsWith(':') ? 'right' : 'left'));
+      const rows: string[][] = [];
+      n += 2;
+      while (n < lines.length && TABLE_ROW.test(lines[n]!)) rows.push(cells(lines[n++]!));
+      n--;
+      blocks.push({ kind: 'table', head, align, rows });
+      continue;
+    }
+    if (/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(line)) {
+      flush();
+      blocks.push({ kind: 'rule' });
       continue;
     }
     const heading = /^(#{1,3})\s+(.*)$/.exec(line);
@@ -144,6 +186,10 @@ export const NOTES_CSS = `.notes { font-size: 10.5pt; line-height: 1.5; }
 .notes h2, .notes h3, .notes h4 { margin: 4mm 0 1.5mm; }
 .notes p { margin: 1.5mm 0; }
 .notes ul { margin: 1.5mm 0; padding-left: 6mm; }
+.notes table.md { border-collapse: collapse; margin: 2mm 0; font-size: 9.5pt; }
+.notes table.md th, .notes table.md td { border: 1px solid #c5ccd5; padding: 0.8mm 2mm; }
+.notes table.md th { background: #f1f3f6; }
+.notes hr { border: none; border-top: 1px solid #c5ccd5; margin: 3mm 0; }
 .notes li.sub { margin-left: 5mm; list-style-type: circle; }
 .notes code { font-family: Consolas, 'Courier New', monospace; font-size: 0.95em; }
 .notes pre.code { margin: 2mm 0; padding: 1.5mm 2mm; background: #f3f5f8; border: 1px solid #d5dae1; white-space: pre-wrap; }

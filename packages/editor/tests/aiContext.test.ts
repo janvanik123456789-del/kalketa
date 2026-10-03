@@ -34,7 +34,10 @@ describe('what the AI sees of the tables', () => {
     const text = findings.join('\n');
     expect(text).toContain('Table Profily_IPE, 11 rows, key oznaceni; source: Průřezové charakteristiky');
     expect(text).toContain('columns: oznaceni | h [mm] | b [mm] | A [cm²] | I_y [cm⁴] | W_y [cm³] | G [kg/m]');
-    expect(text).toContain('1: IPE 80 | 80 | 46 | 7.64 | 80.14 | 20.03 | 6');
-    expect(findings.some((f) => /^line 8 read Profily_IPE row \d+$/.test(f))).toBe(true);
+    expect(findings).toContain('IPE 80 | 80 | 46 | 7.64 | 80.14 | 20.03 | 6');
+    expect(findings).toContain('line 8 read Profily_IPE "IPE 200"');
+    expect(findings).toContain('line 13 read Profily_IPE "IPE 200" column I_y');
+    expect(findings).toContain('line 23 read Profily_IPE "IPE 220" column G');
+    expect(text).not.toMatch(/\brow \d/);
   });
 });

@@ -560,6 +560,7 @@ export const cs: Catalog = {
     'pdf.summary': 'Spojeno {joined} řádků do {paragraphs} odstavců, slov z proložených písmen: {words}, nadpisů: {headings}, odstraněno čísel stran: {pages}, popisků k obrázkům: {captions}.',
     'pdf.wordsHint': 'Slova složená z proložených písmen jsou v náhledu zvýrazněná. Zkontrolujte je: jednopísmenná předložka se mohla přilepit (např. „namáhánov daném“).',
     'pdf.suspects': 'Řádky, které vypadají jako zbytky obrázků (zaškrtnuté se odstraní)',
+    'pdf.formulas': 'Vzorce, které PDF nedokázalo zkopírovat (zaškrtnuté se odstraní; lepší je nahradit je výřezem obrázku nebo přepisem)',
     'pdf.preview': 'Náhled',
     'word.noHeadings': 'Podklady nemají nadpisy, takže model z nich nemůže citovat. Nadpisy doplníte stylem odstavce, u textu z PDF tlačítkem Vyčistit text z PDF.',
     'word.caption': 'Popisek obrázku',

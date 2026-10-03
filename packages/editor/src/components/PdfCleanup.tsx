@@ -6,7 +6,7 @@
  * a one-letter preposition may have been glued to one.
  */
 import { useMemo, useState } from 'react';
-import { t, type Catalog } from '@kalketa/i18n';
+import { t, type Catalog, type UiKey } from '@kalketa/i18n';
 import { NOTES_CSS, notesHtml } from '@kalketa/render';
 import { applySuspects, cleanPdfText } from '../logic/pdfText.js';
 import { Dialog } from './Dialogs.js';
@@ -24,8 +24,28 @@ function markWords(html: string, words: readonly string[]): string {
 
 export function PdfCleanupDialog({ catalog, text, resolveFile, onApply, onClose }: { catalog: Catalog; text: string; resolveFile: (path: string) => string | undefined; onApply(text: string): void; onClose(): void }) {
   const cleaned = useMemo(() => cleanPdfText(text), [text]);
-  // Every suspect line is ticked to go; the user unticks what is real text.
-  const [drop, setDrop] = useState<ReadonlySet<number>>(() => new Set(cleaned.suspects.map((_, i) => i)));
+  // Remains of figures are ticked to go (the user unticks what is real text); formulas stay unless ticked.
+  const [drop, setDrop] = useState<ReadonlySet<number>>(() => new Set(cleaned.suspects.flatMap((s, i) => (s.kind === 'scraps' ? [i] : []))));
+  const toggle = (i: number, on: boolean) =>
+    setDrop((d) => {
+      const next = new Set(d);
+      if (on) next.add(i);
+      else next.delete(i);
+      return next;
+    });
+  const list = (kind: 'scraps' | 'formula', heading: UiKey) =>
+    cleaned.suspects.some((s) => s.kind === kind) && (
+      <div className={`pdf-suspects ${kind}`}>
+        <h4>{t(catalog, heading)}</h4>
+        {cleaned.suspects.map((s, i) =>
+          s.kind === kind ? (
+            <label key={i} className="pdf-suspect">
+              <input type="checkbox" checked={drop.has(i)} onChange={(e) => toggle(i, e.target.checked)} /> <code>{s.text}</code>
+            </label>
+          ) : null,
+        )}
+      </div>
+    );
   const result = applySuspects(cleaned, drop);
   const s = cleaned.stats;
 
@@ -43,28 +63,8 @@ export function PdfCleanupDialog({ catalog, text, resolveFile, onApply, onClose 
           })}
         </p>
         {s.words > 0 && <p className="hint">{t(catalog, 'pdf.wordsHint')}</p>}
-        {cleaned.suspects.length > 0 && (
-          <div className="pdf-suspects">
-            <h4>{t(catalog, 'pdf.suspects')}</h4>
-            {cleaned.suspects.map((line, i) => (
-              <label key={i} className="pdf-suspect">
-                <input
-                  type="checkbox"
-                  checked={drop.has(i)}
-                  onChange={(e) =>
-                    setDrop((d) => {
-                      const next = new Set(d);
-                      if (e.target.checked) next.add(i);
-                      else next.delete(i);
-                      return next;
-                    })
-                  }
-                />{' '}
-                <code>{line}</code>
-              </label>
-            ))}
-          </div>
-        )}
+        {list('scraps', 'pdf.suspects')}
+        {list('formula', 'pdf.formulas')}
         <h4>{t(catalog, 'pdf.preview')}</h4>
         <div className="pdf-preview page-like">
           <style>{NOTES_CSS}</style>

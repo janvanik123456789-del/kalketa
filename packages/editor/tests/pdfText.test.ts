@@ -43,7 +43,10 @@ describe('tidying text from a PDF', () => {
   });
 
   it('lists remains of figures and drops only those the user ticks', () => {
-    expect(cleaned.suspects).toEqual(['I l l l l ^ - m H x', 'a) b)']);
+    expect(cleaned.suspects).toEqual([
+      { text: 'I l l l l ^ - m H x', kind: 'scraps' },
+      { text: 'a) b)', kind: 'scraps' },
+    ]);
     expect(shown).not.toContain('I l l l');
     const kept = applySuspects(cleaned, new Set([0]));
     expect(kept).toContain('\n\na) b)');
@@ -62,5 +65,47 @@ describe('spaced-out letters', () => {
     expect(joinSpacedLetters('značí s e M 0').text).toBe('značí s e M 0');
     expect(joinSpacedLetters('síly k o l m é na směr').text).toBe('síly kolmé na směr');
     expect(joinSpacedLetters('a v něm').text).toBe('a v něm');
+  });
+});
+
+describe('numbered cases and formulas', () => {
+  const copied = [
+    '7. PROSTÝ OHYB',
+    '7.5 Grafický průběh',
+    'Úvodní věta podkapitoly.',
+    '1. Vetknutý nosník s osamělou silou na volném konci',
+    'Text prvního případu.',
+    'F-l3 3-E-ľ (45)',
+    '2. Vetknutý nosník se spojitým, rovnoměrně rozloženým břemenem v celé délce',
+    'Text druhého případu, který odkazuje na podmínku (39).',
+    '3. Prostý nosník na dvou podporách s jedinou osamělou silou',
+    'působící v obecné poloze mezi podporami',
+    'Mějme prostý nosník.',
+    '8. KRUT',
+    'Text další kapitoly.',
+  ].join('\n\n');
+  const cleaned = cleanPdfText(copied);
+  const shown = applySuspects(cleaned, new Set());
+
+  it('puts cases numbered on their own under the subchapter, and the next chapter at the top', () => {
+    expect(shown.split('\n').filter((l) => l.startsWith('#'))).toEqual([
+      '# 7. PROSTÝ OHYB',
+      '## 7.5 Grafický průběh',
+      '### 1. Vetknutý nosník s osamělou silou na volném konci',
+      '### 2. Vetknutý nosník se spojitým, rovnoměrně rozloženým břemenem v celé délce',
+      '### 3. Prostý nosník na dvou podporách s jedinou osamělou silou působící v obecné poloze mezi podporami',
+      '# 8. KRUT',
+    ]);
+  });
+
+  it('keeps a garbled formula apart and lists it, not to be removed unless the user says so', () => {
+    expect(cleaned.suspects).toEqual([{ text: 'F-l3 3-E-ľ (45)', kind: 'formula' }]);
+    expect(shown).toContain('\n\nF-l3 3-E-ľ (45)\n\n');
+    expect(shown).toContain('odkazuje na podmínku (39).');
+  });
+
+  it('gives numbered headings already there their level, with their section ids', () => {
+    const notes = '# 7. PROSTÝ OHYB {#T1}\n\n## 7.5 Grafický průběh {#T6}\n\n# 1. Vetknutý nosník {#T7}\n\nText.\n';
+    expect(cleanPdfText(notes).text).toBe('# 7. PROSTÝ OHYB {#T1}\n\n## 7.5 Grafický průběh {#T6}\n\n### 1. Vetknutý nosník {#T7}\n\nText.\n');
   });
 });

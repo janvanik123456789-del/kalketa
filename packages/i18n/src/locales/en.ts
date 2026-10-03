@@ -560,6 +560,7 @@ export const en: Catalog = {
     'pdf.summary': '{joined} lines joined into {paragraphs} paragraphs, words from spaced-out letters: {words}, headings: {headings}, page numbers removed: {pages}, picture captions: {captions}.',
     'pdf.wordsHint': 'Words put together from spaced-out letters are highlighted in the preview. Check them: a one-letter preposition may have been glued to one.',
     'pdf.suspects': 'Lines that look like remains of figures (ticked ones are removed)',
+    'pdf.formulas': 'Formulas the PDF could not copy (ticked ones are removed; better replace them with a picture cut-out or a rewrite)',
     'pdf.preview': 'Preview',
     'word.noHeadings': 'The sources have no headings, so the model cannot cite them. Add headings with the paragraph style, or for text from a PDF with Tidy text from a PDF.',
     'word.caption': 'Picture caption',

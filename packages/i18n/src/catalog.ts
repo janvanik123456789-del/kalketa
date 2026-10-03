@@ -406,6 +406,7 @@ export const UI_KEYS = [
   'pdf.summary',
   'pdf.wordsHint',
   'pdf.suspects',
+  'pdf.formulas',
   'pdf.preview',
   'word.noHeadings',
   'word.caption',

@@ -54,7 +54,11 @@ export function AiSettingsSection({ catalog, draft, onChange }: { catalog: Catal
   // A model picked earlier stays in the list even when the provider no longer offers it.
   const shown = provider && !choices.some((m) => m.id === draft.settings.model) ? [{ id: draft.settings.model, name: draft.settings.model || t(catalog, 'ai.firstModel') }, ...choices] : choices;
 
-  async function test() {
+  /**
+   * Asks for the models; with `ask`, a model of a local server also answers one
+   * short question, so the user sees it work (Claude is not asked: answers cost).
+   */
+  async function test(ask = false) {
     if (!provider) return;
     setStatus(t(catalog, 'ai.testing'));
     if (draft.key.trim()) {
@@ -67,7 +71,19 @@ export function AiSettingsSection({ catalog, draft, onChange }: { catalog: Catal
       setStatus(t(catalog, 'ai.connected', { count: String(result.models.length) }));
       // A local server offers what it has: without a choice yet, its first model.
       const first = result.models.find((m) => modelAllowed(policy, m.id));
-      if (first && !result.models.some((m) => m.id === draft.settings.model)) onChange({ ...draft, key: '', settings: { ...draft.settings, provider: provider.id, model: first.id } });
+      const keep = result.models.some((m) => m.id === draft.settings.model);
+      if (first && !keep) onChange({ ...draft, key: '', settings: { ...draft.settings, provider: provider.id, model: first.id } });
+      const model = keep ? draft.settings.model : first?.id;
+      if (ask && model && provider.api === 'openai-compatible') {
+        setStatus(t(catalog, 'ai.asking', { model }));
+        const answer = await desktop!.aiTry(provider.id, model, url);
+        if (answer.ok) {
+          const seconds = new Intl.NumberFormat(catalog.locale, { maximumFractionDigits: 1 }).format(answer.ms / 1000);
+          setStatus(t(catalog, 'ai.answered', { model, seconds, reply: answer.reply || '…' }));
+        } else {
+          setStatus(t(catalog, `ai.problem.${answer.problem}` as UiKey, { detail: answer.detail ?? '', name: nameOf(provider) }));
+        }
+      }
     } else {
       setStatus(t(catalog, `ai.problem.${result.problem}` as UiKey, { detail: result.detail ?? '', name: nameOf(provider) }));
     }
@@ -148,7 +164,7 @@ export function AiSettingsSection({ catalog, draft, onChange }: { catalog: Catal
             </>
           )}
           <div className="ai-actions">
-            <button type="button" className="ai-test" onClick={() => void test()} disabled={provider.needsKey && !draft.key.trim() && !keyState?.hasKey}>
+            <button type="button" className="ai-test" onClick={() => void test(true)} disabled={provider.needsKey && !draft.key.trim() && !keyState?.hasKey}>
               {t(catalog, 'ai.test')}
             </button>
             {keyState?.hasKey && (

@@ -1237,6 +1237,10 @@ async function aiSettingsWithRealInput(contents: Electron.WebContents, picture: 
   await pressKey('Down');
   await waitForStatus('Připojeno');
   const other = await read();
+  // The button also asks the model a short question, so the user sees it answer.
+  await clickOn('.ai-test');
+  await waitForStatus('odpověděl');
+  const answered = await read();
   await clickOn('.ai-url');
   await pressKey('A', ['control']);
   await typeText('ftp://server');
@@ -1244,7 +1248,7 @@ async function aiSettingsWithRealInput(contents: Electron.WebContents, picture: 
   await waitForStatus('http://');
   const wrongUrl = await read();
   // What the dialog showed at each step, for finding a failed check.
-  await writeFile(picture.replace(/[.]png$/, '-ai-settings.json'), JSON.stringify({ off, claude, bad, good, reopened, forgotten, local, absent, other, wrongUrl }, null, 2));
+  await writeFile(picture.replace(/[.]png$/, '-ai-settings.json'), JSON.stringify({ off, claude, bad, good, reopened, forgotten, local, absent, other, answered, wrongUrl }, null, 2));
   await pressKey('Escape');
   await pause(300);
 
@@ -1260,6 +1264,7 @@ async function aiSettingsWithRealInput(contents: Electron.WebContents, picture: 
     local.providers.some((p) => p.startsWith('LM Studio') && p.includes('běží')) && local.providers.some((p) => p.startsWith('Ollama') && !p.includes('běží')) &&
     absent.provider === 'ollama' && absent.status.includes('Ollama v tomto počítači neběží') &&
     other.provider === 'server' && other.model === 'local-smoke-7b' && other.url === 'http://127.0.0.1:8080/v1' && other.providers.some((p) => p.startsWith('Jiný server') && p.includes('běží')) &&
+    answered.status.includes('local-smoke-7b odpověděl') && answered.status.includes('„OK“') &&
     wrongUrl.url === 'ftp://server' && wrongUrl.status.includes('musí začínat http://')
   );
 }

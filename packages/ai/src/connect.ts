@@ -92,6 +92,43 @@ async function localModels(provider: ProviderInfo, fetchFn: typeof fetch, url?: 
   }
 }
 
+/** The model answered (or why not), and how long it took. */
+export type AnswerResult = { readonly ok: true; readonly reply: string; readonly ms: number } | { readonly ok: false; readonly problem: ConnectionProblem; readonly detail?: string };
+
+/** A model may first have to be loaded into memory, and it thinks before it answers. */
+const ANSWER_TIMEOUT_MS = 180_000;
+
+/**
+ * Asks a model of a local server one short question, so the user sees that it
+ * really answers. Only for servers with the OpenAI-style API: they cost nothing.
+ */
+export async function tryModel(providerId: string, model: string, transport: Transport = {}, url?: string): Promise<AnswerResult> {
+  const provider = providerById(providerId);
+  if (!provider || provider.api !== 'openai-compatible') return { ok: false, problem: 'noProvider' };
+  if (provider.urlEditable && url !== undefined && !serverUrl(url)) return { ok: false, problem: 'badUrl' };
+  const started = Date.now();
+  let response: Response;
+  try {
+    response = await (transport.fetch ?? fetch)(`${localUrl(provider, url)}/v1/chat/completions`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ model, messages: [{ role: 'user', content: 'Reply with the single word OK.' }], max_tokens: 400 }),
+      signal: AbortSignal.timeout(ANSWER_TIMEOUT_MS),
+    });
+  } catch (error) {
+    return error instanceof Error && error.name === 'TimeoutError' ? { ok: false, problem: 'provider', detail: 'timeout' } : { ok: false, problem: 'notRunning' };
+  }
+  if (!response.ok) return { ok: false, problem: 'provider', detail: `${response.status} ${(await response.text().catch(() => '')).slice(0, 200)}`.trim() };
+  try {
+    const body = (await response.json()) as { choices?: { message?: { content?: unknown } }[] };
+    const content = body.choices?.[0]?.message?.content;
+    if (!body.choices?.length) return { ok: false, problem: 'provider', detail: 'no answer' };
+    return { ok: true, reply: typeof content === 'string' ? content.trim().slice(0, 200) : '', ms: Date.now() - started };
+  } catch {
+    return { ok: false, problem: 'provider', detail: 'not an answer' };
+  }
+}
+
 function problemOf(error: unknown): { problem: ConnectionProblem; detail?: string } {
   if (error instanceof Anthropic.AuthenticationError) return { problem: 'badKey' };
   if (error instanceof Anthropic.PermissionDeniedError) return { problem: 'denied' };

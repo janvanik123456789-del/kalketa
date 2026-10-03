@@ -119,6 +119,8 @@ export interface DesktopBridge {
   aiForgetKey(provider: string): Promise<AiKeyState>;
   /** Asks the provider for its models with the key the application holds (or at the address given). */
   aiTest(provider: string, url?: string): Promise<AiConnectionResult>;
+  /** One short question to a model of a local server: its reply and how long it took. */
+  aiTry(provider: string, model: string, url?: string): Promise<{ readonly ok: true; readonly reply: string; readonly ms: number } | { readonly ok: false; readonly problem: string; readonly detail?: string }>;
   /** Local servers running now, with their models, by provider. */
   aiDiscover(): Promise<Record<string, readonly { readonly id: string; readonly name: string }[]>>;
 }

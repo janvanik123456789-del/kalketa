@@ -38,6 +38,11 @@ const fakeApi = createServer((request, response) => {
     response.end(JSON.stringify({ object: 'list', data: [{ id: 'local-smoke-7b', object: 'model' }, { id: 'text-embedding-smoke', object: 'model' }] }));
     return;
   }
+  if (request.url === '/local/v1/chat/completions' && request.method === 'POST') {
+    response.writeHead(200, { 'content-type': 'application/json' });
+    response.end(JSON.stringify({ object: 'chat.completion', choices: [{ index: 0, message: { role: 'assistant', content: 'OK' }, finish_reason: 'stop' }] }));
+    return;
+  }
   const good = request.headers['x-api-key'] === 'sk-smoke-good';
   response.writeHead(good ? 200 : 401, { 'content-type': 'application/json' });
   const model = (id, name) => ({ type: 'model', id, display_name: name, created_at: '2026-01-01T00:00:00Z', capabilities: null, max_input_tokens: null, max_tokens: null });

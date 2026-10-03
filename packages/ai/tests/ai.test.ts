@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { describe, expect, it } from 'vitest';
 import { AI_OFF, applyPolicy, allowedProviders, DEFAULT_AI_SETTINGS, parseAiPolicy, parseAiSettings, PROVIDERS } from '@kalketa/ai';
-import { discoverLocal, testConnection, type ClientFactory } from '@kalketa/ai/connect';
+import { discoverLocal, testConnection, tryModel, type ClientFactory } from '@kalketa/ai/connect';
 
 describe('AI settings', () => {
   it('are off until the user picks a provider', () => {
@@ -109,6 +109,20 @@ describe('local servers', () => {
     expect(await testConnection('lmstudio', undefined, { fetch: fetchFn }, 'http://127.0.0.1:9000')).toEqual({ ok: false, problem: 'notRunning' });
     expect(parseAiSettings({ provider: 'server', url: 'http://10.0.0.5:8080/' })).toEqual({ provider: 'server', model: '', url: 'http://10.0.0.5:8080' });
     expect(parseAiSettings({ provider: 'server', url: 'file:///c:/x' })).toEqual({ provider: 'server', model: '' });
+  });
+
+  it('let the user see that the model answers', async () => {
+    const asked: string[] = [];
+    const fetchFn = (async (url: string | URL | Request, init?: RequestInit) => {
+      asked.push(`${String(url)} ${String(init?.body)}`);
+      return new Response(JSON.stringify({ choices: [{ message: { role: 'assistant', content: ' OK ' } }] }), { status: 200 });
+    }) as typeof fetch;
+    const result = await tryModel('server', 'qwen', { fetch: fetchFn }, 'http://127.0.0.1:8080/v1');
+    expect(result).toMatchObject({ ok: true, reply: 'OK' });
+    expect(asked[0]).toContain('http://127.0.0.1:8080/v1/chat/completions');
+    expect(asked[0]).toContain('"model":"qwen"');
+    // Claude is not asked: every answer costs.
+    expect(await tryModel('anthropic', 'claude-opus-5-5', { fetch: fetchFn })).toEqual({ ok: false, problem: 'noProvider' });
   });
 
   it('keep an empty model until the server is asked', () => {

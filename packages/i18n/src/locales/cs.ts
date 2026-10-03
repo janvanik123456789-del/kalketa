@@ -543,6 +543,8 @@ export const cs: Catalog = {
     'ai.getKey': 'Jak získat klíč',
     'ai.testing': 'Zkouším připojení…',
     'ai.connected': 'Připojeno. Dostupné modely: {count}.',
+    'ai.asking': 'Připojeno. Ptám se modelu {model}… První odpověď může chvíli trvat, než se model načte.',
+    'ai.answered': 'Model {model} odpověděl za {seconds} s: „{reply}“',
     'ai.problem.noProvider': 'Tento poskytovatel není povolen.',
     'ai.problem.noKey': 'Zadejte API klíč.',
     'ai.problem.badKey': 'Poskytovatel klíč nepřijal. Zkontrolujte, že je celý a platný.',

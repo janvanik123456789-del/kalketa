@@ -543,6 +543,8 @@ export const en: Catalog = {
     'ai.getKey': 'How to get a key',
     'ai.testing': 'Testing the connection…',
     'ai.connected': 'Connected. Models available: {count}.',
+    'ai.asking': 'Connected. Asking the model {model}… The first answer may take a while until the model is loaded.',
+    'ai.answered': 'The model {model} answered in {seconds} s: “{reply}”',
     'ai.problem.noProvider': 'This provider is not allowed.',
     'ai.problem.noKey': 'Enter an API key.',
     'ai.problem.badKey': 'The provider did not accept the key. Check that it is complete and valid.',

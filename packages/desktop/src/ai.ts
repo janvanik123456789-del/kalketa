@@ -14,7 +14,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { allowedProviders, NO_POLICY, parseAiPolicy, providerById, type AiPolicy } from '@kalketa/ai';
-import { discoverLocal, testConnection, type ConnectionResult } from '@kalketa/ai/connect';
+import { discoverLocal, testConnection, tryModel, type AnswerResult, type ConnectionResult } from '@kalketa/ai/connect';
 
 export interface AiKeyState {
   /** A key is set for this provider. */
@@ -123,6 +123,12 @@ export function registerAiBridge(fromEditor: (event: IpcMainInvokeEvent) => unkn
     fromEditor(event);
     const permitted = new Set(allowedProviders(readPolicy()).map((p) => p.id));
     return Object.fromEntries(Object.entries(await discoverLocal()).filter(([id]) => permitted.has(id)));
+  });
+
+  // One short question to a model of a local server, so the user sees it answer.
+  ipcMain.handle('kalketa:ai-try', (event, provider: unknown, model: unknown, url: unknown): Promise<AnswerResult> => {
+    fromEditor(event);
+    return tryModel(allowed(provider), typeof model === 'string' ? model : '', {}, typeof url === 'string' ? url : undefined);
   });
 
   ipcMain.handle('kalketa:ai-test', async (event, provider: unknown, url: unknown): Promise<ConnectionResult> => {

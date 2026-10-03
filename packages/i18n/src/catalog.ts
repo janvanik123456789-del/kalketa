@@ -353,6 +353,8 @@ export const UI_KEYS = [
   'ai.getKey',
   'ai.testing',
   'ai.connected',
+  'ai.asking',
+  'ai.answered',
   'ai.problem.noProvider',
   'ai.problem.noKey',
   'ai.problem.badKey',

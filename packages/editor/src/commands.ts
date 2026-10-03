@@ -30,7 +30,7 @@ export interface CommandContext {
   readonly canUndo: boolean;
   readonly canRedo: boolean;
   readonly zoomChoice: string;
-  readonly pane: 'details' | 'tables' | 'layers' | 'none';
+  readonly pane: 'details' | 'tables' | 'layers' | 'chat' | 'none';
   readonly tableEditor: boolean;
   /** Number of open calculations. */
   readonly documents: number;
@@ -56,7 +56,7 @@ export interface CommandContext {
     deleteLine(): void;
     setZoom(choice: string): void;
     zoomBy(direction: 1 | -1): void;
-    setPane(pane: 'details' | 'tables' | 'layers' | 'none'): void;
+    setPane(pane: 'details' | 'tables' | 'layers' | 'chat' | 'none'): void;
     toggleTableEditor(): void;
     customize(): void;
     insert(kind: 'heading' | 'text' | 'definition' | 'check' | 'pick' | 'pageBreak' | 'clear' | 'chart'): void;
@@ -111,6 +111,7 @@ export function buildCommands(ctx: CommandContext): Map<string, Command> {
   add('view.paneDetails', 'view', () => a.setPane('details'), { checked: ctx.pane === 'details' });
   add('view.paneTables', 'view', () => a.setPane('tables'), { checked: ctx.pane === 'tables' });
   add('view.paneLayers', 'view', () => a.setPane('layers'), { checked: ctx.pane === 'layers' });
+  add('view.paneChat', 'view', () => a.setPane('chat'), { checked: ctx.pane === 'chat' });
   add('view.paneNone', 'view', () => a.setPane('none'), { checked: ctx.pane === 'none' });
   add('view.tableEditor', 'view', a.toggleTableEditor, { checked: ctx.tableEditor });
   add('view.customize', 'view', a.customize);

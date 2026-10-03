@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { describe, expect, it } from 'vitest';
-import { AI_OFF, applyPolicy, allowedProviders, DEFAULT_AI_SETTINGS, parseAiPolicy, parseAiSettings, PROVIDERS } from '@kalketa/ai';
-import { discoverLocal, testConnection, tryModel, type ClientFactory } from '@kalketa/ai/connect';
+import { AI_OFF, applyPolicy, briefing, languageName, allowedProviders, DEFAULT_AI_SETTINGS, parseAiPolicy, parseAiSettings, PROVIDERS } from '@kalketa/ai';
+import { chat, discoverLocal, testConnection, tryModel, type ClientFactory } from '@kalketa/ai/connect';
 
 describe('AI settings', () => {
   it('are off until the user picks a provider', () => {
@@ -127,5 +127,69 @@ describe('local servers', () => {
 
   it('keep an empty model until the server is asked', () => {
     expect(parseAiSettings({ provider: 'lmstudio' })).toEqual({ provider: 'lmstudio', model: '' });
+  });
+});
+
+describe('briefing', () => {
+  const sheet = { title: 'Beam', source: 'L := 6 m\nM := q·L²/8', findings: ['line 2: error E-UNDEFINED: q is not defined'] };
+
+  it('is English, asks for answers in the user language and numbers the lines', () => {
+    const text = briefing({ language: 'cs', sheet, languageGuide: 'Built-in functions: sqrt(x).' });
+    expect(languageName('cs')).toBe('Czech');
+    expect(text).toContain('Answer in Czech');
+    expect(text).toContain('  1 | L := 6 m');
+    expect(text).toContain('  2 | M := q·L²/8');
+    expect(text).toContain('line 2: error E-UNDEFINED');
+    expect(text).toContain('Built-in functions: sqrt(x).');
+    expect(text).toContain('never change the calculation');
+  });
+
+  it('puts the company rules last', () => {
+    const text = briefing({ language: 'en', sheet: { ...sheet, findings: [] }, companyInstructions: 'Eurocodes with Czech national annexes.' });
+    expect(text.trimEnd().endsWith('Eurocodes with Czech national annexes.')).toBe(true);
+    expect(text).toContain('no errors and no failed checks');
+  });
+});
+
+describe('chat with a local server', () => {
+  const streaming = (events: string[], seen: { body?: string } = {}): typeof fetch =>
+    (async (_url: string | URL | Request, init?: RequestInit) => {
+      seen.body = String(init?.body);
+      const bytes = new TextEncoder().encode(events.join(''));
+      // Arrives in two pieces, split inside an event.
+      const body = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(bytes.slice(0, 25));
+          controller.enqueue(bytes.slice(25));
+          controller.close();
+        },
+      });
+      return new Response(body, { status: 200, headers: { 'content-type': 'text/event-stream' } });
+    }) as typeof fetch;
+  const event = (delta: object) => `data: ${JSON.stringify({ model: 'qwen', choices: [{ delta }] })}\n\n`;
+
+  it('streams the answer piece by piece and reports thinking', async () => {
+    const pieces: string[] = [];
+    let thinking = 0;
+    const seen: { body?: string } = {};
+    const fetchFn = streaming([event({ reasoning_content: 'hmm' }), event({ content: 'Řádek 3 ' }), event({ content: 'počítá moment.' }), 'data: [DONE]\n\n'], seen);
+    const result = await chat(
+      { provider: 'server', model: 'qwen', system: 'SYSTEM', turns: [{ role: 'user', text: 'Co je M?' }], onText: (t) => pieces.push(t), onThinking: () => thinking++ },
+      { fetch: fetchFn },
+    );
+    expect(result).toEqual({ ok: true, text: 'Řádek 3 počítá moment.', model: 'qwen' });
+    expect(pieces).toEqual(['Řádek 3 ', 'počítá moment.']);
+    expect(thinking).toBe(1);
+    const body = JSON.parse(seen.body!) as { stream: boolean; messages: { role: string; content: string }[] };
+    expect(body.stream).toBe(true);
+    expect(body.messages).toEqual([{ role: 'system', content: 'SYSTEM' }, { role: 'user', content: 'Co je M?' }]);
+  });
+
+  it('says when the server does not run, or Claude has no key', async () => {
+    const down = (async () => {
+      throw new TypeError('fetch failed');
+    }) as typeof fetch;
+    expect(await chat({ provider: 'ollama', model: 'x', system: '', turns: [], onText: () => {} }, { fetch: down })).toEqual({ ok: false, problem: 'notRunning' });
+    expect(await chat({ provider: 'anthropic', model: 'claude-opus-5-5', system: '', turns: [], onText: () => {} })).toEqual({ ok: false, problem: 'noKey' });
   });
 });

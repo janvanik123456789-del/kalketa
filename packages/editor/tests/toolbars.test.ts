@@ -107,6 +107,13 @@ describe('toolbar layout', () => {
     expect(parseLayout(JSON.stringify(removed)).toolbars.find((t) => t.id === 'operators')!.items).not.toContain('sym:^');
   });
 
+  it('gives a layout from before the AI chat its button on the View toolbar', () => {
+    const old = defaultLayout();
+    const stored = JSON.stringify({ ...old, items: 2, toolbars: old.toolbars.map((t) => (t.id === 'view' ? { ...t, items: t.items.filter((i) => i !== 'view.paneChat') } : t)) });
+    const items = parseLayout(stored).toolbars.find((t) => t.id === 'view')!.items;
+    expect(items[items.indexOf('view.paneTables') + 1]).toBe('view.paneChat');
+  });
+
   it('survives damaged storage and adds new built-in toolbars', () => {
     expect(parseLayout(null)).toEqual(defaultLayout());
     expect(parseLayout('{nonsense')).toEqual(defaultLayout());

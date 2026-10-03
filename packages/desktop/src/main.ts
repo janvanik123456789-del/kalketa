@@ -410,7 +410,7 @@ async function runSmokeTest(pdfPath: string): Promise<void> {
     await writeFile(pdfPath, pdf);
     ok =
       state.bridge && state.sideBySide && state.menus === 7 && state.toolbars > 0 && state.rows > 10 && state.summary > 0 && state.math > 0 && reshapedColumns === 3 && pdf.length > 1000 &&
-      layers.newKeepsExample && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.charts && layers.functionBar && layers.revisions && layers.roots && layers.toolIcons && layers.aiSettings && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
+      layers.newKeepsExample && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.charts && layers.functionBar && layers.revisions && layers.roots && layers.toolIcons && layers.aiSettings && layers.aiChat && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
     console.log(JSON.stringify({ ok, ...state, reshapedColumns, layers, pdfBytes: pdf.length }));
   } catch (err) {
     console.log(JSON.stringify({ ok: false, error: (err as Error).message }));
@@ -1122,6 +1122,9 @@ async function layersWithRealInput(picture: string) {
   // (against the fake API of scripts/smoke.mjs); the key is remembered encrypted and forgotten again.
   const aiSettings = await aiSettingsWithRealInput(contents, picture);
 
+  // The AI chat in the side pane, with the other server (the fake one) picked in Settings.
+  const aiChat = await aiChatWithRealInput(contents, picture);
+
   // A file whose AI notes an AI wrote: they have a tab, can only be read, and cannot be deleted.
   const aiFile = process.env['KALKETA_SMOKE_AI'];
   let aiReadOnly = false;
@@ -1159,7 +1162,52 @@ async function layersWithRealInput(picture: string) {
     blocksOk = shown.errors === 0 && shown.text.includes('Prosty nosnik 1.2') && shown.text.includes('45');
     await takePicture(picture.replace(/[.]png$/, '-blocks.png'));
   }
-  return { ...state, newKeepsExample, citations, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, toolIcons, aiSettings, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, canvasOk, besideText, pictures, blocksOk };
+  return { ...state, newKeepsExample, citations, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, toolIcons, aiSettings, aiChat, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, canvasOk, besideText, pictures, blocksOk };
+}
+
+/** A question in the AI chat, by real input: the answer streams in and the model got the sheet. */
+async function aiChatWithRealInput(contents: Electron.WebContents, picture: string): Promise<boolean> {
+  const pane = (await contents.executeJavaScript(`localStorage.getItem('kalketa.pane') ?? 'details'`)) as string;
+  // Settings: the provider list from Claude (saved before) down to the other server.
+  await clickOn('.menubar-item:nth-child(5) > button');
+  await clickMenu('Nastavení');
+  await pause(400);
+  await clickOn('.ai-settings label.field > span');
+  for (let i = 0; i < 3; i++) await pressKey('Down');
+  for (let i = 0; i < 40 && !((await contents.executeJavaScript(`document.querySelector('.ai-status')?.textContent ?? ''`)) as string).includes('Připojeno'); i++) await pause(150);
+  await clickOn('.dialog-buttons button.default');
+  await pause(300);
+
+  await clickOn('.tool-button[title^="Rozhovor s AI"]');
+  await pause(300);
+  const head = (await contents.executeJavaScript(`document.querySelector('.chat-model')?.textContent ?? ''`)) as string;
+  await clickOn('.chat-input');
+  await typeText('Co počítá řádek 3?');
+  await pressKey('Enter');
+  for (let i = 0; i < 40 && !(await contents.executeJavaScript(`!!document.querySelector('.chat-turn.assistant:not(.writing)')`)); i++) await pause(150);
+  const shown = (await contents.executeJavaScript(`({
+    user: document.querySelector('.chat-turn.user')?.textContent ?? '',
+    answer: document.querySelector('.chat-turn.assistant:not(.writing)')?.textContent ?? '',
+    input: document.querySelector('.chat-input')?.value ?? '',
+    title: document.querySelector('.doc-tab.active')?.textContent ?? '',
+  })`)) as { user: string; answer: string; input: string; title: string };
+  await takePicture(picture.replace(/[.]png$/, '-ai-chat.png'));
+  await clickOn('.chat-new');
+  await pause(200);
+  const cleared = (await contents.executeJavaScript(`document.querySelectorAll('.chat-turn').length`)) as number;
+  // Back to the pane the later steps expect.
+  const back = { details: 'Podrobnosti', tables: 'Tabulky', layers: 'Vrstvy', none: 'Skrytý' }[pane] ?? 'Podrobnosti';
+  await clickOn('.menubar-item:nth-child(3) > button');
+  await clickMenu('Boční panel');
+  await clickMenu(back);
+  await pause(300);
+  await writeFile(picture.replace(/[.]png$/, '-ai-chat.json'), JSON.stringify({ head, shown, cleared }, null, 2));
+  return (
+    head.includes('Jiný server') && head.includes('local-smoke-7b') &&
+    shown.user === 'Co počítá řádek 3?' && shown.input === '' &&
+    /list: [^?;]+;/.test(shown.answer) && shown.answer.includes('jazyk: Czech') && shown.answer.includes('výsledky: ano') && shown.answer.includes('otázka: Co počítá řádek 3?') &&
+    cleared === 0
+  );
 }
 
 /** The AI part of the Settings dialog, driven by real mouse and keyboard input. */

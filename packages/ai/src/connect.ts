@@ -5,9 +5,10 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import { PROVIDERS, providerById, serverUrl, type ModelChoice, type ProviderInfo } from './providers.js';
+import type { ChatTurn } from './briefing.js';
 
 /** Why a connection failed; the editor turns the code into a message. */
-export type ConnectionProblem = 'noProvider' | 'noKey' | 'badKey' | 'denied' | 'rateLimit' | 'network' | 'notRunning' | 'badUrl' | 'provider';
+export type ConnectionProblem = 'noProvider' | 'noKey' | 'badKey' | 'denied' | 'rateLimit' | 'network' | 'notRunning' | 'badUrl' | 'refused' | 'cancelled' | 'provider';
 
 export type ConnectionResult = { readonly ok: true; readonly models: readonly ModelChoice[] } | { readonly ok: false; readonly problem: ConnectionProblem; readonly detail?: string };
 
@@ -127,6 +128,117 @@ export async function tryModel(providerId: string, model: string, transport: Tra
   } catch {
     return { ok: false, problem: 'provider', detail: 'not an answer' };
   }
+}
+
+export interface ChatRequest {
+  readonly provider: string;
+  readonly model: string;
+  /** Address of a server whose provider lets the user give one. */
+  readonly url?: string;
+  readonly apiKey?: string;
+  /** The briefing (system prompt), in English. */
+  readonly system: string;
+  readonly turns: readonly ChatTurn[];
+  /** Each piece of the answer as it comes. */
+  onText(delta: string): void;
+  /** The model is thinking before it writes (local models that report it). */
+  onThinking?(): void;
+  readonly signal?: AbortSignal;
+}
+
+export type ChatResult = { readonly ok: true; readonly text: string; readonly model: string } | { readonly ok: false; readonly problem: ConnectionProblem; readonly detail?: string };
+
+/** Claude models that take the effort setting and the server-side fallback after a refusal. */
+const CURRENT_CLAUDE = new Set(['claude-fable-5-1', 'claude-opus-5-5', 'claude-opus-5', 'claude-sonnet-5-5']);
+
+/** A conversation turn: the answer streams in through onText. */
+export async function chat(request: ChatRequest, transport: Transport = {}): Promise<ChatResult> {
+  const provider = providerById(request.provider);
+  if (!provider) return { ok: false, problem: 'noProvider' };
+  if (provider.api === 'openai-compatible') return chatOpenAi(provider, request, transport.fetch ?? fetch);
+  if (!request.apiKey?.trim()) return { ok: false, problem: 'noKey' };
+  const client = new Anthropic({ apiKey: request.apiKey.trim(), authToken: null, maxRetries: 1 });
+  const current = CURRENT_CLAUDE.has(request.model);
+  try {
+    const stream = client.beta.messages.stream(
+      {
+        model: request.model,
+        max_tokens: 64000,
+        system: request.system,
+        messages: request.turns.map((t) => ({ role: t.role, content: t.text })),
+        // A conversation needs no deep thinking; on a refusal the API answers with a fallback model.
+        ...(current ? { output_config: { effort: 'medium' as const }, betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' as const } : {}),
+      },
+      request.signal ? { signal: request.signal } : {},
+    );
+    stream.on('text', (delta) => request.onText(delta));
+    const message = await stream.finalMessage();
+    if (message.stop_reason === 'refusal') return { ok: false, problem: 'refused' };
+    const text = message.content.map((b) => (b.type === 'text' ? b.text : '')).join('');
+    return { ok: true, text, model: message.model };
+  } catch (error) {
+    if (request.signal?.aborted) return { ok: false, problem: 'cancelled' };
+    return { ok: false, ...problemOf(error) };
+  }
+}
+
+/** POST /v1/chat/completions with stream: true; the answer comes as server-sent events. */
+async function chatOpenAi(provider: ProviderInfo, request: ChatRequest, fetchFn: typeof fetch): Promise<ChatResult> {
+  if (provider.urlEditable && request.url !== undefined && !serverUrl(request.url)) return { ok: false, problem: 'badUrl' };
+  let response: Response;
+  try {
+    response = await fetchFn(`${localUrl(provider, request.url)}/v1/chat/completions`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        model: request.model,
+        stream: true,
+        // Local models think before they answer; the room covers both.
+        max_tokens: 8192,
+        messages: [{ role: 'system', content: request.system }, ...request.turns.map((t) => ({ role: t.role, content: t.text }))],
+      }),
+      ...(request.signal ? { signal: request.signal } : {}),
+    });
+  } catch {
+    return request.signal?.aborted ? { ok: false, problem: 'cancelled' } : { ok: false, problem: 'notRunning' };
+  }
+  if (!response.ok || !response.body) return { ok: false, problem: 'provider', detail: `${response.status} ${(await response.text().catch(() => '')).slice(0, 200)}`.trim() };
+  let text = '';
+  let model = request.model;
+  try {
+    for await (const data of serverSentData(response.body)) {
+      if (data === '[DONE]') break;
+      const event = JSON.parse(data) as { model?: string; choices?: { delta?: { content?: string | null; reasoning_content?: string | null } }[] };
+      if (event.model) model = event.model;
+      const delta = event.choices?.[0]?.delta;
+      if (delta?.reasoning_content) request.onThinking?.();
+      if (delta?.content) {
+        text += delta.content;
+        request.onText(delta.content);
+      }
+    }
+  } catch (error) {
+    if (request.signal?.aborted) return { ok: false, problem: 'cancelled' };
+    return { ok: false, problem: 'provider', detail: error instanceof Error ? error.message : String(error) };
+  }
+  return { ok: true, text, model };
+}
+
+/** The data of each server-sent event ("data: …" lines), as the stream arrives. */
+export async function* serverSentData(body: ReadableStream<Uint8Array>): AsyncGenerator<string> {
+  const decoder = new TextDecoder();
+  let buffer = '';
+  for await (const chunk of body as unknown as AsyncIterable<Uint8Array>) {
+    buffer += decoder.decode(chunk, { stream: true });
+    let end: number;
+    while ((end = buffer.indexOf('\n')) >= 0) {
+      const line = buffer.slice(0, end).replace(/\r$/, '');
+      buffer = buffer.slice(end + 1);
+      if (line.startsWith('data:')) yield line.slice(5).trim();
+    }
+  }
+  const last = buffer.trim();
+  if (last.startsWith('data:')) yield last.slice(5).trim();
 }
 
 function problemOf(error: unknown): { problem: ConnectionProblem; detail?: string } {

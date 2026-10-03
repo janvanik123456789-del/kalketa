@@ -43,8 +43,9 @@ export interface ToolbarLayout {
 const ADDED_ITEMS: readonly { readonly since: number; readonly toolbar: string; readonly after: string; readonly ids: readonly string[] }[] = [
   { since: 2, toolbar: 'operators', after: 'sym:√', ids: ['sym:∛', 'fn:root'] },
   { since: 2, toolbar: 'operators', after: 'sym:³', ids: ['sym:^'] },
+  { since: 3, toolbar: 'view', after: 'view.paneTables', ids: ['view.paneChat'] },
 ];
-export const ITEMS_VERSION = 2;
+export const ITEMS_VERSION = 3;
 
 export const SEPARATOR = '|';
 
@@ -110,7 +111,7 @@ export function defaultLayout(): ToolbarLayout {
         builtin: true,
         visible: true,
         place: dock('top', 0, 2),
-        items: ['view.zoomOut', 'view.zoomIn', SEPARATOR, 'view.fit1', 'view.fit2', 'view.fit3', SEPARATOR, 'view.paneDetails', 'view.paneTables'],
+        items: ['view.zoomOut', 'view.zoomIn', SEPARATOR, 'view.fit1', 'view.fit2', 'view.fit3', SEPARATOR, 'view.paneDetails', 'view.paneTables', 'view.paneChat'],
       },
       {
         id: 'functions',

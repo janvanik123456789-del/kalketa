@@ -13,8 +13,8 @@ import { app, ipcMain, safeStorage, type IpcMainInvokeEvent } from 'electron';
 import { existsSync, readFileSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import { allowedProviders, NO_POLICY, parseAiPolicy, providerById, type AiPolicy } from '@kalketa/ai';
-import { discoverLocal, testConnection, tryModel, type AnswerResult, type ConnectionResult } from '@kalketa/ai/connect';
+import { allowedProviders, briefing, modelAllowed, NO_POLICY, parseAiPolicy, providerById, type AiPolicy, type AiSheetContext, type ChatTurn } from '@kalketa/ai';
+import { chat, discoverLocal, testConnection, tryModel, type AnswerResult, type ChatResult, type ConnectionResult } from '@kalketa/ai/connect';
 
 export interface AiKeyState {
   /** A key is set for this provider. */
@@ -24,6 +24,21 @@ export interface AiKeyState {
   /** The system can encrypt keys, so "remember" can be offered. */
   readonly canRemember: boolean;
 }
+
+/** A conversation turn the editor asks for; the briefing is built here, with the company rules. */
+interface ChatAsk {
+  readonly id: string;
+  readonly provider: string;
+  readonly model: string;
+  readonly url?: string;
+  readonly language: string;
+  readonly sheet: AiSheetContext;
+  readonly languageGuide?: string;
+  readonly turns: readonly ChatTurn[];
+}
+
+/** Answers being written, so the editor can stop one. */
+const running = new Map<string, AbortController>();
 
 /** Keys for this run of the program, by provider. */
 const keys = new Map<string, string>();
@@ -129,6 +144,45 @@ export function registerAiBridge(fromEditor: (event: IpcMainInvokeEvent) => unkn
   ipcMain.handle('kalketa:ai-try', (event, provider: unknown, model: unknown, url: unknown): Promise<AnswerResult> => {
     fromEditor(event);
     return tryModel(allowed(provider), typeof model === 'string' ? model : '', {}, typeof url === 'string' ? url : undefined);
+  });
+
+  // A conversation turn: pieces of the answer go to the window as they come.
+  ipcMain.handle('kalketa:ai-chat', async (event, ask: ChatAsk): Promise<ChatResult> => {
+    fromEditor(event);
+    const id = allowed(ask.provider);
+    const policy = readPolicy();
+    if (!modelAllowed(policy, ask.model)) throw new Error('Model not allowed');
+    await loadKeys();
+    const controller = new AbortController();
+    running.set(ask.id, controller);
+    const send = (piece: { text?: string; thinking?: boolean }) => {
+      if (!event.sender.isDestroyed()) event.sender.send('kalketa:ai-chat-event', { id: ask.id, ...piece });
+    };
+    try {
+      return await chat({
+        provider: id,
+        model: ask.model,
+        ...(typeof ask.url === 'string' ? { url: ask.url } : {}),
+        ...(keys.has(id) ? { apiKey: keys.get(id)! } : {}),
+        system: briefing({
+          language: ask.language,
+          sheet: ask.sheet,
+          ...(ask.languageGuide ? { languageGuide: ask.languageGuide } : {}),
+          ...(policy.instructions ? { companyInstructions: policy.instructions } : {}),
+        }),
+        turns: ask.turns,
+        onText: (text) => send({ text }),
+        onThinking: () => send({ thinking: true }),
+        signal: controller.signal,
+      });
+    } finally {
+      running.delete(ask.id);
+    }
+  });
+
+  ipcMain.handle('kalketa:ai-chat-cancel', (event, id: unknown) => {
+    fromEditor(event);
+    if (typeof id === 'string') running.get(id)?.abort();
   });
 
   ipcMain.handle('kalketa:ai-test', async (event, provider: unknown, url: unknown): Promise<ConnectionResult> => {

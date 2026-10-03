@@ -14,7 +14,9 @@ import { emptyScene, readScene, writeScene, type CanvasScene } from '@kalketa/ca
 import { CanvasEditor } from '@kalketa/canvas/editor';
 import { addLayer, allDiagnostics, appendixLayers, blockAppendices, documentBlocks, isRemovable, LayerSessions, MAIN_LAYER, removeLayer, freezeRevision, removeRevision, revisionDocument, revisionState, shortHash, tablesByLayer, updateLayer, type AddableLayerKind, type Layer, type RevisionState, type SheetDocument } from '@kalketa/sheet';
 import { buildCommands, shortcutOf, type Command } from './commands.js';
-import { DEFAULT_AI_SETTINGS, parseAiSettings, type AiSettings } from '@kalketa/ai';
+import { DEFAULT_AI_SETTINGS, parseAiSettings, type AiSettings, type ChatTurn } from '@kalketa/ai';
+import { ChatPane } from './components/ChatPane.js';
+import { languageGuide, sheetContext } from './logic/aiContext.js';
 import { chooseFile, desktop, emptyDocument, exampleDocument, fileName, fileUri, largestParts, openBytes, pickAndOpen, saveDocument, tableCache, type FileRef, type OpenedFile } from './document.js';
 import { record, redo, undo, type History } from './logic/history.js';
 import { closeTab, cycleTab, fileNameOf, isDirty, newTab, openTab, type DocTab, type Tabs } from './logic/documents.js';
@@ -37,7 +39,7 @@ import { SheetView, type EditRange } from './components/SheetView.js';
 import { TablesView } from './components/TablesView.js';
 import { ToolbarFrame, toolbarName } from './components/Toolbars.js';
 
-type Pane = 'details' | 'tables' | 'layers' | 'none';
+type Pane = 'details' | 'tables' | 'layers' | 'chat' | 'none';
 type Tab = DocTab<SheetDocument, FileRef>;
 type DialogKind = 'settings' | 'properties' | 'revisions' | 'customize' | 'shortcuts' | 'functions' | 'about';
 
@@ -134,7 +136,7 @@ export function App() {
   const [dialog, setDialog] = useState<DialogKind | undefined>();
   const [zoomChoice, setZoomChoice] = useState(() => stored('kalketa.zoom') ?? 'fit2');
   // The layer tabs do what the Layers panel did, so the panel no longer opens by itself at start.
-  const [pane, setPane] = useState<Pane>(() => (['details', 'tables', 'none'].includes(stored('kalketa.pane') ?? '') ? (stored('kalketa.pane') as Pane) : stored('kalketa.pane') === 'layers' ? 'none' : 'details'));
+  const [pane, setPane] = useState<Pane>(() => (['details', 'tables', 'chat', 'none'].includes(stored('kalketa.pane') ?? '') ? (stored('kalketa.pane') as Pane) : stored('kalketa.pane') === 'layers' ? 'none' : 'details'));
   const [paneWidth, setPaneWidth] = useState(() => Number(stored('kalketa.paneWidth')) || 380);
   // Layers open side by side in this document, and which of them is being worked on.
   const panes = tab.panes;
@@ -608,6 +610,8 @@ export function App() {
   const canvasPath = canvasEdit?.path;
   /** Where a canvas is edited by default (Tools > Settings): right in the sheet, or in a large window. */
   const [canvasMode, setCanvasMode] = useState<'inline' | 'window'>(() => (stored(CANVAS_MODE_KEY) === 'window' ? 'window' : 'inline'));
+  // Conversations with the AI by document tab; kept until the tab closes (not saved yet).
+  const [chats, setChats] = useState<Readonly<Record<string, readonly ChatTurn[]>>>({});
   const [aiSettings, setAiSettings] = useState<AiSettings>(() => {
     try {
       return parseAiSettings(JSON.parse(stored(AI_SETTINGS_KEY) ?? 'null'));
@@ -1027,7 +1031,7 @@ export function App() {
         cmd('view.zoomOut'),
         cmd('view.zoom100'),
         sep,
-        { kind: 'submenu', label: t(ui, 'menu.pane'), items: [cmd('view.paneDetails'), cmd('view.paneTables'), cmd('view.paneLayers'), cmd('view.paneNone')] },
+        { kind: 'submenu', label: t(ui, 'menu.pane'), items: [cmd('view.paneDetails'), cmd('view.paneTables'), cmd('view.paneLayers'), cmd('view.paneChat'), cmd('view.paneNone')] },
         cmd('view.tableEditor'),
         {
           kind: 'submenu',
@@ -1193,7 +1197,16 @@ export function App() {
             <>
               <div className="pane-divider" onMouseDown={startResize} role="separator" aria-orientation="vertical" />
               <div className="side-pane" style={{ width: paneWidth }}>
-                {pane === 'layers' ? (
+                {pane === 'chat' ? (
+                  <ChatPane
+                    catalog={ui}
+                    settings={aiSettings}
+                    turns={chats[tab.id] ?? []}
+                    onTurns={(turns) => setChats((all) => ({ ...all, [tab.id]: turns }))}
+                    context={() => ({ sheet: sheetContext(doc.manifest.title, evaluation.main), languageGuide: languageGuide() })}
+                    onOpenSettings={() => setDialog('settings')}
+                  />
+                ) : pane === 'layers' ? (
                   <LayersPane
                     layers={doc.layers}
                     active={layer.id}

@@ -180,6 +180,12 @@ const ICONS: Readonly<Record<string, ReactElement>> = {
       <path {...S} d="M10.5 8h7M10.5 12h7M14 3.5v13" />
     </>
   ),
+  'view.paneChat': (
+    <>
+      <path {...S} d="M3 4h10.5v7.5H8l-3 2.5v-2.5H3z" />
+      <path {...S} d="M15.5 8H17v7.5h-2v2.5l-3-2.5H8.5V13.5" />
+    </>
+  ),
   'view.paneNone': <path {...S} d="M2.5 3.5h15v13h-15z" />,
   'view.tableEditor': <path {...S} d="M2.5 3.5h15v13h-15zM2.5 7.5h15M2.5 11.5h15M7.5 3.5v13M12.5 3.5v13" />,
   'view.customize': (

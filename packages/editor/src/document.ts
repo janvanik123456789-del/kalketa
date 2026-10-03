@@ -121,8 +121,24 @@ export interface DesktopBridge {
   aiTest(provider: string, url?: string): Promise<AiConnectionResult>;
   /** One short question to a model of a local server: its reply and how long it took. */
   aiTry(provider: string, model: string, url?: string): Promise<{ readonly ok: true; readonly reply: string; readonly ms: number } | { readonly ok: false; readonly problem: string; readonly detail?: string }>;
+  /** A conversation turn; the answer arrives in pieces through onAiChatEvent, the promise gives the whole. */
+  aiChat(ask: AiChatAsk): Promise<{ readonly ok: true; readonly text: string; readonly model: string } | { readonly ok: false; readonly problem: string; readonly detail?: string }>;
+  aiChatCancel(id: string): Promise<void>;
+  onAiChatEvent(listener: (piece: { readonly id: string; readonly text?: string; readonly thinking?: boolean }) => void): void;
   /** Local servers running now, with their models, by provider. */
   aiDiscover(): Promise<Record<string, readonly { readonly id: string; readonly name: string }[]>>;
+}
+
+export interface AiChatAsk {
+  readonly id: string;
+  readonly provider: string;
+  readonly model: string;
+  readonly url?: string;
+  /** The user's language; the model answers in it. */
+  readonly language: string;
+  readonly sheet: { readonly title: string; readonly source: string; readonly findings?: readonly string[] };
+  readonly languageGuide?: string;
+  readonly turns: readonly { readonly role: 'user' | 'assistant'; readonly text: string }[];
 }
 
 export interface AiKeyState {

@@ -39,8 +39,26 @@ const fakeApi = createServer((request, response) => {
     return;
   }
   if (request.url === '/local/v1/chat/completions' && request.method === 'POST') {
-    response.writeHead(200, { 'content-type': 'application/json' });
-    response.end(JSON.stringify({ object: 'chat.completion', choices: [{ index: 0, message: { role: 'assistant', content: 'OK' }, finish_reason: 'stop' }] }));
+    let raw = '';
+    request.on('data', (chunk) => (raw += chunk));
+    request.on('end', () => {
+      const body = JSON.parse(raw);
+      if (!body.stream) {
+        response.writeHead(200, { 'content-type': 'application/json' });
+        response.end(JSON.stringify({ object: 'chat.completion', choices: [{ index: 0, message: { role: 'assistant', content: 'OK' }, finish_reason: 'stop' }] }));
+        return;
+      }
+      // The chat: answers in pieces what it was given, so the test sees the briefing arrived.
+      const system = body.messages[0]?.content ?? '';
+      const question = body.messages.at(-1)?.content ?? '';
+      const title = /The sheet "([^"]+)"/.exec(system)?.[1] ?? '?';
+      const pieces = [`list: ${title}; `, `jazyk: ${system.includes('Answer in Czech') ? 'Czech' : '?'}; `, `výsledky: ${system.includes('Computed results') ? 'ano' : 'ne'}; `, `otázka: ${question}`];
+      response.writeHead(200, { 'content-type': 'text/event-stream' });
+      const event = (data) => `data: ${typeof data === 'string' ? data : JSON.stringify(data)}${String.fromCharCode(10).repeat(2)}`;
+      response.write(event({ choices: [{ delta: { reasoning_content: 'thinking' } }] }));
+      for (const piece of pieces) response.write(event({ model: 'local-smoke-7b', choices: [{ delta: { content: piece } }] }));
+      response.end(event('[DONE]'));
+    });
     return;
   }
   const good = request.headers['x-api-key'] === 'sk-smoke-good';

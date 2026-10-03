@@ -30,6 +30,11 @@ contextBridge.exposeInMainWorld('kalketaDesktop', {
   aiForgetKey: (provider: string): Promise<unknown> => ipcRenderer.invoke('kalketa:ai-forget-key', provider),
   aiTest: (provider: string, url?: string): Promise<unknown> => ipcRenderer.invoke('kalketa:ai-test', provider, url),
   aiDiscover: (): Promise<unknown> => ipcRenderer.invoke('kalketa:ai-discover'),
+  aiChat: (ask: unknown): Promise<unknown> => ipcRenderer.invoke('kalketa:ai-chat', ask),
+  aiChatCancel: (id: string): Promise<void> => ipcRenderer.invoke('kalketa:ai-chat-cancel', id),
+  onAiChatEvent: (listener: (piece: { id: string; text?: string; thinking?: boolean }) => void): void => {
+    ipcRenderer.on('kalketa:ai-chat-event', (_event, piece: { id: string; text?: string; thinking?: boolean }) => listener(piece));
+  },
   aiTry: (provider: string, model: string, url?: string): Promise<unknown> => ipcRenderer.invoke('kalketa:ai-try', provider, model, url),
   onOpenFile: (listener: (file: OpenedFile) => void): void => {
     ipcRenderer.on('kalketa:open-file', (_event, file: OpenedFile) => listener(file));

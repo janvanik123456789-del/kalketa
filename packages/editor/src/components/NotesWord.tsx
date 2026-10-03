@@ -8,13 +8,15 @@
  * attribute, shown as a badge and never typed.
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { EditorContent, Extension, useEditor, type Editor, type JSONContent } from '@tiptap/react';
+import { EditorContent, Extension, NodeViewWrapper, ReactNodeViewRenderer, useEditor, type Editor, type JSONContent, type ReactNodeViewProps } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import Image from '@tiptap/extension-image';
+import Image, { type ImageOptions } from '@tiptap/extension-image';
 import { TableKit } from '@tiptap/extension-table';
 import { t, type Catalog, type UiKey } from '@kalketa/i18n';
 import { commandIcon } from '../icons.js';
+import { desktop } from '../document.js';
 import { docToNotes, notesToDoc } from '../logic/notesDoc.js';
+import { captionOf, isPictureType, type IncomingPicture } from '../logic/pictures.js';
 import { ask } from './Ask.js';
 
 interface Props {
@@ -27,7 +29,9 @@ interface Props {
   /** The user left the text: a good moment to give new headings their ids. */
   onSettle?(): void;
   /** Asks for a picture file and its caption; undefined when cancelled. */
-  pickImage(): Promise<{ readonly path: string; readonly caption: string; readonly bytes: Uint8Array; readonly url: string } | undefined>;
+  pickImage(): Promise<{ readonly picture: IncomingPicture; readonly caption: string } | undefined>;
+  /** Where a picture is stored in the sheet (a path no file has yet, also not one of `taken`). */
+  picturePath(picture: IncomingPicture, taken: ReadonlySet<string>): string;
 }
 
 /** Attributes the stored notes need beyond the editor's own: the section id, the alignment of a table column. */
@@ -59,8 +63,34 @@ const NotesAttributes = Extension.create({
   },
 });
 
+/**
+ * A picture of the layer with its caption under it, as printed. The caption is
+ * changed by a double click.
+ */
+function PictureView({ node, selected, updateAttributes, extension }: ReactNodeViewProps) {
+  const options = extension.options as { captionLabel?: string; captionEmpty?: string };
+  const caption = String(node.attrs['alt'] ?? '');
+  return (
+    <NodeViewWrapper
+      as="figure"
+      className={`word-figure${selected ? ' selected' : ''}`}
+      onDoubleClick={() =>
+        void ask(options.captionLabel ?? 'Caption', caption).then((next) => {
+          if (next !== undefined) updateAttributes({ alt: next.replace(/[[\]]/g, '').trim() });
+        })
+      }
+    >
+      <img src={String(node.attrs['src'] ?? '')} alt={caption} draggable={false} />
+      <figcaption className={caption ? '' : 'empty'}>{caption || options.captionEmpty}</figcaption>
+    </NodeViewWrapper>
+  );
+}
+
 /** A picture of the layer: where it is stored in the sheet, and what to show while editing. */
-const NotesImage = Image.extend({
+const NotesImage = Image.extend<ImageOptions & { captionLabel: string; captionEmpty: string }>({
+  addOptions() {
+    return { ...this.parent!(), captionLabel: 'Caption', captionEmpty: '' };
+  },
   addAttributes() {
     return {
       ...this.parent?.(),
@@ -68,7 +98,17 @@ const NotesImage = Image.extend({
       extra: { default: null, renderHTML: () => ({}) },
     };
   },
+  addNodeView() {
+    return ReactNodeViewRenderer(PictureView);
+  },
 });
+
+/** Pictures among pasted or dropped files. */
+async function picturesOf(files: FileList | undefined | null): Promise<IncomingPicture[]> {
+  const found = [...(files ?? [])].filter((f) => isPictureType(f.type));
+  // A copied picture (a screenshot) comes as "image.png": it has no name of its own.
+  return Promise.all(found.map(async (f) => ({ name: /^image\.\w+$/.test(f.name) ? '' : f.name, type: f.type, bytes: new Uint8Array(await f.arrayBuffer()) })));
+}
 
 /** Pictures get something to show: the file of the sheet behind their path. */
 function withPictures(doc: JSONContent, resolveFile: (path: string) => string | undefined): JSONContent {
@@ -76,12 +116,14 @@ function withPictures(doc: JSONContent, resolveFile: (path: string) => string | 
   return doc.content ? { ...doc, content: doc.content.map((c) => withPictures(c, resolveFile)) } : doc;
 }
 
-export function NotesWord({ text, title, catalog, readOnly, resolveFile, onChange, onSettle, pickImage }: Props) {
+export function NotesWord({ text, title, catalog, readOnly, resolveFile, onChange, onSettle, pickImage, picturePath }: Props) {
   // What the editor last gave out: a text coming back unchanged is not loaded again.
   const emitted = useRef(text);
   const pendingFiles = useRef<Map<string, Uint8Array> | undefined>(undefined);
   const [styleMenu, setStyleMenu] = useState(false);
   const [, setTick] = useState(0);
+  // Set once the editor exists: pictures from paste and drop go in through it.
+  const place = useRef<(pictures: readonly IncomingPicture[], at?: number) => void>(() => {});
 
   const editor = useEditor({
     extensions: [
@@ -93,7 +135,7 @@ export function NotesWord({ text, title, catalog, readOnly, resolveFile, onChang
         orderedList: false,
         link: { openOnClick: false, autolink: true, isAllowedUri: (url) => /^https?:\/\//.test(url) },
       }),
-      NotesImage.configure({ inline: false, allowBase64: true }),
+      NotesImage.configure({ inline: false, allowBase64: true, captionLabel: t(catalog, 'word.caption'), captionEmpty: t(catalog, 'word.captionEmpty') }),
       TableKit.configure({ table: { resizable: false } }),
       NotesAttributes,
     ],
@@ -108,6 +150,29 @@ export function NotesWord({ text, title, catalog, readOnly, resolveFile, onChang
       onChange(next, files);
     },
     onSelectionUpdate: () => setTick((n) => n + 1),
+    editorProps: {
+      // A picture pasted (a cut-out of a PDF, a screenshot) lands where the cursor is.
+      handlePaste: (_view, event) => {
+        const data = event.clipboardData;
+        if (data && [...data.files].some((f) => isPictureType(f.type))) {
+          void picturesOf(data.files).then((pictures) => place.current(pictures));
+          return true;
+        }
+        // Some programs put a picture on the clipboard without a file: the desktop reads it.
+        if (desktop && !data?.getData('text/plain') && !data?.getData('text/html')) {
+          void desktop.clipboardPictures().then((pictures) => place.current(pictures));
+          return true;
+        }
+        return false;
+      },
+      // A picture dropped from a file manager lands where it is dropped.
+      handleDrop: (view, event, _slice, moved) => {
+        if (moved || ![...(event.dataTransfer?.files ?? [])].some((f) => isPictureType(f.type))) return false;
+        const at = view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos;
+        void picturesOf(event.dataTransfer?.files).then((pictures) => place.current(pictures, at));
+        return true;
+      },
+    },
     onBlur: () => onSettle?.(),
   });
 
@@ -119,13 +184,31 @@ export function NotesWord({ text, title, catalog, readOnly, resolveFile, onChang
   }, [editor, text, resolveFile]);
   useEffect(() => editor?.setEditable(!readOnly), [editor, readOnly]);
 
+  /** Stores pictures in the layer and puts them in at the cursor (or at `at`). */
+  place.current = (pictures, at) => {
+    if (!editor || pictures.length === 0 || readOnly) return;
+    const files = new Map(pendingFiles.current ?? []);
+    const nodes = pictures.map((p, i) => {
+      const path = picturePath(p, new Set(files.keys()));
+      files.set(path, p.bytes);
+      const caption = 'caption' in p ? String((p as { caption?: string }).caption ?? '') : captionOf(p.name);
+      return { type: 'image', attrs: { src: URL.createObjectURL(new Blob([p.bytes as BlobPart], { type: p.type })), path, alt: i === 0 ? caption : captionOf(p.name) } };
+    });
+    pendingFiles.current = files;
+    // In a paragraph the picture goes where the cursor is. Inside a citation, a list or a table it
+    // goes before that block (cursor at its start) or after it: a picture cannot live inside one.
+    const $at = editor.state.doc.resolve(at ?? editor.state.selection.from);
+    let where = at;
+    if ($at.depth > 1) where = editor.state.doc.textBetween($at.start(1), $at.pos) === '' ? $at.before(1) : $at.after(1);
+    const chain = editor.chain().focus();
+    (where !== undefined ? chain.insertContentAt(where, nodes) : chain.insertContent(nodes)).run();
+  };
+
   if (!editor) return null;
 
   const insertPicture = async () => {
-    const picture = await pickImage();
-    if (!picture) return;
-    pendingFiles.current = new Map([[picture.path, picture.bytes]]);
-    editor.chain().focus().insertContent({ type: 'image', attrs: { src: picture.url, path: picture.path, alt: picture.caption } }).run();
+    const chosen = await pickImage();
+    if (chosen) place.current([{ ...chosen.picture, caption: chosen.caption } as IncomingPicture]);
   };
 
   const setLink = async () => {

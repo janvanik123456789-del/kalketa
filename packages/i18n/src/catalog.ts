@@ -368,6 +368,8 @@ export const UI_KEYS = [
   'word.deleteColumn',
   'word.deleteTable',
   'word.rule',
+  'word.caption',
+  'word.captionEmpty',
   'word.undo',
   'word.redo',
   'chat.citations',

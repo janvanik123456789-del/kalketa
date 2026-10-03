@@ -522,6 +522,8 @@ export const en: Catalog = {
     'word.deleteColumn': 'Delete column',
     'word.deleteTable': 'Delete table',
     'word.rule': 'Horizontal line',
+    'word.caption': 'Picture caption',
+    'word.captionEmpty': 'no caption (double-click to add one)',
     'word.undo': 'Undo',
     'word.redo': 'Redo',
     'chat.citations': 'Citations from the sources: {ok} checked, {bad} unsupported.',

@@ -906,7 +906,8 @@ export function App() {
       if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
     };
     const drop = (e: DragEvent) => {
-      if (!hasFiles(e)) return;
+      // The word-processor editor of the sources places pictures itself.
+      if (!hasFiles(e) || (e.target as HTMLElement | null)?.closest?.('.notes-word')) return;
       e.preventDefault();
       const files = [...(e.dataTransfer?.files ?? [])];
       const target = layerOfRef.current(e.target);
@@ -917,7 +918,7 @@ export function App() {
       });
     };
     const paste = (e: ClipboardEvent) => {
-      if (dialogOpen.current) return;
+      if (dialogOpen.current || (e.target as HTMLElement | null)?.closest?.('.notes-word')) return;
       const data = e.clipboardData;
       const files = [...(data?.files ?? [])].filter((f) => f.type.startsWith('image/'));
       if (files.length > 0) {
@@ -1126,6 +1127,7 @@ export function App() {
           catalog={ui}
           readOnly={l.locked}
           resolveFile={resolveFile}
+          fileExists={(path) => doc.files.has(path)}
           onChange={(next, files) => setLayerText(l, next, `${l.id}:notes`, files)}
           onSettle={() => {
             // New headings get their theory ids once the user stops typing in them.

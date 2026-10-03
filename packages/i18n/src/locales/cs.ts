@@ -522,6 +522,8 @@ export const cs: Catalog = {
     'word.deleteColumn': 'Odstranit sloupec',
     'word.deleteTable': 'Odstranit tabulku',
     'word.rule': 'Vodorovná čára',
+    'word.caption': 'Popisek obrázku',
+    'word.captionEmpty': 'bez popisku (dvojklikem doplníte)',
     'word.undo': 'Zpět',
     'word.redo': 'Znovu',
     'chat.citations': 'Citace z podkladů: ověřené {ok}, nepodložené {bad}.',

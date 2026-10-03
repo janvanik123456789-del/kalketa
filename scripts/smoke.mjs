@@ -105,6 +105,7 @@ if (!line) {
   process.exit(1);
 }
 const result = JSON.parse(line);
+writeFileSync(join(out, 'result.json'), JSON.stringify(result, null, 2));
 // Checks that pass when false; every other true/false check passes when true.
 const passWhenFalse = new Set(['aiDeletable', 'aiTabWhileEmpty', 'aiTabAfterClose']);
 const failed = Object.entries({ ...result, ...result.layers })

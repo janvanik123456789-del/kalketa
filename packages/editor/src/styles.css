@@ -450,8 +450,11 @@ button.icon:hover { color: var(--accent); }
 .word-text th { background: #f1f3f6; }
 .word-text td p, .word-text th p { margin: 0; }
 .word-text .selectedCell { background: #dbe5f2; }
-.word-text img { max-width: 100%; max-height: 110mm; display: block; margin: 3mm 0; }
-.word-text img.ProseMirror-selectednode { outline: 2px solid var(--accent); }
+.word-text .word-figure { margin: 3mm 0; cursor: default; }
+.word-text .word-figure img { max-width: 100%; max-height: 110mm; display: block; }
+.word-text .word-figure.selected img { outline: 2px solid var(--accent); }
+.word-text .word-figure figcaption { font-size: 9pt; color: #555; margin-top: 1mm; }
+.word-text .word-figure figcaption.empty { color: #9aa0a8; font-style: italic; }
 .word-text pre { margin: 2mm 0; padding: 1.5mm 2mm; background: #f3f5f8; border: 1px solid #d5dae1; white-space: pre-wrap; }
 .word-text code { font-family: Consolas, 'Courier New', monospace; font-size: 0.95em; background: #f1f3f6; padding: 0 2px; border-radius: 2px; }
 .word-text pre code { background: none; padding: 0; }

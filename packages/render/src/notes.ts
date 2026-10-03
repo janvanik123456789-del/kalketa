@@ -40,8 +40,14 @@ type Align = 'left' | 'right' | 'center';
 const TABLE_RULE = /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$/;
 const TABLE_ROW = /^\s*\|.*\|\s*$/;
 
+/** Cells of a table row; "\|" is a pipe inside a cell. */
 function cells(line: string): string[] {
-  return line.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map((c) => c.trim());
+  return line
+    .trim()
+    .replace(/^\|/, '')
+    .replace(/(?<!\\)\|$/, '')
+    .split(/(?<!\\)\|/)
+    .map((c) => c.trim());
 }
 
 const FIGURE = /^!\[([^\]]*)\]\(([^)\s]+)\)\s*(?:\{[^}]*\})?\s*$/;
@@ -178,7 +184,8 @@ function inline(text: string): string {
 }
 
 function marks(text: string): string {
-  let html = esc(text);
+  // "\*" is a star as text (the word-processor editor writes such escapes): as an entity, no markup can take it.
+  let html = esc(text).replace(/\\([\\`*[\]|#>_!-])/g, (_, c: string) => `&#${c.charCodeAt(0)};`);
   html = html.replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, (_, label: string, url: string) => `<a href="${url}">${label}</a>`);
   html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
   html = html.replace(/(^|[^*])\*([^*]+)\*/g, '$1<em>$2</em>');

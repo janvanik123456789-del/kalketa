@@ -416,3 +416,45 @@ button.icon:hover { color: var(--accent); }
 .chat-input-row { display: flex; gap: 6px; align-items: stretch; }
 .chat-input { flex: 1; resize: vertical; min-height: 44px; font: inherit; padding: 4px 6px; border: 1px solid #aab2bd; border-radius: 2px; }
 .chat-note { margin: 0; }
+
+/* Sources written like in a word processor: a toolbar over a page. */
+.notes-view.word { flex-direction: column; flex-wrap: nowrap; padding: 0; gap: 0; overflow: hidden; }
+.notes-word { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.word-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; padding: 4px 8px; background: var(--chrome, #f3f4f6); border-bottom: 1px solid #d5dae1; }
+.word-tool { min-width: 28px; height: 26px; padding: 0 5px; border: 1px solid transparent; border-radius: 3px; background: none; cursor: pointer; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; color: inherit; }
+.word-tool:hover:not(:disabled) { background: #e3e8ef; border-color: #c5ccd5; }
+.word-tool.checked { background: #dbe5f2; border-color: #9fb3cc; }
+.word-tool:disabled { opacity: 0.4; cursor: default; }
+.word-tool code { font-size: 12px; }
+.word-sep { width: 1px; height: 18px; background: #c5ccd5; margin: 0 4px; }
+.word-style { position: relative; }
+.word-style-button { min-width: 96px; justify-content: space-between; border-color: #c5ccd5; background: #fff; }
+.word-style-menu { position: absolute; top: 28px; left: 0; z-index: 20; display: flex; flex-direction: column; min-width: 150px; background: #fff; border: 1px solid #c5ccd5; box-shadow: 0 3px 10px rgb(0 0 0 / 15%); padding: 3px; }
+.word-style-menu .word-tool { justify-content: flex-start; height: auto; padding: 4px 8px; }
+.word-style-menu .word-style-h1 { font-size: 16px; font-weight: 700; }
+.word-style-menu .word-style-h2 { font-size: 14px; font-weight: 700; }
+.word-style-menu .word-style-h3 { font-size: 13px; font-weight: 700; }
+.word-style-menu .word-style-quote { font-style: italic; color: #333; }
+.word-scroll { flex: 1; min-height: 0; overflow: auto; padding: 20px; }
+.word-page { background: var(--paper); box-shadow: 0 1px 5px rgb(0 0 0 / 18%); padding: 16mm 18mm; box-sizing: border-box; max-width: 210mm; min-height: 297mm; margin: 0 auto; }
+.word-text .ProseMirror { outline: none; min-height: 200mm; }
+.word-text .ProseMirror > :first-child { margin-top: 0; }
+.word-text .ProseMirror p.is-editor-empty:first-child::before { content: attr(data-placeholder); color: var(--muted); float: left; height: 0; pointer-events: none; }
+/* The id of a theory section, kept by the heading: a badge that cannot be typed over. */
+.word-text h1[data-tid]::after, .word-text h2[data-tid]::after, .word-text h3[data-tid]::after { content: attr(data-tid); font-size: 0.6em; font-weight: normal; color: #6b7480; border: 1px solid #c5ccd5; border-radius: 3px; padding: 0 4px; margin-left: 8px; vertical-align: middle; }
+.word-text h1 { font-size: 16pt; margin: 4mm 0 2mm; }
+.word-text h2 { font-size: 13pt; margin: 4mm 0 1.5mm; }
+.word-text h3 { font-size: 11.5pt; margin: 3mm 0 1.5mm; }
+.word-text table { border-collapse: collapse; margin: 2mm 0; }
+.word-text th, .word-text td { border: 1px solid #c5ccd5; padding: 0.8mm 2mm; min-width: 12mm; vertical-align: top; }
+.word-text th { background: #f1f3f6; }
+.word-text td p, .word-text th p { margin: 0; }
+.word-text .selectedCell { background: #dbe5f2; }
+.word-text img { max-width: 100%; max-height: 110mm; display: block; margin: 3mm 0; }
+.word-text img.ProseMirror-selectednode { outline: 2px solid var(--accent); }
+.word-text pre { margin: 2mm 0; padding: 1.5mm 2mm; background: #f3f5f8; border: 1px solid #d5dae1; white-space: pre-wrap; }
+.word-text code { font-family: Consolas, 'Courier New', monospace; font-size: 0.95em; background: #f1f3f6; padding: 0 2px; border-radius: 2px; }
+.word-text pre code { background: none; padding: 0; }
+.word-text blockquote { margin: 2mm 0; padding: 1mm 0 1mm 3mm; border-left: 1mm solid #9aa6b4; color: #333; font-style: italic; }
+.word-text hr { border: none; border-top: 1px solid #c5ccd5; margin: 3mm 0; }
+.word-text a { color: var(--accent); }

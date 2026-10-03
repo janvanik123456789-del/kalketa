@@ -530,9 +530,10 @@ async function layersWithRealInput(picture: string) {
   await clickOn('.layer-tab.add');
   await clickMenu('❝'); // sources
   await pressKey('Enter'); // default name
-  await clickOn('.notes-text');
+  // Written like in a word processor: "> " at the start of a line makes a citation.
+  await clickOn('.layer-view.active .notes-word .ProseMirror');
   await typeText('> ČSN EN 1990, tab. A1.2(B)');
-  const citations = (await contents.executeJavaScript(`document.querySelectorAll('.notes blockquote.citation').length`)) as number;
+  const citations = (await contents.executeJavaScript(`document.querySelectorAll('.layer-view.active .notes-word blockquote.citation').length`)) as number;
   await takePicture(picture.replace(/\.png$/, '-notes.png'));
 
   // No AI is connected: the sheet has no AI notes, neither as a tab nor in View > Layers side by side.
@@ -1176,24 +1177,23 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
   await pause(300);
   // Focus and blur events need a page with focus, as the user's window has.
   contents.focus();
-  await clickOn('.layer-view.active .notes-text');
+  await clickOn('.layer-view.active .notes-word .ProseMirror');
   await typeText('## Klopení');
-  // A new line in a text field: the key and its character, as a keyboard sends them.
-  contents.sendInputEvent({ type: 'keyDown', keyCode: 'Enter' });
-  contents.sendInputEvent({ type: 'char', keyCode: String.fromCharCode(13) });
-  contents.sendInputEvent({ type: 'keyUp', keyCode: 'Enter' });
-  await pause(150);
+  await pressKey('Enter');
   await typeText('Klopení je ztráta stability ohýbaného nosníku.');
-  const typed = (await contents.executeJavaScript(`document.querySelector('.layer-view.active .notes-text')?.value ?? ''`)) as string;
+  // "## " made a heading, Enter a new paragraph under it.
+  const typed = (await contents.executeJavaScript(
+    `[...document.querySelectorAll('.layer-view.active .word-text .ProseMirror > *')].filter((e) => e.textContent !== '').map((e) => e.tagName + ':' + e.textContent).join('|')`,
+  )) as string;
   // Leaves the text by keyboard (a click elsewhere does the same for the user).
   await pressKey('Tab');
   await pause(300);
   const theory = (await contents.executeJavaScript(`({
-    text: document.querySelector('.layer-view.active .notes-text')?.value ?? '',
-    badge: document.querySelector('.layer-view.active .notes h3 .tid')?.textContent ?? '',
+    heading: document.querySelector('.layer-view.active .word-text h2')?.textContent ?? '',
+    badge: document.querySelector('.layer-view.active .word-text h2')?.getAttribute('data-tid') ?? '',
     focused: (document.activeElement?.tagName ?? '') + '.' + (document.activeElement?.className ?? ''),
     hasFocus: document.hasFocus(),
-  })`)) as { text: string; badge: string; focused: string; hasFocus: boolean };
+  })`)) as { heading: string; badge: string; focused: string; hasFocus: boolean };
   if (await contents.executeJavaScript(`!!document.querySelector('.layer-tab[data-layer="main"]')`)) await clickOn('.layer-tab[data-layer="main"]');
   // Settings: the provider list from Claude (saved before) down to the other server.
   await clickOn('.menubar-item:nth-child(5) > button');
@@ -1240,7 +1240,7 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
   await pause(300);
   await writeFile(picture.replace(/[.]png$/, '-ai-chat.json'), JSON.stringify({ typed, theory, head, shown, cleared }, null, 2));
   return (
-    typed === '## Klopení\nKlopení je ztráta stability ohýbaného nosníku.' && /^## Klopení \{#T\d+\}\n/.test(theory.text) && /^T\d+$/.test(theory.badge) &&
+    typed === 'H2:Klopení|P:Klopení je ztráta stability ohýbaného nosníku.' && theory.heading === 'Klopení' && /^T\d+$/.test(theory.badge) &&
     shown.citesOk.length === 1 && shown.citesOk[0] === theory.badge && shown.citesBad.length === 1 && shown.citesBad[0]!.startsWith('T99') &&
     shown.citeSummary.includes('ověřené 1, nepodložené 1') &&
     head.includes('Jiný server') && head.includes('local-smoke-7b') &&

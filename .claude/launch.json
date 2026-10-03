@@ -4,7 +4,7 @@
     {
       "name": "editor",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "packages/editor", "run", "dev"],
+      "runtimeArgs": ["run", "editor"],
       "port": 5173
     }
   ]

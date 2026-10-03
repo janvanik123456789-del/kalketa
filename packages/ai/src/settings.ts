@@ -12,7 +12,12 @@ export interface AiSettings {
   readonly model: string;
   /** Address of a server whose provider lets the user give one. */
   readonly url?: string;
+  /** How long the model may think before it answers; absent = as the model or server decides. */
+  readonly effort?: AiEffort;
 }
+
+export type AiEffort = 'low' | 'medium' | 'high';
+export const AI_EFFORTS: readonly AiEffort[] = ['low', 'medium', 'high'];
 
 export const AI_OFF = 'none';
 
@@ -26,5 +31,6 @@ export function parseAiSettings(value: unknown): AiSettings {
   if (!provider) return DEFAULT_AI_SETTINGS;
   const model = typeof raw['model'] === 'string' && raw['model'].trim() !== '' ? raw['model'] : provider.defaultModel;
   const url = provider.urlEditable && typeof raw['url'] === 'string' ? serverUrl(raw['url']) : undefined;
-  return { provider: provider.id, model, ...(url ? { url } : {}) };
+  const effort = AI_EFFORTS.find((e) => e === raw['effort']);
+  return { provider: provider.id, model, ...(url ? { url } : {}), ...(effort ? { effort } : {}) };
 }

@@ -13,7 +13,7 @@ import { app, ipcMain, safeStorage, type IpcMainInvokeEvent } from 'electron';
 import { existsSync, readFileSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import { allowedProviders, briefing, modelAllowed, NO_POLICY, parseAiPolicy, providerById, type AiPolicy, type AiSheetContext, type ChatTurn } from '@kalketa/ai';
+import { AI_EFFORTS, allowedProviders, briefing, modelAllowed, NO_POLICY, parseAiPolicy, providerById, type AiPolicy, type AiSheetContext, type ChatTurn } from '@kalketa/ai';
 import { chat, discoverLocal, testConnection, tryModel, type AnswerResult, type ChatResult, type ConnectionResult } from '@kalketa/ai/connect';
 
 export interface AiKeyState {
@@ -31,6 +31,7 @@ interface ChatAsk {
   readonly provider: string;
   readonly model: string;
   readonly url?: string;
+  readonly effort?: string;
   readonly language: string;
   readonly sheet: AiSheetContext;
   readonly languageGuide?: string;
@@ -163,6 +164,7 @@ export function registerAiBridge(fromEditor: (event: IpcMainInvokeEvent) => unkn
         provider: id,
         model: ask.model,
         ...(typeof ask.url === 'string' ? { url: ask.url } : {}),
+        ...(AI_EFFORTS.find((e) => e === ask.effort) ? { effort: AI_EFFORTS.find((e) => e === ask.effort)! } : {}),
         ...(keys.has(id) ? { apiKey: keys.get(id)! } : {}),
         system: briefing({
           language: ask.language,

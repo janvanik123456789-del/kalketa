@@ -6,6 +6,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { PROVIDERS, providerById, serverUrl, type ModelChoice, type ProviderInfo } from './providers.js';
 import type { ChatTurn } from './briefing.js';
+import type { AiEffort } from './settings.js';
 
 /** Why a connection failed; the editor turns the code into a message. */
 export type ConnectionProblem = 'noProvider' | 'noKey' | 'badKey' | 'denied' | 'rateLimit' | 'network' | 'notRunning' | 'badUrl' | 'refused' | 'cancelled' | 'provider';
@@ -138,6 +139,8 @@ export interface ChatRequest {
   readonly apiKey?: string;
   /** The briefing (system prompt), in English. */
   readonly system: string;
+  /** How long the model may think; absent = as the model or server decides. */
+  readonly effort?: AiEffort;
   readonly turns: readonly ChatTurn[];
   /** Each piece of the answer as it comes. */
   onText(delta: string): void;
@@ -166,8 +169,8 @@ export async function chat(request: ChatRequest, transport: Transport = {}): Pro
         max_tokens: 64000,
         system: request.system,
         messages: request.turns.map((t) => ({ role: t.role, content: t.text })),
-        // A conversation needs no deep thinking; on a refusal the API answers with a fallback model.
-        ...(current ? { output_config: { effort: 'medium' as const }, betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' as const } : {}),
+        // A conversation needs no deep thinking unless the user asks for it; on a refusal the API answers with a fallback model.
+        ...(current ? { output_config: { effort: request.effort ?? 'medium' }, betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' as const } : {}),
       },
       request.signal ? { signal: request.signal } : {},
     );
@@ -195,6 +198,8 @@ async function chatOpenAi(provider: ProviderInfo, request: ChatRequest, fetchFn:
         stream: true,
         // Local models think before they answer; the room covers both.
         max_tokens: 8192,
+        // As Cline sends it; servers that do not know it leave it out.
+        ...(request.effort ? { reasoning_effort: request.effort } : {}),
         messages: [{ role: 'system', content: request.system }, ...request.turns.map((t) => ({ role: t.role, content: t.text }))],
       }),
       ...(request.signal ? { signal: request.signal } : {}),

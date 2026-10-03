@@ -6,7 +6,7 @@
  * them for their models as soon as one is picked.
  */
 import { useEffect, useState } from 'react';
-import { AI_OFF, allowedProviders, isLoopback, modelAllowed, NO_POLICY, parseAiPolicy, providerById, type AiPolicy, type AiSettings, type ModelChoice, type ProviderInfo } from '@kalketa/ai';
+import { AI_EFFORTS, AI_OFF, allowedProviders, isLoopback, modelAllowed, NO_POLICY, parseAiPolicy, providerById, type AiPolicy, type AiSettings, type ModelChoice, type ProviderInfo } from '@kalketa/ai';
 import { t, type Catalog, type UiKey } from '@kalketa/i18n';
 import { desktop, type AiKeyState } from '../document.js';
 
@@ -136,6 +136,25 @@ export function AiSettingsSection({ catalog, draft, onChange }: { catalog: Catal
               {shown.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            <span>{t(catalog, 'ai.effort')}</span>
+            <select
+              className="ai-effort"
+              value={draft.settings.effort ?? ''}
+              onChange={(e) => {
+                const effort = AI_EFFORTS.find((x) => x === e.target.value);
+                const { effort: _old, ...rest } = draft.settings;
+                setSettings(effort ? { ...rest, effort } : rest);
+              }}
+            >
+              <option value="">{t(catalog, 'ai.effortDefault')}</option>
+              {AI_EFFORTS.map((e) => (
+                <option key={e} value={e}>
+                  {t(catalog, `ai.effort.${e}` as UiKey)}
                 </option>
               ))}
             </select>

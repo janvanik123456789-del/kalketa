@@ -82,6 +82,7 @@ export function ChatPane({ catalog, settings, turns, onTurns, context, onOpenSet
         provider: provider.id,
         model: settings.model,
         ...(settings.url ? { url: settings.url } : {}),
+        ...(settings.effort ? { effort: settings.effort } : {}),
         language: catalog.locale,
         sheet,
         languageGuide,

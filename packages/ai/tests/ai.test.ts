@@ -180,9 +180,18 @@ describe('chat with a local server', () => {
     expect(result).toEqual({ ok: true, text: 'Řádek 3 počítá moment.', model: 'qwen' });
     expect(pieces).toEqual(['Řádek 3 ', 'počítá moment.']);
     expect(thinking).toBe(1);
-    const body = JSON.parse(seen.body!) as { stream: boolean; messages: { role: string; content: string }[] };
+    const body = JSON.parse(seen.body!) as { stream: boolean; messages: { role: string; content: string }[]; reasoning_effort?: string };
     expect(body.stream).toBe(true);
+    expect(body.reasoning_effort).toBeUndefined();
     expect(body.messages).toEqual([{ role: 'system', content: 'SYSTEM' }, { role: 'user', content: 'Co je M?' }]);
+  });
+
+  it('passes the thinking depth the user chose', async () => {
+    const seen: { body?: string } = {};
+    await chat({ provider: 'server', model: 'qwen', system: '', turns: [], effort: 'low', onText: () => {} }, { fetch: streaming([event({ content: 'OK' })], seen) });
+    expect(JSON.parse(seen.body!).reasoning_effort).toBe('low');
+    expect(parseAiSettings({ provider: 'server', effort: 'low' })).toMatchObject({ effort: 'low' });
+    expect(parseAiSettings({ provider: 'server', effort: 'extreme' })).not.toHaveProperty('effort');
   });
 
   it('says when the server does not run, or Claude has no key', async () => {

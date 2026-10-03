@@ -1175,6 +1175,10 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
   await clickOn('.ai-settings label.field > span');
   for (let i = 0; i < 3; i++) await pressKey('Down');
   for (let i = 0; i < 40 && !((await contents.executeJavaScript(`document.querySelector('.ai-status')?.textContent ?? ''`)) as string).includes('Připojeno'); i++) await pause(150);
+  // Thinking depth: from "as the model decides" one down to "low".
+  await clickOn('.ai-settings label.field:has(.ai-effort) > span');
+  await pressKey('Down');
+  await pause(200);
   await clickOn('.dialog-buttons button.default');
   await pause(300);
 
@@ -1207,7 +1211,7 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
   return (
     head.includes('Jiný server') && head.includes('local-smoke-7b') &&
     shown.user === 'Co počítá řádek 3?' && shown.input === '' &&
-    /list: [^?;*]+;/.test(shown.answer) && shown.bold !== '' && !shown.answer.includes('**') && shown.code === 'Co počítá řádek 3?' && shown.answer.includes('jazyk: Czech') && shown.answer.includes('výsledky: ano') && shown.answer.includes('otázka: Co počítá řádek 3?') &&
+    /list: [^?;*]+;/.test(shown.answer) && shown.bold !== '' && !shown.answer.includes('**') && shown.code === 'Co počítá řádek 3?' && shown.answer.includes('jazyk: Czech') && shown.answer.includes('úsilí: low') && shown.answer.includes('výsledky: ano') && shown.answer.includes('otázka: Co počítá řádek 3?') &&
     cleared === 0
   );
 }

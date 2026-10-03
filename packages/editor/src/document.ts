@@ -134,6 +134,8 @@ export interface AiChatAsk {
   readonly provider: string;
   readonly model: string;
   readonly url?: string;
+  /** How long the model may think: low, medium, high; absent = as the model decides. */
+  readonly effort?: string;
   /** The user's language; the model answers in it. */
   readonly language: string;
   readonly sheet: { readonly title: string; readonly source: string; readonly findings?: readonly string[] };

@@ -170,16 +170,16 @@ describe('chat with a local server', () => {
 
   it('streams the answer piece by piece and reports thinking', async () => {
     const pieces: string[] = [];
-    let thinking = 0;
+    const thinking: string[] = [];
     const seen: { body?: string } = {};
     const fetchFn = streaming([event({ reasoning_content: 'hmm' }), event({ content: 'Řádek 3 ' }), event({ content: 'počítá moment.' }), 'data: [DONE]\n\n'], seen);
     const result = await chat(
-      { provider: 'server', model: 'qwen', system: 'SYSTEM', turns: [{ role: 'user', text: 'Co je M?' }], onText: (t) => pieces.push(t), onThinking: () => thinking++ },
+      { provider: 'server', model: 'qwen', system: 'SYSTEM', turns: [{ role: 'user', text: 'Co je M?' }], onText: (t) => pieces.push(t), onThinking: (t) => thinking.push(t) },
       { fetch: fetchFn },
     );
     expect(result).toEqual({ ok: true, text: 'Řádek 3 počítá moment.', model: 'qwen' });
     expect(pieces).toEqual(['Řádek 3 ', 'počítá moment.']);
-    expect(thinking).toBe(1);
+    expect(thinking).toEqual(['hmm']);
     const body = JSON.parse(seen.body!) as { stream: boolean; messages: { role: string; content: string }[]; reasoning_effort?: string };
     expect(body.stream).toBe(true);
     expect(body.reasoning_effort).toBeUndefined();

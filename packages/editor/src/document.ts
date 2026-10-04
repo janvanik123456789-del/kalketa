@@ -135,7 +135,7 @@ export interface DesktopBridge {
   /** Saves a library into one of the folders; an existing file only with `replace`. */
   theorySave(request: { folder: TheoryFolder; sheetPath?: string; title: string; bytes: Uint8Array; replace?: boolean }): Promise<{ readonly path: string; readonly exists?: boolean }>;
   theoryFolders(sheetPath?: string): Promise<{ readonly kind: TheoryFolder; readonly dir: string }[]>;
-  onAiChatEvent(listener: (piece: { readonly id: string; readonly text?: string; readonly thinking?: boolean }) => void): void;
+  onAiChatEvent(listener: (piece: { readonly id: string; readonly text?: string; readonly thinking?: string }) => void): void;
   /** Local servers running now, with their models, by provider. */
   aiDiscover(): Promise<Record<string, readonly { readonly id: string; readonly name: string }[]>>;
 }

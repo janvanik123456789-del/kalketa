@@ -163,7 +163,7 @@ export function registerAiBridge(fromEditor: (event: IpcMainInvokeEvent) => unkn
     await loadKeys();
     const controller = new AbortController();
     running.set(ask.id, controller);
-    const send = (piece: { text?: string; thinking?: boolean }) => {
+    const send = (piece: { text?: string; thinking?: string }) => {
       if (!memory && !event.sender.isDestroyed()) event.sender.send('kalketa:ai-chat-event', { id: ask.id, ...piece });
     };
     // The theory for the question: the last two questions of the user, and what was cited so far.
@@ -190,7 +190,7 @@ export function registerAiBridge(fromEditor: (event: IpcMainInvokeEvent) => unkn
         system: prepared.text,
         turns: memory ? [...turns, { role: 'user' as const, text: memoryInstruction(ask.memory ?? '') }] : turns,
         onText: (text) => send({ text }),
-        onThinking: () => send({ thinking: true }),
+        onThinking: (delta) => send({ thinking: delta }),
         signal: controller.signal,
       });
       return prepared.theory && result.ok && !memory ? { ...result, theory: { sent: prepared.theory.sent, total: prepared.theory.total } } : result;

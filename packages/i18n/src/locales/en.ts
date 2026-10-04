@@ -287,6 +287,8 @@ export const en: Catalog = {
     'editor.zoom': 'Zoom',
     'editor.fitPages': '{count} pages side by side',
     'editor.fitPage': '1 page',
+    'pane.chatTab': 'AI',
+    'pane.hide': 'Hide the side pane',
     'editor.pane': 'Side panel',
     'editor.hidePane': 'hidden',
     'menu.file': '&File',

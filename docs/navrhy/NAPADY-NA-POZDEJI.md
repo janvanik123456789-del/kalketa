@@ -4,7 +4,9 @@ Seznam věcí, které vznikly během práce a čekají na své místo. Nejnověj
 
 ## Uživatelské rozhraní
 
-### Postranní panel jako záložky (2026-10-04)
+### ~~Postranní panel jako záložky~~ (2026-10-04, hotovo týž den)
+
+*Hotovo:* nahoře v bočním panelu jsou záložky Podrobnosti, Tabulky, Vrstvy, AI a ✕ pro skrytí. Původní zápis:
 
 Boční panel (Podrobnosti, Tabulky, Vrstvy, Rozhovor s AI) přepínat záložkami nahoře v panelu, ne jen přes Zobrazení → Boční panel a ikony lišty. Rychlejší přepnutí a hned je vidět, co v panelu je. Kandidát po etapě 3 AI.
 
@@ -35,7 +37,9 @@ Lokální model web neumí, Kalketa mu ho může dát:
 
 Potřeba vyhledávač: placené API (Brave, Bing) nebo vlastní SearXNG. Dotazy odcházejí ven: firemní pravidla musí web umět zakázat. Citace z webu ve vrstvě AI jako skupina „Web“ s adresou; ověření citace = text na stažené stránce.
 
-### Rozbalovací řádek „přemýšlení“ (2026-10-04)
+### ~~Rozbalovací řádek „přemýšlení“~~ (2026-10-04, hotovo týž den)
+
+*Hotovo:* během přemýšlení je v chatu sbalený řádek „přemýšlí… N s“; po rozbalení ukazuje průběžné přemýšlení modelu (lokální `reasoning_content`, u Clauda souhrn, pokud ho posílá). Na obrazovce zůstává konec, posledních 6000 znaků, a nikam se neukládá. Původní zápis:
 
 Lokální model s přemýšlením může před odpovědí přemýšlet i několik minut. Uživatel zatím vidí jen „přemýšlí… 240 s“.
 

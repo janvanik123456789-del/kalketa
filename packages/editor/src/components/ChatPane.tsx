@@ -18,11 +18,14 @@ function escapeAttr(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+/** Of the model's thinking, the end this long is kept on screen; it is never saved. */
+const MAX_THOUGHT = 6000;
+
 /** Pieces of answers by request, from the one listener the bridge allows. */
-const listeners = new Map<string, (piece: { readonly text?: string; readonly thinking?: boolean }) => void>();
+const listeners = new Map<string, (piece: { readonly text?: string; readonly thinking?: string }) => void>();
 let listening = false;
 
-function listen(id: string, listener: (piece: { readonly text?: string; readonly thinking?: boolean }) => void): () => void {
+function listen(id: string, listener: (piece: { readonly text?: string; readonly thinking?: string }) => void): () => void {
   if (!listening && desktop) {
     desktop.onAiChatEvent((piece) => listeners.get(piece.id)?.(piece));
     listening = true;
@@ -82,7 +85,14 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTur
     };
   }, [libraryMenu]);
   const [draft, setDraft] = useState('');
-  const [answer, setAnswer] = useState<{ id: string; text: string; thinking: boolean; started: number }>();
+  // `thought`: the model's thinking so far (its end), shown folded while the answer has not begun.
+  const [answer, setAnswer] = useState<{ id: string; text: string; thinking: boolean; thought: string; started: number }>();
+  const thoughtBox = useRef<HTMLDivElement>(null);
+  // The latest thinking stays in view while it grows.
+  useEffect(() => {
+    const box = thoughtBox.current;
+    if (box) box.scrollTop = box.scrollHeight;
+  }, [answer?.thought]);
   // Seconds since the question, so a model thinking for a minute does not look stuck.
   const [, setTick] = useState(0);
   useEffect(() => {
@@ -156,8 +166,10 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTur
     setDraft('');
     setError(undefined);
     const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    setAnswer({ id, text: '', thinking: false, started: Date.now() });
-    const stop = listen(id, (piece) => setAnswer((a) => (a && a.id === id ? { ...a, text: a.text + (piece.text ?? ''), thinking: a.thinking || !!piece.thinking } : a)));
+    setAnswer({ id, text: '', thinking: false, thought: '', started: Date.now() });
+    const stop = listen(id, (piece) =>
+      setAnswer((a) => (a && a.id === id ? { ...a, text: a.text + (piece.text ?? ''), thinking: a.thinking || !!piece.thinking, thought: (a.thought + (piece.thinking ?? '')).slice(-MAX_THOUGHT) } : a)),
+    );
     try {
       const { sheet, languageGuide, memory } = context();
       const result = await desktop!.aiChat({
@@ -255,7 +267,17 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTur
             <div className="chat-turn assistant writing" dangerouslySetInnerHTML={{ __html: answerHtml(answer.text) }} />
           ) : (
             <div className="chat-turn assistant writing">
-              {t(catalog, answer.thinking ? 'chat.thinking' : 'chat.waiting', { seconds: String(Math.floor((Date.now() - answer.started) / 1000)) })}
+              {answer.thought.trim() ? (
+                // Folded: a click shows what the model is thinking about, so a long wait is not a blank one.
+                <details className="chat-thought">
+                  <summary>{t(catalog, 'chat.thinking', { seconds: String(Math.floor((Date.now() - answer.started) / 1000)) })}</summary>
+                  <div ref={thoughtBox} className="chat-thought-text">
+                    {answer.thought}
+                  </div>
+                </details>
+              ) : (
+                t(catalog, answer.thinking ? 'chat.thinking' : 'chat.waiting', { seconds: String(Math.floor((Date.now() - answer.started) / 1000)) })
+              )}
             </div>
           ))}
         {error && <div className="chat-error">{error}</div>}

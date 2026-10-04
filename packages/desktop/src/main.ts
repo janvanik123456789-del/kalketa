@@ -1378,6 +1378,12 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
   await clickOn('.chat-input');
   await typeText('Analyzuj výpočet.');
   await pressKey('Enter');
+  // While the model thinks, its thinking is a folded line; a click opens it.
+  for (let i = 0; i < 20 && !(await contents.executeJavaScript(`!!document.querySelector('.chat-thought summary')`)); i++) await pause(100);
+  const thoughtFolded = (await contents.executeJavaScript(`!document.querySelector('.chat-thought')?.open`)) as boolean;
+  await clickOn('.chat-thought summary');
+  await pause(200);
+  const thought = (await contents.executeJavaScript(`document.querySelector('.chat-thought')?.open ? document.querySelector('.chat-thought-text')?.textContent ?? '' : ''`)) as string;
   for (let i = 0; i < 40 && !(await contents.executeJavaScript(`!!document.querySelector('.chat-error')`)); i++) await pause(150);
   const cutOff = (await contents.executeJavaScript(`({
     error: document.querySelector('.chat-error')?.textContent ?? '',
@@ -1464,13 +1470,17 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
     proposal = { card, accepted, state, undone: undone as boolean, journal, marked, reviewed, markedAgain, printAsks, printClosed };
     if (await contents.executeJavaScript(`!!document.querySelector('.layer-tab[data-layer="main"]')`)) await clickOn('.layer-tab[data-layer="main"]');
   }
+  // The side pane's tabs switch what it shows with one click.
+  await clickOn('.pane-tab[data-pane="tables"]');
+  await pause(200);
+  const paneTabs = (await contents.executeJavaScript(`[...document.querySelectorAll('.pane-tab')].map((t) => (t.classList.contains('active') ? '*' : '') + t.textContent).join(' ') + '|' + localStorage.getItem('kalketa.pane')`)) as string;
   // Back to the pane the later steps expect.
   const back = { details: 'Podrobnosti', tables: 'Tabulky', layers: 'Vrstvy', none: 'Skrytý' }[pane] ?? 'Podrobnosti';
   await clickOn('.menubar-item:nth-child(3) > button');
   await clickMenu('Boční panel');
   await clickMenu(back);
   await pause(300);
-  await writeFile(picture.replace(/[.]png$/, '-ai-chat.json'), JSON.stringify({ pasted, unpasted, typed, theory, offered, quietWhileOff, head, shown, cutOff, cleared, aiTab, layerShown, kept, resumed, proposal }, null, 2));
+  await writeFile(picture.replace(/[.]png$/, '-ai-chat.json'), JSON.stringify({ pasted, unpasted, typed, theory, offered, quietWhileOff, head, shown, cutOff, cleared, aiTab, layerShown, kept, resumed, proposal, paneTabs, thoughtFolded, thought }, null, 2));
   return (
     pasted === 'Klopení je ztráta stability ohýbaného nosníku. Vloženo ze schránky.' && unpasted === 'Klopení je ztráta stability ohýbaného nosníku.' &&
     typed === 'H2:Klopení|P:Klopení je ztráta stability ohýbaného nosníku.' && theory.heading === 'Klopení' && /^T\d+$/.test(theory.badge) &&
@@ -1490,7 +1500,8 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
     proposal.card.includes('+ smoke_ai := 2 m') && proposal.card.includes('Výsledky posudků se nezmění.') && proposal.accepted && proposal.state.startsWith('Přijato') &&
     proposal.journal.includes('Návrhy změn') && proposal.journal.includes('Přijato') && proposal.undone &&
     /^\d+:Řádek navrhla AI \(local-smoke-7b, přijato /.test(proposal.marked) && !proposal.marked.includes('|') && proposal.reviewed && proposal.markedAgain &&
-    proposal.printAsks.startsWith('Výpočet obsahuje řádky navržené AI') && proposal.printClosed
+    proposal.printAsks.startsWith('Výpočet obsahuje řádky navržené AI') && proposal.printClosed &&
+    paneTabs === 'Podrobnosti *Tabulky Vrstvy AI|tables' && thoughtFolded && thought === 'Nejdřív zkontroluji průhyb na řádku 12.'
   );
 }
 

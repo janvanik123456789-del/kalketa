@@ -88,9 +88,13 @@ const fakeApi = createServer((request, response) => {
       }
       // "Analyzuj…": a model that thinks until the length limit and writes nothing.
       if (question.startsWith('Analyzuj')) {
-        response.write(event({ choices: [{ delta: { reasoning_content: 'thinking a lot' } }] }));
-        response.write(event({ choices: [{ delta: {}, finish_reason: 'length' }] }));
-        response.end(event('[DONE]'));
+        response.write(event({ choices: [{ delta: { reasoning_content: 'Nejdřív zkontroluji ' } }] }));
+        response.write(event({ choices: [{ delta: { reasoning_content: 'průhyb na řádku 12.' } }] }));
+        // Long enough to look at the thinking while it goes on.
+        setTimeout(() => {
+          response.write(event({ choices: [{ delta: {}, finish_reason: 'length' }] }));
+          response.end(event('[DONE]'));
+        }, 2500);
         return;
       }
       response.write(event({ choices: [{ delta: { reasoning_content: 'thinking' } }] }));

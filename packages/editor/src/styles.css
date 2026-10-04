@@ -248,7 +248,15 @@ img.thumb { max-height: 28px; max-width: 48px; vertical-align: middle; }
 /* Inspector */
 .pane-divider { width: 5px; flex: none; cursor: col-resize; background: var(--line); }
 .pane-divider:hover { background: var(--accent); }
-.side-pane { flex: none; overflow: auto; background: #fbfcfd; display: flex; flex-direction: column; }
+.side-pane { flex: none; overflow: hidden; background: #fbfcfd; display: flex; flex-direction: column; }
+.pane-tabs { flex: none; display: flex; align-items: stretch; gap: 1px; padding: 3px 4px 0; border-bottom: 1px solid var(--line); background: var(--toolbar); user-select: none; }
+.pane-tab { border: 1px solid transparent; border-bottom: none; border-radius: 4px 4px 0 0; background: none; padding: 3px 9px; font-size: 12px; color: #48505a; cursor: pointer; margin-bottom: -1px; }
+.pane-tab:hover { background: #eef1f5; }
+.pane-tab.active { background: #fbfcfd; border-color: var(--line); color: #1d232b; font-weight: 600; }
+.pane-tabs .grow { flex: 1; }
+.pane-hide { border: none; background: none; color: #8a929c; cursor: pointer; padding: 0 6px; font-size: 12px; }
+.pane-hide:hover { color: #1d232b; }
+.pane-body { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; }
 .inspector { padding: 12px 14px; }
 .tables-view.compact { flex-direction: column; }
 .tables-view.compact .table-list { width: auto; flex-direction: row; flex-wrap: wrap; border-right: none; border-bottom: 1px solid var(--line); }
@@ -412,6 +420,8 @@ button.icon:hover { color: var(--accent); }
 .chat-turn.assistant hr { border: none; border-top: 1px solid #d5dae1; margin: 8px 0; }
 .chat-turn.assistant h1, .chat-turn.assistant h2, .chat-turn.assistant h3 { font-size: 13px; margin: 8px 0 4px; }
 .chat-turn.writing { color: #48505a; }
+.chat-thought summary { cursor: pointer; }
+.chat-thought-text { margin-top: 4px; max-height: 180px; overflow: auto; white-space: pre-wrap; font-size: 12px; color: #6b737d; border-left: 2px solid #d5dae1; padding-left: 6px; }
 .chat-error { color: #a12828; font-size: 12px; }
 .chat-input-row { display: flex; gap: 6px; align-items: stretch; }
 .chat-input { flex: 1; resize: vertical; min-height: 44px; font: inherit; padding: 4px 6px; border: 1px solid #aab2bd; border-radius: 2px; }

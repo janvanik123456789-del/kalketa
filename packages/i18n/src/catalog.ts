@@ -98,6 +98,8 @@ export const UI_KEYS = [
   'editor.fitPages',
   'editor.fitPage',
   'editor.pane',
+  'pane.chatTab',
+  'pane.hide',
   'editor.hidePane',
   'menu.file',
   'menu.edit',

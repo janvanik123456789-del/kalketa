@@ -144,8 +144,8 @@ export interface ChatRequest {
   readonly turns: readonly ChatTurn[];
   /** Each piece of the answer as it comes. */
   onText(delta: string): void;
-  /** The model is thinking before it writes (local models that report it). */
-  onThinking?(): void;
+  /** Each piece of the model's thinking before it writes (local models that report it, Claude's summary). */
+  onThinking?(delta: string): void;
   readonly signal?: AbortSignal;
 }
 
@@ -185,6 +185,7 @@ export async function chat(request: ChatRequest, transport: Transport = {}): Pro
       request.signal ? { signal: request.signal } : {},
     );
     stream.on('text', (delta) => request.onText(delta));
+    stream.on('thinking', (delta) => request.onThinking?.(delta));
     const message = await stream.finalMessage();
     if (message.stop_reason === 'refusal') return { ok: false, problem: 'refused' };
     if (message.stop_reason === 'max_tokens') return finished(message.content.map((b) => (b.type === 'text' ? b.text : '')).join(''), message.model, true);
@@ -229,7 +230,7 @@ async function chatOpenAi(provider: ProviderInfo, request: ChatRequest, fetchFn:
       if (event.model) model = event.model;
       if (event.choices?.[0]?.finish_reason === 'length') atLimit = true;
       const delta = event.choices?.[0]?.delta;
-      if (delta?.reasoning_content) request.onThinking?.();
+      if (delta?.reasoning_content) request.onThinking?.(delta.reasoning_content);
       if (delta?.content) {
         text += delta.content;
         request.onText(delta.content);

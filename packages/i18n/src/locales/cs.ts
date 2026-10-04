@@ -287,6 +287,8 @@ export const cs: Catalog = {
     'editor.zoom': 'Zobrazení',
     'editor.fitPages': '{count} stránky vedle sebe',
     'editor.fitPage': '1 stránka',
+    'pane.chatTab': 'AI',
+    'pane.hide': 'Skrýt boční panel',
     'editor.pane': 'Boční panel',
     'editor.hidePane': 'skrytý',
     'menu.file': '&Soubor',

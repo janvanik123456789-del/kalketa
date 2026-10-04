@@ -46,6 +46,13 @@ import { TablesView } from './components/TablesView.js';
 import { ToolbarFrame, toolbarName } from './components/Toolbars.js';
 
 type Pane = 'details' | 'tables' | 'layers' | 'chat' | 'none';
+/** The side pane's tabs and their labels. */
+const PANE_TABS: readonly (readonly [Exclude<Pane, 'none'>, Parameters<typeof t>[1]])[] = [
+  ['details', 'cmd.view.paneDetails'],
+  ['tables', 'cmd.view.paneTables'],
+  ['layers', 'cmd.view.paneLayers'],
+  ['chat', 'pane.chatTab'],
+];
 type Tab = DocTab<SheetDocument, FileRef>;
 type DialogKind = 'settings' | 'properties' | 'revisions' | 'customize' | 'shortcuts' | 'functions' | 'about';
 
@@ -1425,98 +1432,112 @@ export function App() {
             <>
               <div className="pane-divider" onMouseDown={startResize} role="separator" aria-orientation="vertical" />
               <div className="side-pane" style={{ width: paneWidth }}>
-                {pane === 'chat' ? (
-                  <ChatPane
-                    catalog={ui}
-                    settings={aiSettings}
-                    aiOn={aiOn}
-                    onAiOn={(on) => {
-                      if (!on) rememberConversation(chat);
-                      setAiOn(on);
-                    }}
-                    turns={chat?.turns ?? []}
-                    onTurns={(turns) => {
-                      // Kept in the AI notes of the calculation: a new conversation gets its id with its first question.
-                      const id = chat?.id ?? startedChat.current[tab.id] ?? globalThis.crypto.randomUUID();
-                      startedChat.current[tab.id] = id;
-                      const started = chat?.started ?? turns[0]?.time ?? new Date().toISOString();
-                      setActiveChat((all) => ({ ...all, [tab.id]: id }));
-                      const last = turns[turns.length - 1];
-                      changeWith((present) => {
-                        let next = withConversation(present, { id, started, provider: aiSettings.provider, ...(aiSettings.model ? { model: aiSettings.model } : {}), turns });
-                        if (last?.role !== 'assistant') return next;
-                        // Changes the answer proposes go into the journal, open, with the lines they replace as they are now.
-                        const known = new Set(entriesOf(next).map((e) => e.id));
-                        const proposed = parseProposals(last.text)
-                          .map((p, n): ChangeEntry => {
-                            const before = replacedLines(next.source, p);
-                            return {
-                              id: `${id}:${turns.length - 1}:${n + 1}`,
-                              kind: 'change',
-                              time: last.time ?? new Date().toISOString(),
-                              ...(last.model ? { model: last.model } : {}),
-                              conversation: id,
-                              from: p.from,
-                              to: p.to,
-                              ...(p.insert ? { insert: true } : {}),
-                              ...(before ? { before } : {}),
-                              after: p.lines,
-                              state: 'open',
-                            };
-                          })
-                          .filter((e) => !known.has(e.id));
-                        next = withEntries(next, proposed);
-                        // The calculation keeps copies of the library sections an answer cited.
-                        return libraries.recordCited(last.text, next);
-                      }, 'ai-chat');
-                    }}
-                    proposals={(turn) => (chat ? proposalViews(entriesOf(doc).filter((e) => e.id.startsWith(`${chat.id}:${turn}:`))) : [])}
-                    onDecide={decideProposal}
-                    onReview={reviewProposal}
-                    onNew={() => {
-                      rememberConversation(chat);
-                      startedChat.current[tab.id] = undefined;
-                      setActiveChat((all) => ({ ...all, [tab.id]: '' }));
-                    }}
-                    libraries={libraries.entries}
-                    onLibraries={() => void libraries.refresh()}
-                    onToggleLibrary={libraries.toggle}
-                    theory={[...theorySections(doc.layers), ...libraries.theory().sections]}
-                    context={chatContext}
-                    onOpenSettings={() => setDialog('settings')}
-                  />
-                ) : pane === 'layers' ? (
-                  <LayersPane
-                    layers={doc.layers}
-                    active={layer.id}
-                    catalog={ui}
-                    used={evaluation.used}
-                    nameOf={nameOf}
-                    open={openPanes}
-                    onActivate={activate}
-                    onOpenBeside={openBeside}
-                    onChange={setLayers}
-                    onAdd={(kind) => void newLayer(kind)}
-                    onDelete={(id) => void deleteLayer(id)}
-                    blocks={[...doc.blocks].map(([name, b]) => ({ name, version: b.version, ...(b.origin !== undefined ? { origin: b.origin } : {}) }))}
-                    onDeleteBlock={(name) => void deleteBlock(name)}
-                  />
-                ) : pane === 'details' ? (
-                  <Inspector
-                    result={result}
-                    statement={selected}
-                    catalog={ui}
-                    decimalComma={decimalComma}
-                    onLayer={activate}
-                    onSelect={(statement) => {
-                      setSelected(statement);
-                      const line = result.statements[statement]?.statement.span.line;
-                      document.querySelector(`.layer-view.active .row[data-line="${line}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
-                    }}
-                  />
-                ) : (
-                  <TablesView doc={doc} catalog={ui} diagnostics={tableDiagnostics} resolveFile={resolveFile} onChange={(next) => change(next)} assign={assignTable} compact />
-                )}
+                {/* What the pane can show, as tabs: one click to switch, and it is clear what is there. */}
+                <nav className="pane-tabs" role="tablist" aria-label={t(ui, 'editor.pane')}>
+                  {PANE_TABS.map(([id, label]) => (
+                    <button key={id} type="button" role="tab" aria-selected={pane === id} className={`pane-tab${pane === id ? ' active' : ''}`} data-pane={id} onClick={() => choosePane(id)}>
+                      {t(ui, label).replace('&', '')}
+                    </button>
+                  ))}
+                  <span className="grow" />
+                  <button type="button" className="pane-hide" title={t(ui, 'pane.hide')} onClick={() => choosePane('none')}>
+                    ✕
+                  </button>
+                </nav>
+                <div className="pane-body">
+                  {pane === 'chat' ? (
+                    <ChatPane
+                      catalog={ui}
+                      settings={aiSettings}
+                      aiOn={aiOn}
+                      onAiOn={(on) => {
+                        if (!on) rememberConversation(chat);
+                        setAiOn(on);
+                      }}
+                      turns={chat?.turns ?? []}
+                      onTurns={(turns) => {
+                        // Kept in the AI notes of the calculation: a new conversation gets its id with its first question.
+                        const id = chat?.id ?? startedChat.current[tab.id] ?? globalThis.crypto.randomUUID();
+                        startedChat.current[tab.id] = id;
+                        const started = chat?.started ?? turns[0]?.time ?? new Date().toISOString();
+                        setActiveChat((all) => ({ ...all, [tab.id]: id }));
+                        const last = turns[turns.length - 1];
+                        changeWith((present) => {
+                          let next = withConversation(present, { id, started, provider: aiSettings.provider, ...(aiSettings.model ? { model: aiSettings.model } : {}), turns });
+                          if (last?.role !== 'assistant') return next;
+                          // Changes the answer proposes go into the journal, open, with the lines they replace as they are now.
+                          const known = new Set(entriesOf(next).map((e) => e.id));
+                          const proposed = parseProposals(last.text)
+                            .map((p, n): ChangeEntry => {
+                              const before = replacedLines(next.source, p);
+                              return {
+                                id: `${id}:${turns.length - 1}:${n + 1}`,
+                                kind: 'change',
+                                time: last.time ?? new Date().toISOString(),
+                                ...(last.model ? { model: last.model } : {}),
+                                conversation: id,
+                                from: p.from,
+                                to: p.to,
+                                ...(p.insert ? { insert: true } : {}),
+                                ...(before ? { before } : {}),
+                                after: p.lines,
+                                state: 'open',
+                              };
+                            })
+                            .filter((e) => !known.has(e.id));
+                          next = withEntries(next, proposed);
+                          // The calculation keeps copies of the library sections an answer cited.
+                          return libraries.recordCited(last.text, next);
+                        }, 'ai-chat');
+                      }}
+                      proposals={(turn) => (chat ? proposalViews(entriesOf(doc).filter((e) => e.id.startsWith(`${chat.id}:${turn}:`))) : [])}
+                      onDecide={decideProposal}
+                      onReview={reviewProposal}
+                      onNew={() => {
+                        rememberConversation(chat);
+                        startedChat.current[tab.id] = undefined;
+                        setActiveChat((all) => ({ ...all, [tab.id]: '' }));
+                      }}
+                      libraries={libraries.entries}
+                      onLibraries={() => void libraries.refresh()}
+                      onToggleLibrary={libraries.toggle}
+                      theory={[...theorySections(doc.layers), ...libraries.theory().sections]}
+                      context={chatContext}
+                      onOpenSettings={() => setDialog('settings')}
+                    />
+                  ) : pane === 'layers' ? (
+                    <LayersPane
+                      layers={doc.layers}
+                      active={layer.id}
+                      catalog={ui}
+                      used={evaluation.used}
+                      nameOf={nameOf}
+                      open={openPanes}
+                      onActivate={activate}
+                      onOpenBeside={openBeside}
+                      onChange={setLayers}
+                      onAdd={(kind) => void newLayer(kind)}
+                      onDelete={(id) => void deleteLayer(id)}
+                      blocks={[...doc.blocks].map(([name, b]) => ({ name, version: b.version, ...(b.origin !== undefined ? { origin: b.origin } : {}) }))}
+                      onDeleteBlock={(name) => void deleteBlock(name)}
+                    />
+                  ) : pane === 'details' ? (
+                    <Inspector
+                      result={result}
+                      statement={selected}
+                      catalog={ui}
+                      decimalComma={decimalComma}
+                      onLayer={activate}
+                      onSelect={(statement) => {
+                        setSelected(statement);
+                        const line = result.statements[statement]?.statement.span.line;
+                        document.querySelector(`.layer-view.active .row[data-line="${line}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                      }}
+                    />
+                  ) : (
+                    <TablesView doc={doc} catalog={ui} diagnostics={tableDiagnostics} resolveFile={resolveFile} onChange={(next) => change(next)} assign={assignTable} compact />
+                  )}
+                </div>
               </div>
             </>
           )

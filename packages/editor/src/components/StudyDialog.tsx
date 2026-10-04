@@ -12,12 +12,17 @@ import { keyOf, parseStudySettings, studyAdvice, type StudySettings } from '@kal
 import { desktop, type TheoryFolder } from '../document.js';
 import type { FoundLibrary } from '../theoryLibraries.js';
 import { Dialog } from './Dialogs.js';
+import { suggestChapters } from '../logic/studySuggest.js';
 
 interface Props {
   readonly catalog: Catalog;
   readonly files: readonly FoundLibrary[];
   readonly sheetPath?: string;
+  /** Text of the open calculation, for suggesting the chapters it needs. */
+  readonly sheetText?: string;
   onSave(path: string, settings: StudySettings): Promise<void>;
+  /** Puts the chosen part of a file into a new sources layer, to be tidied and saved as a library. */
+  onImport?(file: FoundLibrary, settings: StudySettings): void;
   onClose(): void;
 }
 
@@ -41,11 +46,13 @@ function settingsOf(file: FoundLibrary, draft: Draft): StudySettings {
   return parseStudySettings({ ...file.study!.settings, ...(title ? { title } : {}), key: key || keyOf(title || file.library.manifest.title), chapters: [...draft.chapters].sort((a, b) => a - b), pages: draft.pages.trim() });
 }
 
-export function StudyDialog({ catalog, files, sheetPath, onSave, onClose }: Props) {
+export function StudyDialog({ catalog, files, sheetPath, sheetText = '', onSave, onImport, onClose }: Props) {
   const study = files.filter((f) => f.study);
   const [current, setCurrent] = useState(study[0]?.path);
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [failed, setFailed] = useState<string>();
+  // What the suggestion found, said once under the chapters.
+  const [suggested, setSuggested] = useState<string>();
   const [folders, setFolders] = useState<readonly { kind: TheoryFolder; dir: string }[]>([]);
   useEffect(() => void desktop?.theoryFolders(sheetPath).then(setFolders), [sheetPath]);
 
@@ -54,15 +61,17 @@ export function StudyDialog({ catalog, files, sheetPath, onSave, onClose }: Prop
   const draft = file ? (drafts[file.path] ?? draftOf(file)) : undefined;
   const set = (change: Partial<Draft>) => file && draft && setDrafts((all) => ({ ...all, [file.path]: { ...draft, ...change } }));
 
+  /** Writes the cards that changed; false when one could not be written. */
   const save = async () => {
     try {
       for (const f of study) {
         const d = drafts[f.path];
         if (d) await onSave(f.path, settingsOf(f, d));
       }
-      onClose();
+      return true;
     } catch (error) {
       setFailed(t(catalog, 'study.saveFailed', { error: error instanceof Error ? error.message : String(error) }));
+      return false;
     }
   };
 
@@ -77,7 +86,7 @@ export function StudyDialog({ catalog, files, sheetPath, onSave, onClose }: Prop
   };
 
   return (
-    <Dialog title={t(catalog, 'study.title')} catalog={catalog} wide onClose={onClose} onOk={() => void save()}>
+    <Dialog title={t(catalog, 'study.title')} catalog={catalog} wide onClose={onClose} onOk={() => void save().then((saved) => saved && onClose())}>
       <p className="hint study-intro">{t(catalog, 'study.intro')}</p>
       {study.length === 0 ? (
         <div className="study-none">
@@ -132,10 +141,27 @@ export function StudyDialog({ catalog, files, sheetPath, onSave, onClose }: Prop
                 <>
                   <div className="study-chapters-head">
                     <span>{t(catalog, 'study.chapters')}</span>
-                    <button type="button" className="study-whole secondary" onClick={() => set({ chapters: [], pages: '' })}>
-                      {t(catalog, 'study.whole')}
-                    </button>
+                    <span className="study-chapter-buttons">
+                      {sheetText.trim() && (
+                        <button
+                          type="button"
+                          className="study-suggest secondary"
+                          title={t(catalog, 'study.suggestTip')}
+                          onClick={() => {
+                            const chapters = suggestChapters(file.study!.content, sheetText);
+                            if (chapters.length > 0) set({ chapters });
+                            setSuggested(chapters.length > 0 ? t(catalog, 'study.suggested', { chapters: chapters.map((i) => file.study!.content.outline![i]!.title).join(', ') }) : t(catalog, 'study.suggestedNone'));
+                          }}
+                        >
+                          {t(catalog, 'study.suggest')}
+                        </button>
+                      )}
+                      <button type="button" className="study-whole secondary" onClick={() => set({ chapters: [], pages: '' })}>
+                        {t(catalog, 'study.whole')}
+                      </button>
+                    </span>
                   </div>
+                  {suggested && <p className="study-suggested hint">{suggested}</p>}
                   <ul className="study-chapters">
                     {file.study!.content.outline!.map((c, i) => (
                       <li key={i} style={{ paddingLeft: `${(c.level - 1) * 16}px` }}>
@@ -156,6 +182,22 @@ export function StudyDialog({ catalog, files, sheetPath, onSave, onClose }: Prop
                   <span>{t(catalog, 'study.pages')}</span>
                   <input className="study-pages" value={draft.pages} placeholder="45–80, 112" onChange={(e) => set({ pages: e.target.value })} />
                 </label>
+              )}
+              {onImport && (
+                <div className="study-import">
+                  <button
+                    type="button"
+                    className="study-to-sources secondary"
+                    title={t(catalog, 'study.toSourcesTip')}
+                    onClick={() =>
+                      void save().then((saved) => {
+                        if (saved) onImport(file, settingsOf(file, draft));
+                      })
+                    }
+                  >
+                    {t(catalog, 'study.toSources')}
+                  </button>
+                </div>
               )}
             </div>
           )}

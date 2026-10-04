@@ -1276,14 +1276,26 @@ async function studyWithRealInput(contents: Electron.WebContents, picture: strin
     chapters: [...document.querySelectorAll('.study-chapters li')].map((l) => l.textContent),
     key: document.querySelector('.study-key')?.value ?? '',
   })`)) as { file: string; reads: string; large: boolean; chapters: string[]; key: string };
+  // Suggested for the open calculation: a message either way; then the whole book again, and one chapter by hand.
+  await clickOn('.study-suggest');
+  await pause(200);
+  const suggested = (await contents.executeJavaScript(`document.querySelector('.study-suggested')?.textContent ?? ''`)) as string;
+  await clickOn('.study-whole');
+  await pause(100);
   const ohyb = offered.chapters.findIndex((c) => c.startsWith('2 Ohyb'));
   await clickOn(`.study-chapters li:nth-child(${ohyb + 1}) input`);
   await pause(200);
   const chosen = (await contents.executeJavaScript(`({ reads: document.querySelector('.study-reads')?.textContent ?? '', large: !!document.querySelector('.study-advice.warn') })`)) as { reads: string; large: boolean };
   await pause(400);
   await takePicture(picture.replace(/[.]png$/, '-study.png'));
-  await clickOn('.dialog-buttons button.default');
-  await pause(600);
+  // Into the sources: the card is saved, a new sources layer holds the chapter by its headings.
+  await clickOn('.study-to-sources');
+  await pause(800);
+  const sources = (await contents.executeJavaScript(`({
+    dialog: !!document.querySelector('.study-files'),
+    headings: [...document.querySelectorAll('.layer-view.active .word-text h2, .layer-view.active .word-text h3')].map((h) => h.tagName + ':' + h.textContent),
+    text: document.querySelector('.layer-view.active .word-text .ProseMirror')?.textContent ?? '',
+  })`)) as { dialog: boolean; headings: string[]; text: string };
   const card = existsSync(join(dir, 'Pruznost a pevnost.pdf.kalketa.json')) ? (JSON.parse(await readFile(join(dir, 'Pruznost a pevnost.pdf.kalketa.json'), 'utf8')) as { key?: string; chapters?: number[] }) : {};
 
   // The chat: the book is offered among the libraries, with how much of it is read.
@@ -1308,10 +1320,11 @@ async function studyWithRealInput(contents: Electron.WebContents, picture: strin
   await clickOn('.pane-tab[data-pane="details"]');
   await pause(300);
   const cited = answer.ok.map((c) => /^PP:T(\d+)$/.exec(c ?? '')?.[1]).filter(Boolean).map(Number);
-  await writeFile(picture.replace(/[.]png$/, '-study.json'), JSON.stringify({ offered, chosen, card, listed, answer, cited }, null, 2));
+  await writeFile(picture.replace(/[.]png$/, '-study.json'), JSON.stringify({ offered, suggested, chosen, sources, card, listed, answer, cited }, null, 2));
   return (
     offered.file.startsWith('Pruznost a pevnost.pdf') && offered.file.includes('PDF, 62 s.') && offered.reads === 'AI čte 62 z 62.' && offered.large && offered.key === 'PP' &&
-    offered.chapters.length === 4 && ohyb >= 0 && chosen.reads === 'AI čte 21 z 62.' && !chosen.large &&
+    offered.chapters.length === 4 && ohyb >= 0 && chosen.reads === 'AI čte 21 z 62.' && !chosen.large && suggested !== '' &&
+    !sources.dialog && sources.headings[0] === 'H2:2 Ohyb (s. 21–24)' && sources.headings[1] === 'H3:2.1 Průhyb nosníku (s. 25–40)' && sources.headings.length === 2 && sources.text.includes('Strana 30.') && !sources.text.includes('Strana 20.') &&
     card.key === 'PP' && JSON.stringify(card.chapters) === JSON.stringify([ohyb]) &&
     at >= 0 && listed[at]!.includes('AI čte 21 z 62.') &&
     cited.length === 1 && cited[0]! >= 21 && cited[0]! <= 41

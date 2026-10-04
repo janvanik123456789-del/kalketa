@@ -149,6 +149,53 @@ export function selectedPages(content: StudyContent, settings: StudySettings): n
   return [...chosen].filter((p) => p >= 1 && p <= count).sort((a, b) => a - b);
 }
 
+/** Each chapter of the outline with the text of its pages (or chapter), for finding the ones a calculation needs. */
+export function chapterTexts(content: StudyContent): { title: string; text: string }[] {
+  return (content.outline ?? []).map((c, i) => ({ title: c.title, text: chapterPages(content.outline!, i, content.pages.length).map((p) => content.pages[p - 1] ?? '').join('\n') }));
+}
+
+/**
+ * The chosen part of a study file as notes Markdown, for a sources layer where
+ * it is tidied and saved as a theory library: a heading per chapter (with its
+ * pages as printed), the text of its pages under it.
+ */
+export function studyNotes(content: StudyContent, settings: StudySettings = {}): string {
+  const outline = content.outline ?? [];
+  const label = (p: number) => content.labels?.[p - 1] ?? String(p);
+  const chapterOf = (p: number) => [...outline].reverse().find((c) => c.page <= p);
+  // A page a chosen chapter only shares with the next one (where that one starts) is left to the next one,
+  // unless the page was chosen itself: the sources get the chosen chapters and their sections only.
+  const chosen = new Set<StudyChapter>();
+  for (const i of settings.chapters ?? []) {
+    const c = outline[i];
+    if (!c) continue;
+    chosen.add(c);
+    for (const sub of outline.slice(i + 1)) {
+      if (sub.level <= c.level) break;
+      chosen.add(sub);
+    }
+  }
+  const asked = new Set(settings.pages ? parsePageRanges(settings.pages, content.pages.length, content.labels) : []);
+  const groups: { chapter?: StudyChapter; pages: number[] }[] = [];
+  for (const p of selectedPages(content, settings)) {
+    if (!content.pages[p - 1]?.trim()) continue;
+    const chapter = chapterOf(p);
+    if (chosen.size > 0 && !asked.has(p) && (!chapter || !chosen.has(chapter))) continue;
+    const last = groups[groups.length - 1];
+    if (last && last.chapter === chapter && last.pages[last.pages.length - 1] === p - 1) last.pages.push(p);
+    else groups.push({ ...(chapter ? { chapter } : {}), pages: [p] });
+  }
+  return groups
+    .map((g) => {
+      const first = g.pages[0]!;
+      const last = g.pages[g.pages.length - 1]!;
+      const pages = content.kind === 'pdf' ? ` (s. ${first === last ? label(first) : `${label(first)}–${label(last)}`})` : '';
+      const level = content.kind === 'pdf' ? Math.min(3, Math.max(2, (g.chapter?.level ?? 1) + 1)) : Math.min(3, (g.chapter?.level ?? 1) + 1);
+      return `${'#'.repeat(level)} ${headingText(g.chapter?.title ?? content.title ?? baseName(content.fileName))}${pages}\n\n${g.pages.map((p) => bodyText(content.pages[p - 1] ?? '')).join('\n\n')}`;
+    })
+    .join('\n\n');
+}
+
 /** Advice on a study file: its size, how much is read, whether it has text at all. */
 export interface StudyAdvice {
   readonly pages: number;

@@ -12,12 +12,12 @@ import { catalogFor, CATALOGS, formatDiagnostic, formatNumber, t, type Catalog }
 import { buildPrintDocument, printHtml, revisionFooter, type PrintAppendix } from '@kalketa/render';
 import { emptyScene, readScene, writeScene, type CanvasScene } from '@kalketa/canvas';
 import { CanvasEditor } from '@kalketa/canvas/editor';
-import { addLayer, allDiagnostics, appendixLayers, blockAppendices, documentBlocks, isRemovable, LayerSessions, MAIN_LAYER, removeLayer, freezeRevision, removeRevision, revisionDocument, revisionState, shortHash, tablesByLayer, theorySections, updateLayer, withTheoryIds, conversationsOf, hasConversations, withConversation, withoutConversation, aiMemoryOf, withAiMemory, linkedLibraries, librarySections, entriesOf, newSheetsOf, withEntries, aiMadeLines, type SheetEntry, evaluateDocument, type ChangeEntry, type Conversation, type AddableLayerKind, type Layer, type RevisionState, type SheetDocument } from '@kalketa/sheet';
+import { addLayer, allDiagnostics, appendixLayers, blockAppendices, documentBlocks, isRemovable, LayerSessions, MAIN_LAYER, removeLayer, freezeRevision, removeRevision, revisionDocument, revisionState, shortHash, tablesByLayer, theorySections, updateLayer, withTheoryIds, conversationsOf, hasConversations, withConversation, withoutConversation, aiMemoryOf, withAiMemory, linkedLibraries, librarySections, entriesOf, newSheetsOf, withEntries, studyAdvice, studyNotes, LARGE_STUDY_PAGES, type StudySettings, aiMadeLines, type SheetEntry, evaluateDocument, type ChangeEntry, type Conversation, type AddableLayerKind, type Layer, type RevisionState, type SheetDocument } from '@kalketa/sheet';
 import { buildCommands, shortcutOf, type Command } from './commands.js';
 import { applyProposal, applyProposals, cleanMemory, parseNewSheets, DEFAULT_AI_SETTINGS, parseAiSettings, parseProposals, providerById, replacedLines, type ChangeProposal, type AiSettings, type ChatTurn } from '@kalketa/ai';
 import { ChatPane } from './components/ChatPane.js';
 import { TheoryLibraryDialog } from './components/TheoryLibraryDialog.js';
-import { sourceText, useTheoryLibraries, withoutDuplicates } from './theoryLibraries.js';
+import { sourceText, useTheoryLibraries, withoutDuplicates, type FoundLibrary } from './theoryLibraries.js';
 import { aiSources } from './logic/aiSources.js';
 import { aiProtocol } from './logic/aiProtocol.js';
 import { StudyDialog } from './components/StudyDialog.js';
@@ -337,6 +337,24 @@ export function App() {
     const added = addLayer(doc.layers, kind, name);
     setLayers(added.layers);
     activate(added.id);
+  };
+
+  /**
+   * The chosen part of a study file into a new sources layer: a heading per
+   * chapter, the text of its pages under it. There it is tidied (Clean up PDF
+   * text), given pictures, and saved as a theory library (ch. 9.6).
+   */
+  const importStudy = async (file: FoundLibrary, settings: StudySettings) => {
+    if (!file.study) return;
+    const content = file.study.content;
+    const pages = studyAdvice(content, settings).selected;
+    if (pages > LARGE_STUDY_PAGES && !(await askConfirm(t(ui, 'study.toSourcesLarge', { pages: String(pages) })))) return;
+    const name = file.library.manifest.title;
+    const added = addLayer(doc.layers, 'sources', name);
+    change({ ...doc, layers: updateLayer(added.layers, added.id, { text: studyNotes(content, settings) }) });
+    setDialog(undefined);
+    activate(added.id);
+    setNotice(t(ui, 'study.toSourcesDone', { name }));
   };
 
   /** Takes a calculation from a file as a block and inserts a line that uses it. */
@@ -1823,7 +1841,17 @@ export function App() {
         />
       )}
       {dialog === 'about' && <AboutDialog catalog={ui} onClose={() => setDialog(undefined)} />}
-      {dialog === 'study' && <StudyDialog catalog={ui} files={libraries.found} {...(tab.path ? { sheetPath: tab.path } : {})} onSave={libraries.saveStudy} onClose={() => setDialog(undefined)} />}
+      {dialog === 'study' && (
+        <StudyDialog
+          catalog={ui}
+          files={libraries.found}
+          {...(tab.path ? { sheetPath: tab.path } : {})}
+          sheetText={`${doc.manifest.title}\n${doc.source}`}
+          onSave={libraries.saveStudy}
+          onImport={(file, settings) => void importStudy(file, settings)}
+          onClose={() => setDialog(undefined)}
+        />
+      )}
       <AskHost catalog={ui} title="Kalketa" />
     </div>
   );

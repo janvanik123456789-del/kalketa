@@ -33,7 +33,7 @@ Uživatel chtěl po AI „na novém listu udělej ten samý výpočet, jen se si
 
 ### Složka studijních podkladů PDF a HTML (2026-10-04, etapy A a B hotové týž den)
 
-*Hotovo:* čtení PDF, HTML a MD ze složek teorie, citace po stránkách, dialog Nástroje → Studijní podklady s výběrem kapitol a stránek a upozorněním na velkou knihu (kap. 9.6). *Zbývá etapa C:* návrh kapitol podle výpočtu a převod na `.kalkt`. Původní zápis:
+*Hotovo:* čtení PDF, HTML a MD ze složek teorie, citace po stránkách, dialog Nástroje → Studijní podklady s výběrem kapitol a stránek a upozorněním na velkou knihu (kap. 9.6). *Etapa C hotová týž den:* návrh kapitol podle výpočtu a převod výběru přes vrstvu Podklady na `.kalkt`. Původní zápis:
 
 Návrh uživatele: Kalketa by měla mít vlastní složku pro studijní podklady v PDF nebo HTML (normy, skripta, články), ze které model čerpá jako z teorie. Cesty k souborům v Podkladech nejsou dobré řešení: nepřenesou se s výpočtem a model je sám neotevře.
 

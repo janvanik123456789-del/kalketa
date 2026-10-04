@@ -56,6 +56,26 @@ export function terms(text: string): string[] {
 }
 
 /**
+ * How well each section matches a text (a question, or a whole calculation):
+ * BM25-like, a word rare in the sections counts more, the title counts twice.
+ * 0 = no word in common.
+ */
+export function rankSections(sections: readonly SearchableSection[], query: string): number[] {
+  const docs = sections.map((s) => [...terms(s.title), ...terms(s.title), ...terms(s.text)]);
+  const avg = docs.reduce((n, d) => n + d.length, 0) / Math.max(1, docs.length);
+  const wanted = [...new Set(terms(query))];
+  return docs.map((d) =>
+    wanted.reduce((sum, t) => {
+      const f = d.filter((x) => meets(t, x)).length;
+      if (f === 0) return sum;
+      const n = docs.filter((other) => other.some((x) => meets(t, x))).length;
+      const idf = Math.log(1 + (docs.length - n + 0.5) / (n + 0.5));
+      return sum + (idf * f * 2.2) / (f + 1.2 * (0.25 + 0.75 * (d.length / Math.max(1, avg))));
+    }, 0),
+  );
+}
+
+/**
  * The sections for a question. `cited` are ids already cited in the
  * conversation: they go along, so the model can follow up on them.
  */
@@ -64,19 +84,7 @@ export function selectTheory<S extends SearchableSection>(sections: readonly S[]
   const all = sections.reduce((n, s) => n + size(s), 0);
   if (all <= WHOLE_THEORY_CHARS) return { sections, whole: true, total: sections.length };
 
-  // BM25-like: a word rare in the theory counts more; the title counts twice.
-  const docs = sections.map((s) => [...terms(s.title), ...terms(s.title), ...terms(s.text)]);
-  const avg = docs.reduce((n, d) => n + d.length, 0) / Math.max(1, docs.length);
-  const wanted = [...new Set(terms(query))];
-  const score = docs.map((d) => {
-    return wanted.reduce((sum, t) => {
-      const f = d.filter((x) => meets(t, x)).length;
-      if (f === 0) return sum;
-      const n = docs.filter((other) => other.some((x) => meets(t, x))).length;
-      const idf = Math.log(1 + (docs.length - n + 0.5) / (n + 0.5));
-      return sum + (idf * f * 2.2) / (f + 1.2 * (0.25 + 0.75 * (d.length / avg)));
-    }, 0);
-  });
+  const score = rankSections(sections, query);
 
   const chosen = new Set<number>();
   let used = 0;

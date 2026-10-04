@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { defaultRegistry, formatPicture, parsePicture, rowLabel, toDecimalComma, type Diagnostic, type Statement } from '@kalketa/core';
 import { catalogFor, CATALOGS, formatDiagnostic, formatNumber, t, type Catalog } from '@kalketa/i18n';
-import { buildPrintDocument, printHtml, revisionFooter } from '@kalketa/render';
+import { buildPrintDocument, printHtml, revisionFooter, type PrintAppendix } from '@kalketa/render';
 import { emptyScene, readScene, writeScene, type CanvasScene } from '@kalketa/canvas';
 import { CanvasEditor } from '@kalketa/canvas/editor';
 import { addLayer, allDiagnostics, appendixLayers, blockAppendices, documentBlocks, isRemovable, LayerSessions, MAIN_LAYER, removeLayer, freezeRevision, removeRevision, revisionDocument, revisionState, shortHash, tablesByLayer, theorySections, updateLayer, withTheoryIds, conversationsOf, hasConversations, withConversation, withoutConversation, aiMemoryOf, withAiMemory, linkedLibraries, librarySections, entriesOf, withEntries, aiMadeLines, evaluateDocument, type ChangeEntry, type Conversation, type AddableLayerKind, type Layer, type RevisionState, type SheetDocument } from '@kalketa/sheet';
@@ -19,6 +19,7 @@ import { ChatPane } from './components/ChatPane.js';
 import { TheoryLibraryDialog } from './components/TheoryLibraryDialog.js';
 import { sourceText, useTheoryLibraries, withoutDuplicates } from './theoryLibraries.js';
 import { aiSources } from './logic/aiSources.js';
+import { aiProtocol } from './logic/aiProtocol.js';
 import { proposalEffect, type ProposalEffect } from './logic/proposalEffect.js';
 import type { ProposalView } from './components/ProposalCard.js';
 import { languageGuide, sheetContext } from './logic/aiContext.js';
@@ -484,6 +485,23 @@ export function App() {
       })
     : undefined;
 
+  /** Statements of the sheet with a line the AI made and nobody reviewed, by their first line. */
+  const unreviewedAiLines = () => {
+    const made = aiMadeLines(doc.source, entriesOf(doc));
+    if (made.size === 0) return new Set<number>();
+    return new Set(segments(doc.source, evaluation.main.sheet.statements).filter((seg) => seg.statement !== undefined && [...made.keys()].some((line) => line >= seg.start && line <= seg.end)).map((seg) => seg.start));
+  };
+  /** The AI notes print as a protocol: sources and citations, proposed changes and decisions. */
+  const withAiProtocol = (appendix: PrintAppendix): PrintAppendix => {
+    const layer = doc.layers.find((x) => x.id === appendix.layer);
+    if (appendix.kind !== 'notes' || layer?.kind !== 'ai') return appendix;
+    const sources = aiSources(
+      conversations,
+      theorySections(doc.layers),
+      linkedLibraries(doc).map((link) => ({ ...link, source: sourceText(link.source) })),
+    );
+    return { ...appendix, text: aiProtocol(printCatalog, { text: appendix.text, sources, entries: entriesOf(doc) }) };
+  };
   const printoutHtml = () =>
     printHtml(evaluation.main, {
       catalog: printCatalog,
@@ -494,11 +512,15 @@ export function App() {
       orientation: doc.layout.orientation,
       resolveFile,
       ...(doc.manifest.author ? { subtitle: doc.manifest.author } : {}),
-      appendices: [...appendixLayers(doc.layers, evaluation, (l) => layerName(l, printCatalog)), ...blockAppendices(evaluation.main)],
+      appendices: [...appendixLayers(doc.layers, evaluation, (l) => layerName(l, printCatalog)).map(withAiProtocol), ...blockAppendices(evaluation.main)],
       ...(footer ? { footer } : {}),
+      aiLines: unreviewedAiLines(),
     });
+  /** Unreviewed AI lines: the user is asked first; they print marked, with a notice. */
+  const confirmAiPrint = async () => unreviewedAiLines().size === 0 || (await askConfirm(t(ui, 'print.aiConfirm')));
 
-  const printout = () => {
+  const printout = async () => {
+    if (!(await confirmAiPrint())) return;
     const html = printoutHtml();
     if (desktop) {
       void desktop.print(html);
@@ -994,7 +1016,10 @@ export function App() {
       properties: () => setDialog('properties'),
       revisions: () => setDialog('revisions'),
       print: printout,
-      exportPdf: () => void desktop?.exportPdf({ html: printoutHtml(), suggestedName: fileName(doc) }),
+      exportPdf: () =>
+        void confirmAiPrint().then((yes) => {
+          if (yes) void desktop?.exportPdf({ html: printoutHtml(), suggestedName: fileName(doc) });
+        }),
       example: () => openDocument(exampleDocument(), undefined),
       exit: () => window.close(),
       undo: () => {

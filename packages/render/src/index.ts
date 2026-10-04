@@ -37,6 +37,8 @@ export interface PrintSettings {
   readonly appendices?: readonly PrintAppendix[];
   /** Left of the page footer: the revision and fingerprint (revisionFooter). */
   readonly footer?: string;
+  /** Lines of the sheet (statement starts) the AI made and nobody reviewed yet. */
+  readonly aiLines?: ReadonlySet<number>;
 }
 
 /** Where the printed content stands among the revisions of the sheet. */
@@ -99,5 +101,6 @@ export function printHtml(result: SheetResult, settings: PrintSettings): string 
     ...(settings.paper ? { paper: settings.paper } : {}),
     ...(settings.orientation ? { orientation: settings.orientation } : {}),
     ...(settings.footer ? { footer: settings.footer } : {}),
+    ...(settings.aiLines && settings.aiLines.size > 0 ? { aiLines: settings.aiLines } : {}),
   });
 }

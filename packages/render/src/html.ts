@@ -20,6 +20,8 @@ export interface HtmlOptions {
   readonly appendices?: readonly string[];
   /** Left of the page footer: the revision and fingerprint (see revisionFooter). */
   readonly footer?: string;
+  /** Lines (statement starts) the AI made and nobody reviewed: marked in the margin, with a notice at the top. */
+  readonly aiLines?: ReadonlySet<number>;
 }
 
 /** An appendix: its own page(s) with a title, e.g. "Příloha A: Zatížení". */
@@ -44,7 +46,8 @@ const SEVERITY_MARK: Readonly<Record<Message['severity'], string>> = { error: '�
 export function renderHtml(doc: PrintDocument, options: HtmlOptions): string {
   const { catalog } = options;
   const summary = doc.summary ? renderSummary(doc.summary.rows, doc.summary.allPassed, catalog) : '';
-  const body = renderBlocksHtml(doc.blocks, catalog);
+  const body = renderBlocksHtml(doc.blocks, catalog, options.aiLines);
+  const aiNotice = options.aiLines && options.aiLines.size > 0 ? `<p class="ai-notice">${esc(t(catalog, 'print.aiUnreviewed'))}</p>` : '';
   return `<!doctype html>
 <html lang="${esc(doc.language)}">
 <head>
@@ -60,6 +63,7 @@ ${stylesheet(doc, options)}
 <h1>${esc(doc.title)}</h1>
 ${doc.subtitle ? `<p class="subtitle">${esc(doc.subtitle)}</p>` : ''}
 </header>
+${aiNotice}
 ${doc.summary?.position === 'top' ? summary : ''}
 <main>
 ${body}
@@ -80,12 +84,14 @@ export interface BlockHtmlOptions {
  * Blocks as HTML; a side picture and the blocks beside it go into two
  * columns that stay together on one page.
  */
-export function renderBlocksHtml(blocks: readonly PrintBlock[], catalog: Catalog): string {
+export function renderBlocksHtml(blocks: readonly PrintBlock[], catalog: Catalog, aiLines?: ReadonlySet<number>): string {
   const out: string[] = [];
+  // A block the AI made and nobody reviewed carries a mark in the margin.
+  const marked = (block: PrintBlock, html: string) => ('line' in block && aiLines?.has(block.line) ? `<div class="ai-made">${html}</div>` : html);
   for (let i = 0; i < blocks.length; i++) {
     const block = blocks[i]!;
     if (block.kind !== 'picture' || !block.side || !block.beside?.length) {
-      out.push(renderBlockHtml(block, catalog));
+      out.push(marked(block, renderBlockHtml(block, catalog)));
       continue;
     }
     const beside = new Set(block.beside);
@@ -93,7 +99,7 @@ export function renderBlocksHtml(blocks: readonly PrintBlock[], catalog: Catalog
     while (i + 1 < blocks.length) {
       const next = blocks[i + 1]!;
       if (!('line' in next) || !beside.has(next.line)) break;
-      rows.push(renderBlockHtml(next, catalog));
+      rows.push(marked(next, renderBlockHtml(next, catalog)));
       i++;
     }
     out.push(sideGroupHtml(rows.join('\n'), renderBlockHtml(block, catalog), block.side, block.width));
@@ -296,6 +302,9 @@ ul.messages .error { color: #b71c1c; }
 ul.messages .warning { color: #8a5a00; }
 ul.messages .info { color: #555; }
 .summary { margin: 2mm 0 5mm; break-inside: avoid; }
+.ai-notice { margin: 2mm 0 4mm; padding: 2mm 3mm; border: 0.75pt solid #5a3fa6; border-left-width: 3pt; color: #3d2a73; font-size: 9.5pt; break-inside: avoid; }
+.ai-made { position: relative; border-left: 1.5pt solid #5a3fa6; padding-left: 2mm; margin-left: -2mm; }
+.ai-made::before { content: "AI"; position: absolute; left: -8mm; top: 0.5mm; padding: 0 0.8mm; border: 0.5pt solid #5a3fa6; color: #5a3fa6; font: 600 6.5pt/1.3 sans-serif; }
 .summary table { border-collapse: collapse; width: 100%; font-size: 9.5pt; }
 .summary th, .summary td { border-bottom: 0.4pt solid #bbb; padding: 1mm 2mm; text-align: left; }
 .summary .num { text-align: right; white-space: nowrap; }

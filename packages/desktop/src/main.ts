@@ -1392,7 +1392,7 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
   let kept = { count: 0, text: '' };
   let layerShown = { memory: '', sheet: [] as string[], unknown: [] as string[], hiddenConversations: -1 };
   let resumed: string[] = [];
-  let proposal = { card: '', accepted: false, state: '', undone: false, journal: '', marked: '', reviewed: false, markedAgain: false };
+  let proposal = { card: '', accepted: false, state: '', undone: false, journal: '', marked: '', reviewed: false, markedAgain: false, printAsks: '', printClosed: false };
   if (aiTab) {
     await clickOn('.layer-tab[data-layer="ai"]');
     // New chat ended the conversation: the model rewrote the memory, in the background.
@@ -1433,6 +1433,14 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
     const markedRow = `[...document.querySelectorAll('.layer-view.active .row.ai-made')].map((r) => r.getAttribute('data-line') + ':' + (r.querySelector('.ai-mark')?.getAttribute('title') ?? '')).join('|')`;
     const marked = (await contents.executeJavaScript(markedRow)) as string;
     await takePicture(picture.replace(/[.]png$/, '-ai-marked.png'));
+    // Printing asks first while such lines are there; Esc prints nothing.
+    await clickOn('.menubar-item:nth-child(1) > button');
+    await clickMenu('Tisk');
+    await pause(300);
+    const printAsks = (await contents.executeJavaScript(`document.querySelector('p.ask')?.textContent ?? ''`)) as string;
+    await pressKey('Escape');
+    await pause(200);
+    const printClosed = (await contents.executeJavaScript(`!document.querySelector('p.ask')`)) as boolean;
     await clickOn('.layer-tab[data-layer="ai"]');
     await pause(300);
     const journal = (await contents.executeJavaScript(`document.querySelector('.layer-view.active .ai-changes')?.textContent ?? ''`)) as string;
@@ -1453,7 +1461,7 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
     await clickMenu('Zpět');
     await pause(400);
     const undone = !(await contents.executeJavaScript(inSheet)) && (await contents.executeJavaScript(`!!document.querySelector('.chat-pane .proposal-accept')`));
-    proposal = { card, accepted, state, undone: undone as boolean, journal, marked, reviewed, markedAgain };
+    proposal = { card, accepted, state, undone: undone as boolean, journal, marked, reviewed, markedAgain, printAsks, printClosed };
     if (await contents.executeJavaScript(`!!document.querySelector('.layer-tab[data-layer="main"]')`)) await clickOn('.layer-tab[data-layer="main"]');
   }
   // Back to the pane the later steps expect.
@@ -1481,7 +1489,8 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
     resumed.length === 3 && resumed[0] === 'user:Co počítá řádek 3?' && resumed[1]!.startsWith('assistant:list:') && resumed[2] === 'user:Analyzuj výpočet.' &&
     proposal.card.includes('+ smoke_ai := 2 m') && proposal.card.includes('Výsledky posudků se nezmění.') && proposal.accepted && proposal.state.startsWith('Přijato') &&
     proposal.journal.includes('Návrhy změn') && proposal.journal.includes('Přijato') && proposal.undone &&
-    /^\d+:Řádek navrhla AI \(local-smoke-7b, přijato /.test(proposal.marked) && !proposal.marked.includes('|') && proposal.reviewed && proposal.markedAgain
+    /^\d+:Řádek navrhla AI \(local-smoke-7b, přijato /.test(proposal.marked) && !proposal.marked.includes('|') && proposal.reviewed && proposal.markedAgain &&
+    proposal.printAsks.startsWith('Výpočet obsahuje řádky navržené AI') && proposal.printClosed
   );
 }
 

@@ -349,6 +349,7 @@ export const UI_KEYS = [
   'chat.waiting',
   'chat.note',
   'proposal.title',
+  'proposal.errorAt',
   'newSheet.title',
   'newSheet.untitled',
   'newSheet.show',

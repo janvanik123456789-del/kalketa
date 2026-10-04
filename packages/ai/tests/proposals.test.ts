@@ -86,8 +86,8 @@ describe('changes the model proposes', () => {
   it('accepted into a copy are told to the model as such', () => {
     const text = briefing({ language: 'cs', sheet: { title: 'N1', source: 'q := 12 kN/m', changes: [{ from: 1, to: 1, before: ['q := 12 kN/m'], after: ['F := 1 kN'], state: 'accepted', time: '2026-10-04T11:00:00Z', decided: '2026-10-04T11:01:00Z', copiedTo: 'N1 (upravená kopie)' }] } });
     expect(text).toContain('into a new sheet "N1 (upravená kopie)" (this sheet unchanged)');
-    expect(text).toContain('do not change this sheet and do not copy it: write the whole new calculation');
-    expect(text).not.toContain('copy of this sheet');
+    expect(text).toContain('unless the user explicitly asks for a new sheet');
+    expect(text).toContain('A new empty sheet the user will fill in is a block with only its title heading.');
   });
 
   it('may be a whole new sheet, opened apart', () => {

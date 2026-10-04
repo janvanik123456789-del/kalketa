@@ -144,9 +144,37 @@ export function aiMadeLines(source: string, entries: readonly ChangeEntry[]): Ma
       if (!entry.after.every((l, i) => lines[at - 1 + i] === l)) continue;
       if (best === undefined || Math.abs(at - anchor) < Math.abs(best - anchor)) best = at;
     }
-    if (best !== undefined) for (let i = 0; i < entry.after.length; i++) made.set(best + i, entry);
+    if (best !== undefined) {
+      for (let i = 0; i < entry.after.length; i++) made.set(best + i, entry);
+    } else if (entry.after.length >= WHOLE_BLOCK) {
+      // A large block (a whole new sheet) of which some lines changed: its other lines stay marked,
+      // matched in order (longest common subsequence), blank ones left out.
+      for (const line of commonLines(entry.after, lines)) if (lines[line - 1]!.trim()) made.set(line, entry);
+    }
   }
   return made;
+}
+
+/** A block of this many lines is followed line by line once it no longer stands whole. */
+const WHOLE_BLOCK = 4;
+
+/** Lines of `lines` (1-based) that the longest common subsequence with `block` keeps. */
+function commonLines(block: readonly string[], lines: readonly string[]): number[] {
+  const n = block.length;
+  const m = lines.length;
+  const table: number[][] = Array.from({ length: n + 1 }, () => new Array<number>(m + 1).fill(0));
+  for (let i = n - 1; i >= 0; i--)
+    for (let j = m - 1; j >= 0; j--) table[i]![j] = block[i] === lines[j] ? table[i + 1]![j + 1]! + 1 : Math.max(table[i + 1]![j]!, table[i]![j + 1]!);
+  const kept: number[] = [];
+  for (let i = 0, j = 0; i < n && j < m; ) {
+    if (block[i] === lines[j]) {
+      kept.push(j + 1);
+      i++;
+      j++;
+    } else if (table[i + 1]![j]! >= table[i]![j + 1]!) i++;
+    else j++;
+  }
+  return kept;
 }
 
 /** The sheet with these entries added, or replaced by id. */

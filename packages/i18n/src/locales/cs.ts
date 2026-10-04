@@ -531,6 +531,7 @@ export const cs: Catalog = {
     'newSheet.opened': 'Otevřeno jako „{title}“ {when}',
     'newSheet.below': 'nový list je níže',
     'newSheet.notice': 'Nový výpočet od AI je v záložce „{title}“. Jeho řádky jsou označené AI, dokud je neprověříte.',
+    'proposal.errorAt': 'ř. {line}: {text}',
     'proposal.title': 'Návrh změny {n}',
     'proposal.line': 'řádek {line}',
     'proposal.lines': 'řádky {from}–{to}',

@@ -13,8 +13,12 @@ describe('what a proposed change does', () => {
     expect(effect.checks).toEqual([{ label: 'Průhyb', before: { passed: false, utilization: 1.25 }, after: { passed: true, utilization: expect.closeTo(250 / 300, 9) } }]);
   });
 
-  it('counts errors a change brings', () => {
-    const broken = applyProposal(sheet, { from: 2, to: 2, lines: ['w := x / 300'] });
-    expect(proposalEffect(evaluateSheet(sheet), evaluateSheet(broken)).errors.after).toBeGreaterThan(0);
+  it('counts errors a change brings, and says where', () => {
+    const broken = applyProposal(sheet, { from: 1, to: 1, lines: ['F := 1 kN'] });
+    const effect = proposalEffect(evaluateSheet(sheet), evaluateSheet(broken));
+    expect(effect.errors.after).toBeGreaterThan(0);
+    expect(effect.newErrors.length).toBeGreaterThan(0);
+    expect(effect.newErrors.every((d) => d.span.line >= 2)).toBe(true);
+    expect(proposalEffect(evaluateSheet(broken), evaluateSheet(broken)).newErrors).toEqual([]);
   });
 });

@@ -105,8 +105,8 @@ ${sheet.theory!.filter((s) => s.id).map((s) => `[${s.id}] ${s.title}`).join('\n'
   profil := pick(Profily_IPE, "IPE 220")
   ${FENCE}
   "change 12-14" replaces lines 12 to 14 (an empty block deletes them), "change after 14" inserts new lines after line 14. Propose only lines in the calculation language, one block per place.
-- The blocks of one answer can be accepted together, so give every change the calculation needs (a new variable and all the lines that use it). Line numbers always refer to the sheet as it is now.
-- Change blocks are only for changing this sheet. When the user asks for a new sheet, a new file or a new calculation (even one like this sheet or another open one), do not change this sheet and do not copy it: write the whole new calculation, every line, as one block; the program opens it as a new sheet, with this sheet's tables and theory available:
+- The blocks of one answer can be accepted together, so give every change the calculation needs. When you remove or rename a variable, change every line that uses it (look for its name in the whole sheet). Line numbers always refer to the sheet as it is now.
+- Any change the user asks for goes into this sheet as change blocks, unless the user explicitly asks for a new sheet, a new file or a new calculation. Only then write the whole new calculation, every line, as one block (do not change this sheet); the program opens it as a new sheet, with this sheet's tables and theory available. A new empty sheet the user will fill in is a block with only its title heading. Do not write a copy of this sheet unless the user asks for one:
   ${FENCE}sheet Beam with a point load
   # Beam with a point load
   F := 1000 N

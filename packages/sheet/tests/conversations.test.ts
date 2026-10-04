@@ -89,4 +89,12 @@ describe('conversations with the AI in the sheet', () => {
     expect(entriesOf(doc).map((e) => e.state)).toEqual(['accepted']);
     expect(newSheetsOf(doc)).toEqual([sheet]);
   });
+
+  it('keep the AI mark on the untouched lines of a whole new sheet', () => {
+    const lines = ['# N2', '', 'L := 5 m', 'q := 12 kN/m', 'M := q·L²/8', 'check M ≤ 50 kN·m'];
+    const whole = { id: 'c1:1:s1:lines', kind: 'change' as const, time: 't', from: 0, to: 0, insert: true, before: [], after: lines, state: 'accepted' as const };
+    const edited = ['# N2', '', 'L := 5 m', 'F := 2 kN', 'M := F·L/4', 'check M ≤ 50 kN·m'].join('\n');
+    expect([...aiMadeLines(edited, [whole]).keys()].sort((a, b) => a - b)).toEqual([1, 3, 6]);
+    expect([...aiMadeLines(lines.join('\n'), [whole]).keys()]).toHaveLength(6);
+  });
 });

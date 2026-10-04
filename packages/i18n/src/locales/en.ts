@@ -531,6 +531,7 @@ export const en: Catalog = {
     'newSheet.opened': 'Opened as “{title}” {when}',
     'newSheet.below': 'the new sheet is below',
     'newSheet.notice': 'The AI’s new calculation is in the tab “{title}”. Its lines carry the AI mark until you review them.',
+    'proposal.errorAt': 'line {line}: {text}',
     'proposal.title': 'Proposed change {n}',
     'proposal.line': 'line {line}',
     'proposal.lines': 'lines {from}–{to}',

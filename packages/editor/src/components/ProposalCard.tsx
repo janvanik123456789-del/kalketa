@@ -4,7 +4,7 @@
  * Accept / Reject. Nothing changes until the user accepts (ch. 9.3); a
  * proposal whose lines have changed since can no longer be accepted.
  */
-import { t, type Catalog } from '@kalketa/i18n';
+import { formatDiagnostic, t, type Catalog } from '@kalketa/i18n';
 import type { ChangeEntry, SheetEntry } from '@kalketa/sheet';
 import type { ProposalEffect } from '../logic/proposalEffect.js';
 
@@ -56,6 +56,11 @@ export function EffectLines({ effect, catalog, title }: { effect: ProposalEffect
       {effect.errors.before !== effect.errors.after && (
         <div className={effect.errors.after > effect.errors.before ? 'worse' : 'better'}>{t(catalog, 'proposal.errors', { before: String(effect.errors.before), after: String(effect.errors.after) })}</div>
       )}
+      {effect.newErrors.slice(0, 5).map((d, i) => (
+        <div key={i} className="worse proposal-new-error">
+          {t(catalog, 'proposal.errorAt', { line: String(d.span.line), text: formatDiagnostic(d, catalog) })}
+        </div>
+      ))}
       {effect.checks.map((c) => (
         <div key={c.label} className={c.after?.passed === false ? 'worse' : 'better'}>
           {c.label}: {check(c.before)} → {check(c.after)}

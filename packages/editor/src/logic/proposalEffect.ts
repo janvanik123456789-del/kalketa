@@ -3,7 +3,7 @@
  * the sheet is evaluated as it is and with the change, and the errors and
  * checks of both are compared ("Průhyb 120 % → 84 %").
  */
-import type { SheetResult } from '@kalketa/core';
+import type { Diagnostic, SheetResult } from '@kalketa/core';
 
 export interface CheckEffect {
   readonly label: string;
@@ -15,6 +15,8 @@ export interface ProposalEffect {
   readonly errors: { readonly before: number; readonly after: number };
   /** Checks whose result or utilization changes, or that come or go. */
   readonly checks: readonly CheckEffect[];
+  /** Errors the change brings (lines of the changed sheet), e.g. a name it removed that a line still uses. */
+  readonly newErrors: readonly Diagnostic[];
 }
 
 function checksOf(result: SheetResult): Map<string, { passed: boolean; utilization?: number }> {
@@ -37,5 +39,9 @@ export function proposalEffect(before: SheetResult, after: SheetResult): Proposa
     const same = x && y && x.passed === y.passed && Math.round((x.utilization ?? -1) * 1000) === Math.round((y.utilization ?? -1) * 1000);
     if (!same) checks.push({ label, ...(x ? { before: x } : {}), ...(y ? { after: y } : {}) });
   }
-  return { errors: { before: errors(before), after: errors(after) }, checks };
+  // An error is new when the sheet before had none like it (same code, same names); its line may have moved.
+  const kind = (d: Diagnostic) => `${d.code}|${JSON.stringify(d.params)}`;
+  const had = new Set(before.diagnostics.filter((d) => d.severity === 'error').map(kind));
+  const newErrors = after.diagnostics.filter((d) => d.severity === 'error' && !had.has(kind(d)));
+  return { errors: { before: errors(before), after: errors(after) }, checks, newErrors };
 }

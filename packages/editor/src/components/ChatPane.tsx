@@ -11,6 +11,7 @@ import { notesHtml } from '@kalketa/render';
 import { desktop } from '../document.js';
 import type { AiSheetContext } from '../logic/aiContext.js';
 import type { LibraryEntry } from '../theoryLibraries.js';
+import { commandIcon } from '../icons.js';
 
 function escapeAttr(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -32,6 +33,9 @@ function listen(id: string, listener: (piece: { readonly text?: string; readonly
 export interface ChatPaneProps {
   readonly catalog: Catalog;
   readonly settings: AiSettings;
+  /** The AI is switched on for this run; until then the pane offers to switch it on and sends nothing. */
+  readonly aiOn: boolean;
+  onAiOn(on: boolean): void;
   /** The conversation of the active document. */
   readonly turns: readonly ChatTurn[];
   /** Sections of the sources layers the model may cite. */
@@ -49,7 +53,7 @@ export interface ChatPaneProps {
   onToggleLibrary?(id: string, on: boolean): void;
 }
 
-export function ChatPane({ catalog, settings, turns, theory, onTurns, context, onOpenSettings, onNew, libraries = [], onLibraries, onToggleLibrary }: ChatPaneProps) {
+export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTurns, context, onOpenSettings, onNew, libraries = [], onLibraries, onToggleLibrary }: ChatPaneProps) {
   const [libraryMenu, setLibraryMenu] = useState(false);
   // The menu of libraries closes like any menu: a click anywhere else, or Esc.
   useEffect(() => {
@@ -124,6 +128,17 @@ export function ChatPane({ catalog, settings, turns, theory, onTurns, context, o
     );
   }
 
+  if (!aiOn) {
+    return (
+      <div className="chat-pane">
+        <p className="hint chat-off">{t(catalog, 'chat.offForRun', { name: provider.urlEditable ? t(catalog, 'ai.otherServer') : provider.name, model: settings.model || t(catalog, 'ai.firstModel') })}</p>
+        <button type="button" className="chat-ai-on default" onClick={() => onAiOn(true)}>
+          {t(catalog, 'chat.turnOn')}
+        </button>
+      </div>
+    );
+  }
+
   const send = async () => {
     const question = draft.trim();
     if (!question || answer) return;
@@ -188,6 +203,9 @@ export function ChatPane({ catalog, settings, turns, theory, onTurns, context, o
             )}
           </span>
         )}
+        <button type="button" className="chat-ai-off" title={`${t(catalog, 'chat.turnOff')}: ${t(catalog, 'chat.turnOffTip')}`} aria-label={t(catalog, 'chat.turnOff')} onClick={() => onAiOn(false)} disabled={!!answer}>
+          {commandIcon('tools.ai') ?? '⏻'}
+        </button>
         <button type="button" className="chat-new" onClick={() => ((onNew ?? (() => onTurns([])))(), setError(undefined))} disabled={!!answer || turns.length === 0}>
           {t(catalog, 'chat.new')}
         </button>

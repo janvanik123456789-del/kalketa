@@ -388,7 +388,7 @@ button.icon:hover { color: var(--accent); }
 
 /* Conversation with the AI in the side pane. */
 .chat-pane { display: flex; flex-direction: column; flex: 1; min-height: 0; padding: 8px; box-sizing: border-box; gap: 6px; }
-.chat-head { display: flex; align-items: center; gap: 8px; }
+.chat-head { display: flex; align-items: center; gap: 6px; position: relative; }
 .chat-model { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 12px; }
 .chat-messages { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
 .chat-turn { white-space: pre-wrap; overflow-wrap: anywhere; padding: 6px 8px; border-radius: 6px; line-height: 1.4; max-width: 92%; }
@@ -479,9 +479,12 @@ button.icon:hover { color: var(--accent); }
 .library-problems { margin: 6px 0 0; padding-left: 18px; font-size: 12px; }
 .library-problems .error, p.library-problems.error { color: #a12828; }
 .library-problems .warning { color: #6b5310; }
-.chat-libraries { position: relative; }
+/* The menu of libraries spans the head of the pane, so it always fits in it. */
+.chat-libraries { position: static; }
+.chat-ai-off { padding: 0 4px; display: inline-flex; align-items: center; }
+.chat-ai-off .icon { width: 16px; height: 16px; }
 .chat-library-button { white-space: nowrap; }
-.chat-library-menu { position: absolute; right: 0; top: 26px; z-index: 20; display: flex; flex-direction: column; gap: 4px; min-width: 260px; max-width: 360px; background: #fff; border: 1px solid #c5ccd5; box-shadow: 0 3px 10px rgb(0 0 0 / 15%); padding: 6px 8px; }
+.chat-library-menu { position: absolute; left: 0; right: 0; top: 100%; z-index: 20; display: flex; flex-direction: column; gap: 4px; background: #fff; border: 1px solid #c5ccd5; box-shadow: 0 3px 10px rgb(0 0 0 / 15%); padding: 6px 8px; }
 .chat-library { font-size: 12px; }
 
 /* Conversations kept in the AI notes: read only, newest first. */

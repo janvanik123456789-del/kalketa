@@ -138,7 +138,10 @@ export function App() {
   const [dialog, setDialog] = useState<DialogKind | undefined>();
   const [zoomChoice, setZoomChoice] = useState(() => stored('kalketa.zoom') ?? 'fit2');
   // The layer tabs do what the Layers panel did, so the panel no longer opens by itself at start.
-  const [pane, setPane] = useState<Pane>(() => (['details', 'tables', 'chat', 'none'].includes(stored('kalketa.pane') ?? '') ? (stored('kalketa.pane') as Pane) : stored('kalketa.pane') === 'layers' ? 'none' : 'details'));
+  // The chat pane is not opened at start: the AI is off until the user switches it on.
+  const [pane, setPane] = useState<Pane>(() => (['details', 'tables', 'none'].includes(stored('kalketa.pane') ?? '') ? (stored('kalketa.pane') as Pane) : stored('kalketa.pane') === 'layers' ? 'none' : 'details'));
+  // Switched on by the user for this run of the program only: until then nothing is sent to any server.
+  const [aiOn, setAiOn] = useState(false);
   const [paneWidth, setPaneWidth] = useState(() => Number(stored('kalketa.paneWidth')) || 380);
   // Layers open side by side in this document, and which of them is being worked on.
   const panes = tab.panes;
@@ -846,6 +849,7 @@ export function App() {
     zoomChoice,
     pane,
     tableEditor,
+    aiOn,
     documents: docs.tabs.length,
     actions: {
       newDocument: () => openDocument(emptyDocument(t(ui, 'editor.untitled'), language), undefined, [], true),
@@ -895,6 +899,7 @@ export function App() {
       addLayer: (kind) => void newLayer(kind),
       insertBlock: () => void insertBlock(),
       settings: () => setDialog('settings'),
+      toggleAi: () => setAiOn((on) => !on),
       shortcuts: () => setDialog('shortcuts'),
       functions: () => setDialog('functions'),
       about: () => setDialog('about'),
@@ -1103,7 +1108,7 @@ export function App() {
         { kind: 'submenu', label: t(ui, 'menu.layer'), items: [cmd('insert.layerCalc'), cmd('insert.layerData'), cmd('insert.layerSources')] },
       ],
     },
-    { label: t(ui, 'menu.tools'), items: [cmd('tools.settings')] },
+    { label: t(ui, 'menu.tools'), items: [cmd('tools.ai'), cmd('tools.settings')] },
     {
       label: t(ui, 'menu.window'),
       items: [
@@ -1250,6 +1255,8 @@ export function App() {
                   <ChatPane
                     catalog={ui}
                     settings={aiSettings}
+                    aiOn={aiOn}
+                    onAiOn={setAiOn}
                     turns={chat?.turns ?? []}
                     onTurns={(turns) => {
                       // Kept in the AI notes of the calculation: a new conversation gets its id with its first question.
@@ -1429,6 +1436,7 @@ export function App() {
           sizeLimit={sizeLimit}
           canvasMode={canvasMode}
           ai={aiSettings}
+          aiOn={aiOn}
           onApply={(next) => {
             setAiSettings(next.ai);
             remember(AI_SETTINGS_KEY, JSON.stringify(next.ai));

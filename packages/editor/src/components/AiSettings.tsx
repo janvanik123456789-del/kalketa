@@ -17,7 +17,7 @@ export interface AiDraft {
   readonly remember: boolean;
 }
 
-export function AiSettingsSection({ catalog, draft, onChange }: { catalog: Catalog; draft: AiDraft; onChange(draft: AiDraft): void }) {
+export function AiSettingsSection({ catalog, draft, onChange, aiOn = true }: { catalog: Catalog; draft: AiDraft; onChange(draft: AiDraft): void; aiOn?: boolean }) {
   const [policy, setPolicy] = useState<AiPolicy>(NO_POLICY);
   const [keyState, setKeyState] = useState<AiKeyState>();
   const [models, setModels] = useState<readonly ModelChoice[]>();
@@ -33,7 +33,8 @@ export function AiSettingsSection({ catalog, draft, onChange }: { catalog: Catal
 
   useEffect(() => {
     void desktop?.aiPolicy().then((p) => setPolicy(parseAiPolicy(p)));
-    void desktop?.aiDiscover().then(setRunning);
+    // Looking for running servers sends requests: only with the AI switched on.
+    if (aiOn) void desktop?.aiDiscover().then(setRunning);
   }, []);
   useEffect(() => {
     setKeyState(undefined);
@@ -41,7 +42,7 @@ export function AiSettingsSection({ catalog, draft, onChange }: { catalog: Catal
     setStatus(undefined);
     if (!provider) return;
     void desktop?.aiKeyState(provider.id).then(setKeyState);
-    if (provider.local) void test();
+    if (provider.local && aiOn) void test();
     // Runs when another provider is picked, not on every keystroke.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [provider]);

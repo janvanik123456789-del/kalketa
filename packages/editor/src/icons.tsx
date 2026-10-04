@@ -194,6 +194,8 @@ const ICONS: Readonly<Record<string, ReactElement>> = {
       <path {...S} d="M5 6h1M8 6h1M11 6h1M4 12h4M4 15.5h8M15 11v7M11.5 14.5h7" />
     </>
   ),
+  // A power switch: the AI on or off for this run.
+  'tools.ai': <path {...S} d="M6.2 5.6a6 6 0 1 0 7.6 0M10 2.8v6.4" />,
   'tools.settings': <path {...S} d="M3 5h8M14 5h3M3 10h3M9 10h8M3 15h9M15 15h2M11 3.5v3M6 8.5v3M12 13.5v3" />,
   'help.shortcuts': <path {...S} d="M2 5.5h16v9H2zM5 8.5h1M8 8.5h1M11 8.5h1M14 8.5h1M6 11.5h8" />,
   'help.about': (

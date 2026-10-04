@@ -1345,6 +1345,15 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
 
   await clickOn('.tool-button[title^="Rozhovor s AI"]');
   await pause(300);
+  // Switched off, the pane offers to switch it on again and sends nothing until then.
+  await clickOn('.chat-ai-off');
+  await pause(200);
+  const offered = (await contents.executeJavaScript(`!!document.querySelector('.chat-ai-on') && !document.querySelector('.chat-input')`)) as boolean;
+  const requestsOff = await fakeRequests();
+  await pause(500);
+  const quietWhileOff = (await fakeRequests()) === requestsOff;
+  await clickOn('.chat-ai-on');
+  await pause(300);
   const head = (await contents.executeJavaScript(`document.querySelector('.chat-model')?.textContent ?? ''`)) as string;
   await clickOn('.chat-input');
   await typeText('Co počítá řádek 3?');
@@ -1389,12 +1398,13 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
   await clickMenu('Boční panel');
   await clickMenu(back);
   await pause(300);
-  await writeFile(picture.replace(/[.]png$/, '-ai-chat.json'), JSON.stringify({ pasted, unpasted, typed, theory, head, shown, cleared, aiTab, kept, resumed }, null, 2));
+  await writeFile(picture.replace(/[.]png$/, '-ai-chat.json'), JSON.stringify({ pasted, unpasted, typed, theory, offered, quietWhileOff, head, shown, cleared, aiTab, kept, resumed }, null, 2));
   return (
     pasted === 'Klopení je ztráta stability ohýbaného nosníku. Vloženo ze schránky.' && unpasted === 'Klopení je ztráta stability ohýbaného nosníku.' &&
     typed === 'H2:Klopení|P:Klopení je ztráta stability ohýbaného nosníku.' && theory.heading === 'Klopení' && /^T\d+$/.test(theory.badge) &&
     shown.citesOk.length === 1 && shown.citesOk[0] === theory.badge && shown.citesBad.length === 1 && shown.citesBad[0]!.startsWith('T99') &&
     shown.citeSummary.includes('ověřené 1, nepodložené 1') && shown.answer.includes('Model dostal celé podklady (úseků: 1).') &&
+    offered && quietWhileOff &&
     head.includes('Jiný server') && head.includes('local-smoke-7b') &&
     shown.user === 'Co počítá řádek 3?' && shown.input === '' &&
     /list: [^?;*]+;/.test(shown.answer) && shown.bold !== '' && !shown.answer.includes('**') && shown.code === 'Co počítá řádek 3?' && shown.table === 'IPE 220' && shown.answer.includes('jazyk: Czech') && shown.answer.includes('úsilí: low') && shown.answer.includes('výsledky: ano') && shown.answer.includes('otázka: Co počítá řádek 3?') &&
@@ -1402,6 +1412,16 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
     aiTab && kept.count === 1 && kept.text.includes('Co počítá řádek 3?') && kept.text.includes('local-smoke-7b') &&
     resumed.length === 2 && resumed[0] === 'user:Co počítá řádek 3?' && resumed[1]!.startsWith('assistant:list:')
   );
+}
+
+/** How many requests the fake servers of scripts/smoke.mjs have had. */
+async function fakeRequests(): Promise<number> {
+  try {
+    const response = await fetch(`${process.env['ANTHROPIC_BASE_URL'] ?? ''}/stats`);
+    return ((await response.json()) as { requests: number }).requests;
+  } catch {
+    return -1;
+  }
 }
 
 /** The AI part of the Settings dialog, driven by real mouse and keyboard input. */
@@ -1432,6 +1452,12 @@ async function aiSettingsWithRealInput(contents: Electron.WebContents, picture: 
     for (let i = 0; i < 40 && !(await read()).status.includes(text); i++) await pause(150);
   };
 
+  // The AI is off after the start: nothing went to any server. Tools > Switch the AI on.
+  const beforeOn = await fakeRequests();
+  const menuOff = (await contents.executeJavaScript(`!!document.querySelector('.side-pane .chat-pane')`)) as boolean;
+  await clickOn('.menubar-item:nth-child(5) > button');
+  await clickMenu('Zapnout AI');
+  await pause(300);
   await openSettings();
   const off = await read();
   // The provider list is a plain <select>: a click on its label focuses it without
@@ -1495,6 +1521,7 @@ async function aiSettingsWithRealInput(contents: Electron.WebContents, picture: 
   await pause(300);
 
   return (
+    beforeOn === 0 && !menuOff &&
     off.provider === 'none' && !off.keyField &&
     claude.provider === 'anthropic' && claude.model === 'claude-opus-5-5' && claude.keyField &&
     bad.status.includes('nepřijal') &&

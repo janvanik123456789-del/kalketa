@@ -32,6 +32,8 @@ export interface CommandContext {
   readonly zoomChoice: string;
   readonly pane: 'details' | 'tables' | 'layers' | 'chat' | 'none';
   readonly tableEditor: boolean;
+  /** The AI is switched on for this run of the program (never at start). */
+  readonly aiOn: boolean;
   /** Number of open calculations. */
   readonly documents: number;
   readonly actions: {
@@ -65,6 +67,7 @@ export interface CommandContext {
     insertBlock(): void;
     addLayer(kind: 'calc' | 'data' | 'sources'): void;
     settings(): void;
+    toggleAi(): void;
     shortcuts(): void;
     functions(): void;
     about(): void;
@@ -134,6 +137,7 @@ export function buildCommands(ctx: CommandContext): Map<string, Command> {
   add('insert.layerSources', 'insert', () => a.addLayer('sources'));
 
   add('tools.settings', 'tools', a.settings);
+  add('tools.ai', 'tools', a.toggleAi, { checked: ctx.aiOn });
   add('window.new', 'window', a.newWindow, { shortcut: 'Ctrl+Shift+N', enabled: ctx.desktop });
   add('window.next', 'window', () => a.cycleDocument(1), { shortcut: 'Ctrl+Tab', enabled: ctx.documents > 1 });
   add('window.previous', 'window', () => a.cycleDocument(-1), { shortcut: 'Ctrl+Shift+Tab', enabled: ctx.documents > 1 });

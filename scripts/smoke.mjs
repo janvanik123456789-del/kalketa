@@ -31,7 +31,15 @@ writeFileSync(blocksFile, await writeSheetFile({ ...blocks, blocks: new Map([['P
 
 // A stand-in for the Claude API: accepts one key and lists two models, so the
 // AI settings are tested end to end without the internet or a real key.
+// Requests the app sent to the fake servers: none may come before the user switches the AI on.
+let requests = 0;
 const fakeApi = createServer((request, response) => {
+  if (request.url === '/stats') {
+    response.writeHead(200, { 'content-type': 'application/json' });
+    response.end(JSON.stringify({ requests }));
+    return;
+  }
+  requests++;
   // A local server (stands in for LM Studio): no key, an embedding model that must not be offered.
   if (request.url === '/local/v1/models') {
     response.writeHead(200, { 'content-type': 'application/json' });

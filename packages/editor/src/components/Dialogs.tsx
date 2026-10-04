@@ -103,6 +103,7 @@ export function SettingsDialog({
   sizeLimit,
   canvasMode,
   ai,
+  aiOn = true,
   onApply,
   onClose,
 }: {
@@ -111,6 +112,8 @@ export function SettingsDialog({
   sizeLimit: number;
   canvasMode: 'inline' | 'window';
   ai: AiSettings;
+  /** The AI is switched on for this run: only then may the dialog look for servers by itself. */
+  aiOn?: boolean;
   onApply(settings: Settings): void;
   onClose(): void;
 }) {
@@ -153,7 +156,7 @@ export function SettingsDialog({
           <option value="window">{t(catalog, 'settings.canvasWindow')}</option>
         </select>
       </label>
-      <AiSettingsSection catalog={catalog} draft={aiDraft} onChange={setAiDraft} />
+      <AiSettingsSection catalog={catalog} draft={aiDraft} onChange={setAiDraft} aiOn={aiOn} />
     </Dialog>
   );
 }

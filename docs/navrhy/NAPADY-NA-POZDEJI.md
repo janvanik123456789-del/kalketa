@@ -12,6 +12,14 @@ Boční panel (Podrobnosti, Tabulky, Vrstvy, Rozhovor s AI) přepínat záložka
 
 ## Okno rozhovoru s AI
 
+### Nastavení lokálního modelu: přemýšlení a vzorkování (2026-10-04, na doladění)
+
+Lokální model (`qwen3.8-flash…iq3_xxs` přes llama.cpp) se v přemýšlení zacyklí na „možná“ a odpověď trvá 3–5 minut. Hloubka přemýšlení se posílá jako `reasoning_effort`, ale llama.cpp ji nejspíš ignoruje. Hrubá kvantizace (asi 3 bity) k opakování přispívá.
+
+1. **Přemýšlení zapnuto/vypnuto** v Nastavení AI pro lokální server, nejspíš přes `chat_template_kwargs: {enable_thinking: false}`. Ověřit na serveru uživatele (127.0.0.1:8080), které parametry opravdu bere.
+2. **Parametry vzorkování** pod „Pokročilé“: teplota, top_p, top_k, penalizace opakování (`presence_penalty`). Výchozí hodnoty podle výrobce modelu, pro Qwen v přemýšlivém režimu 0.6 / 0.95 / 20, proti opakování `presence_penalty` 1.0–1.5.
+3. (Volitelně) **pojistka proti smyčce:** když se přemýšlení opakuje, zastavit ho a nabídnout zkusit znovu bez přemýšlení.
+
 ### ~~Upravený výpočet do nového listu~~ (2026-10-04, hotovo týž den)
 
 *Hotovo:* pod odpovědí s návrhy je „Přijmout vše (n)“ se společným dopadem na výpočet (jedno Zpět) a „Do nového listu“, které zkopíruje výpočet do nové záložky (bez revizí, neuložené) a změny použije tam. Deník původního listu zapíše „Přijato do nového listu“, model to ví. Původní zápis:

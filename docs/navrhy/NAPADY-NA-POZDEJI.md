@@ -2,7 +2,23 @@
 
 Seznam věcí, které vznikly během práce a čekají na své místo. Nejnovější nahoře.
 
+## Uživatelské rozhraní
+
+### Postranní panel jako záložky (2026-10-04)
+
+Boční panel (Podrobnosti, Tabulky, Vrstvy, Rozhovor s AI) přepínat záložkami nahoře v panelu, ne jen přes Zobrazení → Boční panel a ikony lišty. Rychlejší přepnutí a hned je vidět, co v panelu je. Kandidát po etapě 3 AI.
+
 ## Okno rozhovoru s AI
+
+### Web jako zdroj (2026-10-04)
+
+Lokální model web neumí, Kalketa mu ho může dát:
+
+1. **Hledání dělá program** (jako u teorie, kap. 9.6): podle otázky vyhledá, stáhne pár výsledků a přiloží je modelu jako zdroje. Funguje s každým modelem.
+2. **Nástroj pro model** `search_web`: model si o hledání řekne sám. Potřebuje model, který umí volat nástroje (ověřit na serveru uživatele).
+3. **Claude:** vestavěné hledání na straně Anthropicu, placené za hledání.
+
+Potřeba vyhledávač: placené API (Brave, Bing) nebo vlastní SearXNG. Dotazy odcházejí ven: firemní pravidla musí web umět zakázat. Citace z webu ve vrstvě AI jako skupina „Web“ s adresou; ověření citace = text na stažené stránce.
 
 ### Rozbalovací řádek „přemýšlení“ (2026-10-04)
 

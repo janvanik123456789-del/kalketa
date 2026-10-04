@@ -88,6 +88,7 @@ describe('changes the model proposes', () => {
     expect(text).toContain('into a new sheet "N1 (upravená kopie)" (this sheet unchanged)');
     expect(text).toContain('unless the user explicitly asks for a new sheet');
     expect(text).toContain('A new empty sheet the user will fill in is a block with only its title heading.');
+    expect(text).toContain('Its first line is a level-one heading with the same title as the block');
   });
 
   it('may be a whole new sheet, opened apart', () => {

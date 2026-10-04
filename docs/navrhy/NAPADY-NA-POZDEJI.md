@@ -12,6 +12,15 @@ Boční panel (Podrobnosti, Tabulky, Vrstvy, Rozhovor s AI) přepínat záložka
 
 ## Okno rozhovoru s AI
 
+### Upravený výpočet do nového listu (2026-10-04)
+
+Uživatel chtěl po AI „na novém listu udělej ten samý výpočet, jen se silou uprostřed místo spojitého zatížení“. Model umí měnit jen otevřený list, a tak navrhl přepsat ten. Podle uživatele má AI umět **výpočet zduplikovat do nového listu a už upravený**.
+
+- **Přijmout do nového listu:** na kartě návrhu, případně u celé odpovědi. Program zkopíruje list (tabulky, vrstvy, odkazy na knihovny) do nové záložky a změny použije tam. Původní list zůstane beze změny.
+- **Přijmout všechny návrhy odpovědi:** návrhy jedné odpovědi často patří k sobě. Změna řádku 6 `q → F` bez změny řádků 11–13 rozbije výpočet. Proto přijmout najednou se společným dopadem na výpočet, změny použít odspodu, aby se čísla řádků neposunula.
+- **Pokyn pro model:** když uživatel chce nový nebo upravený list, má model navrhnout bloky změn s tím, že je program použije v kopii. Nemá tvrdit, že nový list vytvořit nejde.
+- **Deník:** zapsat, do kterého listu se změny použily (kopie vzniklá z listu X).
+
 ### Složka studijních podkladů PDF a HTML (2026-10-04, etapy A a B hotové týž den)
 
 *Hotovo:* čtení PDF, HTML a MD ze složek teorie, citace po stránkách, dialog Nástroje → Studijní podklady s výběrem kapitol a stránek a upozorněním na velkou knihu (kap. 9.6). *Zbývá etapa C:* návrh kapitol podle výpočtu a převod na `.kalkt`. Původní zápis:

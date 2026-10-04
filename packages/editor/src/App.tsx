@@ -12,12 +12,13 @@ import { catalogFor, CATALOGS, formatDiagnostic, formatNumber, t, type Catalog }
 import { buildPrintDocument, printHtml, revisionFooter } from '@kalketa/render';
 import { emptyScene, readScene, writeScene, type CanvasScene } from '@kalketa/canvas';
 import { CanvasEditor } from '@kalketa/canvas/editor';
-import { addLayer, allDiagnostics, appendixLayers, blockAppendices, documentBlocks, isRemovable, LayerSessions, MAIN_LAYER, removeLayer, freezeRevision, removeRevision, revisionDocument, revisionState, shortHash, tablesByLayer, theorySections, updateLayer, withTheoryIds, conversationsOf, hasConversations, withConversation, withoutConversation, type AddableLayerKind, type Layer, type RevisionState, type SheetDocument } from '@kalketa/sheet';
+import { addLayer, allDiagnostics, appendixLayers, blockAppendices, documentBlocks, isRemovable, LayerSessions, MAIN_LAYER, removeLayer, freezeRevision, removeRevision, revisionDocument, revisionState, shortHash, tablesByLayer, theorySections, updateLayer, withTheoryIds, conversationsOf, hasConversations, withConversation, withoutConversation, aiMemoryOf, withAiMemory, linkedLibraries, librarySections, type Conversation, type AddableLayerKind, type Layer, type RevisionState, type SheetDocument } from '@kalketa/sheet';
 import { buildCommands, shortcutOf, type Command } from './commands.js';
-import { DEFAULT_AI_SETTINGS, parseAiSettings, type AiSettings, type ChatTurn } from '@kalketa/ai';
+import { DEFAULT_AI_SETTINGS, parseAiSettings, providerById, type AiSettings, type ChatTurn } from '@kalketa/ai';
 import { ChatPane } from './components/ChatPane.js';
 import { TheoryLibraryDialog } from './components/TheoryLibraryDialog.js';
-import { useTheoryLibraries, withoutDuplicates } from './theoryLibraries.js';
+import { sourceText, useTheoryLibraries, withoutDuplicates } from './theoryLibraries.js';
+import { aiSources } from './logic/aiSources.js';
 import { languageGuide, sheetContext } from './logic/aiContext.js';
 import { chooseFile, desktop, emptyDocument, exampleDocument, fileName, fileUri, largestParts, openBytes, pickAndOpen, saveDocument, tableCache, type FileRef, type OpenedFile } from './document.js';
 import { record, redo, undo, type History } from './logic/history.js';
@@ -632,6 +633,67 @@ export function App() {
   // The id a new conversation got with its question, by tab: the answer, written later, goes into the same one.
   const startedChat = useRef<Record<string, string | undefined>>({});
   const conversations = conversationsOf(doc);
+  /** What the model sees of the sheet: for the chat, and for the memory update when a conversation ends. */
+  const chatContext = () => {
+    // Headings still without an id get one before the model sees them, so its citations stay valid.
+    const layers = withTheoryIds(doc.layers);
+    if (layers.some((x, i) => x !== doc.layers[i])) change({ ...doc, layers });
+    const fromLibraries = libraries.theory();
+    const memory = aiMemoryOf(doc);
+    return {
+      // A section both in the sources and in a library goes once, from the library.
+      sheet: { ...sheetContext(doc.manifest.title, evaluation.main), theory: withoutDuplicates(theorySections(layers), fromLibraries.sections), libraries: fromLibraries.libraries },
+      languageGuide: languageGuide(),
+      ...(memory.trim() ? { memory } : {}),
+    };
+  };
+  // A memory update running, by tab: one at a time.
+  const remembering = useRef<Record<string, boolean>>({});
+  /**
+   * When a conversation ends (New chat, the AI switched off, a while without a
+   * question), the model rewrites the sheet's memory from it (ch. 9.7). In the
+   * background; the result lands in the tab where the conversation was held.
+   */
+  const rememberConversation = (conversation: Conversation | undefined) => {
+    if (!desktop || !aiOn || !conversation || remembering.current[tab.id]) return;
+    if ((conversation.remembered ?? 0) >= conversation.turns.length || !conversation.turns.some((t) => t.role === 'assistant')) return;
+    const provider = providerById(aiSettings.provider);
+    if (!provider) return;
+    const tabId = tab.id;
+    const turns = conversation.turns;
+    remembering.current[tabId] = true;
+    const { sheet, languageGuide: guide, memory } = chatContext();
+    void desktop
+      .aiMemory({
+        id: `memory-${conversation.id}-${turns.length}`,
+        provider: provider.id,
+        model: aiSettings.model,
+        ...(aiSettings.url ? { url: aiSettings.url } : {}),
+        language: ui.locale,
+        sheet,
+        languageGuide: guide,
+        turns: turns.map((t) => ({ role: t.role, text: t.text })),
+        ...(memory ? { memory } : {}),
+      })
+      .then((result) => {
+        if (!result.ok) return;
+        changeWith((present) => {
+          const now = conversationsOf(present).find((c) => c.id === conversation.id);
+          const marked = now ? withConversation(present, { ...now, remembered: turns.length }) : present;
+          return withAiMemory(marked, result.text);
+        }, 'ai-memory');
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        remembering.current[tabId] = false;
+      });
+  };
+  // A while without a question ends the conversation too.
+  useEffect(() => {
+    if (!aiOn || !chat || (chat.remembered ?? 0) >= chat.turns.length) return;
+    const timer = window.setTimeout(() => rememberConversation(chat), 3 * 60 * 1000);
+    return () => window.clearTimeout(timer);
+  });
   const chatId = activeChat[tab.id];
   const chat = chatId === '' ? undefined : (conversations.find((c) => c.id === chatId) ?? (chatId === undefined ? conversations[conversations.length - 1] : undefined));
   // The sources layer being saved as a theory library.
@@ -899,7 +961,10 @@ export function App() {
       addLayer: (kind) => void newLayer(kind),
       insertBlock: () => void insertBlock(),
       settings: () => setDialog('settings'),
-      toggleAi: () => setAiOn((on) => !on),
+      toggleAi: () => {
+        if (aiOn) rememberConversation(chat);
+        setAiOn(!aiOn);
+      },
       shortcuts: () => setDialog('shortcuts'),
       functions: () => setDialog('functions'),
       about: () => setDialog('about'),
@@ -1156,6 +1221,17 @@ export function App() {
           fileExists={(path) => doc.files.has(path)}
           {...(l.kind === 'ai'
             ? {
+                sources: aiSources(
+                  conversations,
+                  theorySections(doc.layers),
+                  linkedLibraries(doc).map((link) => ({ ...link, source: sourceText(link.source) })),
+                  new Map(libraries.found.flatMap((f) => librarySections(f.library).flatMap((s) => (s.id ? [[s.id, s.title] as const] : [])))),
+                ),
+                memory: aiMemoryOf(doc),
+                onForgetMemory: () =>
+                  void askConfirm(t(ui, 'ai.memoryForgetConfirm')).then((yes) => {
+                    if (yes) change(withAiMemory(doc, ''));
+                  }),
                 conversations,
                 onContinueConversation: (id: string) => {
                   startedChat.current[tab.id] = id;
@@ -1256,7 +1332,10 @@ export function App() {
                     catalog={ui}
                     settings={aiSettings}
                     aiOn={aiOn}
-                    onAiOn={setAiOn}
+                    onAiOn={(on) => {
+                      if (!on) rememberConversation(chat);
+                      setAiOn(on);
+                    }}
                     turns={chat?.turns ?? []}
                     onTurns={(turns) => {
                       // Kept in the AI notes of the calculation: a new conversation gets its id with its first question.
@@ -1272,6 +1351,7 @@ export function App() {
                       }, 'ai-chat');
                     }}
                     onNew={() => {
+                      rememberConversation(chat);
                       startedChat.current[tab.id] = undefined;
                       setActiveChat((all) => ({ ...all, [tab.id]: '' }));
                     }}
@@ -1279,17 +1359,7 @@ export function App() {
                     onLibraries={() => void libraries.refresh()}
                     onToggleLibrary={libraries.toggle}
                     theory={[...theorySections(doc.layers), ...libraries.theory().sections]}
-                    context={() => {
-                      // Headings still without an id get one before the model sees them, so its citations stay valid.
-                      const layers = withTheoryIds(doc.layers);
-                      if (layers.some((x, i) => x !== doc.layers[i])) change({ ...doc, layers });
-                      const fromLibraries = libraries.theory();
-                      return {
-                        // A section both in the sources and in a library goes once, from the library.
-                        sheet: { ...sheetContext(doc.manifest.title, evaluation.main), theory: withoutDuplicates(theorySections(layers), fromLibraries.sections), libraries: fromLibraries.libraries },
-                        languageGuide: languageGuide(),
-                      };
-                    }}
+                    context={chatContext}
                     onOpenSettings={() => setDialog('settings')}
                   />
                 ) : pane === 'layers' ? (

@@ -1240,7 +1240,9 @@ async function theoryLibraryWithRealInput(contents: Electron.WebContents, pictur
     listed.length === 1 && listed[0]!.includes('[P] Podklady') && listed[0]!.includes('Moje knihovny') && stillOpen && closed &&
     answer.head.startsWith('Teorie (1)') && answer.ok.some((c) => /^P:T\d+$/.test(c ?? '')) &&
     // The sections saved into the library from these sources go once, from the library: 1 own + 2 of the library.
-    answer.text.includes('úseků: 3')
+    answer.text.includes('úseků: 3') &&
+    // The memory written after the first conversation goes into the next one.
+    answer.text.includes('paměť: ano')
   );
 }
 
@@ -1388,9 +1390,20 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
   // The conversation is kept in the AI notes layer, which came with it; from there it is taken up again.
   const aiTab = (await contents.executeJavaScript(`!!document.querySelector('.layer-tab[data-layer="ai"]')`)) as boolean;
   let kept = { count: 0, text: '' };
+  let layerShown = { memory: '', sheet: [] as string[], unknown: [] as string[], hiddenConversations: -1 };
   let resumed: string[] = [];
   if (aiTab) {
     await clickOn('.layer-tab[data-layer="ai"]');
+    // New chat ended the conversation: the model rewrote the memory, in the background.
+    for (let i = 0; i < 40 && !(await contents.executeJavaScript(`!!document.querySelector('.layer-view.active .ai-memory-text')`)); i++) await pause(150);
+    layerShown = (await contents.executeJavaScript(`({
+      memory: document.querySelector('.layer-view.active .ai-memory-text')?.textContent ?? '',
+      sheet: [...document.querySelectorAll('.layer-view.active .ai-source.sheet li')].map((l) => l.textContent),
+      unknown: [...document.querySelectorAll('.layer-view.active .ai-source.unknown li')].map((l) => l.textContent),
+      hiddenConversations: document.querySelectorAll('.layer-view.active .ai-conversation').length,
+    })`)) as typeof layerShown;
+    // The conversations are shown on request.
+    await clickOn('.layer-view.active .conv-toggle');
     await pause(300);
     kept = (await contents.executeJavaScript(`({
       count: document.querySelectorAll('.layer-view.active .ai-conversation').length,
@@ -1408,7 +1421,7 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
   await clickMenu('Boční panel');
   await clickMenu(back);
   await pause(300);
-  await writeFile(picture.replace(/[.]png$/, '-ai-chat.json'), JSON.stringify({ pasted, unpasted, typed, theory, offered, quietWhileOff, head, shown, cutOff, cleared, aiTab, kept, resumed }, null, 2));
+  await writeFile(picture.replace(/[.]png$/, '-ai-chat.json'), JSON.stringify({ pasted, unpasted, typed, theory, offered, quietWhileOff, head, shown, cutOff, cleared, aiTab, layerShown, kept, resumed }, null, 2));
   return (
     pasted === 'Klopení je ztráta stability ohýbaného nosníku. Vloženo ze schránky.' && unpasted === 'Klopení je ztráta stability ohýbaného nosníku.' &&
     typed === 'H2:Klopení|P:Klopení je ztráta stability ohýbaného nosníku.' && theory.heading === 'Klopení' && /^T\d+$/.test(theory.badge) &&
@@ -1419,7 +1432,10 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
     shown.user === 'Co počítá řádek 3?' && shown.input === '' &&
     /list: [^?;*]+;/.test(shown.answer) && shown.bold !== '' && !shown.answer.includes('**') && shown.code === 'Co počítá řádek 3?' && shown.table === 'IPE 220' && shown.answer.includes('jazyk: Czech') && shown.answer.includes('úsilí: low') && shown.answer.includes('výsledky: ano') && shown.answer.includes('otázka: Co počítá řádek 3?') &&
     cleared === 0 &&
-    aiTab && kept.count === 1 && kept.text.includes('Co počítá řádek 3?') && kept.text.includes('local-smoke-7b') &&
+    aiTab && layerShown.memory === 'Intent: smoke memory.' && layerShown.hiddenConversations === 0 &&
+    layerShown.sheet.length === 1 && layerShown.sheet[0]!.startsWith('T1 Klopení') && layerShown.sheet[0]!.includes('ověřeno 1×') &&
+    layerShown.unknown.length === 1 && layerShown.unknown[0]!.startsWith('T99') &&
+    kept.count === 1 && kept.text.includes('Co počítá řádek 3?') && kept.text.includes('local-smoke-7b') &&
     cutOff.error.includes('vyčerpal limit') && cutOff.answers === 1 && !cutOff.empty &&
     resumed.length === 3 && resumed[0] === 'user:Co počítá řádek 3?' && resumed[1]!.startsWith('assistant:list:') && resumed[2] === 'user:Analyzuj výpočet.'
   );

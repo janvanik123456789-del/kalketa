@@ -498,3 +498,16 @@ button.icon:hover { color: var(--accent); }
 .conv-who { font-size: 9pt; color: #6b7480; margin-bottom: 1mm; }
 .conv-turn.assistant .notes { color: #48505a; }
 .conv-actions { display: flex; gap: 8px; margin-top: 2mm; }
+
+/* AI notes: sources and citations first, the memory for the model, conversations on request. */
+.ai-sources, .ai-memory { margin-top: 5mm; }
+.ai-sources h3, .ai-memory h3 { font-size: 12pt; margin: 0 0 2.5mm; }
+.ai-source h4 { font-size: 10.5pt; margin: 3mm 0 1mm; }
+.ai-source-from { font-size: 9pt; color: #6b7480; margin: 0 0 1mm; }
+.ai-source ul { margin: 0; padding-left: 5mm; font-size: 10pt; }
+.ai-source .cite { display: inline-block; font-size: 9pt; padding: 0 1mm; border-radius: 2px; border: 1px solid; }
+.ai-source .cite.ok { color: #2f6b3a; border-color: #8fbf98; background: #eef7f0; }
+.ai-source .cite.bad { color: #a12828; border-color: #e0a3a3; background: #fbeeee; }
+.ai-source-counts { color: #6b7480; font-size: 9pt; }
+.ai-memory-text { white-space: pre-wrap; font: 9.5pt/1.45 Consolas, 'Courier New', monospace; background: #f6f7f9; border: 1px solid #d5dae1; padding: 2mm 3mm; margin: 0; }
+.conv-toggle { margin: 5mm 0 3mm; }

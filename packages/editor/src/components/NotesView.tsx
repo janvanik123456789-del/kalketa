@@ -10,7 +10,9 @@
 
 import { t, type Catalog } from '@kalketa/i18n';
 import { NOTES_CSS, notesHtml } from '@kalketa/render';
+import { useState } from 'react';
 import type { Conversation, Layer } from '@kalketa/sheet';
+import type { SourceGroup } from '../logic/aiSources.js';
 import { chooseFile } from '../document.js';
 import { ask } from './Ask.js';
 import { NotesWord } from './NotesWord.js';
@@ -29,14 +31,20 @@ interface Props {
   onSettle?(): void;
   /** Saves the layer as a theory library (.kalkt). */
   onSaveLibrary?(): void;
-  /** AI notes: the conversations kept with them, oldest first. */
+  /** AI notes: where the AI drew from, by source (the main part of the layer). */
+  readonly sources?: readonly SourceGroup[];
+  /** AI notes: the sheet's memory for the model. */
+  readonly memory?: string;
+  onForgetMemory?(): void;
+  /** AI notes: the conversations kept with them, oldest first; shown on request. */
   readonly conversations?: readonly Conversation[];
   /** Takes a conversation up again in the chat. */
   onContinueConversation?(id: string): void;
   onDeleteConversation?(id: string): void;
 }
 
-export function NotesView({ layer, title, catalog, readOnly, resolveFile, fileExists, onChange, onSettle, onSaveLibrary, conversations = [], onContinueConversation, onDeleteConversation }: Props) {
+export function NotesView({ layer, title, catalog, readOnly, resolveFile, fileExists, onChange, onSettle, onSaveLibrary, sources = [], memory = '', onForgetMemory, conversations = [], onContinueConversation, onDeleteConversation }: Props) {
+  const [showConversations, setShowConversations] = useState(false);
   const text = layer.text ?? '';
 
   /** A picture file and its caption. */
@@ -58,17 +66,27 @@ export function NotesView({ layer, title, catalog, readOnly, resolveFile, fileEx
         <div className="notes-preview page-like ai-notes">
           <style>{NOTES_CSS}</style>
           <h2 className="notes-title">{title}</h2>
-          {text.trim() ? (
-            <div className="notes" dangerouslySetInnerHTML={{ __html: notesHtml(text, { resolveFile }) }} />
-          ) : (
-            conversations.length === 0 && <p className="muted">{t(catalog, 'notes.aiPlaceholder')}</p>
-          )}
+          {text.trim() && <div className="notes" dangerouslySetInnerHTML={{ __html: notesHtml(text, { resolveFile }) }} />}
+          <SourcesView sources={sources} catalog={catalog} />
+          <section className="ai-memory">
+            <h3>{t(catalog, 'ai.memory')}</h3>
+            {memory.trim() ? <pre className="ai-memory-text">{memory.trim()}</pre> : <p className="muted">{t(catalog, 'ai.memoryEmpty')}</p>}
+            <p className="hint">{t(catalog, 'ai.memoryHint')}</p>
+            {memory.trim() && onForgetMemory && (
+              <button type="button" className="ai-memory-forget secondary" onClick={onForgetMemory}>
+                {t(catalog, 'ai.memoryForget')}
+              </button>
+            )}
+          </section>
           {conversations.length > 0 && (
             <section className="ai-conversations">
-              <h3>{t(catalog, 'conv.title', { count: String(conversations.length) })}</h3>
-              {[...conversations].reverse().map((c, i) => (
-                <ConversationView key={c.id} conversation={c} catalog={catalog} open={i === 0} onContinue={onContinueConversation} onDelete={onDeleteConversation} />
-              ))}
+              <button type="button" className="conv-toggle secondary" onClick={() => setShowConversations((v) => !v)}>
+                {showConversations ? t(catalog, 'conv.hide') : t(catalog, 'conv.show', { count: String(conversations.length) })}
+              </button>
+              {showConversations &&
+                [...conversations].reverse().map((c, i) => (
+                  <ConversationView key={c.id} conversation={c} catalog={catalog} open={i === 0} onContinue={onContinueConversation} onDelete={onDeleteConversation} />
+                ))}
             </section>
           )}
         </div>
@@ -127,5 +145,41 @@ function ConversationView({ conversation, catalog, open, onContinue, onDelete }:
         )}
       </div>
     </details>
+  );
+}
+
+/** Where the AI drew from: the sheet's sources, each library, and what it cited but no source has. */
+function SourcesView({ sources, catalog }: { sources: readonly SourceGroup[]; catalog: Catalog }) {
+  const when = (iso: string | undefined) => {
+    const date = iso ? new Date(iso) : undefined;
+    return date && !Number.isNaN(date.getTime()) ? new Intl.DateTimeFormat(catalog.locale, { dateStyle: 'short', timeStyle: 'short' }).format(date) : '';
+  };
+  return (
+    <section className="ai-sources">
+      <h3>{t(catalog, 'ai.sources')}</h3>
+      {sources.length === 0 && <p className="muted">{t(catalog, 'ai.sourcesEmpty')}</p>}
+      {sources.map((group, g) => (
+        <div key={g} className={`ai-source ${group.kind}`}>
+          <h4>
+            {group.kind === 'sheet'
+              ? t(catalog, 'ai.sourceSheet')
+              : group.kind === 'library'
+                ? t(catalog, 'ai.sourceLibrary', { key: group.key ?? '', title: group.title })
+                : t(catalog, 'ai.sourceUnknown')}
+          </h4>
+          {group.source && <p className="ai-source-from">{t(catalog, 'ai.sourceFrom', { source: group.source })}</p>}
+          <ul>
+            {group.sections.map((s) => (
+              <li key={s.id}>
+                <span className={`cite ${s.unsupported > 0 && s.checked === 0 ? 'bad' : 'ok'}`}>{s.id}</span> {s.title}{' '}
+                <span className="ai-source-counts">
+                  {[s.checked ? t(catalog, 'ai.citedChecked', { count: String(s.checked) }) : '', s.unsupported ? t(catalog, 'ai.citedUnsupported', { count: String(s.unsupported) }) : '', when(s.last)].filter(Boolean).join(' · ')}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </section>
   );
 }

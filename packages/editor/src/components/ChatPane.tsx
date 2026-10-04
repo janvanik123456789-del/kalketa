@@ -42,7 +42,7 @@ export interface ChatPaneProps {
   readonly theory: readonly CitableSection[];
   onTurns(turns: readonly ChatTurn[]): void;
   /** What the model sees, taken when a question is sent. */
-  context(): { readonly sheet: AiSheetContext; readonly languageGuide: string };
+  context(): { readonly sheet: AiSheetContext; readonly languageGuide: string; readonly memory?: string };
   onOpenSettings(): void;
   /** "New chat": the next question starts another conversation (the others stay in the AI notes). */
   onNew?(): void;
@@ -150,7 +150,7 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTur
     setAnswer({ id, text: '', thinking: false, started: Date.now() });
     const stop = listen(id, (piece) => setAnswer((a) => (a && a.id === id ? { ...a, text: a.text + (piece.text ?? ''), thinking: a.thinking || !!piece.thinking } : a)));
     try {
-      const { sheet, languageGuide } = context();
+      const { sheet, languageGuide, memory } = context();
       const result = await desktop!.aiChat({
         id,
         provider: provider.id,
@@ -161,12 +161,21 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTur
         sheet,
         languageGuide,
         turns: asked,
+        ...(memory ? { memory } : {}),
       });
       // An answer the length limit cut keeps a note saying so; no answer at all is not kept, the user is told why.
       if (result.ok)
         onTurns([
           ...asked,
-          { role: 'assistant', text: result.truncated ? `${result.text}\n\n*${t(catalog, 'chat.truncated')}*` : result.text, time: new Date().toISOString(), model: result.model, ...(result.theory ? { theory: result.theory } : {}) },
+          {
+            role: 'assistant',
+            text: result.truncated ? `${result.text}\n\n*${t(catalog, 'chat.truncated')}*` : result.text,
+            time: new Date().toISOString(),
+            model: result.model,
+            ...(result.theory ? { theory: result.theory } : {}),
+            // The sources it cited, with their state as they are now: the AI notes list them.
+            citations: checkCitations(result.text, theory),
+          },
         ]);
       else if (result.problem !== 'cancelled') setError(t(catalog, `ai.problem.${result.problem}` as UiKey, { detail: result.detail ?? '', name: provider.urlEditable ? t(catalog, 'ai.otherServer') : provider.name }));
     } catch (e) {

@@ -1,12 +1,16 @@
 /**
- * Conversations with the AI, kept in the AI notes layer (docs/01-filozofie.md,
- * ch. 9.3): what the user asked, what the model answered, which model and
- * when, and which theory sections it had. They belong to the calculation
- * file, are never printed, and a conversation can be taken up again after the
- * file is opened.
+ * What the AI keeps in the AI notes layer (docs/01-filozofie.md, ch. 9.7):
  *
- * Stored as layers/<ai layer id>/conversations.json among the files of the
- * sheet: an older program keeps the entry as it is.
+ *   memory.md            the sheet's memory for the model (English, short): the
+ *                        intent, agreed assumptions, what was checked; the model
+ *                        gets it at the start of every conversation and updates
+ *                        it after one, so it does not start from nothing
+ *   conversations.json   the conversations: questions, answers, model, time, the
+ *                        theory the model had and the sources it cited with
+ *                        their state; never printed
+ *
+ * Both are files of the sheet under layers/<ai layer id>/: an older program
+ * keeps them as they are.
  */
 
 import { strFromU8, strToU8 } from 'fflate';
@@ -22,6 +26,8 @@ export interface ConversationTurn {
   readonly model?: string;
   /** For an answer: the theory sections the model was given, and how many there were. */
   readonly theory?: { readonly sent: readonly string[]; readonly total: number };
+  /** For an answer: the sources it cited, with their state when it was written (ch. 9.6). */
+  readonly citations?: readonly { readonly id: string; readonly status: 'ok' | 'unknown' | 'misquoted'; readonly quote?: string }[];
 }
 
 export interface Conversation {
@@ -32,15 +38,40 @@ export interface Conversation {
   readonly provider?: string;
   readonly model?: string;
   readonly turns: readonly ConversationTurn[];
+  /** How many of its turns the sheet's memory already takes in (the memory was updated after them). */
+  readonly remembered?: number;
 }
 
 function path(layerId: string): string {
   return `layers/${layerId}/conversations.json`;
 }
 
-/** Whether the sheet keeps conversations for this layer: then its AI notes layer stays. */
+function memoryPath(layerId: string): string {
+  return `layers/${layerId}/memory.md`;
+}
+
+/** Whether the sheet keeps conversations or a memory for this layer: then its AI notes layer stays. */
 export function hasConversations(files: ReadonlyMap<string, Uint8Array>, layerId: string): boolean {
-  return files.has(path(layerId));
+  return files.has(path(layerId)) || files.has(memoryPath(layerId));
+}
+
+/** The sheet's memory for the model, or '' when there is none. */
+export function aiMemoryOf(doc: SheetDocument): string {
+  const layer = doc.layers.find((l) => l.kind === 'ai');
+  const data = layer && doc.files.get(memoryPath(layer.id));
+  return data ? strFromU8(data) : '';
+}
+
+/** The sheet with a new memory for the model; '' removes it. */
+export function withAiMemory(doc: SheetDocument, memory: string): SheetDocument {
+  const text = memory.trim();
+  const layers = text ? withAiLayer(doc.layers) : doc.layers;
+  const layer = layers.find((l) => l.kind === 'ai');
+  if (!layer) return doc;
+  const files = new Map(doc.files);
+  if (text) files.set(memoryPath(layer.id), strToU8(`${text}\n`));
+  else files.delete(memoryPath(layer.id));
+  return { ...doc, layers, files };
 }
 
 /** The conversations of a sheet, oldest first. */

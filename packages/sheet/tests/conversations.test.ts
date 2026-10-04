@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { conversationsOf, newDocument, readSheetFile, withConversation, withoutConversation, writeSheetFile, type Conversation } from '../src/index.js';
+import { aiMemoryOf, conversationsOf, newDocument, readSheetFile, withAiMemory, withConversation, withoutConversation, writeSheetFile, type Conversation } from '../src/index.js';
 
 const first: Conversation = {
   id: 'c1',
@@ -37,6 +37,14 @@ describe('conversations with the AI in the sheet', () => {
     expect(conversationsOf(doc)).toEqual([]);
     const read = await readSheetFile(await writeSheetFile(doc));
     expect(read.document!.layers.some((l) => l.kind === 'ai')).toBe(false);
+  });
+
+  it('keep the memory for the model, which alone keeps the AI notes layer too', async () => {
+    const doc = withAiMemory(newDocument('N1'), 'Intent: check beam N1 to EN 1993. Assumed: S235, L/250.');
+    const read = await readSheetFile(await writeSheetFile(doc));
+    expect(aiMemoryOf(read.document!)).toBe('Intent: check beam N1 to EN 1993. Assumed: S235, L/250.\n');
+    expect(read.document!.layers.some((l) => l.kind === 'ai')).toBe(true);
+    expect(aiMemoryOf(withAiMemory(read.document!, ''))).toBe('');
   });
 
   it('make no AI notes layer for nothing', () => {

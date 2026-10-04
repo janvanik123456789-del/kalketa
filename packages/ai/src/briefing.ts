@@ -16,6 +16,8 @@ export interface ChatTurn {
   readonly time?: string;
   /** For an answer: the model that wrote it. */
   readonly model?: string;
+  /** For an answer: the sources it cited, with their state when it was written. */
+  readonly citations?: readonly { readonly id: string; readonly status: 'ok' | 'unknown' | 'misquoted'; readonly quote?: string }[];
   /** For an answer: the theory sections the model was given, and how many the theory has. */
   readonly theory?: { readonly sent: readonly string[]; readonly total: number };
 }
@@ -32,6 +34,8 @@ export interface BriefingInput {
   readonly query?: string;
   /** Section ids already cited in the conversation; they go along. */
   readonly cited?: readonly string[];
+  /** The sheet's memory from earlier conversations (ch. 9.7). */
+  readonly memory?: string;
 }
 
 /** The briefing, and which theory sections it carries. */
@@ -109,10 +113,27 @@ ${sheet.theory!.filter((s) => s.id).map((s) => `[${s.id}] ${s.title}`).join('\n'
 
 ${sheet.libraries && sheet.libraries.length > 0 ? `Theory libraries: ${sheet.libraries.map((l) => `[${l.key}] ${l.title} (source: ${l.source})`).join('; ')}.\n\n` : ''}${contents}${selection!.sections.length > 0 ? theoryText(selection!.sections) : '(No section matches the question.)'}`
       : '',
+    input.memory?.trim()
+      ? `Memory of this sheet from earlier conversations (kept by you; where it disagrees with the sheet above, the sheet is right):\n${input.memory.trim()}`
+      : '',
     input.companyInstructions ? `Company rules (they take precedence):\n${input.companyInstructions}` : '',
   ];
   return {
     text: parts.filter((p) => p !== '').join('\n\n'),
     ...(selection ? { theory: { sent: selection.sections.flatMap((s) => (s.id ? [s.id] : [])), total: selection.total, whole: selection.whole } } : {}),
   };
+}
+
+/**
+ * The last question of a conversation that ends: the model rewrites the
+ * sheet's memory (ch. 9.7) from the old one and what the conversation added.
+ */
+export function memoryInstruction(previous: string): string {
+  return [
+    'The conversation ends here. Rewrite the memory of this sheet for future conversations, so the next one does not start from nothing.',
+    'In English, at most 150 words, short lines under these headings: Intent; Agreed assumptions; Checked (with the results); Open questions; Sources relied on (their ids, e.g. T3, PP:T3).',
+    'Merge the previous memory with what this conversation added; leave out what no longer holds for the sheet as it is now, and do not repeat what the sheet itself says.',
+    'Reply with the memory only.',
+    previous.trim() ? `Previous memory:\n${previous.trim()}` : 'There is no previous memory.',
+  ].join('\n');
 }

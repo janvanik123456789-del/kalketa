@@ -31,6 +31,7 @@ contextBridge.exposeInMainWorld('kalketaDesktop', {
   aiTest: (provider: string, url?: string): Promise<unknown> => ipcRenderer.invoke('kalketa:ai-test', provider, url),
   aiDiscover: (): Promise<unknown> => ipcRenderer.invoke('kalketa:ai-discover'),
   aiChat: (ask: unknown): Promise<unknown> => ipcRenderer.invoke('kalketa:ai-chat', ask),
+  aiMemory: (ask: unknown): Promise<unknown> => ipcRenderer.invoke('kalketa:ai-memory', ask),
   theoryList: (sheetPath?: string): Promise<unknown> => ipcRenderer.invoke('kalketa:theory-list', sheetPath),
   theoryRead: (path: string, sheetPath?: string): Promise<unknown> => ipcRenderer.invoke('kalketa:theory-read', { path, sheetPath }),
   theorySave: (request: { folder: string; sheetPath?: string; title: string; bytes: Uint8Array; replace?: boolean }): Promise<unknown> => ipcRenderer.invoke('kalketa:theory-save', request),

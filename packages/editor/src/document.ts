@@ -127,6 +127,8 @@ export interface DesktopBridge {
     | { readonly ok: false; readonly problem: string; readonly detail?: string }
   >;
   aiChatCancel(id: string): Promise<void>;
+  /** The sheet's memory rewritten by the model when a conversation ends; its text is the answer. */
+  aiMemory(ask: AiChatAsk): Promise<{ readonly ok: true; readonly text: string; readonly model: string } | { readonly ok: false; readonly problem: string; readonly detail?: string }>;
   /** Theory libraries (.kalkt) in the folders searched for a calculation: next to it, the company's, the user's. */
   theoryList(sheetPath?: string): Promise<{ readonly path: string; readonly folder: TheoryFolder }[]>;
   theoryRead(path: string, sheetPath?: string): Promise<Uint8Array>;
@@ -158,6 +160,8 @@ export interface AiChatAsk {
   };
   readonly languageGuide?: string;
   readonly turns: readonly { readonly role: 'user' | 'assistant'; readonly text: string; readonly theory?: { readonly sent: readonly string[]; readonly total: number } }[];
+  /** The sheet's memory from earlier conversations. */
+  readonly memory?: string;
 }
 
 export interface AiKeyState {

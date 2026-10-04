@@ -13,7 +13,7 @@ import { app, ipcMain, safeStorage, type IpcMainInvokeEvent } from 'electron';
 import { existsSync, readFileSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import { AI_EFFORTS, allowedProviders, CITED_ID, modelAllowed, prepareBriefing, NO_POLICY, parseAiPolicy, providerById, type AiPolicy, type AiSheetContext, type ChatTurn } from '@kalketa/ai';
+import { AI_EFFORTS, allowedProviders, CITED_ID, memoryInstruction, modelAllowed, prepareBriefing, NO_POLICY, parseAiPolicy, providerById, type AiPolicy, type AiSheetContext, type ChatTurn } from '@kalketa/ai';
 import { chat, discoverLocal, testConnection, tryModel, type AnswerResult, type ChatResult, type ConnectionResult } from '@kalketa/ai/connect';
 
 export interface AiKeyState {
@@ -36,6 +36,8 @@ interface ChatAsk {
   readonly sheet: AiSheetContext;
   readonly languageGuide?: string;
   readonly turns: readonly ChatTurn[];
+  /** The sheet's memory from earlier conversations (ch. 9.7). */
+  readonly memory?: string;
 }
 
 /** Answers being written, so the editor can stop one. */
@@ -148,7 +150,12 @@ export function registerAiBridge(fromEditor: (event: IpcMainInvokeEvent) => unkn
   });
 
   // A conversation turn: pieces of the answer go to the window as they come.
-  ipcMain.handle('kalketa:ai-chat', async (event, ask: ChatAsk): Promise<ChatResult & { theory?: { sent: readonly string[]; total: number } }> => {
+  /**
+   * A turn of a conversation, or (`memory`) the memory update when one ends: the
+   * same briefing, the conversation, and the request to rewrite the memory,
+   * thought through briefly. Pieces of a chat answer go to the window as they come.
+   */
+  const run = async (event: IpcMainInvokeEvent, ask: ChatAsk, memory: boolean): Promise<ChatResult & { theory?: { sent: readonly string[]; total: number } }> => {
     fromEditor(event);
     const id = allowed(ask.provider);
     const policy = readPolicy();
@@ -157,7 +164,7 @@ export function registerAiBridge(fromEditor: (event: IpcMainInvokeEvent) => unkn
     const controller = new AbortController();
     running.set(ask.id, controller);
     const send = (piece: { text?: string; thinking?: boolean }) => {
-      if (!event.sender.isDestroyed()) event.sender.send('kalketa:ai-chat-event', { id: ask.id, ...piece });
+      if (!memory && !event.sender.isDestroyed()) event.sender.send('kalketa:ai-chat-event', { id: ask.id, ...piece });
     };
     // The theory for the question: the last two questions of the user, and what was cited so far.
     const asked = ask.turns.filter((t) => t.role === 'user').slice(-2).map((t) => t.text).join('\n');
@@ -167,27 +174,34 @@ export function registerAiBridge(fromEditor: (event: IpcMainInvokeEvent) => unkn
       sheet: ask.sheet,
       ...(ask.languageGuide ? { languageGuide: ask.languageGuide } : {}),
       ...(policy.instructions ? { companyInstructions: policy.instructions } : {}),
+      ...(typeof ask.memory === 'string' && ask.memory.trim() ? { memory: ask.memory } : {}),
       query: asked,
       cited,
     });
+    const turns = ask.turns.map((t) => ({ role: t.role, text: t.text }));
+    const effort = memory ? 'low' : AI_EFFORTS.find((e) => e === ask.effort);
     try {
       const result = await chat({
         provider: id,
         model: ask.model,
         ...(typeof ask.url === 'string' ? { url: ask.url } : {}),
-        ...(AI_EFFORTS.find((e) => e === ask.effort) ? { effort: AI_EFFORTS.find((e) => e === ask.effort)! } : {}),
+        ...(effort ? { effort } : {}),
         ...(keys.has(id) ? { apiKey: keys.get(id)! } : {}),
         system: prepared.text,
-        turns: ask.turns.map((t) => ({ role: t.role, text: t.text })),
+        turns: memory ? [...turns, { role: 'user' as const, text: memoryInstruction(ask.memory ?? '') }] : turns,
         onText: (text) => send({ text }),
         onThinking: () => send({ thinking: true }),
         signal: controller.signal,
       });
-      return prepared.theory && result.ok ? { ...result, theory: { sent: prepared.theory.sent, total: prepared.theory.total } } : result;
+      return prepared.theory && result.ok && !memory ? { ...result, theory: { sent: prepared.theory.sent, total: prepared.theory.total } } : result;
     } finally {
       running.delete(ask.id);
     }
-  });
+  };
+
+  ipcMain.handle('kalketa:ai-chat', (event, ask: ChatAsk) => run(event, ask, false));
+  // The sheet's memory rewritten when a conversation ends (ch. 9.7).
+  ipcMain.handle('kalketa:ai-memory', (event, ask: ChatAsk) => run(event, ask, true));
 
   ipcMain.handle('kalketa:ai-chat-cancel', (event, id: unknown) => {
     fromEditor(event);

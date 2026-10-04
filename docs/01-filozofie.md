@@ -363,6 +363,8 @@ layers/ai/
 
 **Tisk:** příloha z vrstvy AI není přepis rozhovorů, ale **protokol**: provedené kontroly, jejich výsledek a stav a přijaté návrhy.
 
+**Uspořádání vrstvy (rozhodnuto 2026-10-04):** hlavní část jsou **zdroje a citace**, odkud AI čerpala, seskupené podle zdroje (Podklady listu, knihovny teorie, později web) se stavem citací. Pod nimi **paměť pro AI**, kterou model po skončení rozhovoru aktualizuje **automaticky** (Nový rozhovor, vypnutí AI, 3 minuty bez otázky); dotaz navíc nevadí, lokální model nic nestojí a ceny za tokeny klesají. **Rozhovory** jsou až na vyžádání (Zobrazit rozhovory). Uloženo zatím jako `layers/<ai>/memory.md` a `layers/<ai>/conversations.json`; deník `entries` přijde s kontrolami a návrhy změn.
+
 ---
 
 ## 10. Referenční výpočty (testovací sada)

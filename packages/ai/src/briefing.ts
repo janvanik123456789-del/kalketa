@@ -106,8 +106,7 @@ ${sheet.theory!.filter((s) => s.id).map((s) => `[${s.id}] ${s.title}`).join('\n'
   ${FENCE}
   "change 12-14" replaces lines 12 to 14 (an empty block deletes them), "change after 14" inserts new lines after line 14. Propose only lines in the calculation language, one block per place.
 - The blocks of one answer can be accepted together, so give every change the calculation needs (a new variable and all the lines that use it). Line numbers always refer to the sheet as it is now.
-- When the user wants the calculation changed as a new sheet, propose the changes the same way: the program can apply them to a copy of this sheet in a new tab and keep this one as it is. Do not say that a new sheet cannot be made.
-- When the user wants a whole new calculation (from scratch, or after this sheet or another open one), write all its lines as one block; the program opens it as a new sheet with this sheet's tables and theory:
+- Change blocks are only for changing this sheet. When the user asks for a new sheet, a new file or a new calculation (even one like this sheet or another open one), do not change this sheet and do not copy it: write the whole new calculation, every line, as one block; the program opens it as a new sheet, with this sheet's tables and theory available:
   ${FENCE}sheet Beam with a point load
   # Beam with a point load
   F := 1000 N

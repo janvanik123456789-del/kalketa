@@ -2,11 +2,13 @@
  * Theory libraries in the editor: which ones the searched folders hold, which
  * the calculation uses, and what the model gets from them. A library used by
  * the calculation but not found (another computer, a removed file) still
- * gives the sections the calculation cited, from its copies.
+ * gives the sections the calculation cited, from its copies. Study files
+ * (PDF, HTML, Markdown) in the folders are offered as libraries too, made of
+ * the chapters or pages their card chooses.
  */
 import { useCallback, useEffect, useState } from 'react';
 import { CITED_ID } from '@kalketa/ai';
-import { librarySections, linkedLibraries, linkFor, readTheoryLibrary, withCitedSections, withLibraryLink, withoutLibraryLink, type LibraryLink, type SheetDocument, type TheoryLibrary, type TheorySource } from '@kalketa/sheet';
+import { librarySections, linkedLibraries, linkFor, parseStudySettings, readTheoryLibrary, studyAdvice, studyContent, studyLibrary, withCitedSections, withLibraryLink, withoutLibraryLink, type LibraryLink, type SheetDocument, type StudyContent, type StudySettings, type TheoryLibrary, type TheorySource } from '@kalketa/sheet';
 import { desktop, type TheoryFolder } from './document.js';
 export { withoutDuplicates } from './logic/theoryMerge.js';
 
@@ -14,6 +16,8 @@ export interface FoundLibrary {
   readonly library: TheoryLibrary;
   readonly path: string;
   readonly folder: TheoryFolder;
+  /** A study file: what it holds and its card. */
+  readonly study?: { readonly content: StudyContent; readonly settings: StudySettings };
 }
 
 /** One line on a library for the menu: found on disk, used by the calculation, or both. */
@@ -26,6 +30,8 @@ export interface LibraryEntry {
   readonly found: boolean;
   /** Sections the model gets from it: all when found, else the cited copies. */
   readonly sections: number;
+  /** A study file: how much of it is read, and whether it is large and read whole. */
+  readonly study?: { readonly kind: 'pdf' | 'html' | 'md'; readonly selected: number; readonly pages: number; readonly large: boolean };
 }
 
 type Section = { readonly id?: string; readonly title: string; readonly text: string };
@@ -44,6 +50,14 @@ export function useTheoryLibraries(doc: SheetDocument, path: string | undefined,
     const libraries: FoundLibrary[] = [];
     for (const item of list) {
       try {
+        if (item.study) {
+          const read = await desktop.studyRead(item.path, path);
+          const content = studyContent(read.content);
+          const settings = parseStudySettings(read.settings);
+          const library = studyLibrary(content, settings);
+          if (!libraries.some((l) => l.library.manifest.id === library.manifest.id)) libraries.push({ library, path: item.path, folder: item.folder, study: { content, settings } });
+          continue;
+        }
         const read = await readTheoryLibrary(await desktop.theoryRead(item.path, path));
         // The first folder wins: a project's copy of a library before the company's.
         if ('library' in read && !libraries.some((l) => l.library.manifest.id === read.library.manifest.id)) libraries.push({ library: read.library, path: item.path, folder: item.folder });
@@ -59,7 +73,19 @@ export function useTheoryLibraries(doc: SheetDocument, path: string | undefined,
   const byId = new Map(found.map((f) => [f.library.manifest.id, f]));
 
   const entries: LibraryEntry[] = [
-    ...found.map((f) => ({ id: f.library.manifest.id, key: f.library.manifest.key, title: f.library.manifest.title, folder: f.folder, linked: links.some((l) => l.id === f.library.manifest.id), found: true, sections: librarySections(f.library).length })),
+    ...found.map((f) => {
+      const advice = f.study && studyAdvice(f.study.content, f.study.settings);
+      return {
+        id: f.library.manifest.id,
+        key: f.library.manifest.key,
+        title: f.library.manifest.title,
+        folder: f.folder,
+        linked: links.some((l) => l.id === f.library.manifest.id),
+        found: true,
+        sections: librarySections(f.library).length,
+        ...(f.study && advice ? { study: { kind: f.study.content.kind, selected: advice.selected, pages: advice.pages, large: advice.large } } : {}),
+      };
+    }),
     ...links.filter((l) => !byId.has(l.id)).map((l) => ({ id: l.id, key: l.key, title: l.title, linked: true, found: false, sections: l.sections.length })),
   ];
 
@@ -98,5 +124,12 @@ export function useTheoryLibraries(doc: SheetDocument, path: string | undefined,
     return next;
   };
 
-  return { found, entries, refresh, toggle, theory, recordCited };
+  /** Writes a study file's card and reads the folders again. */
+  const saveStudy = async (file: string, settings: StudySettings) => {
+    if (!desktop) return;
+    await desktop.studySave(file, path, settings);
+    await refresh();
+  };
+
+  return { found, entries, refresh, toggle, theory, recordCited, saveStudy };
 }

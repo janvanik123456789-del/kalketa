@@ -319,13 +319,21 @@ Model má odpovídat z teorie, kterou vybral autor výpočtu, ne „z hlavy“. 
 - meze platnosti označené (např. `> platnost: λ ≤ 2`), aby je šlo vytáhnout a zkontrolovat proti výpočtu,
 - obrázky s popisem (použitelné i pro model, který obrázky nečte),
 - klíčová slova česky i anglicky, protože model pod kapotou mluví anglicky a hledání podle slov přes jazyky nefunguje,
-- žádná celá PDF: text se vloží nebo převede (OCR, LLM) a člověk ho potvrdí.
+- ~~žádná celá PDF~~ (změněno 2026-10-04, viz Studijní podklady níže): do knihovny `.kalkt` se text vkládá a čistí jako dřív, celé PDF smí ležet ve složce teorie jako studijní soubor.
 
 **Hledání (RAG):** malá teorie se modelu pošle celá. Z větší vybere úseky **program** podle slov otázky (kmeny slov bez diakritiky, aby se potkaly tvary „nosník/nosníku“): rychle, deterministicky, offline, s jakýmkoli modelem. Model dostane obsah všech úseků (značky a názvy) a celé jen vybrané; úseky citované dříve v rozhovoru jdou s nimi. Pod odpovědí je vidět, které úseky model dostal. Nástroj `search_theory(dotaz)` pro model může přijít později (lokální modely volají nástroje nespolehlivě). Embeddingy mohou přijít později jako volitelné.
 
 **Vynucení citací:** model musí každé tvrzení o teorii opřít o citovaný úsek (`[T3.2]`). Program ověří, že úsek existuje a že doslovná citace v něm je. Tvrzení bez platné citace se označí jako **nepodložené**, takže je vždy vidět, co model opřel o teorii a co si domyslel.
 
 **Autorská práva:** výtahy z norem ve firemní knihovně jsou pro interní použití, sdílení řídí pole „lze sdílet“ v metadatech.
+
+**Studijní podklady (rozhodnuto 2026-10-04):** do stejných složek teorie (projekt, firma, uživatel) se smí vložit i **PDF, HTML a Markdown tak, jak jsou**. Program z nich přečte text a nabídne je jako knihovnu: v chatu v menu Teorie, citace s klíčem souboru, kopie citovaných úseků ve výpočtu.
+
+- **PDF:** jeden úsek na stránku souboru, `[EC3:T45]` je 45. stránka souboru. Nadpis úseku tvoří kapitola z obsahu PDF a tištěné číslo strany. Rozdělené slovo na konci řádku se spojí, aby šly najít doslovné citace. Text PDF se čte jednou a pak se bere z mezipaměti. Skeny bez textové vrstvy program pozná a upozorní na ně, OCR zatím není.
+- **HTML a Markdown:** jeden úsek na kapitolu podle nadpisů.
+- **Celá kniha smí zůstat**, ale **čtou se jen vybrané kapitoly nebo stránky**. Nástroje → Studijní podklady ukáže obsah knihy k zaškrtnutí a pole pro stránky („45–80, 112“, jak jsou vytištěné). U knihy nad 60 stran čtené celé program upozorní, že výběr zpřesní odpovědi. Je to doporučení, nic se nezakazuje. Bez výběru se čte celý soubor.
+- **Výběr, název a klíč** se ukládají do popisu vedle souboru (`<soubor>.kalketa.json`). Firma tak může mít normy předvybrané pro všechny.
+- **Další krok (etapa C):** návrh kapitol podle výpočtu a převod vybraných kapitol na knihovnu `.kalkt`.
 
 ### 9.7 Vrstva Poznámky AI (upřesněno 2026-10-03)
 

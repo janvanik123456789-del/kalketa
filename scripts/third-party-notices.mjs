@@ -21,11 +21,15 @@ const OUT = join(ROOT, 'packages', 'editor', 'src', 'generated', 'third-party-no
 // npm is a script on Windows (npm.cmd), so it runs through the shell there; the arguments are fixed.
 const tree = JSON.parse(execFileSync(process.platform === 'win32' ? 'npm.cmd ls --omit=dev --all --json --long' : 'npm ls --omit=dev --all --json --long', { cwd: ROOT, encoding: 'utf8', shell: true, maxBuffer: 64 * 1024 * 1024 }));
 
+/** Optional packages the desktop build leaves out (see "files" in packages/desktop/package.json). */
+const NOT_SHIPPED = /^@napi-rs\//;
+
 /** name@version -> the package and where it is installed */
 const found = new Map();
 const visit = (deps) => {
   for (const [name, info] of Object.entries(deps ?? {})) {
     if (!info.version) continue;
+    if (NOT_SHIPPED.test(name)) continue;
     if (!name.startsWith('@kalketa/')) found.set(`${name}@${info.version}`, { name, version: info.version, path: info.path });
     visit(info.dependencies);
   }

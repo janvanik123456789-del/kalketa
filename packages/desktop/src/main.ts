@@ -12,7 +12,7 @@
 import { app, BrowserWindow, clipboard, ClipboardItem, dialog, ipcMain, Menu, nativeImage, shell, type IpcMainInvokeEvent } from 'electron';
 import { execFileSync } from 'node:child_process';
 import { cpSync, existsSync, mkdtempSync } from 'node:fs';
-import { readdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -412,7 +412,7 @@ async function runSmokeTest(pdfPath: string): Promise<void> {
     await writeFile(pdfPath, pdf);
     ok =
       state.bridge && state.sideBySide && state.menus === 7 && state.toolbars > 0 && state.rows > 10 && state.summary > 0 && state.math > 0 && reshapedColumns === 3 && pdf.length > 1000 &&
-      layers.newKeepsExample && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.notesPicture === 'FIGURE+img BLOCKQUOTE' && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.charts && layers.functionBar && layers.revisions && layers.roots && layers.toolIcons && layers.aiSettings && layers.aiChat && layers.pdfCleanup && layers.theoryLibrary && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
+      layers.newKeepsExample && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.notesPicture === 'FIGURE+img BLOCKQUOTE' && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.charts && layers.functionBar && layers.revisions && layers.roots && layers.toolIcons && layers.aiSettings && layers.aiChat && layers.pdfCleanup && layers.theoryLibrary && layers.study && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
     console.log(JSON.stringify({ ok, ...state, reshapedColumns, layers, pdfBytes: pdf.length }));
   } catch (err) {
     console.log(JSON.stringify({ ok: false, error: (err as Error).message }));
@@ -1141,6 +1141,8 @@ async function layersWithRealInput(picture: string) {
   const pdfCleanup = await pdfCleanupWithRealInput(contents, picture);
   // Those sources saved as a theory library, attached in the chat and cited by its key.
   const theoryLibrary = await theoryLibraryWithRealInput(contents, picture);
+  // A whole book as a PDF in the theory folder: one chapter of it chosen, then cited in the chat.
+  const study = await studyWithRealInput(contents, picture);
 
   // A file whose AI notes an AI wrote: they have a tab, can only be read, and cannot be deleted.
   const aiFile = process.env['KALKETA_SMOKE_AI'];
@@ -1179,7 +1181,7 @@ async function layersWithRealInput(picture: string) {
     blocksOk = shown.errors === 0 && shown.text.includes('Prosty nosnik 1.2') && shown.text.includes('45');
     await takePicture(picture.replace(/[.]png$/, '-blocks.png'));
   }
-  return { ...state, newKeepsExample, citations, notesPicture, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, toolIcons, aiSettings, aiChat, pdfCleanup, theoryLibrary, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, canvasOk, besideText, pictures, blocksOk };
+  return { ...state, newKeepsExample, citations, notesPicture, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, toolIcons, aiSettings, aiChat, pdfCleanup, theoryLibrary, study, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, canvasOk, besideText, pictures, blocksOk };
 }
 
 /** The tidied sources saved as a library (.kalkt) and attached in the chat: the model cites it by its key. */
@@ -1243,6 +1245,76 @@ async function theoryLibraryWithRealInput(contents: Electron.WebContents, pictur
     answer.text.includes('úseků: 3') &&
     // The memory written after the first conversation goes into the next one.
     answer.text.includes('paměť: ano')
+  );
+}
+
+/**
+ * A study PDF in the user's theory folder: a 62-page book with a table of
+ * contents. Tools > Study material warns that it is read whole; one chapter
+ * ticked, the card next to it keeps the choice, and the chat cites only pages
+ * of that chapter.
+ */
+async function studyWithRealInput(contents: Electron.WebContents, picture: string): Promise<boolean> {
+  const dir = process.env['KALKETA_THEORY_USER_DIR'] ?? '';
+  const topic = (p: number) =>
+    p >= 21 && p <= 40 ? 'Ohybový moment a průhyb prostého nosníku se počítají z rovnice ohybové čáry.' : p > 40 ? 'Kroutící moment namáhá hřídel smykem po obvodu průřezu.' : 'Tah a tlak prutu vyvolávají normálové napětí v průřezu.';
+  const heading = (p: number) => ({ 1: '<h1>1 Úvod</h1>', 21: '<h1>2 Ohyb</h1>', 25: '<h2>2.1 Průhyb nosníku</h2>', 41: '<h1>3 Krut</h1>' })[p] ?? '';
+  const pages = Array.from({ length: 62 }, (_, i) => `<section style="break-after: page">${heading(i + 1)}<p>Strana ${i + 1}. ${topic(i + 1)}</p></section>`).join('');
+  const printer = await printWindow(`<!doctype html><html lang="cs"><head><meta charset="utf-8"><title>Pružnost a pevnost</title></head><body>${pages}</body></html>`);
+  const pdf = await printer.webContents.printToPDF({ preferCSSPageSize: true, generateTaggedPDF: true, generateDocumentOutline: true });
+  printer.destroy();
+  await mkdir(dir, { recursive: true });
+  await writeFile(join(dir, 'Pruznost a pevnost.pdf'), pdf);
+
+  await clickOn('.menubar-item:nth-child(5) > button');
+  await clickMenu('Studijní podklady');
+  for (let i = 0; i < 80 && !(await contents.executeJavaScript(`!!document.querySelector('.study-chapters li')`)); i++) await pause(150);
+  const offered = (await contents.executeJavaScript(`({
+    file: document.querySelector('.study-file.active')?.textContent ?? '',
+    reads: document.querySelector('.study-reads')?.textContent ?? '',
+    large: !!document.querySelector('.study-advice.warn'),
+    chapters: [...document.querySelectorAll('.study-chapters li')].map((l) => l.textContent),
+    key: document.querySelector('.study-key')?.value ?? '',
+  })`)) as { file: string; reads: string; large: boolean; chapters: string[]; key: string };
+  const ohyb = offered.chapters.findIndex((c) => c.startsWith('2 Ohyb'));
+  await clickOn(`.study-chapters li:nth-child(${ohyb + 1}) input`);
+  await pause(200);
+  const chosen = (await contents.executeJavaScript(`({ reads: document.querySelector('.study-reads')?.textContent ?? '', large: !!document.querySelector('.study-advice.warn') })`)) as { reads: string; large: boolean };
+  await pause(400);
+  await takePicture(picture.replace(/[.]png$/, '-study.png'));
+  await clickOn('.dialog-buttons button.default');
+  await pause(600);
+  const card = existsSync(join(dir, 'Pruznost a pevnost.pdf.kalketa.json')) ? (JSON.parse(await readFile(join(dir, 'Pruznost a pevnost.pdf.kalketa.json'), 'utf8')) as { key?: string; chapters?: number[] }) : {};
+
+  // The chat: the book is offered among the libraries, with how much of it is read.
+  await clickOn('.pane-tab[data-pane="chat"]');
+  await pause(300);
+  await clickOn('.chat-library-button');
+  for (let i = 0; i < 40 && !(await contents.executeJavaScript(`[...document.querySelectorAll('.chat-library')].some((l) => l.textContent.includes('[PP]'))`)); i++) await pause(150);
+  const listed = (await contents.executeJavaScript(`[...document.querySelectorAll('.chat-library')].map((l) => l.textContent)`)) as string[];
+  const at = listed.findIndex((l) => l.includes('[PP]'));
+  await clickOn(`.chat-library:nth-of-type(${at + 1}) input`);
+  await pause(200);
+  await clickOn('.chat-input');
+  await typeText('Jak se počítá průhyb nosníku?');
+  await pressKey('Enter');
+  for (let i = 0; i < 40 && !(await contents.executeJavaScript(`[...document.querySelectorAll('.chat-turn.assistant:not(.writing)')].some((t) => t.textContent.includes('PP:'))`)); i++) await pause(150);
+  const answer = (await contents.executeJavaScript(`(() => {
+    const turns = [...document.querySelectorAll('.chat-turn.assistant:not(.writing)')];
+    const last = turns[turns.length - 1];
+    return { text: last?.textContent ?? '', ok: [...(last?.querySelectorAll('.cite.ok') ?? [])].map((c) => c.textContent) };
+  })()`)) as { text: string; ok: string[] };
+  await clickOn('.chat-new');
+  await clickOn('.pane-tab[data-pane="details"]');
+  await pause(300);
+  const cited = answer.ok.map((c) => /^PP:T(\d+)$/.exec(c ?? '')?.[1]).filter(Boolean).map(Number);
+  await writeFile(picture.replace(/[.]png$/, '-study.json'), JSON.stringify({ offered, chosen, card, listed, answer, cited }, null, 2));
+  return (
+    offered.file.startsWith('Pruznost a pevnost.pdf') && offered.file.includes('PDF, 62 s.') && offered.reads === 'AI čte 62 z 62.' && offered.large && offered.key === 'PP' &&
+    offered.chapters.length === 4 && ohyb >= 0 && chosen.reads === 'AI čte 21 z 62.' && !chosen.large &&
+    card.key === 'PP' && JSON.stringify(card.chapters) === JSON.stringify([ohyb]) &&
+    at >= 0 && listed[at]!.includes('AI čte 21 z 62.') &&
+    cited.length === 1 && cited[0]! >= 21 && cited[0]! <= 41
   );
 }
 

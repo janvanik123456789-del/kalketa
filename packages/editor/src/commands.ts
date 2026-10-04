@@ -68,6 +68,7 @@ export interface CommandContext {
     addLayer(kind: 'calc' | 'data' | 'sources'): void;
     settings(): void;
     toggleAi(): void;
+    study(): void;
     shortcuts(): void;
     functions(): void;
     about(): void;
@@ -138,6 +139,7 @@ export function buildCommands(ctx: CommandContext): Map<string, Command> {
 
   add('tools.settings', 'tools', a.settings);
   add('tools.ai', 'tools', a.toggleAi, { checked: ctx.aiOn });
+  add('tools.study', 'tools', a.study, { enabled: ctx.desktop });
   add('window.new', 'window', a.newWindow, { shortcut: 'Ctrl+Shift+N', enabled: ctx.desktop });
   add('window.next', 'window', () => a.cycleDocument(1), { shortcut: 'Ctrl+Tab', enabled: ctx.documents > 1 });
   add('window.previous', 'window', () => a.cycleDocument(-1), { shortcut: 'Ctrl+Shift+Tab', enabled: ctx.documents > 1 });

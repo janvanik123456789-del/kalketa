@@ -231,7 +231,16 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTur
                 {libraries.map((l) => (
                   <label key={l.id} className="chat-library" title={l.found ? '' : t(catalog, 'chat.libraryMissing', { count: String(l.sections) })}>
                     <input type="checkbox" checked={l.linked} disabled={!l.found && !l.linked} onChange={(e) => onToggleLibrary(l.id, e.target.checked)} /> [{l.key}] {l.title}{' '}
-                    <span className="hint">{l.found ? t(catalog, `library.folder.${l.folder ?? 'user'}` as UiKey) : t(catalog, 'chat.libraryMissing', { count: String(l.sections) })}</span>
+                    <span className="hint">
+                      {l.found ? t(catalog, `library.folder.${l.folder ?? 'user'}` as UiKey) : t(catalog, 'chat.libraryMissing', { count: String(l.sections) })}
+                      {l.study && ` · ${l.study.kind.toUpperCase()} ${t(catalog, 'study.reads', { selected: String(l.study.selected), pages: String(l.study.pages) })}`}
+                    </span>
+                    {l.study?.large && (
+                      <span className="study-warn" title={t(catalog, 'study.large')}>
+                        {' '}
+                        ⚠
+                      </span>
+                    )}
                   </label>
                 ))}
               </span>

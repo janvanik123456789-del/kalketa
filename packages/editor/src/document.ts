@@ -3,7 +3,7 @@
  * the browser, images as data URIs.
  */
 
-import { documentTables, newDocument, readSheetFile, writeSheetFile, type SheetDocument, type StoredTable } from '@kalketa/sheet';
+import { documentTables, newDocument, readSheetFile, writeSheetFile, type SheetDocument, type StoredTable, type StudyRaw, type StudySettings } from '@kalketa/sheet';
 import type { Diagnostic, Table, UnitRegistry } from '@kalketa/core';
 import { isCanvasPath, readScene, sceneDataUri } from '@kalketa/canvas';
 
@@ -130,7 +130,10 @@ export interface DesktopBridge {
   /** The sheet's memory rewritten by the model when a conversation ends; its text is the answer. */
   aiMemory(ask: AiChatAsk): Promise<{ readonly ok: true; readonly text: string; readonly model: string } | { readonly ok: false; readonly problem: string; readonly detail?: string }>;
   /** Theory libraries (.kalkt) in the folders searched for a calculation: next to it, the company's, the user's. */
-  theoryList(sheetPath?: string): Promise<{ readonly path: string; readonly folder: TheoryFolder }[]>;
+  theoryList(sheetPath?: string): Promise<{ readonly path: string; readonly folder: TheoryFolder; readonly study?: true }[]>;
+  /** A study file (PDF, HTML, Markdown) of the theory folders: its text and its card. */
+  studyRead(path: string, sheetPath?: string): Promise<{ readonly content: StudyRaw; readonly settings: unknown }>;
+  studySave(path: string, sheetPath: string | undefined, settings: StudySettings): Promise<void>;
   theoryRead(path: string, sheetPath?: string): Promise<Uint8Array>;
   /** Saves a library into one of the folders; an existing file only with `replace`. */
   theorySave(request: { folder: TheoryFolder; sheetPath?: string; title: string; bytes: Uint8Array; replace?: boolean }): Promise<{ readonly path: string; readonly exists?: boolean }>;

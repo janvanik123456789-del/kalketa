@@ -320,3 +320,7 @@ Každá fáze končí procházejícími testy. **MVP = referenční výpočet R1
 2. **Tauri, nebo Electron** pro desktop. Rozhodnout ve fázi F6 (Tauri potřebuje Rust toolchain, Electron je větší, ale bez něj).
 3. **Očekávané výsledky R1–R6.** Kdo a jak je nezávisle ověří (ideálně odborník z daného oboru).
 4. **Umístění repozitáře a zálohování** (GitHub/GitLab, soukromé, nebo jen lokální git).
+
+### Studijní podklady (2026-10-04)
+
+PDF, HTML a Markdown ve složkách teorie čte hlavní proces (`desktop/src/study.ts`). U PDF jde přes pdf.js (`pdfjs-dist`, legacy build v Node) o text stránek, tištěná čísla stran a obsah. Text PDF se ukládá do mezipaměti `userData/study-cache` podle cesty, velikosti a času souboru. Nativní `@napi-rs/canvas`, nepovinnou závislost pdf.js, program nepotřebuje: do instalace se nebalí a není ani v seznamu licencí. Desktop nezávisí na `@kalketa/sheet`: posílá surový obsah a popis souboru, kapitoly a úseky z nich skládá `sheet/studyFile.ts` (`studyContent`, `studyLibrary`, `selectedPages`, `studyAdvice`). Výsledek je běžná `TheoryLibrary`, takže hledání, citace i kopie citovaných úseků fungují jako u `.kalkt`. Dialog výběru je `editor/src/components/StudyDialog.tsx`.

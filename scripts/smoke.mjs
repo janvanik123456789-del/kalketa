@@ -64,8 +64,8 @@ const fakeApi = createServer((request, response) => {
       const section = /^\[(T\d+)\] [^\n]+\n(\S+ \S+ \S+)/m.exec(system);
       const cites = section ? `"${section[2]}" [${section[1]}] a [T99]; ` : 'bez teorie; ';
       // A section of a theory library, if the briefing has one: cited by its key.
-      const fromLibrary = /^\[([A-Z][A-Z0-9]*:T\d+)\] [^\n]+\n(\S+ \S+)/m.exec(system);
-      const pieces = [`list: **${title}**; `, `jazyk: ${system.includes('Answer in Czech') ? 'Czech' : '?'}; `, `výsledky: ${system.includes('Computed results') ? 'ano' : 'ne'}; `, `úsilí: ${body.reasoning_effort ?? '-'}; `, `paměť: ${system.includes('Memory of this sheet') ? 'ano' : 'ne'}; `, cites, fromLibrary ? `knihovna: "${fromLibrary[2]}" [${fromLibrary[1]}]; ` : '', `otázka: ` + String.fromCharCode(96) + question + String.fromCharCode(96), ['', '', '| Profil | G |', '|---|---:|', '| IPE 220 | 26.2 |'].join(String.fromCharCode(10))];
+      const fromLibraries = [...system.matchAll(/^\[([A-Z][A-Z0-9]*):(T\d+)\] [^\n]+\n(\S+ \S+)/gm)].filter((m, i, all) => all.findIndex((x) => x[1] === m[1]) === i);
+      const pieces = [`list: **${title}**; `, `jazyk: ${system.includes('Answer in Czech') ? 'Czech' : '?'}; `, `výsledky: ${system.includes('Computed results') ? 'ano' : 'ne'}; `, `úsilí: ${body.reasoning_effort ?? '-'}; `, `paměť: ${system.includes('Memory of this sheet') ? 'ano' : 'ne'}; `, cites, fromLibraries.map((m) => `knihovna: "${m[3]}" [${m[1]}:${m[2]}]; `).join(''), `otázka: ` + String.fromCharCode(96) + question + String.fromCharCode(96), ['', '', '| Profil | G |', '|---|---:|', '| IPE 220 | 26.2 |'].join(String.fromCharCode(10))];
       response.writeHead(200, { 'content-type': 'text/event-stream' });
       const event = (data) => `data: ${typeof data === 'string' ? data : JSON.stringify(data)}${String.fromCharCode(10).repeat(2)}`;
       // The end of a conversation: the model rewrites the sheet's memory.

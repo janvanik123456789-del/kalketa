@@ -12,6 +12,7 @@ import { existsSync } from 'node:fs';
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, extname, join, resolve } from 'node:path';
 import { readPolicy } from './ai.js';
+import { isStudyFile, readStudyFile, readStudySettings, writeStudySettings } from './study.js';
 
 export type TheoryFolder = 'project' | 'company' | 'user';
 
@@ -31,9 +32,9 @@ function folders(sheetPath: unknown): { kind: TheoryFolder; dir: string }[] {
   return list;
 }
 
-/** A path to a library inside one of the folders, or undefined. */
-function allowedPath(path: unknown, sheetPath: unknown): string | undefined {
-  if (typeof path !== 'string' || extname(path).toLowerCase() !== EXTENSION) return undefined;
+/** A path to a library (or, with `study`, a study file) inside one of the folders, or undefined. */
+function allowedPath(path: unknown, sheetPath: unknown, study = false): string | undefined {
+  if (typeof path !== 'string' || !(study ? isStudyFile(path) : extname(path).toLowerCase() === EXTENSION)) return undefined;
   const full = resolve(path);
   return folders(sheetPath).some((f) => dirname(full).toLowerCase() === f.dir.toLowerCase()) ? full : undefined;
 }
@@ -50,14 +51,17 @@ function fileName(title: string): string {
 }
 
 export function registerTheoryBridge(fromEditor: (event: IpcMainInvokeEvent) => unknown): void {
-  // Libraries found for a calculation: where they are, not their contents.
+  // Libraries and study files found for a calculation: where they are, not their contents.
   ipcMain.handle('kalketa:theory-list', async (event, sheetPath: unknown) => {
     fromEditor(event);
-    const found: { path: string; folder: TheoryFolder }[] = [];
+    const found: { path: string; folder: TheoryFolder; study?: true }[] = [];
     for (const f of folders(sheetPath)) {
       if (!existsSync(f.dir)) continue;
       try {
-        for (const name of await readdir(f.dir)) if (extname(name).toLowerCase() === EXTENSION) found.push({ path: join(f.dir, name), folder: f.kind });
+        for (const name of await readdir(f.dir)) {
+          if (extname(name).toLowerCase() === EXTENSION) found.push({ path: join(f.dir, name), folder: f.kind });
+          else if (isStudyFile(name)) found.push({ path: join(f.dir, name), folder: f.kind, study: true });
+        }
       } catch {
         // A folder that cannot be read is left out.
       }
@@ -82,6 +86,22 @@ export function registerTheoryBridge(fromEditor: (event: IpcMainInvokeEvent) => 
     if (existsSync(path) && request.replace !== true) return { exists: true, path };
     await writeFile(path, request.bytes);
     return { path };
+  });
+
+  // A study file's text (read once, then from the cache) and its card.
+  ipcMain.handle('kalketa:study-read', async (event, request: { path: unknown; sheetPath?: unknown }) => {
+    fromEditor(event);
+    const path = allowedPath(request.path, request.sheetPath, true);
+    if (!path) throw new Error('Not a study file of the searched folders');
+    return { content: await readStudyFile(path), settings: await readStudySettings(path) };
+  });
+
+  // The card of a study file: its key, title, and the chapters or pages read.
+  ipcMain.handle('kalketa:study-save', async (event, request: { path: unknown; sheetPath?: unknown; settings: unknown }) => {
+    fromEditor(event);
+    const path = allowedPath(request.path, request.sheetPath, true);
+    if (!path || typeof request.settings !== 'object' || request.settings === null) throw new Error('Bad request');
+    await writeStudySettings(path, request.settings);
   });
 
   // Which folders there are, for the save dialog.

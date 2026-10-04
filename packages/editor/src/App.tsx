@@ -20,6 +20,7 @@ import { TheoryLibraryDialog } from './components/TheoryLibraryDialog.js';
 import { sourceText, useTheoryLibraries, withoutDuplicates } from './theoryLibraries.js';
 import { aiSources } from './logic/aiSources.js';
 import { aiProtocol } from './logic/aiProtocol.js';
+import { StudyDialog } from './components/StudyDialog.js';
 import { proposalEffect, type ProposalEffect } from './logic/proposalEffect.js';
 import type { ProposalView } from './components/ProposalCard.js';
 import { languageGuide, sheetContext } from './logic/aiContext.js';
@@ -54,7 +55,7 @@ const PANE_TABS: readonly (readonly [Exclude<Pane, 'none'>, Parameters<typeof t>
   ['chat', 'pane.chatTab'],
 ];
 type Tab = DocTab<SheetDocument, FileRef>;
-type DialogKind = 'settings' | 'properties' | 'revisions' | 'customize' | 'shortcuts' | 'functions' | 'about';
+type DialogKind = 'settings' | 'properties' | 'revisions' | 'customize' | 'shortcuts' | 'functions' | 'about' | 'study';
 
 const MM_TO_PX = 96 / 25.4;
 const PAGE_GAP_PX = 24;
@@ -1062,6 +1063,10 @@ export function App() {
       addLayer: (kind) => void newLayer(kind),
       insertBlock: () => void insertBlock(),
       settings: () => setDialog('settings'),
+      study: () => {
+        void libraries.refresh();
+        setDialog('study');
+      },
       toggleAi: () => {
         if (aiOn) rememberConversation(chat);
         setAiOn(!aiOn);
@@ -1274,7 +1279,7 @@ export function App() {
         { kind: 'submenu', label: t(ui, 'menu.layer'), items: [cmd('insert.layerCalc'), cmd('insert.layerData'), cmd('insert.layerSources')] },
       ],
     },
-    { label: t(ui, 'menu.tools'), items: [cmd('tools.ai'), cmd('tools.settings')] },
+    { label: t(ui, 'menu.tools'), items: [cmd('tools.ai'), cmd('tools.study'), cmd('tools.settings')] },
     {
       label: t(ui, 'menu.window'),
       items: [
@@ -1700,6 +1705,7 @@ export function App() {
         />
       )}
       {dialog === 'about' && <AboutDialog catalog={ui} onClose={() => setDialog(undefined)} />}
+      {dialog === 'study' && <StudyDialog catalog={ui} files={libraries.found} {...(tab.path ? { sheetPath: tab.path } : {})} onSave={libraries.saveStudy} onClose={() => setDialog(undefined)} />}
       <AskHost catalog={ui} title="Kalketa" />
     </div>
   );

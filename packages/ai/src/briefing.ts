@@ -132,8 +132,17 @@ export function memoryInstruction(previous: string): string {
   return [
     'The conversation ends here. Rewrite the memory of this sheet for future conversations, so the next one does not start from nothing.',
     'In English, at most 150 words, short lines under these headings: Intent; Agreed assumptions; Checked (with the results); Open questions; Sources relied on (their ids, e.g. T3, PP:T3).',
+    'Agreed assumptions are only what the user confirmed in the conversation or what the sheet itself states; anything you inferred yourself goes under Open questions.',
+    'Plain text with those headings, not wrapped in a code block.',
     'Merge the previous memory with what this conversation added; leave out what no longer holds for the sheet as it is now, and do not repeat what the sheet itself says.',
     'Reply with the memory only.',
     previous.trim() ? `Previous memory:\n${previous.trim()}` : 'There is no previous memory.',
   ].join('\n');
+}
+
+/** A memory as the model wrote it, without a code block wrapped around it ("```" … "```"). */
+export function cleanMemory(text: string): string {
+  const trimmed = text.trim();
+  const fenced = /^```[\w-]*\s*\n([\s\S]*?)\n?```$/.exec(trimmed);
+  return (fenced ? fenced[1]! : trimmed).trim();
 }

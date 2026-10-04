@@ -70,7 +70,10 @@ const fakeApi = createServer((request, response) => {
       const event = (data) => `data: ${typeof data === 'string' ? data : JSON.stringify(data)}${String.fromCharCode(10).repeat(2)}`;
       // The end of a conversation: the model rewrites the sheet's memory.
       if (question.startsWith('The conversation ends here.')) {
-        response.write(event({ model: 'local-smoke-7b', choices: [{ delta: { content: 'Intent: smoke memory.' } }] }));
+        // Wrapped in a code block, as models like to: the program keeps the memory without it.
+        const fence = '`'.repeat(3);
+        const lf = String.fromCharCode(10);
+        response.write(event({ model: 'local-smoke-7b', choices: [{ delta: { content: `${fence}${lf}Intent: smoke memory.${lf}${fence}` } }] }));
         response.end(event('[DONE]'));
         return;
       }

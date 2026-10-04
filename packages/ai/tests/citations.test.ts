@@ -46,3 +46,13 @@ describe('briefing with theory', () => {
     expect(briefing({ language: 'cs', sheet: { title: 'N1', source: 'L := 5 m' } })).not.toContain('Theory and references');
   });
 });
+
+describe('the memory for the model', () => {
+  it('is kept without a code block the model wrapped around it', async () => {
+    const { cleanMemory, memoryInstruction } = await import('@kalketa/ai');
+    expect(cleanMemory('```\n**Intent**\n- Verify beam N1.\n```')).toBe('**Intent**\n- Verify beam N1.');
+    expect(cleanMemory('```markdown\nIntent: x\n```\n')).toBe('Intent: x');
+    expect(cleanMemory('  Intent: x  ')).toBe('Intent: x');
+    expect(memoryInstruction('')).toContain('anything you inferred yourself goes under Open questions');
+  });
+});

@@ -14,7 +14,7 @@ import { emptyScene, readScene, writeScene, type CanvasScene } from '@kalketa/ca
 import { CanvasEditor } from '@kalketa/canvas/editor';
 import { addLayer, allDiagnostics, appendixLayers, blockAppendices, documentBlocks, isRemovable, LayerSessions, MAIN_LAYER, removeLayer, freezeRevision, removeRevision, revisionDocument, revisionState, shortHash, tablesByLayer, theorySections, updateLayer, withTheoryIds, conversationsOf, hasConversations, withConversation, withoutConversation, aiMemoryOf, withAiMemory, linkedLibraries, librarySections, type Conversation, type AddableLayerKind, type Layer, type RevisionState, type SheetDocument } from '@kalketa/sheet';
 import { buildCommands, shortcutOf, type Command } from './commands.js';
-import { DEFAULT_AI_SETTINGS, parseAiSettings, providerById, type AiSettings, type ChatTurn } from '@kalketa/ai';
+import { cleanMemory, DEFAULT_AI_SETTINGS, parseAiSettings, providerById, type AiSettings, type ChatTurn } from '@kalketa/ai';
 import { ChatPane } from './components/ChatPane.js';
 import { TheoryLibraryDialog } from './components/TheoryLibraryDialog.js';
 import { sourceText, useTheoryLibraries, withoutDuplicates } from './theoryLibraries.js';
@@ -680,7 +680,7 @@ export function App() {
         changeWith((present) => {
           const now = conversationsOf(present).find((c) => c.id === conversation.id);
           const marked = now ? withConversation(present, { ...now, remembered: turns.length }) : present;
-          return withAiMemory(marked, result.text);
+          return withAiMemory(marked, cleanMemory(result.text));
         }, 'ai-memory');
       })
       .catch(() => undefined)

@@ -8,6 +8,8 @@
  *   conversations.json   the conversations: questions, answers, model, time, the
  *                        theory the model had and the sources it cited with
  *                        their state; never printed
+ *   entries.json         the journal: changes the model proposed, with what they
+ *                        replace, and whether the user accepted or rejected them
  *
  * Both are files of the sheet under layers/<ai layer id>/: an older program
  * keeps them as they are.
@@ -50,9 +52,63 @@ function memoryPath(layerId: string): string {
   return `layers/${layerId}/memory.md`;
 }
 
-/** Whether the sheet keeps conversations or a memory for this layer: then its AI notes layer stays. */
+function entriesPath(layerId: string): string {
+  return `layers/${layerId}/entries.json`;
+}
+
+/** Whether the sheet keeps conversations, a memory or a journal for this layer: then its AI notes layer stays. */
 export function hasConversations(files: ReadonlyMap<string, Uint8Array>, layerId: string): boolean {
-  return files.has(path(layerId)) || files.has(memoryPath(layerId));
+  return files.has(path(layerId)) || files.has(memoryPath(layerId)) || files.has(entriesPath(layerId));
+}
+
+/** A change of the calculation the model proposed, and what became of it (ch. 9.7). */
+export interface ChangeEntry {
+  /** "<conversation id>:<turn>:<n>": the answer it came from. */
+  readonly id: string;
+  readonly kind: 'change';
+  /** ISO time the answer came. */
+  readonly time: string;
+  readonly model?: string;
+  readonly conversation?: string;
+  /** Lines of the printed sheet it replaces (1-based), or after which it inserts. */
+  readonly from: number;
+  readonly to: number;
+  readonly insert?: boolean;
+  /** The lines it replaces, as they were when it was proposed; absent when they were not there. */
+  readonly before?: readonly string[];
+  readonly after: readonly string[];
+  readonly state: 'open' | 'accepted' | 'rejected';
+  /** ISO time of the decision. */
+  readonly decided?: string;
+}
+
+/** The journal of the sheet, oldest first. */
+export function entriesOf(doc: SheetDocument): ChangeEntry[] {
+  const layer = doc.layers.find((l) => l.kind === 'ai');
+  const data = layer && doc.files.get(entriesPath(layer.id));
+  if (!data) return [];
+  try {
+    const value = JSON.parse(strFromU8(data)) as { entries?: unknown };
+    return (Array.isArray(value.entries) ? value.entries : []).filter((e): e is ChangeEntry => typeof e === 'object' && e !== null && (e as ChangeEntry).kind === 'change' && typeof (e as ChangeEntry).id === 'string');
+  } catch {
+    return [];
+  }
+}
+
+/** The sheet with these entries added, or replaced by id. */
+export function withEntries(doc: SheetDocument, entries: readonly ChangeEntry[]): SheetDocument {
+  if (entries.length === 0) return doc;
+  const list = entriesOf(doc);
+  for (const entry of entries) {
+    const at = list.findIndex((e) => e.id === entry.id);
+    if (at < 0) list.push(entry);
+    else list[at] = entry;
+  }
+  const layers = withAiLayer(doc.layers);
+  const layer = layers.find((l) => l.kind === 'ai')!;
+  const files = new Map(doc.files);
+  files.set(entriesPath(layer.id), strToU8(JSON.stringify({ version: 1, entries: list }, null, 2) + '\n'));
+  return { ...doc, layers, files };
 }
 
 /** The sheet's memory for the model, or '' when there is none. */

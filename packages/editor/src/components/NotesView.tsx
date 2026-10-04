@@ -16,6 +16,7 @@ import type { SourceGroup } from '../logic/aiSources.js';
 import { chooseFile } from '../document.js';
 import { ask } from './Ask.js';
 import { NotesWord } from './NotesWord.js';
+import { ProposalCard, type ProposalView } from './ProposalCard.js';
 import { captionOf, picturePath, type IncomingPicture } from '../logic/pictures.js';
 
 interface Props {
@@ -36,6 +37,9 @@ interface Props {
   /** AI notes: the sheet's memory for the model. */
   readonly memory?: string;
   onForgetMemory?(): void;
+  /** AI notes: the journal of changes the model proposed, oldest first. */
+  readonly changes?: readonly ProposalView[];
+  onDecide?(id: string, accept: boolean): void;
   /** AI notes: the conversations kept with them, oldest first; shown on request. */
   readonly conversations?: readonly Conversation[];
   /** Takes a conversation up again in the chat. */
@@ -43,7 +47,7 @@ interface Props {
   onDeleteConversation?(id: string): void;
 }
 
-export function NotesView({ layer, title, catalog, readOnly, resolveFile, fileExists, onChange, onSettle, onSaveLibrary, sources = [], memory = '', onForgetMemory, conversations = [], onContinueConversation, onDeleteConversation }: Props) {
+export function NotesView({ layer, title, catalog, readOnly, resolveFile, fileExists, onChange, onSettle, onSaveLibrary, sources = [], memory = '', onForgetMemory, changes = [], onDecide, conversations = [], onContinueConversation, onDeleteConversation }: Props) {
   const [showConversations, setShowConversations] = useState(false);
   const text = layer.text ?? '';
 
@@ -68,6 +72,14 @@ export function NotesView({ layer, title, catalog, readOnly, resolveFile, fileEx
           <h2 className="notes-title">{title}</h2>
           {text.trim() && <div className="notes" dangerouslySetInnerHTML={{ __html: notesHtml(text, { resolveFile }) }} />}
           <SourcesView sources={sources} catalog={catalog} />
+          {changes.length > 0 && (
+            <section className="ai-changes">
+              <h3>{t(catalog, 'ai.changes')}</h3>
+              {[...changes].reverse().map((view, i) => (
+                <ProposalCard key={view.entry.id} view={view} n={changes.length - i} catalog={catalog} onDecide={(id, accept) => onDecide?.(id, accept)} />
+              ))}
+            </section>
+          )}
           <section className="ai-memory">
             <h3>{t(catalog, 'ai.memory')}</h3>
             {memory.trim() ? <pre className="ai-memory-text">{memory.trim()}</pre> : <p className="muted">{t(catalog, 'ai.memoryEmpty')}</p>}

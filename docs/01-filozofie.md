@@ -2,7 +2,7 @@
 
 **Verze:** 2.0 (návrh)
 **Datum:** 2026-09-29
-**Stav:** Návrh k diskusi. Nahrazuje `calc-canvas/01-philosophy.md`. Upraveno 2026-09-30: libovolný počet vrstev (kap. 4). Upraveno 2026-10-02: připojení LLM, průvodce pro model, okno rozhovoru, obrázky, prezentace a web (kap. 9.1–9.5, 11). Upraveno 2026-10-03: teorie k výpočtu, knihovna `.kalkt` a RAG, vrstva Poznámky AI (kap. 4, 9.6, 9.7).
+**Stav:** Návrh k diskusi. Nahrazuje `calc-canvas/01-philosophy.md`. Upraveno 2026-09-30: libovolný počet vrstev (kap. 4). Upraveno 2026-10-02: připojení LLM, průvodce pro model, okno rozhovoru, obrázky, prezentace a web (kap. 9.1–9.5, 11). Upraveno 2026-10-03: teorie k výpočtu, knihovna `.kalkt` a RAG, vrstva Poznámky AI (kap. 4, 9.6, 9.7). Upraveno 2026-10-04: uspořádání vrstvy AI, paměť, návrhy změn (kap. 9.7).
 
 ---
 
@@ -364,6 +364,8 @@ layers/ai/
 **Tisk:** příloha z vrstvy AI není přepis rozhovorů, ale **protokol**: provedené kontroly, jejich výsledek a stav a přijaté návrhy.
 
 **Uspořádání vrstvy (rozhodnuto 2026-10-04):** hlavní část jsou **zdroje a citace**, odkud AI čerpala, seskupené podle zdroje (Podklady listu, knihovny teorie, později web) se stavem citací. Pod nimi **paměť pro AI**, kterou model po skončení rozhovoru aktualizuje **automaticky** (Nový rozhovor, vypnutí AI, 3 minuty bez otázky); dotaz navíc nevadí, lokální model nic nestojí a ceny za tokeny klesají. **Rozhovory** jsou až na vyžádání (Zobrazit rozhovory). Uloženo zatím jako `layers/<ai>/memory.md` a `layers/<ai>/conversations.json`; deník `entries` přijde s kontrolami a návrhy změn.
+
+**Návrhy změn (etapa 3a, 2026-10-04):** model navrhuje změnu řádků blokem ```` ```change 8 ```` (nebo `change 8-10`, `change after 8`) s novými řádky. Pod odpovědí se ukáže karta: původní a nové řádky, dopad na výpočet (počet chyb, posudky s využitím před → po) a tlačítka **Přijmout / Odmítnout**. Výpočet se změní jen přijetím, jedním krokem Zpět se vrací řádky i rozhodnutí. Když se dotčené řádky mezitím změnily, návrh je zastaralý a přijmout nejde. Každý návrh a rozhodnutí se zapíše do deníku `layers/<ai>/entries.json` (sekce Návrhy změn ve vrstvě AI). Další etapy: 3b přijaté řádky označené značkou AI, dokud je člověk neprověří; 3c tisk upozorní na neprověřené řádky a vrstva AI se vytiskne jako protokol.
 
 ---
 

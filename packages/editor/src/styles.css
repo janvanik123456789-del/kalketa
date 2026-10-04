@@ -511,3 +511,16 @@ button.icon:hover { color: var(--accent); }
 .ai-source-counts { color: #6b7480; font-size: 9pt; }
 .ai-memory-text { white-space: pre-wrap; font: 9.5pt/1.45 Consolas, 'Courier New', monospace; background: #f6f7f9; border: 1px solid #d5dae1; padding: 2mm 3mm; margin: 0; }
 .conv-toggle { margin: 5mm 0 3mm; }
+
+/* A change the model proposes: the lines, what it does, Accept / Reject. */
+.proposal { margin: 6px 0 2px; border: 1px solid #c5ccd5; border-radius: 5px; background: #f8fafc; padding: 6px 8px; }
+.proposal.accepted { border-color: #8fbf98; background: #f1f8f2; }
+.proposal.rejected { opacity: 0.7; }
+.proposal-head { font-size: 12px; font-weight: 600; color: #48505a; margin-bottom: 4px; }
+.proposal-diff { margin: 0 0 4px; font: 12px/1.45 Consolas, 'Courier New', monospace; white-space: pre-wrap; }
+.proposal-diff .del { color: #a12828; text-decoration: line-through; }
+.proposal-diff .add { color: #2f6b3a; }
+.proposal-effect { font-size: 12px; margin-bottom: 4px; }
+.proposal-effect .better { color: #2f6b3a; }
+.proposal-effect .worse { color: #a12828; }
+.proposal-actions { display: flex; gap: 6px; align-items: center; font-size: 12px; }

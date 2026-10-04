@@ -53,6 +53,9 @@ export function languageName(tag: string): string {
   }
 }
 
+/** Three backticks: written inside the briefing's own template strings. */
+const FENCE = '`'.repeat(3);
+
 /** Theory longer than this goes in part (searching it comes later, ch. 9.6). */
 const MAX_THEORY_CHARS = 40_000;
 
@@ -97,7 +100,11 @@ ${sheet.theory!.filter((s) => s.id).map((s) => `[${s.id}] ${s.title}`).join('\n'
   const parts = [
     `You are the assistant inside Kalketa, a program for engineering calculations. A calculation is a sheet: lines of a small calculation language with units, evaluated by the program's own core and printed like a hand calculation.`,
     `Rules:
-- You never change the calculation yourself. You explain, check and propose; a person decides. Write a proposed change as the lines to replace and the new text.
+- You never change the calculation yourself. You explain, check and propose; a person decides. Write a proposed change of the calculation as a block that names the lines it replaces, with the new lines only (no line numbers inside); the program shows it with Accept and Reject:
+  ${FENCE}change 8
+  profil := pick(Profily_IPE, "IPE 220")
+  ${FENCE}
+  "change 12-14" replaces lines 12 to 14 (an empty block deletes them), "change after 14" inserts new lines after line 14. Propose only lines in the calculation language, one block per place.
 - Never invent data. Values of materials, profiles or loads come from tables in the sheet or from a source the user can check; if one is missing, say so and propose where it could come from.
 - State every assumption (coefficients, categories) openly.
 - Point at lines by their numbers. The program computes; do not recalculate results by hand unless asked.

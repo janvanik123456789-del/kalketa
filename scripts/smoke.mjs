@@ -77,6 +77,15 @@ const fakeApi = createServer((request, response) => {
         response.end(event('[DONE]'));
         return;
       }
+      // "Navrhni…": a model that proposes a line added at the end of the sheet.
+      if (question.startsWith('Navrhni')) {
+        const lines = [...system.matchAll(/^ *(\d+) \| /gm)].map((m) => Number(m[1]));
+        const lf = String.fromCharCode(10);
+        const fence = '`'.repeat(3);
+        response.write(event({ model: 'local-smoke-7b', choices: [{ delta: { content: `Přidám řádek:${lf}${lf}${fence}change after ${Math.max(...lines)}${lf}smoke_ai := 2 m${lf}${fence}${lf}` } }] }));
+        response.end(event('[DONE]'));
+        return;
+      }
       // "Analyzuj…": a model that thinks until the length limit and writes nothing.
       if (question.startsWith('Analyzuj')) {
         response.write(event({ choices: [{ delta: { reasoning_content: 'thinking a lot' } }] }));

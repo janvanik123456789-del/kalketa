@@ -12,13 +12,15 @@ import { catalogFor, CATALOGS, formatDiagnostic, formatNumber, t, type Catalog }
 import { buildPrintDocument, printHtml, revisionFooter } from '@kalketa/render';
 import { emptyScene, readScene, writeScene, type CanvasScene } from '@kalketa/canvas';
 import { CanvasEditor } from '@kalketa/canvas/editor';
-import { addLayer, allDiagnostics, appendixLayers, blockAppendices, documentBlocks, isRemovable, LayerSessions, MAIN_LAYER, removeLayer, freezeRevision, removeRevision, revisionDocument, revisionState, shortHash, tablesByLayer, theorySections, updateLayer, withTheoryIds, conversationsOf, hasConversations, withConversation, withoutConversation, aiMemoryOf, withAiMemory, linkedLibraries, librarySections, type Conversation, type AddableLayerKind, type Layer, type RevisionState, type SheetDocument } from '@kalketa/sheet';
+import { addLayer, allDiagnostics, appendixLayers, blockAppendices, documentBlocks, isRemovable, LayerSessions, MAIN_LAYER, removeLayer, freezeRevision, removeRevision, revisionDocument, revisionState, shortHash, tablesByLayer, theorySections, updateLayer, withTheoryIds, conversationsOf, hasConversations, withConversation, withoutConversation, aiMemoryOf, withAiMemory, linkedLibraries, librarySections, entriesOf, withEntries, evaluateDocument, type ChangeEntry, type Conversation, type AddableLayerKind, type Layer, type RevisionState, type SheetDocument } from '@kalketa/sheet';
 import { buildCommands, shortcutOf, type Command } from './commands.js';
-import { cleanMemory, DEFAULT_AI_SETTINGS, parseAiSettings, providerById, type AiSettings, type ChatTurn } from '@kalketa/ai';
+import { applyProposal, cleanMemory, DEFAULT_AI_SETTINGS, parseAiSettings, parseProposals, providerById, replacedLines, type ChangeProposal, type AiSettings, type ChatTurn } from '@kalketa/ai';
 import { ChatPane } from './components/ChatPane.js';
 import { TheoryLibraryDialog } from './components/TheoryLibraryDialog.js';
 import { sourceText, useTheoryLibraries, withoutDuplicates } from './theoryLibraries.js';
 import { aiSources } from './logic/aiSources.js';
+import { proposalEffect, type ProposalEffect } from './logic/proposalEffect.js';
+import type { ProposalView } from './components/ProposalCard.js';
 import { languageGuide, sheetContext } from './logic/aiContext.js';
 import { chooseFile, desktop, emptyDocument, exampleDocument, fileName, fileUri, largestParts, openBytes, pickAndOpen, saveDocument, tableCache, type FileRef, type OpenedFile } from './document.js';
 import { record, redo, undo, type History } from './logic/history.js';
@@ -647,6 +649,36 @@ export function App() {
       ...(memory.trim() ? { memory } : {}),
     };
   };
+  // What a proposal does to the calculation, by entry and source: evaluating a sheet is not free.
+  const effects = useRef(new Map<string, ProposalEffect>());
+  /** A journal entry as the change it proposes. */
+  const asProposal = (e: ChangeEntry): ChangeProposal => ({ from: e.from, to: e.to, ...(e.insert ? { insert: true } : {}), lines: e.after });
+  const proposalViews = (entries: readonly ChangeEntry[]): ProposalView[] =>
+    entries.map((entry) => {
+      const now = replacedLines(doc.source, asProposal(entry));
+      const fits = !entry.before || !now ? 'missing' : now.length === entry.before.length && now.every((l, i) => l === entry.before![i]) ? 'yes' : 'stale';
+      if (entry.state !== 'open' || fits !== 'yes') return { entry, fits };
+      const key = `${entry.id}\u0000${doc.source}`;
+      let effect = effects.current.get(key);
+      if (!effect) {
+        const changed = evaluateDocument({ ...doc, source: applyProposal(doc.source, asProposal(entry)) }, defaultRegistry).result;
+        effect = proposalEffect(evaluation.main, changed);
+        effects.current.set(key, effect);
+      }
+      return { entry, fits, effect };
+    });
+  /** Accepts a proposal (the calculation changes, as one step to undo) or rejects it; both go into the journal. */
+  const decideProposal = (entryId: string, accept: boolean) =>
+    changeWith((present) => {
+      const entry = entriesOf(present).find((e) => e.id === entryId);
+      if (!entry || entry.state !== 'open') return present;
+      const decided = new Date().toISOString();
+      if (!accept) return withEntries(present, [{ ...entry, state: 'rejected', decided }]);
+      const now = replacedLines(present.source, asProposal(entry));
+      // The lines changed since it was proposed: it no longer fits, nothing is changed.
+      if (!entry.before || !now || now.length !== entry.before.length || now.some((l, i) => l !== entry.before![i])) return present;
+      return withEntries({ ...present, source: applyProposal(present.source, asProposal(entry)) }, [{ ...entry, state: 'accepted', decided }]);
+    });
   // A memory update running, by tab: one at a time.
   const remembering = useRef<Record<string, boolean>>({});
   /**
@@ -1228,6 +1260,8 @@ export function App() {
                   new Map(libraries.found.flatMap((f) => librarySections(f.library).flatMap((s) => (s.id ? [[s.id, s.title] as const] : [])))),
                 ),
                 memory: aiMemoryOf(doc),
+                changes: proposalViews(entriesOf(doc)),
+                onDecide: decideProposal,
                 onForgetMemory: () =>
                   void askConfirm(t(ui, 'ai.memoryForgetConfirm')).then((yes) => {
                     if (yes) change(withAiMemory(doc, ''));
@@ -1345,11 +1379,35 @@ export function App() {
                       setActiveChat((all) => ({ ...all, [tab.id]: id }));
                       const last = turns[turns.length - 1];
                       changeWith((present) => {
-                        const next = withConversation(present, { id, started, provider: aiSettings.provider, ...(aiSettings.model ? { model: aiSettings.model } : {}), turns });
+                        let next = withConversation(present, { id, started, provider: aiSettings.provider, ...(aiSettings.model ? { model: aiSettings.model } : {}), turns });
+                        if (last?.role !== 'assistant') return next;
+                        // Changes the answer proposes go into the journal, open, with the lines they replace as they are now.
+                        const known = new Set(entriesOf(next).map((e) => e.id));
+                        const proposed = parseProposals(last.text)
+                          .map((p, n): ChangeEntry => {
+                            const before = replacedLines(next.source, p);
+                            return {
+                              id: `${id}:${turns.length - 1}:${n + 1}`,
+                              kind: 'change',
+                              time: last.time ?? new Date().toISOString(),
+                              ...(last.model ? { model: last.model } : {}),
+                              conversation: id,
+                              from: p.from,
+                              to: p.to,
+                              ...(p.insert ? { insert: true } : {}),
+                              ...(before ? { before } : {}),
+                              after: p.lines,
+                              state: 'open',
+                            };
+                          })
+                          .filter((e) => !known.has(e.id));
+                        next = withEntries(next, proposed);
                         // The calculation keeps copies of the library sections an answer cited.
-                        return last?.role === 'assistant' ? libraries.recordCited(last.text, next) : next;
+                        return libraries.recordCited(last.text, next);
                       }, 'ai-chat');
                     }}
+                    proposals={(turn) => (chat ? proposalViews(entriesOf(doc).filter((e) => e.id.startsWith(`${chat.id}:${turn}:`))) : [])}
+                    onDecide={decideProposal}
                     onNew={() => {
                       rememberConversation(chat);
                       startedChat.current[tab.id] = undefined;

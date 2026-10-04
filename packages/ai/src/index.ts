@@ -11,3 +11,4 @@ export * from './policy.js';
 export * from './briefing.js';
 export * from './citations.js';
 export * from './theorySearch.js';
+export * from './proposals.js';

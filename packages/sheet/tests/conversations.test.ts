@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aiMemoryOf, conversationsOf, newDocument, readSheetFile, withAiMemory, withConversation, withoutConversation, writeSheetFile, type Conversation } from '../src/index.js';
+import { aiMemoryOf, entriesOf, withEntries, conversationsOf, newDocument, readSheetFile, withAiMemory, withConversation, withoutConversation, writeSheetFile, type Conversation } from '../src/index.js';
 
 const first: Conversation = {
   id: 'c1',
@@ -50,5 +50,15 @@ describe('conversations with the AI in the sheet', () => {
   it('make no AI notes layer for nothing', () => {
     const doc = newDocument('N1');
     expect(withoutConversation(doc, 'x')).toBe(doc);
+  });
+
+  it('keep a journal of proposed changes and what became of them', async () => {
+    const proposed = { id: 'c1:1:1', kind: 'change' as const, time: '2026-10-04T10:00:00Z', model: 'qwen', conversation: 'c1', from: 8, to: 8, before: ['profil := pick(Profily_IPE, "IPE 200")'], after: ['profil := pick(Profily_IPE, "IPE 220")'], state: 'open' as const };
+    let doc = withEntries(newDocument('N1'), [proposed]);
+    doc = withEntries(doc, [{ ...proposed, state: 'accepted', decided: '2026-10-04T10:01:00Z' }]);
+    const read = await readSheetFile(await writeSheetFile(doc));
+    expect(entriesOf(read.document!)).toEqual([{ ...proposed, state: 'accepted', decided: '2026-10-04T10:01:00Z' }]);
+    expect(read.document!.layers.some((l) => l.kind === 'ai')).toBe(true);
+    expect(withEntries(doc, [])).toBe(doc);
   });
 });

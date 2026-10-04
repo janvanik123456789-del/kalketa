@@ -1392,6 +1392,7 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
   let kept = { count: 0, text: '' };
   let layerShown = { memory: '', sheet: [] as string[], unknown: [] as string[], hiddenConversations: -1 };
   let resumed: string[] = [];
+  let proposal = { card: '', accepted: false, state: '', undone: false, journal: '' };
   if (aiTab) {
     await clickOn('.layer-tab[data-layer="ai"]');
     // New chat ended the conversation: the model rewrote the memory, in the background.
@@ -1413,6 +1414,32 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
     await clickOn('.layer-view.active .conv-continue');
     await pause(300);
     resumed = (await contents.executeJavaScript(`[...document.querySelectorAll('.chat-turn')].map((t) => t.className.replace('chat-turn ', '') + ':' + t.textContent.slice(0, 40))`)) as string[];
+    // A proposed change: a card under the answer, accepted with a click, one step to undo.
+    // The sheet in view, to see the accepted line arrive in it.
+    await clickOn('.layer-tab[data-layer="main"]');
+    await pause(300);
+    await clickOn('.chat-input');
+    await typeText('Navrhni změnu.');
+    await pressKey('Enter');
+    for (let i = 0; i < 40 && !(await contents.executeJavaScript(`!!document.querySelector('.chat-pane .proposal-accept')`)); i++) await pause(150);
+    const card = (await contents.executeJavaScript(`document.querySelector('.chat-pane .proposal')?.textContent ?? ''`)) as string;
+    await takePicture(picture.replace(/[.]png$/, '-ai-proposal.png'));
+    await clickOn('.chat-pane .proposal-accept');
+    await pause(400);
+    const inSheet = `[...document.querySelectorAll('.layer-view.active .row[data-line]')].some((r) => r.textContent.includes('smoke'))`;
+    const accepted = (await contents.executeJavaScript(inSheet)) as boolean;
+    const state = (await contents.executeJavaScript(`document.querySelector('.chat-pane .proposal-state')?.textContent ?? ''`)) as string;
+    await clickOn('.layer-tab[data-layer="ai"]');
+    await pause(300);
+    const journal = (await contents.executeJavaScript(`document.querySelector('.layer-view.active .ai-changes')?.textContent ?? ''`)) as string;
+    await clickOn('.layer-tab[data-layer="main"]');
+    await pause(200);
+    // Undo takes the line and the decision back together: the proposal is open again.
+    await clickOn('.menubar-item:nth-child(2) > button');
+    await clickMenu('Zpět');
+    await pause(400);
+    const undone = !(await contents.executeJavaScript(inSheet)) && (await contents.executeJavaScript(`!!document.querySelector('.chat-pane .proposal-accept')`));
+    proposal = { card, accepted, state, undone: undone as boolean, journal };
     if (await contents.executeJavaScript(`!!document.querySelector('.layer-tab[data-layer="main"]')`)) await clickOn('.layer-tab[data-layer="main"]');
   }
   // Back to the pane the later steps expect.
@@ -1421,7 +1448,7 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
   await clickMenu('Boční panel');
   await clickMenu(back);
   await pause(300);
-  await writeFile(picture.replace(/[.]png$/, '-ai-chat.json'), JSON.stringify({ pasted, unpasted, typed, theory, offered, quietWhileOff, head, shown, cutOff, cleared, aiTab, layerShown, kept, resumed }, null, 2));
+  await writeFile(picture.replace(/[.]png$/, '-ai-chat.json'), JSON.stringify({ pasted, unpasted, typed, theory, offered, quietWhileOff, head, shown, cutOff, cleared, aiTab, layerShown, kept, resumed, proposal }, null, 2));
   return (
     pasted === 'Klopení je ztráta stability ohýbaného nosníku. Vloženo ze schránky.' && unpasted === 'Klopení je ztráta stability ohýbaného nosníku.' &&
     typed === 'H2:Klopení|P:Klopení je ztráta stability ohýbaného nosníku.' && theory.heading === 'Klopení' && /^T\d+$/.test(theory.badge) &&
@@ -1437,7 +1464,9 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
     layerShown.unknown.length === 1 && layerShown.unknown[0]!.startsWith('T99') &&
     kept.count === 1 && kept.text.includes('Co počítá řádek 3?') && kept.text.includes('local-smoke-7b') &&
     cutOff.error.includes('vyčerpal limit') && cutOff.answers === 1 && !cutOff.empty &&
-    resumed.length === 3 && resumed[0] === 'user:Co počítá řádek 3?' && resumed[1]!.startsWith('assistant:list:') && resumed[2] === 'user:Analyzuj výpočet.'
+    resumed.length === 3 && resumed[0] === 'user:Co počítá řádek 3?' && resumed[1]!.startsWith('assistant:list:') && resumed[2] === 'user:Analyzuj výpočet.' &&
+    proposal.card.includes('+ smoke_ai := 2 m') && proposal.card.includes('Výsledky posudků se nezmění.') && proposal.accepted && proposal.state.startsWith('Přijato') &&
+    proposal.journal.includes('Návrhy změn') && proposal.journal.includes('Přijato') && proposal.undone
   );
 }
 

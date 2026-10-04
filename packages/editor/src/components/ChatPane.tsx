@@ -5,12 +5,13 @@
  * appears as it is written; Stop ends it.
  */
 import { useEffect, useRef, useState } from 'react';
-import { AI_OFF, checkCitations, CITED_ID, providerById, type AiSettings, type ChatTurn, type CitableSection } from '@kalketa/ai';
+import { AI_OFF, checkCitations, CITED_ID, providerById, withoutProposals, type AiSettings, type ChatTurn, type CitableSection } from '@kalketa/ai';
 import { t, type Catalog, type UiKey } from '@kalketa/i18n';
 import { notesHtml } from '@kalketa/render';
 import { desktop } from '../document.js';
 import type { AiSheetContext } from '../logic/aiContext.js';
 import type { LibraryEntry } from '../theoryLibraries.js';
+import { ProposalCard, type ProposalView } from './ProposalCard.js';
 import { commandIcon } from '../icons.js';
 
 function escapeAttr(text: string): string {
@@ -51,9 +52,13 @@ export interface ChatPaneProps {
   /** The menu of libraries opens: look into the folders again. */
   onLibraries?(): void;
   onToggleLibrary?(id: string, on: boolean): void;
+  /** The changes proposed in the answer at this turn of the conversation. */
+  proposals?(turn: number): readonly ProposalView[];
+  /** The user accepts or rejects a proposed change. */
+  onDecide?(id: string, accept: boolean): void;
 }
 
-export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTurns, context, onOpenSettings, onNew, libraries = [], onLibraries, onToggleLibrary }: ChatPaneProps) {
+export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTurns, context, onOpenSettings, onNew, libraries = [], onLibraries, onToggleLibrary, proposals, onDecide }: ChatPaneProps) {
   const [libraryMenu, setLibraryMenu] = useState(false);
   // The menu of libraries closes like any menu: a click anywhere else, or Esc.
   useEffect(() => {
@@ -95,7 +100,9 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTur
    * An answer as HTML, each [T3] replaced by a mark: checked against the theory
    * (the title on hover), or unsupported when the section or the quote is not there.
    */
-  const answerHtml = (text: string, sent?: ChatTurn['theory']) => {
+  const answerHtml = (full: string, sent?: ChatTurn['theory']) => {
+    // A proposed change is shown as a card under the answer, not as its block of lines.
+    const text = withoutProposals(full, (n) => `*(${t(catalog, 'proposal.below', { n: String(n) })})*`);
     const citations = checkCitations(text, theory);
     let i = 0;
     const html = notesHtml(text).replace(CITED_ID, (whole) => {
@@ -229,7 +236,12 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTur
         {turns.map((turn, i) =>
           // Answers come in Markdown (bold, lists, headings); the same safe subset as notes, no HTML passes.
           turn.role === 'assistant' ? (
-            <div key={i} className="chat-turn assistant" dangerouslySetInnerHTML={{ __html: answerHtml(turn.text, turn.theory) }} />
+            <div key={i} className="chat-turn assistant">
+              <div dangerouslySetInnerHTML={{ __html: answerHtml(turn.text, turn.theory) }} />
+              {(proposals?.(i) ?? []).map((view, n) => (
+                <ProposalCard key={view.entry.id} view={view} n={n + 1} catalog={catalog} onDecide={(id, accept) => onDecide?.(id, accept)} />
+              ))}
+            </div>
           ) : (
             <div key={i} className="chat-turn user">
               {turn.text}

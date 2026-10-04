@@ -59,7 +59,7 @@ export async function studyImport(
       }
       flush();
       const path = picturePath(options.folder, `${item.why === 'formula' ? 'vzorec' : 'obrazek'}-s${label}`, 'image/png', (q) => files.has(q) || options.taken(q));
-      files.set(path, await cutOut(page, item.box));
+      files.set(path, await cutOut(page, item.box, true));
       if (item.why === 'formula') formulas++;
       else pictures++;
       blocks.push(`![${options.caption(label).replace(/[[\]]/g, '')}](${path})`);

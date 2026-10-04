@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { pageLayout, type LayoutLine } from '../src/logic/pdfLayout.js';
+import { inkBounds, pageLayout, type LayoutLine } from '../src/logic/pdfLayout.js';
 import { formulaOrScraps } from '../src/logic/pdfText.js';
 
 const page = { width: 595, height: 842 };
@@ -52,5 +52,13 @@ describe('a PDF page laid out for the sources', () => {
     const pieces = pageLayout([], [{ top: 100, bottom: 200, left: 100, right: 200 }, { top: 203, bottom: 300, left: 100, right: 200 }, { top: 0, bottom: 5, left: 0, right: 5 }], page);
     expect(pieces).toHaveLength(1);
     expect(pieces[0]).toMatchObject({ kind: 'cut', why: 'picture', box: { top: 96, bottom: 304 } });
+  });
+
+  it('trims a cut-out to its ink', () => {
+    // 6×4 pixels, white, with two dark pixels at (2,1) and (4,2).
+    const pixels = new Uint8ClampedArray(6 * 4 * 4).fill(255);
+    for (const [x, y] of [[2, 1], [4, 2]]) pixels.set([20, 20, 20, 255], (y! * 6 + x!) * 4);
+    expect(inkBounds(pixels, 6, 4)).toEqual({ top: 1, bottom: 3, left: 2, right: 5 });
+    expect(inkBounds(new Uint8ClampedArray(16).fill(255), 2, 2)).toBeUndefined();
   });
 });

@@ -5,7 +5,7 @@
  */
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { desktop } from '../document.js';
-import type { Box, LayoutLine } from './pdfLayout.js';
+import { inkBounds, type Box, type LayoutLine } from './pdfLayout.js';
 
 type PdfJs = typeof import('pdfjs-dist');
 export type PdfDocument = Awaited<ReturnType<PdfJs['getDocument']>['promise']>;
@@ -123,13 +123,27 @@ export async function pageContent(page: PdfPage): Promise<{ lines: LayoutLine[];
  * A part of a page as a PNG at CUT_DPI. Drawn as for print: at once, not frame by
  * frame, which waits while the window is in the background.
  */
-export async function cutOut(page: PdfPage, box: Box): Promise<Uint8Array> {
+export async function cutOut(page: PdfPage, box: Box, trim = false): Promise<Uint8Array> {
   const k = CUT_DPI / 72;
-  const out = document.createElement('canvas');
+  let out = document.createElement('canvas');
   out.width = Math.max(1, Math.round((box.right - box.left) * k));
   out.height = Math.max(1, Math.round((box.bottom - box.top) * k));
   const viewport = page.getViewport({ scale: k, offsetX: -box.left * k, offsetY: -box.top * k });
   await page.render({ canvas: out, viewport, intent: 'print' }).promise;
+  // Found by the program, not dragged by the user: trimmed to its ink, with a little room.
+  if (trim) {
+    const ink = inkBounds(out.getContext('2d')!.getImageData(0, 0, out.width, out.height).data, out.width, out.height);
+    if (ink) {
+      const room = Math.round(6 * (CUT_DPI / 72));
+      const left = Math.max(0, ink.left - room);
+      const top = Math.max(0, ink.top - room);
+      const trimmed = document.createElement('canvas');
+      trimmed.width = Math.min(out.width, ink.right + room) - left;
+      trimmed.height = Math.min(out.height, ink.bottom + room) - top;
+      trimmed.getContext('2d')!.drawImage(out, left, top, trimmed.width, trimmed.height, 0, 0, trimmed.width, trimmed.height);
+      out = trimmed;
+    }
+  }
   // At once, not through toBlob, whose answer can wait while the window is in the background.
   return Uint8Array.from(atob(out.toDataURL('image/png').split(',')[1] ?? ''), (c) => c.charCodeAt(0));
 }

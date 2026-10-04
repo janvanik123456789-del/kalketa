@@ -84,6 +84,34 @@ function drawingsOf(drawn: readonly Box[], lines: readonly LayoutLine[], page: {
   return boxes.filter((b) => area(b) >= MIN_DRAWING && covered(b) < 0.5 * area(b));
 }
 
+/**
+ * Room kept from a line of text (a share of its height): a recognised line (OCR)
+ * is smaller than its letters on the scan, ascenders and descenders reach out of it.
+ */
+const KEEP_OFF = 0.5;
+
+/**
+ * Where a picture has ink: the bounds of its pixels darker than `threshold` (RGBA),
+ * or undefined when it is blank. A cut-out is trimmed to them, so no white
+ * margin (or what of the text reached into it) stays around a figure.
+ */
+export function inkBounds(pixels: ArrayLike<number>, width: number, height: number, threshold = 200): Box | undefined {
+  let top = height;
+  let bottom = -1;
+  let left = width;
+  let right = -1;
+  for (let y = 0; y < height; y++)
+    for (let x = 0; x < width; x++) {
+      const i = (y * width + x) * 4;
+      if ((pixels[i + 3] ?? 255) < 32 || ((pixels[i] ?? 255) + (pixels[i + 1] ?? 255) + (pixels[i + 2] ?? 255)) / 3 >= threshold) continue;
+      if (y < top) top = y;
+      if (y > bottom) bottom = y;
+      if (x < left) left = x;
+      if (x > right) right = x;
+    }
+  return bottom < 0 ? undefined : { top, bottom: bottom + 1, left, right: right + 1 };
+}
+
 /** A caption under a figure: "Obr. 40 Vetknutý nosník", "Obrázek 3", "Fig. 2". */
 const CAPTION = /^(Obr\.|Obrázek|Fig\.|Figure)\s*\d+/i;
 
@@ -107,6 +135,8 @@ export function pageLayout(lines: readonly LayoutLine[], pictures: readonly Box[
   // A figure the PDF has no shapes for (a scan): the gap in the text above its caption, or on a
   // scan a large empty gap. A numbered formula at the top of the gap stays a formula of its own.
   const real = classified.filter((x) => x.kind === 'text').map((x) => x.line);
+  // Figures found as gaps in the text: they keep off the text, no room is added around them.
+  const gaps = new Set<Box>();
   const column = real.length > 0 ? { left: Math.min(...real.map((l) => l.left)), right: Math.max(...real.map((l) => l.right)) } : { left: PAD, right: page.width - PAD };
   for (let i = 1; i < real.length; i++) {
     const a = real[i - 1]!;
@@ -117,12 +147,14 @@ export function pageLayout(lines: readonly LayoutLine[], pictures: readonly Box[
     const caption = CAPTION.test(b.text.trim());
     if (!caption && !(scanned && between.length === 0 && b.top - a.bottom >= 4 * lh)) continue;
     const formulasAbove = between.filter((x) => x.kind === 'formula').map((x) => x.line.bottom);
-    const top = Math.max(a.bottom + 1, ...formulasAbove.map((y) => y + 2));
-    if (b.top - 1 - top < 2 * lh) continue;
-    const gap = { top, bottom: b.top - 1, left: column.left, right: column.right };
+    const top = Math.max(a.bottom + KEEP_OFF * lineHeight(a), ...formulasAbove.map((y) => y + KEEP_OFF * lh));
+    const bottom = b.top - KEEP_OFF * lh;
+    if (bottom - top < 2 * lh) continue;
+    const gap = { top, bottom, left: column.left, right: column.right };
     // The PDF drew the figure itself: it was found already.
     if (figures.some((f) => near(f, gap, 0))) continue;
     figures.push(gap);
+    gaps.add(gap);
   }
   classified = classified.filter((x) => x.kind !== 'scraps' || !figures.some((f) => inside(x.line, f)));
   classified = classified.filter((x) => x.kind === 'formula' || !figures.some((f) => inside(x.line, f)));
@@ -139,7 +171,11 @@ export function pageLayout(lines: readonly LayoutLine[], pictures: readonly Box[
   const cuts: { box: Box; why: 'picture' | 'formula' }[] = figures.map((box) => ({ box, why: 'picture' as const }));
   for (const f of formulas) {
     const touching = cuts.find((c) => c.why === 'picture' && near(c.box, f, PAD) && !(f.bottom <= c.box.top + 2));
-    if (touching) touching.box = union(touching.box, f);
+    if (touching) {
+      const joined = union(touching.box, f);
+      if (gaps.has(touching.box)) gaps.add(joined);
+      touching.box = joined;
+    }
     else cuts.push({ box: f, why: 'formula' });
   }
   // A formula from the text (or figure) above it to the one below it, across the column.
@@ -149,15 +185,15 @@ export function pageLayout(lines: readonly LayoutLine[], pictures: readonly Box[
     const above = obstacles.filter((o) => o.bottom <= f.top + 1).reduce((m, o) => Math.max(m, o.bottom), -Infinity);
     const below = obstacles.filter((o) => o.top >= f.bottom - 1).reduce((m, o) => Math.min(m, o.top), Infinity);
     return {
-      top: Math.max(0, f.top - 1.5 * lh, above + 1),
-      bottom: Math.min(page.height, f.bottom + 1.5 * lh, below - 1),
+      top: Math.max(0, f.top - 1.5 * lh, Math.min(f.top, above + KEEP_OFF * lh)),
+      bottom: Math.min(page.height, f.bottom + 1.5 * lh, Math.max(f.bottom, below - KEEP_OFF * lh)),
       left: Math.max(0, Math.min(f.left, column.left) - PAD),
       right: Math.min(page.width, Math.max(f.right, column.right) + PAD),
     };
   };
   // Formulas whose cut-outs would overlap are one cut-out.
   const placed: { box: Box; why: 'picture' | 'formula' }[] = [];
-  for (const c of cuts.map((c) => ({ box: c.why === 'formula' ? formulaBox(c.box) : padded(c.box, page), why: c.why })).sort((x, y) => x.box.top - y.box.top)) {
+  for (const c of cuts.map((c) => ({ box: c.why === 'formula' ? formulaBox(c.box) : gaps.has(c.box) ? c.box : padded(c.box, page), why: c.why })).sort((x, y) => x.box.top - y.box.top)) {
     const last = placed[placed.length - 1];
     if (last && c.why === 'formula' && last.why === 'formula' && c.box.top < last.box.bottom) last.box = union(last.box, c.box);
     else placed.push(c);

@@ -102,6 +102,9 @@ function recentFiles(): string[] {
   }
 }
 
+/** A conversation without a question for this long has ended: its memory is rewritten. */
+const IDLE_ENDS_CONVERSATION = 3 * 60 * 1000;
+
 export function App() {
   // Open calculations, one tab each. Everything below that belongs to one
   // document (history, file, open layers) is read from the active tab.
@@ -642,9 +645,11 @@ export function App() {
     if (layers.some((x, i) => x !== doc.layers[i])) change({ ...doc, layers });
     const fromLibraries = libraries.theory();
     const memory = aiMemoryOf(doc);
+    // The model learns which of its proposals the user accepted or rejected.
+    const changes = entriesOf(doc);
     return {
       // A section both in the sources and in a library goes once, from the library.
-      sheet: { ...sheetContext(doc.manifest.title, evaluation.main), theory: withoutDuplicates(theorySections(layers), fromLibraries.sections), libraries: fromLibraries.libraries },
+      sheet: { ...sheetContext(doc.manifest.title, evaluation.main), theory: withoutDuplicates(theorySections(layers), fromLibraries.sections), libraries: fromLibraries.libraries, ...(changes.length > 0 ? { changes } : {}) },
       languageGuide: languageGuide(),
       ...(memory.trim() ? { memory } : {}),
     };
@@ -723,8 +728,21 @@ export function App() {
   // A while without a question ends the conversation too.
   useEffect(() => {
     if (!aiOn || !chat || (chat.remembered ?? 0) >= chat.turns.length) return;
-    const timer = window.setTimeout(() => rememberConversation(chat), 3 * 60 * 1000);
+    const timer = window.setTimeout(() => rememberConversation(chat), IDLE_ENDS_CONVERSATION);
     return () => window.clearTimeout(timer);
+  });
+  // Conversations that never made it into the memory (the program was closed before
+  // they ended) are taken in once the AI is on again: one at a time, each tried once.
+  const caughtUp = useRef(new Set<string>());
+  useEffect(() => {
+    if (!aiOn || remembering.current[tab.id]) return;
+    const pending = conversations.find((c) => {
+      const last = Date.parse(c.turns[c.turns.length - 1]?.time ?? '');
+      return (c.remembered ?? 0) < c.turns.length && c.turns.some((t) => t.role === 'assistant') && !(Date.now() - last < IDLE_ENDS_CONVERSATION) && !caughtUp.current.has(`${c.id}:${c.turns.length}`);
+    });
+    if (!pending) return;
+    caughtUp.current.add(`${pending.id}:${pending.turns.length}`);
+    rememberConversation(pending);
   });
   const chatId = activeChat[tab.id];
   const chat = chatId === '' ? undefined : (conversations.find((c) => c.id === chatId) ?? (chatId === undefined ? conversations[conversations.length - 1] : undefined));

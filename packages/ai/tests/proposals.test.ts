@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyProposal, briefing, parseProposals, replacedLines, withoutProposals } from '@kalketa/ai';
+import { applyProposal, briefing, memoryInstruction, parseProposals, replacedLines, withoutProposals } from '@kalketa/ai';
 
 const fence = '`'.repeat(3);
 const answer = [
@@ -45,5 +45,26 @@ describe('changes the model proposes', () => {
 
   it('are asked for in the briefing', () => {
     expect(briefing({ language: 'cs', sheet: { title: 'N1', source: 'L := 5 m' } })).toContain('```change 8');
+  });
+
+  it('and the decisions on them go to the model with the sheet', () => {
+    const text = briefing({
+      language: 'cs',
+      sheet: {
+        title: 'N1',
+        source: 'profil := pick(Profily_IPE, "IPE 220")',
+        changes: [
+          { from: 8, to: 8, before: ['profil := pick(Profily_IPE, "IPE 200")'], after: ['profil := pick(Profily_IPE, "IPE 220")'], state: 'accepted', time: '2026-10-04T09:06:17.922Z', decided: '2026-10-04T09:06:25.272Z' },
+          { from: 14, to: 14, insert: true, after: ['g := 0.26 kN/m'], state: 'rejected', time: '2026-10-04T09:07:00Z', decided: '2026-10-04T09:07:10Z' },
+          { from: 5, to: 5, before: ['L := 5 m'], after: ['L := 6 m'], state: 'open', time: '2026-10-04T09:08:00Z' },
+        ],
+      },
+    });
+    expect(text).toContain('the sheet above already contains the accepted ones');
+    expect(text).toContain('- 2026-10-04 09:06 line 8: `profil := pick(Profily_IPE, "IPE 200")` -> `profil := pick(Profily_IPE, "IPE 220")`; accepted by the user 2026-10-04 09:06');
+    expect(text).toContain('after line 14: insert `g := 0.26 kN/m`; rejected by the user');
+    expect(text).toContain('line 5: `L := 5 m` -> `L := 6 m`; not decided yet');
+    expect(briefing({ language: 'cs', sheet: { title: 'N1', source: '' } })).not.toContain('Changes you proposed');
+    expect(memoryInstruction('')).toContain('A change the user accepted');
   });
 });

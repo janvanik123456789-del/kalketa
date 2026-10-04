@@ -33,6 +33,21 @@ export interface AiSheetContext {
   readonly theory?: readonly { readonly id?: string; readonly title: string; readonly text: string }[];
   /** Theory libraries the sheet uses: their key and where their text comes from. */
   readonly libraries?: readonly { readonly key: string; readonly title: string; readonly source: string }[];
+  /** Changes the AI proposed for the sheet and what the user decided, oldest first (the journal, ch. 9.7). */
+  readonly changes?: readonly AiChangeRecord[];
+}
+
+/** A proposed change as the journal keeps it: lines as numbered when it was proposed. */
+export interface AiChangeRecord {
+  readonly from: number;
+  readonly to: number;
+  readonly insert?: boolean;
+  readonly before?: readonly string[];
+  readonly after: readonly string[];
+  readonly state: 'open' | 'accepted' | 'rejected';
+  /** ISO time it was proposed, and decided. */
+  readonly time: string;
+  readonly decided?: string;
 }
 
 export interface AiRequest {

@@ -10,6 +10,20 @@ Boční panel (Podrobnosti, Tabulky, Vrstvy, Rozhovor s AI) přepínat záložka
 
 ## Okno rozhovoru s AI
 
+### Složka studijních podkladů PDF a HTML (2026-10-04)
+
+Návrh uživatele: Kalketa by měla mít vlastní složku pro studijní podklady v PDF nebo HTML (normy, skripta, články), ze které model čerpá jako z teorie. Cesty k souborům v Podkladech nejsou dobré řešení: nepřenesou se s výpočtem a model je sám neotevře.
+
+Jak by to šlo na dnešní základ (kap. 9.6):
+
+- **Kde:** dnešní složky teorie (uživatelská `Dokumenty\Kalketa\Teorie`, firemní `theoryFolder`, složka projektu) by vedle `.kalkt` přijímaly i `.pdf`, `.html` a `.md`. Firemní složka se tak dá naplnit normami pro všechny.
+- **Převod na text:** PDF přes pdf.js (licence Apache-2.0), po stránkách. Použije se dnešní čištění textu z PDF: slepená slova, zbytky, vzorce. HTML se převede na čistý text podle nadpisů. Skeny bez textové vrstvy by potřebovaly OCR, zatím ne.
+- **Rejstřík:** úseky podle nadpisů, nebo podle stránek, kde nadpisy chybí. Ty se indexují stejným BM25 jako knihovny. Rejstřík se uloží vedle souboru nebo do mezipaměti uživatele a obnoví se jen při změně souboru (podle otisku).
+- **Citace:** klíč souboru a stránka, např. `[EN1993:s45]`. Ověření citace je text na té stránce. Ve vrstvě AI to bude skupina „Studijní podklady“ s názvem souboru a stránkou.
+- **Do výpočtu:** stejně jako u knihoven se do souboru `.kalk` uloží kopie citovaných úseků a odkaz na soubor, aby výpočet šel předat bez celé složky.
+- **Vztah ke `.kalkt`:** složka je rychlý start bez přípravy, `.kalkt` je pečlivě připravená knihovna (vyčištěný text, obrázky, stálé id). Z PDF ve složce by šla jedním příkazem vyrobit `.kalkt`.
+- **Pozor:** autorská práva norem. Text zůstává u uživatele a jde jen do jeho modelu; do `.kalk` jen citované úseky.
+
 ### Web jako zdroj (2026-10-04)
 
 Lokální model web neumí, Kalketa mu ho může dát:

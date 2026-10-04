@@ -5,7 +5,7 @@
  * codes) comes from the program, so the briefing never goes stale.
  */
 
-import type { AiSheetContext } from './contract.js';
+import type { AiChangeRecord, AiSheetContext } from './contract.js';
 import { selectTheory } from './theorySearch.js';
 
 /** One turn of a conversation, as the user and the model wrote it. */
@@ -120,6 +120,8 @@ ${sheet.theory!.filter((s) => s.id).map((s) => `[${s.id}] ${s.title}`).join('\n'
 
 ${sheet.libraries && sheet.libraries.length > 0 ? `Theory libraries: ${sheet.libraries.map((l) => `[${l.key}] ${l.title} (source: ${l.source})`).join('; ')}.\n\n` : ''}${contents}${selection!.sections.length > 0 ? theoryText(selection!.sections) : '(No section matches the question.)'}`
       : '',
+    sheet.changes && sheet.changes.length > 0 ? `Changes you proposed for this sheet and what the user decided (line numbers as they were then; the sheet above already contains the accepted ones):
+${changesText(sheet.changes)}` : '',
     input.memory?.trim()
       ? `Memory of this sheet from earlier conversations (kept by you; where it disagrees with the sheet above, the sheet is right):\n${input.memory.trim()}`
       : '',
@@ -135,11 +137,30 @@ ${sheet.libraries && sheet.libraries.length > 0 ? `Theory libraries: ${sheet.lib
  * The last question of a conversation that ends: the model rewrites the
  * sheet's memory (ch. 9.7) from the old one and what the conversation added.
  */
+/** At most this many of the latest proposed changes go to the model. */
+const MAX_CHANGES = 20;
+
+/** The journal for the model, one change per line: where, what was there, what came, the decision. */
+export function changesText(changes: readonly AiChangeRecord[]): string {
+  const code = (lines: readonly string[] | undefined) => (lines && lines.length > 0 ? lines.map((l) => '`' + l.trim() + '`').join(' / ') : '(nothing)');
+  const day = (iso: string | undefined) => (iso ? iso.slice(0, 16).replace('T', ' ') : '');
+  return changes
+    .slice(-MAX_CHANGES)
+    .map((c) => {
+      const where = c.insert ? `after line ${c.from}` : c.from === c.to ? `line ${c.from}` : `lines ${c.from}-${c.to}`;
+      const what = c.insert ? `insert ${code(c.after)}` : `${code(c.before)} -> ${code(c.after)}`;
+      const decision = c.state === 'open' ? 'not decided yet' : `${c.state} by the user ${day(c.decided)}`;
+      return `- ${day(c.time)} ${where}: ${what}; ${decision}`;
+    })
+    .join(String.fromCharCode(10));
+}
+
 export function memoryInstruction(previous: string): string {
   return [
     'The conversation ends here. Rewrite the memory of this sheet for future conversations, so the next one does not start from nothing.',
     'In English, at most 150 words, short lines under these headings: Intent; Agreed assumptions; Checked (with the results); Open questions; Sources relied on (their ids, e.g. T3, PP:T3).',
     'Agreed assumptions are only what the user confirmed in the conversation or what the sheet itself states; anything you inferred yourself goes under Open questions.',
+    "A change the user accepted (see the changes you proposed) is the user's decision and already in the sheet: record it as agreed, not as an open question; a rejected one, with what was rejected.",
     'Plain text with those headings, not wrapped in a code block.',
     'Merge the previous memory with what this conversation added; leave out what no longer holds for the sheet as it is now, and do not repeat what the sheet itself says.',
     'Reply with the memory only.',

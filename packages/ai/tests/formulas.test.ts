@@ -15,6 +15,15 @@ describe('formulas read from pictures', () => {
     expect(cleanFormula('  ')).toBeUndefined();
   });
 
+  it('come into the calculation language from LaTeX or a plain equation', () => {
+    // As the user's local model wrote the cut-out "y = 5·Q·l³ / (384·E·I)".
+    expect(cleanFormula('$$y = \\frac{5 \\cdot Q \\cdot l^{3}}{384 \\cdot E \\cdot I}$$')).toEqual(['y := (5·Q·l^3)/(384·E·I)']);
+    expect(cleanFormula('M_omax = R_A · a = R_B · b.')).toEqual(['M_omax := R_A·a', 'R_A·a == R_B·b']);
+    expect(cleanFormula('\\sigma_{max} = \\frac{M}{W_{y}} \\leq f_{y}')).toEqual(['σ_max = (M)/(W_y) ≤ f_y']);
+    expect(cleanFormula('w = \\sqrt{\\frac{a}{b}} (12)')).toEqual(['w := sqrt((a)/(b))']);
+    expect(cleanFormula('w := L/250')).toEqual(['w := L/250']);
+  });
+
   it('go to a local server with the picture, answered at once', async () => {
     let sent: { stream: boolean; messages: { content: { type: string; image_url?: { url: string } }[] }[] } | undefined;
     const fetchFn = (async (_url: string, init: { body: string }) => {

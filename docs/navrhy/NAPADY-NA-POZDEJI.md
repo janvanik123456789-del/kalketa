@@ -12,7 +12,9 @@ Boční panel (Podrobnosti, Tabulky, Vrstvy, Rozhovor s AI) přepínat záložka
 
 ## Okno rozhovoru s AI
 
-### Vzorec z výřezu do zápisu Kalkety (2026-10-04)
+### ~~Vzorec z výřezu do zápisu Kalkety~~ (2026-10-04, hotovo týž den)
+
+*Hotovo:* tlačítko „Vzorce z výřezů (AI)“ v Podkladech, blok `kalk` pod obrázkem (kap. 9.6). Lokální model uživatele obrázky čte. Původní zápis:
 
 Výřez z PDF vloží vzorec jako obrázek. Člověk ho přečte, model ani výpočet ne. Model, který umí číst obrázky (Claude, lokální „vision“ modely), by z výřezu přepsal vzorec do zápisu Kalkety (např. `w := 5·q·L⁴/(384·E·I)`), člověk by ho potvrdil a vzorec by šel do Podkladů jako text i do výpočtu. Lokální model uživatele to nejspíš neumí.
 

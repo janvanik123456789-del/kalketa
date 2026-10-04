@@ -203,7 +203,10 @@ export function kalkFormula(line: string): { readonly html: string; readonly ok:
 }
 
 function kalkHtml(lines: readonly string[]): string {
-  const formulas = lines.filter((l) => l.trim() !== '').map((l) => `<div class="kalk-formula" title="${esc(l.trim())}">${kalkFormula(l.trim()).html}</div>`);
+  // A line starting with ' is a note to the formulas ("' AI wrote this from a picture").
+  const formulas = lines
+    .filter((l) => l.trim() !== '')
+    .map((l) => (l.trim().startsWith("'") ? `<div class="kalk-note">${esc(l.trim().slice(1).trim())}</div>` : `<div class="kalk-formula" title="${esc(l.trim())}">${kalkFormula(l.trim()).html}</div>`));
   return `<div class="kalk">${formulas.join('')}</div>`;
 }
 
@@ -241,6 +244,7 @@ export const NOTES_CSS = `.notes { font-size: 10.5pt; line-height: 1.5; }
 .notes .kalk-formula math { display: inline-block; }
 .notes .kalk-label { color: #555; font-size: 0.95em; }
 .notes code.kalk-bad { color: #a12828; }
+.notes .kalk-note { color: #5a3fa6; font-size: 0.9em; }
 .notes pre.code { margin: 2mm 0; padding: 1.5mm 2mm; background: #f3f5f8; border: 1px solid #d5dae1; white-space: pre-wrap; }
 .notes blockquote.citation { margin: 2mm 0; padding: 1mm 0 1mm 3mm; border-left: 1mm solid #9aa6b4; color: #333; font-style: italic; }
 .notes figure { margin: 3mm 0; break-inside: avoid; }

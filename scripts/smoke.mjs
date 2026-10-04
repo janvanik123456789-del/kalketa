@@ -51,6 +51,12 @@ const fakeApi = createServer((request, response) => {
     request.on('data', (chunk) => (raw += chunk));
     request.on('end', () => {
       const body = JSON.parse(raw);
+      // A formula read from a picture: the picture came, the formula goes back.
+      if (!body.stream && Array.isArray(body.messages?.[0]?.content) && body.messages[0].content.some((c) => c.type === 'image_url' && String(c.image_url?.url).startsWith('data:image/png;base64,'))) {
+        response.writeHead(200, { 'content-type': 'application/json' });
+        response.end(JSON.stringify({ object: 'chat.completion', model: 'local-smoke-7b', choices: [{ index: 0, message: { role: 'assistant', content: 'M := F·a' }, finish_reason: 'stop' }] }));
+        return;
+      }
       if (!body.stream) {
         response.writeHead(200, { 'content-type': 'application/json' });
         response.end(JSON.stringify({ object: 'chat.completion', choices: [{ index: 0, message: { role: 'assistant', content: 'OK' }, finish_reason: 'stop' }] }));

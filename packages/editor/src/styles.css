@@ -595,3 +595,4 @@ button.icon:hover { color: var(--accent); }
 .kalk-preview { border: 1px solid #d5dae1; border-top: none; padding: 4px 10px; background: #fff; }
 .kalk-preview .kalk-formula { margin: 2px 0; }
 .kalk-preview code.kalk-bad { color: #a12828; }
+.kalk-preview .kalk-note { color: #5a3fa6; font-size: 12px; }

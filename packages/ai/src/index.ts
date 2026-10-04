@@ -9,6 +9,7 @@ export * from './providers.js';
 export * from './settings.js';
 export * from './policy.js';
 export * from './briefing.js';
+export * from './formulas.js';
 export * from './citations.js';
 export * from './theorySearch.js';
 export * from './proposals.js';

@@ -34,6 +34,8 @@ interface Props {
   onSaveLibrary?(): void;
   /** A cut-out from a study PDF, for the sources. */
   pickPdfCrop?(place: (picture: IncomingPicture, caption: string, anchor: { readonly before?: string; readonly after?: string }) => void): void;
+  /** A formula block for a picture of the layer, read by a model. */
+  readFormula?(path: string): Promise<string | undefined>;
   /** AI notes: where the AI drew from, by source (the main part of the layer). */
   readonly sources?: readonly SourceGroup[];
   /** AI notes: the sheet's memory for the model. */
@@ -50,7 +52,7 @@ interface Props {
   onDeleteConversation?(id: string): void;
 }
 
-export function NotesView({ layer, title, catalog, readOnly, resolveFile, fileExists, onChange, onSettle, onSaveLibrary, pickPdfCrop, sources = [], memory = '', onForgetMemory, changes = [], onDecide, onReview, conversations = [], onContinueConversation, onDeleteConversation }: Props) {
+export function NotesView({ layer, title, catalog, readOnly, resolveFile, fileExists, onChange, onSettle, onSaveLibrary, pickPdfCrop, readFormula, sources = [], memory = '', onForgetMemory, changes = [], onDecide, onReview, conversations = [], onContinueConversation, onDeleteConversation }: Props) {
   const [showConversations, setShowConversations] = useState(false);
   const text = layer.text ?? '';
 
@@ -112,7 +114,7 @@ export function NotesView({ layer, title, catalog, readOnly, resolveFile, fileEx
   return (
     <div className="notes-view word">
       <style>{NOTES_CSS}</style>
-      <NotesWord text={text} title={title} catalog={catalog} readOnly={readOnly} resolveFile={resolveFile} onChange={onChange} {...(onSettle ? { onSettle } : {})} pickImage={pickImage} picturePath={pathFor} {...(onSaveLibrary ? { onSaveLibrary } : {})} {...(pickPdfCrop ? { pickPdfCrop } : {})} />
+      <NotesWord text={text} title={title} catalog={catalog} readOnly={readOnly} resolveFile={resolveFile} onChange={onChange} {...(onSettle ? { onSettle } : {})} pickImage={pickImage} picturePath={pathFor} {...(onSaveLibrary ? { onSaveLibrary } : {})} {...(pickPdfCrop ? { pickPdfCrop } : {})} {...(readFormula ? { readFormula } : {})} />
     </div>
   );
 }

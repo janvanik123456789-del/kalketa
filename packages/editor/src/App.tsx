@@ -14,7 +14,7 @@ import { emptyScene, readScene, writeScene, type CanvasScene } from '@kalketa/ca
 import { CanvasEditor } from '@kalketa/canvas/editor';
 import { addLayer, allDiagnostics, appendixLayers, blockAppendices, documentBlocks, isRemovable, LayerSessions, MAIN_LAYER, removeLayer, freezeRevision, removeRevision, revisionDocument, revisionState, shortHash, tablesByLayer, theorySections, updateLayer, withTheoryIds, conversationsOf, hasConversations, withConversation, withoutConversation, aiMemoryOf, withAiMemory, linkedLibraries, librarySections, entriesOf, newSheetsOf, withEntries, studyAdvice, studyNotes, LARGE_STUDY_PAGES, type StudySettings, aiMadeLines, type SheetEntry, evaluateDocument, type ChangeEntry, type Conversation, type AddableLayerKind, type Layer, type RevisionState, type SheetDocument } from '@kalketa/sheet';
 import { buildCommands, shortcutOf, type Command } from './commands.js';
-import { applyProposal, applyProposals, cleanMemory, parseNewSheets, DEFAULT_AI_SETTINGS, parseAiSettings, parseProposals, providerById, replacedLines, type ChangeProposal, type AiSettings, type ChatTurn } from '@kalketa/ai';
+import { applyProposal, applyProposals, cleanFormula, cleanMemory, parseNewSheets, DEFAULT_AI_SETTINGS, parseAiSettings, parseProposals, providerById, replacedLines, type ChangeProposal, type AiSettings, type ChatTurn } from '@kalketa/ai';
 import { ChatPane } from './components/ChatPane.js';
 import { TheoryLibraryDialog } from './components/TheoryLibraryDialog.js';
 import { sourceText, useTheoryLibraries, withoutDuplicates, type FoundLibrary } from './theoryLibraries.js';
@@ -386,6 +386,36 @@ export function App() {
     setNotice(t(ui, made.pictures + made.formulas > 0 ? 'study.toSourcesCuts' : 'study.toSourcesDone', { name, pictures: String(made.pictures), formulas: String(made.formulas) }));
   };
 
+  /**
+   * A formula block for a picture of the sheet: the model reads the picture (it must
+   * read images) and writes the formula in the calculation language; a note says the
+   * AI wrote it, until the user reviews it and deletes the note.
+   */
+  const readFormula = async (path: string): Promise<string | undefined> => {
+    if (!desktop) return undefined;
+    if (!aiOn) {
+      setNotice(t(ui, 'formula.aiOff'));
+      return undefined;
+    }
+    const bytes = doc.files.get(path);
+    const provider = providerById(aiSettings.provider);
+    if (!bytes || !provider) return undefined;
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    const type = path.endsWith('.jpg') || path.endsWith('.jpeg') ? 'image/jpeg' : 'image/png';
+    try {
+      const result = await desktop.aiFormula({ provider: provider.id, model: aiSettings.model, ...(aiSettings.url ? { url: aiSettings.url } : {}), image: { type, data: btoa(binary) } });
+      if (!result.ok) {
+        setNotice(t(ui, 'formula.failed', { problem: result.problem }));
+        return undefined;
+      }
+      const lines = cleanFormula(result.text);
+      return lines ? [`' ${t(ui, 'formula.byAi', { model: result.model })}`, ...lines].join('\n') : undefined;
+    } catch (error) {
+      setNotice(t(ui, 'formula.failed', { problem: error instanceof Error ? error.message : String(error) }));
+      return undefined;
+    }
+  };
   // A cut-out from a study PDF being chosen: the sources wait for it.
   const [cropping, setCropping] = useState<(picture: IncomingPicture, caption: string, anchor: CutAnchor) => void>();
   const pickPdfCrop = (place: (picture: IncomingPicture, caption: string, anchor: CutAnchor) => void) => setCropping(() => place);
@@ -1506,6 +1536,7 @@ export function App() {
             : {})}
           {...(desktop && l.kind === 'sources' ? { onSaveLibrary: () => setLibraryLayer(l.id) } : {})}
           {...(desktop && l.kind === 'sources' && libraries.found.some((f) => f.study?.content.kind === 'pdf') ? { pickPdfCrop } : {})}
+          {...(desktop && l.kind === 'sources' ? { readFormula } : {})}
           onChange={(next, files) => setLayerText(l, next, `${l.id}:notes`, files)}
           onSettle={() => {
             // New headings get their theory ids once the user stops typing in them.

@@ -136,6 +136,8 @@ export interface DesktopBridge {
   studySave(path: string, sheetPath: string | undefined, settings: StudySettings): Promise<void>;
   /** The bytes of a study file, for drawing its pages. */
   studyBytes(path: string, sheetPath?: string): Promise<Uint8Array>;
+  /** A formula read from a picture by a model that reads images; the answer as the chat gets it. */
+  aiFormula(ask: { provider: string; model: string; url?: string; image: { type: string; data: string } }): Promise<{ readonly ok: true; readonly text: string; readonly model: string } | { readonly ok: false; readonly problem: string; readonly detail?: string }>;
   theoryRead(path: string, sheetPath?: string): Promise<Uint8Array>;
   /** Saves a library into one of the folders; an existing file only with `replace`. */
   theorySave(request: { folder: TheoryFolder; sheetPath?: string; title: string; bytes: Uint8Array; replace?: boolean }): Promise<{ readonly path: string; readonly exists?: boolean }>;

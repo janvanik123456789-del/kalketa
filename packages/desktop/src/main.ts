@@ -1367,6 +1367,17 @@ async function studyWithRealInput(contents: Electron.WebContents, picture: strin
     math: document.querySelectorAll('.layer-view.active .kalk-preview math mfrac').length,
     bad: document.querySelectorAll('.layer-view.active .kalk-preview .kalk-bad').length,
   })`)) as { math: number; bad: number };
+  // Formulas from cut-outs: the AI reads the formula cut-out of page 22 and writes it under the picture.
+  await clickOn('.layer-view.active .word-formula-ai');
+  for (let i = 0; i < 40 && !(await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .kalk-note')].some((n) => n.textContent.includes('přepsala AI'))`)); i++) await pause(150);
+  const fromPicture = (await contents.executeJavaScript(`(() => {
+    const note = [...document.querySelectorAll('.layer-view.active .kalk-note')].find((n) => n.textContent.includes('přepsala AI'));
+    const block = note?.closest('.word-code');
+    // The block of the document it is in, and the one before it.
+    let top = block;
+    while (top?.parentElement && !top.parentElement.classList.contains('ProseMirror')) top = top.parentElement;
+    return { note: note?.textContent ?? '', math: block?.querySelectorAll('.kalk-formula math').length ?? 0, underPicture: !!top?.previousElementSibling?.querySelector('img'), code: block?.querySelector('code')?.textContent ?? '' };
+  })()`)) as { note: string; math: number; underPicture: boolean; code: string };
   const card = existsSync(join(dir, 'Pruznost a pevnost.pdf.kalketa.json')) ? (JSON.parse(await readFile(join(dir, 'Pruznost a pevnost.pdf.kalketa.json'), 'utf8')) as { key?: string; chapters?: number[] }) : {};
 
   // The chat: the book is offered among the libraries, with how much of it is read.
@@ -1391,13 +1402,13 @@ async function studyWithRealInput(contents: Electron.WebContents, picture: strin
   await clickOn('.pane-tab[data-pane="details"]');
   await pause(300);
   const cited = answer.ok.map((c) => /^PP:T(\d+)$/.exec(c ?? '')?.[1]).filter(Boolean).map(Number);
-  await writeFile(picture.replace(/[.]png$/, '-study.json'), JSON.stringify({ offered, suggested, chosen, sources, cropPage, stillOpen, cropped, formula, card, listed, answer, cited }, null, 2));
+  await writeFile(picture.replace(/[.]png$/, '-study.json'), JSON.stringify({ offered, suggested, chosen, sources, cropPage, stillOpen, cropped, formula, fromPicture, card, listed, answer, cited }, null, 2));
   return (
     offered.file.startsWith('Pruznost a pevnost.pdf') && offered.file.includes('PDF, 62 s.') && offered.reads === 'AI čte 62 z 62.' && offered.large && offered.key === 'PP' &&
     offered.chapters.length === 4 && ohyb >= 0 && chosen.reads === 'AI čte 21 z 62.' && !chosen.large && suggested !== '' &&
     !sources.dialog && sources.headings[0] === 'H2:2 Ohyb (s. 21–24)' && sources.headings[1] === 'H3:2.1 Průhyb nosníku (s. 25–40)' && sources.headings.length === 2 && sources.text.includes('Strana 30.') && !sources.text.includes('Strana 20.') &&
     cropPage === '21' && !!fitted && !!zoomed && zoomed.w > fitted.w * 1.2 && stillOpen === 'Vloženo: 2' && !cropped.dialog && cropped.pictures.length === picturesBefore + 2 && cropped.pictures.filter((c) => /^Pružnost a pevnost, s\. 21\|\d+$/.test(c) && Number(c.split('|')[1]) > 400).length === 2 &&
-    formula.math === 1 && formula.bad === 0 && sources.cuts.length === 2 && sources.cuts.every((c) => c === 'Pružnost a pevnost, s. 22') && sources.notice.includes('obrázků (1) a vzorců (1)') && !sources.text.includes('(51)') && sources.text.includes('Text pod vzorcem na straně 22.') && cropped.afterPage21 === 'img' &&
+    formula.math === 1 && formula.bad === 0 && fromPicture.note.includes('přepsala AI (local-smoke-7b)') && fromPicture.math === 1 && fromPicture.underPicture && fromPicture.code.includes('M := F·a') && sources.cuts.length === 2 && sources.cuts.every((c) => c === 'Pružnost a pevnost, s. 22') && sources.notice.includes('obrázků (1) a vzorců (1)') && !sources.text.includes('(51)') && sources.text.includes('Text pod vzorcem na straně 22.') && cropped.afterPage21 === 'img' &&
     card.key === 'PP' && JSON.stringify(card.chapters) === JSON.stringify([ohyb]) &&
     at >= 0 && listed[at]!.includes('AI čte 21 z 62.') &&
     cited.length === 1 && cited[0]! >= 21 && cited[0]! <= 41

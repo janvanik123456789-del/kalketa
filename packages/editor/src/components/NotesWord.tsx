@@ -11,6 +11,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { EditorContent, Extension, NodeViewContent, NodeViewWrapper, ReactNodeViewRenderer, useEditor, type Editor, type JSONContent, type ReactNodeViewProps } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import CodeBlock from '@tiptap/extension-code-block';
+import { NodeSelection } from '@tiptap/pm/state';
 import { kalkFormula } from '@kalketa/render';
 import Image, { type ImageOptions } from '@tiptap/extension-image';
 import { TableKit } from '@tiptap/extension-table';
@@ -37,6 +38,11 @@ interface Props {
   picturePath(picture: IncomingPicture, taken: ReadonlySet<string>): string;
   /** Saves the layer as a theory library (.kalkt); absent where it cannot be done. */
   onSaveLibrary?(): void;
+  /**
+   * A formula block for the picture at `path`, written by a model that reads images
+   * (with a note that the AI wrote it); undefined when it found none or the AI is off.
+   */
+  readFormula?(path: string): Promise<string | undefined>;
   /**
    * Opens the cut-outs from a study PDF; each one comes to `place` with its caption and the
    * text that stood next to it on the page. Absent when there is no study PDF.
@@ -128,9 +134,15 @@ function CodeView({ node }: ReactNodeViewProps) {
       </pre>
       {kalk && lines.length > 0 && (
         <div className="kalk-preview" contentEditable={false}>
-          {lines.map((l, i) => (
-            <div key={i} className="kalk-formula" dangerouslySetInnerHTML={{ __html: kalkFormula(l.trim()).html }} />
-          ))}
+          {lines.map((l, i) =>
+            l.trim().startsWith("'") ? (
+              <div key={i} className="kalk-note">
+                {l.trim().slice(1).trim()}
+              </div>
+            ) : (
+              <div key={i} className="kalk-formula" dangerouslySetInnerHTML={{ __html: kalkFormula(l.trim()).html }} />
+            ),
+          )}
         </div>
       )}
     </NodeViewWrapper>
@@ -156,7 +168,7 @@ function withPictures(doc: JSONContent, resolveFile: (path: string) => string | 
   return doc.content ? { ...doc, content: doc.content.map((c) => withPictures(c, resolveFile)) } : doc;
 }
 
-export function NotesWord({ text, title, catalog, readOnly, resolveFile, onChange, onSettle, pickImage, picturePath, onSaveLibrary, pickPdfCrop }: Props) {
+export function NotesWord({ text, title, catalog, readOnly, resolveFile, onChange, onSettle, pickImage, picturePath, onSaveLibrary, pickPdfCrop, readFormula }: Props) {
   // What the editor last gave out: a text coming back unchanged is not loaded again.
   const emitted = useRef(text);
   const pendingFiles = useRef<Map<string, Uint8Array> | undefined>(undefined);
@@ -271,6 +283,39 @@ export function NotesWord({ text, title, catalog, readOnly, resolveFile, onChang
     return find(anchor.before, 'after') ?? find(anchor.after, 'before');
   };
 
+  // Formulas being read from cut-outs: how many done of how many.
+  const [reading, setReading] = useState<{ done: number; of: number }>();
+  /**
+   * The selected picture, else every formula cut-out (vzorec-…) without a formula under it,
+   * else (cut-outs made by hand) every picture without one; read by the model, each
+   * formula block goes right under its picture. A picture with no formula gets none.
+   */
+  const readFormulas = async () => {
+    if (!readFormula) return;
+    const selected = editor.state.selection instanceof NodeSelection && editor.state.selection.node.type.name === 'image' ? String(editor.state.selection.node.attrs['path'] ?? '') : '';
+    const unwritten: string[] = [];
+    editor.state.doc.forEach((node, _offset, index) => {
+      const path = String(node.attrs['path'] ?? '');
+      const next = editor.state.doc.maybeChild(index + 1);
+      if (node.type.name === 'image' && path && !(next?.type.name === 'codeBlock' && next.attrs['language'] === 'kalk')) unwritten.push(path);
+    });
+    const formulas = unwritten.filter((p) => /\/vzorec-[^/]*$/.test(p));
+    const paths = selected ? [selected] : formulas.length > 0 ? formulas : unwritten;
+    setReading({ done: 0, of: paths.length });
+    for (const [n, path] of paths.entries()) {
+      const block = await readFormula(path);
+      setReading({ done: n + 1, of: paths.length });
+      if (block === undefined) continue;
+      // Found again: the text may have changed meanwhile.
+      let after: number | undefined;
+      editor.state.doc.forEach((node, offset) => {
+        if (after === undefined && node.type.name === 'image' && node.attrs['path'] === path) after = offset + node.nodeSize;
+      });
+      if (after !== undefined) editor.chain().insertContentAt(after, { type: 'codeBlock', attrs: { language: 'kalk' }, content: [{ type: 'text', text: block }] }).run();
+    }
+    setReading(undefined);
+  };
+
   const insertPicture = async (pick: Props['pickImage'] = pickImage) => {
     // The dialog takes the focus; the picture goes where the cursor was.
     const at = editor.state.selection.from;
@@ -344,6 +389,11 @@ export function NotesWord({ text, title, catalog, readOnly, resolveFile, onChang
         <Tool label={t(catalog, 'word.formula')} title={t(catalog, 'word.formulaTip')} className="word-formula" active={editor.isActive('codeBlock', { language: 'kalk' })} disabled={readOnly} onClick={() => editor.chain().focus().toggleCodeBlock({ language: 'kalk' }).run()}>
           ƒx
         </Tool>
+        {readFormula && (
+          <Tool label={t(catalog, 'word.formulaAi')} title={t(catalog, 'word.formulaAiTip')} className="word-formula-ai" disabled={readOnly || !!reading} onClick={() => void readFormulas()}>
+            {reading ? `ƒx ${reading.done}/${reading.of}` : 'ƒx ✦'}
+          </Tool>
+        )}
         <Tool label={t(catalog, 'word.codeBlock')} active={editor.isActive('codeBlock')} disabled={readOnly} onClick={() => editor.chain().focus().toggleCodeBlock().run()}>
           ⌸
         </Tool>

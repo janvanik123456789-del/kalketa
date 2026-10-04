@@ -13,8 +13,8 @@ import { app, ipcMain, safeStorage, type IpcMainInvokeEvent } from 'electron';
 import { existsSync, readFileSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import { AI_EFFORTS, allowedProviders, CITED_ID, memoryInstruction, modelAllowed, prepareBriefing, NO_POLICY, parseAiPolicy, providerById, type AiPolicy, type AiSheetContext, type ChatTurn } from '@kalketa/ai';
-import { chat, discoverLocal, testConnection, tryModel, type AnswerResult, type ChatResult, type ConnectionResult } from '@kalketa/ai/connect';
+import { AI_EFFORTS, allowedProviders, CITED_ID, formulaPrompt, memoryInstruction, modelAllowed, prepareBriefing, NO_POLICY, parseAiPolicy, providerById, type AiPolicy, type AiSheetContext, type ChatTurn } from '@kalketa/ai';
+import { askAboutImage, chat, discoverLocal, testConnection, tryModel, type AnswerResult, type ChatResult, type ConnectionResult } from '@kalketa/ai/connect';
 
 export interface AiKeyState {
   /** A key is set for this provider. */
@@ -202,6 +202,24 @@ export function registerAiBridge(fromEditor: (event: IpcMainInvokeEvent) => unkn
   ipcMain.handle('kalketa:ai-chat', (event, ask: ChatAsk) => run(event, ask, false));
   // The sheet's memory rewritten when a conversation ends (ch. 9.7).
   ipcMain.handle('kalketa:ai-memory', (event, ask: ChatAsk) => run(event, ask, true));
+
+  // A formula read from a picture: the picture and the instruction, one answer.
+  ipcMain.handle('kalketa:ai-formula', async (event, ask: { provider: unknown; model: unknown; url?: unknown; image: { type: unknown; data: unknown } }): Promise<ChatResult> => {
+    fromEditor(event);
+    const id = allowed(ask.provider);
+    const model = typeof ask.model === 'string' ? ask.model : '';
+    if (!modelAllowed(readPolicy(), model)) throw new Error('Model not allowed');
+    if (typeof ask.image?.type !== 'string' || !ask.image.type.startsWith('image/') || typeof ask.image.data !== 'string') throw new Error('Bad picture');
+    await loadKeys();
+    return askAboutImage({
+      provider: id,
+      model,
+      ...(typeof ask.url === 'string' ? { url: ask.url } : {}),
+      ...(keys.has(id) ? { apiKey: keys.get(id)! } : {}),
+      prompt: formulaPrompt(),
+      image: { type: ask.image.type, data: ask.image.data },
+    });
+  });
 
   ipcMain.handle('kalketa:ai-chat-cancel', (event, id: unknown) => {
     fromEditor(event);

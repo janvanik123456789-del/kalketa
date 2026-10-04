@@ -197,6 +197,70 @@ export async function chat(request: ChatRequest, transport: Transport = {}): Pro
   }
 }
 
+/** A question about a picture (a formula to write out), answered at once, not in pieces. */
+export interface ImageRequest {
+  readonly provider: string;
+  readonly model: string;
+  readonly url?: string;
+  readonly apiKey?: string;
+  readonly prompt: string;
+  /** The picture: its type ("image/png") and its bytes as base64. */
+  readonly image: { readonly type: string; readonly data: string };
+  readonly signal?: AbortSignal;
+}
+
+export async function askAboutImage(request: ImageRequest, transport: Transport = {}): Promise<ChatResult> {
+  const provider = providerById(request.provider);
+  if (!provider) return { ok: false, problem: 'noProvider' };
+  if (provider.api === 'openai-compatible') {
+    if (provider.urlEditable && request.url !== undefined && !serverUrl(request.url)) return { ok: false, problem: 'badUrl' };
+    let response: Response;
+    try {
+      response = await (transport.fetch ?? fetch)(`${localUrl(provider, request.url)}/v1/chat/completions`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          model: request.model,
+          stream: false,
+          max_tokens: 4096,
+          messages: [{ role: 'user', content: [{ type: 'text', text: request.prompt }, { type: 'image_url', image_url: { url: `data:${request.image.type};base64,${request.image.data}` } }] }],
+        }),
+        ...(request.signal ? { signal: request.signal } : {}),
+      });
+    } catch {
+      return request.signal?.aborted ? { ok: false, problem: 'cancelled' } : { ok: false, problem: 'notRunning' };
+    }
+    if (!response.ok) return { ok: false, problem: 'provider', detail: `${response.status} ${(await response.text().catch(() => '')).slice(0, 200)}`.trim() };
+    const body = (await response.json().catch(() => ({}))) as { model?: string; choices?: { message?: { content?: string | null }; finish_reason?: string | null }[] };
+    return finished(body.choices?.[0]?.message?.content ?? '', body.model ?? request.model, body.choices?.[0]?.finish_reason === 'length');
+  }
+  if (!request.apiKey?.trim()) return { ok: false, problem: 'noKey' };
+  const client = new Anthropic({ apiKey: request.apiKey.trim(), authToken: null, maxRetries: 1 });
+  try {
+    const message = await client.messages.create(
+      {
+        model: request.model,
+        max_tokens: 4096,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'image', source: { type: 'base64', media_type: request.image.type as 'image/png', data: request.image.data } },
+              { type: 'text', text: request.prompt },
+            ],
+          },
+        ],
+      },
+      request.signal ? { signal: request.signal } : {},
+    );
+    if (message.stop_reason === 'refusal') return { ok: false, problem: 'refused' };
+    return finished(message.content.map((b) => (b.type === 'text' ? b.text : '')).join(''), message.model, message.stop_reason === 'max_tokens');
+  } catch (error) {
+    if (request.signal?.aborted) return { ok: false, problem: 'cancelled' };
+    return { ok: false, ...problemOf(error) };
+  }
+}
+
 /** POST /v1/chat/completions with stream: true; the answer comes as server-sent events. */
 async function chatOpenAi(provider: ProviderInfo, request: ChatRequest, fetchFn: typeof fetch): Promise<ChatResult> {
   if (provider.urlEditable && request.url !== undefined && !serverUrl(request.url)) return { ok: false, problem: 'badUrl' };

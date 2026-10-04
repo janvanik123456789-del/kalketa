@@ -524,3 +524,9 @@ button.icon:hover { color: var(--accent); }
 .proposal-effect .better { color: #2f6b3a; }
 .proposal-effect .worse { color: #a12828; }
 .proposal-actions { display: flex; gap: 6px; align-items: center; font-size: 12px; }
+
+/* Lines the AI made, until a person reviews them (ch. 9.7); on screen only. */
+.row.ai-made > .content { box-shadow: -3px 0 0 #9b7fd8; }
+.ai-mark { position: absolute; left: -22px; top: 4px; padding: 0 3px; border: 1px solid #9b7fd8; border-radius: 3px; background: #f3effc; color: #5a3fa6; font: 600 9px/13px system-ui, sans-serif; cursor: pointer; }
+.ai-mark:hover { background: #e6ddfa; }
+.proposal-review { margin-left: 4px; }

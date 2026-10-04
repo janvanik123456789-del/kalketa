@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aiMemoryOf, entriesOf, withEntries, conversationsOf, newDocument, readSheetFile, withAiMemory, withConversation, withoutConversation, writeSheetFile, type Conversation } from '../src/index.js';
+import { aiMadeLines, aiMemoryOf, entriesOf, withEntries, conversationsOf, newDocument, readSheetFile, withAiMemory, withConversation, withoutConversation, writeSheetFile, type Conversation } from '../src/index.js';
 
 const first: Conversation = {
   id: 'c1',
@@ -60,5 +60,24 @@ describe('conversations with the AI in the sheet', () => {
     expect(entriesOf(read.document!)).toEqual([{ ...proposed, state: 'accepted', decided: '2026-10-04T10:01:00Z' }]);
     expect(read.document!.layers.some((l) => l.kind === 'ai')).toBe(true);
     expect(withEntries(doc, [])).toBe(doc);
+  });
+
+  it('mark the lines an accepted change brought until someone reviews them', () => {
+    const entry = { id: 'c1:1:1', kind: 'change' as const, time: 't', from: 2, to: 2, before: ['b := 2'], after: ['b := 20'], state: 'accepted' as const };
+    const source = ['a := 1', 'b := 20', 'c := 3'].join('\n');
+    expect([...aiMadeLines(source, [entry]).keys()]).toEqual([2]);
+    // A line added above: the mark follows the line.
+    expect([...aiMadeLines('x := 0\n' + source, [entry]).keys()]).toEqual([3]);
+    // Edited by a person, reviewed, rejected, or still open: no mark.
+    expect(aiMadeLines(source.replace('b := 20', 'b := 21'), [entry]).size).toBe(0);
+    expect(aiMadeLines(source, [{ ...entry, reviewed: 't2' }]).size).toBe(0);
+    expect(aiMadeLines(source, [{ ...entry, state: 'rejected' }]).size).toBe(0);
+    expect(aiMadeLines(source, [{ ...entry, state: 'open' }]).size).toBe(0);
+    // The same text twice: the one nearest to where it was put.
+    const twice = ['b := 20', 'a := 1', 'b := 20', 'c := 3'].join('\n');
+    expect([...aiMadeLines(twice, [{ ...entry, from: 3, to: 3 }]).keys()]).toEqual([3]);
+    // An insert after line 1 of two lines.
+    const insert = { ...entry, from: 1, to: 1, insert: true, after: ['x := 1', 'y := 2'] };
+    expect([...aiMadeLines(['a := 1', 'x := 1', 'y := 2'].join('\n'), [insert]).keys()]).toEqual([2, 3]);
   });
 });

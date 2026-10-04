@@ -22,6 +22,7 @@ Jak by to šlo na dnešní základ (kap. 9.6):
 - **Citace:** klíč souboru a stránka, např. `[EN1993:s45]`. Ověření citace je text na té stránce. Ve vrstvě AI to bude skupina „Studijní podklady“ s názvem souboru a stránkou.
 - **Do výpočtu:** stejně jako u knihoven se do souboru `.kalk` uloží kopie citovaných úseků a odkaz na soubor, aby výpočet šel předat bez celé složky.
 - **Vztah ke `.kalkt`:** složka je rychlý start bez přípravy, `.kalkt` je pečlivě připravená knihovna (vyčištěný text, obrázky, stálé id). Z PDF ve složce by šla jedním příkazem vyrobit `.kalkt`.
+- **Rozsah podkladů (poznámka uživatele 2026-10-04, k rozvedení):** člověk by neměl do podkladů dávat celou knihu o strojařině, jen vybrané statě. Možnosti: (a) návod a upozornění přímo v programu, (b) automatizace, kdy program navrhne výběr kapitol podle výpočtu, (c) celá kniha ve složce, ale s instrukcí číst jen vybrané stránky nebo kapitoly (rozsah stránek u souboru). Zatím otevřené, rozvedeme.
 - **Pozor:** autorská práva norem. Text zůstává u uživatele a jde jen do jeho modelu; do `.kalk` jen citované úseky.
 
 ### Web jako zdroj (2026-10-04)

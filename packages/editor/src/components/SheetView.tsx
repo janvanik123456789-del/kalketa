@@ -63,6 +63,12 @@ interface Props {
   readonly uiCatalog: Catalog;
   /** Show and accept numbers with a decimal comma (50,5; arguments separated by ";"). */
   readonly decimalComma: boolean;
+  /** Lines from accepted AI changes nobody has reviewed yet: line -> the change and its tooltip. */
+  readonly aiMade?: ReadonlyMap<number, { readonly id: string; readonly title: string }>;
+  /** A person reviewed the lines of this change. */
+  onAiReviewed?(id: string): void;
+  /** Shows the change in the AI notes. */
+  onAiShow?(id: string): void;
 }
 
 const NO_COMMANDS: ReadonlyMap<string, Command> = new Map<string, Command>();
@@ -73,6 +79,8 @@ export function SheetView(props: Props) {
   const [pictureMenu, setPictureMenu] = useState<{ seg: Segment; at: { x: number; y: number } } | undefined>();
   // Where a dragged picture would land: a line across the page body.
   const [dropMark, setDropMark] = useState<{ x: number; y: number; width: number } | undefined>();
+  // The menu of an AI mark: reviewed, or where it came from.
+  const [aiMenu, setAiMenu] = useState<{ id: string; at: { x: number; y: number } } | undefined>();
   const segs = segments(source, result.sheet.statements, editing);
   const blockByLine = new Map<number, PrintBlock>();
   for (const block of print.blocks) if ('line' in block) blockByLine.set(block.line, block);
@@ -285,6 +293,17 @@ export function SheetView(props: Props) {
       {/* Outside the zoomed pages, so the menu has its normal size and sits at the pointer. */}
       {dropMark && <div className="drop-mark" style={{ left: dropMark.x, top: dropMark.y - 1, width: dropMark.width }} />}
       {pictureMenu && <ContextMenu items={pictureItems(pictureMenu.seg)} commands={NO_COMMANDS} at={pictureMenu.at} onClose={() => setPictureMenu(undefined)} />}
+      {aiMenu && (
+        <ContextMenu
+          items={[
+            { kind: 'action', label: t(props.uiCatalog, 'aiMark.review'), run: () => props.onAiReviewed?.(aiMenu.id) },
+            { kind: 'action', label: t(props.uiCatalog, 'aiMark.show'), run: () => props.onAiShow?.(aiMenu.id) },
+          ]}
+          commands={NO_COMMANDS}
+          at={aiMenu.at}
+          onClose={() => setAiMenu(undefined)}
+        />
+      )}
       <div className="pages" ref={container} style={{ zoom: props.zoom, ['--zoom' as string]: props.zoom }}>
         {pages.map((page, p) => (
           <section
@@ -337,11 +356,14 @@ export function SheetView(props: Props) {
     const selected = seg.statement !== undefined && seg.statement === props.selected;
     // @clear ends the flow around a wrapped picture: this row and all below start under it.
     const clear = /^\s*@clear\b/.test(seg.text);
+    // Made by the AI and not reviewed yet: marked until a person says it is right.
+    let aiMark: { id: string; title: string } | undefined;
+    for (let line = seg.start; line <= seg.end && !aiMark; line++) aiMark = props.aiMade?.get(line);
     return (
       <div
         key={`${seg.start}:${isEditing ? 'e' : seg.text}`}
         data-item={measured ? '' : undefined}
-        className={`row${isEditing ? ' editing' : ''}${selected ? ' selected' : ''}${statement?.status === 'error' ? ' has-error' : ''}${block?.kind === 'picture' && block.wrap ? ` wrap-${block.wrap}` : ''}${clear ? ' clear-row' : ''}`}
+        className={`row${isEditing ? ' editing' : ''}${selected ? ' selected' : ''}${statement?.status === 'error' ? ' has-error' : ''}${block?.kind === 'picture' && block.wrap ? ` wrap-${block.wrap}` : ''}${clear ? ' clear-row' : ''}${aiMark ? ' ai-made' : ''}`}
         style={block?.kind === 'picture' && block.wrap ? { width: `${block.width ?? 40}%` } : undefined}
         data-line={seg.start}
         onMouseDown={(e) => {
@@ -373,7 +395,23 @@ export function SheetView(props: Props) {
           setPictureMenu({ seg, at: { x: e.clientX, y: e.clientY } });
         }}
       >
-        <span className="gutter">{seg.start}</span>
+        <span className="gutter">
+          {aiMark && (
+            <button
+              type="button"
+              className="ai-mark"
+              title={aiMark.title}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setAiMenu({ id: aiMark!.id, at: { x: e.clientX, y: e.clientY } });
+              }}
+            >
+              AI
+            </button>
+          )}
+          {seg.start}
+        </span>
         <div className="content">
           {isEditing ? (
             <RowEditor

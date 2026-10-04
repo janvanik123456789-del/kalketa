@@ -56,9 +56,11 @@ export interface ChatPaneProps {
   proposals?(turn: number): readonly ProposalView[];
   /** The user accepts or rejects a proposed change. */
   onDecide?(id: string, accept: boolean): void;
+  /** The user reviewed the lines of an accepted change. */
+  onReview?(id: string): void;
 }
 
-export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTurns, context, onOpenSettings, onNew, libraries = [], onLibraries, onToggleLibrary, proposals, onDecide }: ChatPaneProps) {
+export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTurns, context, onOpenSettings, onNew, libraries = [], onLibraries, onToggleLibrary, proposals, onDecide, onReview }: ChatPaneProps) {
   const [libraryMenu, setLibraryMenu] = useState(false);
   // The menu of libraries closes like any menu: a click anywhere else, or Esc.
   useEffect(() => {
@@ -239,7 +241,7 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTur
             <div key={i} className="chat-turn assistant">
               <div dangerouslySetInnerHTML={{ __html: answerHtml(turn.text, turn.theory) }} />
               {(proposals?.(i) ?? []).map((view, n) => (
-                <ProposalCard key={view.entry.id} view={view} n={n + 1} catalog={catalog} onDecide={(id, accept) => onDecide?.(id, accept)} />
+                <ProposalCard key={view.entry.id} view={view} n={n + 1} catalog={catalog} onDecide={(id, accept) => onDecide?.(id, accept)} {...(onReview ? { onReview } : {})} />
               ))}
             </div>
           ) : (

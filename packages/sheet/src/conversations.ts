@@ -80,6 +80,8 @@ export interface ChangeEntry {
   readonly state: 'open' | 'accepted' | 'rejected';
   /** ISO time of the decision. */
   readonly decided?: string;
+  /** ISO time a person marked the accepted lines as reviewed; until then the sheet marks them as made by the AI. */
+  readonly reviewed?: string;
 }
 
 /** The journal of the sheet, oldest first. */
@@ -93,6 +95,28 @@ export function entriesOf(doc: SheetDocument): ChangeEntry[] {
   } catch {
     return [];
   }
+}
+
+/**
+ * Lines of the sheet that came from accepted AI changes nobody has reviewed yet,
+ * by line number (1-based). A change is found by its lines as accepted, nearest
+ * to where it was put, so it follows when lines above are added or removed; once
+ * a person edits such a line, it is theirs and no longer marked.
+ */
+export function aiMadeLines(source: string, entries: readonly ChangeEntry[]): Map<number, ChangeEntry> {
+  const lines = source.split(/\r?\n/);
+  const made = new Map<number, ChangeEntry>();
+  for (const entry of entries) {
+    if (entry.state !== 'accepted' || entry.reviewed || entry.after.length === 0) continue;
+    const anchor = entry.insert ? entry.from + 1 : entry.from;
+    let best: number | undefined;
+    for (let at = 1; at + entry.after.length - 1 <= lines.length; at++) {
+      if (!entry.after.every((l, i) => lines[at - 1 + i] === l)) continue;
+      if (best === undefined || Math.abs(at - anchor) < Math.abs(best - anchor)) best = at;
+    }
+    if (best !== undefined) for (let i = 0; i < entry.after.length; i++) made.set(best + i, entry);
+  }
+  return made;
 }
 
 /** The sheet with these entries added, or replaced by id. */

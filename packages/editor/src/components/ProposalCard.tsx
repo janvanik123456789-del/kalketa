@@ -19,7 +19,7 @@ function percent(u: number | undefined, catalog: Catalog): string {
   return u === undefined ? '' : `${new Intl.NumberFormat(catalog.locale, { maximumFractionDigits: 0 }).format(u * 100)} %`;
 }
 
-export function ProposalCard({ view, n, catalog, onDecide }: { view: ProposalView; n: number; catalog: Catalog; onDecide(id: string, accept: boolean): void }) {
+export function ProposalCard({ view, n, catalog, onDecide, onReview }: { view: ProposalView; n: number; catalog: Catalog; onDecide(id: string, accept: boolean): void; onReview?(id: string): void }) {
   const { entry, fits, effect } = view;
   const where = entry.insert
     ? t(catalog, 'proposal.insert', { line: String(entry.from) })
@@ -73,8 +73,17 @@ export function ProposalCard({ view, n, catalog, onDecide }: { view: ProposalVie
           ) : (
             <span className="muted">{t(catalog, fits === 'stale' ? 'proposal.stale' : 'proposal.missing')}</span>
           )
+        ) : entry.state === 'accepted' && entry.reviewed ? (
+          <span className="proposal-state">{t(catalog, 'proposal.acceptedReviewed', { when: when(entry.decided), reviewed: when(entry.reviewed) })}</span>
         ) : (
-          <span className="proposal-state">{t(catalog, entry.state === 'accepted' ? 'proposal.accepted' : 'proposal.rejected', { when: when(entry.decided) })}</span>
+          <>
+            <span className="proposal-state">{t(catalog, entry.state === 'accepted' ? 'proposal.accepted' : 'proposal.rejected', { when: when(entry.decided) })}</span>
+            {entry.state === 'accepted' && entry.after.length > 0 && onReview && (
+              <button type="button" className="proposal-review" onClick={() => onReview(entry.id)}>
+                {t(catalog, 'proposal.review')}
+              </button>
+            )}
+          </>
         )}
       </div>
     </div>

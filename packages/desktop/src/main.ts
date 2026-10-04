@@ -1392,7 +1392,7 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
   let kept = { count: 0, text: '' };
   let layerShown = { memory: '', sheet: [] as string[], unknown: [] as string[], hiddenConversations: -1 };
   let resumed: string[] = [];
-  let proposal = { card: '', accepted: false, state: '', undone: false, journal: '' };
+  let proposal = { card: '', accepted: false, state: '', undone: false, journal: '', marked: '', reviewed: false, markedAgain: false };
   if (aiTab) {
     await clickOn('.layer-tab[data-layer="ai"]');
     // New chat ended the conversation: the model rewrote the memory, in the background.
@@ -1429,17 +1429,31 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
     const inSheet = `[...document.querySelectorAll('.layer-view.active .row[data-line]')].some((r) => r.textContent.includes('smoke'))`;
     const accepted = (await contents.executeJavaScript(inSheet)) as boolean;
     const state = (await contents.executeJavaScript(`document.querySelector('.chat-pane .proposal-state')?.textContent ?? ''`)) as string;
+    // The accepted line carries the AI mark until it is reviewed.
+    const markedRow = `[...document.querySelectorAll('.layer-view.active .row.ai-made')].map((r) => r.getAttribute('data-line') + ':' + (r.querySelector('.ai-mark')?.getAttribute('title') ?? '')).join('|')`;
+    const marked = (await contents.executeJavaScript(markedRow)) as string;
+    await takePicture(picture.replace(/[.]png$/, '-ai-marked.png'));
     await clickOn('.layer-tab[data-layer="ai"]');
     await pause(300);
     const journal = (await contents.executeJavaScript(`document.querySelector('.layer-view.active .ai-changes')?.textContent ?? ''`)) as string;
     await clickOn('.layer-tab[data-layer="main"]');
     await pause(200);
+    // Reviewed from the mark's menu: the mark goes; Undo brings it back.
+    await clickOn('.layer-view.active .row.ai-made .ai-mark');
+    await pause(200);
+    await clickMenu('Označit jako prověřené');
+    await pause(300);
+    const reviewed = (await contents.executeJavaScript(`document.querySelectorAll('.layer-view.active .row.ai-made').length === 0`)) as boolean;
+    await clickOn('.menubar-item:nth-child(2) > button');
+    await clickMenu('Zpět');
+    await pause(400);
+    const markedAgain = (await contents.executeJavaScript(markedRow)) === marked;
     // Undo takes the line and the decision back together: the proposal is open again.
     await clickOn('.menubar-item:nth-child(2) > button');
     await clickMenu('Zpět');
     await pause(400);
     const undone = !(await contents.executeJavaScript(inSheet)) && (await contents.executeJavaScript(`!!document.querySelector('.chat-pane .proposal-accept')`));
-    proposal = { card, accepted, state, undone: undone as boolean, journal };
+    proposal = { card, accepted, state, undone: undone as boolean, journal, marked, reviewed, markedAgain };
     if (await contents.executeJavaScript(`!!document.querySelector('.layer-tab[data-layer="main"]')`)) await clickOn('.layer-tab[data-layer="main"]');
   }
   // Back to the pane the later steps expect.
@@ -1466,7 +1480,8 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
     cutOff.error.includes('vyčerpal limit') && cutOff.answers === 1 && !cutOff.empty &&
     resumed.length === 3 && resumed[0] === 'user:Co počítá řádek 3?' && resumed[1]!.startsWith('assistant:list:') && resumed[2] === 'user:Analyzuj výpočet.' &&
     proposal.card.includes('+ smoke_ai := 2 m') && proposal.card.includes('Výsledky posudků se nezmění.') && proposal.accepted && proposal.state.startsWith('Přijato') &&
-    proposal.journal.includes('Návrhy změn') && proposal.journal.includes('Přijato') && proposal.undone
+    proposal.journal.includes('Návrhy změn') && proposal.journal.includes('Přijato') && proposal.undone &&
+    /^\d+:Řádek navrhla AI \(local-smoke-7b, přijato /.test(proposal.marked) && !proposal.marked.includes('|') && proposal.reviewed && proposal.markedAgain
   );
 }
 

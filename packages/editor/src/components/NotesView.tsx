@@ -40,6 +40,7 @@ interface Props {
   /** AI notes: the journal of changes the model proposed, oldest first. */
   readonly changes?: readonly ProposalView[];
   onDecide?(id: string, accept: boolean): void;
+  onReview?(id: string): void;
   /** AI notes: the conversations kept with them, oldest first; shown on request. */
   readonly conversations?: readonly Conversation[];
   /** Takes a conversation up again in the chat. */
@@ -47,7 +48,7 @@ interface Props {
   onDeleteConversation?(id: string): void;
 }
 
-export function NotesView({ layer, title, catalog, readOnly, resolveFile, fileExists, onChange, onSettle, onSaveLibrary, sources = [], memory = '', onForgetMemory, changes = [], onDecide, conversations = [], onContinueConversation, onDeleteConversation }: Props) {
+export function NotesView({ layer, title, catalog, readOnly, resolveFile, fileExists, onChange, onSettle, onSaveLibrary, sources = [], memory = '', onForgetMemory, changes = [], onDecide, onReview, conversations = [], onContinueConversation, onDeleteConversation }: Props) {
   const [showConversations, setShowConversations] = useState(false);
   const text = layer.text ?? '';
 
@@ -76,7 +77,7 @@ export function NotesView({ layer, title, catalog, readOnly, resolveFile, fileEx
             <section className="ai-changes">
               <h3>{t(catalog, 'ai.changes')}</h3>
               {[...changes].reverse().map((view, i) => (
-                <ProposalCard key={view.entry.id} view={view} n={changes.length - i} catalog={catalog} onDecide={(id, accept) => onDecide?.(id, accept)} />
+                <ProposalCard key={view.entry.id} view={view} n={changes.length - i} catalog={catalog} onDecide={(id, accept) => onDecide?.(id, accept)} {...(onReview ? { onReview } : {})} />
               ))}
             </section>
           )}

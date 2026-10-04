@@ -12,7 +12,7 @@ import { catalogFor, CATALOGS, formatDiagnostic, formatNumber, t, type Catalog }
 import { buildPrintDocument, printHtml, revisionFooter } from '@kalketa/render';
 import { emptyScene, readScene, writeScene, type CanvasScene } from '@kalketa/canvas';
 import { CanvasEditor } from '@kalketa/canvas/editor';
-import { addLayer, allDiagnostics, appendixLayers, blockAppendices, documentBlocks, isRemovable, LayerSessions, MAIN_LAYER, removeLayer, freezeRevision, removeRevision, revisionDocument, revisionState, shortHash, tablesByLayer, theorySections, updateLayer, withTheoryIds, conversationsOf, hasConversations, withConversation, withoutConversation, aiMemoryOf, withAiMemory, linkedLibraries, librarySections, entriesOf, withEntries, evaluateDocument, type ChangeEntry, type Conversation, type AddableLayerKind, type Layer, type RevisionState, type SheetDocument } from '@kalketa/sheet';
+import { addLayer, allDiagnostics, appendixLayers, blockAppendices, documentBlocks, isRemovable, LayerSessions, MAIN_LAYER, removeLayer, freezeRevision, removeRevision, revisionDocument, revisionState, shortHash, tablesByLayer, theorySections, updateLayer, withTheoryIds, conversationsOf, hasConversations, withConversation, withoutConversation, aiMemoryOf, withAiMemory, linkedLibraries, librarySections, entriesOf, withEntries, aiMadeLines, evaluateDocument, type ChangeEntry, type Conversation, type AddableLayerKind, type Layer, type RevisionState, type SheetDocument } from '@kalketa/sheet';
 import { buildCommands, shortcutOf, type Command } from './commands.js';
 import { applyProposal, cleanMemory, DEFAULT_AI_SETTINGS, parseAiSettings, parseProposals, providerById, replacedLines, type ChangeProposal, type AiSettings, type ChatTurn } from '@kalketa/ai';
 import { ChatPane } from './components/ChatPane.js';
@@ -684,6 +684,25 @@ export function App() {
       if (!entry.before || !now || now.length !== entry.before.length || now.some((l, i) => l !== entry.before![i])) return present;
       return withEntries({ ...present, source: applyProposal(present.source, asProposal(entry)) }, [{ ...entry, state: 'accepted', decided }]);
     });
+  /** A person reviewed the lines an accepted change brought: they lose their AI mark. */
+  const reviewProposal = (entryId: string) =>
+    changeWith((present) => {
+      const entry = entriesOf(present).find((e) => e.id === entryId);
+      return entry && entry.state === 'accepted' && !entry.reviewed ? withEntries(present, [{ ...entry, reviewed: new Date().toISOString() }]) : present;
+    });
+  /** The AI notes with this change in view. */
+  const showProposal = (entryId: string) => {
+    const ai = doc.layers.find((x) => x.kind === 'ai');
+    if (!ai) return;
+    activate(ai.id);
+    window.setTimeout(() => document.querySelector(`.layer-view.active [data-proposal="${CSS.escape(entryId)}"]`)?.scrollIntoView({ block: 'center' }), 100);
+  };
+  /** Lines of the sheet the AI made and nobody reviewed yet, with the tooltip of their mark. */
+  const aiMarks = (source: string) => {
+    const made = aiMadeLines(source, entriesOf(doc));
+    const when = (iso: string | undefined) => (iso ? new Intl.DateTimeFormat(ui.locale, { dateStyle: 'short', timeStyle: 'short' }).format(new Date(iso)) : '');
+    return new Map([...made].map(([line, e]) => [line, { id: e.id, title: t(ui, 'aiMark.title', { model: e.model ?? 'AI', when: when(e.decided) }) }] as const));
+  };
   // A memory update running, by tab: one at a time.
   const remembering = useRef<Record<string, boolean>>({});
   /**
@@ -1280,6 +1299,7 @@ export function App() {
                 memory: aiMemoryOf(doc),
                 changes: proposalViews(entriesOf(doc)),
                 onDecide: decideProposal,
+                onReview: reviewProposal,
                 onForgetMemory: () =>
                   void askConfirm(t(ui, 'ai.memoryForgetConfirm')).then((yes) => {
                     if (yes) change(withAiMemory(doc, ''));
@@ -1354,6 +1374,7 @@ export function App() {
           title={l.kind === 'calc' ? nameOf(l) : (/^[ \t]*#(?!#)[ \t]*(.+?)[ \t]*$/m.exec(doc.source)?.[1] ?? doc.manifest.title)}
           uiCatalog={printCatalog}
           decimalComma={decimalComma}
+          {...(l.kind === 'sheet' ? { aiMade: aiMarks(source), onAiReviewed: reviewProposal, onAiShow: showProposal } : {})}
         />
       </main>
     );
@@ -1426,6 +1447,7 @@ export function App() {
                     }}
                     proposals={(turn) => (chat ? proposalViews(entriesOf(doc).filter((e) => e.id.startsWith(`${chat.id}:${turn}:`))) : [])}
                     onDecide={decideProposal}
+                    onReview={reviewProposal}
                     onNew={() => {
                       rememberConversation(chat);
                       startedChat.current[tab.id] = undefined;

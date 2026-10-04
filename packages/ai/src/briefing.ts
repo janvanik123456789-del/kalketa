@@ -149,7 +149,7 @@ export function changesText(changes: readonly AiChangeRecord[]): string {
     .map((c) => {
       const where = c.insert ? `after line ${c.from}` : c.from === c.to ? `line ${c.from}` : `lines ${c.from}-${c.to}`;
       const what = c.insert ? `insert ${code(c.after)}` : `${code(c.before)} -> ${code(c.after)}`;
-      const decision = c.state === 'open' ? 'not decided yet' : `${c.state} by the user ${day(c.decided)}`;
+      const decision = c.state === 'open' ? 'not decided yet' : `${c.state} by the user ${day(c.decided)}${c.reviewed ? ', reviewed' : ''}`;
       return `- ${day(c.time)} ${where}: ${what}; ${decision}`;
     })
     .join(String.fromCharCode(10));

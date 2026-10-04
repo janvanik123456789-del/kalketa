@@ -48,6 +48,8 @@ export interface AiChangeRecord {
   /** ISO time it was proposed, and decided. */
   readonly time: string;
   readonly decided?: string;
+  /** ISO time a person reviewed the accepted lines. */
+  readonly reviewed?: string;
 }
 
 export interface AiRequest {

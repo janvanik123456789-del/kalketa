@@ -159,7 +159,7 @@ export function chapterTexts(content: StudyContent): { title: string; text: stri
  * it is tidied and saved as a theory library: a heading per chapter (with its
  * pages as printed), the text of its pages under it.
  */
-export function studyNotes(content: StudyContent, settings: StudySettings = {}): string {
+export function studyNotes(content: StudyContent, settings: StudySettings = {}, pageText: (page: number) => string = (p) => content.pages[p - 1] ?? ''): string {
   const outline = content.outline ?? [];
   const label = (p: number) => content.labels?.[p - 1] ?? String(p);
   const chapterOf = (p: number) => [...outline].reverse().find((c) => c.page <= p);
@@ -178,7 +178,7 @@ export function studyNotes(content: StudyContent, settings: StudySettings = {}):
   const asked = new Set(settings.pages ? parsePageRanges(settings.pages, content.pages.length, content.labels) : []);
   const groups: { chapter?: StudyChapter; pages: number[] }[] = [];
   for (const p of selectedPages(content, settings)) {
-    if (!content.pages[p - 1]?.trim()) continue;
+    if (!pageText(p).trim()) continue;
     const chapter = chapterOf(p);
     if (chosen.size > 0 && !asked.has(p) && (!chapter || !chosen.has(chapter))) continue;
     const last = groups[groups.length - 1];
@@ -191,7 +191,7 @@ export function studyNotes(content: StudyContent, settings: StudySettings = {}):
       const last = g.pages[g.pages.length - 1]!;
       const pages = content.kind === 'pdf' ? ` (s. ${first === last ? label(first) : `${label(first)}–${label(last)}`})` : '';
       const level = content.kind === 'pdf' ? Math.min(3, Math.max(2, (g.chapter?.level ?? 1) + 1)) : Math.min(3, (g.chapter?.level ?? 1) + 1);
-      return `${'#'.repeat(level)} ${headingText(g.chapter?.title ?? content.title ?? baseName(content.fileName))}${pages}\n\n${g.pages.map((p) => bodyText(content.pages[p - 1] ?? '')).join('\n\n')}`;
+      return `${'#'.repeat(level)} ${headingText(g.chapter?.title ?? content.title ?? baseName(content.fileName))}${pages}\n\n${g.pages.map((p) => bodyText(pageText(p))).join('\n\n')}`;
     })
     .join('\n\n');
 }

@@ -104,6 +104,18 @@ export function joinSpacedLetters(line: string): { text: string; words: string[]
   return { text, words };
 }
 
+/**
+ * A line the PDF could not give as text: a formula (short, few words, ending in
+ * its number "(45)") or scraps of a figure or formula. Undefined for real text.
+ */
+export function formulaOrScraps(line: string): 'formula' | 'scraps' | undefined {
+  const text = line.trim();
+  const realWords = text.split(/\s+/).filter((w) => /\p{L}{3,}/u.test(w)).length;
+  if (NUMBERED_FORMULA.test(text) && text.length <= 60 && realWords <= 3) return 'formula';
+  if (looksLikeScraps(line)) return 'scraps';
+  return undefined;
+}
+
 /** A line made of scraps (single letters, symbols): what is left of a figure. */
 function looksLikeScraps(line: string): boolean {
   const text = line.trim();

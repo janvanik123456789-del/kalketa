@@ -22,6 +22,7 @@ import { aiSources } from './logic/aiSources.js';
 import { aiProtocol } from './logic/aiProtocol.js';
 import { StudyDialog } from './components/StudyDialog.js';
 import { PdfCropDialog, type CutAnchor } from './components/PdfCropDialog.js';
+import { studyImport } from './logic/studyImport.js';
 import { proposalEffect, type ProposalEffect } from './logic/proposalEffect.js';
 import type { NewSheetView, ProposalView } from './components/ProposalCard.js';
 import type { AnswerProposals } from './components/ChatPane.js';
@@ -351,11 +352,38 @@ export function App() {
     const pages = studyAdvice(content, settings).selected;
     if (pages > LARGE_STUDY_PAGES && !(await askConfirm(t(ui, 'study.toSourcesLarge', { pages: String(pages) })))) return;
     const name = file.library.manifest.title;
-    const added = addLayer(doc.layers, 'sources', name);
-    change({ ...doc, layers: updateLayer(added.layers, added.id, { text: studyNotes(content, settings) }) });
+    const planned = addLayer(doc.layers, 'sources', name).id;
     setDialog(undefined);
-    activate(added.id);
-    setNotice(t(ui, 'study.toSourcesDone', { name }));
+    // A PDF: its pictures and scattered formulas cut out at their place. Else (or if the PDF cannot be drawn) the text alone.
+    let made: { text: string; files: ReadonlyMap<string, Uint8Array>; pictures: number; formulas: number } = { text: studyNotes(content, settings), files: new Map(), pictures: 0, formulas: 0 };
+    if (content.kind === 'pdf' && desktop) {
+      try {
+        made = await studyImport(
+          { path: file.path, title: name, content, settings },
+          {
+            ...(tab.path ? { sheetPath: tab.path } : {}),
+            folder: `layers/${planned}/images`,
+            caption: (page) => t(ui, 'crop.caption', { title: name, page }),
+            taken: (path) => doc.files.has(path),
+            progress: (page, of) => setNotice(t(ui, 'study.importing', { page: String(page), of: String(of) })),
+          },
+        );
+      } catch {
+        setNotice(t(ui, 'study.importNoCuts'));
+      }
+    }
+    let id = planned;
+    changeWith((present) => {
+      const added = addLayer(present.layers, 'sources', name);
+      id = added.id;
+      // The layer got another id meanwhile: the paths of its pictures follow it.
+      const move = (s: string) => (added.id === planned ? s : s.split(`layers/${planned}/`).join(`layers/${added.id}/`));
+      const files = new Map(present.files);
+      for (const [path, bytes] of made.files) files.set(move(path), bytes);
+      return { ...present, files, layers: updateLayer(added.layers, added.id, { text: move(made.text) }) };
+    });
+    activate(id);
+    setNotice(t(ui, made.pictures + made.formulas > 0 ? 'study.toSourcesCuts' : 'study.toSourcesDone', { name, pictures: String(made.pictures), formulas: String(made.formulas) }));
   };
 
   // A cut-out from a study PDF being chosen: the sources wait for it.

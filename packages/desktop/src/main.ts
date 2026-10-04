@@ -1259,7 +1259,12 @@ async function studyWithRealInput(contents: Electron.WebContents, picture: strin
   const topic = (p: number) =>
     p >= 21 && p <= 40 ? 'Ohybový moment a průhyb prostého nosníku se počítají z rovnice ohybové čáry.' : p > 40 ? 'Kroutící moment namáhá hřídel smykem po obvodu průřezu.' : 'Tah a tlak prutu vyvolávají normálové napětí v průřezu.';
   const heading = (p: number) => ({ 1: '<h1>1 Úvod</h1>', 21: '<h1>2 Ohyb</h1>', 25: '<h2>2.1 Průhyb nosníku</h2>', 41: '<h1>3 Krut</h1>' })[p] ?? '';
-  const pages = Array.from({ length: 62 }, (_, i) => `<section style="break-after: page">${heading(i + 1)}<p>Strana ${i + 1}. ${topic(i + 1)}</p></section>`).join('');
+  // Page 22 has a picture and a formula the PDF can only give as scraps: both become cut-outs in the sources.
+  const bitmap = Buffer.alloc(160 * 100 * 4);
+  for (let i = 0; i < 160 * 100; i++) bitmap.set([200, 120, 40, 255], i * 4);
+  const png = nativeImage.createFromBitmap(bitmap, { width: 160, height: 100 }).toPNG().toString('base64');
+  const extra = (p: number) => (p === 22 ? `<p><img src="data:image/png;base64,${png}" style="width:200px;height:125px"></p><p style="margin-left:120px">M = F · a (51)</p><p>Text pod vzorcem na straně 22.</p>` : '');
+  const pages = Array.from({ length: 62 }, (_, i) => `<section style="break-after: page">${heading(i + 1)}<p>Strana ${i + 1}. ${topic(i + 1)}</p>${extra(i + 1)}</section>`).join('');
   const printer = await printWindow(`<!doctype html><html lang="cs"><head><meta charset="utf-8"><title>Pružnost a pevnost</title></head><body>${pages}</body></html>`);
   const pdf = await printer.webContents.printToPDF({ preferCSSPageSize: true, generateTaggedPDF: true, generateDocumentOutline: true });
   printer.destroy();
@@ -1290,12 +1295,14 @@ async function studyWithRealInput(contents: Electron.WebContents, picture: strin
   await takePicture(picture.replace(/[.]png$/, '-study.png'));
   // Into the sources: the card is saved, a new sources layer holds the chapter by its headings.
   await clickOn('.study-to-sources');
-  await pause(800);
+  for (let i = 0; i < 60 && !(await contents.executeJavaScript(`document.querySelectorAll('.layer-view.active .word-text img').length >= 2`)); i++) await pause(200);
   const sources = (await contents.executeJavaScript(`({
     dialog: !!document.querySelector('.study-files'),
     headings: [...document.querySelectorAll('.layer-view.active .word-text h2, .layer-view.active .word-text h3')].map((h) => h.tagName + ':' + h.textContent),
     text: document.querySelector('.layer-view.active .word-text .ProseMirror')?.textContent ?? '',
-  })`)) as { dialog: boolean; headings: string[]; text: string };
+    cuts: [...document.querySelectorAll('.layer-view.active .word-text img')].map((i) => i.getAttribute('alt') ?? ''),
+    notice: document.querySelector('.notice')?.textContent ?? '',
+  })`)) as { dialog: boolean; headings: string[]; text: string; cuts: string[]; notice: string };
   // Cut-outs from the PDF: the page drawn, zoomed, rectangles dragged over it and put in one after another;
   // one taken from below the text of page 21 lands right after that text in the sources.
   const picturesBefore = (await contents.executeJavaScript(`document.querySelectorAll('.layer-view.active .word-text img').length`)) as number;
@@ -1378,7 +1385,8 @@ async function studyWithRealInput(contents: Electron.WebContents, picture: strin
     offered.file.startsWith('Pruznost a pevnost.pdf') && offered.file.includes('PDF, 62 s.') && offered.reads === 'AI čte 62 z 62.' && offered.large && offered.key === 'PP' &&
     offered.chapters.length === 4 && ohyb >= 0 && chosen.reads === 'AI čte 21 z 62.' && !chosen.large && suggested !== '' &&
     !sources.dialog && sources.headings[0] === 'H2:2 Ohyb (s. 21–24)' && sources.headings[1] === 'H3:2.1 Průhyb nosníku (s. 25–40)' && sources.headings.length === 2 && sources.text.includes('Strana 30.') && !sources.text.includes('Strana 20.') &&
-    cropPage === '21' && !!fitted && !!zoomed && zoomed.w > fitted.w * 1.2 && stillOpen === 'Vloženo: 2' && !cropped.dialog && cropped.pictures.length === picturesBefore + 2 && cropped.pictures.every((c) => /^Pružnost a pevnost, s\. 21\|\d+$/.test(c) && Number(c.split('|')[1]) > 400) && cropped.afterPage21 === 'img' &&
+    cropPage === '21' && !!fitted && !!zoomed && zoomed.w > fitted.w * 1.2 && stillOpen === 'Vloženo: 2' && !cropped.dialog && cropped.pictures.length === picturesBefore + 2 && cropped.pictures.filter((c) => /^Pružnost a pevnost, s\. 21\|\d+$/.test(c) && Number(c.split('|')[1]) > 400).length === 2 &&
+    sources.cuts.length === 2 && sources.cuts.every((c) => c === 'Pružnost a pevnost, s. 22') && sources.notice.includes('obrázků (1) a vzorců (1)') && !sources.text.includes('(51)') && sources.text.includes('Text pod vzorcem na straně 22.') && cropped.afterPage21 === 'img' &&
     card.key === 'PP' && JSON.stringify(card.chapters) === JSON.stringify([ohyb]) &&
     at >= 0 && listed[at]!.includes('AI čte 21 z 62.') &&
     cited.length === 1 && cited[0]! >= 21 && cited[0]! <= 41

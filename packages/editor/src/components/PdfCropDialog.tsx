@@ -10,14 +10,12 @@
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { t, type Catalog } from '@kalketa/i18n';
 import { selectedPages } from '@kalketa/sheet';
-import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { desktop } from '../document.js';
+import { cutOut, loadPdf, type PdfPage } from '../logic/pdfDocs.js';
 import type { IncomingPicture } from '../logic/pictures.js';
 import type { FoundLibrary } from '../theoryLibraries.js';
 import { Dialog } from './Dialogs.js';
 
-type PdfDocument = Awaited<ReturnType<typeof import('pdfjs-dist').getDocument>['promise']>;
-type PdfPage = Awaited<ReturnType<PdfDocument['getPage']>>;
 
 /** The text next to a cut-out on its page: the line above it and the line below, to find its place in the sources. */
 export interface CutAnchor {
@@ -34,8 +32,6 @@ interface Props {
   onClose(): void;
 }
 
-/** Cut-outs are drawn at this resolution, however small the page is on screen. */
-const CUT_DPI = 200;
 /** A cut-out smaller than this (CSS pixels) is taken for a slip of the mouse. */
 const MIN_CUT = 6;
 const ZOOMS = [0.5, 0.75, 1, 1.25, 1.5, 2, 3, 4];
@@ -80,24 +76,11 @@ export function PdfCropDialog({ catalog, files, sheetPath, onInsert, onClose }: 
   const [inserted, setInserted] = useState(0);
   const canvas = useRef<HTMLCanvasElement>(null);
   const view = useRef<HTMLDivElement>(null);
-  const docs = useRef(new Map<string, Promise<PdfDocument>>());
   // The page's scale on screen: PDF points to CSS pixels.
   const scale = useRef(1);
   const drag = useRef<{ x: number; y: number } | undefined>(undefined);
 
-  const open = (f: FoundLibrary): Promise<PdfDocument> => {
-    let doc = docs.current.get(f.path);
-    if (!doc) {
-      doc = (async () => {
-        const pdfjs = await import('pdfjs-dist');
-        pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
-        const bytes = await desktop!.studyBytes(f.path, sheetPath);
-        return pdfjs.getDocument({ data: bytes }).promise;
-      })();
-      docs.current.set(f.path, doc);
-    }
-    return doc;
-  };
+  const open = (f: FoundLibrary) => loadPdf(f.path, sheetPath);
 
   // Draws the page: as wide as the window times the zoom.
   useEffect(() => {
@@ -146,16 +129,9 @@ export function PdfCropDialog({ catalog, files, sheetPath, onInsert, onClose }: 
     try {
       const doc = await open(file);
       const pdfPage = await doc.getPage(page);
-      const sharp = CUT_DPI / 72;
-      // From the rectangle on screen to the cut-out's resolution.
-      const k = sharp / scale.current;
-      const out = document.createElement('canvas');
-      out.width = Math.max(1, Math.round(cut.w * k));
-      out.height = Math.max(1, Math.round(cut.h * k));
-      const viewport = pdfPage.getViewport({ scale: sharp, offsetX: -cut.x * k, offsetY: -cut.y * k });
-      await pdfPage.render({ canvas: out, viewport, intent: 'print' }).promise;
-      // At once, not through toBlob, whose answer can wait while the window is in the background.
-      const bytes = Uint8Array.from(atob(out.toDataURL('image/png').split(',')[1] ?? ''), (c) => c.charCodeAt(0));
+      // The rectangle on screen in page points.
+      const s = scale.current;
+      const bytes = await cutOut(pdfPage, { left: cut.x / s, top: cut.y / s, right: (cut.x + cut.w) / s, bottom: (cut.y + cut.h) / s });
       const lines = await pageLines(pdfPage, scale.current);
       const before = [...lines].reverse().find((l) => l.y < cut.y && l.text.replace(/\s/g, '').length >= 8)?.text;
       const after = lines.find((l) => l.y > cut.y + cut.h && l.text.replace(/\s/g, '').length >= 8)?.text;

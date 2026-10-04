@@ -633,6 +633,8 @@ export const en: Catalog = {
     'word.bullets': 'Bullets',
     'word.indent': 'Increase indent',
     'word.outdent': 'Decrease indent',
+    'word.formula': 'Formula',
+    'word.formulaTip': 'A formula in Kalketa notation, e.g. w := 5·q·L⁴/(384·E·I); it is shown typeset under the line.',
     'word.codeBlock': 'Code block (calculation lines as written)',
     'word.table': 'Insert table',
     'word.rowAfter': 'Add row below',

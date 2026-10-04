@@ -633,6 +633,8 @@ export const cs: Catalog = {
     'word.bullets': 'Odrážky',
     'word.indent': 'Zvětšit odsazení',
     'word.outdent': 'Zmenšit odsazení',
+    'word.formula': 'Vzorec',
+    'word.formulaTip': 'Vzorec v zápisu Kalkety, např. w := 5·q·L⁴/(384·E·I); pod zápisem se ukáže vysázený.',
     'word.codeBlock': 'Blok kódu (řádky výpočtu, jak jsou napsány)',
     'word.table': 'Vložit tabulku',
     'word.rowAfter': 'Přidat řádek pod',

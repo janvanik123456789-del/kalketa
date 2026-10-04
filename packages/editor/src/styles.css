@@ -589,3 +589,9 @@ button.icon:hover { color: var(--accent); }
 .crop-sep { width: 1px; align-self: stretch; background: var(--line); margin: 0 4px; }
 .crop-zoom { min-width: 3.5em; text-align: center; }
 .crop-count { color: #2f6b3a; }
+
+/* A formula in Kalketa notation in the sources: the line as written, typeset under it. */
+.word-code.kalk-block pre { margin-bottom: 0; border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.kalk-preview { border: 1px solid #d5dae1; border-top: none; padding: 4px 10px; background: #fff; }
+.kalk-preview .kalk-formula { margin: 2px 0; }
+.kalk-preview code.kalk-bad { color: #a12828; }

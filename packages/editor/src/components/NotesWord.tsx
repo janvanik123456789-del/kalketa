@@ -8,8 +8,10 @@
  * attribute, shown as a badge and never typed.
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { EditorContent, Extension, NodeViewWrapper, ReactNodeViewRenderer, useEditor, type Editor, type JSONContent, type ReactNodeViewProps } from '@tiptap/react';
+import { EditorContent, Extension, NodeViewContent, NodeViewWrapper, ReactNodeViewRenderer, useEditor, type Editor, type JSONContent, type ReactNodeViewProps } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
+import CodeBlock from '@tiptap/extension-code-block';
+import { kalkFormula } from '@kalketa/render';
 import Image, { type ImageOptions } from '@tiptap/extension-image';
 import { TableKit } from '@tiptap/extension-table';
 import { t, type Catalog, type UiKey } from '@kalketa/i18n';
@@ -111,6 +113,36 @@ const NotesImage = Image.extend<ImageOptions & { captionLabel: string; captionEm
   },
 });
 
+/**
+ * A block of the calculation language (```kalk): its lines are written as in the
+ * sheet and shown under them typeset as formulas; a line the language does not
+ * read is marked. Other code blocks stay as written.
+ */
+function CodeView({ node }: ReactNodeViewProps) {
+  const kalk = node.attrs['language'] === 'kalk';
+  const lines = node.textContent.split('\n').filter((l) => l.trim() !== '');
+  return (
+    <NodeViewWrapper className={`word-code${kalk ? ' kalk-block' : ''}`}>
+      <pre>
+        <NodeViewContent<'code'> as="code" />
+      </pre>
+      {kalk && lines.length > 0 && (
+        <div className="kalk-preview" contentEditable={false}>
+          {lines.map((l, i) => (
+            <div key={i} className="kalk-formula" dangerouslySetInnerHTML={{ __html: kalkFormula(l.trim()).html }} />
+          ))}
+        </div>
+      )}
+    </NodeViewWrapper>
+  );
+}
+
+const NotesCodeBlock = CodeBlock.extend({
+  addNodeView() {
+    return ReactNodeViewRenderer(CodeView);
+  },
+});
+
 /** Pictures among pasted or dropped files. */
 async function picturesOf(files: FileList | undefined | null): Promise<IncomingPicture[]> {
   const found = [...(files ?? [])].filter((f) => isPictureType(f.type));
@@ -146,7 +178,9 @@ export function NotesWord({ text, title, catalog, readOnly, resolveFile, onChang
         underline: false,
         orderedList: false,
         link: { openOnClick: false, autolink: true, isAllowedUri: (url) => /^https?:\/\//.test(url) },
+        codeBlock: false,
       }),
+      NotesCodeBlock,
       NotesImage.configure({ inline: false, allowBase64: true, captionLabel: t(catalog, 'word.caption'), captionEmpty: t(catalog, 'word.captionEmpty') }),
       TableKit.configure({ table: { resizable: false } }),
       NotesAttributes,
@@ -306,6 +340,9 @@ export function NotesWord({ text, title, catalog, readOnly, resolveFile, onChang
         </Tool>
         <Tool label={t(catalog, 'word.outdent')} keys="Shift+Tab" disabled={readOnly || !editor.can().liftListItem('listItem')} onClick={() => editor.chain().focus().liftListItem('listItem').run()}>
           ←≡
+        </Tool>
+        <Tool label={t(catalog, 'word.formula')} title={t(catalog, 'word.formulaTip')} className="word-formula" active={editor.isActive('codeBlock', { language: 'kalk' })} disabled={readOnly} onClick={() => editor.chain().focus().toggleCodeBlock({ language: 'kalk' }).run()}>
+          ƒx
         </Tool>
         <Tool label={t(catalog, 'word.codeBlock')} active={editor.isActive('codeBlock')} disabled={readOnly} onClick={() => editor.chain().focus().toggleCodeBlock().run()}>
           ⌸

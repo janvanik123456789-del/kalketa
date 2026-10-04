@@ -9,6 +9,7 @@
  *   [text](https://…)   links (http and https only)
  *   **bold**, *italic*, `code`
  *   ``` lines shown as written ```   (e.g. proposed lines of a calculation)
+ *   ```kalk formulas ```    lines of the calculation language, typeset as in the sheet
  *     - an indented bullet is a second level
  *   | a | b |  with a |---|---:| line below: a table (colons align the column)
  *   ---   alone on a line: a dividing line
@@ -17,7 +18,9 @@
  * Everything else is shown as text; no HTML from the notes is ever passed on.
  */
 
-import { esc } from './math.js';
+import { defaultRegistry, parse } from '@kalketa/core';
+import { formulaNode, type FormulaOptions } from './formula.js';
+import { esc, mo, nameNode, paren, row, toMathML, type MathNode } from './math.js';
 
 export interface NotesOptions {
   /** Resolves an image path inside the sheet to a URL (e.g. a data: URI). */
@@ -28,7 +31,7 @@ type Block =
   | { readonly kind: 'heading'; readonly level: number; readonly text: string }
   | { readonly kind: 'paragraph'; readonly lines: string[] }
   | { readonly kind: 'list'; readonly items: { readonly text: string; readonly sub: boolean }[] }
-  | { readonly kind: 'code'; readonly lines: string[] }
+  | { readonly kind: 'code'; readonly lines: string[]; readonly lang?: string }
   | { readonly kind: 'table'; readonly head: string[]; readonly align: Align[]; readonly rows: string[][] }
   | { readonly kind: 'rule' }
   | { readonly kind: 'quote'; readonly lines: string[] }
@@ -68,7 +71,7 @@ export function notesHtml(text: string, options: NotesOptions = {}): string {
         case 'list':
           return `<ul>${block.items.map((item) => `<li${item.sub ? ' class="sub"' : ''}>${inline(item.text)}</li>`).join('')}</ul>`;
         case 'code':
-          return `<pre class="code"><code>${esc(block.lines.join('\n'))}</code></pre>`;
+          return block.lang === 'kalk' ? kalkHtml(block.lines) : `<pre class="code"><code>${esc(block.lines.join('\n'))}</code></pre>`;
         case 'rule':
           return '<hr>';
         case 'table': {
@@ -104,6 +107,7 @@ function parseBlocks(text: string): Block[] {
   };
 
   let code: string[] | undefined;
+  let lang: string | undefined;
   const lines = text.split(/\r?\n/);
   for (let n = 0; n < lines.length; n++) {
     const raw = lines[n]!;
@@ -111,11 +115,12 @@ function parseBlocks(text: string): Block[] {
     // ``` opens and closes a block shown as written (e.g. proposed lines of a calculation).
     if (/^\s*```/.test(line)) {
       if (code) {
-        blocks.push({ kind: 'code', lines: code });
+        blocks.push({ kind: 'code', lines: code, ...(lang ? { lang } : {}) });
         code = undefined;
       } else {
         flush();
         code = [];
+        lang = /^\s*```\s*([\w-]+)/.exec(line)?.[1]?.toLowerCase();
       }
       continue;
     }
@@ -171,8 +176,35 @@ function parseBlocks(text: string): Block[] {
   }
   flush();
   // A block left open runs to the end (e.g. an answer still being written).
-  if (code) blocks.push({ kind: 'code', lines: code });
+  if (code) blocks.push({ kind: 'code', lines: code, ...(lang ? { lang } : {}) });
   return blocks;
+}
+
+const KALK_OPTIONS: FormulaOptions = { literal: (v) => String(v), argumentSeparator: ',', booleans: { true: 'true', false: 'false' } };
+
+/**
+ * One line of the calculation language typeset as a formula, symbolically (nothing
+ * is computed): "w := 5·q·L⁴/(384·E·I)" as w = 5·q·L⁴ over 384·E·I. A line the
+ * language does not read stays as written, marked.
+ */
+export function kalkFormula(line: string): { readonly html: string; readonly ok: boolean } {
+  const parsed = parse(line, { isUnit: (name) => defaultRegistry.isUnit(name) });
+  const s = parsed.sheet.statements.find((x) => x.kind !== 'comment');
+  const bad = { html: `<code class="kalk-bad">${esc(line)}</code>`, ok: false };
+  if (!s || parsed.diagnostics.some((d) => d.severity === 'error')) return bad;
+  let node: MathNode | undefined;
+  if (s.kind === 'definition') {
+    const name = s.params && s.params.length > 0 ? row(nameNode(s.name), paren(row(...s.params.flatMap((p, i) => (i > 0 ? [mo(','), nameNode(p.name)] : [nameNode(p.name)]))))) : nameNode(s.name);
+    node = row(name, mo('='), formulaNode(s.expr, KALK_OPTIONS));
+  } else if (s.kind === 'display' || s.kind === 'check') node = formulaNode(s.expr, KALK_OPTIONS);
+  if (!node) return bad;
+  const label = s.kind === 'check' && s.label ? `<span class="kalk-label">${esc(s.label)}:</span> ` : '';
+  return { html: `${label}${toMathML(node, 'block')}`, ok: true };
+}
+
+function kalkHtml(lines: readonly string[]): string {
+  const formulas = lines.filter((l) => l.trim() !== '').map((l) => `<div class="kalk-formula" title="${esc(l.trim())}">${kalkFormula(l.trim()).html}</div>`);
+  return `<div class="kalk">${formulas.join('')}</div>`;
 }
 
 /** Inline markup: `code` as written, then links, bold and italic on the rest (escaped first). */
@@ -204,6 +236,11 @@ export const NOTES_CSS = `.notes { font-size: 10.5pt; line-height: 1.5; }
 .notes .tid { font-size: 0.7em; font-weight: normal; color: #6b7480; border: 1px solid #c5ccd5; border-radius: 3px; padding: 0 1.2mm; vertical-align: middle; }
 .notes li.sub { margin-left: 5mm; list-style-type: circle; }
 .notes code { font-family: Consolas, 'Courier New', monospace; font-size: 0.95em; }
+.notes .kalk { margin: 2mm 0; }
+.notes .kalk-formula { margin: 1mm 0; }
+.notes .kalk-formula math { display: inline-block; }
+.notes .kalk-label { color: #555; font-size: 0.95em; }
+.notes code.kalk-bad { color: #a12828; }
 .notes pre.code { margin: 2mm 0; padding: 1.5mm 2mm; background: #f3f5f8; border: 1px solid #d5dae1; white-space: pre-wrap; }
 .notes blockquote.citation { margin: 2mm 0; padding: 1mm 0 1mm 3mm; border-left: 1mm solid #9aa6b4; color: #333; font-style: italic; }
 .notes figure { margin: 3mm 0; break-inside: avoid; }

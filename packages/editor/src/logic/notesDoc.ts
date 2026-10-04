@@ -46,8 +46,9 @@ export function notesToDoc(text: string): JSONContent {
     if (/^\s*```/.test(line)) {
       flush();
       const code: string[] = [];
+      const language = /^\s*```\s*([\w-]+)/.exec(line)?.[1]?.toLowerCase();
       while (++n < lines.length && !/^\s*```/.test(lines[n]!)) code.push(lines[n]!);
-      content.push({ type: 'codeBlock', ...(code.length ? { content: [{ type: 'text', text: code.join('\n') }] } : {}) });
+      content.push({ type: 'codeBlock', ...(language ? { attrs: { language } } : {}), ...(code.length ? { content: [{ type: 'text', text: code.join('\n') }] } : {}) });
       continue;
     }
     if (line.trim() === '') {
@@ -206,7 +207,7 @@ function block(node: JSONContent): string {
         .map((l) => `> ${l}`)
         .join('\n');
     case 'codeBlock':
-      return `\`\`\`\n${(node.content ?? []).map((t) => t.text ?? '').join('')}\n\`\`\``;
+      return `\`\`\`${node.attrs?.['language'] ? String(node.attrs['language']) : ''}\n${(node.content ?? []).map((t) => t.text ?? '').join('')}\n\`\`\``;
     case 'horizontalRule':
       return '---';
     case 'image': {

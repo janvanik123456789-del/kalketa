@@ -480,6 +480,8 @@ export const UI_KEYS = [
   'word.indent',
   'word.outdent',
   'word.codeBlock',
+  'word.formula',
+  'word.formulaTip',
   'word.table',
   'word.rowAfter',
   'word.columnAfter',

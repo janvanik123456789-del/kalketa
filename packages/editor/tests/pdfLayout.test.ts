@@ -22,8 +22,29 @@ describe('a PDF page laid out for the sources', () => {
     );
     expect(items.map((i) => (i.kind === 'text' ? i.text : i.why))).toEqual(['Text nad obrázkem, který se čte jako text.', 'picture', 'Text pod obrázkem a nad vzorcem.', 'formula', 'Text pod vzorcem.']);
     const formula = items.find((i) => i.kind === 'cut' && i.why === 'formula');
-    // The formula and the scrap under it are one cut-out, with room around.
-    expect(formula).toMatchObject({ box: { top: 296, bottom: 332, left: 246, right: 334 } });
+    // The formula and the scrap under it are one cut-out: up to the text around it (a line and a half at most), across the column.
+    expect(formula).toMatchObject({ box: { top: 282, bottom: 346, left: 66, right: 524 } });
+  });
+
+  it('finds a drawing made of shapes, not the bar of a fraction or the lines of a table', () => {
+    const items = pageLayout(
+      [line(60, 'Text nad obrázkem.'), line(330, 'Obr. 40 Vetknutý nosník'), line(400, 'Text pod tabulkou.')],
+      [],
+      page,
+      [
+        // The beam, the wall, an arrow head, and the dimension line that touches them.
+        { top: 150, bottom: 160, left: 120, right: 420 },
+        { top: 120, bottom: 200, left: 100, right: 120 },
+        { top: 130, bottom: 150, left: 400, right: 412 },
+        { top: 230, bottom: 230.5, left: 120, right: 420 },
+        { top: 160, bottom: 230.4, left: 419.7, right: 420 },
+        // A fraction bar and a table rule: thin and alone.
+        { top: 280, bottom: 280.5, left: 200, right: 260 },
+        { top: 380, bottom: 380.4, left: 70, right: 520 },
+      ],
+    );
+    expect(items.map((i) => (i.kind === 'text' ? i.text : i.why))).toEqual(['Text nad obrázkem.', 'picture', 'Obr. 40 Vetknutý nosník', 'Text pod tabulkou.']);
+    expect(items[1]).toMatchObject({ box: { top: 116, bottom: 234.5, left: 96, right: 424 } });
   });
 
   it('takes a scanned page for no picture, and joins a figure drawn in pieces', () => {

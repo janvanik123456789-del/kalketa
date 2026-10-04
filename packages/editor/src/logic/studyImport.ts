@@ -44,7 +44,7 @@ export async function studyImport(
   for (const [n, p] of pages.entries()) {
     options.progress?.(n + 1, pages.length);
     const page = await doc.getPage(p);
-    const { lines, pictures: drawn, width, height } = await pageContent(page);
+    const { lines, pictures: images, drawn, width, height } = await pageContent(page);
     const label = file.content.labels?.[p - 1] ?? String(p);
     const blocks: string[] = [];
     let run: string[] = [];
@@ -52,7 +52,7 @@ export async function studyImport(
       if (run.length) blocks.push(textLines(run).join('\n'));
       run = [];
     };
-    for (const item of pageLayout(lines, drawn, { width, height })) {
+    for (const item of pageLayout(lines, images, { width, height }, drawn)) {
       if (item.kind === 'text') {
         run.push(item.text);
         continue;

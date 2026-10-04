@@ -38,7 +38,7 @@ export function loadPdf(path: string, sheetPath?: string): Promise<PdfDocument> 
 }
 
 /** The lines of a page with their boxes, and where it draws pictures; page coordinates at scale 1, y downwards. */
-export async function pageContent(page: PdfPage): Promise<{ lines: LayoutLine[]; pictures: Box[]; width: number; height: number }> {
+export async function pageContent(page: PdfPage): Promise<{ lines: LayoutLine[]; pictures: Box[]; drawn: Box[]; width: number; height: number }> {
   const lib = await library();
   const viewport = page.getViewport({ scale: 1 });
   const content = await page.getTextContent();
@@ -80,6 +80,24 @@ export async function pageContent(page: PdfPage): Promise<{ lines: LayoutLine[];
   let ctm: number[] = [1, 0, 0, 1, 0, 0];
   const stack: number[][] = [];
   const pictures: Box[] = [];
+  const drawn: Box[] = [];
+  /** A rectangle of user space on the page. */
+  const onPage = (x0: number, y0: number, x1: number, y1: number): Box => {
+    const corners = [
+      [x0, y0],
+      [x1, y0],
+      [x0, y1],
+      [x1, y1],
+    ].map((c) => {
+      // applyTransform moves the point in place.
+      const point = [...c];
+      Util.applyTransform(point, ctm);
+      return viewport.convertToViewportPoint(point[0]!, point[1]!) as [number, number];
+    });
+    const xs = corners.map((c) => c[0]);
+    const ys = corners.map((c) => c[1]);
+    return { left: Math.min(...xs), right: Math.max(...xs), top: Math.min(...ys), bottom: Math.max(...ys) };
+  };
   for (let i = 0; i < ops.fnArray.length; i++) {
     const fn = ops.fnArray[i]!;
     const args = ops.argsArray[i] as unknown[] | null;
@@ -91,24 +109,14 @@ export async function pageContent(page: PdfPage): Promise<{ lines: LayoutLine[];
       const matrix = args?.[0];
       if (Array.isArray(matrix) && matrix.length === 6) ctm = Util.transform(ctm, matrix as number[]) as number[];
     } else if (fn === OPS.paintFormXObjectEnd) ctm = stack.pop() ?? ctm;
-    else if (images.has(fn)) {
-      const corners = [
-        [0, 0],
-        [1, 0],
-        [0, 1],
-        [1, 1],
-      ].map((c) => {
-        // applyTransform moves the point in place.
-        const point = [...c];
-        Util.applyTransform(point, ctm);
-        return viewport.convertToViewportPoint(point[0]!, point[1]!) as [number, number];
-      });
-      const xs = corners.map((c) => c[0]);
-      const ys = corners.map((c) => c[1]);
-      pictures.push({ left: Math.min(...xs), right: Math.max(...xs), top: Math.min(...ys), bottom: Math.max(...ys) });
+    else if (images.has(fn)) pictures.push(onPage(0, 0, 1, 1));
+    else if (fn === OPS.constructPath && args) {
+      // A shape drawn (not a clipping path): where it lies, from its bounds.
+      const [op, , bounds] = args as [number, unknown, ArrayLike<number> | null];
+      if (op !== OPS.endPath && bounds && bounds.length >= 4 && [0, 1, 2, 3].every((k) => Number.isFinite(bounds[k]!))) drawn.push(onPage(bounds[0]!, bounds[1]!, bounds[2]!, bounds[3]!));
     }
   }
-  return { lines, pictures, width: viewport.width, height: viewport.height };
+  return { lines, pictures, drawn, width: viewport.width, height: viewport.height };
 }
 
 /**

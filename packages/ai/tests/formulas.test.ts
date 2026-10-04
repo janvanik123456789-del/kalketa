@@ -22,6 +22,9 @@ describe('formulas read from pictures', () => {
     expect(cleanFormula('\\sigma_{max} = \\frac{M}{W_{y}} \\leq f_{y}')).toEqual(['σ_max = (M)/(W_y) ≤ f_y']);
     expect(cleanFormula('w = \\sqrt{\\frac{a}{b}} (12)')).toEqual(['w := sqrt((a)/(b))']);
     expect(cleanFormula('w := L/250')).toEqual(['w := L/250']);
+    // As the user's local model wrote two cut-outs of the textbook.
+    expect(cleanFormula('M_o(x) == F·x')).toEqual(['M_o(x) := F·x']);
+    expect(cleanFormula('y := M_mp/(E·I) == (l^3·F)/(3·E·I) == F·l^3/(3·E·I)')).toEqual(['y := M_mp/(E·I)', 'M_mp/(E·I) == (l^3·F)/(3·E·I)', '(l^3·F)/(3·E·I) == F·l^3/(3·E·I)']);
   });
 
   it('go to a local server with the picture, answered at once', async () => {

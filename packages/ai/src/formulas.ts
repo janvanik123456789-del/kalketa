@@ -87,11 +87,14 @@ export function toKalk(line: string): string[] {
     .replace(/[.,;]\s*$/, '')
     .replace(/\s*·\s*/g, '·')
     .trim();
-  if (text === '' || /:=|==|≤|≥|<|>|≠/.test(text)) return text ? [text] : [];
-  const parts = text.split(/\s*=\s*/);
+  if (text === '' || /≤|≥|<|>|≠/.test(text)) return text ? [text] : [];
+  // "y := a == b == c" (the model mixed both) is read as the chain "y = a = b = c".
+  const parts = text.split(/\s*(?::=|==|=)\s*/);
   if (parts.length < 2 || parts.some((p) => p === '')) return [text];
   const [left, ...rest] = parts;
-  const lines = /^[\p{L}][\p{L}\p{N}_]*$/u.test(left!) ? [`${left} := ${rest[0]}`] : [`${left} == ${rest[0]}`];
+  // A name, or a function with its parameters ("M_o(x)"), is defined; anything else is compared.
+  const defined = /^[\p{L}][\p{L}\p{N}_]*(\([\p{L}\p{N}_,\s]*\))?$/u.test(left!);
+  const lines = [defined ? `${left} := ${rest[0]}` : `${left} == ${rest[0]}`];
   for (let i = 1; i < rest.length; i++) lines.push(`${rest[i - 1]} == ${rest[i]}`);
   return lines;
 }

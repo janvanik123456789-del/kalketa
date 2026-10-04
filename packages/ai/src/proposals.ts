@@ -6,6 +6,7 @@
  *   ```change 8          replaces line 8
  *   ```change 12-14      replaces lines 12 to 14 (an empty block deletes them)
  *   ```change after 14   inserts after line 14 (after 0: at the top)
+ *   ```sheet Title       a whole new calculation, opened as a new sheet
  *
  * The program checks the lines are there, works out what the change does to
  * the calculation, and the user accepts or rejects it.
@@ -23,6 +24,24 @@ export interface ChangeProposal {
 }
 
 const BLOCK = /^```change\s+(after\s+)?(\d+)(?:\s*-\s*(\d+))?\s*\n([\s\S]*?)^```\s*$/gm;
+const SHEET_BLOCK = /^```sheet(?:[ \t]+([^\n]*?))?[ \t]*\n([\s\S]*?)^```\s*$/gm;
+
+/** A whole new calculation the model wrote, to open as a new sheet. */
+export interface NewSheetProposal {
+  readonly title: string;
+  readonly lines: readonly string[];
+}
+
+/** The new sheets in an answer, in order; an empty one is left out. */
+export function parseNewSheets(answer: string): NewSheetProposal[] {
+  const sheets: NewSheetProposal[] = [];
+  for (const m of answer.matchAll(SHEET_BLOCK)) {
+    const lines = m[2]!.replace(/\n$/, '').split('\n').map((l) => l.replace(/^\s*\d+\s*\|\s?/, ''));
+    if (lines.every((l) => l.trim() === '')) continue;
+    sheets.push({ title: (m[1] ?? '').trim(), lines });
+  }
+  return sheets;
+}
 
 /** The proposals in an answer, in order; blocks that do not make sense are left out. */
 export function parseProposals(answer: string): ChangeProposal[] {
@@ -40,10 +59,11 @@ export function parseProposals(answer: string): ChangeProposal[] {
   return proposals;
 }
 
-/** The answer without its proposal blocks, for showing it with the proposals apart. */
-export function withoutProposals(answer: string, placeholder: (n: number) => string): string {
+/** The answer without its proposal blocks (and new sheets), for showing it with the proposals apart. */
+export function withoutProposals(answer: string, placeholder: (n: number) => string, sheetPlaceholder: (n: number) => string = placeholder): string {
   let n = 0;
-  return answer.replace(BLOCK, () => placeholder(++n));
+  let s = 0;
+  return answer.replace(BLOCK, () => placeholder(++n)).replace(SHEET_BLOCK, () => sheetPlaceholder(++s));
 }
 
 /** The lines a proposal replaces, as they are in `source` now; undefined when they are not there. */

@@ -1470,6 +1470,7 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
   let kept = { count: 0, text: '' };
   let layerShown = { memory: '', sheet: [] as string[], unknown: [] as string[], hiddenConversations: -1 };
   let resumed: string[] = [];
+  let newSheet = { head: '', others: '', opened: { tab: '', rows: 0, marked: 0, errors: '' }, state: '' };
   let together = { allButton: '', acceptedAll: 0, undoneAll: -1, copy: { tab: '', rows: 0, marked: 0, badges: 0 }, original: { rows: -1, state: 0 } };
   let proposal = { card: '', accepted: false, state: '', undone: false, journal: '', marked: '', reviewed: false, markedAgain: false, printAsks: '', printClosed: false };
   if (aiTab) {
@@ -1569,6 +1570,28 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
     await pause(400);
     const original = (await contents.executeJavaScript(`({ rows: ${smokeRows}, state: [...document.querySelectorAll('.chat-pane .proposal-state')].map((s) => s.textContent).filter((s) => s.startsWith('Přijato do nového listu')).length })`)) as { rows: number; state: number };
     together = { allButton, acceptedAll, undoneAll, copy, original };
+    // A whole new calculation by the model: a card under the answer, opened as a new sheet.
+    await clickOn('.chat-input');
+    await typeText('Napiš nový výpočet nosníku se silou uprostřed.');
+    await pressKey('Enter');
+    for (let i = 0; i < 40 && !(await contents.executeJavaScript(`!!document.querySelector('.chat-pane .new-sheet-open')`)); i++) await pause(150);
+    const sheetCard = (await contents.executeJavaScript(`({
+      head: document.querySelector('.chat-pane .new-sheet .proposal-head')?.textContent ?? '',
+      answer: [...document.querySelectorAll('.chat-turn.assistant:not(.writing)')].pop()?.textContent ?? '',
+    })`)) as { head: string; answer: string };
+    const sheetTab = (await contents.executeJavaScript(`[...document.querySelectorAll('.doc-tab')].findIndex((t) => t.classList.contains('active'))`)) as number;
+    await clickOn('.chat-pane .new-sheet-open');
+    await pause(600);
+    const opened = (await contents.executeJavaScript(`({
+      tab: document.querySelector('.doc-tab.active')?.textContent ?? '',
+      rows: document.querySelectorAll('.layer-view.active .row[data-line]').length,
+      marked: document.querySelectorAll('.layer-view.active .row.ai-made').length,
+      errors: document.querySelector('.statusbar')?.textContent ?? '',
+    })`)) as { tab: string; rows: number; marked: number; errors: string };
+    await clickOn(`.doc-tab:nth-child(${sheetTab + 1}) .doc-tab-title`);
+    await pause(400);
+    const sheetState = (await contents.executeJavaScript(`document.querySelector('.chat-pane .new-sheet .proposal-state')?.textContent ?? ''`)) as string;
+    newSheet = { head: sheetCard.head, others: /Jiné listy: (\d+)/.exec(sheetCard.answer)?.[1] ?? '', opened, state: sheetState };
     if (await contents.executeJavaScript(`!!document.querySelector('.layer-tab[data-layer="main"]')`)) await clickOn('.layer-tab[data-layer="main"]');
   }
   // The side pane's tabs switch what it shows with one click.
@@ -1581,7 +1604,7 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
   await clickMenu('Boční panel');
   await clickMenu(back);
   await pause(300);
-  await writeFile(picture.replace(/[.]png$/, '-ai-chat.json'), JSON.stringify({ pasted, unpasted, typed, theory, offered, quietWhileOff, head, shown, cutOff, cleared, aiTab, layerShown, kept, resumed, proposal, together, paneTabs, thoughtFolded, thought }, null, 2));
+  await writeFile(picture.replace(/[.]png$/, '-ai-chat.json'), JSON.stringify({ pasted, unpasted, typed, theory, offered, quietWhileOff, head, shown, cutOff, cleared, aiTab, layerShown, kept, resumed, proposal, together, newSheet, paneTabs, thoughtFolded, thought }, null, 2));
   return (
     pasted === 'Klopení je ztráta stability ohýbaného nosníku. Vloženo ze schránky.' && unpasted === 'Klopení je ztráta stability ohýbaného nosníku.' &&
     typed === 'H2:Klopení|P:Klopení je ztráta stability ohýbaného nosníku.' && theory.heading === 'Klopení' && /^T\d+$/.test(theory.badge) &&
@@ -1602,6 +1625,8 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
     proposal.journal.includes('Návrhy změn') && proposal.journal.includes('Přijato') && proposal.undone &&
     /^\d+:Řádek navrhla AI \(local-smoke-7b, přijato /.test(proposal.marked) && !proposal.marked.includes('|') && proposal.reviewed && proposal.markedAgain &&
     proposal.printAsks.startsWith('Výpočet obsahuje řádky navržené AI') && proposal.printClosed &&
+    newSheet.head === 'Nový list: Nosník se silou · řádků: 4' && Number(newSheet.others) >= 2 &&
+    newSheet.opened.tab.startsWith('Nosník se silou') && newSheet.opened.marked >= 3 && newSheet.opened.errors.startsWith('chyba: 0') && newSheet.state.startsWith('Otevřeno jako „Nosník se silou“') &&
     together.allButton === 'Přijmout vše (2)' && together.acceptedAll === 2 && together.undoneAll === 0 &&
     together.copy.tab.includes('(upravená kopie)') && together.copy.rows === 2 && together.copy.marked === 2 && together.copy.badges === 2 && together.original.rows === 0 && together.original.state === 2 &&
     paneTabs === 'Podrobnosti *Tabulky Vrstvy AI|tables' && thoughtFolded && thought === 'Nejdřív zkontroluji průhyb na řádku 12.'

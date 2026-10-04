@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aiMadeLines, aiMemoryOf, entriesOf, withEntries, conversationsOf, newDocument, readSheetFile, withAiMemory, withConversation, withoutConversation, writeSheetFile, type Conversation } from '../src/index.js';
+import { aiMadeLines, aiMemoryOf, entriesOf, newSheetsOf, withEntries, conversationsOf, newDocument, readSheetFile, withAiMemory, withConversation, withoutConversation, writeSheetFile, type Conversation } from '../src/index.js';
 
 const first: Conversation = {
   id: 'c1',
@@ -79,5 +79,14 @@ describe('conversations with the AI in the sheet', () => {
     // An insert after line 1 of two lines.
     const insert = { ...entry, from: 1, to: 1, insert: true, after: ['x := 1', 'y := 2'] };
     expect([...aiMadeLines(['a := 1', 'x := 1', 'y := 2'].join('\n'), [insert]).keys()]).toEqual([2, 3]);
+  });
+
+  it('keep new sheets beside the changes, neither losing the other', () => {
+    const change = { id: 'c1:1:1', kind: 'change' as const, time: 't', from: 1, to: 1, before: ['a := 1'], after: ['a := 2'], state: 'open' as const };
+    const sheet = { id: 'c1:1:s1', kind: 'sheet' as const, time: 't', title: 'N2', lines: ['F := 1 kN'], state: 'open' as const };
+    let doc = withEntries(withEntries(newDocument('N1'), [change]), [sheet]);
+    doc = withEntries(doc, [{ ...change, state: 'accepted' }]);
+    expect(entriesOf(doc).map((e) => e.state)).toEqual(['accepted']);
+    expect(newSheetsOf(doc)).toEqual([sheet]);
   });
 });

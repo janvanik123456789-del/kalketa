@@ -377,6 +377,8 @@ layers/ai/
 
 **Návrhy jedné odpovědi dohromady a nový list (2026-10-04):** pod odpovědí s návrhy je **Přijmout vše** se společným dopadem na výpočet (návrhy se použijí odspodu, překrývající se nejdou) a **Do nového listu**. To zkopíruje výpočet do nové neuložené záložky (tabulky, vrstvy, knihovny a rozhovory ano, revize ne) a změny použije tam. V kopii jsou přijaté řádky označené AI, původní list zůstane beze změny a jeho deník zapíše „Přijato do nového listu“. Model ví, že nový list jde udělat.
 
+**Nový výpočet od AI (2026-10-04):** model smí napsat celý nový výpočet jako blok ```` ```sheet Název ````. Pod odpovědí je karta s náhledem, výsledkem nového výpočtu (chyby a posudky) a tlačítkem **Otevřít jako nový list**. Nový list převezme tabulky, vrstvy, teorii a rozhovory otevřeného výpočtu, ne jeho revize ani paměť pro AI. Všechny jeho řádky mají značku AI, dokud je člověk neprověří. Model dostává i **ostatní otevřené listy** jako zdroj a inspiraci, jen ke čtení: nejvýš 6 000 znaků z každého a 15 000 celkem.
+
 **Tisk (etapa 3c, 2026-10-04):** když výpočet obsahuje neprověřené řádky AI, Tisk i Export PDF se nejdřív zeptají. V tisku mají tyto řádky na okraji značku **AI** a svislou čáru a pod názvem je upozornění. Vrstva Poznámky AI se při zapnutém „Tisknout jako přílohu“ vytiskne jako **protokol**: zdroje a citace a všechny návrhy změn s rozhodnutím a prověřením (původní a nové řádky). Rozhovory a paměť pro AI se netisknou.
 
 ---

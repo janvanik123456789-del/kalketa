@@ -86,17 +86,45 @@ export interface ChangeEntry {
   readonly copiedTo?: string;
 }
 
-/** The journal of the sheet, oldest first. */
-export function entriesOf(doc: SheetDocument): ChangeEntry[] {
+/** A whole new calculation the model wrote, and whether it was opened as a new sheet. */
+export interface SheetEntry {
+  /** "<conversation id>:<turn>:s<n>": the answer it came from. */
+  readonly id: string;
+  readonly kind: 'sheet';
+  readonly time: string;
+  readonly model?: string;
+  readonly conversation?: string;
+  readonly title: string;
+  readonly lines: readonly string[];
+  readonly state: 'open' | 'accepted';
+  readonly decided?: string;
+  /** Title of the sheet it was opened as. */
+  readonly copiedTo?: string;
+}
+
+export type JournalEntry = ChangeEntry | SheetEntry;
+
+/** Every entry of the journal, of every kind (one this program does not know stays as it is). */
+function journalOf(doc: SheetDocument): { id: string; kind: string }[] {
   const layer = doc.layers.find((l) => l.kind === 'ai');
   const data = layer && doc.files.get(entriesPath(layer.id));
   if (!data) return [];
   try {
     const value = JSON.parse(strFromU8(data)) as { entries?: unknown };
-    return (Array.isArray(value.entries) ? value.entries : []).filter((e): e is ChangeEntry => typeof e === 'object' && e !== null && (e as ChangeEntry).kind === 'change' && typeof (e as ChangeEntry).id === 'string');
+    return (Array.isArray(value.entries) ? value.entries : []).filter((e): e is { id: string; kind: string } => typeof e === 'object' && e !== null && typeof (e as { id?: unknown }).id === 'string');
   } catch {
     return [];
   }
+}
+
+/** The proposed changes of the journal, oldest first. */
+export function entriesOf(doc: SheetDocument): ChangeEntry[] {
+  return journalOf(doc).filter((e): e is ChangeEntry => e.kind === 'change');
+}
+
+/** The new sheets the model wrote, oldest first. */
+export function newSheetsOf(doc: SheetDocument): SheetEntry[] {
+  return journalOf(doc).filter((e): e is SheetEntry => e.kind === 'sheet' && Array.isArray((e as SheetEntry).lines));
 }
 
 /**
@@ -122,9 +150,9 @@ export function aiMadeLines(source: string, entries: readonly ChangeEntry[]): Ma
 }
 
 /** The sheet with these entries added, or replaced by id. */
-export function withEntries(doc: SheetDocument, entries: readonly ChangeEntry[]): SheetDocument {
+export function withEntries(doc: SheetDocument, entries: readonly JournalEntry[]): SheetDocument {
   if (entries.length === 0) return doc;
-  const list = entriesOf(doc);
+  const list: { id: string }[] = journalOf(doc);
   for (const entry of entries) {
     const at = list.findIndex((e) => e.id === entry.id);
     if (at < 0) list.push(entry);

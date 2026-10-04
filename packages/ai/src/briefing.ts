@@ -107,6 +107,12 @@ ${sheet.theory!.filter((s) => s.id).map((s) => `[${s.id}] ${s.title}`).join('\n'
   "change 12-14" replaces lines 12 to 14 (an empty block deletes them), "change after 14" inserts new lines after line 14. Propose only lines in the calculation language, one block per place.
 - The blocks of one answer can be accepted together, so give every change the calculation needs (a new variable and all the lines that use it). Line numbers always refer to the sheet as it is now.
 - When the user wants the calculation changed as a new sheet, propose the changes the same way: the program can apply them to a copy of this sheet in a new tab and keep this one as it is. Do not say that a new sheet cannot be made.
+- When the user wants a whole new calculation (from scratch, or after this sheet or another open one), write all its lines as one block; the program opens it as a new sheet with this sheet's tables and theory:
+  ${FENCE}sheet Beam with a point load
+  # Beam with a point load
+  F := 1000 N
+  ${FENCE}
+  Use only the calculation language, the tables of this sheet by their names, and the functions in the guide.
 - Never invent data. Values of materials, profiles or loads come from tables in the sheet or from a source the user can check; if one is missing, say so and propose where it could come from.
 - State every assumption (coefficients, categories) openly.
 - Point at lines by their numbers. The program computes; do not recalculate results by hand unless asked.
@@ -122,6 +128,7 @@ ${sheet.theory!.filter((s) => s.id).map((s) => `[${s.id}] ${s.title}`).join('\n'
 
 ${sheet.libraries && sheet.libraries.length > 0 ? `Theory libraries: ${sheet.libraries.map((l) => `[${l.key}] ${l.title} (source: ${l.source})`).join('; ')}.\n\n` : ''}${contents}${selection!.sections.length > 0 ? theoryText(selection!.sections) : '(No section matches the question.)'}`
       : '',
+    sheet.others && sheet.others.length > 0 ? `Other sheets open in the program, for reference and inspiration only (you cannot change them):\n${othersText(sheet.others)}` : '',
     sheet.changes && sheet.changes.length > 0 ? `Changes you proposed for this sheet and what the user decided (line numbers as they were then; the sheet above already contains the accepted ones):
 ${changesText(sheet.changes)}` : '',
     input.memory?.trim()
@@ -139,6 +146,24 @@ ${changesText(sheet.changes)}` : '',
  * The last question of a conversation that ends: the model rewrites the
  * sheet's memory (ch. 9.7) from the old one and what the conversation added.
  */
+/** Of the other open sheets, at most this much text goes to the model, each and together. */
+const MAX_OTHER_CHARS = 6000;
+const MAX_OTHERS_CHARS = 15000;
+
+/** The other open sheets for the model: title and text, the longest ones cut. */
+export function othersText(others: readonly { readonly title: string; readonly source: string }[]): string {
+  const parts: string[] = [];
+  let left = MAX_OTHERS_CHARS;
+  for (const o of others) {
+    if (left <= 0) break;
+    const room = Math.min(MAX_OTHER_CHARS, left);
+    const text = o.source.length > room ? `${o.source.slice(0, room)}\n[… cut]` : o.source;
+    left -= text.length;
+    parts.push(`### "${o.title}"\n${text}`);
+  }
+  return parts.join('\n\n');
+}
+
 /** At most this many of the latest proposed changes go to the model. */
 const MAX_CHANGES = 20;
 

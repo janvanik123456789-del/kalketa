@@ -5,7 +5,7 @@
  * proposal whose lines have changed since can no longer be accepted.
  */
 import { t, type Catalog } from '@kalketa/i18n';
-import type { ChangeEntry } from '@kalketa/sheet';
+import type { ChangeEntry, SheetEntry } from '@kalketa/sheet';
 import type { ProposalEffect } from '../logic/proposalEffect.js';
 
 export interface ProposalView {
@@ -17,6 +17,34 @@ export interface ProposalView {
 
 function percent(u: number | undefined, catalog: Catalog): string {
   return u === undefined ? '' : `${new Intl.NumberFormat(catalog.locale, { maximumFractionDigits: 0 }).format(u * 100)} %`;
+}
+
+export interface NewSheetView {
+  readonly entry: SheetEntry;
+  /** What the new sheet computes: its errors and checks. */
+  readonly effect?: ProposalEffect;
+}
+
+/** A whole new calculation the model wrote: a look at it, what it computes, and Open as a new sheet. */
+export function NewSheetCard({ view, catalog, onOpen }: { view: NewSheetView; catalog: Catalog; onOpen(id: string): void }) {
+  const { entry, effect } = view;
+  const when = (iso?: string) => (iso ? new Intl.DateTimeFormat(catalog.locale, { dateStyle: 'short', timeStyle: 'short' }).format(new Date(iso)) : '');
+  return (
+    <div className={`proposal new-sheet ${entry.state}`} data-proposal={entry.id}>
+      <div className="proposal-head">{t(catalog, 'newSheet.title', { title: entry.title || t(catalog, 'newSheet.untitled'), lines: String(entry.lines.length) })}</div>
+      <details className="new-sheet-text">
+        <summary>{t(catalog, 'newSheet.show')}</summary>
+        <pre className="proposal-diff">{entry.lines.join('\n')}</pre>
+      </details>
+      {effect && <EffectLines effect={effect} catalog={catalog} title={t(catalog, 'newSheet.result')} />}
+      <div className="proposal-actions">
+        {entry.copiedTo && <span className="proposal-state">{t(catalog, 'newSheet.opened', { title: entry.copiedTo, when: when(entry.decided) })}</span>}
+        <button type="button" className={`new-sheet-open${entry.copiedTo ? '' : ' default'}`} onClick={() => onOpen(entry.id)}>
+          {t(catalog, entry.copiedTo ? 'newSheet.openAgain' : 'newSheet.open')}
+        </button>
+      </div>
+    </div>
+  );
 }
 
 /** What a change does: errors before and after, and the checks it changes ("Průhyb: 120 % ✗ → 84 % ✓"). */

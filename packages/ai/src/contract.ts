@@ -33,6 +33,8 @@ export interface AiSheetContext {
   readonly theory?: readonly { readonly id?: string; readonly title: string; readonly text: string }[];
   /** Theory libraries the sheet uses: their key and where their text comes from. */
   readonly libraries?: readonly { readonly key: string; readonly title: string; readonly source: string }[];
+  /** Other sheets open in the program, for reference and inspiration only. */
+  readonly others?: readonly { readonly title: string; readonly source: string }[];
   /** Changes the AI proposed for the sheet and what the user decided, oldest first (the journal, ch. 9.7). */
   readonly changes?: readonly AiChangeRecord[];
 }

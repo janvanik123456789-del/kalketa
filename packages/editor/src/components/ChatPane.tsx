@@ -11,7 +11,7 @@ import { notesHtml } from '@kalketa/render';
 import { desktop } from '../document.js';
 import type { AiSheetContext } from '../logic/aiContext.js';
 import type { LibraryEntry } from '../theoryLibraries.js';
-import { EffectLines, ProposalCard, type ProposalView } from './ProposalCard.js';
+import { EffectLines, NewSheetCard, ProposalCard, type NewSheetView, type ProposalView } from './ProposalCard.js';
 import type { ProposalEffect } from '../logic/proposalEffect.js';
 import { commandIcon } from '../icons.js';
 
@@ -68,6 +68,10 @@ export interface ChatPaneProps {
   onAcceptAll?(ids: readonly string[]): void;
   /** Applies these proposals to a copy of the sheet in a new tab. */
   onNewSheet?(ids: readonly string[]): void;
+  /** The whole new calculations the answer at this turn wrote. */
+  newSheets?(turn: number): readonly NewSheetView[];
+  /** Opens a new calculation the model wrote as a new sheet. */
+  onOpenSheet?(id: string): void;
 }
 
 /** The open proposals of one answer, for accepting them together or in a new sheet. */
@@ -79,7 +83,7 @@ export interface AnswerProposals {
   readonly effect?: ProposalEffect;
 }
 
-export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTurns, context, onOpenSettings, onNew, libraries = [], onLibraries, onToggleLibrary, proposals, onDecide, onReview, answerProposals, onAcceptAll, onNewSheet }: ChatPaneProps) {
+export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTurns, context, onOpenSettings, onNew, libraries = [], onLibraries, onToggleLibrary, proposals, onDecide, onReview, answerProposals, onAcceptAll, onNewSheet, newSheets, onOpenSheet }: ChatPaneProps) {
   const [libraryMenu, setLibraryMenu] = useState(false);
   // The menu of libraries closes like any menu: a click anywhere else, or Esc.
   useEffect(() => {
@@ -130,7 +134,11 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTur
    */
   const answerHtml = (full: string, sent?: ChatTurn['theory']) => {
     // A proposed change is shown as a card under the answer, not as its block of lines.
-    const text = withoutProposals(full, (n) => `*(${t(catalog, 'proposal.below', { n: String(n) })})*`);
+    const text = withoutProposals(
+      full,
+      (n) => `*(${t(catalog, 'proposal.below', { n: String(n) })})*`,
+      () => `*(${t(catalog, 'newSheet.below')})*`,
+    );
     const citations = checkCitations(text, theory);
     let i = 0;
     const html = notesHtml(text).replace(CITED_ID, (whole) => {
@@ -279,6 +287,9 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTur
               <div dangerouslySetInnerHTML={{ __html: answerHtml(turn.text, turn.theory) }} />
               {(proposals?.(i) ?? []).map((view, n) => (
                 <ProposalCard key={view.entry.id} view={view} n={n + 1} catalog={catalog} onDecide={(id, accept) => onDecide?.(id, accept)} {...(onReview ? { onReview } : {})} />
+              ))}
+              {(newSheets?.(i) ?? []).map((view) => (
+                <NewSheetCard key={view.entry.id} view={view} catalog={catalog} onOpen={(id) => onOpenSheet?.(id)} />
               ))}
               {(() => {
                 const all = answerProposals?.(i);

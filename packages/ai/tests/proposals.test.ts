@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyProposal, applyProposals, briefing, memoryInstruction, parseProposals, replacedLines, withoutProposals } from '@kalketa/ai';
+import { applyProposal, applyProposals, briefing, memoryInstruction, parseNewSheets, parseProposals, replacedLines, withoutProposals } from '@kalketa/ai';
 
 const fence = '`'.repeat(3);
 const answer = [
@@ -87,5 +87,23 @@ describe('changes the model proposes', () => {
     const text = briefing({ language: 'cs', sheet: { title: 'N1', source: 'q := 12 kN/m', changes: [{ from: 1, to: 1, before: ['q := 12 kN/m'], after: ['F := 1 kN'], state: 'accepted', time: '2026-10-04T11:00:00Z', decided: '2026-10-04T11:01:00Z', copiedTo: 'N1 (upravená kopie)' }] } });
     expect(text).toContain('into a new sheet "N1 (upravená kopie)" (this sheet unchanged)');
     expect(text).toContain('Do not say that a new sheet cannot be made.');
+  });
+
+  it('may be a whole new sheet, opened apart', () => {
+    const lf = String.fromCharCode(10);
+    const text = ['Nový výpočet:', '', `${fence}sheet Nosník se silou`, '# Nosník se silou', '  2 | F := 1000 N', `${fence}`, '', `${fence}change 1`, 'L := 6 m', `${fence}`, `${fence}sheet`, '', `${fence}`].join(lf);
+    expect(parseNewSheets(text)).toEqual([{ title: 'Nosník se silou', lines: ['# Nosník se silou', 'F := 1000 N'] }]);
+    expect(parseProposals(text)).toHaveLength(1);
+    expect(withoutProposals(text, (n) => `[změna ${n}]`, (n) => `[list ${n}]`).split(lf)).toEqual(['Nový výpočet:', '', '[list 1]', '[změna 1]', '[list 2]']);
+  });
+
+  it('can build on the other open sheets, which the model only reads', () => {
+    const long = 'x := 1' + String.fromCharCode(10).repeat(1) + 'y'.repeat(7000);
+    const text = briefing({ language: 'cs', sheet: { title: 'N1', source: 'L := 5 m', others: [{ title: 'N2', source: 'F := 1 kN' }, { title: 'Dlouhý', source: long }] } });
+    expect(text).toContain('Other sheets open in the program, for reference and inspiration only');
+    expect(text).toContain('### "N2"');
+    expect(text).toContain('[… cut]');
+    expect(text).toContain(`${fence}sheet Beam with a point load`);
+    expect(briefing({ language: 'cs', sheet: { title: 'N1', source: '' } })).not.toContain('Other sheets open');
   });
 });

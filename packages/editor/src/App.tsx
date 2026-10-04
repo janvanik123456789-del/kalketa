@@ -12,9 +12,9 @@ import { catalogFor, CATALOGS, formatDiagnostic, formatNumber, t, type Catalog }
 import { buildPrintDocument, printHtml, revisionFooter, type PrintAppendix } from '@kalketa/render';
 import { emptyScene, readScene, writeScene, type CanvasScene } from '@kalketa/canvas';
 import { CanvasEditor } from '@kalketa/canvas/editor';
-import { addLayer, allDiagnostics, appendixLayers, blockAppendices, documentBlocks, isRemovable, LayerSessions, MAIN_LAYER, removeLayer, freezeRevision, removeRevision, revisionDocument, revisionState, shortHash, tablesByLayer, theorySections, updateLayer, withTheoryIds, conversationsOf, hasConversations, withConversation, withoutConversation, aiMemoryOf, withAiMemory, linkedLibraries, librarySections, entriesOf, withEntries, aiMadeLines, evaluateDocument, type ChangeEntry, type Conversation, type AddableLayerKind, type Layer, type RevisionState, type SheetDocument } from '@kalketa/sheet';
+import { addLayer, allDiagnostics, appendixLayers, blockAppendices, documentBlocks, isRemovable, LayerSessions, MAIN_LAYER, removeLayer, freezeRevision, removeRevision, revisionDocument, revisionState, shortHash, tablesByLayer, theorySections, updateLayer, withTheoryIds, conversationsOf, hasConversations, withConversation, withoutConversation, aiMemoryOf, withAiMemory, linkedLibraries, librarySections, entriesOf, newSheetsOf, withEntries, aiMadeLines, type SheetEntry, evaluateDocument, type ChangeEntry, type Conversation, type AddableLayerKind, type Layer, type RevisionState, type SheetDocument } from '@kalketa/sheet';
 import { buildCommands, shortcutOf, type Command } from './commands.js';
-import { applyProposal, applyProposals, cleanMemory, DEFAULT_AI_SETTINGS, parseAiSettings, parseProposals, providerById, replacedLines, type ChangeProposal, type AiSettings, type ChatTurn } from '@kalketa/ai';
+import { applyProposal, applyProposals, cleanMemory, parseNewSheets, DEFAULT_AI_SETTINGS, parseAiSettings, parseProposals, providerById, replacedLines, type ChangeProposal, type AiSettings, type ChatTurn } from '@kalketa/ai';
 import { ChatPane } from './components/ChatPane.js';
 import { TheoryLibraryDialog } from './components/TheoryLibraryDialog.js';
 import { sourceText, useTheoryLibraries, withoutDuplicates } from './theoryLibraries.js';
@@ -22,7 +22,7 @@ import { aiSources } from './logic/aiSources.js';
 import { aiProtocol } from './logic/aiProtocol.js';
 import { StudyDialog } from './components/StudyDialog.js';
 import { proposalEffect, type ProposalEffect } from './logic/proposalEffect.js';
-import type { ProposalView } from './components/ProposalCard.js';
+import type { NewSheetView, ProposalView } from './components/ProposalCard.js';
 import type { AnswerProposals } from './components/ChatPane.js';
 import { languageGuide, sheetContext } from './logic/aiContext.js';
 import { chooseFile, desktop, emptyDocument, exampleDocument, fileName, fileUri, largestParts, openBytes, pickAndOpen, saveDocument, tableCache, type FileRef, type OpenedFile } from './document.js';
@@ -678,9 +678,13 @@ export function App() {
     const memory = aiMemoryOf(doc);
     // The model learns which of its proposals the user accepted or rejected.
     const changes = entriesOf(doc);
+    // Other open sheets, for reference: what the model may build on.
+    const others = docs.tabs
+      .filter((d) => d.id !== tab.id && d.history.present.source.trim())
+      .map((d) => ({ title: d.history.present.manifest.title, source: d.history.present.source }));
     return {
       // A section both in the sources and in a library goes once, from the library.
-      sheet: { ...sheetContext(doc.manifest.title, evaluation.main), theory: withoutDuplicates(theorySections(layers), fromLibraries.sections), libraries: fromLibraries.libraries, ...(changes.length > 0 ? { changes } : {}) },
+      sheet: { ...sheetContext(doc.manifest.title, evaluation.main), theory: withoutDuplicates(theorySections(layers), fromLibraries.sections), libraries: fromLibraries.libraries, ...(changes.length > 0 ? { changes } : {}), ...(others.length > 0 ? { others } : {}) },
       languageGuide: languageGuide(),
       ...(memory.trim() ? { memory } : {}),
     };
@@ -770,6 +774,43 @@ export function App() {
     setDocs((s) => openTab(s, { ...added, savedDoc: emptyDocument(title, language) }));
     leaveEditing();
     setNotice(t(ui, 'proposal.copyNotice', { title }));
+  };
+  /** The new calculations the answer at a turn wrote, with what each computes. */
+  const newSheetViews = (turn: number): NewSheetView[] => {
+    if (!chat) return [];
+    return newSheetsOf(doc)
+      .filter((e) => e.id.startsWith(`${chat.id}:${turn}:`))
+      .map((entry) => {
+        const key = `${entry.id}\u0000sheet\u0000${doc.tables.size}`;
+        let effect = effects.current.get(key);
+        if (!effect) {
+          const empty = evaluateDocument({ ...doc, source: '' }, defaultRegistry).result;
+          effect = proposalEffect(empty, evaluateDocument({ ...doc, source: entry.lines.join('\n') }, defaultRegistry).result);
+          effects.current.set(key, effect);
+        }
+        return { entry, effect };
+      });
+  };
+  /**
+   * A new calculation the model wrote, opened in a new tab: this sheet's tables,
+   * layers, theory and conversations go with it (its lines may use them), not its
+   * revisions or the model's memory of it. All its lines carry the AI mark until
+   * reviewed; this sheet's journal says it was opened.
+   */
+  const openNewSheet = (entryId: string) => {
+    const entry = newSheetsOf(doc).find((e) => e.id === entryId);
+    if (!entry) return;
+    const decided = new Date().toISOString();
+    const title = entry.title.trim() || t(ui, 'newSheet.untitled');
+    change(withEntries(doc, [{ ...entry, state: 'accepted', decided, copiedTo: title }]));
+    const files = new Map([...doc.files].filter(([path]) => !/^layers\/[^/]+\/entries\.json$/.test(path)));
+    const base = withAiMemory({ ...doc, manifest: { ...doc.manifest, title, created: decided, modified: decided }, source: entry.lines.join('\n'), revisions: [], files }, '');
+    const made: ChangeEntry = { id: `${entry.id}:lines`, kind: 'change', time: entry.time, ...(entry.model ? { model: entry.model } : {}), ...(entry.conversation ? { conversation: entry.conversation } : {}), from: 0, to: 0, insert: true, before: [], after: entry.lines, state: 'accepted', decided };
+    const copy = withEntries(base, [made]);
+    const added = newTab<SheetDocument, FileRef>(copy, firstVisible(copy.layers));
+    setDocs((s) => openTab(s, { ...added, savedDoc: emptyDocument(title, language) }));
+    leaveEditing();
+    setNotice(t(ui, 'newSheet.notice', { title }));
   };
   /** A person reviewed the lines an accepted change brought: they lose their AI mark. */
   const reviewProposal = (entryId: string) =>
@@ -1548,6 +1589,21 @@ export function App() {
                             })
                             .filter((e) => !known.has(e.id));
                           next = withEntries(next, proposed);
+                        // Whole new calculations the answer wrote, to open as new sheets.
+                        const knownSheets = new Set(newSheetsOf(next).map((e) => e.id));
+                        const sheets = parseNewSheets(last.text)
+                          .map((s, n): SheetEntry => ({
+                            id: `${id}:${turns.length - 1}:s${n + 1}`,
+                            kind: 'sheet',
+                            time: last.time ?? new Date().toISOString(),
+                            ...(last.model ? { model: last.model } : {}),
+                            conversation: id,
+                            title: s.title,
+                            lines: s.lines,
+                            state: 'open',
+                          }))
+                          .filter((e) => !knownSheets.has(e.id));
+                        next = withEntries(next, sheets);
                           // The calculation keeps copies of the library sections an answer cited.
                           return libraries.recordCited(last.text, next);
                         }, 'ai-chat');
@@ -1558,6 +1614,8 @@ export function App() {
                     answerProposals={answerProposals}
                     onAcceptAll={acceptAll}
                     onNewSheet={toNewSheet}
+                    newSheets={newSheetViews}
+                    onOpenSheet={openNewSheet}
                       onNew={() => {
                         rememberConversation(chat);
                         startedChat.current[tab.id] = undefined;

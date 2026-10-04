@@ -77,6 +77,16 @@ const fakeApi = createServer((request, response) => {
         response.end(event('[DONE]'));
         return;
       }
+      // "Napiš nový…": a whole new calculation, and how many other open sheets the briefing had.
+      if (question.startsWith('Napiš nový')) {
+        const lf = String.fromCharCode(10);
+        const fence = '`'.repeat(3);
+        const others = [...system.matchAll(/^### "/gm)].length;
+        const text = `Jiné listy: ${others}.${lf}${lf}${fence}sheet Nosník se silou${lf}# Nosník se silou${lf}F := 1000 N${lf}L := 4 m${lf}M := F·L/4${lf}${fence}${lf}`;
+        response.write(event({ model: 'local-smoke-7b', choices: [{ delta: { content: text } }] }));
+        response.end(event('[DONE]'));
+        return;
+      }
       // "Navrhni dvě…": two changes that belong together, a variable at the top and a line using it at the end.
       if (question.startsWith('Navrhni dvě')) {
         const lines = [...system.matchAll(/^ *(\d+) \| /gm)].map((m) => Number(m[1]));

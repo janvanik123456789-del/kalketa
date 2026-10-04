@@ -1296,6 +1296,34 @@ async function studyWithRealInput(contents: Electron.WebContents, picture: strin
     headings: [...document.querySelectorAll('.layer-view.active .word-text h2, .layer-view.active .word-text h3')].map((h) => h.tagName + ':' + h.textContent),
     text: document.querySelector('.layer-view.active .word-text .ProseMirror')?.textContent ?? '',
   })`)) as { dialog: boolean; headings: string[]; text: string };
+  // A cut-out from the PDF: the page drawn, a rectangle dragged over it, put in as a picture with its page.
+  const picturesBefore = (await contents.executeJavaScript(`document.querySelectorAll('.layer-view.active .word-text img').length`)) as number;
+  await clickOn('.layer-view.active .word-pdf-crop');
+  for (let i = 0; i < 60 && !(await contents.executeJavaScript(`!!document.querySelector('.crop-surface[data-rendered]')`)); i++) await pause(150);
+  const surface = (await contents.executeJavaScript(`(() => { const r = document.querySelector('.crop-surface')?.getBoundingClientRect(); return r ? { x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height) } : undefined; })()`)) as { x: number; y: number; w: number; h: number } | undefined;
+  const cropPage = (await contents.executeJavaScript(`document.querySelector('.crop-page input')?.value ?? ''`)) as string;
+  if (surface) {
+    const from = { x: surface.x + Math.round(surface.w * 0.1), y: surface.y + Math.round(surface.h * 0.05) };
+    contents.sendInputEvent({ type: 'mouseDown', ...from, button: 'left', clickCount: 1 });
+    for (let step = 1; step <= 8; step++) {
+      contents.sendInputEvent({ type: 'mouseMove', x: from.x + step * 30, y: from.y + step * 8, button: 'left', modifiers: ['leftbuttondown'] } as Electron.MouseInputEvent);
+      await pause(20);
+    }
+    contents.sendInputEvent({ type: 'mouseUp', x: from.x + 240, y: from.y + 64, button: 'left', clickCount: 1 });
+    await pause(200);
+  }
+  await pause(300);
+  await takePicture(picture.replace(/[.]png$/, '-crop.png'));
+  await clickOn('.dialog-buttons button.default');
+  for (let i = 0; i < 30 && (await contents.executeJavaScript(`document.querySelectorAll('.layer-view.active .word-text img').length`)) === picturesBefore; i++) await pause(150);
+  // The picture shows once the browser has read it.
+  for (let i = 0; i < 30 && !(await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .word-text img')].pop()?.naturalWidth > 0`)); i++) await pause(100);
+  const cropped = (await contents.executeJavaScript(`({
+    dialog: !!document.querySelector('.crop'),
+    failed: document.querySelector('.crop .study-advice')?.textContent ?? '',
+    pictures: [...document.querySelectorAll('.layer-view.active .word-text img')].map((i) => (i.getAttribute('alt') ?? '') + '|' + i.naturalWidth),
+  })`)) as { dialog: boolean; failed: string; pictures: string[] };
+  await writeFile(picture.replace(/[.]png$/, '-crop.json'), JSON.stringify({ surface, cropPage, cropped }, null, 2));
   const card = existsSync(join(dir, 'Pruznost a pevnost.pdf.kalketa.json')) ? (JSON.parse(await readFile(join(dir, 'Pruznost a pevnost.pdf.kalketa.json'), 'utf8')) as { key?: string; chapters?: number[] }) : {};
 
   // The chat: the book is offered among the libraries, with how much of it is read.
@@ -1320,11 +1348,12 @@ async function studyWithRealInput(contents: Electron.WebContents, picture: strin
   await clickOn('.pane-tab[data-pane="details"]');
   await pause(300);
   const cited = answer.ok.map((c) => /^PP:T(\d+)$/.exec(c ?? '')?.[1]).filter(Boolean).map(Number);
-  await writeFile(picture.replace(/[.]png$/, '-study.json'), JSON.stringify({ offered, suggested, chosen, sources, card, listed, answer, cited }, null, 2));
+  await writeFile(picture.replace(/[.]png$/, '-study.json'), JSON.stringify({ offered, suggested, chosen, sources, cropPage, cropped, card, listed, answer, cited }, null, 2));
   return (
     offered.file.startsWith('Pruznost a pevnost.pdf') && offered.file.includes('PDF, 62 s.') && offered.reads === 'AI čte 62 z 62.' && offered.large && offered.key === 'PP' &&
     offered.chapters.length === 4 && ohyb >= 0 && chosen.reads === 'AI čte 21 z 62.' && !chosen.large && suggested !== '' &&
     !sources.dialog && sources.headings[0] === 'H2:2 Ohyb (s. 21–24)' && sources.headings[1] === 'H3:2.1 Průhyb nosníku (s. 25–40)' && sources.headings.length === 2 && sources.text.includes('Strana 30.') && !sources.text.includes('Strana 20.') &&
+    cropPage === '21' && !cropped.dialog && cropped.pictures.length === picturesBefore + 1 && /^Pružnost a pevnost, s\. 21\|\d+$/.test(cropped.pictures[cropped.pictures.length - 1] ?? '') && Number(cropped.pictures[cropped.pictures.length - 1]!.split('|')[1]) > 300 &&
     card.key === 'PP' && JSON.stringify(card.chapters) === JSON.stringify([ohyb]) &&
     at >= 0 && listed[at]!.includes('AI čte 21 z 62.') &&
     cited.length === 1 && cited[0]! >= 21 && cited[0]! <= 41

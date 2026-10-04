@@ -21,6 +21,7 @@ import { sourceText, useTheoryLibraries, withoutDuplicates, type FoundLibrary } 
 import { aiSources } from './logic/aiSources.js';
 import { aiProtocol } from './logic/aiProtocol.js';
 import { StudyDialog } from './components/StudyDialog.js';
+import { PdfCropDialog } from './components/PdfCropDialog.js';
 import { proposalEffect, type ProposalEffect } from './logic/proposalEffect.js';
 import type { NewSheetView, ProposalView } from './components/ProposalCard.js';
 import type { AnswerProposals } from './components/ChatPane.js';
@@ -356,6 +357,10 @@ export function App() {
     activate(added.id);
     setNotice(t(ui, 'study.toSourcesDone', { name }));
   };
+
+  // A cut-out from a study PDF being chosen: the sources wait for it.
+  const [cropping, setCropping] = useState<(cut: { picture: IncomingPicture; caption: string } | undefined) => void>();
+  const pickPdfCrop = () => new Promise<{ picture: IncomingPicture; caption: string } | undefined>((resolve) => setCropping(() => resolve));
 
   /** Takes a calculation from a file as a block and inserts a line that uses it. */
   const insertBlock = async () => {
@@ -1472,6 +1477,7 @@ export function App() {
               }
             : {})}
           {...(desktop && l.kind === 'sources' ? { onSaveLibrary: () => setLibraryLayer(l.id) } : {})}
+          {...(desktop && l.kind === 'sources' && libraries.found.some((f) => f.study?.content.kind === 'pdf') ? { pickPdfCrop } : {})}
           onChange={(next, files) => setLayerText(l, next, `${l.id}:notes`, files)}
           onSettle={() => {
             // New headings get their theory ids once the user stops typing in them.
@@ -1841,6 +1847,21 @@ export function App() {
         />
       )}
       {dialog === 'about' && <AboutDialog catalog={ui} onClose={() => setDialog(undefined)} />}
+      {cropping && (
+        <PdfCropDialog
+          catalog={ui}
+          files={libraries.found}
+          {...(tab.path ? { sheetPath: tab.path } : {})}
+          onInsert={(picture, caption) => {
+            cropping({ picture, caption });
+            setCropping(undefined);
+          }}
+          onClose={() => {
+            cropping(undefined);
+            setCropping(undefined);
+          }}
+        />
+      )}
       {dialog === 'study' && (
         <StudyDialog
           catalog={ui}

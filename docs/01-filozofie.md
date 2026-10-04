@@ -335,6 +335,7 @@ Model má odpovídat z teorie, kterou vybral autor výpočtu, ne „z hlavy“. 
 - **Výběr, název a klíč** se ukládají do popisu vedle souboru (`<soubor>.kalketa.json`). Firma tak může mít normy předvybrané pro všechny.
 - **Návrh kapitol (etapa C):** tlačítko „Navrhnout podle výpočtu“ porovná text otevřeného výpočtu s kapitolami knihy stejným hledáním, jakým chat vybírá teorii k otázce. Zaškrtne nejvýš tři nejbližší (u kapitoly s vybranou podkapitolou jen podkapitolu). Člověk výběr potvrdí nebo upraví.
 - **Převod na knihovnu (etapa C):** „Vložit výběr do Podkladů“ vloží vybrané kapitoly do nové vrstvy Podklady, s nadpisem kapitoly a jejími stranami. Stránka, kterou kapitola sdílí s další, jde jen na výslovné přání. Text se tam vyčistí (Vyčistit text z PDF), doplní obrázky a uloží jako knihovna `.kalkt`. Přímý převod PDF na `.kalkt` by uložil i šum z PDF, proto vede přes Podklady.
+- **Výřez z PDF (2026-10-04):** text z PDF ztrácí obrázky a vzorce z něj vyjdou rozsypané. V Podkladech je proto tlačítko „Výřez z PDF“. Ukáže stránky studijního PDF tak, jak jsou vytištěné (začne na první vybrané straně), tažením myší se vybere obrázek, vzorec nebo tabulka a OK je vloží na místo kurzoru jako obrázek s popiskem „Název, s. 45“. Stránky kreslí pdf.js v editoru, výřez se kreslí 2,5× ostřeji než na obrazovce.
 
 ### 9.7 Vrstva Poznámky AI (upřesněno 2026-10-03)
 

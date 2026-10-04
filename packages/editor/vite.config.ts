@@ -27,7 +27,7 @@ export default defineConfig(({ command }) => ({
 
 /** The built editor may load only its own files; images come as data: URIs. */
 function contentSecurityPolicy(): Plugin {
-  const policy = "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; frame-src 'self' about: data:; connect-src 'self'";
+  const policy = "default-src 'self'; img-src 'self' data: blob:; font-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; frame-src 'self' about: data:; connect-src 'self'";
   return {
     name: 'kalketa-csp',
     transformIndexHtml: (html) => html.replace('<head>', `<head>\n    <meta http-equiv="Content-Security-Policy" content="${policy}" />`),

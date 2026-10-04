@@ -96,6 +96,14 @@ export function registerTheoryBridge(fromEditor: (event: IpcMainInvokeEvent) => 
     return { content: await readStudyFile(path), settings: await readStudySettings(path) };
   });
 
+  // The bytes of a study file, for drawing its pages in the editor (a cut-out from a PDF).
+  ipcMain.handle('kalketa:study-bytes', async (event, request: { path: unknown; sheetPath?: unknown }) => {
+    fromEditor(event);
+    const path = allowedPath(request.path, request.sheetPath, true);
+    if (!path) throw new Error('Not a study file of the searched folders');
+    return new Uint8Array(await readFile(path));
+  });
+
   // The card of a study file: its key, title, and the chapters or pages read.
   ipcMain.handle('kalketa:study-save', async (event, request: { path: unknown; sheetPath?: unknown; settings: unknown }) => {
     fromEditor(event);

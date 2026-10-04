@@ -35,6 +35,8 @@ interface Props {
   picturePath(picture: IncomingPicture, taken: ReadonlySet<string>): string;
   /** Saves the layer as a theory library (.kalkt); absent where it cannot be done. */
   onSaveLibrary?(): void;
+  /** A cut-out from a study PDF and its caption; absent when there is no study PDF. */
+  pickPdfCrop?(): Promise<{ readonly picture: IncomingPicture; readonly caption: string } | undefined>;
 }
 
 /** Attributes the stored notes need beyond the editor's own: the section id, the alignment of a table column. */
@@ -119,7 +121,7 @@ function withPictures(doc: JSONContent, resolveFile: (path: string) => string | 
   return doc.content ? { ...doc, content: doc.content.map((c) => withPictures(c, resolveFile)) } : doc;
 }
 
-export function NotesWord({ text, title, catalog, readOnly, resolveFile, onChange, onSettle, pickImage, picturePath, onSaveLibrary }: Props) {
+export function NotesWord({ text, title, catalog, readOnly, resolveFile, onChange, onSettle, pickImage, picturePath, onSaveLibrary, pickPdfCrop }: Props) {
   // What the editor last gave out: a text coming back unchanged is not loaded again.
   const emitted = useRef(text);
   const pendingFiles = useRef<Map<string, Uint8Array> | undefined>(undefined);
@@ -213,9 +215,11 @@ export function NotesWord({ text, title, catalog, readOnly, resolveFile, onChang
 
   if (!editor) return null;
 
-  const insertPicture = async () => {
-    const chosen = await pickImage();
-    if (chosen) place.current([{ ...chosen.picture, caption: chosen.caption } as IncomingPicture]);
+  const insertPicture = async (pick: Props['pickImage'] = pickImage) => {
+    // The dialog takes the focus; the picture goes where the cursor was.
+    const at = editor.state.selection.from;
+    const chosen = await pick();
+    if (chosen) place.current([{ ...chosen.picture, caption: chosen.caption } as IncomingPicture], at);
   };
 
   const setLink = async () => {
@@ -313,6 +317,11 @@ export function NotesWord({ text, title, catalog, readOnly, resolveFile, onChang
         <Tool label={t(catalog, 'notes.insertImage')} disabled={readOnly} onClick={() => void insertPicture()}>
           {commandIcon('insert.picture') ?? '🖼'}
         </Tool>
+        {pickPdfCrop && (
+          <Tool label={t(catalog, 'crop.button')} title={t(catalog, 'crop.buttonTip')} className="word-pdf-crop" disabled={readOnly} onClick={() => void insertPicture(pickPdfCrop)}>
+            {t(catalog, 'crop.button')}
+          </Tool>
+        )}
         <span className="word-sep" />
         <Tool label={t(catalog, 'pdf.button')} title={t(catalog, 'pdf.buttonTip')} className="word-pdf" disabled={readOnly || !text.trim()} onClick={() => setCleanup(true)}>
           {t(catalog, 'pdf.button')}

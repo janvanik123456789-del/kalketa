@@ -12,6 +12,10 @@ Boční panel (Podrobnosti, Tabulky, Vrstvy, Rozhovor s AI) přepínat záložka
 
 ## Okno rozhovoru s AI
 
+### Vzorec z výřezu do zápisu Kalkety (2026-10-04)
+
+Výřez z PDF vloží vzorec jako obrázek. Člověk ho přečte, model ani výpočet ne. Model, který umí číst obrázky (Claude, lokální „vision“ modely), by z výřezu přepsal vzorec do zápisu Kalkety (např. `w := 5·q·L⁴/(384·E·I)`), člověk by ho potvrdil a vzorec by šel do Podkladů jako text i do výpočtu. Lokální model uživatele to nejspíš neumí.
+
 ### Nastavení lokálního modelu: přemýšlení a vzorkování (2026-10-04, na doladění)
 
 Lokální model (`qwen3.8-flash…iq3_xxs` přes llama.cpp) se v přemýšlení zacyklí na „možná“ a odpověď trvá 3–5 minut. Hloubka přemýšlení se posílá jako `reasoning_effort`, ale llama.cpp ji nejspíš ignoruje. Hrubá kvantizace (asi 3 bity) k opakování přispívá.

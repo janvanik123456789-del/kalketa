@@ -38,6 +38,7 @@ contextBridge.exposeInMainWorld('kalketaDesktop', {
   theoryFolders: (sheetPath?: string): Promise<unknown> => ipcRenderer.invoke('kalketa:theory-folders', sheetPath),
   studyRead: (path: string, sheetPath?: string): Promise<unknown> => ipcRenderer.invoke('kalketa:study-read', { path, sheetPath }),
   studySave: (path: string, sheetPath: string | undefined, settings: unknown): Promise<unknown> => ipcRenderer.invoke('kalketa:study-save', { path, sheetPath, settings }),
+  studyBytes: (path: string, sheetPath?: string): Promise<unknown> => ipcRenderer.invoke('kalketa:study-bytes', { path, sheetPath }),
   aiChatCancel: (id: string): Promise<void> => ipcRenderer.invoke('kalketa:ai-chat-cancel', id),
   onAiChatEvent: (listener: (piece: { id: string; text?: string; thinking?: boolean }) => void): void => {
     ipcRenderer.on('kalketa:ai-chat-event', (_event, piece: { id: string; text?: string; thinking?: boolean }) => listener(piece));

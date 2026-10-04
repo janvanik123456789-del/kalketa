@@ -134,6 +134,8 @@ export interface DesktopBridge {
   /** A study file (PDF, HTML, Markdown) of the theory folders: its text and its card. */
   studyRead(path: string, sheetPath?: string): Promise<{ readonly content: StudyRaw; readonly settings: unknown }>;
   studySave(path: string, sheetPath: string | undefined, settings: StudySettings): Promise<void>;
+  /** The bytes of a study file, for drawing its pages. */
+  studyBytes(path: string, sheetPath?: string): Promise<Uint8Array>;
   theoryRead(path: string, sheetPath?: string): Promise<Uint8Array>;
   /** Saves a library into one of the folders; an existing file only with `replace`. */
   theorySave(request: { folder: TheoryFolder; sheetPath?: string; title: string; bytes: Uint8Array; replace?: boolean }): Promise<{ readonly path: string; readonly exists?: boolean }>;

@@ -574,3 +574,13 @@ button.icon:hover { color: var(--accent); }
 .study-chapter-buttons { display: flex; gap: 6px; }
 .study-suggested { margin: 0; font-size: 12px; }
 .study-import { display: flex; justify-content: flex-end; }
+
+/* A cut-out from a study PDF: the page as printed, a rectangle dragged over it. */
+.crop { display: flex; flex-direction: column; gap: 6px; }
+.crop-bar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12px; }
+.crop-page input { width: 5em; }
+.crop-help { flex: 1; text-align: right; }
+.crop-page-view { max-height: 65vh; overflow: auto; border: 1px solid var(--line); background: #8a929c; padding: 8px; }
+.crop-surface { position: relative; width: fit-content; margin: 0 auto; cursor: crosshair; user-select: none; }
+.crop-canvas { display: block; background: #fff; box-shadow: 0 1px 4px rgb(0 0 0 / 30%); }
+.crop-cut { position: absolute; border: 2px dashed #1d6fd6; background: rgb(29 111 214 / 12%); pointer-events: none; }

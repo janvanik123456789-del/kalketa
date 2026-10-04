@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyProposal, briefing, memoryInstruction, parseProposals, replacedLines, withoutProposals } from '@kalketa/ai';
+import { applyProposal, applyProposals, briefing, memoryInstruction, parseProposals, replacedLines, withoutProposals } from '@kalketa/ai';
 
 const fence = '`'.repeat(3);
 const answer = [
@@ -66,5 +66,26 @@ describe('changes the model proposes', () => {
     expect(text).toContain('line 5: `L := 5 m` -> `L := 6 m`; not decided yet');
     expect(briefing({ language: 'cs', sheet: { title: 'N1', source: '' } })).not.toContain('Changes you proposed');
     expect(memoryInstruction('')).toContain('A change the user accepted');
+  });
+
+  it('of one answer apply together, from the bottom up, unless they overlap', () => {
+    const source = ['q := 12 kN/m', 'L := 5 m', 'M := q·L²/8', 'w := 5·q·L⁴'].join(String.fromCharCode(10));
+    const together = applyProposals(source, [
+      { from: 1, to: 1, lines: ['F := 1 kN'] },
+      { from: 3, to: 4, lines: ['M := F·L/4', 'w := F·L³'] },
+      { from: 2, to: 2, insert: true, lines: ['a := L/2'] },
+      { from: 4, to: 4, insert: true, lines: ['check w ≤ 20 mm'] },
+    ]);
+    expect(together?.split(String.fromCharCode(10))).toEqual(['F := 1 kN', 'L := 5 m', 'a := L/2', 'M := F·L/4', 'w := F·L³', 'check w ≤ 20 mm']);
+    expect(applyProposals(source, [{ from: 1, to: 2, lines: [] }, { from: 2, to: 3, lines: [] }])).toBeUndefined();
+    expect(applyProposals(source, [{ from: 1, to: 3, lines: [] }, { from: 2, to: 2, insert: true, lines: ['x'] }])).toBeUndefined();
+    // An insertion after the last line a replacement takes is fine.
+    expect(applyProposals(source, [{ from: 1, to: 2, lines: ['L := 6 m'] }, { from: 2, to: 2, insert: true, lines: ['x := 1'] }])?.split(String.fromCharCode(10))).toEqual(['L := 6 m', 'x := 1', 'M := q·L²/8', 'w := 5·q·L⁴']);
+  });
+
+  it('accepted into a copy are told to the model as such', () => {
+    const text = briefing({ language: 'cs', sheet: { title: 'N1', source: 'q := 12 kN/m', changes: [{ from: 1, to: 1, before: ['q := 12 kN/m'], after: ['F := 1 kN'], state: 'accepted', time: '2026-10-04T11:00:00Z', decided: '2026-10-04T11:01:00Z', copiedTo: 'N1 (upravená kopie)' }] } });
+    expect(text).toContain('into a new sheet "N1 (upravená kopie)" (this sheet unchanged)');
+    expect(text).toContain('Do not say that a new sheet cannot be made.');
   });
 });

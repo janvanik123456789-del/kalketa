@@ -77,6 +77,16 @@ const fakeApi = createServer((request, response) => {
         response.end(event('[DONE]'));
         return;
       }
+      // "Navrhni dvě…": two changes that belong together, a variable at the top and a line using it at the end.
+      if (question.startsWith('Navrhni dvě')) {
+        const lines = [...system.matchAll(/^ *(\d+) \| /gm)].map((m) => Number(m[1]));
+        const lf = String.fromCharCode(10);
+        const fence = '`'.repeat(3);
+        const text = `Dvě změny:${lf}${lf}${fence}change after 1${lf}smoke_b := 3 m${lf}${fence}${lf}${lf}${fence}change after ${Math.max(...lines)}${lf}smoke_c := smoke_b·2${lf}${fence}${lf}`;
+        response.write(event({ model: 'local-smoke-7b', choices: [{ delta: { content: text } }] }));
+        response.end(event('[DONE]'));
+        return;
+      }
       // "Navrhni…": a model that proposes a line added at the end of the sheet.
       if (question.startsWith('Navrhni')) {
         const lines = [...system.matchAll(/^ *(\d+) \| /gm)].map((m) => Number(m[1]));

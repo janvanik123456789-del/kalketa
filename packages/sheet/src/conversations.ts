@@ -82,6 +82,8 @@ export interface ChangeEntry {
   readonly decided?: string;
   /** ISO time a person marked the accepted lines as reviewed; until then the sheet marks them as made by the AI. */
   readonly reviewed?: string;
+  /** Accepted into a copy of the sheet with this title (a new tab); this sheet stayed as it was. */
+  readonly copiedTo?: string;
 }
 
 /** The journal of the sheet, oldest first. */
@@ -107,7 +109,7 @@ export function aiMadeLines(source: string, entries: readonly ChangeEntry[]): Ma
   const lines = source.split(/\r?\n/);
   const made = new Map<number, ChangeEntry>();
   for (const entry of entries) {
-    if (entry.state !== 'accepted' || entry.reviewed || entry.after.length === 0) continue;
+    if (entry.state !== 'accepted' || entry.reviewed || entry.copiedTo || entry.after.length === 0) continue;
     const anchor = entry.insert ? entry.from + 1 : entry.from;
     let best: number | undefined;
     for (let at = 1; at + entry.after.length - 1 <= lines.length; at++) {

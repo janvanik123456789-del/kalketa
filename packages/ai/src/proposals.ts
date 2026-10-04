@@ -54,6 +54,22 @@ export function replacedLines(source: string, proposal: ChangeProposal): string[
   return lines.slice(proposal.from - 1, proposal.to);
 }
 
+/**
+ * The source with several proposals of one answer applied together, their line
+ * numbers all meant for `source`; undefined when they overlap. Applied from the
+ * bottom up, so the lines above keep their numbers.
+ */
+export function applyProposals(source: string, proposals: readonly ChangeProposal[]): string | undefined {
+  // An insertion after line n comes before a replacement of line n, so the replacement does not move it.
+  const order = [...proposals].sort((a, b) => b.from - a.from || Number(!!b.insert) - Number(!!a.insert));
+  const replaced = proposals.filter((p) => !p.insert);
+  for (let i = 0; i < replaced.length; i++)
+    for (let j = i + 1; j < replaced.length; j++) if (replaced[i]!.from <= replaced[j]!.to && replaced[j]!.from <= replaced[i]!.to) return undefined;
+  // An insertion inside lines another proposal replaces has no place.
+  if (proposals.some((p) => p.insert && replaced.some((r) => p.from >= r.from && p.from < r.to))) return undefined;
+  return order.reduce(applyProposal, source);
+}
+
 /** The source with the proposal applied. */
 export function applyProposal(source: string, proposal: ChangeProposal): string {
   const lines = source.split('\n');

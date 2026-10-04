@@ -562,3 +562,7 @@ button.icon:hover { color: var(--accent); }
 .study-chapter-title { flex: 1; }
 .study-chapter-page { color: #8a929c; font-variant-numeric: tabular-nums; }
 .study-none code { font-size: 12px; }
+
+/* The proposals of one answer together: their effect, Accept all, Into a new sheet. */
+.proposal-all { margin: 6px 0 2px; padding: 6px 8px; border: 1px dashed #c5ccd5; border-radius: 5px; }
+.proposal-effect-title { font-weight: 600; color: #48505a; }

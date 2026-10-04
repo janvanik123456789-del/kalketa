@@ -14,7 +14,7 @@ import { emptyScene, readScene, writeScene, type CanvasScene } from '@kalketa/ca
 import { CanvasEditor } from '@kalketa/canvas/editor';
 import { addLayer, allDiagnostics, appendixLayers, blockAppendices, documentBlocks, isRemovable, LayerSessions, MAIN_LAYER, removeLayer, freezeRevision, removeRevision, revisionDocument, revisionState, shortHash, tablesByLayer, theorySections, updateLayer, withTheoryIds, conversationsOf, hasConversations, withConversation, withoutConversation, aiMemoryOf, withAiMemory, linkedLibraries, librarySections, entriesOf, withEntries, aiMadeLines, evaluateDocument, type ChangeEntry, type Conversation, type AddableLayerKind, type Layer, type RevisionState, type SheetDocument } from '@kalketa/sheet';
 import { buildCommands, shortcutOf, type Command } from './commands.js';
-import { applyProposal, cleanMemory, DEFAULT_AI_SETTINGS, parseAiSettings, parseProposals, providerById, replacedLines, type ChangeProposal, type AiSettings, type ChatTurn } from '@kalketa/ai';
+import { applyProposal, applyProposals, cleanMemory, DEFAULT_AI_SETTINGS, parseAiSettings, parseProposals, providerById, replacedLines, type ChangeProposal, type AiSettings, type ChatTurn } from '@kalketa/ai';
 import { ChatPane } from './components/ChatPane.js';
 import { TheoryLibraryDialog } from './components/TheoryLibraryDialog.js';
 import { sourceText, useTheoryLibraries, withoutDuplicates } from './theoryLibraries.js';
@@ -23,6 +23,7 @@ import { aiProtocol } from './logic/aiProtocol.js';
 import { StudyDialog } from './components/StudyDialog.js';
 import { proposalEffect, type ProposalEffect } from './logic/proposalEffect.js';
 import type { ProposalView } from './components/ProposalCard.js';
+import type { AnswerProposals } from './components/ChatPane.js';
 import { languageGuide, sheetContext } from './logic/aiContext.js';
 import { chooseFile, desktop, emptyDocument, exampleDocument, fileName, fileUri, largestParts, openBytes, pickAndOpen, saveDocument, tableCache, type FileRef, type OpenedFile } from './document.js';
 import { record, redo, undo, type History } from './logic/history.js';
@@ -714,6 +715,62 @@ export function App() {
       if (!entry.before || !now || now.length !== entry.before.length || now.some((l, i) => l !== entry.before![i])) return present;
       return withEntries({ ...present, source: applyProposal(present.source, asProposal(entry)) }, [{ ...entry, state: 'accepted', decided }]);
     });
+  /** Open proposals that still fit the sheet, by id. */
+  const fittingOpen = (present: SheetDocument, ids: readonly string[]) =>
+    entriesOf(present).filter((e) => {
+      if (!ids.includes(e.id) || e.state !== 'open' || !e.before) return false;
+      const now = replacedLines(present.source, asProposal(e));
+      return !!now && now.length === e.before.length && now.every((l, i) => l === e.before![i]);
+    });
+  /** The open proposals of the answer at a turn of the chat: whether they go together, and what they do together. */
+  const answerProposals = (turn: number): AnswerProposals | undefined => {
+    if (!chat) return undefined;
+    const open = fittingOpen(
+      doc,
+      entriesOf(doc)
+        .filter((e) => e.id.startsWith(`${chat.id}:${turn}:`))
+        .map((e) => e.id),
+    );
+    if (open.length === 0) return undefined;
+    const together = applyProposals(doc.source, open.map(asProposal));
+    if (together === undefined || open.length < 2) return { ids: open.map((e) => e.id), together: together !== undefined };
+    const key = `${open.map((e) => e.id).join('|')}\u0000${doc.source}`;
+    let effect = effects.current.get(key);
+    if (!effect) {
+      effect = proposalEffect(evaluation.main, evaluateDocument({ ...doc, source: together }, defaultRegistry).result);
+      effects.current.set(key, effect);
+    }
+    return { ids: open.map((e) => e.id), together: true, effect };
+  };
+  /** Accepts the proposals of an answer together: one step to undo. */
+  const acceptAll = (ids: readonly string[]) =>
+    changeWith((present) => {
+      const open = fittingOpen(present, ids);
+      const source = open.length === ids.length ? applyProposals(present.source, open.map(asProposal)) : undefined;
+      if (source === undefined) return present;
+      const decided = new Date().toISOString();
+      return withEntries({ ...present, source }, open.map((e) => ({ ...e, state: 'accepted' as const, decided })));
+    });
+  /**
+   * The calculation copied into a new tab with the proposals applied there; this
+   * sheet stays as it is and its journal says where they went. The copy keeps the
+   * tables, layers, libraries and conversations, not the revisions (they belong
+   * to this sheet), and is unsaved.
+   */
+  const toNewSheet = (ids: readonly string[]) => {
+    const open = fittingOpen(doc, ids);
+    const source = open.length === ids.length ? applyProposals(doc.source, open.map(asProposal)) : undefined;
+    if (source === undefined) return;
+    const decided = new Date().toISOString();
+    const title = t(ui, 'proposal.copyTitle', { title: doc.manifest.title });
+    change(withEntries(doc, open.map((e) => ({ ...e, state: 'accepted' as const, decided, copiedTo: title }))));
+    const copy = withEntries({ ...doc, manifest: { ...doc.manifest, title, created: decided, modified: decided }, source, revisions: [] }, open.map((e) => ({ ...e, state: 'accepted' as const, decided })));
+    const added = newTab<SheetDocument, FileRef>(copy, firstVisible(copy.layers));
+    // Unsaved: it has no file yet.
+    setDocs((s) => openTab(s, { ...added, savedDoc: emptyDocument(title, language) }));
+    leaveEditing();
+    setNotice(t(ui, 'proposal.copyNotice', { title }));
+  };
   /** A person reviewed the lines an accepted change brought: they lose their AI mark. */
   const reviewProposal = (entryId: string) =>
     changeWith((present) => {
@@ -1498,6 +1555,9 @@ export function App() {
                       proposals={(turn) => (chat ? proposalViews(entriesOf(doc).filter((e) => e.id.startsWith(`${chat.id}:${turn}:`))) : [])}
                       onDecide={decideProposal}
                       onReview={reviewProposal}
+                    answerProposals={answerProposals}
+                    onAcceptAll={acceptAll}
+                    onNewSheet={toNewSheet}
                       onNew={() => {
                         rememberConversation(chat);
                         startedChat.current[tab.id] = undefined;

@@ -12,7 +12,9 @@ Boční panel (Podrobnosti, Tabulky, Vrstvy, Rozhovor s AI) přepínat záložka
 
 ## Okno rozhovoru s AI
 
-### Upravený výpočet do nového listu (2026-10-04)
+### ~~Upravený výpočet do nového listu~~ (2026-10-04, hotovo týž den)
+
+*Hotovo:* pod odpovědí s návrhy je „Přijmout vše (n)“ se společným dopadem na výpočet (jedno Zpět) a „Do nového listu“, které zkopíruje výpočet do nové záložky (bez revizí, neuložené) a změny použije tam. Deník původního listu zapíše „Přijato do nového listu“, model to ví. Původní zápis:
 
 Uživatel chtěl po AI „na novém listu udělej ten samý výpočet, jen se silou uprostřed místo spojitého zatížení“. Model umí měnit jen otevřený list, a tak navrhl přepsat ten. Podle uživatele má AI umět **výpočet zduplikovat do nového listu a už upravený**.
 

@@ -19,6 +19,25 @@ function percent(u: number | undefined, catalog: Catalog): string {
   return u === undefined ? '' : `${new Intl.NumberFormat(catalog.locale, { maximumFractionDigits: 0 }).format(u * 100)} %`;
 }
 
+/** What a change does: errors before and after, and the checks it changes ("Průhyb: 120 % ✗ → 84 % ✓"). */
+export function EffectLines({ effect, catalog, title }: { effect: ProposalEffect; catalog: Catalog; title?: string }) {
+  const check = (c: { passed: boolean; utilization?: number } | undefined) => (c ? `${percent(c.utilization, catalog)} ${c.passed ? '✓' : '✗'}`.trim() : '–');
+  return (
+    <div className="proposal-effect">
+      {title && <div className="proposal-effect-title">{title}</div>}
+      {effect.errors.before !== effect.errors.after && (
+        <div className={effect.errors.after > effect.errors.before ? 'worse' : 'better'}>{t(catalog, 'proposal.errors', { before: String(effect.errors.before), after: String(effect.errors.after) })}</div>
+      )}
+      {effect.checks.map((c) => (
+        <div key={c.label} className={c.after?.passed === false ? 'worse' : 'better'}>
+          {c.label}: {check(c.before)} → {check(c.after)}
+        </div>
+      ))}
+      {effect.errors.before === effect.errors.after && effect.checks.length === 0 && <div className="muted">{t(catalog, 'proposal.noEffect')}</div>}
+    </div>
+  );
+}
+
 export function ProposalCard({ view, n, catalog, onDecide, onReview }: { view: ProposalView; n: number; catalog: Catalog; onDecide(id: string, accept: boolean): void; onReview?(id: string): void }) {
   const { entry, fits, effect } = view;
   const where = entry.insert
@@ -27,7 +46,6 @@ export function ProposalCard({ view, n, catalog, onDecide, onReview }: { view: P
       ? t(catalog, 'proposal.line', { line: String(entry.from) })
       : t(catalog, 'proposal.lines', { from: String(entry.from), to: String(entry.to) });
   const when = (iso?: string) => (iso ? new Intl.DateTimeFormat(catalog.locale, { dateStyle: 'short', timeStyle: 'short' }).format(new Date(iso)) : '');
-  const check = (c: { passed: boolean; utilization?: number } | undefined) => (c ? `${percent(c.utilization, catalog)} ${c.passed ? '✓' : '✗'}`.trim() : '–');
   return (
     <div className={`proposal ${entry.state}${fits === 'yes' ? '' : ' stale'}`} data-proposal={entry.id}>
       <div className="proposal-head">
@@ -46,19 +64,7 @@ export function ProposalCard({ view, n, catalog, onDecide, onReview }: { view: P
         ))}
         {entry.after.length === 0 && <div className="add muted">{t(catalog, 'proposal.deletes')}</div>}
       </pre>
-      {effect && entry.state === 'open' && fits === 'yes' && (
-        <div className="proposal-effect">
-          {effect.errors.before !== effect.errors.after && (
-            <div className={effect.errors.after > effect.errors.before ? 'worse' : 'better'}>{t(catalog, 'proposal.errors', { before: String(effect.errors.before), after: String(effect.errors.after) })}</div>
-          )}
-          {effect.checks.map((c) => (
-            <div key={c.label} className={c.after?.passed === false ? 'worse' : 'better'}>
-              {c.label}: {check(c.before)} → {check(c.after)}
-            </div>
-          ))}
-          {effect.errors.before === effect.errors.after && effect.checks.length === 0 && <div className="muted">{t(catalog, 'proposal.noEffect')}</div>}
-        </div>
-      )}
+      {effect && entry.state === 'open' && fits === 'yes' && <EffectLines effect={effect} catalog={catalog} />}
       <div className="proposal-actions">
         {entry.state === 'open' ? (
           fits === 'yes' ? (
@@ -73,6 +79,8 @@ export function ProposalCard({ view, n, catalog, onDecide, onReview }: { view: P
           ) : (
             <span className="muted">{t(catalog, fits === 'stale' ? 'proposal.stale' : 'proposal.missing')}</span>
           )
+        ) : entry.state === 'accepted' && entry.copiedTo ? (
+          <span className="proposal-state">{t(catalog, 'proposal.copied', { title: entry.copiedTo, when: when(entry.decided) })}</span>
         ) : entry.state === 'accepted' && entry.reviewed ? (
           <span className="proposal-state">{t(catalog, 'proposal.acceptedReviewed', { when: when(entry.decided), reviewed: when(entry.reviewed) })}</span>
         ) : (

@@ -105,6 +105,8 @@ ${sheet.theory!.filter((s) => s.id).map((s) => `[${s.id}] ${s.title}`).join('\n'
   profil := pick(Profily_IPE, "IPE 220")
   ${FENCE}
   "change 12-14" replaces lines 12 to 14 (an empty block deletes them), "change after 14" inserts new lines after line 14. Propose only lines in the calculation language, one block per place.
+- The blocks of one answer can be accepted together, so give every change the calculation needs (a new variable and all the lines that use it). Line numbers always refer to the sheet as it is now.
+- When the user wants the calculation changed as a new sheet, propose the changes the same way: the program can apply them to a copy of this sheet in a new tab and keep this one as it is. Do not say that a new sheet cannot be made.
 - Never invent data. Values of materials, profiles or loads come from tables in the sheet or from a source the user can check; if one is missing, say so and propose where it could come from.
 - State every assumption (coefficients, categories) openly.
 - Point at lines by their numbers. The program computes; do not recalculate results by hand unless asked.
@@ -149,7 +151,12 @@ export function changesText(changes: readonly AiChangeRecord[]): string {
     .map((c) => {
       const where = c.insert ? `after line ${c.from}` : c.from === c.to ? `line ${c.from}` : `lines ${c.from}-${c.to}`;
       const what = c.insert ? `insert ${code(c.after)}` : `${code(c.before)} -> ${code(c.after)}`;
-      const decision = c.state === 'open' ? 'not decided yet' : `${c.state} by the user ${day(c.decided)}${c.reviewed ? ', reviewed' : ''}`;
+      const decision =
+        c.state === 'open'
+          ? 'not decided yet'
+          : c.copiedTo
+            ? `accepted by the user ${day(c.decided)} into a new sheet "${c.copiedTo}" (this sheet unchanged)`
+            : `${c.state} by the user ${day(c.decided)}${c.reviewed ? ', reviewed' : ''}`;
       return `- ${day(c.time)} ${where}: ${what}; ${decision}`;
     })
     .join(String.fromCharCode(10));

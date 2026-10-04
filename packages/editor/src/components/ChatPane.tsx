@@ -11,7 +11,8 @@ import { notesHtml } from '@kalketa/render';
 import { desktop } from '../document.js';
 import type { AiSheetContext } from '../logic/aiContext.js';
 import type { LibraryEntry } from '../theoryLibraries.js';
-import { ProposalCard, type ProposalView } from './ProposalCard.js';
+import { EffectLines, ProposalCard, type ProposalView } from './ProposalCard.js';
+import type { ProposalEffect } from '../logic/proposalEffect.js';
 import { commandIcon } from '../icons.js';
 
 function escapeAttr(text: string): string {
@@ -61,9 +62,24 @@ export interface ChatPaneProps {
   onDecide?(id: string, accept: boolean): void;
   /** The user reviewed the lines of an accepted change. */
   onReview?(id: string): void;
+  /** The open proposals of the answer at this turn, whether they go together, and what they do together. */
+  answerProposals?(turn: number): AnswerProposals | undefined;
+  /** Accepts these proposals together, as one step. */
+  onAcceptAll?(ids: readonly string[]): void;
+  /** Applies these proposals to a copy of the sheet in a new tab. */
+  onNewSheet?(ids: readonly string[]): void;
 }
 
-export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTurns, context, onOpenSettings, onNew, libraries = [], onLibraries, onToggleLibrary, proposals, onDecide, onReview }: ChatPaneProps) {
+/** The open proposals of one answer, for accepting them together or in a new sheet. */
+export interface AnswerProposals {
+  readonly ids: readonly string[];
+  /** They do not overlap and can be applied together. */
+  readonly together: boolean;
+  /** What they do together (with two or more). */
+  readonly effect?: ProposalEffect;
+}
+
+export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTurns, context, onOpenSettings, onNew, libraries = [], onLibraries, onToggleLibrary, proposals, onDecide, onReview, answerProposals, onAcceptAll, onNewSheet }: ChatPaneProps) {
   const [libraryMenu, setLibraryMenu] = useState(false);
   // The menu of libraries closes like any menu: a click anywhere else, or Esc.
   useEffect(() => {
@@ -264,6 +280,26 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTur
               {(proposals?.(i) ?? []).map((view, n) => (
                 <ProposalCard key={view.entry.id} view={view} n={n + 1} catalog={catalog} onDecide={(id, accept) => onDecide?.(id, accept)} {...(onReview ? { onReview } : {})} />
               ))}
+              {(() => {
+                const all = answerProposals?.(i);
+                if (!all) return null;
+                return (
+                  <div className="proposal-all">
+                    {all.ids.length > 1 && !all.together && <div className="muted">{t(catalog, 'proposal.notTogether')}</div>}
+                    {all.effect && <EffectLines effect={all.effect} catalog={catalog} title={t(catalog, 'proposal.together')} />}
+                    <div className="proposal-actions">
+                      {all.ids.length > 1 && (
+                        <button type="button" className="proposal-accept-all default" disabled={!all.together} onClick={() => onAcceptAll?.(all.ids)}>
+                          {t(catalog, 'proposal.acceptAll', { count: String(all.ids.length) })}
+                        </button>
+                      )}
+                      <button type="button" className="proposal-new-sheet" title={t(catalog, 'proposal.newSheetTip')} disabled={!all.together} onClick={() => onNewSheet?.(all.ids)}>
+                        {t(catalog, 'proposal.newSheet')}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           ) : (
             <div key={i} className="chat-turn user">

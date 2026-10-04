@@ -50,6 +50,8 @@ export interface AiChangeRecord {
   readonly decided?: string;
   /** ISO time a person reviewed the accepted lines. */
   readonly reviewed?: string;
+  /** Accepted into a copy of the sheet with this title; this sheet stayed as it was. */
+  readonly copiedTo?: string;
 }
 
 export interface AiRequest {

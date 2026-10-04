@@ -202,3 +202,26 @@ describe('chat with a local server', () => {
     expect(await chat({ provider: 'anthropic', model: 'claude-opus-5-5', system: '', turns: [], onText: () => {} })).toEqual({ ok: false, problem: 'noKey' });
   });
 });
+
+describe('an answer that hits the length limit', () => {
+  const stream = (events: object[]): typeof fetch =>
+    (async () => {
+      const body = events.map((e) => `data: ${JSON.stringify(e)}\n\n`).join('') + 'data: [DONE]\n\n';
+      return new Response(new TextEncoder().encode(body), { status: 200 });
+    }) as typeof fetch;
+  const ask = (events: object[]) => chat({ provider: 'server', model: 'qwen', system: '', turns: [{ role: 'user', text: 'Analyzuj výpočet.' }], onText: () => {} }, { fetch: stream(events) });
+
+  it('with only thinking gives no empty answer but says the model ran out', async () => {
+    const result = await ask([{ choices: [{ delta: { reasoning_content: 'dlouhé přemýšlení' } }] }, { choices: [{ delta: {}, finish_reason: 'length' }] }]);
+    expect(result).toEqual({ ok: false, problem: 'cutOff' });
+  });
+
+  it('with some text keeps it, marked as cut short', async () => {
+    const result = await ask([{ choices: [{ delta: { content: 'Výpočet posuzuje' } }] }, { choices: [{ delta: {}, finish_reason: 'length' }] }]);
+    expect(result).toEqual({ ok: true, text: 'Výpočet posuzuje', model: 'qwen', truncated: true });
+  });
+
+  it('with nothing at all, not at the limit, says there is no answer', async () => {
+    expect(await ask([{ choices: [{ delta: {}, finish_reason: 'stop' }] }])).toEqual({ ok: false, problem: 'empty' });
+  });
+});

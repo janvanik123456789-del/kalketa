@@ -1372,6 +1372,16 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
     title: document.querySelector('.doc-tab.active')?.textContent ?? '',
   })`)) as { user: string; answer: string; bold: string; code: string; table: string; citesOk: string[]; citesBad: string[]; citeSummary: string; input: string; title: string };
   await takePicture(picture.replace(/[.]png$/, '-ai-chat.png'));
+  // A model that spends the whole length limit thinking: no empty answer, the user is told why.
+  await clickOn('.chat-input');
+  await typeText('Analyzuj výpočet.');
+  await pressKey('Enter');
+  for (let i = 0; i < 40 && !(await contents.executeJavaScript(`!!document.querySelector('.chat-error')`)); i++) await pause(150);
+  const cutOff = (await contents.executeJavaScript(`({
+    error: document.querySelector('.chat-error')?.textContent ?? '',
+    answers: document.querySelectorAll('.chat-turn.assistant').length,
+    empty: [...document.querySelectorAll('.chat-turn.assistant')].some((t) => t.textContent.trim() === ''),
+  })`)) as { error: string; answers: number; empty: boolean };
   await clickOn('.chat-new');
   await pause(200);
   const cleared = (await contents.executeJavaScript(`document.querySelectorAll('.chat-turn').length`)) as number;
@@ -1398,7 +1408,7 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
   await clickMenu('Boční panel');
   await clickMenu(back);
   await pause(300);
-  await writeFile(picture.replace(/[.]png$/, '-ai-chat.json'), JSON.stringify({ pasted, unpasted, typed, theory, offered, quietWhileOff, head, shown, cleared, aiTab, kept, resumed }, null, 2));
+  await writeFile(picture.replace(/[.]png$/, '-ai-chat.json'), JSON.stringify({ pasted, unpasted, typed, theory, offered, quietWhileOff, head, shown, cutOff, cleared, aiTab, kept, resumed }, null, 2));
   return (
     pasted === 'Klopení je ztráta stability ohýbaného nosníku. Vloženo ze schránky.' && unpasted === 'Klopení je ztráta stability ohýbaného nosníku.' &&
     typed === 'H2:Klopení|P:Klopení je ztráta stability ohýbaného nosníku.' && theory.heading === 'Klopení' && /^T\d+$/.test(theory.badge) &&
@@ -1410,7 +1420,8 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
     /list: [^?;*]+;/.test(shown.answer) && shown.bold !== '' && !shown.answer.includes('**') && shown.code === 'Co počítá řádek 3?' && shown.table === 'IPE 220' && shown.answer.includes('jazyk: Czech') && shown.answer.includes('úsilí: low') && shown.answer.includes('výsledky: ano') && shown.answer.includes('otázka: Co počítá řádek 3?') &&
     cleared === 0 &&
     aiTab && kept.count === 1 && kept.text.includes('Co počítá řádek 3?') && kept.text.includes('local-smoke-7b') &&
-    resumed.length === 2 && resumed[0] === 'user:Co počítá řádek 3?' && resumed[1]!.startsWith('assistant:list:')
+    cutOff.error.includes('vyčerpal limit') && cutOff.answers === 1 && !cutOff.empty &&
+    resumed.length === 3 && resumed[0] === 'user:Co počítá řádek 3?' && resumed[1]!.startsWith('assistant:list:') && resumed[2] === 'user:Analyzuj výpočet.'
   );
 }
 

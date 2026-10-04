@@ -9,7 +9,7 @@ import type { ChatTurn } from './briefing.js';
 import type { AiEffort } from './settings.js';
 
 /** Why a connection failed; the editor turns the code into a message. */
-export type ConnectionProblem = 'noProvider' | 'noKey' | 'badKey' | 'denied' | 'rateLimit' | 'network' | 'notRunning' | 'badUrl' | 'refused' | 'cancelled' | 'provider';
+export type ConnectionProblem = 'noProvider' | 'noKey' | 'badKey' | 'denied' | 'rateLimit' | 'network' | 'notRunning' | 'badUrl' | 'refused' | 'cancelled' | 'cutOff' | 'empty' | 'provider';
 
 export type ConnectionResult = { readonly ok: true; readonly models: readonly ModelChoice[] } | { readonly ok: false; readonly problem: ConnectionProblem; readonly detail?: string };
 
@@ -149,7 +149,17 @@ export interface ChatRequest {
   readonly signal?: AbortSignal;
 }
 
-export type ChatResult = { readonly ok: true; readonly text: string; readonly model: string } | { readonly ok: false; readonly problem: ConnectionProblem; readonly detail?: string };
+/**
+ * The answer, or why there is none. `truncated`: the answer stopped at the length
+ * limit. A model that spends the whole limit on thinking gives no text: 'cutOff'.
+ */
+export type ChatResult = { readonly ok: true; readonly text: string; readonly model: string; readonly truncated?: boolean } | { readonly ok: false; readonly problem: ConnectionProblem; readonly detail?: string };
+
+/** What a finished answer is: text, cut off by the limit, or nothing at all. */
+function finished(text: string, model: string, atLimit: boolean): ChatResult {
+  if (!text.trim()) return { ok: false, problem: atLimit ? 'cutOff' : 'empty' };
+  return { ok: true, text, model, ...(atLimit ? { truncated: true } : {}) };
+}
 
 /** Claude models that take the effort setting and the server-side fallback after a refusal. */
 const CURRENT_CLAUDE = new Set(['claude-fable-5-1', 'claude-opus-5-5', 'claude-opus-5', 'claude-sonnet-5-5']);
@@ -177,8 +187,9 @@ export async function chat(request: ChatRequest, transport: Transport = {}): Pro
     stream.on('text', (delta) => request.onText(delta));
     const message = await stream.finalMessage();
     if (message.stop_reason === 'refusal') return { ok: false, problem: 'refused' };
+    if (message.stop_reason === 'max_tokens') return finished(message.content.map((b) => (b.type === 'text' ? b.text : '')).join(''), message.model, true);
     const text = message.content.map((b) => (b.type === 'text' ? b.text : '')).join('');
-    return { ok: true, text, model: message.model };
+    return finished(text, message.model, false);
   } catch (error) {
     if (request.signal?.aborted) return { ok: false, problem: 'cancelled' };
     return { ok: false, ...problemOf(error) };
@@ -196,8 +207,8 @@ async function chatOpenAi(provider: ProviderInfo, request: ChatRequest, fetchFn:
       body: JSON.stringify({
         model: request.model,
         stream: true,
-        // Local models think before they answer; the room covers both.
-        max_tokens: 8192,
+        // Local models think before they answer, and their thinking counts in the limit: the room covers both.
+        max_tokens: 16384,
         // As Cline sends it; servers that do not know it leave it out.
         ...(request.effort ? { reasoning_effort: request.effort } : {}),
         messages: [{ role: 'system', content: request.system }, ...request.turns.map((t) => ({ role: t.role, content: t.text }))],
@@ -210,11 +221,13 @@ async function chatOpenAi(provider: ProviderInfo, request: ChatRequest, fetchFn:
   if (!response.ok || !response.body) return { ok: false, problem: 'provider', detail: `${response.status} ${(await response.text().catch(() => '')).slice(0, 200)}`.trim() };
   let text = '';
   let model = request.model;
+  let atLimit = false;
   try {
     for await (const data of serverSentData(response.body)) {
       if (data === '[DONE]') break;
-      const event = JSON.parse(data) as { model?: string; choices?: { delta?: { content?: string | null; reasoning_content?: string | null } }[] };
+      const event = JSON.parse(data) as { model?: string; choices?: { delta?: { content?: string | null; reasoning_content?: string | null }; finish_reason?: string | null }[] };
       if (event.model) model = event.model;
+      if (event.choices?.[0]?.finish_reason === 'length') atLimit = true;
       const delta = event.choices?.[0]?.delta;
       if (delta?.reasoning_content) request.onThinking?.();
       if (delta?.content) {
@@ -226,7 +239,7 @@ async function chatOpenAi(provider: ProviderInfo, request: ChatRequest, fetchFn:
     if (request.signal?.aborted) return { ok: false, problem: 'cancelled' };
     return { ok: false, problem: 'provider', detail: error instanceof Error ? error.message : String(error) };
   }
-  return { ok: true, text, model };
+  return finished(text, model, atLimit);
 }
 
 /** The data of each server-sent event ("data: …" lines), as the stream arrives. */

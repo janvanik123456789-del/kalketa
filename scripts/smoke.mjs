@@ -68,6 +68,13 @@ const fakeApi = createServer((request, response) => {
       const pieces = [`list: **${title}**; `, `jazyk: ${system.includes('Answer in Czech') ? 'Czech' : '?'}; `, `výsledky: ${system.includes('Computed results') ? 'ano' : 'ne'}; `, `úsilí: ${body.reasoning_effort ?? '-'}; `, cites, fromLibrary ? `knihovna: "${fromLibrary[2]}" [${fromLibrary[1]}]; ` : '', `otázka: ` + String.fromCharCode(96) + question + String.fromCharCode(96), ['', '', '| Profil | G |', '|---|---:|', '| IPE 220 | 26.2 |'].join(String.fromCharCode(10))];
       response.writeHead(200, { 'content-type': 'text/event-stream' });
       const event = (data) => `data: ${typeof data === 'string' ? data : JSON.stringify(data)}${String.fromCharCode(10).repeat(2)}`;
+      // "Analyzuj…": a model that thinks until the length limit and writes nothing.
+      if (question.startsWith('Analyzuj')) {
+        response.write(event({ choices: [{ delta: { reasoning_content: 'thinking a lot' } }] }));
+        response.write(event({ choices: [{ delta: {}, finish_reason: 'length' }] }));
+        response.end(event('[DONE]'));
+        return;
+      }
       response.write(event({ choices: [{ delta: { reasoning_content: 'thinking' } }] }));
       for (const piece of pieces) response.write(event({ model: 'local-smoke-7b', choices: [{ delta: { content: piece } }] }));
       response.end(event('[DONE]'));

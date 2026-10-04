@@ -123,7 +123,7 @@ export interface DesktopBridge {
   aiTry(provider: string, model: string, url?: string): Promise<{ readonly ok: true; readonly reply: string; readonly ms: number } | { readonly ok: false; readonly problem: string; readonly detail?: string }>;
   /** A conversation turn; the answer arrives in pieces through onAiChatEvent, the promise gives the whole. */
   aiChat(ask: AiChatAsk): Promise<
-    | { readonly ok: true; readonly text: string; readonly model: string; readonly theory?: { readonly sent: readonly string[]; readonly total: number } }
+    | { readonly ok: true; readonly text: string; readonly model: string; readonly truncated?: boolean; readonly theory?: { readonly sent: readonly string[]; readonly total: number } }
     | { readonly ok: false; readonly problem: string; readonly detail?: string }
   >;
   aiChatCancel(id: string): Promise<void>;

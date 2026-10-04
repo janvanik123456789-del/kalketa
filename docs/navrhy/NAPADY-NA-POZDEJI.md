@@ -12,7 +12,9 @@ Lokální model s přemýšlením může před odpovědí přemýšlet i několi
 - Zdroj: lokální servery posílají přemýšlení v proudu jako `reasoning_content` (dnes ho Kalketa jen počítá jako znamení „přemýšlí“). Claude ho vrací jako souhrn při `thinking.display: "summarized"`.
 - Přemýšlení se neukládá do souboru (jen odpověď), nebo jen na přání.
 
-### Prázdná odpověď po dlouhém přemýšlení (2026-10-04)
+### ~~Prázdná odpověď po dlouhém přemýšlení~~ (2026-10-04, hotovo týž den)
+
+*Hotovo:* konec kvůli limitu se pozná, uživatel dostane vysvětlení místo prázdné bubliny, prázdná odpověď se neukládá, useknutá odpověď má poznámku, limit lokálních serverů je 16 384 tokenů. Původní zápis:
 
 Na „Analyzuj výpočet.“ model přemýšlel asi 4 minuty a pak nedal žádný text. Pravděpodobně vyčerpal celý limit `max_tokens` (8192) přemýšlením (u lokálních modelů se do limitu počítá i přemýšlení). Kalketa uložila prázdnou bublinu.
 

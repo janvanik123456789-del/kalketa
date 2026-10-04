@@ -162,7 +162,12 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTur
         languageGuide,
         turns: asked,
       });
-      if (result.ok) onTurns([...asked, { role: 'assistant', text: result.text, time: new Date().toISOString(), model: result.model, ...(result.theory ? { theory: result.theory } : {}) }]);
+      // An answer the length limit cut keeps a note saying so; no answer at all is not kept, the user is told why.
+      if (result.ok)
+        onTurns([
+          ...asked,
+          { role: 'assistant', text: result.truncated ? `${result.text}\n\n*${t(catalog, 'chat.truncated')}*` : result.text, time: new Date().toISOString(), model: result.model, ...(result.theory ? { theory: result.theory } : {}) },
+        ]);
       else if (result.problem !== 'cancelled') setError(t(catalog, `ai.problem.${result.problem}` as UiKey, { detail: result.detail ?? '', name: provider.urlEditable ? t(catalog, 'ai.otherServer') : provider.name }));
     } catch (e) {
       setError(t(catalog, 'ai.problem.provider', { detail: e instanceof Error ? e.message : String(e) }));

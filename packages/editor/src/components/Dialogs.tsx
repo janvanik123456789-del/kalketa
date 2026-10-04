@@ -29,12 +29,14 @@ interface DialogProps {
   readonly catalog: Catalog;
   readonly children: ReactNode;
   readonly wide?: boolean;
+  /** "huge": nearly the whole window, for showing a page. */
+  readonly size?: 'huge';
   onClose(): void;
   /** OK button; without it the dialog only has Close. */
   onOk?(): void;
 }
 
-export function Dialog({ title, catalog, children, wide, onClose, onOk }: DialogProps) {
+export function Dialog({ title, catalog, children, wide, size, onClose, onOk }: DialogProps) {
   const own = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -55,7 +57,7 @@ export function Dialog({ title, catalog, children, wide, onClose, onOk }: Dialog
 
   return (
     <div ref={own} className="dialog-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className={`dialog${wide ? ' wide' : ''}`} role="dialog" aria-modal="true" aria-label={title}>
+      <div className={`dialog${wide ? ' wide' : ''}${size ? ` ${size}` : ''}`} role="dialog" aria-modal="true" aria-label={title}>
         <div className="dialog-title">
           <span>{title}</span>
           <button type="button" onClick={onClose} aria-label={t(catalog, 'dlg.close')}>

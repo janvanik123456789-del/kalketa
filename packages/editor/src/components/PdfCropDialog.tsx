@@ -1,8 +1,9 @@
 /**
- * A cut-out from a study PDF (docs/01-filozofie.md, ch. 9.6): the text a PDF
+ * Cut-outs from a study PDF (docs/01-filozofie.md, ch. 9.6): the text a PDF
  * gives loses its pictures and turns formulas into scraps, so the page is shown
  * as it is printed and the user drags a rectangle around a picture, formula or
- * table; it goes into the sources as a picture, captioned with its page.
+ * table; it goes into the sources as a picture, captioned with its page, next
+ * to the text it stood by. Several cut-outs in one go; Close ends it.
  *
  * pdf.js draws the pages here, in the editor (the main process has no canvas).
  */
@@ -16,26 +17,51 @@ import type { FoundLibrary } from '../theoryLibraries.js';
 import { Dialog } from './Dialogs.js';
 
 type PdfDocument = Awaited<ReturnType<typeof import('pdfjs-dist').getDocument>['promise']>;
+type PdfPage = Awaited<ReturnType<PdfDocument['getPage']>>;
+
+/** The text next to a cut-out on its page: the line above it and the line below, to find its place in the sources. */
+export interface CutAnchor {
+  readonly before?: string;
+  readonly after?: string;
+}
 
 interface Props {
   readonly catalog: Catalog;
   /** The study PDFs of the theory folders. */
   readonly files: readonly FoundLibrary[];
   readonly sheetPath?: string;
-  onInsert(picture: IncomingPicture, caption: string): void;
+  onInsert(picture: IncomingPicture, caption: string, anchor: CutAnchor): void;
   onClose(): void;
 }
 
-/** The cut-out is drawn this many times sharper than the page on screen. */
-const SHARPER = 2.5;
+/** Cut-outs are drawn at this resolution, however small the page is on screen. */
+const CUT_DPI = 200;
 /** A cut-out smaller than this (CSS pixels) is taken for a slip of the mouse. */
 const MIN_CUT = 6;
+const ZOOMS = [0.5, 0.75, 1, 1.25, 1.5, 2, 3, 4];
 
 interface Rect {
   readonly x: number;
   readonly y: number;
   readonly w: number;
   readonly h: number;
+}
+
+/** The lines of a page with where they are on screen (top of the line, CSS pixels at `scale`). */
+async function pageLines(page: PdfPage, scale: number): Promise<{ y: number; text: string }[]> {
+  const viewport = page.getViewport({ scale });
+  const content = await page.getTextContent();
+  const lines = new Map<number, { y: number; parts: { x: number; text: string }[] }>();
+  for (const item of content.items) {
+    if (!('str' in item) || !item.str.trim()) continue;
+    const [x, y] = viewport.convertToViewportPoint(item.transform[4] as number, item.transform[5] as number) as [number, number];
+    const height = Math.abs(item.transform[3] as number) * scale;
+    const key = Math.round(y / 3);
+    const line = lines.get(key) ?? { y: y - height, parts: [] };
+    line.parts.push({ x, text: item.str });
+    lines.set(key, line);
+  }
+  return [...lines.values()].map((l) => ({ y: l.y, text: l.parts.sort((a, b) => a.x - b.x).map((p) => p.text).join(' ').trim() })).sort((a, b) => a.y - b.y);
 }
 
 export function PdfCropDialog({ catalog, files, sheetPath, onInsert, onClose }: Props) {
@@ -46,10 +72,14 @@ export function PdfCropDialog({ catalog, files, sheetPath, onInsert, onClose }: 
   // The first page the file's card chooses, else the first page.
   const firstPage = (f: FoundLibrary | undefined) => (f?.study ? (selectedPages(f.study.content, f.study.settings)[0] ?? 1) : 1);
   const [page, setPage] = useState(() => firstPage(file));
+  // 1 = the page as wide as the window.
+  const [zoom, setZoom] = useState(1);
   const [failed, setFailed] = useState<string>();
   const [cut, setCut] = useState<Rect>();
   const [rendered, setRendered] = useState(false);
+  const [inserted, setInserted] = useState(0);
   const canvas = useRef<HTMLCanvasElement>(null);
+  const view = useRef<HTMLDivElement>(null);
   const docs = useRef(new Map<string, Promise<PdfDocument>>());
   // The page's scale on screen: PDF points to CSS pixels.
   const scale = useRef(1);
@@ -69,7 +99,7 @@ export function PdfCropDialog({ catalog, files, sheetPath, onInsert, onClose }: 
     return doc;
   };
 
-  // Draws the page to fit the width of the dialog.
+  // Draws the page: as wide as the window times the zoom.
   useEffect(() => {
     if (!file || !desktop) return;
     let live = true;
@@ -81,16 +111,16 @@ export function PdfCropDialog({ catalog, files, sheetPath, onInsert, onClose }: 
         const pdfPage = await doc.getPage(page);
         const target = canvas.current;
         if (!live || !target) return;
-        const width = target.parentElement?.clientWidth ?? 760;
-        const base = pdfPage.getViewport({ scale: 1 });
-        scale.current = width / base.width;
+        const width = Math.max(200, (view.current?.clientWidth ?? 800) - 24);
+        scale.current = (width / pdfPage.getViewport({ scale: 1 }).width) * zoom;
         const ratio = window.devicePixelRatio || 1;
         const viewport = pdfPage.getViewport({ scale: scale.current * ratio });
         target.width = Math.floor(viewport.width);
         target.height = Math.floor(viewport.height);
         target.style.width = `${Math.floor(viewport.width / ratio)}px`;
         target.style.height = `${Math.floor(viewport.height / ratio)}px`;
-        await pdfPage.render({ canvas: target, viewport }).promise;
+        // As for print: drawn at once, not frame by frame, which waits while the window is in the background.
+        await pdfPage.render({ canvas: target, viewport, intent: 'print' }).promise;
         if (live) setRendered(true);
         setFailed(undefined);
       } catch (error) {
@@ -101,46 +131,47 @@ export function PdfCropDialog({ catalog, files, sheetPath, onInsert, onClose }: 
       live = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [file?.path, page]);
+  }, [file?.path, page, zoom]);
 
   const at = (e: ReactMouseEvent) => {
     const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
     return { x: Math.max(0, Math.min(r.width, e.clientX - r.left)), y: Math.max(0, Math.min(r.height, e.clientY - r.top)) };
   };
   const rectFrom = (a: { x: number; y: number }, b: { x: number; y: number }): Rect => ({ x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), w: Math.abs(a.x - b.x), h: Math.abs(a.y - b.y) });
+  const zoomBy = (direction: 1 | -1) => setZoom((z) => (direction > 0 ? (ZOOMS.find((s) => s > z + 0.01) ?? z) : ([...ZOOMS].reverse().find((s) => s < z - 0.01) ?? z)));
 
-  /** The cut-out drawn sharper than on screen, as a PNG. */
+  /** The cut-out at CUT_DPI as a PNG, with the lines next to it; the window stays open for more. */
   const insert = async () => {
     if (!file || !cut) return;
     try {
-      await cutOut(file, cut);
+      const doc = await open(file);
+      const pdfPage = await doc.getPage(page);
+      const sharp = CUT_DPI / 72;
+      // From the rectangle on screen to the cut-out's resolution.
+      const k = sharp / scale.current;
+      const out = document.createElement('canvas');
+      out.width = Math.max(1, Math.round(cut.w * k));
+      out.height = Math.max(1, Math.round(cut.h * k));
+      const viewport = pdfPage.getViewport({ scale: sharp, offsetX: -cut.x * k, offsetY: -cut.y * k });
+      await pdfPage.render({ canvas: out, viewport, intent: 'print' }).promise;
+      // At once, not through toBlob, whose answer can wait while the window is in the background.
+      const bytes = Uint8Array.from(atob(out.toDataURL('image/png').split(',')[1] ?? ''), (c) => c.charCodeAt(0));
+      const lines = await pageLines(pdfPage, scale.current);
+      const before = [...lines].reverse().find((l) => l.y < cut.y && l.text.replace(/\s/g, '').length >= 8)?.text;
+      const after = lines.find((l) => l.y > cut.y + cut.h && l.text.replace(/\s/g, '').length >= 8)?.text;
+      const label = file.study?.content.labels?.[page - 1] ?? String(page);
+      onInsert({ name: `vyrez-s${label}.png`, type: 'image/png', bytes }, t(catalog, 'crop.caption', { title: file.library.manifest.title, page: label }), { ...(before ? { before } : {}), ...(after ? { after } : {}) });
+      setInserted((n) => n + 1);
+      setCut(undefined);
     } catch (error) {
       setFailed(t(catalog, 'crop.failed', { error: error instanceof Error ? error.message : String(error) }));
     }
   };
-  const cutOut = async (file: FoundLibrary, cut: Rect) => {
-    const doc = await open(file);
-    const pdfPage = await doc.getPage(page);
-    const sharp = scale.current * SHARPER;
-    const viewport = pdfPage.getViewport({ scale: sharp });
-    const whole = document.createElement('canvas');
-    whole.width = Math.floor(viewport.width);
-    whole.height = Math.floor(viewport.height);
-    // As for print: drawn at once, not frame by frame, which waits while the window is in the background.
-    await pdfPage.render({ canvas: whole, viewport, intent: 'print' }).promise;
-    const out = document.createElement('canvas');
-    out.width = Math.max(1, Math.round(cut.w * SHARPER));
-    out.height = Math.max(1, Math.round(cut.h * SHARPER));
-    out.getContext('2d')!.drawImage(whole, cut.x * SHARPER, cut.y * SHARPER, out.width, out.height, 0, 0, out.width, out.height);
-    // At once, not through toBlob, whose answer can wait while the window is in the background.
-    const bytes = Uint8Array.from(atob(out.toDataURL('image/png').split(',')[1] ?? ''), (c) => c.charCodeAt(0));
-    const label = file.study?.content.labels?.[page - 1] ?? String(page);
-    onInsert({ name: `vyrez-s${label}.png`, type: 'image/png', bytes }, t(catalog, 'crop.caption', { title: file.library.manifest.title, page: label }));
-  };
 
   const label = (p: number) => file?.study?.content.labels?.[p - 1] ?? String(p);
+  const ready = !!cut && cut.w >= MIN_CUT && cut.h >= MIN_CUT;
   return (
-    <Dialog title={t(catalog, 'crop.title')} catalog={catalog} wide onClose={onClose} {...(cut && cut.w >= MIN_CUT && cut.h >= MIN_CUT ? { onOk: () => void insert() } : {})}>
+    <Dialog title={t(catalog, 'crop.title')} catalog={catalog} size="huge" onClose={onClose}>
       {pdfs.length === 0 ? (
         <p className="hint">{t(catalog, 'crop.none')}</p>
       ) : (
@@ -173,10 +204,33 @@ export function PdfCropDialog({ catalog, files, sheetPath, onInsert, onClose }: 
             <button type="button" className="crop-next" disabled={page >= count} onClick={() => setPage((p) => Math.min(count, p + 1))} aria-label={t(catalog, 'crop.next')}>
               ▶
             </button>
+            <span className="crop-sep" />
+            <button type="button" className="crop-zoom-out" disabled={zoom <= ZOOMS[0]!} onClick={() => zoomBy(-1)} aria-label={t(catalog, 'crop.zoomOut')}>
+              −
+            </button>
+            <span className="crop-zoom">{Math.round(zoom * 100)} %</span>
+            <button type="button" className="crop-zoom-in" disabled={zoom >= ZOOMS[ZOOMS.length - 1]!} onClick={() => zoomBy(1)} aria-label={t(catalog, 'crop.zoomIn')}>
+              +
+            </button>
+            <button type="button" className="crop-fit" onClick={() => setZoom(1)}>
+              {t(catalog, 'crop.fit')}
+            </button>
             <span className="hint crop-help">{t(catalog, 'crop.help')}</span>
+            {inserted > 0 && <span className="crop-count">{t(catalog, 'crop.inserted', { count: String(inserted) })}</span>}
+            <button type="button" className="crop-insert default" disabled={!ready} onClick={() => void insert()}>
+              {t(catalog, 'crop.insert')}
+            </button>
           </div>
           {failed && <p className="study-advice warn">{failed}</p>}
-          <div className="crop-page-view">
+          <div
+            ref={view}
+            className="crop-page-view"
+            onWheel={(e) => {
+              if (!e.ctrlKey) return;
+              e.preventDefault();
+              zoomBy(e.deltaY < 0 ? 1 : -1);
+            }}
+          >
             <div
               className="crop-surface"
               data-rendered={rendered ? '1' : undefined}

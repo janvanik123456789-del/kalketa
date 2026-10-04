@@ -33,7 +33,7 @@ interface Props {
   /** Saves the layer as a theory library (.kalkt). */
   onSaveLibrary?(): void;
   /** A cut-out from a study PDF, for the sources. */
-  pickPdfCrop?(): Promise<{ readonly picture: IncomingPicture; readonly caption: string } | undefined>;
+  pickPdfCrop?(place: (picture: IncomingPicture, caption: string, anchor: { readonly before?: string; readonly after?: string }) => void): void;
   /** AI notes: where the AI drew from, by source (the main part of the layer). */
   readonly sources?: readonly SourceGroup[];
   /** AI notes: the sheet's memory for the model. */

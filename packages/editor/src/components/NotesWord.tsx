@@ -35,8 +35,11 @@ interface Props {
   picturePath(picture: IncomingPicture, taken: ReadonlySet<string>): string;
   /** Saves the layer as a theory library (.kalkt); absent where it cannot be done. */
   onSaveLibrary?(): void;
-  /** A cut-out from a study PDF and its caption; absent when there is no study PDF. */
-  pickPdfCrop?(): Promise<{ readonly picture: IncomingPicture; readonly caption: string } | undefined>;
+  /**
+   * Opens the cut-outs from a study PDF; each one comes to `place` with its caption and the
+   * text that stood next to it on the page. Absent when there is no study PDF.
+   */
+  pickPdfCrop?(place: (picture: IncomingPicture, caption: string, anchor: { readonly before?: string; readonly after?: string }) => void): void;
 }
 
 /** Attributes the stored notes need beyond the editor's own: the section id, the alignment of a table column. */
@@ -215,6 +218,25 @@ export function NotesWord({ text, title, catalog, readOnly, resolveFile, onChang
 
   if (!editor) return null;
 
+  /**
+   * Where a cut-out goes: after the paragraph holding the line above it on its page, else
+   * before the one holding the line below it; undefined when neither is found. Compared
+   * without spaces and hyphens, so letters spaced out or words split in the PDF still meet.
+   */
+  const placeOf = (anchor: { readonly before?: string; readonly after?: string }): number | undefined => {
+    const plain = (s: string) => s.replace(/[\s\-‐-–]+/g, '').toLowerCase();
+    const find = (line: string | undefined, side: 'after' | 'before') => {
+      const want = line ? plain(line).slice(0, 60) : '';
+      if (want.length < 8) return undefined;
+      let found: number | undefined;
+      editor.state.doc.forEach((node, offset) => {
+        if (found === undefined && plain(node.textContent).includes(want)) found = side === 'after' ? offset + node.nodeSize : offset;
+      });
+      return found;
+    };
+    return find(anchor.before, 'after') ?? find(anchor.after, 'before');
+  };
+
   const insertPicture = async (pick: Props['pickImage'] = pickImage) => {
     // The dialog takes the focus; the picture goes where the cursor was.
     const at = editor.state.selection.from;
@@ -318,7 +340,7 @@ export function NotesWord({ text, title, catalog, readOnly, resolveFile, onChang
           {commandIcon('insert.picture') ?? '🖼'}
         </Tool>
         {pickPdfCrop && (
-          <Tool label={t(catalog, 'crop.button')} title={t(catalog, 'crop.buttonTip')} className="word-pdf-crop" disabled={readOnly} onClick={() => void insertPicture(pickPdfCrop)}>
+          <Tool label={t(catalog, 'crop.button')} title={t(catalog, 'crop.buttonTip')} className="word-pdf-crop" disabled={readOnly} onClick={() => pickPdfCrop((picture, caption, anchor) => place.current([{ ...picture, caption } as IncomingPicture], placeOf(anchor) ?? editor.state.selection.from))}>
             {t(catalog, 'crop.button')}
           </Tool>
         )}

@@ -21,7 +21,7 @@ import { sourceText, useTheoryLibraries, withoutDuplicates, type FoundLibrary } 
 import { aiSources } from './logic/aiSources.js';
 import { aiProtocol } from './logic/aiProtocol.js';
 import { StudyDialog } from './components/StudyDialog.js';
-import { PdfCropDialog } from './components/PdfCropDialog.js';
+import { PdfCropDialog, type CutAnchor } from './components/PdfCropDialog.js';
 import { proposalEffect, type ProposalEffect } from './logic/proposalEffect.js';
 import type { NewSheetView, ProposalView } from './components/ProposalCard.js';
 import type { AnswerProposals } from './components/ChatPane.js';
@@ -359,8 +359,8 @@ export function App() {
   };
 
   // A cut-out from a study PDF being chosen: the sources wait for it.
-  const [cropping, setCropping] = useState<(cut: { picture: IncomingPicture; caption: string } | undefined) => void>();
-  const pickPdfCrop = () => new Promise<{ picture: IncomingPicture; caption: string } | undefined>((resolve) => setCropping(() => resolve));
+  const [cropping, setCropping] = useState<(picture: IncomingPicture, caption: string, anchor: CutAnchor) => void>();
+  const pickPdfCrop = (place: (picture: IncomingPicture, caption: string, anchor: CutAnchor) => void) => setCropping(() => place);
 
   /** Takes a calculation from a file as a block and inserts a line that uses it. */
   const insertBlock = async () => {
@@ -1852,14 +1852,8 @@ export function App() {
           catalog={ui}
           files={libraries.found}
           {...(tab.path ? { sheetPath: tab.path } : {})}
-          onInsert={(picture, caption) => {
-            cropping({ picture, caption });
-            setCropping(undefined);
-          }}
-          onClose={() => {
-            cropping(undefined);
-            setCropping(undefined);
-          }}
+          onInsert={cropping}
+          onClose={() => setCropping(undefined)}
         />
       )}
       {dialog === 'study' && (

@@ -40,6 +40,8 @@ export interface ChatPaneProps {
   /** What the model sees, taken when a question is sent. */
   context(): { readonly sheet: AiSheetContext; readonly languageGuide: string };
   onOpenSettings(): void;
+  /** "New chat": the next question starts another conversation (the others stay in the AI notes). */
+  onNew?(): void;
   /** Theory libraries found or used by the calculation. */
   readonly libraries?: readonly LibraryEntry[];
   /** The menu of libraries opens: look into the folders again. */
@@ -47,7 +49,7 @@ export interface ChatPaneProps {
   onToggleLibrary?(id: string, on: boolean): void;
 }
 
-export function ChatPane({ catalog, settings, turns, theory, onTurns, context, onOpenSettings, libraries = [], onLibraries, onToggleLibrary }: ChatPaneProps) {
+export function ChatPane({ catalog, settings, turns, theory, onTurns, context, onOpenSettings, onNew, libraries = [], onLibraries, onToggleLibrary }: ChatPaneProps) {
   const [libraryMenu, setLibraryMenu] = useState(false);
   // The menu of libraries closes like any menu: a click anywhere else, or Esc.
   useEffect(() => {
@@ -125,7 +127,7 @@ export function ChatPane({ catalog, settings, turns, theory, onTurns, context, o
   const send = async () => {
     const question = draft.trim();
     if (!question || answer) return;
-    const asked = [...turns, { role: 'user' as const, text: question }];
+    const asked = [...turns, { role: 'user' as const, text: question, time: new Date().toISOString() }];
     onTurns(asked);
     setDraft('');
     setError(undefined);
@@ -145,7 +147,7 @@ export function ChatPane({ catalog, settings, turns, theory, onTurns, context, o
         languageGuide,
         turns: asked,
       });
-      if (result.ok) onTurns([...asked, { role: 'assistant', text: result.text, ...(result.theory ? { theory: result.theory } : {}) }]);
+      if (result.ok) onTurns([...asked, { role: 'assistant', text: result.text, time: new Date().toISOString(), model: result.model, ...(result.theory ? { theory: result.theory } : {}) }]);
       else if (result.problem !== 'cancelled') setError(t(catalog, `ai.problem.${result.problem}` as UiKey, { detail: result.detail ?? '', name: provider.urlEditable ? t(catalog, 'ai.otherServer') : provider.name }));
     } catch (e) {
       setError(t(catalog, 'ai.problem.provider', { detail: e instanceof Error ? e.message : String(e) }));
@@ -158,7 +160,7 @@ export function ChatPane({ catalog, settings, turns, theory, onTurns, context, o
   const cancel = () => {
     if (!answer) return;
     // What was written so far stays in the conversation.
-    if (answer.text.trim()) onTurns([...turns, { role: 'assistant', text: `${answer.text} …` }]);
+    if (answer.text.trim()) onTurns([...turns, { role: 'assistant', text: `${answer.text} …`, time: new Date().toISOString() }]);
     void desktop!.aiChatCancel(answer.id);
   };
 
@@ -186,7 +188,7 @@ export function ChatPane({ catalog, settings, turns, theory, onTurns, context, o
             )}
           </span>
         )}
-        <button type="button" className="chat-new" onClick={() => (onTurns([]), setError(undefined))} disabled={!!answer || turns.length === 0}>
+        <button type="button" className="chat-new" onClick={() => ((onNew ?? (() => onTurns([])))(), setError(undefined))} disabled={!!answer || turns.length === 0}>
           {t(catalog, 'chat.new')}
         </button>
       </div>

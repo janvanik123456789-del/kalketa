@@ -88,8 +88,9 @@ export function withAiLayer(layers: readonly Layer[]): Layer[] {
  * Without empty AI notes: a sheet has them only while an AI has written into
  * them (files from before kept an empty one for every sheet).
  */
-export function withoutEmptyAiLayer(layers: readonly Layer[]): Layer[] {
-  return layers.filter((l) => l.kind !== 'ai' || (l.text ?? '').trim() !== '' || l.appendix);
+export function withoutEmptyAiLayer(layers: readonly Layer[], keeps: (layerId: string) => boolean = () => false): Layer[] {
+  // `keeps`: the layer holds something besides its text (conversations with the AI).
+  return layers.filter((l) => l.kind !== 'ai' || (l.text ?? '').trim() !== '' || l.appendix || keeps(l.id));
 }
 
 /** Removes a layer; the printed sheet and the AI notes stay. Tables of a removed data layer move to the first data layer. */

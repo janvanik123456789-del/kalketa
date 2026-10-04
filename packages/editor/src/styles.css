@@ -483,3 +483,15 @@ button.icon:hover { color: var(--accent); }
 .chat-library-button { white-space: nowrap; }
 .chat-library-menu { position: absolute; right: 0; top: 26px; z-index: 20; display: flex; flex-direction: column; gap: 4px; min-width: 260px; max-width: 360px; background: #fff; border: 1px solid #c5ccd5; box-shadow: 0 3px 10px rgb(0 0 0 / 15%); padding: 6px 8px; }
 .chat-library { font-size: 12px; }
+
+/* Conversations kept in the AI notes: read only, newest first. */
+.ai-conversations { margin-top: 6mm; }
+.ai-conversations h3 { font-size: 12pt; margin: 0 0 3mm; }
+.ai-conversation { border: 1px solid #d5dae1; border-radius: 4px; padding: 2mm 3mm; margin-bottom: 3mm; background: #fff; }
+.ai-conversation summary { cursor: pointer; font-size: 10pt; color: #48505a; }
+.ai-conversation .conv-first { color: #2b3138; }
+.conv-turn { margin: 2.5mm 0; font-size: 10pt; }
+.conv-turn.user { color: #2b3138; }
+.conv-who { font-size: 9pt; color: #6b7480; margin-bottom: 1mm; }
+.conv-turn.assistant .notes { color: #48505a; }
+.conv-actions { display: flex; gap: 8px; margin-top: 2mm; }

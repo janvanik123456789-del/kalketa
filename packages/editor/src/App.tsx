@@ -12,7 +12,7 @@ import { catalogFor, CATALOGS, formatDiagnostic, formatNumber, t, type Catalog }
 import { buildPrintDocument, printHtml, revisionFooter } from '@kalketa/render';
 import { emptyScene, readScene, writeScene, type CanvasScene } from '@kalketa/canvas';
 import { CanvasEditor } from '@kalketa/canvas/editor';
-import { addLayer, allDiagnostics, appendixLayers, blockAppendices, documentBlocks, isRemovable, LayerSessions, MAIN_LAYER, removeLayer, freezeRevision, removeRevision, revisionDocument, revisionState, shortHash, tablesByLayer, theorySections, updateLayer, withTheoryIds, type AddableLayerKind, type Layer, type RevisionState, type SheetDocument } from '@kalketa/sheet';
+import { addLayer, allDiagnostics, appendixLayers, blockAppendices, documentBlocks, isRemovable, LayerSessions, MAIN_LAYER, removeLayer, freezeRevision, removeRevision, revisionDocument, revisionState, shortHash, tablesByLayer, theorySections, updateLayer, withTheoryIds, conversationsOf, hasConversations, withConversation, withoutConversation, type AddableLayerKind, type Layer, type RevisionState, type SheetDocument } from '@kalketa/sheet';
 import { buildCommands, shortcutOf, type Command } from './commands.js';
 import { DEFAULT_AI_SETTINGS, parseAiSettings, type AiSettings, type ChatTurn } from '@kalketa/ai';
 import { ChatPane } from './components/ChatPane.js';
@@ -192,7 +192,12 @@ export function App() {
    * more than the sheet, or when the sheet is hidden and must be shown again.
    */
   const inUse = (l: Layer): boolean =>
-    l.kind === 'sheet' || l.kind === 'calc' || l.kind === 'sources' || (l.kind === 'data' ? (layerTables.get(l.id)?.length ?? 0) > 0 : Boolean(l.text?.trim()));
+    l.kind === 'sheet' ||
+    l.kind === 'calc' ||
+    l.kind === 'sources' ||
+    // AI notes are in use with notes or with conversations kept in them.
+    (l.kind === 'ai' && hasConversations(doc.files, l.id)) ||
+    (l.kind === 'data' ? (layerTables.get(l.id)?.length ?? 0) > 0 : Boolean(l.text?.trim()));
   const resolveFile = useCallback((path: string) => fileUri(doc, path), [doc]);
   const openKey = openPanes.join('|');
   const prints = useMemo(
@@ -241,6 +246,11 @@ export function App() {
 
   /** `group` merges quick successive changes (typing in one line) into one undo step. */
   const change = (next: SheetDocument, group?: string) => setHistory((h) => record(h, next, group));
+  /**
+   * A change made from the document as it is when it lands, in this tab: for
+   * answers that arrive later, while the user may have changed the calculation.
+   */
+  const changeWith = (f: (present: SheetDocument) => SheetDocument, group?: string) => setHistory((h) => record(h, f(h.present), group));
   const libraries = useTheoryLibraries(doc, tab.path, change);
   /** Changes the text of a layer; the AI notes and locked layers stay as they are. */
   const setLayerText = (l: Layer, source: string, group?: string, files?: ReadonlyMap<string, Uint8Array>) => {
@@ -613,8 +623,14 @@ export function App() {
   const canvasPath = canvasEdit?.path;
   /** Where a canvas is edited by default (Tools > Settings): right in the sheet, or in a large window. */
   const [canvasMode, setCanvasMode] = useState<'inline' | 'window'>(() => (stored(CANVAS_MODE_KEY) === 'window' ? 'window' : 'inline'));
-  // Conversations with the AI by document tab; kept until the tab closes (not saved yet).
-  const [chats, setChats] = useState<Readonly<Record<string, readonly ChatTurn[]>>>({});
+  // The conversation the chat shows, by document tab; the conversations themselves are in the sheet (AI notes).
+  // Absent: the latest one; '' after "New chat": a new one with the next question.
+  const [activeChat, setActiveChat] = useState<Readonly<Record<string, string>>>({});
+  // The id a new conversation got with its question, by tab: the answer, written later, goes into the same one.
+  const startedChat = useRef<Record<string, string | undefined>>({});
+  const conversations = conversationsOf(doc);
+  const chatId = activeChat[tab.id];
+  const chat = chatId === '' ? undefined : (conversations.find((c) => c.id === chatId) ?? (chatId === undefined ? conversations[conversations.length - 1] : undefined));
   // The sources layer being saved as a theory library.
   const [libraryLayer, setLibraryLayer] = useState<string>();
   const [aiSettings, setAiSettings] = useState<AiSettings>(() => {
@@ -1133,6 +1149,22 @@ export function App() {
           readOnly={l.locked}
           resolveFile={resolveFile}
           fileExists={(path) => doc.files.has(path)}
+          {...(l.kind === 'ai'
+            ? {
+                conversations,
+                onContinueConversation: (id: string) => {
+                  startedChat.current[tab.id] = id;
+                  setActiveChat((all) => ({ ...all, [tab.id]: id }));
+                  choosePane('chat');
+                },
+                onDeleteConversation: (id: string) =>
+                  void askConfirm(t(ui, 'conv.deleteConfirm')).then((yes) => {
+                    if (!yes) return;
+                    change(withoutConversation(doc, id));
+                    if (activeChat[tab.id] === id || chat?.id === id) setActiveChat((all) => ({ ...all, [tab.id]: '' }));
+                  }),
+              }
+            : {})}
           {...(desktop && l.kind === 'sources' ? { onSaveLibrary: () => setLibraryLayer(l.id) } : {})}
           onChange={(next, files) => setLayerText(l, next, `${l.id}:notes`, files)}
           onSettle={() => {
@@ -1218,15 +1250,23 @@ export function App() {
                   <ChatPane
                     catalog={ui}
                     settings={aiSettings}
-                    turns={chats[tab.id] ?? []}
+                    turns={chat?.turns ?? []}
                     onTurns={(turns) => {
-                      setChats((all) => ({ ...all, [tab.id]: turns }));
-                      // The calculation keeps copies of the library sections an answer cited.
+                      // Kept in the AI notes of the calculation: a new conversation gets its id with its first question.
+                      const id = chat?.id ?? startedChat.current[tab.id] ?? globalThis.crypto.randomUUID();
+                      startedChat.current[tab.id] = id;
+                      const started = chat?.started ?? turns[0]?.time ?? new Date().toISOString();
+                      setActiveChat((all) => ({ ...all, [tab.id]: id }));
                       const last = turns[turns.length - 1];
-                      if (last?.role === 'assistant') {
-                        const next = libraries.recordCited(last.text, doc);
-                        if (next !== doc) change(next);
-                      }
+                      changeWith((present) => {
+                        const next = withConversation(present, { id, started, provider: aiSettings.provider, ...(aiSettings.model ? { model: aiSettings.model } : {}), turns });
+                        // The calculation keeps copies of the library sections an answer cited.
+                        return last?.role === 'assistant' ? libraries.recordCited(last.text, next) : next;
+                      }, 'ai-chat');
+                    }}
+                    onNew={() => {
+                      startedChat.current[tab.id] = undefined;
+                      setActiveChat((all) => ({ ...all, [tab.id]: '' }));
                     }}
                     libraries={libraries.entries}
                     onLibraries={() => void libraries.refresh()}

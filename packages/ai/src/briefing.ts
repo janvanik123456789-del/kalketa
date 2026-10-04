@@ -12,6 +12,10 @@ import { selectTheory } from './theorySearch.js';
 export interface ChatTurn {
   readonly role: 'user' | 'assistant';
   readonly text: string;
+  /** ISO time it was written. */
+  readonly time?: string;
+  /** For an answer: the model that wrote it. */
+  readonly model?: string;
   /** For an answer: the theory sections the model was given, and how many the theory has. */
   readonly theory?: { readonly sent: readonly string[]; readonly total: number };
 }

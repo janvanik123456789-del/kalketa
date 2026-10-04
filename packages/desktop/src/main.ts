@@ -1366,13 +1366,30 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
   await clickOn('.chat-new');
   await pause(200);
   const cleared = (await contents.executeJavaScript(`document.querySelectorAll('.chat-turn').length`)) as number;
+  // The conversation is kept in the AI notes layer, which came with it; from there it is taken up again.
+  const aiTab = (await contents.executeJavaScript(`!!document.querySelector('.layer-tab[data-layer="ai"]')`)) as boolean;
+  let kept = { count: 0, text: '' };
+  let resumed: string[] = [];
+  if (aiTab) {
+    await clickOn('.layer-tab[data-layer="ai"]');
+    await pause(300);
+    kept = (await contents.executeJavaScript(`({
+      count: document.querySelectorAll('.layer-view.active .ai-conversation').length,
+      text: document.querySelector('.layer-view.active .ai-conversation')?.textContent ?? '',
+    })`)) as { count: number; text: string };
+    await takePicture(picture.replace(/[.]png$/, '-ai-kept.png'));
+    await clickOn('.layer-view.active .conv-continue');
+    await pause(300);
+    resumed = (await contents.executeJavaScript(`[...document.querySelectorAll('.chat-turn')].map((t) => t.className.replace('chat-turn ', '') + ':' + t.textContent.slice(0, 40))`)) as string[];
+    if (await contents.executeJavaScript(`!!document.querySelector('.layer-tab[data-layer="main"]')`)) await clickOn('.layer-tab[data-layer="main"]');
+  }
   // Back to the pane the later steps expect.
   const back = { details: 'Podrobnosti', tables: 'Tabulky', layers: 'Vrstvy', none: 'Skrytý' }[pane] ?? 'Podrobnosti';
   await clickOn('.menubar-item:nth-child(3) > button');
   await clickMenu('Boční panel');
   await clickMenu(back);
   await pause(300);
-  await writeFile(picture.replace(/[.]png$/, '-ai-chat.json'), JSON.stringify({ pasted, unpasted, typed, theory, head, shown, cleared }, null, 2));
+  await writeFile(picture.replace(/[.]png$/, '-ai-chat.json'), JSON.stringify({ pasted, unpasted, typed, theory, head, shown, cleared, aiTab, kept, resumed }, null, 2));
   return (
     pasted === 'Klopení je ztráta stability ohýbaného nosníku. Vloženo ze schránky.' && unpasted === 'Klopení je ztráta stability ohýbaného nosníku.' &&
     typed === 'H2:Klopení|P:Klopení je ztráta stability ohýbaného nosníku.' && theory.heading === 'Klopení' && /^T\d+$/.test(theory.badge) &&
@@ -1381,7 +1398,9 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
     head.includes('Jiný server') && head.includes('local-smoke-7b') &&
     shown.user === 'Co počítá řádek 3?' && shown.input === '' &&
     /list: [^?;*]+;/.test(shown.answer) && shown.bold !== '' && !shown.answer.includes('**') && shown.code === 'Co počítá řádek 3?' && shown.table === 'IPE 220' && shown.answer.includes('jazyk: Czech') && shown.answer.includes('úsilí: low') && shown.answer.includes('výsledky: ano') && shown.answer.includes('otázka: Co počítá řádek 3?') &&
-    cleared === 0
+    cleared === 0 &&
+    aiTab && kept.count === 1 && kept.text.includes('Co počítá řádek 3?') && kept.text.includes('local-smoke-7b') &&
+    resumed.length === 2 && resumed[0] === 'user:Co počítá řádek 3?' && resumed[1]!.startsWith('assistant:list:')
   );
 }
 

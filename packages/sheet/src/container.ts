@@ -20,6 +20,7 @@ import { diagnostic, NO_SPAN, type Diagnostic } from '@kalketa/core';
 import { strFromU8, strToU8, unzipSync, zipSync, type Zippable } from 'fflate';
 import { defaultLayers, withoutEmptyAiLayer, type Layer, type LayerKind } from './layers.js';
 import { readRevisions, revisionEntries, type Revision } from './revisions.js';
+import { hasConversations } from './conversations.js';
 
 export const FORMAT_ID = 'kalketa-sheet';
 /** Files written before the program was renamed (it was CalcCanvas) say this; they are read the same way. */
@@ -256,7 +257,10 @@ export async function readSheetEntries(entries: Readonly<Record<string, Uint8Arr
     });
   }
 
-  layers = withoutEmptyAiLayer(layers.map((l) => (layerTextPath(l) ? { ...l, text: layerTexts.get(l.id) ?? '' } : l)));
+  layers = withoutEmptyAiLayer(
+    layers.map((l) => (layerTextPath(l) ? { ...l, text: layerTexts.get(l.id) ?? '' } : l)),
+    (id) => hasConversations(files, id),
+  );
   const document: SheetDocument = { manifest, source: strFromU8(sheetBytes), layout, tables, files, layers, blocks, revisions };
   if (manifest.contentHash && manifest.contentHash !== (await hashEntries(sheetEntries(document)))) {
     diagnostics.push(diagnostic('W-FILE-HASH', NO_SPAN));

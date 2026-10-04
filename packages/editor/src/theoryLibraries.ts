@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { CITED_ID } from '@kalketa/ai';
 import { librarySections, linkedLibraries, linkFor, parseStudySettings, readTheoryLibrary, studyAdvice, studyContent, studyLibrary, withCitedSections, withLibraryLink, withoutLibraryLink, type LibraryLink, type SheetDocument, type StudyContent, type StudySettings, type TheoryLibrary, type TheorySource } from '@kalketa/sheet';
 import { desktop, type TheoryFolder } from './document.js';
+import { joinSpacedLetters } from './logic/pdfText.js';
 export { withoutDuplicates } from './logic/theoryMerge.js';
 
 export interface FoundLibrary {
@@ -52,7 +53,9 @@ export function useTheoryLibraries(doc: SheetDocument, path: string | undefined,
       try {
         if (item.study) {
           const read = await desktop.studyRead(item.path, path);
-          const content = studyContent(read.content);
+          // Letters a PDF spaces out for emphasis ("M e z i") are put together, as when PDF text is tidied.
+          const raw = studyContent(read.content);
+          const content = raw.kind === 'pdf' ? { ...raw, pages: raw.pages.map((p) => p.split('\n').map((l) => joinSpacedLetters(l).text).join('\n')) } : raw;
           const settings = parseStudySettings(read.settings);
           const library = studyLibrary(content, settings);
           if (!libraries.some((l) => l.library.manifest.id === library.manifest.id)) libraries.push({ library, path: item.path, folder: item.folder, study: { content, settings } });

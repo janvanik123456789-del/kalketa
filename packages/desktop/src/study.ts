@@ -102,7 +102,7 @@ function cacheDir(): string {
 /** What a study file says, from the cache when the file has not changed. */
 export async function readStudyFile(path: string): Promise<StudyRead> {
   const info = await stat(path);
-  const key = createHash('sha256').update(`${path.toLowerCase()}|${info.size}|${info.mtimeMs}|1`).digest('hex').slice(0, 32);
+  const key = createHash('sha256').update(`${path.toLowerCase()}|${info.size}|${info.mtimeMs}|2`).digest('hex').slice(0, 32);
   const cached = join(cacheDir(), `${key}.json`);
   try {
     return JSON.parse(await readFile(cached, 'utf8')) as StudyRead;
@@ -110,13 +110,15 @@ export async function readStudyFile(path: string): Promise<StudyRead> {
     // Not read yet, or changed since.
   }
   const bytes = new Uint8Array(await readFile(path));
+  // Before pdf.js reads it: pdf.js takes the bytes over and leaves them empty.
+  const contentHash = `sha256:${createHash('sha256').update(bytes).digest('hex')}`;
   const ext = extname(path).toLowerCase();
-  const read = ext === '.pdf' ? await readPdf(bytes) : { text: new TextDecoder().decode(bytes) };
+  const read = ext === '.pdf' ? await readPdf(bytes.slice()) : { text: new TextDecoder().decode(bytes) };
   const content: StudyRead = {
     kind: ext === '.pdf' ? 'pdf' : ext === '.md' ? 'md' : 'html',
     fileName: basename(path),
     ...read,
-    contentHash: `sha256:${createHash('sha256').update(bytes).digest('hex')}`,
+    contentHash,
     modified: info.mtime.toISOString(),
   };
   try {

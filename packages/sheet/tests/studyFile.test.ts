@@ -53,6 +53,11 @@ describe('study files', () => {
     expect(sections[0]).toEqual({ id: 'PP:T25', title: '2.1 Průhyb – s. 21', text: page(25) });
   });
 
+  it('take a title from the file name when the file gives none', () => {
+    const { title: _title, ...untitled } = book;
+    expect(studyLibrary({ ...untitled, fileName: 'DP_Sbirka_resenych_prikladu.pdf' }).manifest.title).toBe('DP Sbirka resenych prikladu');
+  });
+
   it('take key, title and source from the card', () => {
     const library = studyLibrary(book, parseStudySettings({ key: 'PAP', title: 'PaP', source: { title: 'Pružnost a pevnost', edition: '3. vyd.' }, chapters: [0, -1, 'x'], pages: ' ' }));
     expect(library.manifest.key).toBe('PAP');

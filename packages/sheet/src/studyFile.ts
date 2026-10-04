@@ -102,8 +102,9 @@ function fingerprint(text: string): string {
   return (h >>> 0).toString(16).padStart(8, '0');
 }
 
+/** A title from a file name: "Sbirka_prikladu.pdf" -> "Sbirka prikladu". */
 function baseName(fileName: string): string {
-  return fileName.replace(/\.[^.]+$/, '');
+  return fileName.replace(/\.[^.]+$/, '').replace(/[_]+/g, ' ').trim();
 }
 
 /** Pages written as printed ("45–80, 7") -> page numbers of the file, from 1. */

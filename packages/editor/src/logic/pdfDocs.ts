@@ -123,7 +123,10 @@ export async function pageContent(page: PdfPage): Promise<{ lines: LayoutLine[];
  * A part of a page as a PNG at CUT_DPI. Drawn as for print: at once, not frame by
  * frame, which waits while the window is in the background.
  */
-export async function cutOut(page: PdfPage, box: Box, trim = false): Promise<Uint8Array> {
+export async function cutOut(page: PdfPage, box: Box, trim?: false): Promise<Uint8Array>;
+/** Trimmed to its ink; undefined when the part holds nothing. */
+export async function cutOut(page: PdfPage, box: Box, trim: true): Promise<Uint8Array | undefined>;
+export async function cutOut(page: PdfPage, box: Box, trim = false): Promise<Uint8Array | undefined> {
   const k = CUT_DPI / 72;
   let out = document.createElement('canvas');
   out.width = Math.max(1, Math.round((box.right - box.left) * k));
@@ -133,7 +136,9 @@ export async function cutOut(page: PdfPage, box: Box, trim = false): Promise<Uin
   // Found by the program, not dragged by the user: trimmed to its ink, with a little room.
   if (trim) {
     const ink = inkBounds(out.getContext('2d')!.getImageData(0, 0, out.width, out.height).data, out.width, out.height);
-    if (ink) {
+    // Nothing drawn there: a blank part of the page is no picture.
+    if (!ink) return undefined;
+    {
       const room = Math.round(6 * (CUT_DPI / 72));
       const left = Math.max(0, ink.left - room);
       const top = Math.max(0, ink.top - room);

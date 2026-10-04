@@ -57,9 +57,12 @@ export async function studyImport(
         run.push(item.text);
         continue;
       }
+      const bytes = await cutOut(page, item.box, true);
+      // A blank part of the page: nothing to show.
+      if (!bytes) continue;
       flush();
       const path = picturePath(options.folder, `${item.why === 'formula' ? 'vzorec' : 'obrazek'}-s${label}`, 'image/png', (q) => files.has(q) || options.taken(q));
-      files.set(path, await cutOut(page, item.box, true));
+      files.set(path, bytes);
       if (item.why === 'formula') formulas++;
       else pictures++;
       blocks.push(`![${options.caption(label).replace(/[[\]]/g, '')}](${path})`);

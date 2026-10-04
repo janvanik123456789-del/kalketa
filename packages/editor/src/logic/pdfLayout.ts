@@ -130,7 +130,7 @@ export function pageLayout(lines: readonly LayoutLine[], pictures: readonly Box[
   let classified = sorted.map((l, i) => ({ line: l, kind: kindOf(l, i) })).filter((x) => !figures.some((f) => inside(x.line, f)));
   // Scraps level with a line of text are an index or a fraction inside that sentence ("M_omax", "x = 2/3 l"): they belong to it.
   const textLines = classified.filter((x) => x.kind === 'text').map((x) => x.line);
-  classified = classified.filter((x) => x.kind !== 'scraps' || !textLines.some((t) => { const mid = (x.line.top + x.line.bottom) / 2; const lh = lineHeight(t); return mid >= t.top - 0.35 * lh && mid <= t.bottom + 0.35 * lh && x.line.left < t.right && x.line.right > t.left; }));
+  classified = classified.filter((x) => x.kind !== 'scraps' || !textLines.some((t) => { const mid = (x.line.top + x.line.bottom) / 2; const lh = lineHeight(t); return mid >= t.top - 0.6 * lh && mid <= t.bottom + 0.6 * lh && x.line.left < t.right + lh && x.line.right > t.left - lh; }));
 
   // A figure the PDF has no shapes for (a scan): the gap in the text above its caption, or on a
   // scan a large empty gap. A numbered formula at the top of the gap stays a formula of its own.
@@ -138,16 +138,20 @@ export function pageLayout(lines: readonly LayoutLine[], pictures: readonly Box[
   // Figures found as gaps in the text: they keep off the text, no room is added around them.
   const gaps = new Set<Box>();
   const column = real.length > 0 ? { left: Math.min(...real.map((l) => l.left)), right: Math.max(...real.map((l) => l.right)) } : { left: PAD, right: page.width - PAD };
-  for (let i = 1; i < real.length; i++) {
-    const a = real[i - 1]!;
-    const b = real[i]!;
+  // A figure at the top of the page has no text above it: the top of what the page holds stands for that line.
+  const firstTop = Math.min(...sorted.map((l) => l.top));
+  const pageTop: LayoutLine = { text: '', top: 0, bottom: Math.max(0, firstTop - lineHeight(real[0] ?? { top: 0, bottom: 12, left: 0, right: 0 })), left: column.left, right: column.right };
+  const above = [pageTop, ...real];
+  for (let i = 1; i < above.length; i++) {
+    const a = above[i - 1]!;
+    const b = above[i]!;
     const lh = lineHeight(b);
     if (b.top - a.bottom < 2.5 * lh) continue;
     const between = classified.filter((x) => x.line.top >= a.bottom - 1 && x.line.bottom <= b.top + 1);
     const caption = CAPTION.test(b.text.trim());
-    if (!caption && !(scanned && between.length === 0 && b.top - a.bottom >= 4 * lh)) continue;
+    if (!caption && !(a !== pageTop && scanned && between.length === 0 && b.top - a.bottom >= 4 * lh)) continue;
     const formulasAbove = between.filter((x) => x.kind === 'formula').map((x) => x.line.bottom);
-    const top = Math.max(a.bottom + KEEP_OFF * lineHeight(a), ...formulasAbove.map((y) => y + KEEP_OFF * lh));
+    const top = Math.max(a === pageTop ? a.bottom : a.bottom + KEEP_OFF * lineHeight(a), ...formulasAbove.map((y) => y + KEEP_OFF * lh));
     const bottom = b.top - KEEP_OFF * lh;
     if (bottom - top < 2 * lh) continue;
     const gap = { top, bottom, left: column.left, right: column.right };
@@ -191,6 +195,16 @@ export function pageLayout(lines: readonly LayoutLine[], pictures: readonly Box[
       right: Math.min(page.width, Math.max(f.right, column.right) + PAD),
     };
   };
+  // A cut-out right above a caption ("Obr. 33") is a figure, however small and formula-like its labels.
+  for (const c of cuts) {
+    if (c.why !== 'formula') continue;
+    const next = text.filter((l) => l.top >= c.box.bottom - 1).sort((x, y) => x.top - y.top)[0];
+    if (!next || !CAPTION.test(next.text.trim())) continue;
+    // As far as a formula reaches (from the text above to the caption), then trimmed to its ink.
+    c.box = formulaBox(c.box);
+    c.why = 'picture';
+    gaps.add(c.box);
+  }
   // Formulas whose cut-outs would overlap are one cut-out.
   const placed: { box: Box; why: 'picture' | 'formula' }[] = [];
   for (const c of cuts.map((c) => ({ box: c.why === 'formula' ? formulaBox(c.box) : gaps.has(c.box) ? c.box : padded(c.box, page), why: c.why })).sort((x, y) => x.box.top - y.box.top)) {

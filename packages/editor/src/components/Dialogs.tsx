@@ -217,6 +217,13 @@ export function PropertiesDialog({ catalog, doc, onApply, onClose }: { catalog: 
         </select>
       </label>
       <label className="field">
+        <span>{t(catalog, 'props.style')}</span>
+        <select className="props-style" value={layout.style ?? 'airy'} onChange={(e) => setLayout({ ...layout, style: e.target.value as 'compact' | 'airy' })}>
+          <option value="compact">{t(catalog, 'props.styleCompact')}</option>
+          <option value="airy">{t(catalog, 'props.styleAiry')}</option>
+        </select>
+      </label>
+      <label className="field">
         <span>{t(catalog, 'props.digits')}</span>
         <input type="number" min={1} max={15} value={layout.digits} onChange={(e) => setLayout({ ...layout, digits: Number(e.target.value) })} />
       </label>

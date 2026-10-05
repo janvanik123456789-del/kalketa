@@ -596,3 +596,7 @@ button.icon:hover { color: var(--accent); }
 .kalk-preview .kalk-formula { margin: 2px 0; }
 .kalk-preview code.kalk-bad { color: #a12828; }
 .kalk-preview .kalk-note { color: #5a3fa6; font-size: 12px; }
+
+/* Compact style: inputs side by side, each still a row to click and edit; the line number sits in the gap before it. */
+.flow-group > .row { flex: none; }
+.flow-group > .row.editing { flex-basis: 100%; }

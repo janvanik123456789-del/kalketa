@@ -56,6 +56,8 @@ export interface Layout {
   readonly orientation: 'portrait' | 'landscape';
   /** Significant digits of printed numbers. */
   readonly digits: number;
+  /** How the calculation is set (docs/navrhy/RESIC-A-STYLY.md); a file without it keeps the airy style it was made with. */
+  readonly style?: 'compact' | 'airy';
 }
 
 export const DEFAULT_LAYOUT: Layout = { paper: 'A4', orientation: 'portrait', digits: 4 };
@@ -120,7 +122,8 @@ export function newDocument(title: string, source = '', now = new Date()): Sheet
   return {
     manifest: { format: FORMAT_ID, formatVersion: FORMAT_VERSION, title, created: stamp, modified: stamp, generator: 'Kalketa' },
     source,
-    layout: DEFAULT_LAYOUT,
+    // A new calculation is set in the compact (school) style.
+    layout: { ...DEFAULT_LAYOUT, style: 'compact' },
     tables: new Map(),
     files: new Map(),
     layers: defaultLayers(),

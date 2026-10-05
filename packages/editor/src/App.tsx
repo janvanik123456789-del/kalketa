@@ -605,6 +605,7 @@ export function App() {
       appendices: [...appendixLayers(doc.layers, evaluation, (l) => layerName(l, printCatalog)).map(withAiProtocol), ...blockAppendices(evaluation.main)],
       ...(footer ? { footer } : {}),
       aiLines: unreviewedAiLines(),
+      style: doc.layout.style ?? 'airy',
     });
   /** Unreviewed AI lines: the user is asked first; they print marked, with a notice. */
   const confirmAiPrint = async () => unreviewedAiLines().size === 0 || (await askConfirm(t(ui, 'print.aiConfirm')));
@@ -1592,6 +1593,7 @@ export function App() {
           title={l.kind === 'calc' ? nameOf(l) : (/^[ \t]*#(?!#)[ \t]*(.+?)[ \t]*$/m.exec(doc.source)?.[1] ?? doc.manifest.title)}
           uiCatalog={printCatalog}
           decimalComma={decimalComma}
+          calcStyle={doc.layout.style ?? 'airy'}
           {...(l.kind === 'sheet' ? { aiMade: aiMarks(source), onAiReviewed: reviewProposal, onAiShow: showProposal } : {})}
         />
       </main>

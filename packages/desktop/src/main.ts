@@ -683,11 +683,14 @@ async function layersWithRealInput(picture: string) {
   const userFunction = (await contents.executeJavaScript(`({
     errors: Number(document.querySelector('.statusbar span')?.textContent.replace(/\\D+/g, '') ?? -1),
     rows: [...document.querySelectorAll('.page .row')].map((r) => r.textContent.replace(/\\s+/g, ' ').trim()).filter(Boolean),
-  })`)) as { errors: number; rows: string[] };
+    // A new calculation is set in the compact (school) style: inputs one after another side by side.
+    flowGroups: document.querySelectorAll('.page .flow-group').length,
+    oneLine: document.querySelectorAll('.page .block.equation.compact .eq-flow').length,
+  })`)) as { errors: number; rows: string[]; flowGroups: number; oneLine: number };
   await takePicture(picture.replace(/[.]png$/, '-function.png'));
   const functions = userFunction.errors === 0 && userFunction.rows.some((r) => r.includes('314,2'));
   const money = userFunction.rows.some((r) => r.replace(/\s+/g, '').includes('=105Kč')) && userFunction.rows.some((r) => r.includes('10 kWp'));
-  const solved = userFunction.rows.some((r) => r.replace(/\s+/g, '').includes('x=2'));
+  const solved = userFunction.rows.some((r) => r.replace(/\s+/g, '').includes('x=2')) && userFunction.flowGroups >= 1 && userFunction.oneLine > 5;
   const finance = userFunction.rows.some((r) => r.replace(/\s+/g, '').includes('=2,6')) && userFunction.rows.some((r) => r.includes('29. 10. 2026'));
   const rod = userFunction.rows.some((r) => r.replace(/\s+/g, '').includes('=157100mm³'));
   const calculus = userFunction.rows.some((r) => r.includes('∫') && r.replace(/\s+/g, '').endsWith('=9'));

@@ -8,14 +8,14 @@
 
 import type { SheetResult, UnitRegistry } from '@kalketa/core';
 import { formatDate, t, type Catalog } from '@kalketa/i18n';
-import { appendixHtml, renderBlocksHtml, renderHtml } from './html.js';
+import { appendixHtml, renderBlocksHtml, renderHtml, type CalcStyle } from './html.js';
 import { buildPrintDocument } from './model.js';
 import { notesHtml } from './notes.js';
 
 export * from './math.js';
 export { formulaNode, hasSubstitutableParts, type FormulaOptions } from './formula.js';
 export * from './model.js';
-export { renderHtml, renderBlockHtml, renderBlocksHtml, sideGroupHtml, renderSummary, appendixHtml, BLOCK_CSS, type HtmlOptions, type BlockHtmlOptions } from './html.js';
+export { renderHtml, renderBlockHtml, renderBlocksHtml, sideGroupHtml, renderSummary, appendixHtml, isInput, BLOCK_CSS, type HtmlOptions, type BlockHtmlOptions, type CalcStyle } from './html.js';
 export { kalkFormula, notesHtml, notesImages, NOTES_CSS, type NotesOptions } from './notes.js';
 
 /** A layer printed after the sheet. */
@@ -39,6 +39,8 @@ export interface PrintSettings {
   readonly footer?: string;
   /** Lines of the sheet (statement starts) the AI made and nobody reviewed yet. */
   readonly aiLines?: ReadonlySet<number>;
+  /** How the calculation is set; "airy" when absent. */
+  readonly style?: CalcStyle;
 }
 
 /** Where the printed content stands among the revisions of the sheet. */
@@ -92,7 +94,7 @@ export function printHtml(result: SheetResult, settings: PrintSettings): string 
       return appendixHtml(title, `<div class="notes">${notes}</div>`);
     }
     const inner = buildPrintDocument(appendix.result, { ...common, title: appendix.name, summary: 'none' });
-    return appendixHtml(title, renderBlocksHtml(inner.blocks, settings.catalog));
+    return appendixHtml(title, renderBlocksHtml(inner.blocks, settings.catalog, undefined, settings.style));
   });
 
   return renderHtml(doc, {
@@ -102,5 +104,6 @@ export function printHtml(result: SheetResult, settings: PrintSettings): string 
     ...(settings.orientation ? { orientation: settings.orientation } : {}),
     ...(settings.footer ? { footer: settings.footer } : {}),
     ...(settings.aiLines && settings.aiLines.size > 0 ? { aiLines: settings.aiLines } : {}),
+    ...(settings.style ? { style: settings.style } : {}),
   });
 }

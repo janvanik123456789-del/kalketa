@@ -22,6 +22,22 @@ export interface HtmlOptions {
   readonly footer?: string;
   /** Lines (statement starts) the AI made and nobody reviewed: marked in the margin, with a notice at the top. */
   readonly aiLines?: ReadonlySet<number>;
+  /** How the calculation is set: "compact" (school) or "airy" (a step per line). */
+  readonly style?: CalcStyle;
+}
+
+/**
+ * How a calculation is set (docs/navrhy/RESIC-A-STYLY.md): "compact" is the
+ * school style, formula = substitution = result on one line, broken at an
+ * equals sign only where it does not fit, inputs side by side, a check on one
+ * line; "airy" sets each step on a line of its own. Only the setting changes,
+ * never the calculation.
+ */
+export type CalcStyle = 'compact' | 'airy';
+
+/** An input ("L := 6 m"): one line, no formula. In the compact style inputs stand side by side. */
+export function isInput(block: PrintBlock): boolean {
+  return block.kind === 'equation' && block.lines.length === 1 && block.lines[0]!.role === 'given' && block.messages.length === 0 && !block.imported?.length && !block.blockCalc;
 }
 
 /** An appendix: its own page(s) with a title, e.g. "Příloha A: Zatížení". */
@@ -46,7 +62,7 @@ const SEVERITY_MARK: Readonly<Record<Message['severity'], string>> = { error: '�
 export function renderHtml(doc: PrintDocument, options: HtmlOptions): string {
   const { catalog } = options;
   const summary = doc.summary ? renderSummary(doc.summary.rows, doc.summary.allPassed, catalog) : '';
-  const body = renderBlocksHtml(doc.blocks, catalog, options.aiLines);
+  const body = renderBlocksHtml(doc.blocks, catalog, options.aiLines, options.style);
   const aiNotice = options.aiLines && options.aiLines.size > 0 ? `<p class="ai-notice">${esc(t(catalog, 'print.aiUnreviewed'))}</p>` : '';
   return `<!doctype html>
 <html lang="${esc(doc.language)}">
@@ -78,20 +94,30 @@ ${(options.appendices ?? []).join('\n')}
 export interface BlockHtmlOptions {
   /** Operator on the defining line; the editor shows "≔", print shows "=". */
   readonly defineOperator?: string;
+  readonly style?: CalcStyle;
 }
 
 /**
  * Blocks as HTML; a side picture and the blocks beside it go into two
  * columns that stay together on one page.
  */
-export function renderBlocksHtml(blocks: readonly PrintBlock[], catalog: Catalog, aiLines?: ReadonlySet<number>): string {
+export function renderBlocksHtml(blocks: readonly PrintBlock[], catalog: Catalog, aiLines?: ReadonlySet<number>, style: CalcStyle = 'airy'): string {
   const out: string[] = [];
   // A block the AI made and nobody reviewed carries a mark in the margin.
   const marked = (block: PrintBlock, html: string) => ('line' in block && aiLines?.has(block.line) ? `<div class="ai-made">${html}</div>` : html);
+  const options = { style };
   for (let i = 0; i < blocks.length; i++) {
     const block = blocks[i]!;
+    // Compact: inputs one after another stand side by side, as far as the line reaches.
+    if (style === 'compact' && isInput(block) && isInput(blocks[i + 1] ?? block) && blocks[i + 1]) {
+      const group: string[] = [];
+      while (i < blocks.length && isInput(blocks[i]!)) group.push(marked(blocks[i]!, renderBlockHtml(blocks[i++]!, catalog, options)));
+      i--;
+      out.push(`<div class="flow-group">${group.join('')}</div>`);
+      continue;
+    }
     if (block.kind !== 'picture' || !block.side || !block.beside?.length) {
-      out.push(marked(block, renderBlockHtml(block, catalog)));
+      out.push(marked(block, renderBlockHtml(block, catalog, options)));
       continue;
     }
     const beside = new Set(block.beside);
@@ -99,7 +125,7 @@ export function renderBlocksHtml(blocks: readonly PrintBlock[], catalog: Catalog
     while (i + 1 < blocks.length) {
       const next = blocks[i + 1]!;
       if (!('line' in next) || !beside.has(next.line)) break;
-      rows.push(marked(next, renderBlockHtml(next, catalog)));
+      rows.push(marked(next, renderBlockHtml(next, catalog, options)));
       i++;
     }
     out.push(sideGroupHtml(rows.join('\n'), renderBlockHtml(block, catalog), block.side, block.width));
@@ -139,8 +165,8 @@ export function renderBlockHtml(block: PrintBlock, catalog: Catalog, options: Bl
       return `<figure class="block chart" data-line="${block.line}">${block.svg}${caption}${messages(block.messages)}</figure>`;
     }
     case 'equation':
-      return `<section class="block equation" data-line="${block.line}">
-${equationTable(block.lines, block.comment, options.defineOperator ?? '=')}${imported(block.imported, catalog)}${blockCalc(block.blockCalc, catalog)}${messages(block.messages)}
+      return `<section class="block equation${options.style === 'compact' ? ' compact' : ''}" data-line="${block.line}">
+${options.style === 'compact' ? equationFlow(block.lines, block.comment, options.defineOperator ?? '=') : equationTable(block.lines, block.comment, options.defineOperator ?? '=')}${imported(block.imported, catalog)}${blockCalc(block.blockCalc, catalog)}${messages(block.messages)}
 </section>`;
     case 'selection': {
       const condition = block.condition
@@ -148,6 +174,12 @@ ${equationTable(block.lines, block.comment, options.defineOperator ?? '=')}${imp
         : '';
       const source = block.source ? ` · ${esc(block.source)}` : '';
       const image = block.image ? `<img class="row-image" src="${esc(block.image)}" alt="${esc(block.label)}">` : '';
+      if (options.style === 'compact') {
+        const condition = block.condition ? `<span class="part note-plain">${esc(t(catalog, 'print.condition'))}: ${math(block.condition)}</span>` : '';
+        return `<section class="block selection compact" data-line="${block.line}">
+${image}<div class="eq-flow"><span class="lhs">${math(block.name)}</span><span class="parts"><span class="part"><span class="op">${esc(options.defineOperator ?? '=')}</span><strong>${esc(block.label)}</strong></span><span class="part note-plain table-ref">(${esc(t(catalog, 'trace.table'))} ${esc(block.table)}${source})</span>${condition}${block.comment ? `<span class="part note">${esc(block.comment)}</span>` : ''}</span></div>${messages(block.messages)}
+</section>`;
+      }
       return `<section class="block selection" data-line="${block.line}">
 ${image}<table class="eq">
 <tr><td class="lhs">${math(block.name)}</td><td class="op">${esc(options.defineOperator ?? '=')}</td><td class="rhs"><strong>${esc(block.label)}</strong> <span class="table-ref">(${esc(t(catalog, 'trace.table'))} ${esc(block.table)}${source})</span></td><td class="note">${comment(block.comment)}</td></tr>
@@ -163,6 +195,14 @@ ${condition}</table>${messages(block.messages)}
           : `✗ ${t(catalog, 'checks.failed')}`;
       const utilization = block.utilization ? `<span class="utilization">${esc(t(catalog, 'checks.utilization'))} ${esc(block.utilization)}</span>` : '';
       const source = block.source ? `<span class="source">[${esc(block.source)}]</span>` : '';
+      if (options.style === 'compact') {
+        // On one line: the label, the condition and its values, the utilization and the verdict, the source.
+        const parts = block.lines.map((l, i) => `<span class="part ${l.role}">${i > 0 ? '<span class="op">→</span>' : ''}${math(l.rhs)}</span>`);
+        const tail = `<span class="part verdict">${block.utilization ? `<span class="op">→</span><span class="utilization">${esc(block.utilization)}</span>` : ''}<span class="status">${esc(verdict)}</span></span>${source ? `<span class="part">${source}</span>` : ''}`;
+        return `<section class="block check compact ${status}" data-line="${block.line}">
+<div class="eq-flow">${block.label ? `<span class="lhs label">${esc(block.label)}:</span>` : ''}<span class="parts">${parts.join('')}${tail}</span></div>${messages(block.messages)}
+</section>`;
+      }
       return `<section class="block check ${status}" data-line="${block.line}">
 <div class="check-head">${block.label ? `<span class="label">${esc(block.label)}</span>` : ''}${source}</div>
 ${checkLines(block.lines)}
@@ -184,6 +224,23 @@ function equationTable(lines: readonly EquationLine[], note: string | undefined,
     return `<tr class="${line.role}"><td class="lhs">${lhs}</td><td class="op">${op}</td><td class="rhs">${math(line.rhs)}</td><td class="note">${i === 0 ? comment(note) : ''}</td></tr>`;
   });
   return `<table class="eq">\n${rows.join('\n')}\n</table>`;
+}
+
+/**
+ * The compact style: the name, then each step after its sign, all on one line;
+ * the steps wrap at an equals sign under the first one when the line is full.
+ */
+function equationFlow(lines: readonly EquationLine[], note: string | undefined, defineOperator: string): string {
+  // The name leads the line when the first step has it; a later step with a name of its own
+  // (the result of a solved equation, "x = 2") keeps it.
+  const lhs = lines[0]?.lhs;
+  const parts = lines.map((line, i) => {
+    const op = line.op ?? (line.lhs ? defineOperator : i > 0 ? '=' : '');
+    const own = i > 0 && line.lhs ? `${math(line.lhs)}` : '';
+    return `<span class="part ${line.role}${own ? ' own' : ''}">${own}${op ? `<span class="op">${esc(op)}</span>` : ''}${math(line.rhs)}</span>`;
+  });
+  const comment = note ? `<span class="part note">${esc(note)}</span>` : '';
+  return `<div class="eq-flow">${lhs ? `<span class="lhs">${math(lhs)}</span>` : ''}<span class="parts">${parts.join('')}${comment}</span></div>`;
 }
 
 function checkLines(lines: readonly EquationLine[]): string {
@@ -287,6 +344,23 @@ tr.result td.rhs math { font-weight: bold; }
 .comment::before { content: "— "; }
 .selection .row-image { float: right; max-height: 28mm; max-width: 45mm; margin: 0 0 2mm 4mm; }
 .selection .table-ref, .condition { color: #444; font-size: 9pt; }
+/* The compact (school) style: a step after another on one line, broken at "=" under the first one. */
+.block.compact { margin: 0.8mm 0 1.4mm; }
+.eq-flow { display: flex; align-items: baseline; }
+.eq-flow .lhs { flex: none; margin-right: 1.4mm; }
+.eq-flow .parts { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 1.6mm; row-gap: 1mm; min-width: 0; }
+.eq-flow .part { display: inline-flex; align-items: baseline; gap: 1.4mm; white-space: nowrap; }
+.eq-flow .part.result math { font-weight: bold; }
+.eq-flow .part.own { margin-left: 5mm; }
+.eq-flow .part.note { color: #555; font-size: 9pt; white-space: normal; padding-left: 3mm; }
+.eq-flow .part.note::before { content: "— "; }
+.eq-flow .part.note-plain { white-space: normal; }
+.check.compact { padding: 0.6mm 0 0.6mm 3mm; }
+.check.compact .eq-flow .label { font-weight: 600; }
+.check.compact .verdict { margin: 0; }
+.flow-group { display: flex; flex-wrap: wrap; column-gap: 12mm; margin: 0.8mm 0 1.4mm; break-inside: avoid; }
+.flow-group > * { flex: none; }
+.flow-group .block.compact { margin: 0.4mm 0; }
 .check { border-left: 1.2mm solid #888; padding: 1mm 0 1mm 3mm; }
 .check.passed { border-left-color: #2e7d32; }
 .check.failed, .check.not-evaluated { border-left-color: #c62828; }

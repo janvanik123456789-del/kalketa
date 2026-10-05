@@ -8,7 +8,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type 
 import { formatPicture, fromDecimalComma, parsePicture, toDecimalComma, type SheetResult, type Statement } from '@kalketa/core';
 import { formatDate, formatNumber, t, type Catalog } from '@kalketa/i18n';
 import { labelParts, xPosition, xValueAt } from '@kalketa/chart';
-import { renderBlockHtml, renderSummary, type PrintBlock, type PrintDocument } from '@kalketa/render';
+import { isInput, renderBlockHtml, renderSummary, type CalcStyle, type PrintBlock, type PrintDocument } from '@kalketa/render';
 import { isCanvasPath } from '@kalketa/canvas';
 import { paginate, type PageGeometry } from '../logic/pages.js';
 import { segments, type Segment } from '../logic/segments.js';
@@ -63,6 +63,8 @@ interface Props {
   readonly uiCatalog: Catalog;
   /** Show and accept numbers with a decimal comma (50,5; arguments separated by ";"). */
   readonly decimalComma: boolean;
+  /** How the calculation is set, as in print. */
+  readonly calcStyle?: CalcStyle;
   /** Lines from accepted AI changes nobody has reviewed yet: line -> the change and its tooltip. */
   readonly aiMade?: ReadonlyMap<number, { readonly id: string; readonly title: string }>;
   /** A person reviewed the lines of this change. */
@@ -98,11 +100,23 @@ export function SheetView(props: Props) {
   // picture and the lines beside it are one item: two columns kept on one page,
   // unless they are taller than a page; then the picture goes back above the lines.
   const [tooTall, setTooTall] = useState<ReadonlySet<number>>(() => new Set());
-  type Item = { kind: 'summary' } | { kind: 'row'; seg: Segment } | { kind: 'side'; picture: Segment; rows: Segment[]; block: Extract<PrintBlock, { kind: 'picture' }> };
+  type Item = { kind: 'summary' } | { kind: 'row'; seg: Segment } | { kind: 'side'; picture: Segment; rows: Segment[]; block: Extract<PrintBlock, { kind: 'picture' }> } | { kind: 'flow'; rows: Segment[] };
   const items: Item[] = print.summary ? [{ kind: 'summary' }] : [];
+  // Compact style: inputs one after another stand side by side, as in print; each stays a row of its own to edit.
+  const inputAt = (seg: Segment | undefined) => {
+    const block = seg && seg.statement !== undefined && editing?.start !== seg.start ? blockByLine.get(seg.start) : undefined;
+    return !!block && isInput(block);
+  };
   for (let i = 0; i < segs.length; i++) {
     const seg = segs[i]!;
     const block = seg.statement !== undefined ? blockByLine.get(seg.start) : undefined;
+    if (props.calcStyle === 'compact' && inputAt(seg) && inputAt(segs[i + 1])) {
+      const rows: Segment[] = [];
+      while (inputAt(segs[i])) rows.push(segs[i++]!);
+      i--;
+      items.push({ kind: 'flow', rows });
+      continue;
+    }
     if (block?.kind === 'picture' && block.side && block.beside?.length && !tooTall.has(seg.start)) {
       const beside = new Set(block.beside);
       const rows: Segment[] = [];
@@ -316,7 +330,21 @@ export function SheetView(props: Props) {
             }}
           >
             <div className="page-head">{props.title}</div>
-            <div className="page-body">{page.map((item) => (item.kind === 'summary' ? summaryItem() : item.kind === 'side' ? sideItem(item.picture, item.rows, item.block) : rowItem(item.seg)))}</div>
+            <div className="page-body">
+              {page.map((item) =>
+                item.kind === 'summary' ? (
+                  summaryItem()
+                ) : item.kind === 'side' ? (
+                  sideItem(item.picture, item.rows, item.block)
+                ) : item.kind === 'flow' ? (
+                  <div key={`flow:${item.rows[0]!.start}`} data-item className="flow-group">
+                    {item.rows.map((seg) => rowItem(seg, false))}
+                  </div>
+                ) : (
+                  rowItem(item.seg)
+                ),
+              )}
+            </div>
             {props.footer && <div className="page-foot-left">{props.footer}</div>}
             <div className="page-foot">
               {t(props.uiCatalog, 'print.page')} {p + 1} {t(props.uiCatalog, 'print.of')} {pages.length}
@@ -444,7 +472,7 @@ export function SheetView(props: Props) {
           ) : block?.kind === 'chart' ? (
             <ChartBlock block={block} catalog={props.printCatalog} />
           ) : block ? (
-            <Block block={block} catalog={props.printCatalog} />
+            <Block block={block} catalog={props.printCatalog} {...(props.calcStyle ? { style: props.calcStyle } : {})} />
           ) : (
             !isEditing && <PlainLine text={props.decimalComma ? toDecimalComma(seg.text) : seg.text} />
           )}
@@ -455,12 +483,12 @@ export function SheetView(props: Props) {
   }
 }
 
-function Block({ block, catalog }: { block: PrintBlock; catalog: Catalog }) {
+function Block({ block, catalog, style }: { block: PrintBlock; catalog: Catalog; style?: CalcStyle }) {
   return (
     <div
       className="block-view"
       dangerouslySetInnerHTML={{
-        __html: renderBlockHtml(block, catalog, { defineOperator: '≔' }),
+        __html: renderBlockHtml(block, catalog, { defineOperator: '≔', ...(style ? { style } : {}) }),
       }}
     />
   );

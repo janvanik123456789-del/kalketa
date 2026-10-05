@@ -307,6 +307,8 @@ Každá fáze končí procházejícími testy. **MVP = referenční výpočet R1
 
   Styl mění jen sazbu, nikdy výpočet. Tisk a PDF použijí styl uložený v souboru, takže stejný soubor vypadá všude stejně.
 
+  *Hotovo 2026-10-05 (školní / úsporný styl):* `layout.style` v souboru (`compact` | `airy`). Nový výpočet je `compact`, soubor bez stylu zůstane `airy`, jak byl vytvořen. Volba je ve Vlastnostech výpočtu. `render` (`renderBlockHtml`, `renderBlocksHtml`, volba `style`) skládá kroky na jeden řádek (`.eq-flow`, zalomení na rovnítku pod první) a zadání vedle sebe (`.flow-group`, `isInput`). Posudek a výběr z tabulky jsou také na jednom řádku. Editor (`SheetView`, `calcStyle`) ukazuje totéž, každé zadání zůstává řádkem k úpravě. Knižní styl a styl se sloupci jsou rozhodnuté v `navrhy/RESIC-A-STYLY.md`, zatím nenaprogramované.
+
 ---
 
 ## 10. Jazyk kódu a lokalizace

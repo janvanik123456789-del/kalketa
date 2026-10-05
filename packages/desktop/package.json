@@ -65,9 +65,16 @@
     "portable": {
       "artifactName": "Kalketa-${version}-portable.exe"
     },
+    "deb": {
+      "packageName": "kalketa",
+      "artifactName": "kalketa_${version}_${arch}.${ext}",
+      "maintainer": "Kalketa <kalketa@kalketa.local>",
+      "packageCategory": "science"
+    },
     "linux": {
       "target": [
-        "AppImage"
+        "AppImage",
+        "deb"
       ],
       "icon": "build/icon.png",
       "category": "Science",

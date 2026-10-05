@@ -2,7 +2,7 @@
 # The checks under Linux (WSL Ubuntu), started from Windows by `npm run smoke:linux`:
 # the working tree (saved or not) is copied to a Linux folder of its own, where
 # typecheck, unit tests and the smoke test with real input run on a virtual
-# display. With --appimage the AppImage is built and smoke-tested too.
+# display. With --appimage the AppImage and the .deb are built and smoke-tested too.
 #
 # Needs in Ubuntu: Node 24 in ~/.local/node (see linux-env.sh), git, rsync, xvfb.
 set -e
@@ -36,4 +36,11 @@ if [ "$1" = "--appimage" ]; then
   mkdir -p "$source_dir/packages/desktop/release"
   cp "$image" "$source_dir/packages/desktop/release/"
   echo "linux: $(basename "$image") copied to packages/desktop/release"
+  # The .deb as installed: unpacked (no root needed), its program smoke-tested.
+  deb="$(ls "$work"/packages/desktop/release/*.deb | head -1)"
+  rm -rf /tmp/kalketa-deb && dpkg-deb -x "$deb" /tmp/kalketa-deb
+  echo "linux: deb"
+  KALKETA_SMOKE_EXE="$(ls /tmp/kalketa-deb/opt/*/kalketa | head -1)" xvfb-run -a -s "-screen 0 1920x1080x24" node scripts/smoke.mjs 2>&1 | tail -2
+  cp "$deb" "$source_dir/packages/desktop/release/"
+  echo "linux: $(basename "$deb") copied to packages/desktop/release"
 fi

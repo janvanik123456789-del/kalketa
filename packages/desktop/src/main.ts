@@ -11,7 +11,7 @@
 
 import { app, BrowserWindow, clipboard, ClipboardItem, dialog, ipcMain, Menu, nativeImage, shell, type IpcMainInvokeEvent } from 'electron';
 import { execFileSync } from 'node:child_process';
-import { cpSync, existsSync, mkdtempSync } from 'node:fs';
+import { cpSync, existsSync, mkdtempSync, readFileSync } from 'node:fs';
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, dirname, extname, join, resolve } from 'node:path';
@@ -2107,6 +2107,19 @@ async function printWindow(html: string): Promise<BrowserWindow> {
   const printer = new BrowserWindow({ show: false, webPreferences: { sandbox: true, contextIsolation: true, javascript: false } });
   await printer.loadURL(`data:text/html;charset=utf-8;base64,${Buffer.from(html, 'utf8').toString('base64')}`);
   return printer;
+}
+
+// Ubuntu 23.10 and newer (AppArmor) forbid the user namespaces Chromium's sandbox needs.
+// An AppImage cannot bring its own AppArmor profile or a setuid helper, so it would not
+// start at all: there it runs without that sandbox. The .deb package keeps the sandbox.
+if (process.platform === 'linux' && process.env['APPIMAGE'] && userNamespacesRestricted()) app.commandLine.appendSwitch('no-sandbox');
+
+function userNamespacesRestricted(): boolean {
+  try {
+    return readFileSync('/proc/sys/kernel/apparmor_restrict_unprivileged_userns', 'utf8').trim() === '1';
+  } catch {
+    return false;
+  }
 }
 
 // One running instance: double-clicking another .kalk file opens it there.

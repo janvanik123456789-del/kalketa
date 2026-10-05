@@ -119,6 +119,8 @@ export const UI_KEYS = [
   'cmd.file.print',
   'cmd.file.pdf',
   'cmd.file.example',
+  'menu.samples',
+  'samples.prefix',
   'cmd.file.exit',
   'cmd.edit.undo',
   'cmd.edit.redo',

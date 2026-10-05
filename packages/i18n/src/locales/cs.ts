@@ -309,6 +309,8 @@ export const cs: Catalog = {
     'cmd.file.properties': '&Vlastnosti výpočtu…',
     'cmd.file.print': '&Tisk…',
     'cmd.file.pdf': 'Export do P&DF…',
+    'menu.samples': '&Vzorové příklady',
+    'samples.prefix': 'Vzor',
     'cmd.file.example': 'U&kázka: nosník',
     'cmd.file.exit': '&Konec',
     'cmd.edit.undo': '&Zpět',

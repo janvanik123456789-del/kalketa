@@ -309,6 +309,8 @@ export const en: Catalog = {
     'cmd.file.properties': 'P&roperties…',
     'cmd.file.print': '&Print…',
     'cmd.file.pdf': 'Export P&DF…',
+    'menu.samples': '&Sample calculations',
+    'samples.prefix': 'Sample',
     'cmd.file.example': 'E&xample: beam',
     'cmd.file.exit': 'E&xit',
     'cmd.edit.undo': '&Undo',

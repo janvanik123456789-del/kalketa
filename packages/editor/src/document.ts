@@ -7,24 +7,6 @@ import { documentTables, newDocument, readSheetFile, writeSheetFile, type SheetD
 import type { Diagnostic, Table, UnitRegistry } from '@kalketa/core';
 import { isCanvasPath, readScene, sceneDataUri } from '@kalketa/canvas';
 
-import exampleSheet from '../../../reference/R1-nosnik/nosnik.cc?raw';
-import profilesSchema from '../../../reference/R1-nosnik/tables/Profily_IPE/schema.json?raw';
-import profilesData from '../../../reference/R1-nosnik/tables/Profily_IPE/data.csv?raw';
-import materialsSchema from '../../../reference/R1-nosnik/tables/Materialy/schema.json?raw';
-import materialsData from '../../../reference/R1-nosnik/tables/Materialy/data.csv?raw';
-
-export function exampleDocument(): SheetDocument {
-  const base = newDocument('Posouzení nosníku N1', exampleSheet);
-  return {
-    ...base,
-    manifest: { ...base.manifest, language: 'cs' },
-    tables: new Map<string, StoredTable>([
-      ['Materialy', { schemaJson: materialsSchema, dataCsv: materialsData }],
-      ['Profily_IPE', { schemaJson: profilesSchema, dataCsv: profilesData }],
-    ]),
-  };
-}
-
 export function emptyDocument(title: string, language: string): SheetDocument {
   const base = newDocument(title, `# ${title}\n\n`);
   return { ...base, manifest: { ...base.manifest, language } };

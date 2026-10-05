@@ -27,7 +27,8 @@ import { proposalEffect, type ProposalEffect } from './logic/proposalEffect.js';
 import type { NewSheetView, ProposalView } from './components/ProposalCard.js';
 import type { AnswerProposals } from './components/ChatPane.js';
 import { languageGuide, sheetContext } from './logic/aiContext.js';
-import { chooseFile, desktop, emptyDocument, exampleDocument, fileName, fileUri, largestParts, openBytes, pickAndOpen, saveDocument, tableCache, type FileRef, type OpenedFile } from './document.js';
+import { exampleDocument, samples } from './samples.js';
+import { chooseFile, desktop, emptyDocument, fileName, fileUri, largestParts, openBytes, pickAndOpen, saveDocument, tableCache, type FileRef, type OpenedFile } from './document.js';
 import { record, redo, undo, type History } from './logic/history.js';
 import { closeTab, cycleTab, fileNameOf, isDirty, newTab, openTab, type DocTab, type Tabs } from './logic/documents.js';
 import { pageGeometry } from './logic/pages.js';
@@ -66,6 +67,8 @@ const ZOOM_STEPS = [0.3, 0.4, 0.5, 0.6, 0.75, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2];
 const LANGUAGE_KEY = 'kalketa.uiLanguage';
 const TOOLBARS_KEY = 'kalketa.toolbars';
 const RECENT_KEY = 'kalketa.recent';
+/** The files open in the first window when it was last used: open again at the start. */
+const SESSION_KEY = 'kalketa.session';
 const RECENT_LIMIT = 8;
 const SIZE_LIMIT_KEY = 'kalketa.sizeLimitMb';
 const CANVAS_MODE_KEY = 'kalketa.canvasMode';
@@ -105,6 +108,15 @@ function layerName(layer: Layer, catalog: Catalog): string {
   return layer.name ?? t(catalog, `layer.kind.${layer.kind}`);
 }
 
+function sessionFiles(): string[] {
+  try {
+    const list = JSON.parse(stored(SESSION_KEY) ?? '[]') as unknown;
+    return Array.isArray(list) ? list.filter((p): p is string => typeof p === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
 function recentFiles(): string[] {
   try {
     const list = JSON.parse(stored(RECENT_KEY) ?? '[]') as unknown;
@@ -121,12 +133,13 @@ export function App() {
   // Open calculations, one tab each. Everything below that belongs to one
   // document (history, file, open layers) is read from the active tab.
   const [docs, setDocs] = useState<Tabs<SheetDocument, FileRef>>(() => {
-    // Another window (Window > New window) starts empty; the first one shows the example.
-    const blank = new URLSearchParams(location.search).has('blank');
+    // Another window (Window > New window) starts empty. The first one opens again the files
+    // open when it was last closed (an empty tab waits for them); the first start shows a sample.
+    const blank = new URLSearchParams(location.search).has('blank') || (!!desktop && sessionFiles().length > 0);
     const language = initialLanguage();
     const first = blank
       ? newTab<SheetDocument, FileRef>(emptyDocument(t(catalogFor(language), 'editor.untitled'), language), MAIN_LAYER, undefined, true)
-      : newTab<SheetDocument, FileRef>(exampleDocument(), MAIN_LAYER);
+      : newTab<SheetDocument, FileRef>(exampleDocument(undefined, t(catalogFor(language), 'samples.prefix')), MAIN_LAYER);
     return { tabs: [first], active: first.id };
   });
   const tab = docs.tabs.find((d) => d.id === docs.active) ?? docs.tabs[0]!;
@@ -535,9 +548,29 @@ export function App() {
 
   // The application keeps each file in one window only; it needs to know which files are open here.
   const openPaths = docs.tabs.flatMap((d) => (d.path !== undefined ? [d.path] : [])).join('\n');
+  // The first window remembers its files for the next start; closing a file forgets it.
+  const firstWindow = !new URLSearchParams(location.search).has('blank');
+  const restored = useRef(false);
   useEffect(() => {
     desktop?.setOpenFiles(openPaths ? openPaths.split('\n') : []);
+    if (firstWindow && restored.current) remember(SESSION_KEY, JSON.stringify(openPaths ? openPaths.split('\n') : []));
   }, [openPaths]);
+  useEffect(() => {
+    if (!firstWindow || !desktop) return void (restored.current = true);
+    void (async () => {
+      const paths = sessionFiles();
+      let opened = 0;
+      for (const path of paths) {
+        const file = await desktop!.openPath(path);
+        if (!file) continue;
+        showRef.current(await openBytes(file.name, file.bytes, { kind: 'path', path: file.path }));
+        opened++;
+      }
+      // None of them is there any more: the sample, as at the first start.
+      if (paths.length > 0 && opened === 0) showRef.current({ document: exampleDocument(undefined, t(ui, 'samples.prefix')), diagnostics: [] });
+      restored.current = true;
+    })();
+  }, []);
 
   const save = async (as = false) => {
     let size = 0;
@@ -1208,7 +1241,7 @@ export function App() {
         void confirmAiPrint().then((yes) => {
           if (yes) void desktop?.exportPdf({ html: printoutHtml(), suggestedName: fileName(doc) });
         }),
-      example: () => openDocument(exampleDocument(), undefined),
+      example: () => openDocument(exampleDocument(undefined, t(ui, 'samples.prefix')), undefined),
       exit: () => window.close(),
       undo: () => {
         setEditing(undefined);
@@ -1394,7 +1427,16 @@ export function App() {
         cmd('file.print'),
         ...(desktop ? [cmd('file.pdf')] : []),
         sep,
-        cmd('file.example'),
+        {
+          // Sample calculations shipped with the program, each opened as a new unsaved document.
+          kind: 'submenu',
+          label: t(ui, 'menu.samples'),
+          items: samples().map((sample, i) => ({
+            kind: 'action' as const,
+            label: `&${i + 1} ${sample.title}`,
+            run: () => openDocument(exampleDocument(sample.id, t(ui, 'samples.prefix')), undefined),
+          })),
+        },
         ...(desktop ? [sep, cmd('file.exit')] : []),
       ],
     },

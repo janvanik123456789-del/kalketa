@@ -81,6 +81,50 @@ Rozhodnuto 30. 9. 2026 (`02-architektura.md`, „Výběr stylu výpočtu“) a u
 - Stránkování (`logic/pages.ts`) počítá s výškou skupin.
 - Řešič a odvození (kap. 2) se v úsporném stylu sázejí stejně: řetěz rovností na jednom řádku, zalomený na rovnítku.
 
+## 3a. Průzkum: co vyžadují školy a praxe (2026-10-05)
+
+Prošli jsme veřejné pokyny vysokých škol a profesních organizací:
+- **ČVUT FSv:** „Požadavky na statický výpočet“ (předmět BEK3) a „Statický výpočet – postup, zásady“.
+- **ETH Zürich:** „Statische Berechnung“, IBK, prof. Marti.
+- **Uni Duisburg-Essen:** „Leitfaden zum Aufbau statischer Berechnungen“.
+- **Rowan University:** „Engineering Homework Format“.
+- **ČKAIT:** TS 05.
+- K tomu britská praxe výpočtových listů (IStructE, ukázky firem).
+
+**Shoda všude:**
+
+1. **Vzorec → dosazení → výsledek s jednotkou.**
+   - ČVUT: „ve výpočtu nejprve napsaný použitý vzorec a dále do něj dosazeno až pak výsledek (vzorce bez dosazení nebudou uznány nedá se to kontrolovat)“.
+   - ETH: vzorec při prvním použití algebraicky, pak dosadit čísla.
+   - Rowan: jednotky u každého členu rovnice.
+   - Kalketa to dělá už dnes a zůstane to ve všech stylech.
+2. **Výsledky zvýrazněné, „aby byly na první pohled poznat“** (ETH). Rowan je dává do rámečku, Duisburg zvýrazňuje rozhodující výsledky.
+3. **Rozumné zaokrouhlení:** 2–3 platné číslice, „žádná zdánlivá přesnost“ (ETH, Rowan). Kalketa má dnes výchozí 4.
+4. **Odkazy na normy a zdroje** u vzorců, které nejsou běžné (ETH), a u převzatých veličin význam a zdroj (ETH). Všude seznam použitých norem a programů s verzí.
+5. **Kontrolovatelnost a přehlednost** jako hlavní měřítko (ČVUT, ČKAIT, Duisburg „prüfbar“).
+6. **Číslování stran** po oddílech, u vložených stran písmeno (ETH „1.3.2A“). **Hlavička** se jménem, datem a stranou x/y (Rowan, britské listy).
+7. **Výsledek posudku slovem:** VYHOVÍ / NEVYHOVÍ (ČVUT).
+8. **Rekapitulace zatížení v tabulce:** charakteristická hodnota, součinitel, návrhová hodnota (ČVUT, vzor BEK3).
+9. **Skici a schémata** u výpočtu (všude). **Pozice** (číslo prvku) jako osa členění (německá „Positionsstatik“).
+
+**Rozdíly, které stojí za styly:**
+
+- **Česká a německá škola:** výpočet souvisle shora dolů, výsledky zvýrazněné v textu, posudek s VYHOVÍ / NEVYHOVÍ.
+- **Britský výpočtový list:** stránka rozdělená na **sloupce**. Vlevo odkazy (článek normy, zdroj), uprostřed výpočet, vpravo výsledek. Kontrolor čte jen pravý sloupec a ke každému číslu najde v levém zdroj. (Tradiční tištěné bloky „Ref / Calculations / Output“. Z dostupných ukázek se nám rozvržení nepodařilo ověřit, je to obecně známá praxe.)
+- **Americké školní úlohy:** Given / Find / Solution / Answer, odpověď v rámečku.
+
+**Co z toho plyne pro Kalketu:** styl nemá být libovolná vizuální volba. Má to být **předvolba podle zavedené praxe**. Pevný základ zůstává ve všech stylech: vzorec → dosazení → výsledek s jednotkou, zdroje, posudky. Navrhované styly:
+
+| Styl | Pro koho | Co dělá |
+|---|---|---|
+| **Školní / úsporný** | české a německé školy, běžná praxe | výpočet na jednom řádku (vzorec = dosazení = **výsledek**, zalomení na rovnítku), víc zadání na řádek, zvýrazněný výsledek, VYHOVÍ / NEVYHOVÍ, 3 platné číslice |
+| **Se sloupci** | britská praxe, kontrola projektu | vlevo zdroj (`source`, citace podkladů), uprostřed výpočet, vpravo výsledky a posudky; kontrolor čte pravý sloupec |
+| **Vzdušný** | dnešní vzhled, výuka krok za krokem | každý krok na svém řádku |
+
+Ve všech stylech hlavička (název, autor, datum, strana x/y, revize), číslování po oddílech a tabulka rekapitulace zatížení jako běžný prvek listu.
+
+**Zdroje:** ČVUT FSv people.fsv.cvut.cz/broukiva (vzor_stat_vyp.pdf, stat_vyp_postup_zasady.htm); ETH archiv.ibk.ethz.ch (Richtlinie_statische_Berechnungen.pdf); uni-due.de/imperia/md/content/iml/aufbau_statischer_berechnungen.pdf; users.rowan.edu/~everett (HW Format 14.pdf); profesis.ckait.cz (TS 05); istructe.org (Calculation models).
+
 ## 4. Navržené pořadí
 
 1. **Styly výpočtu (úsporný styl):** hned viditelný přínos pro každý výpočet, nezávisí na řešiči.

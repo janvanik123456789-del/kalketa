@@ -101,6 +101,7 @@ async function main(argv: string[]): Promise<number> {
       digits: values.digits !== undefined && argv.includes('--digits') ? digits : doc.layout.digits,
       paper: doc.layout.paper,
       orientation: doc.layout.orientation,
+      ...(doc.layout.style ? { style: doc.layout.style } : {}),
       resolveFile: (path) => dataUri(path, doc.files.get(path), doc.files),
       appendices: [...appendixLayers(doc.layers, evaluation, (layer) => t(printCatalog, `layer.kind.${layer.kind}` as UiKey)), ...blockAppendices(evaluation.main)],
       footer: revisionFooter(printCatalog, {

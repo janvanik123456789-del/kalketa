@@ -21,8 +21,12 @@ export function detectDelimiter(text: string): string {
   return best;
 }
 
-/** Parses CSV text into rows of cell strings. Empty trailing lines are dropped. */
-export function parseCsv(text: string, delimiter = detectDelimiter(text)): string[][] {
+/**
+ * Parses CSV text into rows of cell strings. Empty trailing lines are dropped
+ * (files from spreadsheets end with them), unless `keepEmpty`: the table
+ * editor keeps a row just added, before anything is typed into it.
+ */
+export function parseCsv(text: string, delimiter = detectDelimiter(text), keepEmpty = false): string[][] {
   const rows: string[][] = [];
   let row: string[] = [];
   let cell = '';
@@ -59,7 +63,7 @@ export function parseCsv(text: string, delimiter = detectDelimiter(text)): strin
     row.push(cell);
     rows.push(row);
   }
-  while (rows.length > 0 && rows[rows.length - 1]!.every((c) => c === '')) rows.pop();
+  while (!keepEmpty && rows.length > 0 && rows[rows.length - 1]!.every((c) => c === '')) rows.pop();
   return rows;
 }
 

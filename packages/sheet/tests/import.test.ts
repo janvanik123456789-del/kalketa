@@ -106,4 +106,11 @@ describe('Excel', () => {
     expect(schema.columns.map((c: { name: string }) => c.name)).toEqual(['Označení', 'Wy', 'G', 'obrazek']);
     expect(parseCsv(imported.files.dataCsv, ',')[2]).toEqual(['P2', '100', '15', 'P2.png']);
   });
+
+  it('loads a table with rows left empty in the editor, without them', () => {
+    const schema = JSON.stringify({ name: 'Nyty', key: 'nazev', columns: [{ name: 'nazev', type: 'text' }, { name: 'd', type: 'quantity', unit: 'mm' }] });
+    const { table, diagnostics } = loadTable(schema, 'nazev,d\n,\nN6,6\n,\n', defaultRegistry);
+    expect(diagnostics).toEqual([]);
+    expect(table.rows.length).toBe(1);
+  });
 });

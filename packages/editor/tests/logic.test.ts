@@ -187,4 +187,10 @@ describe('table editing', () => {
     expect(deleteColumn(t, 0)).toBe(t);
     expect(deleteColumn(t, 2).schema.columns.map((c) => c.name)).toEqual(['k', 'v']);
   });
+
+  it('keeps a row added at the end through saving, before anything is typed into it', () => {
+    // The table is saved and read back after every change; an empty last row must not vanish.
+    const added = addRow(addRow(toEditable(stored)));
+    expect(toEditable(fromEditable(added)).rows).toEqual([['A', '1.5'], ['B', '2'], ['', ''], ['', '']]);
+  });
 });

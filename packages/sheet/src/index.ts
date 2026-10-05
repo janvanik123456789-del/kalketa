@@ -39,8 +39,9 @@ export function tableFolder(name: string): string {
 /** Loads a stored table (schema.json + data.csv). */
 export function loadTable(schemaJson: string, dataCsv: string, registry: UnitRegistry): TableBuildResult {
   const schema = JSON.parse(schemaJson) as TableSchema;
-  const [, ...rows] = parseCsv(dataCsv, ',');
-  return buildTable(schema, rows, registry);
+  // A row left empty in the table editor (added, nothing typed yet) is no data.
+  const [, ...rows] = parseCsv(dataCsv, ',', true);
+  return buildTable(schema, rows.filter((row) => row.some((cell) => cell.trim() !== '')), registry);
 }
 
 export interface ImportOptions {

@@ -14,7 +14,8 @@ export interface EditableTable {
 
 export function toEditable(stored: StoredTable): EditableTable {
   const schema = JSON.parse(stored.schemaJson) as TableSchema;
-  const [, ...rows] = parseCsv(stored.dataCsv, ',');
+  // Empty rows stay: a row just added is empty until something is typed into it.
+  const [, ...rows] = parseCsv(stored.dataCsv, ',', true);
   const width = schema.columns.length;
   return { schema, rows: rows.map((r) => Array.from({ length: width }, (_, i) => r[i] ?? '')) };
 }

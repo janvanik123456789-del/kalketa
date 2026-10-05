@@ -138,7 +138,9 @@ table.shortcuts td { padding: 2px 16px 2px 0; }
 .row.clear-row:not(.editing) .raw { color: var(--muted); font-size: 8pt; }
 .row.wrap-left { float: left; margin-right: 4mm; }
 .row.wrap-right .gutter, .row.wrap-left .gutter { display: none; }
-.row.wrap-right .block.picture, .row.wrap-left .block.picture { float: none; width: 100% !important; margin: 1mm 0; }
+.row.wrap-right .block.picture, .row.wrap-left .block.picture, .row.wrap-right .block.chart, .row.wrap-left .block.chart { float: none; width: 100% !important; margin: 1mm 0; }
+.row .block.chart svg { cursor: grab; }
+.row .block.chart svg:active { cursor: grabbing; }
 .drop-mark { position: fixed; z-index: 150; height: 3px; background: var(--accent); border-radius: 2px; pointer-events: none; box-shadow: 0 0 0 1px #fff; }
 .row .picture img:active { cursor: grabbing; }
 .side-group .side-picture .gutter { display: none; }

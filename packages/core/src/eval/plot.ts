@@ -14,6 +14,7 @@
 
 import { CalcError, diagnostic, fail, type Span } from '../diagnostics.js';
 import type { Expr, NamedArg } from '../lang/ast.js';
+import { parsePlacement, type Placement } from '../lang/parser.js';
 import { sameDim, type Dimension } from '../units/dimension.js';
 import { baseUnitSymbol, toDisplay } from '../units/display.js';
 import type { UnitRegistry } from '../units/registry.js';
@@ -30,7 +31,7 @@ export const PLOT_FUNCTION = 'plot';
 export type PlotKind = 'line' | 'points' | 'bar';
 const KINDS: readonly PlotKind[] = ['line', 'points', 'bar'];
 /** Options of plot(...); every other named argument is the variable. */
-export const PLOT_OPTIONS: readonly string[] = ['kind', 'title', 'samples'];
+export const PLOT_OPTIONS: readonly string[] = ['kind', 'title', 'samples', 'place'];
 /** Curves in one chart: the categorical colours a reader still tells apart. */
 export const MAX_PLOT_SERIES = 8;
 const LINE_SAMPLES = 201;
@@ -55,6 +56,8 @@ export interface PlotResult {
   readonly xDates?: boolean;
   /** One per curve, in the order of the expressions. */
   readonly series: readonly PlotSeries[];
+  /** Where the chart stands among the lines (place: "width=40% wrap=right"), as a picture. */
+  readonly place?: Placement;
 }
 
 export function isPlotCall(expr: Expr): expr is CallExpr {
@@ -71,6 +74,10 @@ export function plotStatement(call: CallExpr, ctx: EvalContext, evaluate: Evalua
   const plotKind = (kind ?? 'line') as PlotKind;
   if (!KINDS.includes(plotKind)) fail('E-PLOT-KIND', call.named.find((n) => n.name === 'kind')!.value.span, { kind: kind ?? '' });
   const title = option(call, 'title', ctx, evaluate);
+  const placeText = option(call, 'place', ctx, evaluate);
+  const place = placeText === undefined ? undefined : parsePlacement(placeText);
+  // A chart has no lines of its own to stand beside: side= is for pictures.
+  if (placeText !== undefined && (!place || place.side)) fail('E-PLOT-POSITION', call.named.find((n) => n.name === 'place')!.value.span, { place: placeText });
   const binder = binders[0];
   const xs = binder ? samplePoints(binder, call, plotKind, ctx, evaluate) : undefined;
 
@@ -111,6 +118,7 @@ export function plotStatement(call: CallExpr, ctx: EvalContext, evaluate: Evalua
     yUnit: yUnitSymbol,
     ...(x.dates ? { xDates: true } : {}),
     series: columns.map((c) => ({ xs: x.values, ys: c.map(y) })),
+    ...(place && Object.keys(place).length ? { place } : {}),
   };
 }
 

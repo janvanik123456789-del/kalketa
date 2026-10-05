@@ -823,9 +823,8 @@ class LineParser {
   }
 }
 
-export interface PictureLine {
-  readonly caption: string;
-  readonly path: string;
+/** Where a picture or a chart stands among the lines ("width=40% wrap=right dx=6% dy=8mm"). */
+export interface Placement {
   /** Share of the text width in percent; absent for the picture's own size. */
   readonly width?: number;
   /** Beside the lines that follow it (up to a blank line or a heading) instead of centred. */
@@ -842,12 +841,23 @@ export interface PictureLine {
   readonly noWrap?: boolean;
 }
 
+export interface PictureLine extends Placement {
+  readonly caption: string;
+  readonly path: string;
+}
+
 const PICTURE = /^!\[([^\]]*)\]\(([^()\s]+)\)\s*(?:\{([^}]*)\})?$/;
 
 /** "![Schéma](images/sheet/a.png){width=40% side=right}" -> its parts; undefined when malformed. */
 export function parsePicture(text: string): PictureLine | undefined {
   const match = PICTURE.exec(text.trim());
   if (!match) return undefined;
+  const placement = parsePlacement(match[3] ?? '');
+  return placement ? { caption: match[1]!.trim(), path: match[2]!, ...placement } : undefined;
+}
+
+/** "width=40% wrap=right dx=6% dy=8mm" -> the placement; undefined when malformed. */
+export function parsePlacement(text: string): Placement | undefined {
   let width: number | undefined;
   let side: 'left' | 'right' | undefined;
   let wrap: 'left' | 'right' | undefined;
@@ -855,7 +865,7 @@ export function parsePicture(text: string): PictureLine | undefined {
   let dx: number | undefined;
   let dy: number | undefined;
   let noWrap = false;
-  for (const option of (match[3] ?? '').split(/[\s,;]+/).filter(Boolean)) {
+  for (const option of text.split(/[\s,;]+/).filter(Boolean)) {
     const widthOption = /^width=(\d+(?:\.\d+)?)%$/.exec(option);
     const placeOption = /^(side|wrap|align)=(left|right)$/.exec(option);
     const dxOption = /^dx=(\d+(?:\.\d+)?)%$/.exec(option);
@@ -876,19 +886,26 @@ export function parsePicture(text: string): PictureLine | undefined {
   if ((dx !== undefined || dy !== undefined) && !wrap) return undefined;
   if (dx !== undefined && dx > 100) return undefined;
   if (noWrap && (side || wrap)) return undefined;
-  return { caption: match[1]!.trim(), path: match[2]!, ...(width !== undefined ? { width } : {}), ...(side ? { side } : {}), ...(wrap ? { wrap } : {}), ...(align ? { align } : {}), ...(dx ? { dx } : {}), ...(dy ? { dy } : {}), ...(noWrap ? { noWrap } : {}) };
+  return { ...(width !== undefined ? { width } : {}), ...(side ? { side } : {}), ...(wrap ? { wrap } : {}), ...(align ? { align } : {}), ...(dx ? { dx } : {}), ...(dy ? { dy } : {}), ...(noWrap ? { noWrap } : {}) };
+}
+
+/** The options of a placement, as parsePlacement reads them; empty for the default. */
+export function formatPlacement(placement: Placement): string {
+  return [
+    placement.width === undefined ? '' : `width=${Math.round(placement.width)}%`,
+    placement.side ? `side=${placement.side}` : '',
+    placement.wrap ? `wrap=${placement.wrap}` : '',
+    placement.align ? `align=${placement.align}` : '',
+    placement.noWrap && !placement.wrap && !placement.side ? 'wrap=none' : '',
+    placement.wrap && placement.dx ? `dx=${Math.round(placement.dx)}%` : '',
+    placement.wrap && placement.dy ? `dy=${Math.round(placement.dy)}mm` : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
 }
 
 /** The line of a picture, as parsePicture reads it. */
 export function formatPicture(picture: PictureLine): string {
-  const options = [
-    picture.width === undefined ? '' : `width=${Math.round(picture.width)}%`,
-    picture.side ? `side=${picture.side}` : '',
-    picture.wrap ? `wrap=${picture.wrap}` : '',
-    picture.align ? `align=${picture.align}` : '',
-    picture.noWrap && !picture.wrap && !picture.side ? 'wrap=none' : '',
-    picture.wrap && picture.dx ? `dx=${Math.round(picture.dx)}%` : '',
-    picture.wrap && picture.dy ? `dy=${Math.round(picture.dy)}mm` : '',
-  ].filter(Boolean);
-  return `![${picture.caption.replace(/[\[\]\n]/g, ' ').trim()}](${picture.path})${options.length ? `{${options.join(' ')}}` : ''}`;
+  const options = formatPlacement(picture);
+  return `![${picture.caption.replace(/[\[\]\n]/g, ' ').trim()}](${picture.path})${options ? `{${options}}` : ''}`;
 }

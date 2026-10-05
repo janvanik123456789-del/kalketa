@@ -154,6 +154,7 @@ export const UI_KEYS = [
   'editor.pictureResize',
   'picture.caption',
   'picture.place',
+  'chart.fullWidth',
   'picture.flowAuto',
   'picture.noWrap',
   'picture.toEdge',

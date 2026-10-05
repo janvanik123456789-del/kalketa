@@ -138,6 +138,12 @@ export type PrintBlock =
       readonly label?: string;
       readonly comment?: string;
       readonly messages: readonly Message[];
+      /** Placed as a picture (place: "..."): share of the text width, flow, edge, offsets. */
+      readonly width?: number;
+      readonly wrap?: 'left' | 'right';
+      readonly align?: 'left' | 'right';
+      readonly dx?: number;
+      readonly dy?: number;
     }
   | { readonly kind: 'error'; readonly line: number; readonly source: string; readonly messages: readonly Message[] }
   | { readonly kind: 'page-break' }
@@ -649,6 +655,11 @@ function chartBlock(
     ...(label ? { label } : {}),
     ...(comment ? { comment } : {}),
     messages,
+    ...(plot.place?.width !== undefined ? { width: plot.place.width } : {}),
+    ...(plot.place?.wrap ? { wrap: plot.place.wrap } : {}),
+    ...(plot.place?.align ? { align: plot.place.align } : {}),
+    ...(plot.place?.wrap && plot.place.dx ? { dx: plot.place.dx } : {}),
+    ...(plot.place?.wrap && plot.place.dy ? { dy: plot.place.dy } : {}),
   };
 }
 

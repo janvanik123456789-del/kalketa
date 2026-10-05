@@ -14,6 +14,7 @@ import { paginate, type PageGeometry } from '../logic/pages.js';
 import { segments, type Segment } from '../logic/segments.js';
 import { defineShortcut } from '../logic/shortcuts.js';
 import { pickOf } from '../logic/pick.js';
+import { placeable } from '../logic/placement.js';
 import { PickControl } from './PickControl.js';
 import { ContextMenu, type MenuItem } from './MenuBar.js';
 import { ask } from './Ask.js';
@@ -178,7 +179,8 @@ export function SheetView(props: Props) {
     const grab = { x: from.x - start.left, y: from.y - start.top };
     let dragging = false;
     let place: ReturnType<typeof freePlace>;
-    const src = figure.querySelector('img')?.getAttribute('src') ?? '';
+    const svg = figure.querySelector('svg');
+    const src = figure.querySelector('img')?.getAttribute('src') ?? (svg ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(new XMLSerializer().serializeToString(svg))}` : '');
     const original = figure as HTMLElement;
     const move = (event: MouseEvent) => {
       if (!dragging && Math.hypot(event.clientX - from.x, event.clientY - from.y) < 5) return;
@@ -200,8 +202,10 @@ export function SheetView(props: Props) {
       setDropMark(undefined);
       setDropBox(undefined);
       if (!dragging) {
+        // A click on a chart opens its line; on a picture, what can be done with it.
         const box = figure.getBoundingClientRect();
-        setPictureMenu({ seg, at: { x: box.right + 12, y: box.top } });
+        if (placeable(seg.text)?.kind === 'chart') props.onEdit({ start: seg.start, end: seg.end });
+        else setPictureMenu({ seg, at: { x: box.right + 12, y: box.top } });
       } else if (place) {
         if (place.text === seg.text) props.onMoveLines(seg.start, seg.end, place.after);
         else if (props.onPlace) props.onPlace(seg.start, seg.end, place.after, place.text);
@@ -242,9 +246,10 @@ export function SheetView(props: Props) {
    * away from its edge (dy in mm, dx in percent of the text width).
    */
   const freePlace = (left: number, top: number, width: number, height: number, dragged: Segment, pointerY: number) => {
-    const picture = parsePicture(dragged.text);
+    const item = placeable(dragged.text);
     const root = container.current;
-    if (!picture || !root) return undefined;
+    if (!item || !root) return undefined;
+    const picture = item.place;
     const cx = left + width / 2;
     const cy = top + height / 2;
     const page = [...root.querySelectorAll<HTMLElement>('.page')].find((p) => {
@@ -261,7 +266,7 @@ export function SheetView(props: Props) {
       const third = (cx - body.left) / body.width;
       const align = third < 1 / 3 ? 'left' : third > 2 / 3 ? 'right' : undefined;
       const { align: _old, ...rest } = picture;
-      return { after: moved.after, text: formatPicture({ ...rest, ...(align ? { align } : {}) }), mark: moved.mark };
+      return { after: moved.after, text: item.write({ ...rest, ...(align ? { align } : {}) }), mark: moved.mark };
     }
     const share = picture.width ?? Math.min(100, Math.round((width / body.width) * 100));
     // As wide as the text: nothing can flow beside it, it only moves between the rows.
@@ -289,7 +294,7 @@ export function SheetView(props: Props) {
     const side: 'left' | 'right' = cx > middle ? 'right' : 'left';
     const dx = Math.max(0, Math.min(100 - share, Math.round(((side === 'right' ? body.right - (left + width) : left - body.left) / body.width) * 100)));
     const dy = Math.max(0, Math.round((top - from) / pxPerMm));
-    const text = formatPicture({ caption: picture.caption, path: picture.path, width: share, wrap: side, ...(dx >= 1 ? { dx } : {}), ...(dy >= 1 ? { dy } : {}) });
+    const text = item.write({ width: share, wrap: side, ...(dx >= 1 ? { dx } : {}), ...(dy >= 1 ? { dy } : {}) });
     return { after, text, mark: { x: body.left, y: from, width: body.width } };
   };
 
@@ -314,28 +319,43 @@ export function SheetView(props: Props) {
 
   /** The right button on a picture or a canvas: how the text goes around it. */
   const flowItems = (seg: Segment, at: { x: number; y: number }): MenuItem[] => {
-    const picture = parsePicture(seg.text);
-    if (!picture) return [];
+    const item = placeable(seg.text);
+    if (!item) return [];
     const c = props.uiCatalog;
-    const { set, setAlign, setWrap } = pictureSetters(seg, picture);
-    const auto = !picture.noWrap && !picture.wrap && !picture.side;
+    const place = item.place;
+    const set = (change: Partial<Record<keyof typeof place, unknown>>) => props.onReplace(seg.start, seg.end, item.write({ ...place, ...change } as typeof place));
+    // Flowed around, it takes at most a good part of the width, so the lines keep room.
+    const narrow = place.width === undefined || place.width > 60 ? { width: 40 } : {};
+    const setWrap = (wrap: 'left' | 'right') => set({ wrap, side: undefined, align: undefined, noWrap: undefined, ...narrow });
+    const setAlign = (align: 'left' | 'right' | undefined) => set({ align, side: undefined, wrap: undefined, dx: undefined, dy: undefined });
+    const auto = !place.noWrap && !place.wrap && !place.side;
     return [
-      { kind: 'action', label: t(c, 'picture.flowAuto'), checked: auto, run: () => set({ noWrap: false, wrap: undefined, side: undefined }) },
-      { kind: 'action', label: t(c, 'picture.noWrap'), checked: !!picture.noWrap, run: () => set({ noWrap: true, wrap: undefined, side: undefined, align: picture.align ?? picture.wrap ?? picture.side }) },
+      { kind: 'action', label: t(c, 'picture.flowAuto'), checked: auto, run: () => set({ noWrap: undefined, wrap: undefined, side: undefined, dx: undefined, dy: undefined }) },
+      { kind: 'action', label: t(c, 'picture.noWrap'), checked: !!place.noWrap, run: () => set({ noWrap: true, wrap: undefined, side: undefined, dx: undefined, dy: undefined, align: place.align ?? place.wrap ?? place.side }) },
       { kind: 'separator' },
-      { kind: 'action', label: t(c, 'picture.wrapRight'), checked: picture.wrap === 'right', run: () => setWrap('right') },
-      { kind: 'action', label: t(c, 'picture.wrapLeft'), checked: picture.wrap === 'left', run: () => setWrap('left') },
-      ...(picture.wrap && (picture.dx || picture.dy) ? [{ kind: 'action' as const, label: t(c, 'picture.toEdge'), run: () => set({ dx: undefined, dy: undefined }) }] : []),
-      ...(!picture.wrap && !picture.side
+      { kind: 'action', label: t(c, 'picture.wrapRight'), checked: place.wrap === 'right', run: () => setWrap('right') },
+      { kind: 'action', label: t(c, 'picture.wrapLeft'), checked: place.wrap === 'left', run: () => setWrap('left') },
+      ...(place.wrap && (place.dx || place.dy) ? [{ kind: 'action' as const, label: t(c, 'picture.toEdge'), run: () => set({ dx: undefined, dy: undefined }) }] : []),
+      ...(!place.wrap && !place.side
         ? [
             { kind: 'separator' as const },
-            { kind: 'action' as const, label: t(c, 'picture.alignLeft'), checked: picture.align === 'left', run: () => setAlign('left') },
-            { kind: 'action' as const, label: t(c, 'picture.center'), checked: !picture.align, run: () => setAlign(undefined) },
-            { kind: 'action' as const, label: t(c, 'picture.alignRight'), checked: picture.align === 'right', run: () => setAlign('right') },
+            { kind: 'action' as const, label: t(c, 'picture.alignLeft'), checked: place.align === 'left', run: () => setAlign('left') },
+            { kind: 'action' as const, label: t(c, 'picture.center'), checked: !place.align, run: () => setAlign(undefined) },
+            { kind: 'action' as const, label: t(c, 'picture.alignRight'), checked: place.align === 'right', run: () => setAlign('right') },
           ]
         : []),
       { kind: 'separator' },
-      { kind: 'action', label: t(c, 'picture.more'), run: () => setPictureMenu({ seg, at }) },
+      item.kind === 'chart'
+        ? {
+            // A chart has no corner handles: its width is chosen here.
+            kind: 'submenu',
+            label: t(c, 'picture.width'),
+            items: [
+              ...[25, 40, 50, 75].map((width): MenuItem => ({ kind: 'action', label: `${width} %`, checked: place.width === width, run: () => set({ width }) })),
+              { kind: 'action', label: t(c, 'chart.fullWidth'), checked: place.width === undefined, run: () => set({ width: undefined }) },
+            ],
+          }
+        : { kind: 'action', label: t(c, 'picture.more'), run: () => setPictureMenu({ seg, at }) },
     ];
   };
 
@@ -507,13 +527,13 @@ export function SheetView(props: Props) {
     // Made by the AI and not reviewed yet: marked until a person says it is right.
     let aiMark: { id: string; title: string } | undefined;
     for (let line = seg.start; line <= seg.end && !aiMark; line++) aiMark = props.aiMade?.get(line);
-    const placed = block?.kind === 'picture' && block.wrap ? block : undefined;
+    const placed = (block?.kind === 'picture' || block?.kind === 'chart') && block.wrap ? block : undefined;
     const stop = placed?.dy ? <div key={`stop:${seg.start}`} className={`wrap-stop wrap-${placed.wrap}`} style={{ height: `${placed.dy}mm` }} /> : null;
     const row = (
       <div
         key={`${seg.start}:${isEditing ? 'e' : seg.text}`}
         data-item={measured ? '' : undefined}
-        className={`row${isEditing ? ' editing' : ''}${selected ? ' selected' : ''}${statement?.status === 'error' ? ' has-error' : ''}${block?.kind === 'picture' && block.wrap ? ` wrap-${block.wrap}` : ''}${clear ? ' clear-row' : ''}${aiMark ? ' ai-made' : ''}`}
+        className={`row${isEditing ? ' editing' : ''}${selected ? ' selected' : ''}${statement?.status === 'error' ? ' has-error' : ''}${placed ? ` wrap-${placed.wrap}` : ''}${clear ? ' clear-row' : ''}${aiMark ? ' ai-made' : ''}`}
         style={
           placed
             ? { width: `${placed.width ?? 40}%`, ...(placed.dx ? { [placed.wrap === 'right' ? 'marginRight' : 'marginLeft']: `${placed.dx}%` } : {}), ...(placed.dy ? { clear: placed.wrap } : {}) }
@@ -525,7 +545,9 @@ export function SheetView(props: Props) {
           e.preventDefault();
           // A click on a picture selects it and offers what can be done with it; the text of the line opens from the menu or by a double click.
           const figure = (e.target as HTMLElement).closest('figure');
-          if (block?.kind === 'picture' && figure && e.button === 0) {
+          // The right button only opens its menu (onContextMenu), never the line.
+          if ((block?.kind === 'picture' || block?.kind === 'chart') && figure && e.button !== 0) return;
+          if ((block?.kind === 'picture' || block?.kind === 'chart') && figure && e.button === 0) {
             props.onEdit(undefined);
             props.onSelect(seg.statement);
             pressPicture(e, seg, figure);
@@ -543,7 +565,7 @@ export function SheetView(props: Props) {
           }
         }}
         onContextMenu={(e) => {
-          if (block?.kind !== 'picture' || !(e.target as HTMLElement).closest('figure')) return;
+          if ((block?.kind !== 'picture' && block?.kind !== 'chart') || !(e.target as HTMLElement).closest('figure')) return;
           e.preventDefault();
           props.onSelect(seg.statement);
           setPictureMenu({ seg, at: { x: e.clientX, y: e.clientY }, flow: true });
@@ -596,7 +618,7 @@ export function SheetView(props: Props) {
               }}
             />
           ) : block?.kind === 'chart' ? (
-            <ChartBlock block={block} catalog={props.printCatalog} />
+            <ChartBlock block={placed ? (({ wrap: _w, dx: _x, dy: _y, width: _s, ...inRow }) => inRow)(block as Extract<PrintBlock, { kind: 'chart' }>) : block} catalog={props.printCatalog} />
           ) : block ? (
             <Block block={block} catalog={props.printCatalog} {...(props.calcStyle ? { style: props.calcStyle } : {})} />
           ) : (

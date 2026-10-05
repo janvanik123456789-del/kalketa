@@ -82,6 +82,7 @@ export const DIAGNOSTIC_SEVERITY = {
   'E-PLOT-KIND': 'error',
   'E-PLOT-RANGE': 'error',
   'E-PLOT-SAMPLES': 'error',
+  'E-PLOT-POSITION': 'error',
   'E-PLOT-LENGTH': 'error',
   'E-NOT-FUNCTION': 'error',
   'E-RECURSION': 'error',

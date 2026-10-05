@@ -320,7 +320,8 @@ plot(CF, kind: "bar", title: "Peněžní toky")        ' řada proti pořadí 1,
 - **Druhy:** `kind: "line"` (výchozí; křivka s nejvýš 30 body ukáže i body), `"points"`, `"bar"`. Nejvýš 8 křivek (`E-PLOT-SERIES`).
 - **Vzhled:** barvy v pevném pořadí ověřené pro barvoslepé, k tomu čárkování a tvary bodů, aby se křivky rozlišily i v černobílém tisku; legenda od dvou křivek, do čtyř křivek i jména na konci křivek. Osy s kulatými hodnotami (1, 2, 2,5, 5 × 10ⁿ), čísla podle jazyka tisku. Graf se kreslí jako SVG, ostrý v PDF i při zoomu.
 - **V editoru** ukáže najetí myší svislou čáru a hodnoty všech křivek v nejbližším bodě. **Vložit → Graf** vloží graf poslední funkce jedné proměnné v listu (jinak ukázku `plot(sin(x), x: 0 .. 2·π)`).
-- Chyby: zápis (`E-PLOT-FORM`), druh (`E-PLOT-KIND`), rozsah pozpátku (`E-PLOT-RANGE`), počet bodů (`E-PLOT-SAMPLES`), řady různé délky (`E-PLOT-LENGTH`).
+- **Umístění** jako u obrázku (11.1): `plot(M(x), x: 0 m .. L, place: "width=40% wrap=right dx=6% dy=8mm")`. Bez `place` má graf celou šířku. V editoru pravé tlačítko na grafu otevře menu obtékání a šířky, zúžený graf jde chytit myší a položit kamkoli na stránce (zápis `place` doplní program); klik bez tažení otevře řádek. `side=` je jen pro obrázky.
+- Chyby: zápis (`E-PLOT-FORM`), druh (`E-PLOT-KIND`), rozsah pozpátku (`E-PLOT-RANGE`), počet bodů (`E-PLOT-SAMPLES`), řady různé délky (`E-PLOT-LENGTH`), umístění (`E-PLOT-POSITION`).
 
 ### 7.2 Uživatelské funkce (F7)
 

@@ -53,4 +53,14 @@ describe('a series of dates in print', () => {
     expect(html).toContain('1. 1. 2026');
     expect(html).not.toContain('date');
   });
+
+  it('place a chart as a picture: flowed around, moved from its line and its edge', () => {
+    const block = chart(`${BEAM}plot(M(x), x: 0 m .. L, place: "width=40% wrap=right dx=6% dy=8mm")`);
+    expect([block.width, block.wrap, block.dx, block.dy]).toEqual([40, 'right', 6, 8]);
+    const html = renderBlockHtml(block, cs);
+    expect(html).toContain('<div class="wrap-stop wrap-right" style="height:8mm"></div><figure class="block chart wrap-right"');
+    expect(html).toContain('style="width:40%;margin-right:6%;clear:right"');
+    const bad = evaluateSheet(`${BEAM}plot(M(x), x: 0 m .. L, place: "side=right")`);
+    expect(bad.diagnostics.map((d) => d.code)).toContain('E-PLOT-POSITION');
+  });
 });

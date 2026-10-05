@@ -164,7 +164,11 @@ export function renderBlockHtml(block: PrintBlock, catalog: Catalog, options: Bl
     }
     case 'chart': {
       const caption = block.label ? `<figcaption><span class="figure-label">${esc(block.label)}:</span> ${esc(block.caption)}</figcaption>` : '';
-      return `<figure class="block chart" data-line="${block.line}">${block.svg}${caption}${messages(block.messages)}</figure>`;
+      // Placed as a picture: at an edge, or flowed around and moved from its line.
+      const place = block.wrap ? ` wrap-${block.wrap}` : block.align ? ` align-${block.align}` : '';
+      const styles = [block.width !== undefined ? `width:${block.width}%` : '', block.wrap && block.dx ? `margin-${block.wrap}:${block.dx}%` : '', block.wrap && block.dy ? `clear:${block.wrap}` : ''].filter(Boolean);
+      const stop = block.wrap && block.dy ? `<div class="wrap-stop wrap-${block.wrap}" style="height:${block.dy}mm"></div>` : '';
+      return `${stop}<figure class="block chart${place}" data-line="${block.line}"${styles.length ? ` style="${styles.join(';')}"` : ''}>${block.svg}${caption}${messages(block.messages)}</figure>`;
     }
     case 'equation':
       return `<section class="block equation${options.style === 'compact' ? ' compact' : ''}" data-line="${block.line}">
@@ -325,10 +329,10 @@ h3, h4, h5, h6 { font-size: 11pt; margin: 4mm 0 1.5mm; break-after: avoid; }
 .chart .figure-label { font-weight: 600; }
 .picture .figure-label { font-weight: 600; }
 /* Lines flow around a wrapped picture: each block keeps whole beside it (a formula is never broken), below it the full width. */
-.block.picture.align-left { margin-left: 0; margin-right: auto; text-align: left; }
-.block.picture.align-right { margin-left: auto; margin-right: 0; text-align: right; }
-.block.picture.wrap-right { float: right; margin: 1mm 0 2mm 5mm; }
-.block.picture.wrap-left { float: left; margin: 1mm 5mm 2mm 0; }
+.block.picture.align-left, .block.chart.align-left { margin-left: 0; margin-right: auto; text-align: left; }
+.block.picture.align-right, .block.chart.align-right { margin-left: auto; margin-right: 0; text-align: right; }
+.block.picture.wrap-right, .block.chart.wrap-right { float: right; margin: 1mm 0 2mm 5mm; }
+.block.picture.wrap-left, .block.chart.wrap-left { float: left; margin: 1mm 5mm 2mm 0; }
 .block, h2, h3, h4 { display: flow-root; }
 .page-break, .clear { clear: both; }
 /* The stop above a freely placed picture: as tall as it is moved down, no width, so the text beside it is not narrowed. */

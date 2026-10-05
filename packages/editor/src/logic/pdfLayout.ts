@@ -126,7 +126,12 @@ export function pageLayout(lines: readonly LayoutLine[], pictures: readonly Box[
   // Each line: text, a numbered formula, or scraps (also a lone one- or two-character line, the index
   // of a formula; the page number on the last line stays text).
   const sorted = [...lines].sort((a, b) => a.top - b.top || a.left - b.left);
-  const kindOf = (l: LayoutLine, i: number): 'text' | 'formula' | 'scraps' => formulaOrScraps(l.text) ?? (l.text.trim().length <= 2 && i < sorted.length - 1 ? 'scraps' : 'text');
+  const kindOf = (l: LayoutLine, i: number): 'text' | 'formula' | 'scraps' => {
+    const kind = formulaOrScraps(l.text) ?? (l.text.trim().length <= 2 && i < sorted.length - 1 ? 'scraps' : 'text');
+    // The end of a sentence with a word in it ("např. v [4, 8, 16].") is text, however few its words.
+    if (kind === 'scraps' && /[.!?]$/.test(l.text.trim()) && !l.text.includes('=') && /\p{L}{3,}/u.test(l.text)) return 'text';
+    return kind;
+  };
   let classified = sorted.map((l, i) => ({ line: l, kind: kindOf(l, i) })).filter((x) => !figures.some((f) => inside(x.line, f)));
   // Scraps level with a line of text are an index or a fraction inside that sentence ("M_omax", "x = 2/3 l"): they belong to it.
   const textLines = classified.filter((x) => x.kind === 'text').map((x) => x.line);
@@ -200,6 +205,9 @@ export function pageLayout(lines: readonly LayoutLine[], pictures: readonly Box[
     if (c.why !== 'formula') continue;
     const next = text.filter((l) => l.top >= c.box.bottom - 1).sort((x, y) => x.top - y.top)[0];
     if (!next || !CAPTION.test(next.text.trim())) continue;
+    // A numbered formula is a formula; one with a figure between it and the caption is not the figure.
+    if (formulaLines.some((l) => l.top >= c.box.top - 1 && l.bottom <= c.box.bottom + 1 && formulaOrScraps(l.text) === 'formula')) continue;
+    if (cuts.some((o) => o !== c && o.why === 'picture' && o.box.top >= c.box.bottom - 1 && o.box.bottom <= next.top + 1)) continue;
     // As far as a formula reaches (from the text above to the caption), then trimmed to its ink.
     c.box = formulaBox(c.box);
     c.why = 'picture';

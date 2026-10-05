@@ -60,8 +60,8 @@ export interface StatementResult {
   readonly plot?: PlotResult;
   /** A derivation (derive a == b, y := a == b == c): whether each step holds. */
   readonly derivation?: readonly DerivationStep[];
-  /** Values found by a solve statement, in the order of its unknowns. */
-  readonly solutions?: readonly { readonly name: string; readonly value: Quantity; readonly display: DisplayValue }[];
+  /** Values found by a solve statement, in the order of its unknowns; the formula of one expressed. */
+  readonly solutions?: readonly { readonly name: string; readonly value: Quantity; readonly display: DisplayValue; readonly formula?: Expr }[];
   /** Names this statement read, in order of first use (including undefined ones). */
   readonly dependencies: readonly string[];
   /** Table data this statement read directly. */
@@ -413,7 +413,12 @@ export class SheetSession {
 
       if (statement.kind === 'solve') {
         const found = solveStatement(statement, ctx, evaluate);
-        const solutions = statement.unknowns.map((u, i) => ({ name: u.name, value: found[i]!, display: toDisplay(found[i]!, context.registry) }));
+        const solutions = statement.unknowns.map((u, i) => ({
+          name: u.name,
+          value: found.values[i]!,
+          display: toDisplay(found.values[i]!, context.registry),
+          ...(found.formula ? { formula: found.formula } : {}),
+        }));
         return { status: 'ok', solutions, dependencies, tableReads, diagnostics: ctx.warnings };
       }
 

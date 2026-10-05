@@ -24,6 +24,17 @@ describe('solve in print', () => {
     expect(one.kind === 'equation' && one.lines.map((l) => toText(l.rhs))).toEqual(['8', '0≤x≤10', '2']);
   });
 
+  it('shows the formula the unknown was expressed by, with the values put in, then the result', () => {
+    const sheet = evaluateSheet('M_Ed := 37.5 kN·m\nq := 12 kN/m\nsolve L: M_Ed == q·L²/8');
+    const solve = buildPrintDocument(sheet, { catalog: cs, registry: defaultRegistry, digits: 4, title: 'T' }).blocks.at(-1)!;
+    expect(solve.kind === 'equation' && solve.lines.map((l) => [l.role, l.lhs && toText(l.lhs), toText(l.rhs).replace(/\s/g, ' ')])).toEqual([
+      ['formula', 'M_Ed', '(q·L^2)/8'],
+      ['formula', 'L', '√((8·M_Ed)/q)'],
+      ['substitution', undefined, '√((8·37,5 kN·m)/(12 kN/m))'],
+      ['result', undefined, '5 m'],
+    ]);
+  });
+
   it('uses "=" even where definitions use "≔"', () => {
     const html = renderBlockHtml(block, cs, { defineOperator: '≔' });
     expect(html).not.toContain('≔');

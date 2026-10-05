@@ -5,7 +5,7 @@
  */
 
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
-import { formatPicture, fromDecimalComma, parsePicture, toDecimalComma, type SheetResult, type Statement } from '@kalketa/core';
+import { formatExpr, formatPicture, fromDecimalComma, parsePicture, toDecimalComma, type SheetResult, type Statement } from '@kalketa/core';
 import { formatDate, formatNumber, t, type Catalog } from '@kalketa/i18n';
 import { labelParts, xPosition, xValueAt } from '@kalketa/chart';
 import { isInput, renderBlockHtml, renderSummary, type CalcStyle, type PrintBlock, type PrintDocument } from '@kalketa/render';
@@ -82,6 +82,8 @@ export function SheetView(props: Props) {
   const { source, result, print, editing } = props;
   // The menu of a picture: opened by clicking it (or right click).
   const [pictureMenu, setPictureMenu] = useState<{ seg: Segment; at: { x: number; y: number }; flow?: boolean } | undefined>();
+  // The right button on a solve line whose unknown was expressed by a formula.
+  const [solveMenu, setSolveMenu] = useState<{ seg: Segment; line: string; at: { x: number; y: number } } | undefined>();
   // Where a dragged picture would land: a line across the page body.
   const [dropMark, setDropMark] = useState<{ x: number; y: number; width: number } | undefined>();
   // Where a picture placed freely would stand while it is dragged.
@@ -446,6 +448,14 @@ export function SheetView(props: Props) {
         </div>
       )}
       {pictureMenu && <ContextMenu items={pictureMenu.flow ? flowItems(pictureMenu.seg, pictureMenu.at) : pictureItems(pictureMenu.seg)} commands={NO_COMMANDS} at={pictureMenu.at} onClose={() => setPictureMenu(undefined)} />}
+      {solveMenu && (
+        <ContextMenu
+          items={[{ kind: 'action', label: t(props.uiCatalog, 'solve.toDefinition'), run: () => props.onReplace(solveMenu.seg.start, solveMenu.seg.end, solveMenu.line) }]}
+          commands={NO_COMMANDS}
+          at={solveMenu.at}
+          onClose={() => setSolveMenu(undefined)}
+        />
+      )}
       {aiMenu && (
         <ContextMenu
           items={[
@@ -545,8 +555,11 @@ export function SheetView(props: Props) {
           // Even from its open line the picture or the chart can be taken and moved.
           if ((isEditing && !figure) || (e.target as HTMLElement).closest('.pick-control')) return;
           e.preventDefault();
-          // The right button only opens its menu (onContextMenu), never the line.
-          if ((block?.kind === 'picture' || block?.kind === 'chart') && figure && e.button !== 0) return;
+          // The right button only selects and opens a menu (onContextMenu), never the line.
+          if (e.button !== 0) {
+            if (!figure) props.onSelect(seg.statement);
+            return;
+          }
           if ((block?.kind === 'picture' || block?.kind === 'chart') && figure && e.button === 0) {
             props.onEdit(undefined);
             props.onSelect(seg.statement);
@@ -566,6 +579,16 @@ export function SheetView(props: Props) {
           }
         }}
         onContextMenu={(e) => {
+          // A solve line expressed by a formula: the formula can become a definition of its own.
+          const solution = statement?.statement.kind === 'solve' && statement.solutions?.length === 1 ? statement.solutions[0] : undefined;
+          if (solution?.formula && statement?.statement.kind === 'solve' && !isEditing) {
+            e.preventDefault();
+            props.onSelect(seg.statement);
+            const equation = statement.statement.equations[0]!.span;
+            const from = result.source.slice(equation.offset, equation.offset + equation.length).replace(/\s+/g, ' ');
+            setSolveMenu({ seg, line: `${solution.name} := ${formatExpr(solution.formula)}  ' ${t(props.uiCatalog, 'solve.expressedFrom')} ${from}`, at: { x: e.clientX, y: e.clientY } });
+            return;
+          }
           if ((block?.kind !== 'picture' && block?.kind !== 'chart') || !(e.target as HTMLElement).closest('figure')) return;
           e.preventDefault();
           props.onSelect(seg.statement);

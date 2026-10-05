@@ -412,7 +412,7 @@ async function runSmokeTest(pdfPath: string): Promise<void> {
     await writeFile(pdfPath, pdf);
     ok =
       state.bridge && state.sideBySide && state.menus === 7 && state.toolbars > 0 && state.rows > 10 && state.summary > 0 && state.math > 0 && reshapedColumns === 3 && pdf.length > 1000 &&
-      layers.newKeepsExample && layers.samplesOk && layers.derivations && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.notesPicture === 'FIGURE+img BLOCKQUOTE' && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.charts && layers.functionBar && layers.revisions && layers.roots && layers.toolIcons && layers.aiSettings && layers.aiChat && layers.pdfCleanup && layers.theoryLibrary && layers.study && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
+      layers.newKeepsExample && layers.samplesOk && layers.derivations && layers.solvedByFormula && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.notesPicture === 'FIGURE+img BLOCKQUOTE' && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.charts && layers.functionBar && layers.revisions && layers.roots && layers.toolIcons && layers.aiSettings && layers.aiChat && layers.pdfCleanup && layers.theoryLibrary && layers.study && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
     console.log(JSON.stringify({ ok, ...state, reshapedColumns, layers, pdfBytes: pdf.length }));
   } catch (err) {
     console.log(JSON.stringify({ ok: false, error: (err as Error).message }));
@@ -745,6 +745,31 @@ async function layersWithRealInput(picture: string) {
   })()`)) as { checked: boolean; wrong: boolean };
   await takePicture(picture.replace(/[.]png$/, '-derive.png'));
   const derivations = derivation.checked && derivation.wrong;
+
+  // solve without an interval: the unknown is expressed by a formula, its unit comes from it;
+  // the right button puts the formula in as a definition.
+  await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .page .row')].at(-1).id = 'smoke-last-row'`);
+  await clickOn('#smoke-last-row');
+  await pressKey('End');
+  for (const line of ['M_s := 37.5 kN·m', 'q_s := 12 kN/m', 'solve L_s: M_s == q_s·L_s²/8']) {
+    await pressKey('Enter');
+    await typeText(line);
+  }
+  await clickOn('.sheet-scroll');
+  await pause(400);
+  const solveRow = `[...document.querySelectorAll('.layer-view.active .page .row')].find((r) => r.textContent.includes('L_s') || r.textContent.includes('Ls'))`;
+  // The root is set as MathML (msqrt): the text has no √ in it.
+  const expressed = (await contents.executeJavaScript(`(() => { const r = ${solveRow}; return r ? (r.querySelector('msqrt') ? '√' : '') + r.textContent.replace(/\\s+/g, '') : ''; })()`)) as string;
+  await contents.executeJavaScript(`(${solveRow}).id = 'smoke-solve-row'`);
+  await clickOn('#smoke-solve-row', [], 'right');
+  await clickMenu('Vložit vzorec jako definici');
+  await pause(400);
+  const defined = (await contents.executeJavaScript(`(() => {
+    const r = [...document.querySelectorAll('.layer-view.active .page .row')].find((row) => row.textContent.includes('vyjádřeno z'));
+    return { text: r ? (r.querySelector('msqrt') ? '√' : '') + r.textContent.replace(/\\s+/g, '') : '', errors: Number(document.querySelector('.statusbar span')?.textContent.replace(/\\D+/g, '') ?? -1) };
+  })()`)) as { text: string; errors: number };
+  await takePicture(picture.replace(/[.]png$/, '-solveformula.png'));
+  const solvedByFormula = expressed.startsWith('√') && expressed.includes('=5m') && defined.text.startsWith('√') && defined.text.includes('=5m') && !defined.text.includes('solve');
 
   // Charts: Insert > Chart plots the last function of the sheet; the pointer over it reads the values.
   await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .page .row')].at(-1).id = 'smoke-last-row'`);
@@ -1346,7 +1371,7 @@ async function layersWithRealInput(picture: string) {
     blocksOk = shown.errors === 0 && shown.text.includes('Prosty nosnik 1.2') && shown.text.includes('45');
     await takePicture(picture.replace(/[.]png$/, '-blocks.png'));
   }
-  return { ...state, derivations, chartSteps, samplesOk, sampleTab, newKeepsExample, citations, notesPicture, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, toolIcons, aiSettings, aiChat, pdfCleanup, theoryLibrary, study, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, placedFree, strictPlaced, canvasOk, besideText, pictures, blocksOk };
+  return { ...state, derivations, solvedByFormula, chartSteps, samplesOk, sampleTab, newKeepsExample, citations, notesPicture, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, toolIcons, aiSettings, aiChat, pdfCleanup, theoryLibrary, study, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, placedFree, strictPlaced, canvasOk, besideText, pictures, blocksOk };
 }
 
 /** The tidied sources saved as a library (.kalkt) and attached in the chat: the model cites it by its key. */

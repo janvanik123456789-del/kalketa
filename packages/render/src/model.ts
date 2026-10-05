@@ -306,7 +306,18 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
           lines.push({ role: 'formula', op: '', rhs: range });
         }
         for (const found of r.solutions ?? []) {
-          lines.push({ role: 'result', lhs: nameNode(found.name), op: '=', rhs: valueNode(found.display.value, found.display.unit, numberFormat(digits), found.display.im, dateFormat) });
+          const value = valueNode(found.display.value, found.display.unit, numberFormat(digits), found.display.im, dateFormat);
+          // A formula of numbers only (x² + 2·x = 8) says nothing the result does not.
+          if (!found.formula || !readsNames(found.formula)) {
+            lines.push({ role: 'result', lhs: nameNode(found.name), op: '=', rhs: value });
+            continue;
+          }
+          // Expressed by a formula: L = √(8·M_Ed/q) = √(8·37,5 kN·m / 12 kN/m) = 5 m, checkable by hand.
+          const formula = formulaNode(found.formula, formulaOptions());
+          lines.push({ role: 'formula', lhs: nameNode(found.name), op: '=', rhs: formula });
+          const substituted = formulaNode(found.formula, formulaOptions(substitution(result, quantityNode, formulaOptions())));
+          if (mode.substitution && toText(substituted) !== toText(formula)) lines.push({ role: 'substitution', rhs: substituted });
+          lines.push({ role: 'result', rhs: value });
         }
         blocks.push({ kind: 'equation', line: s.span.line, lines, ...(s.comment ? { comment: s.comment } : {}), messages });
         break;
@@ -387,6 +398,23 @@ function besideLines(result: SheetResult, picture: StatementResult): number[] {
     previous = r;
   }
   return lines;
+}
+
+/** Whether an expression reads names (values of the sheet), not numbers alone. */
+function readsNames(expr: Expr): boolean {
+  switch (expr.kind) {
+    case 'variable':
+    case 'member':
+      return true;
+    case 'unary':
+      return readsNames(expr.operand);
+    case 'binary':
+      return readsNames(expr.left) || readsNames(expr.right);
+    case 'call':
+      return expr.args.some(readsNames) || expr.named.some((n) => readsNames(n.value));
+    default:
+      return false;
+  }
 }
 
 /** Numbers written out: 5, -2, 12 kN/m, and series and matrices of them, with a unit after the brackets. */

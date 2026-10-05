@@ -7,6 +7,12 @@
  *       U_2 == R_2·I_2 + R_3·(I_2 - I_1)
  *       guess I_1 = 1 A, I_2 = 1 A
  *
+ * One unknown is first expressed as a formula (eval/isolate.ts): L = √(8·M/q)
+ * then calculates like any formula, takes its unit from it and prints. Where
+ * that is not possible (x·eˣ = 3, systems) the solver works numerically.
+ * Of more roots the interval picks, else the first guess, else the only
+ * positive one; two positive ones without either is an error naming both.
+ *
  * One unknown in an interval: a bracketing method (regula falsi with the
  * Anderson–Björck correction, as Calcpad's $Root); it always finds a root when
  * the interval has a sign change. Otherwise Newton–Raphson with a numerical
@@ -25,6 +31,8 @@ import type { ResolvedUnit } from '../units/unitExpr.js';
 import { quantity, type Quantity, type Value } from '../values/value.js';
 import { asQuantity } from './coerce.js';
 import type { EvalContext } from './evaluator.js';
+import { isolate } from './isolate.js';
+import { toDisplay } from '../units/display.js';
 
 type SolveStatement = Extract<Statement, { kind: 'solve' }>;
 type Evaluate = (expr: Expr, ctx: EvalContext) => Value;
@@ -43,8 +51,15 @@ interface Unknown {
   readonly absolute?: boolean;
 }
 
-/** Solves the statement; returns the unknowns in the order they were written. */
-export function solveStatement(statement: SolveStatement, ctx: EvalContext, evaluate: Evaluate): Quantity[] {
+/** What a solve statement found: the unknowns in the order they were written. */
+export interface Solved {
+  readonly values: Quantity[];
+  /** The formula a single unknown was expressed by; absent when it was found numerically. */
+  readonly formula?: Expr;
+}
+
+/** Solves the statement. */
+export function solveStatement(statement: SolveStatement, ctx: EvalContext, evaluate: Evaluate): Solved {
   const { unknowns, equations } = statement;
   if (equations.length !== unknowns.length) {
     fail('E-SOLVE-COUNT', statement.span, { unknowns: unknowns.length, equations: equations.length });
@@ -98,11 +113,80 @@ export function solveStatement(statement: SolveStatement, ctx: EvalContext, eval
     return { r, scale };
   };
 
+  if (unknowns.length === 1) {
+    const found = byFormula(statement, ctx, evaluate, range, guesses.get(unknowns[0]!.name));
+    if (found) return found;
+  }
+
   const x = range && unknowns.length === 1 ? [bracketed(range[0].si, range[1].si, (v) => residuals([v]), statement.span)] : newton(shape.map((u) => guesses.get(u.name)?.si ?? range?.[0].si ?? 1), residuals, statement.span);
 
   // The solution once more, with warnings and table reads recorded.
   residuals(x, ctx);
-  return values(x);
+  return { values: values(x) };
+}
+
+/**
+ * One unknown expressed as a formula, or undefined to go on numerically. Every
+ * root is put back into the equation; the interval, the guess or the sign picks one.
+ */
+function byFormula(statement: SolveStatement, ctx: EvalContext, evaluate: Evaluate, range: [Quantity, Quantity] | undefined, guess: Quantity | undefined): Solved | undefined {
+  const name = statement.unknowns[0]!.name;
+  const equation = statement.equations[0]!;
+  const formulas = isolate(equation.left, equation.right, name);
+  if (!formulas) return undefined;
+  const quiet: EvalContext = { ...ctx, warnings: [], tableReads: [] };
+  const holds = (value: Quantity): boolean => {
+    const at: EvalContext = { ...quiet, lookup: (n, span) => (n === name ? value : ctx.lookup(n, span)) };
+    const left = asQuantity(evaluate(equation.left, at), equation.left.span);
+    const right = asQuantity(evaluate(equation.right, at), equation.right.span);
+    if (!sameDim(left.dim, right.dim)) fail('E-UNIT-MISMATCH', equation.span, { operator: '==', left: baseUnitSymbol(left.dim), right: baseUnitSymbol(right.dim) });
+    return Math.abs(left.si - right.si) <= 1e-9 * Math.max(Math.abs(left.si), Math.abs(right.si), Number.MIN_VALUE);
+  };
+  const roots: { value: Quantity; formula: Expr }[] = [];
+  for (const formula of formulas) {
+    let value: Value;
+    try {
+      value = evaluate(formula, quiet);
+    } catch (err) {
+      // A root outside the domain (√ of a negative number): not a root.
+      if (err instanceof CalcError) continue;
+      throw err;
+    }
+    if (value.type !== 'quantity' || value.im || !Number.isFinite(value.si)) continue;
+    if (roots.some((r) => Math.abs(r.value.si - value.si) <= 1e-12 * Math.max(Math.abs(value.si), 1e-300))) continue;
+    if (holds(value)) roots.push({ value, formula });
+  }
+  if (roots.length === 0) return undefined;
+
+  let chosen: { value: Quantity; formula: Expr } | undefined;
+  if (range) {
+    const [low, high] = range;
+    const margin = 1e-12 * Math.max(Math.abs(low.si), Math.abs(high.si));
+    const inside = roots.filter((r) => sameDim(r.value.dim, low.dim) && r.value.si >= low.si - margin && r.value.si <= high.si + margin);
+    // As the bracketing method: the root nearest the lower end.
+    chosen = inside.sort((a, b) => a.value.si - b.value.si)[0];
+    if (!chosen) return undefined;
+  } else if (guess) {
+    const same = roots.filter((r) => sameDim(r.value.dim, guess.dim));
+    chosen = same.sort((a, b) => Math.abs(a.value.si - guess.si) - Math.abs(b.value.si - guess.si))[0];
+    if (!chosen) return undefined;
+  } else if (roots.length === 1) {
+    chosen = roots[0];
+  } else {
+    const positive = roots.filter((r) => r.value.si > 0);
+    if (positive.length !== 1) {
+      const shown = roots.map((r) => {
+        const d = toDisplay(r.value, ctx.registry);
+        return `${Number(d.value.toPrecision(4))}${d.unit ? ` ${d.unit}` : ''}`;
+      });
+      fail('E-SOLVE-ROOTS', statement.span, { name, roots: shown.join('; ') });
+    }
+    chosen = positive[0];
+  }
+  // Once more with warnings and table reads recorded; the unit of the interval or guess is kept.
+  const value = asQuantity(evaluate(chosen!.formula, ctx), statement.span);
+  const hint = range?.[0].hint ?? guess?.hint;
+  return { values: [hint && sameDim(hint.dim, value.dim) ? { ...value, hint } : value], formula: chosen!.formula };
 }
 
 /** One unknown in [a, b]: regula falsi with the Anderson–Björck correction. */

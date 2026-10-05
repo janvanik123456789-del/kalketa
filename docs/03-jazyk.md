@@ -463,6 +463,9 @@ solve (I_1, I_2):
 - Chyby: jiný počet rovnic než neznámých (E-SOLVE-COUNT), bez kořene v intervalu (E-SOLVE-NO-ROOT), Newton nekonverguje (E-SOLVE-NO-CONVERGENCE, zkuste jiný odhad), rovnice na sobě závisí (E-SOLVE-SINGULAR), strany rovnice s jinou jednotkou (E-UNIT-MISMATCH).
 - V tisku jsou rovnice se znakem „=“, u jedné neznámé i interval („0 ≤ x ≤ 10“) a pod nimi nalezené hodnoty.
 - Pozor na zápis `2 m/s²·t²`: za číslem vyhrávají jednotky, takže `t` je tu tuna. Správně je `(2 m/s²)·t²`.
+- **Vyjádření vzorcem (2026-10-05):** jednu neznámou program nejdřív vyjádří vzorcem: `solve L: M_Ed == q·L²/8` dá `L = √(8·M_Ed/q)`, `solve d: τ_dov == 16·M_k/(π·d³)` dá `d = ∛(16·M_k/(τ_dov·π))`. Umí to s `+ − · /`, mocninou s pevným exponentem, `√ ∛`, `exp`, `ln`, `log10`, `sin`, `cos`, `tan`, `abs`, a s neznámou zapsanou víckrát, když je rovnice lineární nebo kvadratická. Neznámá dostane jednotku ze vzorce, interval ani odhad nejsou potřeba. Kde vzorec najít nejde (`x·exp(x) == 3`, soustavy), řeší se numericky jako dřív.
+- **Víc kořenů:** každý se dosadí zpět do rovnice. Vybere interval (kořen nejblíž dolní mezi), jinak odhad `guess` (nejbližší), jinak jediný kladný. Dva kladné bez intervalu jsou chyba `E-SOLVE-ROOTS`, která oba vypíše.
+- **V tisku** je pod rovnicí vyjádřený vzorec, dosazení a výsledek (vzorec ze samých čísel se vynechá). V editoru pravé tlačítko na řádku `solve` nabídne **Vložit vzorec jako definici**: řádek se nahradí definicí `L := sqrt(8·M_Ed/q)` s komentářem, z jaké rovnice vznikla.
 
 ### 9.1 Odvození (řetěz rovností s kontrolou)
 

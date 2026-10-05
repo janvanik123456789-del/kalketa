@@ -489,14 +489,19 @@ async function clickMenu(label: string): Promise<void> {
 async function typeText(text: string): Promise<void> {
   const contents = smokeWindow!.webContents;
   const before = (await contents.executeJavaScript(`document.activeElement?.value?.length ?? -1`)) as number;
+  const rich = (await contents.executeJavaScript(`document.activeElement?.isContentEditable === true`)) as boolean;
   for (const ch of text) contents.sendInputEvent({ type: 'char', keyCode: ch });
   await pause(150);
-  // In a line being edited, the next key waits until the text is there, as the person typing sees it
-  // (a busy page, e.g. a heavy calculation after every character, may lag behind).
-  if (before < 0) return;
+  // The next key waits until the text is there, as the person typing sees it (a busy page,
+  // e.g. a heavy calculation after every character, may lag behind): in a line being edited
+  // its length, in the rich text of notes its end ("## " may turn into a heading on the way).
+  const tail = [...text.trim()].slice(-4).join('');
+  if (before < 0 && !(rich && tail)) return;
   for (let waited = 0; waited < 3000; waited += 100) {
-    const now = (await contents.executeJavaScript(`document.activeElement?.value?.length ?? -1`)) as number;
-    if (now < 0 || now >= before + [...text].length) return;
+    const done = rich
+      ? ((await contents.executeJavaScript(`(document.activeElement?.textContent ?? '').includes(${JSON.stringify(tail)})`)) as boolean)
+      : ((await contents.executeJavaScript(`document.activeElement?.value?.length ?? -1`)) as number) >= before + [...text].length;
+    if (done) return;
     await pause(100);
   }
 }

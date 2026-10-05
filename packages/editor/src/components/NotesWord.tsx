@@ -171,6 +171,9 @@ function withPictures(doc: JSONContent, resolveFile: (path: string) => string | 
 export function NotesWord({ text, title, catalog, readOnly, resolveFile, onChange, onSettle, pickImage, picturePath, onSaveLibrary, pickPdfCrop, readFormula }: Props) {
   // What the editor last gave out: a text coming back unchanged is not loaded again.
   const emitted = useRef(text);
+  // Texts given out and not seen back yet. A late echo of an older one (the page was busy while the
+  // user typed on) is no change from outside: loading it would drop what was typed since.
+  const unechoed = useRef<string[]>([]);
   const pendingFiles = useRef<Map<string, Uint8Array> | undefined>(undefined);
   const [styleMenu, setStyleMenu] = useState(false);
   const [cleanup, setCleanup] = useState(false);
@@ -203,6 +206,7 @@ export function NotesWord({ text, title, catalog, readOnly, resolveFile, onChang
       const next = docToNotes(editor.getJSON());
       if (next === emitted.current && !pendingFiles.current) return;
       emitted.current = next;
+      unechoed.current.push(next);
       const files = pendingFiles.current;
       pendingFiles.current = undefined;
       onChange(next, files);
@@ -236,7 +240,15 @@ export function NotesWord({ text, title, catalog, readOnly, resolveFile, onChang
 
   // A change from outside (undo, ids given to headings): the editor shows it.
   useEffect(() => {
-    if (!editor || text === emitted.current) return;
+    if (!editor) return;
+    const echo = unechoed.current.indexOf(text);
+    if (echo >= 0) {
+      // Our own text back (perhaps several in one): those before it are past too.
+      unechoed.current.splice(0, echo + 1);
+      return;
+    }
+    if (text === emitted.current) return;
+    unechoed.current = [];
     emitted.current = text;
     editor.commands.setContent(withPictures(notesToDoc(text), resolveFile), { emitUpdate: false });
   }, [editor, text, resolveFile]);

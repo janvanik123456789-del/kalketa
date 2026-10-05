@@ -30,7 +30,7 @@ export interface ParseResult {
   readonly diagnostics: Diagnostic[];
 }
 
-const KEYWORDS = new Set(['and', 'or', 'not', 'true', 'false', 'check', 'source', 'solve', 'in', 'guess', 'dimension', 'unit', 'input']);
+const KEYWORDS = new Set(['and', 'or', 'not', 'true', 'false', 'check', 'source', 'solve', 'in', 'guess', 'dimension', 'unit', 'input', 'derive']);
 const UNSUPPORTED_STATEMENTS: Readonly<Record<string, string>> = {};
 /** "unit ks: dimensionless" (also "unit ks: 1"). */
 export const DIMENSIONLESS_NAME = 'dimensionless';
@@ -124,6 +124,11 @@ export function spanOf(first: { span: Span }, last: { span: Span }): Span {
 class LineParser {
   private pos = 0;
   private readonly end: Token;
+  /**
+   * In a derivation a name not defined above is a name, even where it spells a
+   * unit (F, l, E): theory uses symbols, units stand after numbers there.
+   */
+  private freeNames = false;
 
   constructor(
     private readonly tokens: readonly Token[],
@@ -145,7 +150,7 @@ class LineParser {
   /** Name on the left of ":=", if the line looks like a definition (of a value or a function). */
   definitionName(): string | undefined {
     const [input, ...rest] = this.tokens;
-    const [first, second] = input?.type === 'ident' && input.text === 'input' ? rest : this.tokens;
+    const [first, second] = input?.type === 'ident' && (input.text === 'input' || input.text === 'derive') ? rest : this.tokens;
     if (first?.type !== 'ident') return undefined;
     if (second?.type === ':=') return first.text;
     return second?.type === '(' && this.tokens.some((t) => t.type === ':=') ? first.text : undefined;
@@ -180,6 +185,9 @@ class LineParser {
     if (first.type === 'ident' && first.text === 'solve' && this.peek(1).type !== ':=') {
       return this.parseSolve(lineSpan);
     }
+    if (first.type === 'ident' && first.text === 'derive' && this.peek(1).type !== ':=') {
+      return this.parseDerive(lineSpan);
+    }
     if (first.type === 'ident' && first.text === 'dimension' && this.peek(1).type === 'ident') {
       this.next();
       const name = this.next();
@@ -201,8 +209,82 @@ class LineParser {
       if (definition.kind === 'definition' && definition.params) fail('E-SYNTAX', first.span, { expected: 'name', found: 'input' });
       return { ...definition, input: true } as Statement;
     }
-    if (defineAt !== -1) return this.parseDefinition(defineAt, lineSpan);
+    if (defineAt !== -1) {
+      // y := a == b (== c …): a derivation ending in a definition. A comparison stays one:
+      // ok := m.trida == "S235", flags with true/false, and/or, <, ≠.
+      const members = this.chainLength(defineAt + 1);
+      if (members >= 2 && !this.isComparison(defineAt + 1)) return this.parseDerivedDefinition(lineSpan, false);
+      return this.parseDefinition(defineAt, lineSpan);
+    }
     return this.parseDisplay(lineSpan);
+  }
+
+  /** How many members "==" joins at the top level of the tokens from `from` on. */
+  private chainLength(from: number): number {
+    let depth = 0;
+    let members = 1;
+    for (const token of this.tokens.slice(from)) {
+      if (token.type === '(' || token.type === '[') depth++;
+      else if (token.type === ')' || token.type === ']') depth--;
+      else if (token.type === '==' && depth === 0) members++;
+    }
+    return members;
+  }
+
+  /** Whether the tokens from `from` on read as a test (text, true/false, and/or/not, <, ≠), not as equal values. */
+  private isComparison(from: number): boolean {
+    return this.tokens
+      .slice(from)
+      .some((t) => t.type === 'string' || ['<', '<=', '>', '>=', '!='].includes(t.type) || (t.type === 'ident' && ['true', 'false', 'and', 'or', 'not'].includes(t.text)));
+  }
+
+  /** derive a == b == c · derive y := a == b · derive M_mp := l^3·F/3 (a symbol of theory) */
+  private parseDerive(lineSpan: Span): Statement {
+    this.next(); // derive
+    const defineAt = this.tokens.findIndex((t) => t.type === ':=');
+    if (defineAt !== -1) return this.parseDerivedDefinition(lineSpan, true);
+    this.freeNames = true;
+    const members = this.parseChain();
+    this.expectEnd();
+    return { kind: 'derive', members, span: lineSpan };
+  }
+
+  /**
+   * y := a == b == c: every member checked, the last one gives y. After derive
+   * one member is enough: a symbol of theory, which needs no values.
+   */
+  private parseDerivedDefinition(lineSpan: Span, symbolic: boolean): Statement {
+    const nameToken = this.peek();
+    if (nameToken.type !== 'ident' || this.peek(1).type !== ':=') fail('E-SYNTAX', nameToken.span, { expected: 'name', found: nameToken.text });
+    if (KEYWORDS.has(nameToken.text)) fail('E-RESERVED', nameToken.span, { name: nameToken.text });
+    this.next();
+    this.expect(':=', ':=');
+    this.freeNames = true;
+    const members = this.parseChain(symbolic ? 1 : 2);
+    const target = this.parseTarget();
+    this.defined.add(nameToken.text);
+    this.expectEnd();
+    return {
+      kind: 'definition',
+      name: nameToken.text,
+      nameSpan: nameToken.span,
+      expr: members.at(-1)!,
+      ...(members.length > 1 ? { derivation: members } : {}),
+      ...(symbolic ? { symbolic } : {}),
+      ...(target ? { target } : {}),
+      span: lineSpan,
+    };
+  }
+
+  /** a == b == c (also with "="): at least `least` members. */
+  private parseChain(least = 2): Expr[] {
+    const members = [this.parseAdditive()];
+    while (this.peek().type === '==' || this.peek().type === '=') {
+      this.next();
+      members.push(this.parseAdditive());
+    }
+    if (members.length < least) fail('E-SYNTAX', this.peek().span, { expected: '==', found: this.peek().text || 'end-of-line' });
+    return members;
   }
 
   private parseDefinition(defineAt: number, lineSpan: Span): Statement {
@@ -529,7 +611,7 @@ class LineParser {
         const close = this.expect(')', ')');
         // A unit right after a group: "(3 + 4j) Ω". A name defined above stays a name.
         const next = this.peek();
-        if (next.type === 'ident' && !KEYWORDS.has(next.text) && !this.defined.has(next.text) && this.isUnit(next.text)) {
+        if (!this.freeNames && next.type === 'ident' && !KEYWORDS.has(next.text) && !this.defined.has(next.text) && this.isUnit(next.text)) {
           const unit = this.parseUnitChain();
           const factor: Expr = { kind: 'unit', unit, span: unit.span };
           return { kind: 'binary', operator: '*', left: inner, right: factor, span: spanOf(token, unit) };
@@ -604,7 +686,7 @@ class LineParser {
       bound.forEach((n) => this.defined.delete(n));
       return { kind: 'call', name, args, named, span: spanOf(token, close) };
     }
-    if (!this.defined.has(name) && this.isUnit(name)) {
+    if (!this.freeNames && !this.defined.has(name) && this.isUnit(name)) {
       const unit: UnitExpr = { kind: 'unit-name', name, span: token.span };
       return { kind: 'unit', unit, span: token.span };
     }

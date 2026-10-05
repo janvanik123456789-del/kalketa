@@ -44,8 +44,9 @@ const ADDED_ITEMS: readonly { readonly since: number; readonly toolbar: string; 
   { since: 2, toolbar: 'operators', after: 'sym:√', ids: ['sym:∛', 'fn:root'] },
   { since: 2, toolbar: 'operators', after: 'sym:³', ids: ['sym:^'] },
   { since: 3, toolbar: 'view', after: 'view.paneTables', ids: ['view.paneChat'] },
+  { since: 4, toolbar: 'functions', after: 'fn:solve', ids: ['fn:derive'] },
 ];
-export const ITEMS_VERSION = 3;
+export const ITEMS_VERSION = 4;
 
 export const SEPARATOR = '|';
 
@@ -76,6 +77,7 @@ export const FUNCTION_TEMPLATES: readonly FunctionTemplate[] = [
   { id: 'abs', glyph: '|x|', text: 'abs(‸)' },
   { id: 'if', glyph: 'if', text: 'if(‸, a, b)' },
   { id: 'solve', glyph: 'solve', text: 'solve x: ‸ == 0', line: true },
+  { id: 'derive', glyph: 'a=b', text: 'derive ‸ == ', line: true },
 ];
 
 /** Templates on the Operators toolbar (not on Functions): the n-th root. */

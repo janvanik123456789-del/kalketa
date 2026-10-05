@@ -464,6 +464,26 @@ solve (I_1, I_2):
 - V tisku jsou rovnice se znakem „=“, u jedné neznámé i interval („0 ≤ x ≤ 10“) a pod nimi nalezené hodnoty.
 - Pozor na zápis `2 m/s²·t²`: za číslem vyhrávají jednotky, takže `t` je tu tuna. Správně je `(2 m/s²)·t²`.
 
+### 9.1 Odvození (řetěz rovností s kontrolou)
+
+```text
+y := M/(E·I) == F·l^3/(3·E·I)                      ' odvození končí definicí: y z posledního členu
+M_Ed := q·L²/8 == 12 kN/m·(5 m)²/8 == 37.5 kN·m      ' i s dosazením čísel
+derive M_mp := l^3·F/3                              ' značka teorie, bez hodnot
+derive w := M_mp/(E·I) == (l^3·F/3)/(E·I) == F·l^3/(3·E·I)
+derive E·integral(y^2, dS) == integral(E·y^2, dS)  ' odvození samo, nic nedefinuje
+```
+
+- **Zápis jako v učebnici:** členy spojené `==` (v odvození stačí i `=`). Za `:=` je to odvození, které končí definicí veličiny: hodnota se spočítá z posledního členu. Samotné `derive a == b == c` jen ověří kroky.
+- **Každý krok se ověří obecně**, ne jen pro čísla výpočtu: všechna jména dostanou v pěti bodech náhodné hodnoty (veličiny výpočtu si ponechají jednotku) a obě strany kroku musí vyjít stejně, hodnotou i rozměrem. Úprava, která platí jen pro jedno číslo (`x² == 2·x`), neprojde. **Krok s dosazenými čísly** (strana bez jmen, `== 12 kN/m·(5 m)²/8`) platí jen pro hodnoty výpočtu, proto se ověří s nimi.
+- **Vypočtená veličina zastupuje svůj vzorec:** je-li výše `M := q·L²/8`, mění se v ověření jen `q` a `L` a `M` s nimi drží vztah. Veličina odvozená až k číslu zastupuje svůj první člen.
+- **Volná jména:** v odvození je nedefinované jméno značkou, i když zní jako jednotka (`F`, `l`, `E`). Jednotky se tu píší jen za čísly (`5 m`) nebo v hranatých závorkách. `derive M_mp := l^3·F/3` zavede značku teorie: hodnotu nemá a neohlásí chybu, ale odvození pod ní s ní počítají jako se vzorcem.
+- **Dva členy:** `y := a == b` je odvození, když jde o hodnoty. Porovnáním (pravda/nepravda) zůstane, obsahuje-li text, `true`/`false`, `and`/`or`/`not`, `<` nebo `≠`, nebo když obě strany vyjdou jako text či logická hodnota: `ok := m.trida == "S235"`.
+- **Σ a ∫ bez mezí** jsou zápis teorie: `sum(ΔS·y^2)` → Σ ΔS·y², `sum(F_i·a_i, i)` → Σᵢ F_i·a_i, `integral(y^2, dS)` → ∫ y² dS. V odvození se chovají lineárně (pořadí uvnitř, konstanta před), spočítat bez mezí nejdou (`E-NO-BOUNDS`). `sum(řada)` dál sečte řadu.
+- **V tisku:** y = první člen = další členy = dosazení = **výsledek**, v úsporném stylu na jednom řádku se zalomením na rovnítku. Pod odvozením, jehož všechny kroky platí, je značka „✓ odvození ověřeno“.
+- **Chyby:** krok neplatí (`E-DERIVE-STEP`), strany kroku mají různé jednotky (`E-DERIVE-UNITS`). Hodnota z posledního členu se i tak spočítá, aby se zbytek výpočtu nerozpadl. Krok, který pro zkusmé hodnoty nemá hodnotu, je varování (`W-DERIVE-UNVERIFIED`).
+- **V editoru:** panel Funkce, tlačítko a=b vloží řádek `derive`.
+
 ---
 
 ## 10. Podmínky (posudky)

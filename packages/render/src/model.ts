@@ -96,6 +96,8 @@ export type PrintBlock =
       readonly imported?: readonly string[];
       /** Appendix with the calculation of the block used on this line. */
       readonly blockCalc?: string;
+      /** A derivation whose every step was checked and holds. */
+      readonly derived?: boolean;
       readonly messages: readonly Message[];
     }
   | {
@@ -259,7 +261,16 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
         // A user function shows as "A_kruh(d) = π·d²/4": its parameters have no values to substitute.
         const params = s.kind === 'definition' ? s.params : undefined;
         const lhs = s.kind !== 'definition' ? undefined : params ? functionHead(s.name, params, formulaOptions().argumentSeparator) : nameNode(s.name);
-        const lines = equationLines(r, s.expr, lhs, params ? { ...mode, substitution: false } : mode, formulaOptions, substitute, numberFormat(digits));
+        const valueLines = equationLines(r, s.expr, lhs, params ? { ...mode, substitution: false } : mode, formulaOptions, substitute, numberFormat(digits));
+        // y := a == b == c: every member, then the substitution and the result of the last one.
+        const chain = s.kind === 'definition' ? s.derivation : undefined;
+        const lines = chain
+          ? [
+              ...chain.map((m, i): EquationLine => (i === 0 && lhs ? { role: 'formula', lhs, rhs: formulaNode(m, formulaOptions()) } : { role: 'formula', rhs: formulaNode(m, formulaOptions()) })),
+              ...(isGiven(s.expr) ? [] : equationLines(r, s.expr, undefined, mode, formulaOptions, substitute, numberFormat(digits)).filter((l, i) => !(i === 0 && l.role === 'formula'))),
+            ]
+          : valueLines;
+        const derived = !!r.derivation && r.derivation.every((step) => step.ok);
         if (r.status === 'error' && lines.length <= 1 && s.kind === 'display') {
           blocks.push({ kind: 'error', line: s.span.line, source: sourceText(result, s.span), messages });
           break;
@@ -273,8 +284,17 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
           ...(s.comment ? { comment: s.comment } : {}),
           ...(imported.length ? { imported } : {}),
           ...(blockCalc ? { blockCalc } : {}),
+          ...(derived ? { derived } : {}),
           messages,
         });
+        break;
+      }
+      case 'derive': {
+        // A derivation of theory: a = b = c, every step checked.
+        const [first, ...rest] = s.members.map((m) => formulaNode(m, formulaOptions()));
+        const lines: EquationLine[] = rest.map((rhs, i) => (i === 0 ? { role: 'formula', lhs: first!, op: '=', rhs } : { role: 'formula', rhs }));
+        const derived = !!r.derivation && r.derivation.every((step) => step.ok);
+        blocks.push({ kind: 'equation', line: s.span.line, lines, ...(s.comment ? { comment: s.comment } : {}), ...(derived ? { derived } : {}), messages });
         break;
       }
       case 'solve': {

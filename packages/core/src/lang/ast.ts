@@ -91,7 +91,16 @@ export type Statement =
       readonly params?: readonly Param[];
       /** An input of a block ("input L := 5 m"): a call of the block may give another value. */
       readonly input?: boolean;
+      /**
+       * A derivation ending in the definition: y := a == b == c. Every member,
+       * the last one is also `expr`; each step is checked to hold.
+       */
+      readonly derivation?: readonly Expr[];
+      /** After derive: a symbol of theory; names without a value are no error. */
+      readonly symbolic?: boolean;
     })
+  /** A derivation on its own (theory): derive a == b == c; every step is checked to hold. */
+  | (StatementBase & { readonly kind: 'derive'; readonly members: readonly Expr[] })
   | (StatementBase & { readonly kind: 'display'; readonly expr: Expr; readonly target?: UnitExpr })
   | (StatementBase & {
       readonly kind: 'check';

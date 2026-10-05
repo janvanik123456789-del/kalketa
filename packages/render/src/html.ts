@@ -172,7 +172,7 @@ export function renderBlockHtml(block: PrintBlock, catalog: Catalog, options: Bl
     }
     case 'equation':
       return `<section class="block equation${options.style === 'compact' ? ' compact' : ''}" data-line="${block.line}">
-${options.style === 'compact' ? equationFlow(block.lines, block.comment, options.defineOperator ?? '=') : equationTable(block.lines, block.comment, options.defineOperator ?? '=')}${imported(block.imported, catalog)}${blockCalc(block.blockCalc, catalog)}${messages(block.messages)}
+${options.style === 'compact' ? equationFlow(block.lines, block.comment, options.defineOperator ?? '=') : equationTable(block.lines, block.comment, options.defineOperator ?? '=')}${block.derived ? `<div class="derived">✓ ${esc(t(catalog, 'print.derived'))}</div>` : ''}${imported(block.imported, catalog)}${blockCalc(block.blockCalc, catalog)}${messages(block.messages)}
 </section>`;
     case 'selection': {
       const condition = block.condition
@@ -335,6 +335,8 @@ h3, h4, h5, h6 { font-size: 11pt; margin: 4mm 0 1.5mm; break-after: avoid; }
 .block.picture.wrap-left, .block.chart.wrap-left { float: left; margin: 1mm 5mm 2mm 0; }
 .block, h2, h3, h4 { display: flow-root; }
 .page-break, .clear { clear: both; }
+/* A derivation checked step by step: a quiet mark under it. */
+.derived { margin: 0.3mm 0 0 6mm; font-size: 8pt; color: #2e7d32; }
 /* The stop above a freely placed picture: as tall as it is moved down, no width, so the text beside it is not narrowed. */
 .wrap-stop { width: 0; margin: 0; }
 .wrap-stop.wrap-right { float: right; }

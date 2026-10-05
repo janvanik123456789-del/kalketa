@@ -229,6 +229,8 @@ function renderCall(expr: Extract<Expr, { kind: 'call' }>, o: FormulaOptions): R
  * sum(f, k: 1 .. n) as Σ. The variable stays a symbol when values are put in.
  */
 function renderCalculus(expr: Extract<Expr, { kind: 'call' }>, o: FormulaOptions): Rendered | undefined {
+  const unbounded = renderUnbounded(expr, o);
+  if (unbounded) return unbounded;
   if (!['integral', 'derivative', 'sum'].includes(expr.name) || expr.args.length !== 1) return undefined;
   const variable = expr.named.find((n) => n.name !== 'order');
   if (!variable) return undefined;
@@ -249,6 +251,27 @@ function renderCalculus(expr: Extract<Expr, { kind: 'call' }>, o: FormulaOptions
   const high = render(variable.value.high, o).node;
   if (expr.name === 'integral') return { node: row(subsup(mo('∫'), low, high), wrap(body, body.prec < 5), THIN_SPACE, d, x), prec: 5 };
   return { node: row(underover(mo('∑'), row(x, mo('='), low), high), wrap(body, body.prec < 5)), prec: 5 };
+}
+
+/**
+ * Σ and ∫ of theory, without bounds: sum(ΔS·y^2) as Σ ΔS·y² (also the sum of a
+ * series), sum(F_i·a_i, i) as Σᵢ F_i·a_i, integral(y^2, dS) as ∫ y² dS.
+ */
+function renderUnbounded(expr: Extract<Expr, { kind: 'call' }>, o: FormulaOptions): Rendered | undefined {
+  if (expr.named.length > 0 || (expr.name !== 'sum' && expr.name !== 'integral')) return undefined;
+  if (expr.name === 'sum' && expr.args.length === 1) {
+    const body = render(expr.args[0]!, o);
+    return { node: row(mo('∑'), wrap(body, body.prec < 5)), prec: 5 };
+  }
+  if (expr.args.length !== 2) return undefined;
+  const by = expr.args[1]!;
+  const name = by.kind === 'variable' ? by.name : by.kind === 'unit' && by.unit.kind === 'unit-name' ? by.unit.name : undefined;
+  if (!name) return undefined;
+  const body = render(expr.args[0]!, o);
+  if (expr.name === 'sum') return { node: row(underover(mo('∑'), nameNode(name), row()), wrap(body, body.prec < 5)), prec: 5 };
+  // dS is d and S; a name without the d (integral(f, x)) gets one.
+  const variable = name.length > 1 && name.startsWith('d') ? name.slice(1) : name;
+  return { node: row(mo('∫'), wrap(body, body.prec < 5), THIN_SPACE, mi('d', true), nameNode(variable)), prec: 5 };
 }
 
 function wrap(r: Rendered, needed: boolean): MathNode {

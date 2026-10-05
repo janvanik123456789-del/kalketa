@@ -103,6 +103,7 @@ export function languageGuide(): string {
     'Definition: name := expression, with units (L := 6 m, q := 10 kN/m); a name must be defined above its use and only once.',
     '"a =" shows a result. "expr | kN·m" sets the unit it is shown in. "x² + 2·x == 8" is an equation for the solver.',
     'check "Bending": σ ≤ f_y  source "EN 1993-1-1, 6.2.5"  is a check (label and source optional); utilization = left / right.',
+    'A derivation as in a textbook: y := M/(E·I) == F·l^3/(3·E·I) (the last member gives y), or "derive a == b == c" on its own; the program checks every step in general, so write each step as an equal form. "derive M_mp := l^3·F/3" introduces a symbol of theory without values. sum(ΔS·y^2), sum(F_i·a_i, i) and integral(y^2, dS) without bounds are notations of theory (Σ, ∫) with no value.',
     '#, ##, ### are headings; \' starts a comment; a line in "quotes" is printed text.',
     `Built-in functions: ${functions}.`,
   ].join('\n');

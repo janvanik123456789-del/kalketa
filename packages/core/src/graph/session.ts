@@ -15,10 +15,11 @@ import { BUILTIN_CONSTANTS } from '../eval/functions.js';
 import { defineFunction, isBuiltinFunction } from '../eval/userFunctions.js';
 import { solveStatement } from '../eval/solver.js';
 import { isPlotCall, plotStatement, type PlotResult } from '../eval/plot.js';
+import { checkDerivation, type DerivationStep } from '../eval/derive.js';
 import { DIMENSIONLESS_NAME } from '../lang/parser.js';
 import { DIMENSIONLESS, dim, type Dimension } from '../units/dimension.js';
 import type { BlockCaller, BlockSource } from '../eval/blocks.js';
-import type { BinaryOperator, Sheet, Statement } from '../lang/ast.js';
+import type { BinaryOperator, Expr, Sheet, Statement } from '../lang/ast.js';
 import { parse } from '../lang/parser.js';
 import type { Table, TableRead } from '../tables/table.js';
 import { sameDim } from '../units/dimension.js';
@@ -57,6 +58,8 @@ export interface StatementResult {
   readonly check?: CheckResult;
   /** A chart: plot(M(x), x: 0 m .. L). */
   readonly plot?: PlotResult;
+  /** A derivation (derive a == b, y := a == b == c): whether each step holds. */
+  readonly derivation?: readonly DerivationStep[];
   /** Values found by a solve statement, in the order of its unknowns. */
   readonly solutions?: readonly { readonly name: string; readonly value: Quantity; readonly display: DisplayValue }[];
   /** Names this statement read, in order of first use (including undefined ones). */
@@ -114,7 +117,7 @@ export interface UpdateOptions {
 }
 
 type EnvEntry = { readonly ok: true; readonly value: Value } | { readonly ok: false };
-type Evaluable = Extract<Statement, { kind: 'definition' | 'display' | 'check' | 'solve' }>;
+type Evaluable = Extract<Statement, { kind: 'definition' | 'display' | 'check' | 'solve' | 'derive' }>;
 type PartialResult = Omit<StatementResult, 'statement'>;
 
 interface CacheEntry {
@@ -153,6 +156,7 @@ export class SheetSession {
       blockStack: options.blockStack ?? [],
       registry: ownUnits.length > 0 ? registry.extend() : registry,
       dimensions: new Set(),
+      formulas: new Map(),
     };
     // Every result depends on the sheet's own units: changing one recalculates all.
     const unitsKey = ownUnits.map((s) => source.slice(s.span.offset, s.span.offset + s.span.length)).join('\n');
@@ -183,7 +187,7 @@ export class SheetSession {
         results.push({ statement, status: d.status, ...none, dependencies: d.dependencies, diagnostics: [...parseDiagnostics, ...d.diagnostics] });
         return;
       }
-      if (statement.kind !== 'definition' && statement.kind !== 'display' && statement.kind !== 'check' && statement.kind !== 'solve') {
+      if (statement.kind !== 'definition' && statement.kind !== 'display' && statement.kind !== 'check' && statement.kind !== 'solve' && statement.kind !== 'derive') {
         results.push({ statement, status: 'none', ...none, diagnostics: parseDiagnostics });
         return;
       }
@@ -231,6 +235,8 @@ export class SheetSession {
 
       if (statement.kind === 'definition') {
         env.set(statement.name, result.status === 'ok' && result.value ? { ok: true, value: result.value } : { ok: false });
+        // A derivation ending in numbers (M := q·L²/8 == … == 37.5 kN·m) stands for its general formula, the first member.
+        if (!statement.params && !statement.input) context.formulas.set(statement.name, statement.derivation?.[0] ?? statement.expr);
       }
       if (statement.kind === 'solve') {
         statement.unknowns.forEach((u, i) => {
@@ -358,6 +364,40 @@ export class SheetSession {
       },
     };
 
+    // ok := a == b of two texts or flags is a comparison after all.
+    if (statement.kind === 'definition' && statement.derivation?.length === 2 && !statement.symbolic) {
+      const [a, b] = statement.derivation.map((m) => valueOrNothing(() => evaluate(m, { ...ctx, warnings: [] })));
+      if (a && b && (a.type === 'text' || a.type === 'boolean') && a.type === b.type) {
+        const { derivation: _chain, ...rest } = statement;
+        const expr: Expr = { kind: 'binary', operator: '==', left: statement.derivation[0]!, right: statement.derivation[1]!, span: statement.span };
+        return this.evaluateValue({ ...rest, expr }, context, ctx, dependencies, tableReads);
+      }
+    }
+    // A derivation is checked step by step; a wrong step is an error, yet the value of its last member
+    // is still calculated, so the rest of the sheet does not fall apart.
+    const members = statement.kind === 'derive' ? statement.members : statement.kind === 'definition' ? statement.derivation : undefined;
+    const derived = members ? checkDerivation(members, ctx, evaluate, (name) => context.formulas.get(name)) : undefined;
+    if (statement.kind === 'derive') {
+      return { status: 'ok', derivation: derived!.steps, dependencies, tableReads, diagnostics: [...ctx.warnings, ...derived!.diagnostics] };
+    }
+    const withDerivation = (result: PartialResult): PartialResult =>
+      derived ? { ...result, derivation: derived.steps, diagnostics: [...result.diagnostics, ...derived.diagnostics] } : result;
+    const result = withDerivation(this.evaluateValue(statement, context, ctx, dependencies, tableReads));
+    // A symbol of theory (derive M_mp := l^3·F/3) has no value without values of its names: no error then.
+    const noValue = (d: Diagnostic) => d.code === 'E-UNDEFINED' || d.code === 'I-DEPENDENCY-FAILED';
+    if (statement.kind === 'definition' && statement.symbolic && (result.status === 'error' || result.status === 'blocked') && result.diagnostics.every((d) => noValue(d) || d.severity !== 'error')) {
+      return { ...result, status: 'none', diagnostics: result.diagnostics.filter((d) => !noValue(d)) };
+    }
+    return result;
+  }
+
+  private evaluateValue(
+    statement: Exclude<Evaluable, { kind: 'derive' }>,
+    context: StatementContext,
+    ctx: EvalContext,
+    dependencies: string[],
+    tableReads: TableRead[],
+  ): PartialResult {
     try {
       if (statement.kind === 'check') {
         const check = evaluateCheck(statement, ctx);
@@ -439,6 +479,14 @@ export class SheetSession {
   }
 }
 
+function valueOrNothing(f: () => Value): Value | undefined {
+  try {
+    return f();
+  } catch {
+    return undefined;
+  }
+}
+
 /** A value given for a block input must be of the same kind as the block's own. */
 function acceptInput(statement: Extract<Statement, { kind: 'definition' }>, own: Value, given: Value, block: string): Value {
   if (own.type === 'quantity' && given.type === 'quantity') {
@@ -509,6 +557,8 @@ interface StatementContext {
   readonly registry: UnitRegistry;
   /** The sheet's own dimensions ("dimension Mena"). */
   readonly dimensions: Set<string>;
+  /** Formulas of the names calculated so far, for checking derivations. */
+  readonly formulas: Map<string, Expr>;
 }
 
 /** Base dimensions of SI: a sheet's own dimension cannot take their names. */

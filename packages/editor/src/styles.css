@@ -602,7 +602,8 @@ button.icon:hover { color: var(--accent); }
 .flow-group > .row.editing { flex-basis: 100%; }
 
 /* A picture placed freely: where it would stand while dragged; the stop above it in the sheet. */
-.drop-box { position: fixed; z-index: 150; border: 2px dashed var(--accent); background: rgb(29 111 214 / 8%); pointer-events: none; }
+.drop-box { position: fixed; z-index: 150; outline: 1px dashed var(--accent); pointer-events: none; }
+.drop-box img { display: block; width: 100%; height: 100%; object-fit: contain; opacity: 0.75; }
 .page-body > .wrap-stop { width: 0; }
 .page-body > .wrap-stop.wrap-right { float: right; }
 .page-body > .wrap-stop.wrap-left { float: left; }

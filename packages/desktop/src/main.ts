@@ -978,11 +978,11 @@ async function layersWithRealInput(picture: string) {
   await pause(400);
   const widened = (await contents.executeJavaScript(`parseFloat(document.querySelector('.layer-view.active .side-group')?.style.getPropertyValue('--side') ?? '0')`)) as number;
   await takePicture(picture.replace(/[.]png$/, '-side.png'));
-  // Dragging the picture with the mouse moves it: from above the given values to below them.
+  // Dragging the picture with the mouse moves it, held where it was taken: from above the given values to below them.
   const grab = (await contents.executeJavaScript(`(() => {
     const img = document.querySelector('.layer-view.active .row[data-line="2"] figure img').getBoundingClientRect();
     const q = document.querySelector('.layer-view.active .row[data-line="4"]').getBoundingClientRect();
-    return { x: Math.round(img.left + img.width / 2), y: Math.round(img.top + img.height / 2), tx: Math.round(q.left + q.width / 2), ty: Math.round(q.bottom + 2) };
+    return { x: Math.round(img.left + img.width / 2), y: Math.round(img.top + img.height / 2), tx: Math.round(q.left + q.width / 2), ty: Math.round(q.bottom + 4 + img.height / 2) };
   })()`)) as { x: number; y: number; tx: number; ty: number };
   contents.sendInputEvent({ type: 'mouseDown', x: grab.x, y: grab.y, button: 'left', clickCount: 1 });
   for (let step = 1; step <= 8; step++) {
@@ -1076,6 +1076,28 @@ async function layersWithRealInput(picture: string) {
     const l = [...document.querySelectorAll('.layer-view.active .row')].find((r) => r !== row && /L\\s*[≔:=]/.test(r.textContent))?.getBoundingClientRect();
     return !!pic && !!l && b.right - pic.right > b.width * 0.05 && pic.top > l.bottom + 4 && !!document.querySelector('.layer-view.active .wrap-stop');
   })()`)) as boolean);
+  // The right button: the flow menu. No flowing around: dragged to the right it goes to the right edge, alone on its lines.
+  await clickOn('.layer-view.active .row.wrap-right figure img', [], 'right');
+  await clickMenu('Bez obtékání');
+  await pause(400);
+  const strict = (await contents.executeJavaScript(`(() => {
+    const img = document.querySelector('.layer-view.active figure img').getBoundingClientRect();
+    const b = document.querySelector('.layer-view.active .page-body').getBoundingClientRect();
+    return { x: Math.round(img.left + img.width / 2), y: Math.round(img.top + img.height / 2), tx: Math.round(b.right - img.width / 2 - 4), ty: Math.round(img.top + img.height / 2 + 6) };
+  })()`)) as { x: number; y: number; tx: number; ty: number };
+  contents.sendInputEvent({ type: 'mouseDown', x: strict.x, y: strict.y, button: 'left', clickCount: 1 });
+  for (let step = 1; step <= 8; step++) {
+    contents.sendInputEvent({ type: 'mouseMove', x: Math.round(strict.x + ((strict.tx - strict.x) * step) / 8), y: Math.round(strict.y + ((strict.ty - strict.y) * step) / 8), button: 'left' } as Electron.MouseInputEvent);
+    await pause(40);
+  }
+  await takePicture(picture.replace(/[.]png$/, '-strictdrag.png'));
+  contents.sendInputEvent({ type: 'mouseUp', x: strict.tx, y: strict.ty, button: 'left', clickCount: 1 });
+  await pause(600);
+  const strictPlaced = (await contents.executeJavaScript(`(() => {
+    const f = document.querySelector('.layer-view.active figure')?.getBoundingClientRect();
+    const b = document.querySelector('.layer-view.active .page-body').getBoundingClientRect();
+    return !!f && Math.abs(f.right - b.right) < 3 && !document.querySelector('.layer-view.active .row.wrap-right, .layer-view.active .row.wrap-left, .layer-view.active .wrap-stop');
+  })()`)) as boolean;
   // Canvas: Insert > Canvas, a rectangle and an arrow drawn, a text typed, the rectangle moved, Done.
   const drawDrag = async (from: { x: number; y: number }, to: { x: number; y: number }, name: string) => {
     contents.sendInputEvent({ type: 'mouseDown', ...from, button: 'left', clickCount: 1 });
@@ -1142,7 +1164,7 @@ async function layersWithRealInput(picture: string) {
     canvasOk =
       /<rect x="[\d.]+" y="[\d.]+" width="[\d.]+"/.test(items) && shown.includes('<rect') && shown.includes('marker-end') && shown.includes('L = 5 m') && reopened === 3 && inlineEditing && windowEditing && !(await contents.executeJavaScript(`!!document.querySelector('.canvas-window, .canvas-inline')`));
   }
-  const besideText = sideGroup.rows === '3,4' && sideGroup.picture && sideGroup.side !== '' && widened > parseFloat(sideGroup.side) && movedPicture && wrapped && cleared && unwrapped && placedFree && canvasOk;
+  const besideText = sideGroup.rows === '3,4' && sideGroup.picture && sideGroup.side !== '' && widened > parseFloat(sideGroup.side) && movedPicture && wrapped && cleared && unwrapped && placedFree && strictPlaced && canvasOk;
   const pictures = pasted.img && resized && dropped === 'Obr. 1: Schéma nosníku' && fileCopied && pastedIdle && pictureMenu.menu >= 5 && pictureMenu.full && pictureMenu.caption.includes('Detail kotvení') && besideText;
 
   // Help > About > Third-party licences: the notices of the shipped packages.
@@ -1209,7 +1231,7 @@ async function layersWithRealInput(picture: string) {
     blocksOk = shown.errors === 0 && shown.text.includes('Prosty nosnik 1.2') && shown.text.includes('45');
     await takePicture(picture.replace(/[.]png$/, '-blocks.png'));
   }
-  return { ...state, newKeepsExample, citations, notesPicture, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, toolIcons, aiSettings, aiChat, pdfCleanup, theoryLibrary, study, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, placedFree, canvasOk, besideText, pictures, blocksOk };
+  return { ...state, newKeepsExample, citations, notesPicture, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, toolIcons, aiSettings, aiChat, pdfCleanup, theoryLibrary, study, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, placedFree, strictPlaced, canvasOk, besideText, pictures, blocksOk };
 }
 
 /** The tidied sources saved as a library (.kalkt) and attached in the chat: the model cites it by its key. */

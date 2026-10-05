@@ -80,11 +80,11 @@ const NO_COMMANDS: ReadonlyMap<string, Command> = new Map<string, Command>();
 export function SheetView(props: Props) {
   const { source, result, print, editing } = props;
   // The menu of a picture: opened by clicking it (or right click).
-  const [pictureMenu, setPictureMenu] = useState<{ seg: Segment; at: { x: number; y: number } } | undefined>();
+  const [pictureMenu, setPictureMenu] = useState<{ seg: Segment; at: { x: number; y: number }; flow?: boolean } | undefined>();
   // Where a dragged picture would land: a line across the page body.
   const [dropMark, setDropMark] = useState<{ x: number; y: number; width: number } | undefined>();
   // Where a picture placed freely would stand while it is dragged.
-  const [dropBox, setDropBox] = useState<{ x: number; y: number; width: number; height: number } | undefined>();
+  const [dropBox, setDropBox] = useState<{ x: number; y: number; width: number; height: number; src: string } | undefined>();
   // The menu of an AI mark: reviewed, or where it came from.
   const [aiMenu, setAiMenu] = useState<{ id: string; at: { x: number; y: number } } | undefined>();
   const segs = segments(source, result.sheet.statements, editing);
@@ -178,19 +178,25 @@ export function SheetView(props: Props) {
     const grab = { x: from.x - start.left, y: from.y - start.top };
     let dragging = false;
     let place: ReturnType<typeof freePlace>;
+    const src = figure.querySelector('img')?.getAttribute('src') ?? '';
+    const original = figure as HTMLElement;
     const move = (event: MouseEvent) => {
       if (!dragging && Math.hypot(event.clientX - from.x, event.clientY - from.y) < 5) return;
+      if (!dragging) original.style.opacity = '0.3';
       dragging = true;
+      // The picture itself follows the pointer, as on a slide; where it is let go, it stays.
+      const box = { x: event.clientX - grab.x, y: event.clientY - grab.y, width: start.width, height: start.height, src };
+      setDropBox(box);
       // Off the pages the last place shown stays: releasing there uses it.
-      const next = freePlace(event.clientX - grab.x, event.clientY - grab.y, start.width, start.height, seg, event.clientY);
+      const next = freePlace(box.x, box.y, start.width, start.height, seg, event.clientY);
       if (!next) return;
       place = next;
       setDropMark(next.mark);
-      setDropBox(next.box);
     };
     const up = () => {
       window.removeEventListener('mousemove', move);
       window.removeEventListener('mouseup', up);
+      original.style.opacity = '';
       setDropMark(undefined);
       setDropBox(undefined);
       if (!dragging) {
@@ -247,44 +253,97 @@ export function SheetView(props: Props) {
     });
     const body = page?.querySelector('.page-body')?.getBoundingClientRect();
     if (!page || !body) return undefined;
-    const box = { x: left, y: top, width, height };
     const middle = body.left + body.width / 2;
-    // A picture beside the text keeps its column: it only moves between the rows.
-    if (picture.side || (!picture.wrap && Math.abs(cx - middle) < body.width * 0.08)) {
+    // Never flowed around: it moves between the rows, to the edge or the middle it is dropped at.
+    if (picture.noWrap) {
       const moved = dropPlace(cx, pointerY, dragged);
-      return moved ? { after: moved.after, text: dragged.text, mark: moved.mark, box } : undefined;
+      if (!moved) return undefined;
+      const third = (cx - body.left) / body.width;
+      const align = third < 1 / 3 ? 'left' : third > 2 / 3 ? 'right' : undefined;
+      const { align: _old, ...rest } = picture;
+      return { after: moved.after, text: formatPicture({ ...rest, ...(align ? { align } : {}) }), mark: moved.mark };
     }
-    const rows = [...page.querySelectorAll<HTMLElement>('.row[data-line]')].filter((r) => Number(r.dataset['line']) !== dragged.start);
+    const share = picture.width ?? Math.min(100, Math.round((width / body.width) * 100));
+    // As wide as the text: nothing can flow beside it, it only moves between the rows.
+    if (share >= 90) {
+      const moved = dropPlace(cx, pointerY, dragged);
+      return moved ? { after: moved.after, text: dragged.text, mark: moved.mark } : undefined;
+    }
+    const own = root.querySelector<HTMLElement>(`.row[data-line="${dragged.start}"]`);
+    const rows = [...page.querySelectorAll<HTMLElement>('.row[data-line]')].filter((r) => r !== own && !own?.contains(r));
+    // The rows as they stand once the picture has left its place: a picture on lines of its own
+    // pushes the rows after it down by its height, a picture flowed around or beside them does not.
+    const ownBox = own?.getBoundingClientRect();
+    const next = own ? rows.find((r) => Number(r.dataset['line']) > dragged.start && r.getBoundingClientRect().top >= ownBox!.bottom - 1) : undefined;
+    const shift = !picture.wrap && !picture.side && ownBox && next && page.contains(own) ? next.getBoundingClientRect().top - ownBox.top : 0;
+    const bottomOf = (r: HTMLElement) => r.getBoundingClientRect().bottom - (Number(r.dataset['line']) > dragged.start ? shift : 0);
     const lineEnd = (row: HTMLElement) => segs.find((s) => s.start === Number(row.dataset['line']))?.end ?? Number(row.dataset['line']);
     // The row it belongs to: the last one that ends above its top.
-    const above = rows.filter((r) => r.getBoundingClientRect().bottom <= top + 2).sort((a, b) => a.getBoundingClientRect().bottom - b.getBoundingClientRect().bottom);
+    const above = rows.filter((r) => bottomOf(r) <= top + 2).sort((a, b) => bottomOf(a) - bottomOf(b));
     const anchor = above.at(-1);
     const first = rows[0];
     const after = anchor ? lineEnd(anchor) : first ? Number(first.dataset['line']) - 1 : dragged.start - 1;
-    const from = anchor ? anchor.getBoundingClientRect().bottom : body.top;
+    const from = anchor ? bottomOf(anchor) : body.top;
     const pxPerMm = page.getBoundingClientRect().width / props.geometry.width;
-    const side: 'left' | 'right' = picture.wrap && Math.abs(cx - middle) < body.width * 0.08 ? picture.wrap : cx > middle ? 'right' : 'left';
-    const share = picture.width ?? Math.min(100, Math.round((width / body.width) * 100));
+    // The text flows beside it on the wider side.
+    const side: 'left' | 'right' = cx > middle ? 'right' : 'left';
     const dx = Math.max(0, Math.min(100 - share, Math.round(((side === 'right' ? body.right - (left + width) : left - body.left) / body.width) * 100)));
     const dy = Math.max(0, Math.round((top - from) / pxPerMm));
     const text = formatPicture({ caption: picture.caption, path: picture.path, width: share, wrap: side, ...(dx >= 1 ? { dx } : {}), ...(dy >= 1 ? { dy } : {}) });
-    return { after, text, mark: { x: body.left, y: from, width: body.width }, box };
+    return { after, text, mark: { x: body.left, y: from, width: body.width } };
+  };
+
+  type Side = 'left' | 'right' | undefined;
+  /** Changes of a picture line: each placement clears the others, offsets go with the flow. */
+  const pictureSetters = (seg: Segment, picture: NonNullable<ReturnType<typeof parsePicture>>) => {
+    const set = (change: Partial<{ caption: string; width: number | undefined; side: Side; wrap: Side; align: Side; noWrap: boolean; dx: number | undefined; dy: number | undefined }>) => {
+      const { width, side, wrap, align, noWrap, dx, dy, ...rest } = { ...picture, ...change };
+      props.onReplace(
+        seg.start,
+        seg.end,
+        formatPicture({ ...rest, ...(width !== undefined ? { width } : {}), ...(side ? { side } : {}), ...(wrap ? { wrap } : {}), ...(align ? { align } : {}), ...(noWrap ? { noWrap } : {}), ...(dx ? { dx } : {}), ...(dy ? { dy } : {}) }),
+      );
+    };
+    const setAlign = (align: Side) => set({ align, side: undefined, wrap: undefined });
+    // Beside the text a picture takes at most a good part of the width, so the lines keep room.
+    const narrow = picture.width === undefined || picture.width > 60 ? { width: 40 } : {};
+    const setSide = (side: Side) => set({ side, wrap: undefined, align: undefined, noWrap: false, ...(side ? narrow : {}) });
+    const setWrap = (wrap: 'left' | 'right') => set({ wrap, side: undefined, align: undefined, noWrap: false, ...narrow });
+    return { set, setAlign, setSide, setWrap };
+  };
+
+  /** The right button on a picture or a canvas: how the text goes around it. */
+  const flowItems = (seg: Segment, at: { x: number; y: number }): MenuItem[] => {
+    const picture = parsePicture(seg.text);
+    if (!picture) return [];
+    const c = props.uiCatalog;
+    const { set, setAlign, setWrap } = pictureSetters(seg, picture);
+    const auto = !picture.noWrap && !picture.wrap && !picture.side;
+    return [
+      { kind: 'action', label: t(c, 'picture.flowAuto'), checked: auto, run: () => set({ noWrap: false, wrap: undefined, side: undefined }) },
+      { kind: 'action', label: t(c, 'picture.noWrap'), checked: !!picture.noWrap, run: () => set({ noWrap: true, wrap: undefined, side: undefined, align: picture.align ?? picture.wrap ?? picture.side }) },
+      { kind: 'separator' },
+      { kind: 'action', label: t(c, 'picture.wrapRight'), checked: picture.wrap === 'right', run: () => setWrap('right') },
+      { kind: 'action', label: t(c, 'picture.wrapLeft'), checked: picture.wrap === 'left', run: () => setWrap('left') },
+      ...(picture.wrap && (picture.dx || picture.dy) ? [{ kind: 'action' as const, label: t(c, 'picture.toEdge'), run: () => set({ dx: undefined, dy: undefined }) }] : []),
+      ...(!picture.wrap && !picture.side
+        ? [
+            { kind: 'separator' as const },
+            { kind: 'action' as const, label: t(c, 'picture.alignLeft'), checked: picture.align === 'left', run: () => setAlign('left') },
+            { kind: 'action' as const, label: t(c, 'picture.center'), checked: !picture.align, run: () => setAlign(undefined) },
+            { kind: 'action' as const, label: t(c, 'picture.alignRight'), checked: picture.align === 'right', run: () => setAlign('right') },
+          ]
+        : []),
+      { kind: 'separator' },
+      { kind: 'action', label: t(c, 'picture.more'), run: () => setPictureMenu({ seg, at }) },
+    ];
   };
 
   const pictureItems = (seg: Segment): MenuItem[] => {
     const picture = parsePicture(seg.text);
     if (!picture) return [];
     const c = props.uiCatalog;
-    type Side = 'left' | 'right' | undefined;
-    const set = (change: Partial<{ caption: string; width: number | undefined; side: Side; wrap: Side; align: Side }>) => {
-      const { width, side, wrap, align, ...rest } = { ...picture, ...change };
-      props.onReplace(seg.start, seg.end, formatPicture({ ...rest, ...(width !== undefined ? { width } : {}), ...(side ? { side } : {}), ...(wrap ? { wrap } : {}), ...(align ? { align } : {}) }));
-    };
-    const setAlign = (align: Side) => set({ align, side: undefined, wrap: undefined });
-    // Beside the text a picture takes at most a good part of the width, so the lines keep room.
-    const narrow = picture.width === undefined || picture.width > 60 ? { width: 40 } : {};
-    const setSide = (side: Side) => set({ side, wrap: undefined, align: undefined, ...(side ? narrow : {}) });
-    const setWrap = (wrap: 'left' | 'right') => set({ wrap, side: undefined, align: undefined, ...narrow });
+    const { set, setAlign, setSide, setWrap } = pictureSetters(seg, picture);
     return [
       ...(isCanvasPath(picture.path)
         ? [
@@ -335,6 +394,8 @@ export function SheetView(props: Props) {
           { kind: 'separator' },
           { kind: 'action', label: t(c, 'picture.wrapRight'), checked: picture.wrap === 'right', run: () => setWrap('right') },
           { kind: 'action', label: t(c, 'picture.wrapLeft'), checked: picture.wrap === 'left', run: () => setWrap('left') },
+          { kind: 'separator' },
+          { kind: 'action', label: t(c, 'picture.noWrap'), checked: !!picture.noWrap, run: () => set({ noWrap: !picture.noWrap, wrap: undefined, side: undefined, align: picture.align ?? picture.wrap ?? picture.side }) },
         ],
       },
       {
@@ -360,8 +421,12 @@ export function SheetView(props: Props) {
     <>
       {/* Outside the zoomed pages, so the menu has its normal size and sits at the pointer. */}
       {dropMark && <div className="drop-mark" style={{ left: dropMark.x, top: dropMark.y - 1, width: dropMark.width }} />}
-      {dropBox && <div className="drop-box" style={{ left: dropBox.x, top: dropBox.y, width: dropBox.width, height: dropBox.height }} />}
-      {pictureMenu && <ContextMenu items={pictureItems(pictureMenu.seg)} commands={NO_COMMANDS} at={pictureMenu.at} onClose={() => setPictureMenu(undefined)} />}
+      {dropBox && (
+        <div className="drop-box" style={{ left: dropBox.x, top: dropBox.y, width: dropBox.width, height: dropBox.height }}>
+          {dropBox.src && <img src={dropBox.src} alt="" />}
+        </div>
+      )}
+      {pictureMenu && <ContextMenu items={pictureMenu.flow ? flowItems(pictureMenu.seg, pictureMenu.at) : pictureItems(pictureMenu.seg)} commands={NO_COMMANDS} at={pictureMenu.at} onClose={() => setPictureMenu(undefined)} />}
       {aiMenu && (
         <ContextMenu
           items={[
@@ -481,7 +546,7 @@ export function SheetView(props: Props) {
           if (block?.kind !== 'picture' || !(e.target as HTMLElement).closest('figure')) return;
           e.preventDefault();
           props.onSelect(seg.statement);
-          setPictureMenu({ seg, at: { x: e.clientX, y: e.clientY } });
+          setPictureMenu({ seg, at: { x: e.clientX, y: e.clientY }, flow: true });
         }}
       >
         <span className="gutter">

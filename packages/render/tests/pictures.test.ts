@@ -82,4 +82,12 @@ describe('pictures in the sheet', () => {
     expect(html).toContain('<div class="wrap-stop wrap-right" style="height:15mm"></div><figure');
     expect(html).toContain('style="width:35%;margin-right:20%;clear:right"');
   });
+
+  it('never flow around a picture marked wrap=none', () => {
+    expect(parsePicture('![S](a.png){align=right wrap=none}')).toEqual({ caption: 'S', path: 'a.png', align: 'right', noWrap: true });
+    expect(parsePicture('![S](a.png){wrap=none wrap=right}')).toBeUndefined();
+    expect(parsePicture('![S](a.png){side=left wrap=none}')).toBeUndefined();
+    expect(formatPicture({ caption: 'S', path: 'a.png', width: 30, align: 'left', noWrap: true })).toBe('![S](a.png){width=30% align=left wrap=none}');
+    expect(evaluateSheet('![S](images/sheet/s.png){wrap=none}').diagnostics).toEqual([]);
+  });
 });

@@ -838,6 +838,8 @@ export interface PictureLine {
   readonly dx?: number;
   /** A wrapped picture placed freely: this far below the line it belongs to, in millimetres. */
   readonly dy?: number;
+  /** Never flowed around ("wrap=none"): alone on its lines, dragging only moves it between them. */
+  readonly noWrap?: boolean;
 }
 
 const PICTURE = /^!\[([^\]]*)\]\(([^()\s]+)\)\s*(?:\{([^}]*)\})?$/;
@@ -852,12 +854,14 @@ export function parsePicture(text: string): PictureLine | undefined {
   let align: 'left' | 'right' | undefined;
   let dx: number | undefined;
   let dy: number | undefined;
+  let noWrap = false;
   for (const option of (match[3] ?? '').split(/[\s,;]+/).filter(Boolean)) {
     const widthOption = /^width=(\d+(?:\.\d+)?)%$/.exec(option);
     const placeOption = /^(side|wrap|align)=(left|right)$/.exec(option);
     const dxOption = /^dx=(\d+(?:\.\d+)?)%$/.exec(option);
     const dyOption = /^dy=(\d+(?:\.\d+)?)mm$/.exec(option);
     if (widthOption && width === undefined) width = Number(widthOption[1]);
+    else if (option === 'wrap=none' && !noWrap) noWrap = true;
     else if (dxOption && dx === undefined) dx = Number(dxOption[1]);
     else if (dyOption && dy === undefined) dy = Number(dyOption[1]);
     else if (placeOption && side === undefined && wrap === undefined && align === undefined) {
@@ -871,7 +875,8 @@ export function parsePicture(text: string): PictureLine | undefined {
   // An offset places a wrapped picture; without the flow around it, it means nothing.
   if ((dx !== undefined || dy !== undefined) && !wrap) return undefined;
   if (dx !== undefined && dx > 100) return undefined;
-  return { caption: match[1]!.trim(), path: match[2]!, ...(width !== undefined ? { width } : {}), ...(side ? { side } : {}), ...(wrap ? { wrap } : {}), ...(align ? { align } : {}), ...(dx ? { dx } : {}), ...(dy ? { dy } : {}) };
+  if (noWrap && (side || wrap)) return undefined;
+  return { caption: match[1]!.trim(), path: match[2]!, ...(width !== undefined ? { width } : {}), ...(side ? { side } : {}), ...(wrap ? { wrap } : {}), ...(align ? { align } : {}), ...(dx ? { dx } : {}), ...(dy ? { dy } : {}), ...(noWrap ? { noWrap } : {}) };
 }
 
 /** The line of a picture, as parsePicture reads it. */
@@ -881,6 +886,7 @@ export function formatPicture(picture: PictureLine): string {
     picture.side ? `side=${picture.side}` : '',
     picture.wrap ? `wrap=${picture.wrap}` : '',
     picture.align ? `align=${picture.align}` : '',
+    picture.noWrap && !picture.wrap && !picture.side ? 'wrap=none' : '',
     picture.wrap && picture.dx ? `dx=${Math.round(picture.dx)}%` : '',
     picture.wrap && picture.dy ? `dy=${Math.round(picture.dy)}mm` : '',
   ].filter(Boolean);

@@ -78,7 +78,7 @@ export type Statement =
   | (StatementBase & { readonly kind: 'heading'; readonly level: number; readonly text: string })
   | (StatementBase & { readonly kind: 'text'; readonly text: string })
   /** A picture: ![caption](path){width=60%}; the width is a share of the text width. */
-  | (StatementBase & { readonly kind: 'picture'; readonly caption: string; readonly path: string; readonly width?: number; readonly side?: 'left' | 'right'; readonly wrap?: 'left' | 'right'; readonly align?: 'left' | 'right'; readonly dx?: number; readonly dy?: number })
+  | (StatementBase & { readonly kind: 'picture'; readonly caption: string; readonly path: string; readonly width?: number; readonly side?: 'left' | 'right'; readonly wrap?: 'left' | 'right'; readonly align?: 'left' | 'right'; readonly dx?: number; readonly dy?: number; readonly noWrap?: boolean })
   | (StatementBase & { readonly kind: 'comment' })
   | (StatementBase & { readonly kind: 'directive'; readonly name: string; readonly args: string })
   | (StatementBase & {

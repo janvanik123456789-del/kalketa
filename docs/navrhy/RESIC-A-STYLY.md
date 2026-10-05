@@ -125,6 +125,14 @@ Ve všech stylech hlavička (název, autor, datum, strana x/y, revize), číslov
 
 **Zdroje:** ČVUT FSv people.fsv.cvut.cz/broukiva (vzor_stat_vyp.pdf, stat_vyp_postup_zasady.htm); ETH archiv.ibk.ethz.ch (Richtlinie_statische_Berechnungen.pdf); uni-due.de/imperia/md/content/iml/aufbau_statischer_berechnungen.pdf; users.rowan.edu/~everett (HW Format 14.pdf); profesis.ckait.cz (TS 05); istructe.org (Calculation models).
 
+## 3b. Rozhodnuto 2026-10-05: varianty stylů
+
+1. **Školní / úsporný: výchozí pro výpočty.** Řetěz vzorec = dosazení = **výsledek** na jednom řádku se zalomením na rovnítku, víc zadání na řádek, posudek na jednom řádku, VYHOVÍ / NEVYHOVÍ, zarovnání vlevo, jednotky u dosazení. Programuje se první.
+2. **Knižní: varianta školního pro teorii, skripta a řešené příklady** (vrstva Podklady, knihovny `.kalkt`). Vzorce na střed s **číslem rovnice vpravo** (43), odkazy na čísla rovnic v textu („podle vztahu (34)“), odvození řetězem rovností, jednotky často jen u výsledku. Odpovídá učebnicím, ze kterých podklady pocházejí, a výpočet na ně může odkazovat čísly rovnic.
+3. **Se sloupci:** vlevo zdroj, uprostřed výpočet, vpravo výsledky a posudky (kontrola projektu, britská praxe).
+
+**Vzdušný** (dnešní vzhled) zůstává jako čtvrtá možnost.
+
 ## 4. Navržené pořadí
 
 1. **Styly výpočtu (úsporný styl):** hned viditelný přínos pro každý výpočet, nezávisí na řešiči.

@@ -2,6 +2,25 @@
 
 Seznam věcí, které vznikly během práce a čekají na své místo. Nejnovější nahoře.
 
+## Podklady z PDF (odloženo 2026-10-05)
+
+**Rozhodnutí uživatele:** úpravy podkladů z PDF se odkládají, dokud nebude hotová výpočtová část včetně řešiče obecných rovnic. Teprve s ním půjde dojít k tvaru výsledné rovnice a převést libovolný matematický zápis (sumy, integrály, implicitní rovnice, řetězy rovností) do Kalkety.
+
+**Stav k 2026-10-05:**
+- studijní PDF, HTML a MD ve složkách teorie, výběr kapitol a stránek, návrh kapitol podle výpočtu;
+- vložení do Podkladů s automatickými výřezy: obrázky (vložené, kreslené čarami i ve skenu podle mezery nad „Obr. N“) a číslované vzorce, oříznuté na kresbu;
+- ruční výřez z PDF (zoom, víc výřezů najednou, umístění podle textu);
+- bloky ```` ```kalk ```` s vysázenými vzorci;
+- převod výřezů vzorců AI (model čte obrázky) včetně převodu LaTeXu.
+
+Ověřeno na sbírce uživatele (sken s OCR), strany 41–48. Obrázky i číslované vzorce vycházejí dobře.
+
+**Až se k tomu vrátíme:**
+
+1. **Vzorce ve větách po OCR:** vzorce psané přímo v textu odstavce rozpozná OCR špatně („<TDOV,O J“ místo σ_Dov,o, „/ = £ AS • y“ místo I = Σ ΔS·y²). Výřez je nevyřeší. Model, který čte obrázky, by podle obrázku stránky (nebo výřezu odstavce) opravil text odstavce včetně symbolů a indexů. Člověk by opravu potvrdil, nejlépe s vyznačeným rozdílem.
+2. **Zápis, který Kalketa zatím neumí:** sumy bez mezí přes plochu (Σ ΔS·y²), integrály po ploše, implicitní rovnice, řetězy rovností s úpravami. Dnes zůstanou v bloku `kalk` červeně. Vyřeší je až rozšíření jazyka a řešič obecných rovnic. Potom převod do tvaru výsledné rovnice, kterou výpočet použije.
+3. **Zbytky po OCR v textu** (rozpálená písmena, „Vmiste“, „ajednoduchá“): oprava textu pomocí AI, viz bod 1.
+
 ## Uživatelské rozhraní
 
 ### ~~Postranní panel jako záložky~~ (2026-10-04, hotovo týž den)

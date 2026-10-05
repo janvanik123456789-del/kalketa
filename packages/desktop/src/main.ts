@@ -17,7 +17,7 @@ import { tmpdir } from 'node:os';
 import { basename, dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { stat } from 'node:fs/promises';
-import { registerAiBridge } from './ai.js';
+import { canSealKeys, registerAiBridge } from './ai.js';
 import { registerTheoryBridge } from './theory.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -487,8 +487,18 @@ async function clickMenu(label: string): Promise<void> {
 }
 
 async function typeText(text: string): Promise<void> {
-  for (const ch of text) smokeWindow!.webContents.sendInputEvent({ type: 'char', keyCode: ch });
+  const contents = smokeWindow!.webContents;
+  const before = (await contents.executeJavaScript(`document.activeElement?.value?.length ?? -1`)) as number;
+  for (const ch of text) contents.sendInputEvent({ type: 'char', keyCode: ch });
   await pause(150);
+  // In a line being edited, the next key waits until the text is there, as the person typing sees it
+  // (a busy page, e.g. a heavy calculation after every character, may lag behind).
+  if (before < 0) return;
+  for (let waited = 0; waited < 3000; waited += 100) {
+    const now = (await contents.executeJavaScript(`document.activeElement?.value?.length ?? -1`)) as number;
+    if (now < 0 || now >= before + [...text].length) return;
+    await pause(100);
+  }
 }
 
 async function pressKey(keyCode: string, modifiers: Array<'control' | 'shift'> = []): Promise<void> {
@@ -1128,10 +1138,14 @@ async function layersWithRealInput(picture: string) {
   const unwrapped = !!afterUnwrap && !afterUnwrap.wrap && afterUnwrap.right && !!afterLeft && afterLeft.left && !afterLeft.right && !afterLeft.wrap;
   // Placed freely: dragged to the right, away from the edge and down from the top, the text flows on its left.
   const free = (await contents.executeJavaScript(`(() => {
-    const img = document.querySelector('.layer-view.active .row[data-line="2"] figure').getBoundingClientRect();
+    const own = document.querySelector('.layer-view.active .row[data-line="2"]');
+    const img = own.querySelector('figure').getBoundingClientRect();
     const b = document.querySelector('.layer-view.active .page-body').getBoundingClientRect();
+    // L comes up to where the picture stands once it is taken away; the picture goes 20 px below it.
+    const l = own.nextElementSibling.getBoundingClientRect();
+    const top = own.getBoundingClientRect().top + l.height + 20;
     const x = Math.round(img.left + img.width / 2), y = Math.round(img.top + img.height / 2);
-    return { x, y, tx: Math.round(b.right - b.width * 0.12 - img.width / 2), ty: Math.round(b.top + 40 + img.height / 2) };
+    return { x, y, tx: Math.round(b.right - b.width * 0.12 - img.width / 2), ty: Math.round(top + img.height / 2) };
   })()`)) as { x: number; y: number; tx: number; ty: number };
   contents.sendInputEvent({ type: 'mouseDown', x: free.x, y: free.y, button: 'left', clickCount: 1 });
   for (let step = 1; step <= 8; step++) {
@@ -1482,7 +1496,18 @@ async function studyWithRealInput(contents: Electron.WebContents, picture: strin
   })`)) as { dialog: boolean; failed: string; pictures: string[]; afterPage21: string };
   await writeFile(picture.replace(/[.]png$/, '-crop.json'), JSON.stringify({ fitted, zoomed, surface, cropPage, stillOpen, cropped }, null, 2));
   // A formula in Kalketa notation, typed into the sources: shown typeset under the line.
-  await clickOn('.layer-view.active .word-text .ProseMirror p');
+  // The end of the paragraph is clicked: End alone goes to the end of its first line, which depends on the fonts.
+  const paragraphEnd = (await contents.executeJavaScript(`(() => {
+    const p = document.querySelector('.layer-view.active .word-text .ProseMirror p');
+    p.scrollIntoView({ block: 'center' });
+    const range = document.createRange();
+    range.selectNodeContents(p);
+    const last = [...range.getClientRects()].at(-1);
+    return { x: Math.round(last.right - 1), y: Math.round(last.top + last.height / 2) };
+  })()`)) as { x: number; y: number };
+  contents.sendInputEvent({ type: 'mouseDown', ...paragraphEnd, button: 'left', clickCount: 1 });
+  contents.sendInputEvent({ type: 'mouseUp', ...paragraphEnd, button: 'left', clickCount: 1 });
+  await pause(150);
   await pressKey('End');
   await pressKey('Enter');
   await clickOn('.layer-view.active .word-formula');
@@ -1491,7 +1516,9 @@ async function studyWithRealInput(contents: Electron.WebContents, picture: strin
   const formula = (await contents.executeJavaScript(`({
     math: document.querySelectorAll('.layer-view.active .kalk-preview math mfrac').length,
     bad: document.querySelectorAll('.layer-view.active .kalk-preview .kalk-bad').length,
-  })`)) as { math: number; bad: number };
+    typed: [...document.querySelectorAll('.layer-view.active .word-text pre code')].map((c) => c.textContent).join(' | '),
+    badText: [...document.querySelectorAll('.layer-view.active .kalk-preview .kalk-bad')].map((c) => c.textContent).join(' | '),
+  })`)) as { math: number; bad: number; typed: string; badText: string };
   // Formulas from cut-outs: the AI reads the formula cut-out of page 22 and writes it under the picture.
   await clickOn('.layer-view.active .word-formula-ai');
   for (let i = 0; i < 40 && !(await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .kalk-note')].some((n) => n.textContent.includes('přepsala AI'))`)); i++) await pause(150);
@@ -1924,7 +1951,8 @@ async function aiSettingsWithRealInput(contents: Electron.WebContents, picture: 
   const saved = (await contents.executeJavaScript(`localStorage.getItem('kalketa.ai') ?? ''`)) as string;
   const keyFile = join(app.getPath('userData'), 'ai-keys.json');
   const onDisk = existsSync(keyFile) ? await readFile(keyFile, 'utf8') : '';
-  const sealed = onDisk.includes('anthropic') && !onDisk.includes('sk-smoke-good');
+  // Without a system keyring (Linux in a bare session) the key is not written at all.
+  const sealed = canSealKeys() ? onDisk.includes('anthropic') && !onDisk.includes('sk-smoke-good') : !onDisk.includes('anthropic');
 
   await openSettings();
   const reopened = await read();

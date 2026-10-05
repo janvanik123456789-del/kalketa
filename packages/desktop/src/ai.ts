@@ -52,6 +52,16 @@ function keyFile(): string {
 }
 
 /** Encrypted keys on disk, as base64, by provider. */
+/**
+ * Keys are kept on disk only when the system encrypts them. On Linux without a
+ * keyring Electron "encrypts" with a fixed password (basic_text): that is no
+ * protection, so the key then lives only until the program ends.
+ */
+export function canSealKeys(): boolean {
+  if (!safeStorage.isEncryptionAvailable()) return false;
+  return process.platform !== 'linux' || safeStorage.getSelectedStorageBackend() !== 'basic_text';
+}
+
 async function storedKeys(): Promise<Record<string, string>> {
   try {
     const value = JSON.parse(await readFile(keyFile(), 'utf8')) as unknown;
@@ -64,7 +74,7 @@ async function storedKeys(): Promise<Record<string, string>> {
 async function loadKeys(): Promise<void> {
   if (loaded) return;
   loaded = true;
-  if (!safeStorage.isEncryptionAvailable()) return;
+  if (!canSealKeys()) return;
   for (const [provider, sealed] of Object.entries(await storedKeys())) {
     try {
       keys.set(provider, safeStorage.decryptString(Buffer.from(sealed, 'base64')));
@@ -84,7 +94,7 @@ async function storeKey(provider: string, key: string | undefined): Promise<void
 
 async function keyState(provider: string): Promise<AiKeyState> {
   await loadKeys();
-  const canRemember = safeStorage.isEncryptionAvailable();
+  const canRemember = canSealKeys();
   return { hasKey: keys.has(provider), remembered: canRemember && provider in (await storedKeys()), canRemember };
 }
 
@@ -123,7 +133,7 @@ export function registerAiBridge(fromEditor: (event: IpcMainInvokeEvent) => unkn
     if (!key) throw new Error('Empty key');
     await loadKeys();
     keys.set(provider, key);
-    const remember = request.remember === true && safeStorage.isEncryptionAvailable();
+    const remember = request.remember === true && canSealKeys();
     await storeKey(provider, remember ? key : undefined);
     return keyState(provider);
   });

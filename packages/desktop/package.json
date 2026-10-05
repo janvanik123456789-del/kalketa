@@ -18,6 +18,7 @@
     "electron-builder": "^26.15.3"
   },
   "homepage": "https://kalketa.local",
+  "desktopName": "kalketa.desktop",
   "build": {
     "appId": "cz.kalketa.desktop",
     "productName": "Kalketa",

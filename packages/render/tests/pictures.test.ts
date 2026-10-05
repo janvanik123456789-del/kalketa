@@ -70,4 +70,16 @@ describe('pictures in the sheet', () => {
     expect(html).toContain('wrap-right');
     expect(html.indexOf('<div class="clear"></div>')).toBeLessThan(html.indexOf('Výpočet'));
   });
+
+  it('place a wrapped picture freely: from its edge and below its line', () => {
+    expect(parsePicture('![S](a.png){width=35% wrap=right dx=20% dy=15mm}')).toEqual({ caption: 'S', path: 'a.png', width: 35, wrap: 'right', dx: 20, dy: 15 });
+    expect(parsePicture('![S](a.png){width=35% dx=20%}')).toBeUndefined();
+    expect(parsePicture('![S](a.png){wrap=left dx=120%}')).toBeUndefined();
+    expect(formatPicture({ caption: 'S', path: 'a.png', width: 35, wrap: 'left', dx: 12.4, dy: 8.6 })).toBe('![S](a.png){width=35% wrap=left dx=12% dy=9mm}');
+    const result = evaluateSheet('L := 5 m\n![S](images/sheet/s.png){width=35% wrap=right dx=20% dy=15mm}\nq := 12 kN/m');
+    expect(result.diagnostics).toEqual([]);
+    const html = renderBlocksHtml(buildPrintDocument(result, { catalog: cs, registry: defaultRegistry, digits: 4, title: 'X' }).blocks, cs);
+    expect(html).toContain('<div class="wrap-stop wrap-right" style="height:15mm"></div><figure');
+    expect(html).toContain('style="width:35%;margin-right:20%;clear:right"');
+  });
 });

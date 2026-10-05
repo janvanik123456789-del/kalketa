@@ -997,7 +997,7 @@ async function layersWithRealInput(picture: string) {
   const movedPicture = markShown && ((await contents.executeJavaScript(
     `!!document.querySelector('.layer-view.active .row[data-line="4"] figure') && /L/.test(document.querySelector('.layer-view.active .row[data-line="2"]')?.textContent ?? '')`,
   )) as boolean);
-  // Placement > Right, text flows around; dragged above the values, they stand beside it.
+  // Placement > Right, text flows around; dragged straight up above the values, it stays at its edge and they stand beside it.
   await clickOn('.layer-view.active .row[data-line="4"] figure img');
   await clickMenu('Umístění');
   await clickMenu('Vpravo s obtékáním');
@@ -1005,7 +1005,7 @@ async function layersWithRealInput(picture: string) {
   const lift = (await contents.executeJavaScript(`(() => {
     const img = document.querySelector('.layer-view.active .row[data-line="4"] figure img').getBoundingClientRect();
     const l = document.querySelector('.layer-view.active .row[data-line="2"]').getBoundingClientRect();
-    return { x: Math.round(img.left + img.width / 2), y: Math.round(img.top + img.height / 2), tx: Math.round(l.left + l.width / 2), ty: Math.round(l.top + 2) };
+    return { x: Math.round(img.left + img.width / 2), y: Math.round(img.top + img.height / 2), tx: Math.round(img.left + img.width / 2), ty: Math.round(l.top + 2 + img.height / 2) };
   })()`)) as { x: number; y: number; tx: number; ty: number };
   contents.sendInputEvent({ type: 'mouseDown', x: lift.x, y: lift.y, button: 'left', clickCount: 1 });
   for (let step = 1; step <= 8; step++) {
@@ -1051,6 +1051,31 @@ async function layersWithRealInput(picture: string) {
   await pause(400);
   const afterLeft = await edges();
   const unwrapped = !!afterUnwrap && !afterUnwrap.wrap && afterUnwrap.right && !!afterLeft && afterLeft.left && !afterLeft.right && !afterLeft.wrap;
+  // Placed freely: dragged to the right, away from the edge and down from the top, the text flows on its left.
+  const free = (await contents.executeJavaScript(`(() => {
+    const img = document.querySelector('.layer-view.active .row[data-line="2"] figure').getBoundingClientRect();
+    const b = document.querySelector('.layer-view.active .page-body').getBoundingClientRect();
+    const x = Math.round(img.left + img.width / 2), y = Math.round(img.top + img.height / 2);
+    return { x, y, tx: Math.round(b.right - b.width * 0.12 - img.width / 2), ty: Math.round(b.top + 40 + img.height / 2) };
+  })()`)) as { x: number; y: number; tx: number; ty: number };
+  contents.sendInputEvent({ type: 'mouseDown', x: free.x, y: free.y, button: 'left', clickCount: 1 });
+  for (let step = 1; step <= 8; step++) {
+    contents.sendInputEvent({ type: 'mouseMove', x: Math.round(free.x + ((free.tx - free.x) * step) / 8), y: Math.round(free.y + ((free.ty - free.y) * step) / 8), button: 'left' } as Electron.MouseInputEvent);
+    await pause(40);
+  }
+  await takePicture(picture.replace(/[.]png$/, '-freedrag.png'));
+  const boxShown = (await contents.executeJavaScript(`!!document.querySelector('.drop-box')`)) as boolean;
+  contents.sendInputEvent({ type: 'mouseUp', x: free.tx, y: free.ty, button: 'left', clickCount: 1 });
+  await pause(600);
+  await takePicture(picture.replace(/[.]png$/, '-free.png'));
+  const placedFree = boxShown && ((await contents.executeJavaScript(`(() => {
+    const row = document.querySelector('.layer-view.active .row.wrap-right');
+    const pic = row?.getBoundingClientRect();
+    const b = document.querySelector('.layer-view.active .page-body').getBoundingClientRect();
+    // Moved down from its line, the value before it is not pushed below it: it stays at the top, beside the gap.
+    const l = [...document.querySelectorAll('.layer-view.active .row')].find((r) => r !== row && /L\\s*[≔:=]/.test(r.textContent))?.getBoundingClientRect();
+    return !!pic && !!l && b.right - pic.right > b.width * 0.05 && pic.top > l.bottom + 4 && !!document.querySelector('.layer-view.active .wrap-stop');
+  })()`)) as boolean);
   // Canvas: Insert > Canvas, a rectangle and an arrow drawn, a text typed, the rectangle moved, Done.
   const drawDrag = async (from: { x: number; y: number }, to: { x: number; y: number }, name: string) => {
     contents.sendInputEvent({ type: 'mouseDown', ...from, button: 'left', clickCount: 1 });
@@ -1117,7 +1142,7 @@ async function layersWithRealInput(picture: string) {
     canvasOk =
       /<rect x="[\d.]+" y="[\d.]+" width="[\d.]+"/.test(items) && shown.includes('<rect') && shown.includes('marker-end') && shown.includes('L = 5 m') && reopened === 3 && inlineEditing && windowEditing && !(await contents.executeJavaScript(`!!document.querySelector('.canvas-window, .canvas-inline')`));
   }
-  const besideText = sideGroup.rows === '3,4' && sideGroup.picture && sideGroup.side !== '' && widened > parseFloat(sideGroup.side) && movedPicture && wrapped && cleared && unwrapped && canvasOk;
+  const besideText = sideGroup.rows === '3,4' && sideGroup.picture && sideGroup.side !== '' && widened > parseFloat(sideGroup.side) && movedPicture && wrapped && cleared && unwrapped && placedFree && canvasOk;
   const pictures = pasted.img && resized && dropped === 'Obr. 1: Schéma nosníku' && fileCopied && pastedIdle && pictureMenu.menu >= 5 && pictureMenu.full && pictureMenu.caption.includes('Detail kotvení') && besideText;
 
   // Help > About > Third-party licences: the notices of the shipped packages.
@@ -1184,7 +1209,7 @@ async function layersWithRealInput(picture: string) {
     blocksOk = shown.errors === 0 && shown.text.includes('Prosty nosnik 1.2') && shown.text.includes('45');
     await takePicture(picture.replace(/[.]png$/, '-blocks.png'));
   }
-  return { ...state, newKeepsExample, citations, notesPicture, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, toolIcons, aiSettings, aiChat, pdfCleanup, theoryLibrary, study, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, canvasOk, besideText, pictures, blocksOk };
+  return { ...state, newKeepsExample, citations, notesPicture, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, toolIcons, aiSettings, aiChat, pdfCleanup, theoryLibrary, study, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, placedFree, canvasOk, besideText, pictures, blocksOk };
 }
 
 /** The tidied sources saved as a library (.kalkt) and attached in the chat: the model cites it by its key. */

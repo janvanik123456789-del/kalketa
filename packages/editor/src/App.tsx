@@ -1583,6 +1583,11 @@ export function App() {
           onEditCanvas={(path) => openCanvas(path)}
           onEditCanvasWindow={(path) => openCanvas(path, 'window')}
           {...(canvasEdit?.mode === 'inline' ? { inlineCanvas: { path: canvasEdit.path, render: () => canvasEditor(canvasEdit.path, 'inline') } } : {})}
+          onPlace={(start, end, after, line) => {
+            // The new line and the move in one step: undone at once.
+            setLayerText(l, moveLines(replaceLines(source, start, end, line), start, start + line.split('\n').length - 1, after));
+            setSelected(undefined);
+          }}
           onMoveLines={(start, end, after) => {
             setLayerText(l, moveLines(source, start, end, after));
             // The selection is kept by statement order, which the move changes.

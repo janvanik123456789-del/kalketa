@@ -156,9 +156,11 @@ export function renderBlockHtml(block: PrintBlock, catalog: Catalog, options: Bl
         ? `<img src="${esc(block.src)}" alt="${esc(block.caption)}">`
         : `<div class="missing-image">${esc(t(catalog, 'print.pictureMissing', { path: block.path }))}</div>`;
       const caption = block.label ? `<figcaption><span class="figure-label">${esc(block.label)}:</span> ${esc(block.caption)}</figcaption>` : '';
-      const size = block.width !== undefined ? ` style="width:${block.width}%"` : '';
       const wrap = block.wrap ? ` wrap-${block.wrap}` : block.align ? ` align-${block.align}` : '';
-      return `<figure class="block picture${block.width === undefined ? ' natural' : ''}${wrap}" data-line="${block.line}"${size}>${image}${caption}</figure>`;
+      // Placed freely: an empty stop of its height moves it down, a margin away from its edge.
+      const styles = [block.width !== undefined ? `width:${block.width}%` : '', block.wrap && block.dx ? `margin-${block.wrap}:${block.dx}%` : '', block.wrap && block.dy ? `clear:${block.wrap}` : ''].filter(Boolean);
+      const stop = block.wrap && block.dy ? `<div class="wrap-stop wrap-${block.wrap}" style="height:${block.dy}mm"></div>` : '';
+      return `${stop}<figure class="block picture${block.width === undefined ? ' natural' : ''}${wrap}" data-line="${block.line}"${styles.length ? ` style="${styles.join(';')}"` : ''}>${image}${caption}</figure>`;
     }
     case 'chart': {
       const caption = block.label ? `<figcaption><span class="figure-label">${esc(block.label)}:</span> ${esc(block.caption)}</figcaption>` : '';
@@ -329,6 +331,10 @@ h3, h4, h5, h6 { font-size: 11pt; margin: 4mm 0 1.5mm; break-after: avoid; }
 .block.picture.wrap-left { float: left; margin: 1mm 5mm 2mm 0; }
 .block, h2, h3, h4 { display: flow-root; }
 .page-break, .clear { clear: both; }
+/* The stop above a freely placed picture: as tall as it is moved down, no width, so the text beside it is not narrowed. */
+.wrap-stop { width: 0; margin: 0; }
+.wrap-stop.wrap-right { float: right; }
+.wrap-stop.wrap-left { float: left; }
 .side-group { display: grid; grid-template-columns: minmax(0, 1fr) var(--side); column-gap: 5mm; align-items: start; break-inside: avoid; }
 .side-group.side-left { grid-template-columns: var(--side) minmax(0, 1fr); }
 .side-group.side-left .side-picture { order: -1; }

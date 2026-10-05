@@ -83,6 +83,9 @@ export type PrintBlock =
       readonly wrap?: 'left' | 'right';
       /** At this edge, alone on its lines. */
       readonly align?: 'left' | 'right';
+      /** Wrapped, placed freely: from its edge (percent of the text width) and below its line (mm). */
+      readonly dx?: number;
+      readonly dy?: number;
     }
   | {
       readonly kind: 'equation';
@@ -227,6 +230,8 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
           ...(s.side ? { side: s.side, beside: besideLines(result, r) } : {}),
           ...(s.wrap ? { wrap: s.wrap } : {}),
           ...(s.align ? { align: s.align } : {}),
+          ...(s.wrap && s.dx ? { dx: s.dx } : {}),
+          ...(s.wrap && s.dy ? { dy: s.dy } : {}),
         });
         break;
       }

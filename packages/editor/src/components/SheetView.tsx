@@ -44,6 +44,8 @@ interface Props {
   onPick(statement: Statement, key: string): void;
   /** Moves lines start..end after line `after` (a picture dragged elsewhere). */
   onMoveLines(start: number, end: number, after: number): void;
+  /** A picture placed freely: its line becomes `text` and goes after line `after`, as one step. */
+  onPlace?(start: number, end: number, after: number, text: string): void;
   /** Starts editing a canvas shown in the sheet (in the sheet or in the window, as set). */
   onEditCanvas(path: string): void;
   /** Opens a canvas in the large window. */
@@ -81,6 +83,8 @@ export function SheetView(props: Props) {
   const [pictureMenu, setPictureMenu] = useState<{ seg: Segment; at: { x: number; y: number } } | undefined>();
   // Where a dragged picture would land: a line across the page body.
   const [dropMark, setDropMark] = useState<{ x: number; y: number; width: number } | undefined>();
+  // Where a picture placed freely would stand while it is dragged.
+  const [dropBox, setDropBox] = useState<{ x: number; y: number; width: number; height: number } | undefined>();
   // The menu of an AI mark: reviewed, or where it came from.
   const [aiMenu, setAiMenu] = useState<{ id: string; at: { x: number; y: number } } | undefined>();
   const segs = segments(source, result.sheet.statements, editing);
@@ -169,26 +173,33 @@ export function SheetView(props: Props) {
    */
   const pressPicture = (e: ReactMouseEvent, seg: Segment, figure: Element) => {
     const from = { x: e.clientX, y: e.clientY };
+    const start = figure.getBoundingClientRect();
+    // Where in the picture it was taken: the picture follows the pointer from there.
+    const grab = { x: from.x - start.left, y: from.y - start.top };
     let dragging = false;
-    let after: number | undefined;
+    let place: ReturnType<typeof freePlace>;
     const move = (event: MouseEvent) => {
       if (!dragging && Math.hypot(event.clientX - from.x, event.clientY - from.y) < 5) return;
       dragging = true;
       // Off the pages the last place shown stays: releasing there uses it.
-      const place = dropPlace(event.clientX, event.clientY, seg);
-      if (!place) return;
-      after = place.after;
-      setDropMark(place.mark);
+      const next = freePlace(event.clientX - grab.x, event.clientY - grab.y, start.width, start.height, seg, event.clientY);
+      if (!next) return;
+      place = next;
+      setDropMark(next.mark);
+      setDropBox(next.box);
     };
     const up = () => {
       window.removeEventListener('mousemove', move);
       window.removeEventListener('mouseup', up);
       setDropMark(undefined);
+      setDropBox(undefined);
       if (!dragging) {
         const box = figure.getBoundingClientRect();
         setPictureMenu({ seg, at: { x: box.right + 12, y: box.top } });
-      } else if (after !== undefined) {
-        props.onMoveLines(seg.start, seg.end, after);
+      } else if (place) {
+        if (place.text === seg.text) props.onMoveLines(seg.start, seg.end, place.after);
+        else if (props.onPlace) props.onPlace(seg.start, seg.end, place.after, place.text);
+        else props.onMoveLines(seg.start, seg.end, place.after);
       }
     };
     window.addEventListener('mousemove', move);
@@ -215,6 +226,49 @@ export function SheetView(props: Props) {
     if (!last) return undefined;
     const end = segs.find((s) => s.start === Number(last.dataset['line']))?.end ?? Number(last.dataset['line']);
     return { after: end, mark: { x: body.left, y: last.getBoundingClientRect().bottom, width: body.width } };
+  };
+
+  /**
+   * A picture dragged with its top left corner at (left, top): dropped in the middle
+   * of the text column (a picture without the flow around it) it only moves between
+   * the rows; anywhere else it is placed freely there, the rows flowing around it on
+   * its wider side. It belongs to the last row above it, moved down from that row and
+   * away from its edge (dy in mm, dx in percent of the text width).
+   */
+  const freePlace = (left: number, top: number, width: number, height: number, dragged: Segment, pointerY: number) => {
+    const picture = parsePicture(dragged.text);
+    const root = container.current;
+    if (!picture || !root) return undefined;
+    const cx = left + width / 2;
+    const cy = top + height / 2;
+    const page = [...root.querySelectorAll<HTMLElement>('.page')].find((p) => {
+      const box = p.getBoundingClientRect();
+      return box.left <= cx && cx <= box.right && box.top <= cy && cy <= box.bottom;
+    });
+    const body = page?.querySelector('.page-body')?.getBoundingClientRect();
+    if (!page || !body) return undefined;
+    const box = { x: left, y: top, width, height };
+    const middle = body.left + body.width / 2;
+    // A picture beside the text keeps its column: it only moves between the rows.
+    if (picture.side || (!picture.wrap && Math.abs(cx - middle) < body.width * 0.08)) {
+      const moved = dropPlace(cx, pointerY, dragged);
+      return moved ? { after: moved.after, text: dragged.text, mark: moved.mark, box } : undefined;
+    }
+    const rows = [...page.querySelectorAll<HTMLElement>('.row[data-line]')].filter((r) => Number(r.dataset['line']) !== dragged.start);
+    const lineEnd = (row: HTMLElement) => segs.find((s) => s.start === Number(row.dataset['line']))?.end ?? Number(row.dataset['line']);
+    // The row it belongs to: the last one that ends above its top.
+    const above = rows.filter((r) => r.getBoundingClientRect().bottom <= top + 2).sort((a, b) => a.getBoundingClientRect().bottom - b.getBoundingClientRect().bottom);
+    const anchor = above.at(-1);
+    const first = rows[0];
+    const after = anchor ? lineEnd(anchor) : first ? Number(first.dataset['line']) - 1 : dragged.start - 1;
+    const from = anchor ? anchor.getBoundingClientRect().bottom : body.top;
+    const pxPerMm = page.getBoundingClientRect().width / props.geometry.width;
+    const side: 'left' | 'right' = picture.wrap && Math.abs(cx - middle) < body.width * 0.08 ? picture.wrap : cx > middle ? 'right' : 'left';
+    const share = picture.width ?? Math.min(100, Math.round((width / body.width) * 100));
+    const dx = Math.max(0, Math.min(100 - share, Math.round(((side === 'right' ? body.right - (left + width) : left - body.left) / body.width) * 100)));
+    const dy = Math.max(0, Math.round((top - from) / pxPerMm));
+    const text = formatPicture({ caption: picture.caption, path: picture.path, width: share, wrap: side, ...(dx >= 1 ? { dx } : {}), ...(dy >= 1 ? { dy } : {}) });
+    return { after, text, mark: { x: body.left, y: from, width: body.width }, box };
   };
 
   const pictureItems = (seg: Segment): MenuItem[] => {
@@ -306,6 +360,7 @@ export function SheetView(props: Props) {
     <>
       {/* Outside the zoomed pages, so the menu has its normal size and sits at the pointer. */}
       {dropMark && <div className="drop-mark" style={{ left: dropMark.x, top: dropMark.y - 1, width: dropMark.width }} />}
+      {dropBox && <div className="drop-box" style={{ left: dropBox.x, top: dropBox.y, width: dropBox.width, height: dropBox.height }} />}
       {pictureMenu && <ContextMenu items={pictureItems(pictureMenu.seg)} commands={NO_COMMANDS} at={pictureMenu.at} onClose={() => setPictureMenu(undefined)} />}
       {aiMenu && (
         <ContextMenu
@@ -387,12 +442,18 @@ export function SheetView(props: Props) {
     // Made by the AI and not reviewed yet: marked until a person says it is right.
     let aiMark: { id: string; title: string } | undefined;
     for (let line = seg.start; line <= seg.end && !aiMark; line++) aiMark = props.aiMade?.get(line);
-    return (
+    const placed = block?.kind === 'picture' && block.wrap ? block : undefined;
+    const stop = placed?.dy ? <div key={`stop:${seg.start}`} className={`wrap-stop wrap-${placed.wrap}`} style={{ height: `${placed.dy}mm` }} /> : null;
+    const row = (
       <div
         key={`${seg.start}:${isEditing ? 'e' : seg.text}`}
         data-item={measured ? '' : undefined}
         className={`row${isEditing ? ' editing' : ''}${selected ? ' selected' : ''}${statement?.status === 'error' ? ' has-error' : ''}${block?.kind === 'picture' && block.wrap ? ` wrap-${block.wrap}` : ''}${clear ? ' clear-row' : ''}${aiMark ? ' ai-made' : ''}`}
-        style={block?.kind === 'picture' && block.wrap ? { width: `${block.width ?? 40}%` } : undefined}
+        style={
+          placed
+            ? { width: `${placed.width ?? 40}%`, ...(placed.dx ? { [placed.wrap === 'right' ? 'marginRight' : 'marginLeft']: `${placed.dx}%` } : {}), ...(placed.dy ? { clear: placed.wrap } : {}) }
+            : undefined
+        }
         data-line={seg.start}
         onMouseDown={(e) => {
           if (isEditing || (e.target as HTMLElement).closest('.pick-control')) return;
@@ -480,6 +541,7 @@ export function SheetView(props: Props) {
         </div>
       </div>
     );
+    return stop ? [stop, row] : row;
   }
 }
 

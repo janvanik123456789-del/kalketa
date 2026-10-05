@@ -600,3 +600,9 @@ button.icon:hover { color: var(--accent); }
 /* Compact style: inputs side by side, each still a row to click and edit; the line number sits in the gap before it. */
 .flow-group > .row { flex: none; }
 .flow-group > .row.editing { flex-basis: 100%; }
+
+/* A picture placed freely: where it would stand while dragged; the stop above it in the sheet. */
+.drop-box { position: fixed; z-index: 150; border: 2px dashed var(--accent); background: rgb(29 111 214 / 8%); pointer-events: none; }
+.page-body > .wrap-stop { width: 0; }
+.page-body > .wrap-stop.wrap-right { float: right; }
+.page-body > .wrap-stop.wrap-left { float: left; }

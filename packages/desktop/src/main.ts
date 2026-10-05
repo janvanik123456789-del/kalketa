@@ -728,20 +728,36 @@ async function layersWithRealInput(picture: string) {
     chartTip = (await contents.executeJavaScript(`[...document.querySelectorAll('.chart-tooltip div')].map((d) => d.textContent).join(' | ')`)) as string;
     await takePicture(picture.replace(/[.]png$/, '-chart.png'));
   }
-  // Placed as a picture: the right button sets the flow, the mouse moves it freely; then back to full width.
+  // Placed as a picture, the way a person does it: a click on the chart (its line still open from Insert > Chart)
+  // selects it with a frame, a corner handle narrows it, the mouse moves it freely; then back to full width.
   let chartPlaced = false;
+  let chartFramed = false;
+  let chartSteps = "";
   if (chartBox) {
-    // A click on the grey beside the page closes the chart line, still open from Insert > Chart.
-    const beside = (await contents.executeJavaScript(`(() => { const p = document.querySelector('.layer-view.active .page').getBoundingClientRect(); return { x: Math.round(p.left - 30), y: Math.round(p.top + 100) }; })()`)) as { x: number; y: number };
-    contents.sendInputEvent({ type: 'mouseDown', ...beside, button: 'left', clickCount: 1 });
-    contents.sendInputEvent({ type: 'mouseUp', ...beside, button: 'left', clickCount: 1 });
+    await clickOn('.layer-view.active .block.chart svg');
     await pause(400);
-    await clickOn('.layer-view.active .block.chart svg', [], 'right');
-    await clickMenu('Vpravo s obtékáním');
-    await pause(500);
+    chartFramed = (await contents.executeJavaScript(`(() => {
+      const handle = document.querySelector('.layer-view.active .row.selected .chart-view .picture-handle.se');
+      return !!handle && getComputedStyle(handle).display !== 'none' && !document.querySelector('.layer-view.active .row.editing');
+    })()`)) as boolean;
+    const corner = (await contents.executeJavaScript(`(() => {
+      const handle = document.querySelector('.layer-view.active .row.selected .chart-view .picture-handle.se');
+      const h = handle.getBoundingClientRect();
+      const b = handle.closest('.page-body').getBoundingClientRect();
+      return { x: Math.round(h.left + h.width / 2), y: Math.round(h.top + h.height / 2), tx: Math.round(b.left + b.width * 0.7) };
+    })()`)) as { x: number; y: number; tx: number };
+    contents.sendInputEvent({ type: 'mouseDown', x: corner.x, y: corner.y, button: 'left', clickCount: 1 });
+    for (let step = 1; step <= 6; step++) {
+      contents.sendInputEvent({ type: 'mouseMove', x: Math.round(corner.x + ((corner.tx - corner.x) * step) / 6), y: corner.y, button: 'left' } as Electron.MouseInputEvent);
+      await pause(40);
+    }
+    await takePicture(picture.replace(/[.]png$/, '-chartresize.png'));
+    contents.sendInputEvent({ type: 'mouseUp', x: corner.tx, y: corner.y, button: 'left', clickCount: 1 });
+    await pause(600);
     const drag = (await contents.executeJavaScript(`(() => {
-      const svg = document.querySelector('.layer-view.active .block.chart svg').getBoundingClientRect();
-      const b = document.querySelector('.layer-view.active .page-body').getBoundingClientRect();
+      const chart = document.querySelector('.layer-view.active .block.chart svg');
+      const svg = chart.getBoundingClientRect();
+      const b = chart.closest('.page-body').getBoundingClientRect();
       return { x: Math.round(svg.left + svg.width / 2), y: Math.round(svg.top + svg.height / 2), tx: Math.round(b.left + b.width * 0.1 + svg.width / 2), ty: Math.round(svg.top + svg.height / 2 + 30) };
     })()`)) as { x: number; y: number; tx: number; ty: number };
     contents.sendInputEvent({ type: 'mouseDown', x: drag.x, y: drag.y, button: 'left', clickCount: 1 });
@@ -755,23 +771,26 @@ async function layersWithRealInput(picture: string) {
     await takePicture(picture.replace(/[.]png$/, '-chartplaced.png'));
     const placed = (await contents.executeJavaScript(`(() => {
       const row = document.querySelector('.layer-view.active .row.wrap-left');
-      const b = document.querySelector('.layer-view.active .page-body').getBoundingClientRect();
+      const b = (row ?? document).querySelector('svg')?.closest('.page-body')?.getBoundingClientRect() ?? document.querySelector('.layer-view.active .page-body').getBoundingClientRect();
       const r = row?.getBoundingClientRect();
       return !!row?.querySelector('.block.chart svg') && !!r && r.left - b.left > b.width * 0.05 && r.width < b.width * 0.6 && !!document.querySelector('.layer-view.active .wrap-stop');
-    })()`)) as boolean;
+    })()`)) as boolean && chartFramed;
     await clickOn('.layer-view.active .block.chart svg', [], 'right');
     await clickMenu('Obtékání podle umístění');
     await pause(400);
     await clickOn('.layer-view.active .block.chart svg', [], 'right');
     await clickMenu('Šířka');
     await clickMenu('Celá šířka');
+    await takePicture(picture.replace(/[.]png$/, '-chartrestored.png'));
     await pause(400);
     const restored = (await contents.executeJavaScript(`(() => {
-      const fig = document.querySelector('.layer-view.active .block.chart')?.getBoundingClientRect();
-      const b = document.querySelector('.layer-view.active .page-body').getBoundingClientRect();
+      const chart = document.querySelector('.layer-view.active .block.chart');
+      const fig = chart?.getBoundingClientRect();
+      const b = (chart?.closest('.page-body') ?? document.querySelector('.layer-view.active .page-body')).getBoundingClientRect();
       return !!fig && fig.width > b.width * 0.8 && !document.querySelector('.layer-view.active .row.wrap-left, .layer-view.active .row.wrap-right');
     })()`)) as boolean;
     chartPlaced = placed && restored;
+    chartSteps = `framed=${chartFramed} placed=${placed} restored=${restored}`;
   }
   const charts = !!chartBox && chartBox.paths > 0 && /^x = [\d,]+ \| Mt\(x\) = /.test(chartTip) && chartPlaced;
 
@@ -1276,7 +1295,7 @@ async function layersWithRealInput(picture: string) {
     blocksOk = shown.errors === 0 && shown.text.includes('Prosty nosnik 1.2') && shown.text.includes('45');
     await takePicture(picture.replace(/[.]png$/, '-blocks.png'));
   }
-  return { ...state, newKeepsExample, citations, notesPicture, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, toolIcons, aiSettings, aiChat, pdfCleanup, theoryLibrary, study, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, placedFree, strictPlaced, canvasOk, besideText, pictures, blocksOk };
+  return { ...state, chartSteps, newKeepsExample, citations, notesPicture, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, toolIcons, aiSettings, aiChat, pdfCleanup, theoryLibrary, study, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, placedFree, strictPlaced, canvasOk, besideText, pictures, blocksOk };
 }
 
 /** The tidied sources saved as a library (.kalkt) and attached in the chat: the model cites it by its key. */

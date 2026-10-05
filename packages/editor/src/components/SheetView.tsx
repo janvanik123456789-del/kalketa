@@ -202,10 +202,9 @@ export function SheetView(props: Props) {
       setDropMark(undefined);
       setDropBox(undefined);
       if (!dragging) {
-        // A click on a chart opens its line; on a picture, what can be done with it.
+        // A click on a chart selects it (its frame and handles); on a picture it also offers what can be done with it.
         const box = figure.getBoundingClientRect();
-        if (placeable(seg.text)?.kind === 'chart') props.onEdit({ start: seg.start, end: seg.end });
-        else setPictureMenu({ seg, at: { x: box.right + 12, y: box.top } });
+        if (placeable(seg.text)?.kind !== 'chart') setPictureMenu({ seg, at: { x: box.right + 12, y: box.top } });
       } else if (place) {
         if (place.text === seg.text) props.onMoveLines(seg.start, seg.end, place.after);
         else if (props.onPlace) props.onPlace(seg.start, seg.end, place.after, place.text);
@@ -541,10 +540,11 @@ export function SheetView(props: Props) {
         }
         data-line={seg.start}
         onMouseDown={(e) => {
-          if (isEditing || (e.target as HTMLElement).closest('.pick-control')) return;
+          // A click on a picture or a chart selects it and offers what can be done with it; the text of the line opens from the menu or by a double click.
+          const figure = (block?.kind === 'picture' || block?.kind === 'chart') && !(e.target as HTMLElement).closest('textarea') ? (e.target as HTMLElement).closest('figure') : null;
+          // Even from its open line the picture or the chart can be taken and moved.
+          if ((isEditing && !figure) || (e.target as HTMLElement).closest('.pick-control')) return;
           e.preventDefault();
-          // A click on a picture selects it and offers what can be done with it; the text of the line opens from the menu or by a double click.
-          const figure = (e.target as HTMLElement).closest('figure');
           // The right button only opens its menu (onContextMenu), never the line.
           if ((block?.kind === 'picture' || block?.kind === 'chart') && figure && e.button !== 0) return;
           if ((block?.kind === 'picture' || block?.kind === 'chart') && figure && e.button === 0) {
@@ -557,6 +557,7 @@ export function SheetView(props: Props) {
           props.onSelect(seg.statement);
         }}
         onDoubleClick={(e) => {
+          if (block?.kind === 'chart' && (e.target as HTMLElement).closest('figure')) props.onEdit({ start: seg.start, end: seg.end });
           if (block?.kind === 'picture' && (e.target as HTMLElement).closest('figure')) {
             setPictureMenu(undefined);
             // A canvas opens in its window; a picture opens its line.
@@ -618,7 +619,14 @@ export function SheetView(props: Props) {
               }}
             />
           ) : block?.kind === 'chart' ? (
-            <ChartBlock block={placed ? (({ wrap: _w, dx: _x, dy: _y, width: _s, ...inRow }) => inRow)(block as Extract<PrintBlock, { kind: 'chart' }>) : block} catalog={props.printCatalog} />
+            <ChartBlock
+              block={block}
+              catalog={props.printCatalog}
+              onResize={(width) => {
+                const item = placeable(seg.text);
+                if (item) props.onReplace(seg.start, seg.end, item.write({ ...item.place, width }));
+              }}
+            />
           ) : block ? (
             <Block block={block} catalog={props.printCatalog} {...(props.calcStyle ? { style: props.calcStyle } : {})} />
           ) : (
@@ -647,8 +655,13 @@ function Block({ block, catalog, style }: { block: PrintBlock; catalog: Catalog;
  * A chart as printed; the pointer over it reads the values: a vertical line
  * at the nearest point and the value of every curve there.
  */
-function ChartBlock({ block, catalog }: { block: Extract<PrintBlock, { kind: 'chart' }>; catalog: Catalog }) {
+function ChartBlock({ block, catalog, onResize }: { block: Extract<PrintBlock, { kind: 'chart' }>; catalog: Catalog; onResize(width: number): void }) {
   const [hover, setHover] = useState<{ left: number; top: number; height: number; lines: string[] } | undefined>();
+  const [dragged, setDragged] = useState<number | undefined>();
+  const view = useRef<HTMLDivElement>(null);
+  // The box of the chart carries its width and edge (a row flowed around carries them itself); the chart fills it.
+  const { wrap: _w, dx: _x, dy: _y, width: _s, align: _a, ...plain } = block;
+  const width = block.wrap ? undefined : (dragged ?? block.width);
   const read = (e: ReactMouseEvent<HTMLDivElement>) => {
     const svg = e.currentTarget.querySelector('svg');
     if (!svg) return;
@@ -676,8 +689,23 @@ function ChartBlock({ block, catalog }: { block: Extract<PrintBlock, { kind: 'ch
     });
   };
   return (
-    <div className="chart-view" onMouseMove={read} onMouseLeave={() => setHover(undefined)}>
-      <Block block={block} catalog={catalog} />
+    <div
+      ref={view}
+      className={`chart-view${block.align && !block.wrap ? ` align-${block.align}` : ''}`}
+      style={width !== undefined ? { width: `${width}%` } : undefined}
+      onMouseMove={read}
+      onMouseLeave={() => setHover(undefined)}
+    >
+      <Block block={plain} catalog={catalog} />
+      {(['nw', 'ne', 'sw', 'se'] as const).map((corner) => (
+        <span
+          key={corner}
+          className={`picture-handle ${corner}`}
+          title={t(catalog, 'editor.pictureResize')}
+          onMouseDown={(e) => view.current && startResize(e, view.current, block, block.width, setDragged, (w) => (setDragged(undefined), w !== block.width && onResize(w)))}
+        />
+      ))}
+      {dragged !== undefined && <span className="picture-size">{dragged} %</span>}
       {hover && (
         <>
           <div className="chart-crosshair" style={{ left: hover.left, top: hover.top, height: hover.height }} />
@@ -716,37 +744,8 @@ function PictureBlock({
   const figure = useRef<HTMLElement>(null);
   const width = dragged ?? block.width;
 
-  const startResize = (e: ReactMouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const element = figure.current;
-    const body = element?.closest('.page-body');
-    if (!element || !body) return;
-    const rect = element.getBoundingClientRect();
-    const centre = rect.left + rect.width / 2;
-    const bodyBox = body.getBoundingClientRect();
-    const bodyWidth = bodyBox.width;
-    // A centred picture grows on both sides; a side picture from the page edge it stands at.
-    const place = block.side ?? block.wrap ?? block.align;
-    const edge = place === 'right' ? bodyBox.right : place === 'left' ? bodyBox.left : undefined;
-    const group = element.closest<HTMLElement>('.side-group');
-    const floating = block.wrap ? element.closest<HTMLElement>('.row') : null;
-    let current = width ?? Math.round((rect.width / bodyWidth) * 100);
-    const move = (event: MouseEvent) => {
-      const span = edge === undefined ? 2 * Math.abs(event.clientX - centre) : Math.abs(event.clientX - edge);
-      current = Math.max(10, Math.min(edge === undefined || block.align ? 100 : 70, Math.round((span / bodyWidth) * 100)));
-      group?.style.setProperty('--side', `${current}%`);
-      if (floating) floating.style.width = `${current}%`;
-      setDragged(current);
-    };
-    const up = () => {
-      window.removeEventListener('mousemove', move);
-      window.removeEventListener('mouseup', up);
-      setDragged(undefined);
-      if (current !== block.width) onResize(current);
-    };
-    window.addEventListener('mousemove', move);
-    window.addEventListener('mouseup', up);
+  const resize = (e: ReactMouseEvent) => {
+    if (figure.current) startResize(e, figure.current, block, width, setDragged, (w) => (setDragged(undefined), w !== block.width && onResize(w)));
   };
 
   return (
@@ -759,12 +758,54 @@ function PictureBlock({
           </figcaption>
         )}
         {!editing && (['nw', 'ne', 'sw', 'se'] as const).map((corner) => (
-          <span key={corner} className={`picture-handle ${corner}`} title={t(catalog, 'editor.pictureResize')} onMouseDown={startResize} />
+          <span key={corner} className={`picture-handle ${corner}`} title={t(catalog, 'editor.pictureResize')} onMouseDown={resize} />
         ))}
         {dragged !== undefined && <span className="picture-size">{dragged} %</span>}
       </figure>
     </div>
   );
+}
+
+/**
+ * A corner handle of a picture or a chart dragged: the width as a share of the
+ * text width. A centred one grows on both sides, one at an edge from that edge;
+ * a row flowed around or a side column follows while dragging.
+ */
+function startResize(
+  e: ReactMouseEvent,
+  element: HTMLElement,
+  place: { readonly side?: 'left' | 'right'; readonly wrap?: 'left' | 'right'; readonly align?: 'left' | 'right' },
+  width: number | undefined,
+  live: (width: number) => void,
+  done: (width: number) => void,
+): void {
+  e.preventDefault();
+  e.stopPropagation();
+  const body = element.closest('.page-body');
+  if (!body) return;
+  const rect = element.getBoundingClientRect();
+  const centre = rect.left + rect.width / 2;
+  const bodyBox = body.getBoundingClientRect();
+  const bodyWidth = bodyBox.width;
+  const at = place.side ?? place.wrap ?? place.align;
+  const edge = at === 'right' ? bodyBox.right : at === 'left' ? bodyBox.left : undefined;
+  const group = element.closest<HTMLElement>('.side-group');
+  const floating = place.wrap ? element.closest<HTMLElement>('.row') : null;
+  let current = width ?? Math.round((rect.width / bodyWidth) * 100);
+  const move = (event: MouseEvent) => {
+    const span = edge === undefined ? 2 * Math.abs(event.clientX - centre) : Math.abs(event.clientX - edge);
+    current = Math.max(10, Math.min(edge === undefined || place.align ? 100 : 70, Math.round((span / bodyWidth) * 100)));
+    group?.style.setProperty('--side', `${current}%`);
+    if (floating) floating.style.width = `${current}%`;
+    live(current);
+  };
+  const up = () => {
+    window.removeEventListener('mousemove', move);
+    window.removeEventListener('mouseup', up);
+    done(current);
+  };
+  window.addEventListener('mousemove', move);
+  window.addEventListener('mouseup', up);
 }
 
 function PlainLine({ text }: { text: string }) {

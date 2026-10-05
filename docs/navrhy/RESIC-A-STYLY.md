@@ -138,7 +138,7 @@ Ve všech stylech hlavička (název, autor, datum, strana x/y, revize), číslov
 1. **Styly výpočtu (úsporný styl):** hned viditelný přínos pro každý výpočet, nezávisí na řešiči.
 2. **Odvození `derive` s ověřením kroků** (číselně a rozměrově) a **symbolický zápis Σ / ∫ bez mezí** pro teorii. **Hotovo 2026-10-05** (jazyk, kap. 9.1). Rozhodnuto: `y := a == b == c` i `derive …`; kroky se ověřují obecně náhodnými hodnotami, krok s dosazenými čísly hodnotami výpočtu; chybný krok je chyba, hodnota se spočítá z posledního členu; dvoučlenné `y := a == b` je odvození, s textem nebo logickou hodnotou porovnání; `derive M_mp := …` zavede značku teorie; Σ a ∫ bez mezí jsou v odvození lineární.
 3. **Vyjádření neznámé symbolicky** (`solve` s výsledkem jako definicí), návrat k numerice, kde to nejde. **Hotovo 2026-10-05** (jazyk, kap. 9). Rozhodnuto: vzorec se do listu nevkládá sám, nabídne ho pravé tlačítko na řádku `solve`; dva kladné kořeny bez intervalu jsou chyba s výpisem obou.
-4. **`roots`, `minimize` / `maximize`, výchozí odhady soustav.**
+4. **`roots`, `minimize` / `maximize`, výchozí odhady soustav.** **Hotovo 2026-10-05** (jazyk, kap. 7.1c a 9): `roots(p, x)` i komplexní, `minimize`/`maximize(f, x: a .. b)` vrací místo extrému, soustavy zkouší víc startů. Jednotky neznámých soustavy bez odhadu zatím neodvozuje.
 5. **Potom zpět k podkladům z PDF:** převod vzorců z učebnic do odvození a výsledných rovnic.
 
 ## 5. Otázky k rozhodnutí

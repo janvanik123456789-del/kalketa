@@ -614,7 +614,7 @@ function isoDate(days: number): string {
 }
 
 /** "[100; 120; 150] CZK"; a long series shows its start and end: "[1; 2; 3; 4; 5; …; 24; 25] (25)". */
-function seriesNode(items: readonly { value: number; unit: string }[], format: (value: number) => string, separator: string, date?: (days: number) => string): MathNode {
+function seriesNode(items: readonly { value: number; unit: string; im?: number }[], format: (value: number) => string, separator: string, date?: (days: number) => string): MathNode {
   const shown = items.length > SERIES_SHOWN ? [...items.slice(0, 5), undefined, ...items.slice(-2)] : items;
   const parts: MathNode[] = [];
   // One unit after the brackets; items of different units (a solution x = [u, φ]) each with their own.
@@ -623,7 +623,8 @@ function seriesNode(items: readonly { value: number; unit: string }[], format: (
   const shared = unit !== 'date' && items.every((item) => item.unit === unit);
   shown.forEach((item, i) => {
     if (i > 0) parts.push(mo(separator));
-    parts.push(item ? valueNode(item.value, shared ? '' : item.unit, format, undefined, date) : mo('…'));
+    // Complex items (roots of a polynomial) keep their imaginary part.
+    parts.push(item ? valueNode(item.value, shared ? '' : item.unit, format, item.im, date) : mo('…'));
   });
   const count = items.length > SERIES_SHOWN ? [THIN_SPACE, mtext(`(${items.length})`)] : [];
   return row(mo('['), ...parts, mo(']'), ...(shared && unit ? [THIN_SPACE, mu(unit)] : []), ...count);

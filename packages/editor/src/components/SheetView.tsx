@@ -136,11 +136,17 @@ export function SheetView(props: Props) {
   const breakAfter = items.map((item) => item.kind === 'row' && /^\s*@page\b/.test(item.seg.text));
 
   // Pagination measures the rendered items, then places them on pages. Heights
-  // do not depend on the page an item is on, so this settles in one pass.
+  // do not depend on the page an item is on (the margin above the first item of
+  // a page counts as it does further down), so this settles in one pass.
   const [starts, setStarts] = useState<number[]>([0]);
   // A picture knows its height only once loaded; then the pages are laid out again.
   const [, relayout] = useState(0);
   const container = useRef<HTMLDivElement>(null);
+  // Layouts of the same content tried so far: should the pages still swap back and
+  // forth (an item a pixel too tall on one page and not on the next), the layout with
+  // more pages stays, instead of rendering for ever.
+  const tried = useRef<{ content: string; layouts: string[] }>({ content: '', layouts: [] });
+  const content = segs.map((s) => s.text).join('\n');
   useLayoutEffect(() => {
     const root = container.current;
     const body = root?.querySelector<HTMLElement>('.page-body');
@@ -150,19 +156,28 @@ export function SheetView(props: Props) {
     let reached = 0;
     let page: Element | null = null;
     const heights = measured.map((el) => {
+      let first = false;
       if (el.parentElement !== page) {
         page = el.parentElement;
         reached = 0;
+        first = true;
       }
       const bottom = el.offsetTop + el.offsetHeight;
-      const advance = Math.max(0, bottom - reached);
+      // The top margin of the first item of a page merges with the page and is not in its offsetTop.
+      const from = first ? Math.min(0, el.offsetTop - (parseFloat(getComputedStyle(el).marginTop) || 0)) : reached;
+      const advance = Math.max(0, bottom - from);
       reached = Math.max(reached, bottom);
       return advance;
     });
     const tall = measured.filter((el) => el.classList.contains('side-group') && el.offsetHeight > body.clientHeight).map((el) => Number(el.dataset['picture']));
     if (tall.some((line) => !tooTall.has(line))) setTooTall(new Set([...tooTall, ...tall]));
     const next = paginate(heights, body.clientHeight, breakAfter);
-    if (next.join() !== starts.join()) setStarts(next);
+    if (next.join() === starts.join()) return;
+    if (tried.current.content !== content) tried.current = { content, layouts: [] };
+    const seen = tried.current.layouts.includes(next.join());
+    tried.current.layouts.push(starts.join());
+    if (seen && next.length <= starts.length) return;
+    setStarts(next);
   });
 
   const pages = starts.map((start, i) => items.slice(start, starts[i + 1] ?? items.length)).filter((page) => page.length > 0);
@@ -581,7 +596,8 @@ export function SheetView(props: Props) {
         onContextMenu={(e) => {
           // A solve line expressed by a formula: the formula can become a definition of its own.
           const solution = statement?.statement.kind === 'solve' && statement.solutions?.length === 1 ? statement.solutions[0] : undefined;
-          if (solution?.formula && statement?.statement.kind === 'solve' && !isEditing) {
+          // In the text of an open line the menu of the text (copy, paste) stays.
+          if (solution?.formula && statement?.statement.kind === 'solve' && !(e.target as HTMLElement).closest('textarea')) {
             e.preventDefault();
             props.onSelect(seg.statement);
             const equation = statement.statement.equations[0]!.span;

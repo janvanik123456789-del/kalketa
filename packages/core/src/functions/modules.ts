@@ -490,6 +490,9 @@ export const LOGIC: readonly FunctionDef[] = [
 export const CALCULUS: readonly FunctionDef[] = [
   { name: 'integral', module: 'calculus', params: 'f(x), x: a .. b', arity: [1, 1] },
   { name: 'derivative', module: 'calculus', params: 'f(x), x: a, order: 1', arity: [1, 1] },
+  { name: 'roots', module: 'calculus', params: 'p(x), x', arity: [2, 2] },
+  { name: 'minimize', module: 'calculus', params: 'f(x), x: a .. b', arity: [1, 1] },
+  { name: 'maximize', module: 'calculus', params: 'f(x), x: a .. b', arity: [1, 1] },
 ];
 
 /** Charts: a line of its own, sampled by the session (eval/plot.ts). */

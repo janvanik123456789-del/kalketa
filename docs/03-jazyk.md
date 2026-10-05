@@ -282,6 +282,18 @@ S := sum(1/k², k: 1 .. 100)                      ' Σ přes k
 - **Tisk:** ∫ s mezemi a dx, d/dx s bodem (|ₓ₌ₐ), Σ s indexem. V řádku dosazení se dosadí hodnoty (meze, q, L…), proměnná zůstane symbolem.
 - Chyby: chybí proměnná nebo rozsah (`E-CALCULUS-FORM`), rozsah `a .. b` mimo proměnnou (`E-RANGE-PLACE`), meze s různou jednotkou (`E-UNIT-MISMATCH`), řád derivace jiný než 1 nebo 2 (`E-DOMAIN`).
 
+**Kořeny a extrémy (2026-10-05):**
+
+```text
+r := roots(x^3 - 6·x^2 + 11·x - 6, x)           ' [1; 2; 3]
+ω := roots(k - m·ω_0^2, ω_0)                     ' [−10; 10] Hz, jednotka z koeficientů
+x_max := maximize(M(x), x: 0 m .. L)             ' kde je M největší: 2,5 m
+M_max := M(x_max)
+```
+
+- **`roots(p, x)`** dá všechny kořeny mnohočlenu v `x` (nejvýš 20. stupně) jako řadu, i komplexní (`[1; 2j; −2j]`), reálné napřed a vzestupně. Koeficienty program najde z výrazu sám, jednotku `x` z nich (všechny členy musí mít stejný rozměr). Výpočet: Durand–Kernerova iterace a zpřesnění Newtonem. Co není mnohočlen, je chyba `E-ROOTS-POLYNOMIAL`.
+- **`minimize(f(x), x: a .. b)`** a **`maximize`** dají místo v intervalu, kde je `f` nejmenší (největší), s jednotkou intervalu; hodnota je pak `f(x_min)`. Hledá se celý interval (400 bodů, pak zlatý řez kolem nejlepšího), takže se najde globální extrém v intervalu, ne nejbližší lokální. V tisku arg min / arg max s intervalem pod ním.
+
 ### 7.1d Matice a vektory
 
 ```text
@@ -454,6 +466,7 @@ solve (I_1, I_2):
 - Soustava: Newton-Raphson s numerickým Jakobiánem a počátečním odhadem `guess` (**inspirace EPX „system cell“ s guess hodnotami**, ale bez symbolického SymPy).
 - Jednotky se hlídají i v řešiči.
 - Nenalezené řešení je **chyba s vysvětlením**, ne tiché NaN.
+- **Soustava bez odhadu (2026-10-05):** když Newton z výchozích hodnot nedokonverguje, program zkusí neznámé bez vlastního odhadu znovu z jiných velikostí a znamének (každou trochu jinak, aby Jakobián nezůstal singulární). Jednotky neznámých soustavy dál dává `guess`.
 
 *Upřesněno při implementaci F8:*
 - Rovnice soustavy stojí na odsazených řádcích pod `solve` (v editoru Shift+Enter), nebo na jednom řádku oddělené čárkou (česky středníkem): `solve (x; y): x² + y² == 25; y == x + 1 guess x = 1; y = 1`.

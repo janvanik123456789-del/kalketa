@@ -20,6 +20,7 @@ import type { ResolvedUnit } from '../units/unitExpr.js';
 import { quantity, type Quantity, type Value } from '../values/value.js';
 import { asQuantity } from './coerce.js';
 import type { EvalContext } from './evaluator.js';
+import { extremum, rootsOf } from './roots.js';
 
 type CallExpr = Extract<Expr, { kind: 'call' }>;
 type Evaluate = (expr: Expr, ctx: EvalContext) => Value;
@@ -48,6 +49,14 @@ export function callCalculus(call: CallExpr, ctx: EvalContext, evaluate: Evaluat
       return integral(call, ctx, evaluate);
     case 'derivative':
       return derivative(call, ctx, evaluate);
+    case 'roots':
+      return rootsOf(call, ctx, evaluate);
+    case 'minimize':
+    case 'maximize': {
+      const { body, variable } = parts(call, []);
+      const [low, high] = range(variable, call, ctx, evaluate);
+      return extremum(call, asFunction(body, variable.name, low, ctx, evaluate, call.span), low, high);
+    }
     default:
       return sum(call, ctx, evaluate);
   }

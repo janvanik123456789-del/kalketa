@@ -40,7 +40,7 @@ const COMPARISONS: ReadonlySet<TokenType> = new Set(['==', '!=', '<', '<=', '>',
 
 
 /** Functions with a variable of their own, named after the expression: integral(f(x), x: a .. b). */
-export const BINDING_FUNCTIONS: ReadonlySet<string> = new Set(['integral', 'derivative', 'sum', 'plot']);
+export const BINDING_FUNCTIONS: ReadonlySet<string> = new Set(['integral', 'derivative', 'sum', 'plot', 'roots', 'minimize', 'maximize']);
 /** Named arguments of those functions that are options, not the variable. */
 export const BINDING_OPTIONS: ReadonlySet<string> = new Set(['order', 'kind', 'title', 'samples']);
 
@@ -879,6 +879,8 @@ class LineParser {
         depth--;
       } else if (token.type === 'newline' && depth === 0) break;
       else if (depth === 0 && token.type === 'ident' && this.tokens[i + 1]?.type === ':') names.push(token.text);
+      // The variable as the last argument: roots(p, x), integral(y^2, dS), sum(F_i·a_i, i).
+      else if (depth === 0 && token.type === 'ident' && this.tokens[i - 1]?.type === ',' && this.tokens[i + 1]?.type === ')') names.push(token.text);
     }
     return names;
   }

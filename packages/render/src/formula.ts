@@ -231,6 +231,22 @@ function renderCall(expr: Extract<Expr, { kind: 'call' }>, o: FormulaOptions): R
 function renderCalculus(expr: Extract<Expr, { kind: 'call' }>, o: FormulaOptions): Rendered | undefined {
   const unbounded = renderUnbounded(expr, o);
   if (unbounded) return unbounded;
+  // roots(p, x): x is the variable of the call, never a value of the sheet put in.
+  if (expr.name === 'roots' && expr.args.length === 2 && expr.args[1]!.kind === 'variable') {
+    const name = expr.args[1].name;
+    const inner: FormulaOptions = { ...o, substitute: (e) => (e.kind === 'variable' && e.name === name ? undefined : o.substitute?.(e)) };
+    return { node: row(mi('roots', true), paren(row(render(expr.args[0]!, inner).node, mo(o.argumentSeparator), nameNode(name)))), prec: ATOM };
+  }
+  // minimize(f, x: a .. b) as arg min over a ≤ x ≤ b of f.
+  if ((expr.name === 'minimize' || expr.name === 'maximize') && expr.args.length === 1) {
+    const variable = expr.named[0];
+    if (variable?.value.kind === 'range') {
+      const inner: FormulaOptions = { ...o, substitute: (e) => (e.kind === 'variable' && e.name === variable.name ? undefined : o.substitute?.(e)) };
+      const body = render(expr.args[0]!, inner);
+      const where = row(render(variable.value.low, o).node, mo('≤'), nameNode(variable.name), mo('≤'), render(variable.value.high, o).node);
+      return { node: row(underover(mi(expr.name === 'minimize' ? 'arg min' : 'arg max', true), where, row()), wrap(body, body.prec < 5)), prec: 5 };
+    }
+  }
   if (!['integral', 'derivative', 'sum'].includes(expr.name) || expr.args.length !== 1) return undefined;
   const variable = expr.named.find((n) => n.name !== 'order');
   if (!variable) return undefined;

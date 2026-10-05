@@ -118,7 +118,8 @@ export function solveStatement(statement: SolveStatement, ctx: EvalContext, eval
     if (found) return found;
   }
 
-  const x = range && unknowns.length === 1 ? [bracketed(range[0].si, range[1].si, (v) => residuals([v]), statement.span)] : newton(shape.map((u) => guesses.get(u.name)?.si ?? range?.[0].si ?? 1), residuals, statement.span);
+  const start = shape.map((u) => guesses.get(u.name)?.si ?? range?.[0].si ?? 1);
+  const x = range && unknowns.length === 1 ? [bracketed(range[0].si, range[1].si, (v) => residuals([v]), statement.span)] : withMoreStarts(start, unknowns.map((u) => guesses.has(u.name)), (s) => newton(s, residuals, statement.span));
 
   // The solution once more, with warnings and table reads recorded.
   residuals(x, ctx);
@@ -187,6 +188,29 @@ function byFormula(statement: SolveStatement, ctx: EvalContext, evaluate: Evalua
   const value = asQuantity(evaluate(chosen!.formula, ctx), statement.span);
   const hint = range?.[0].hint ?? guess?.hint;
   return { values: [hint && sameDim(hint.dim, value.dim) ? { ...value, hint } : value], formula: chosen!.formula };
+}
+
+/**
+ * Newton from the first guess; where it does not converge and some unknowns had
+ * no guess of their own, again from other starting values of those (other
+ * sizes and signs, a little different for each), as a person would try. The
+ * first failure is reported.
+ */
+function withMoreStarts(start: number[], guessed: readonly boolean[], solve: (start: number[]) => number[]): number[] {
+  try {
+    return solve(start);
+  } catch (first) {
+    if (!(first instanceof CalcError) || guessed.every(Boolean) || !['E-SOLVE-NO-CONVERGENCE', 'E-SOLVE-SINGULAR'].includes(first.diagnostic.code)) throw first;
+    for (const factor of [-1, 10, -10, 0.1, -0.1, 100, -100, 0.01, 1000, -1000]) {
+      try {
+        // Each unknown a little different: equal starting values often keep the Jacobian singular.
+        return solve(start.map((v, i) => (guessed[i] ? v : v * factor * (1 + 0.31 * i))));
+      } catch (err) {
+        if (!(err instanceof CalcError)) throw err;
+      }
+    }
+    throw first;
+  }
 }
 
 /** One unknown in [a, b]: regula falsi with the Anderson–Björck correction. */

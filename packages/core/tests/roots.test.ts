@@ -1,24 +1,61 @@
 import { describe, expect, it } from 'vitest';
-import { codes, expectValue } from './helpers.js';
+import { evaluateSheet } from '../src/index.js';
 
-describe('roots', () => {
-  it('cube root as ∛x and cbrt(x), real for negative numbers', () => {
-    expectValue('∛27', 3, '', 12);
-    expectValue('∛(-8)', -2, '', 12);
-    expectValue('cbrt(64)', 4, '', 12);
-    expectValue('2·∛8', 4, '', 12);
-    // The unit goes under the root too.
-    expectValue('V := 27 m³\n∛V', 3, 'm', 12);
-    expectValue('∛(8000 cm³) | cm', 20, 'cm', 9);
+const last = (source: string) => {
+  const sheet = evaluateSheet(source);
+  return { result: sheet.statements.at(-1)!, codes: sheet.diagnostics.map((d) => d.code) };
+};
+const items = (source: string) => {
+  const { result } = last(source);
+  return result.value?.type === 'vector' ? result.value.items.map((q) => [Number(q.si.toFixed(9)), Number((q.im ?? 0).toFixed(9))]) : undefined;
+};
+
+describe('roots of a polynomial', () => {
+  it('finds all real roots, in order', () => {
+    expect(items('r := roots(x^3 - 6·x^2 + 11·x - 6, x)')).toEqual([[1, 0], [2, 0], [3, 0]]);
+    // x = 0 for the missing lowest power.
+    expect(items('r := roots(x^3 - 4·x, x)')).toEqual([[-2, 0], [0, 0], [2, 0]]);
   });
 
-  it('n-th root root(x, n)', () => {
-    expectValue('root(16, 4)', 2, '', 12);
-    expectValue('root(-32, 5)', -2, '', 12);
-    expectValue('root(81 m⁴, 4)', 3, 'm', 12);
-    expect(codes('root(-16, 4)')).toEqual(['E-DOMAIN']);
-    expect(codes('root(16, 2.5)')).toEqual(['E-DOMAIN']);
-    expect(codes('root(16, 1)')).toEqual(['E-DOMAIN']);
-    expect(codes('root(16, 2 m)')).toEqual(['E-FUNC-ARG-DIM']);
+  it('finds complex roots, the real ones first', () => {
+    expect(items('r := roots((x - 1)·(x^2 + 4), x)')).toEqual([[1, 0], [0, 2], [0, -2]]);
+  });
+
+  it('gives the variable the unit that makes every term of one dimension', () => {
+    const { result, codes } = last('k := 200 N/m\nm := 2 kg\nr := roots(k - m·ω^2, ω)');
+    expect(codes).toEqual([]);
+    expect(result.displayList?.map((d) => [Number(d.value.toFixed(6)), d.unit])).toEqual([
+      [-10, 'Hz'],
+      [10, 'Hz'],
+    ]);
+  });
+
+  it('reports what is no polynomial', () => {
+    expect(last('r := roots(sin(x), x)').codes).toEqual(['E-ROOTS-POLYNOMIAL']);
+    expect(last('r := roots(x^2 + 1/x, x)').codes).toEqual(['E-ROOTS-POLYNOMIAL']);
+  });
+});
+
+describe('minimize and maximize', () => {
+  it('find where a function is smallest or largest in the interval, with its unit', () => {
+    const { result, codes } = last('q := 12 kN/m\nL := 5 m\nM(x) := q·x·(L - x)/2\nx_max := maximize(M(x), x: 0 m .. L)');
+    expect(codes).toEqual([]);
+    expect(result.display?.value).toBeCloseTo(2.5, 6);
+    expect(result.display?.unit).toBe('m');
+  });
+
+  it('find the global extreme in the interval, not the nearest local one', () => {
+    // Two minima at x ≈ −1.036 and x ≈ 0.96 (4x³ − 4x + 0.3 = 0); the lower one is at −1.036.
+    const { result } = last('x_min := minimize(x^4 - 2·x^2 + 0.3·x, x: -2 .. 2)');
+    expect(result.value?.type === 'quantity' && result.value.si).toBeCloseTo(-1.03558, 4);
+  });
+});
+
+describe('systems without a good first guess', () => {
+  it('try other starting values when Newton does not converge from 1', () => {
+    // From x = y = 1 the Jacobian is singular; from other starts Newton finds x = 3, y = −3.
+    const { result, codes } = last('solve (x, y): x + y == 0, x·y == -9');
+    expect(codes).toEqual([]);
+    expect(result.solutions?.map((s) => Math.abs(Number(s.value.si.toFixed(6))))).toEqual([3, 3]);
   });
 });

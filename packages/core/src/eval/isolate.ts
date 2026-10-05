@@ -23,7 +23,7 @@ export function isolate(left: Expr, right: Expr, unknown: string): Expr[] | unde
   const inRight = occurrences(right, unknown);
   if (inLeft + inRight === 0) return undefined;
   if (inLeft + inRight === 1) return inLeft === 1 ? undo(left, right, unknown, at) : undo(right, left, unknown, at);
-  const p = polynomial(minus(left, right, at), unknown, at);
+  const p = polynomial(minus(left, right, at), unknown, at, 2);
   if (!p) return undefined;
   const [c0, c1, c2] = [p[0], p[1], p[2]];
   if (!c2) return c1 ? [divide(negate(c0 ?? number(0, at), at), c1, at)] : undefined;
@@ -108,26 +108,31 @@ function plusMinus(value: Expr, at: Span): Expr[] {
  * The coefficients c0, c1, c2 of an expression of degree two at most in x
  * (undefined for a coefficient that is zero), or undefined when it is none.
  */
-function polynomial(expr: Expr, x: string, at: Span): (Expr | undefined)[] | undefined {
+/** The coefficients c0 … cn of a polynomial in x up to degree `max` (undefined for zero ones), or undefined. */
+export function polynomialCoefficients(expr: Expr, x: string, max: number): (Expr | undefined)[] | undefined {
+  return polynomial(expr, x, expr.span, max);
+}
+
+function polynomial(expr: Expr, x: string, at: Span, max: number): (Expr | undefined)[] | undefined {
   if (occurrences(expr, x) === 0) return [expr];
   switch (expr.kind) {
     case 'variable':
       return expr.name === x ? [undefined, number(1, at)] : [expr];
     case 'unary': {
       if (expr.operator === 'not') return undefined;
-      const p = polynomial(expr.operand, x, at);
+      const p = polynomial(expr.operand, x, at, max);
       return p && (expr.operator === '-' ? p.map((c) => (c ? negate(c, at) : c)) : p);
     }
     case 'binary': {
-      const a = polynomial(expr.left, x, at);
-      const b = expr.operator === '^' ? undefined : polynomial(expr.right, x, at);
+      const a = polynomial(expr.left, x, at, max);
+      const b = expr.operator === '^' ? undefined : polynomial(expr.right, x, at, max);
       switch (expr.operator) {
         case '+':
         case '-':
           if (!a || !b) return undefined;
           return Array.from({ length: Math.max(a.length, b.length) }, (_, i) => combine(a[i], b[i], expr.operator as '+' | '-', at));
         case '*': {
-          if (!a || !b || a.length + b.length - 2 > 2) return undefined;
+          if (!a || !b || a.length + b.length - 2 > max) return undefined;
           const out: (Expr | undefined)[] = [];
           a.forEach((ca, i) => b.forEach((cb, j) => (out[i + j] = ca && cb ? combine(out[i + j], times(ca, cb, at), '+', at) : out[i + j])));
           return out;
@@ -137,9 +142,12 @@ function polynomial(expr: Expr, x: string, at: Span): (Expr | undefined)[] | und
           if (!a || occurrences(expr.right, x) > 0) return undefined;
           return a.map((c) => (c ? divide(c, expr.right, at) : c));
         case '^': {
+          // A whole power: a product of the base with itself.
           const n = expr.right.kind === 'number' && !expr.right.unit ? expr.right.value : undefined;
-          if (!a || (n !== 1 && n !== 2)) return undefined;
-          return n === 1 ? a : polynomial({ kind: 'binary', operator: '*', left: expr.left, right: expr.left, span: expr.span }, x, at);
+          if (!a || n === undefined || !Number.isInteger(n) || n < 1 || (a.length - 1) * n > max) return undefined;
+          let product: Expr = expr.left;
+          for (let i = 1; i < n; i++) product = { kind: 'binary', operator: '*', left: product, right: expr.left, span: expr.span };
+          return n === 1 ? a : polynomial(product, x, at, max);
         }
         default:
           return undefined;

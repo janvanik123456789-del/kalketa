@@ -139,7 +139,12 @@ Ve všech stylech hlavička (název, autor, datum, strana x/y, revize), číslov
 2. **Odvození `derive` s ověřením kroků** (číselně a rozměrově) a **symbolický zápis Σ / ∫ bez mezí** pro teorii. **Hotovo 2026-10-05** (jazyk, kap. 9.1). Rozhodnuto: `y := a == b == c` i `derive …`; kroky se ověřují obecně náhodnými hodnotami, krok s dosazenými čísly hodnotami výpočtu; chybný krok je chyba, hodnota se spočítá z posledního členu; dvoučlenné `y := a == b` je odvození, s textem nebo logickou hodnotou porovnání; `derive M_mp := …` zavede značku teorie; Σ a ∫ bez mezí jsou v odvození lineární.
 3. **Vyjádření neznámé symbolicky** (`solve` s výsledkem jako definicí), návrat k numerice, kde to nejde. **Hotovo 2026-10-05** (jazyk, kap. 9). Rozhodnuto: vzorec se do listu nevkládá sám, nabídne ho pravé tlačítko na řádku `solve`; dva kladné kořeny bez intervalu jsou chyba s výpisem obou.
 4. **`roots`, `minimize` / `maximize`, výchozí odhady soustav.** **Hotovo 2026-10-05** (jazyk, kap. 7.1c a 9): `roots(p, x)` i komplexní, `minimize`/`maximize(f, x: a .. b)` vrací místo extrému, soustavy zkouší víc startů. Jednotky neznámých soustavy bez odhadu zatím neodvozuje.
-5. **Potom zpět k podkladům z PDF:** převod vzorců z učebnic do odvození a výsledných rovnic.
+5. **Potom zpět k podkladům z PDF:** převod vzorců z učebnic do odvození a výsledných rovnic. **Rozhodnuto 2026-10-05, další na řadě.** Postup (po prozkoumání `E:\AI\Projekt_vypoctare\kalketa-ai-adapter`, samostatný nástroj jiného modelu; kód se nepřebírá):
+   1. `cleanFormula` (`packages/ai/src/formulas.ts`) a návod pro model (`formulaPrompt`) upravit tak, aby zachovaly vztahy a řetězy rovností jako odvození (`derive …`, `y := a == b == c`), ne aby z `V_max == M_max / h` dělaly definici. Test `packages/ai/tests/formulas.test.ts` dnes řetěz rozděluje, to se změní.
+   2. Hromadný převod výřezů vzorců kapitoly na pozadí: průběh, pokračování po přerušení (hotové přeskočit), opakování přechodných chyb s prodlevou, vyšší limit tokenů pro čtení obrázků (dnes `max_tokens: 4096` v `askAboutImage`, přemýšlející modely ho přetečou).
+   3. Převedené vzorce v Podkladech ověřit jako odvození (bloky ```` ```kalk ```` dnes jen vysází), aby bylo vidět, kde model přečetl vzorec špatně.
+   4. Volitelně popisy obrázků (alt-text) pro hledání v teorii.
+   Zkušenost z adaptéru (strana 45 sbírky): celá strana při měřítku 0,8 se uřízla (limit tokenů, 125 s), výřez při 1,6 dal 2 vzorce za 150 s (qwen 9B), model 35B vypršel po 480 s. Kalketa ukládá výřezy už ořezané na 200 DPI.
 
 ## 5. Otázky k rozhodnutí
 

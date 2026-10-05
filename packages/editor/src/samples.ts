@@ -49,3 +49,14 @@ export function exampleDocument(id = DEFAULT_SAMPLE, prefix = 'Vzor'): SheetDocu
   }
   return { ...base, manifest: { ...base.manifest, language: 'cs' }, tables };
 }
+
+/**
+ * The title of a sample saved as the user's own file: the file name without
+ * the sample prefix; undefined for a document that is no sample.
+ */
+export function savedSampleTitle(title: string, path: string, prefix: string): string | undefined {
+  const mark = `${prefix} – `;
+  if (!title.startsWith(mark)) return undefined;
+  const file = (path.split(/[\\/]/).pop() ?? '').replace(/\.(kalk|calc)$/i, '');
+  return file.replace(mark, '').trim() || title.slice(mark.length);
+}

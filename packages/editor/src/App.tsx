@@ -27,7 +27,7 @@ import { proposalEffect, type ProposalEffect } from './logic/proposalEffect.js';
 import type { NewSheetView, ProposalView } from './components/ProposalCard.js';
 import type { AnswerProposals } from './components/ChatPane.js';
 import { languageGuide, sheetContext } from './logic/aiContext.js';
-import { exampleDocument, samples } from './samples.js';
+import { exampleDocument, samples, savedSampleTitle } from './samples.js';
 import { chooseFile, desktop, emptyDocument, fileName, fileUri, largestParts, openBytes, pickAndOpen, saveDocument, tableCache, type FileRef, type OpenedFile } from './document.js';
 import { record, redo, undo, type History } from './logic/history.js';
 import { closeTab, cycleTab, fileNameOf, isDirty, newTab, openTab, type DocTab, type Tabs } from './logic/documents.js';
@@ -586,6 +586,16 @@ export function App() {
     if (target) {
       setFileRef(target);
       if (target.kind === 'path') addRecent(target.path);
+    }
+    // A sample saved as the user's own calculation is called by its file, without "Sample – ":
+    // written once more under that title, which is no new step to undo.
+    const title = target?.kind === 'path' ? savedSampleTitle(doc.manifest.title, target.path, t(ui, 'samples.prefix')) : undefined;
+    if (target?.kind === 'path' && title !== undefined) {
+      const renamed: SheetDocument = { ...doc, manifest: { ...doc.manifest, title } };
+      await saveDocument(renamed, target, () => undefined, { openElsewhere: t(ui, 'docs.openElsewhere'), current: target.path });
+      setHistory((h) => ({ ...h, present: renamed }));
+      setSavedDoc(renamed);
+      return;
     }
     // In a browser without file handles the file is downloaded; it counts as saved.
     if (target || !desktop) setSavedDoc(doc);

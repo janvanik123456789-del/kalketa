@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { exampleDocument, samples } from '../src/samples.js';
+import { exampleDocument, samples, savedSampleTitle } from '../src/samples.js';
 
 describe('sample calculations shipped with the program', () => {
   it('are the reference cases, named after their first heading', () => {
@@ -14,5 +14,11 @@ describe('sample calculations shipped with the program', () => {
     expect([...doc.tables.keys()].sort()).toEqual(['Kabely', 'Korekce']);
     for (const table of doc.tables.values()) expect(table.schemaJson && table.dataCsv).toBeTruthy();
     expect(exampleDocument().manifest.title).toBe('Vzor – Posouzení nosníku N1');
+  });
+
+  it('saved as a file of the user, take the file name without the sample prefix', () => {
+    expect(savedSampleTitle('Vzor – Posouzení nosníku N1', 'E:\\Výpočty\\Nosník N7.kalk', 'Vzor')).toBe('Nosník N7');
+    expect(savedSampleTitle('Vzor – Posouzení nosníku N1', 'E:/Výpočty/Vzor – Posouzení nosníku N1.kalk', 'Vzor')).toBe('Posouzení nosníku N1');
+    expect(savedSampleTitle('Můj výpočet', 'E:/a.kalk', 'Vzor')).toBeUndefined();
   });
 });

@@ -181,6 +181,11 @@ function createWindow(options: { blank?: boolean } = {}): BrowserWindow {
     win.webContents.once('did-finish-load', () => void runSmokeTest(smokeTest));
   } else if (!smokeTest) {
     win.once('ready-to-show', () => win.show());
+    // Without a GPU (a virtual machine without 3D, Wayland) the first paint may never be reported:
+    // the window shows anyway, else the program runs with no window to see.
+    setTimeout(() => {
+      if (!win.isDestroyed() && !win.isVisible()) win.show();
+    }, 3000);
   }
   win.webContents.once('did-finish-load', () => {
     if (pendingOpen) {
@@ -2114,6 +2119,25 @@ async function printWindow(html: string): Promise<BrowserWindow> {
 // start at all: there it runs without that sandbox. The .deb package keeps the sandbox.
 if (process.platform === 'linux' && process.env['APPIMAGE'] && userNamespacesRestricted()) app.commandLine.appendSwitch('no-sandbox');
 
+// On Linux the window goes through X11 (XWayland on Wayland desktops): under Wayland without
+// a usable GPU, as in a virtual machine without 3D, it never showed (Ubuntu 26.04 in VMware).
+// --ozone-platform=wayland given by the user still wins. In a virtual machine Chromium draws
+// without the GPU, which there fails (VMware: "No 3D enabled").
+if (process.platform === 'linux') {
+  if (!app.commandLine.hasSwitch('ozone-platform')) app.commandLine.appendSwitch('ozone-platform', 'x11');
+  if (virtualMachine()) app.disableHardwareAcceleration();
+}
+
+/** VMware, VirtualBox, QEMU/KVM, Hyper-V, Parallels: by the vendor of the system the firmware reports. */
+function virtualMachine(): boolean {
+  try {
+    const vendor = ['sys_vendor', 'product_name'].map((f) => readFileSync(`/sys/class/dmi/id/${f}`, 'utf8')).join(' ');
+    return /vmware|virtualbox|innotek|qemu|kvm|bochs|parallels|microsoft corporation virtual|hyper-v/i.test(vendor);
+  } catch {
+    return false;
+  }
+}
+
 function userNamespacesRestricted(): boolean {
   try {
     return readFileSync('/proc/sys/kernel/apparmor_restrict_unprivileged_userns', 'utf8').trim() === '1';
@@ -2130,6 +2154,8 @@ if (!app.requestSingleInstanceLock()) {
     const window = targetWindow();
     if (!window) return;
     if (window.isMinimized()) window.restore();
+    // A window never shown (its first paint was not reported) shows now, where the user looks for it.
+    if (!window.isVisible()) window.show();
     window.focus();
     const path = sheetArgument(argv);
     if (path) void sendOpen(path);

@@ -363,6 +363,7 @@ export const en: Catalog = {
     'cmd.help.shortcuts': '&Keyboard shortcuts',
     'cmd.help.about': '&About Kalketa',
     'cmd.symbol': 'Insert {symbol}',
+    'cmd.define': 'Definition ≔ (:=)',
     'cmd.power': 'General power xⁿ (^)',
     'cmd.fn.root': 'n-th root root(x, n)',
     'rev.title': 'Revisions of the calculation',

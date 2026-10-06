@@ -33,7 +33,7 @@ import { record, redo, undo, type History } from './logic/history.js';
 import { closeTab, cycleTab, fileNameOf, isDirty, newTab, openTab, type DocTab, type Tabs } from './logic/documents.js';
 import { pageGeometry } from './logic/pages.js';
 import { pickOf, replacePickKey } from './logic/pick.js';
-import { deleteLines, insertLineAfter, moveLines, replaceLines, segments } from './logic/segments.js';
+import { deleteLineRanges, deleteLines, insertLineAfter, moveLines, replaceLines, segments } from './logic/segments.js';
 import { parseLayout, setVisible, templateParts, type ToolbarLayout } from './logic/toolbars.js';
 import { createTable, importTableFile, type TableChange } from './tableActions.js';
 import { captionOf, fromFile, pictureLine, picturePath, pixelWidth, widthFor, type IncomingPicture } from './logic/pictures.js';
@@ -1100,6 +1100,8 @@ export function App() {
       case 'text':
         return insertLine('""', 1);
       case 'definition':
+        // Into the line being edited at the cursor; a new line only when none is edited.
+        if (document.querySelector('textarea.row-editor')) return insertSymbol(':=');
         return insertLine(`${uniqueName('x')} := `);
       case 'check':
         return insertLine('check "": ', 7);
@@ -1127,7 +1129,14 @@ export function App() {
 
   const insertSymbol = (symbol: string) => {
     const area = document.querySelector<HTMLTextAreaElement>('textarea.row-editor');
-    if (area) {
+    if (area && symbol === ':=') {
+      // The definition sign at the cursor, spaced; on an empty line a new name before it.
+      const before = area.value.slice(0, area.selectionStart);
+      const text = before.trim() === '' ? `${uniqueName('x')} := ` : `${/\s$/.test(before) ? '' : ' '}:= `;
+      area.focus();
+      area.setRangeText(text, area.selectionStart, area.selectionEnd, 'end');
+      area.dispatchEvent(new Event('input', { bubbles: true }));
+    } else if (area) {
       area.focus();
       area.setRangeText(symbol, area.selectionStart, area.selectionEnd, 'end');
       area.dispatchEvent(new Event('input', { bubbles: true }));
@@ -1635,6 +1644,7 @@ export function App() {
             setEditing({ start: line + 1, end: line + 1 });
           }}
           onDelete={(start, end) => setLayerText(l, deleteLines(source, start, end))}
+          onDeleteRows={(rows) => setLayerText(l, deleteLineRanges(source, rows))}
           onPick={(statement, key) => pickIn(l, statement, key)}
           onReplacePicture={(start, end) => void replacePictureFile(l, start, end)}
           onEditCanvas={(path) => openCanvas(path)}

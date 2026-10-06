@@ -214,6 +214,7 @@ kbd { font: 12px Consolas, monospace; background: #fff; border: 1px solid #c4cad
 .page .gutter { position: absolute; left: -9mm; width: 8mm; }
 .row:hover { background: #f6f8fb; }
 .row.selected { background: var(--accent-soft); }
+.row.marked { background: var(--accent-soft); outline: 1px solid var(--accent); }
 .row.editing { background: #fffbe6; }
 .row.has-error .gutter { color: var(--bad); font-weight: 700; }
 .gutter { width: 30px; flex: none; text-align: right; padding: 5px 8px 0 0; color: #aab; font: 11px/1.4 Consolas, monospace; user-select: none; }

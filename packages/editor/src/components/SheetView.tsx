@@ -42,6 +42,8 @@ interface Props {
   onReplace(start: number, end: number, text: string): void;
   onInsertAfter(line: number): void;
   onDelete(start: number, end: number): void;
+  /** Several rows at once (marked ones), in one step to undo. */
+  onDeleteRows(rows: readonly { start: number; end: number }[]): void;
   onPick(statement: Statement, key: string): void;
   /** Moves lines start..end after line `after` (a picture dragged elsewhere). */
   onMoveLines(start: number, end: number, after: number): void;
@@ -91,6 +93,38 @@ export function SheetView(props: Props) {
   // The menu of an AI mark: reviewed, or where it came from.
   const [aiMenu, setAiMenu] = useState<{ id: string; at: { x: number; y: number } } | undefined>();
   const segs = segments(source, result.sheet.statements, editing);
+  // Rows marked for deleting, by their first line: Ctrl+click one, Shift+click a range; Delete removes them.
+  const [marked, setMarked] = useState<ReadonlySet<number>>(() => new Set());
+  const markAnchor = useRef<number | undefined>(undefined);
+  useEffect(() => setMarked(new Set()), [source]);
+  useEffect(() => {
+    if (marked.size === 0) return;
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if ((e.target as HTMLElement).closest?.('input, textarea, select, [contenteditable="true"]')) return;
+      if (e.key === 'Escape') return setMarked(new Set());
+      if (e.key !== 'Delete' && e.key !== 'Backspace') return;
+      e.preventDefault();
+      props.onDeleteRows(segs.filter((s) => marked.has(s.start)).map((s) => ({ start: s.start, end: s.end })));
+      setMarked(new Set());
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [marked, segs, props]);
+  /** Ctrl+click adds or takes away one row, Shift+click marks all rows from the last one marked or open. */
+  const mark = (seg: Segment, range: boolean) => {
+    const from = markAnchor.current ?? editing?.start;
+    const a = segs.findIndex((s) => s.start === from);
+    const b = segs.indexOf(seg);
+    if (range && a >= 0 && b >= 0) {
+      setMarked(new Set(segs.slice(Math.min(a, b), Math.max(a, b) + 1).map((s) => s.start)));
+    } else {
+      const next = new Set(marked);
+      if (!next.delete(seg.start)) next.add(seg.start);
+      setMarked(next);
+      markAnchor.current = seg.start;
+    }
+    props.onEdit(undefined);
+  };
   const blockByLine = new Map<number, PrintBlock>();
   for (const block of print.blocks) if ('line' in block) blockByLine.set(block.line, block);
 
@@ -557,7 +591,7 @@ export function SheetView(props: Props) {
       <div
         key={`${seg.start}:${isEditing ? 'e' : seg.text}`}
         data-item={measured ? '' : undefined}
-        className={`row${isEditing ? ' editing' : ''}${selected ? ' selected' : ''}${statement?.status === 'error' ? ' has-error' : ''}${placed ? ` wrap-${placed.wrap}` : ''}${clear ? ' clear-row' : ''}${aiMark ? ' ai-made' : ''}`}
+        className={`row${isEditing ? ' editing' : ''}${selected ? ' selected' : ''}${marked.has(seg.start) ? ' marked' : ''}${statement?.status === 'error' ? ' has-error' : ''}${placed ? ` wrap-${placed.wrap}` : ''}${clear ? ' clear-row' : ''}${aiMark ? ' ai-made' : ''}`}
         style={
           placed
             ? { width: `${placed.width ?? 40}%`, ...(placed.dx ? { [placed.wrap === 'right' ? 'marginRight' : 'marginLeft']: `${placed.dx}%` } : {}), ...(placed.dy ? { clear: placed.wrap } : {}) }
@@ -568,8 +602,15 @@ export function SheetView(props: Props) {
           // A click on a picture or a chart selects it and offers what can be done with it; the text of the line opens from the menu or by a double click.
           const figure = (block?.kind === 'picture' || block?.kind === 'chart') && !(e.target as HTMLElement).closest('textarea') ? (e.target as HTMLElement).closest('figure') : null;
           // Even from its open line the picture or the chart can be taken and moved.
+          if (e.button === 0 && (e.ctrlKey || e.shiftKey) && !(e.target as HTMLElement).closest('textarea, .pick-control')) {
+            e.preventDefault();
+            mark(seg, e.shiftKey);
+            return;
+          }
           if ((isEditing && !figure) || (e.target as HTMLElement).closest('.pick-control')) return;
           e.preventDefault();
+          if (marked.size > 0) setMarked(new Set());
+          markAnchor.current = undefined;
           // The right button only selects and opens a menu (onContextMenu), never the line.
           if (e.button !== 0) {
             if (!figure) props.onSelect(seg.statement);

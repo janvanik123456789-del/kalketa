@@ -107,6 +107,13 @@ describe('toolbar layout', () => {
     expect(parseLayout(JSON.stringify(removed)).toolbars.find((t) => t.id === 'operators')!.items).not.toContain('sym:^');
   });
 
+  it('puts the definition sign first on the Operators toolbar of an older layout', () => {
+    const old = defaultLayout();
+    expect(old.toolbars.find((t) => t.id === 'operators')!.items[0]).toBe('sym::=');
+    const stored = JSON.stringify({ ...old, items: 4, toolbars: old.toolbars.map((t) => (t.id === 'operators' ? { ...t, items: t.items.filter((i) => i !== 'sym::=') } : t)) });
+    expect(parseLayout(stored).toolbars.find((t) => t.id === 'operators')!.items.slice(0, 2)).toEqual(['sym::=', 'sym:·']);
+  });
+
   it('gives a layout from before the AI chat its button on the View toolbar', () => {
     const old = defaultLayout();
     const stored = JSON.stringify({ ...old, items: 2, toolbars: old.toolbars.map((t) => (t.id === 'view' ? { ...t, items: t.items.filter((i) => i !== 'view.paneChat') } : t)) });

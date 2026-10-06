@@ -363,6 +363,7 @@ export const cs: Catalog = {
     'cmd.help.shortcuts': '&Klávesové zkratky',
     'cmd.help.about': '&O programu Kalketa',
     'cmd.symbol': 'Vložit {symbol}',
+    'cmd.define': 'Definice ≔ (:=)',
     'cmd.power': 'Obecná mocnina xⁿ (^)',
     'cmd.fn.root': 'n-tá odmocnina root(x; n)',
     'rev.title': 'Revize výpočtu',

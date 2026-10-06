@@ -79,6 +79,13 @@ export function moveLines(source: string, start: number, end: number, after: num
   return lines.join('\n');
 }
 
+/** Several line ranges at once, the lowest last so the numbers of the others hold. */
+export function deleteLineRanges(source: string, ranges: readonly { start: number; end: number }[]): string {
+  const lines = splitLines(source);
+  for (const r of [...ranges].sort((a, b) => b.start - a.start)) lines.splice(r.start - 1, r.end - r.start + 1);
+  return lines.join('\n');
+}
+
 export function deleteLines(source: string, start: number, end: number): string {
   const lines = splitLines(source);
   lines.splice(start - 1, end - start + 1);

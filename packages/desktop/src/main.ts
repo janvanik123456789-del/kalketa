@@ -422,7 +422,7 @@ async function runSmokeTest(pdfPath: string): Promise<void> {
     await writeFile(pdfPath, pdf);
     ok =
       state.bridge && state.sideBySide && state.menus === 7 && state.toolbars > 0 && state.rows > 10 && state.summary > 0 && state.math > 0 && reshapedColumns === 3 && pdf.length > 1000 &&
-      layers.newKeepsExample && layers.samplesOk && layers.derivations && layers.solvedByFormula && layers.rootsAndExtremes && layers.tableRowAdded && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.notesPicture === 'FIGURE+img BLOCKQUOTE' && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.charts && layers.functionBar && layers.revisions && layers.roots && layers.toolIcons && layers.aiSettings && layers.aiChat && layers.pdfCleanup && layers.theoryLibrary && layers.study && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
+      layers.newKeepsExample && layers.samplesOk && layers.derivations && layers.definitionAtCursor && layers.tableEnter && layers.solvedByFormula && layers.rootsAndExtremes && layers.tableRowAdded && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.notesPicture === 'FIGURE+img BLOCKQUOTE' && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.charts && layers.functionBar && layers.revisions && layers.roots && layers.toolIcons && layers.aiSettings && layers.aiChat && layers.pdfCleanup && layers.theoryLibrary && layers.study && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
     console.log(JSON.stringify({ ok, ...state, reshapedColumns, layers, pdfBytes: pdf.length }));
   } catch (err) {
     console.log(JSON.stringify({ ok: false, error: (err as Error).message, console: smokeConsole.slice(-5) }));
@@ -470,7 +470,7 @@ const smokeConsole: string[] = [];
 // pipeline like the user's mouse and keyboard.
 const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function clickOn(selector: string, modifiers: Array<'control'> = [], button: 'left' | 'right' = 'left'): Promise<void> {
+async function clickOn(selector: string, modifiers: Array<'control' | 'shift'> = [], button: 'left' | 'right' = 'left'): Promise<void> {
   const contents = smokeWindow!.webContents;
   const point = (await contents.executeJavaScript(`(() => {
     const element = document.querySelector(${JSON.stringify(selector)});
@@ -556,6 +556,12 @@ async function layersWithRealInput(picture: string) {
   await clickOn('.grid-wrap > button.secondary');
   await pause(300);
   const rowsAfter = (await contents.executeJavaScript(tableRows)) as number;
+  // Enter in a cell goes one down, as in a spreadsheet.
+  await clickOn('.grid-wrap table.grid tbody tr:first-child input[data-cell="0:1"]');
+  await pressKey('Enter');
+  await pause(200);
+  const tableEnterAt = (await contents.executeJavaScript(`(document.activeElement?.tagName ?? '') + ':' + (document.activeElement?.getAttribute('data-cell') ?? '')`)) as string;
+  const tableEnter = tableEnterAt === 'INPUT:1:1';
   await clickOn('.grid-wrap table.grid tbody tr:last-child td:last-child button');
   await pause(300);
   const rowsBack = (await contents.executeJavaScript(tableRows)) as number;
@@ -771,6 +777,38 @@ async function layersWithRealInput(picture: string) {
   })()`)) as { checked: boolean; wrong: boolean };
   await takePicture(picture.replace(/[.]png$/, '-derive.png'));
   const derivations = derivation.checked && derivation.wrong;
+
+  // The ≔ button and Insert > Definition write := at the cursor of the open line; Ctrl+click and
+  // Shift+click mark rows, Delete removes them.
+  const rowsNow = `document.querySelectorAll('.layer-view.active .page .row').length`;
+  const rowsBeforeDefs = (await contents.executeJavaScript(rowsNow)) as number;
+  await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .page .row')].at(-1).id = 'smoke-last-row'`);
+  await clickOn('#smoke-last-row');
+  await pressKey('End');
+  await pressKey('Enter');
+  await typeText('k_d1');
+  await clickOn('.tool-button[title^="Definice ≔"]');
+  await typeText('2');
+  await pressKey('Enter');
+  await typeText('k_d2');
+  await clickOn('.menubar-item:nth-child(4) > button');
+  await clickMenu('Definice');
+  await typeText('k_d1 + 1');
+  await clickOn('.sheet-scroll');
+  await pause(400);
+  const typedDefs = (await contents.executeJavaScript(`(() => {
+    const rows = [...document.querySelectorAll('.layer-view.active .page .row')].slice(-2);
+    rows.forEach((r, i) => (r.id = 'smoke-def-' + i));
+    return { rows: rows.map((r) => r.textContent.replace(/\\s+/g, '')), errors: rows.filter((r) => r.classList.contains('has-error')).length };
+  })()`)) as { rows: string[]; errors: number };
+  await clickOn('#smoke-def-0', ['control']);
+  await clickOn('#smoke-def-1', ['shift']);
+  const markedRows = (await contents.executeJavaScript(`document.querySelectorAll('.layer-view.active .page .row.marked').length`)) as number;
+  await pressKey('Delete');
+  await pause(400);
+  const rowsAfterDelete = (await contents.executeJavaScript(rowsNow)) as number;
+  const definitionAtCursor =
+    typedDefs.errors === 0 && typedDefs.rows[0]!.includes('≔2') && typedDefs.rows[1]!.includes('=3') && markedRows === 2 && rowsAfterDelete === rowsBeforeDefs;
 
   // solve without an interval: the unknown is expressed by a formula, its unit comes from it;
   // the right button puts the formula in as a definition.
@@ -1425,7 +1463,7 @@ async function layersWithRealInput(picture: string) {
     blocksOk = shown.errors === 0 && shown.text.includes('Prosty nosnik 1.2') && shown.text.includes('45');
     await takePicture(picture.replace(/[.]png$/, '-blocks.png'));
   }
-  return { ...state, derivations, solvedByFormula, rootsAndExtremes, tableRowAdded, chartSteps, samplesOk, sampleTab, newKeepsExample, citations, notesPicture, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, toolIcons, aiSettings, aiChat, pdfCleanup, theoryLibrary, study, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, placedFree, strictPlaced, canvasOk, besideText, pictures, blocksOk };
+  return { ...state, derivations, definitionAtCursor, tableEnter, tableEnterAt, solvedByFormula, rootsAndExtremes, tableRowAdded, chartSteps, samplesOk, sampleTab, newKeepsExample, citations, notesPicture, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, toolIcons, aiSettings, aiChat, pdfCleanup, theoryLibrary, study, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, placedFree, strictPlaced, canvasOk, besideText, pictures, blocksOk };
 }
 
 /** The tidied sources saved as a library (.kalkt) and attached in the chat: the model cites it by its key. */

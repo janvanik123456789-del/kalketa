@@ -45,17 +45,19 @@ const ADDED_ITEMS: readonly { readonly since: number; readonly toolbar: string; 
   { since: 2, toolbar: 'operators', after: 'sym:³', ids: ['sym:^'] },
   { since: 3, toolbar: 'view', after: 'view.paneTables', ids: ['view.paneChat'] },
   { since: 4, toolbar: 'functions', after: 'fn:solve', ids: ['fn:derive'] },
+  // The definition sign first, above ·: a plain = typed by mistake is fixed with one click.
+  { since: 5, toolbar: 'operators', after: '', ids: ['sym::='] },
 ];
-export const ITEMS_VERSION = 4;
+export const ITEMS_VERSION = 5;
 
 export const SEPARATOR = '|';
 
 const dock = (d: Dock, band: number, order: number): ToolbarPlace => ({ kind: 'dock', dock: d, band, order });
 
 export const GREEK_SYMBOLS = ['α', 'β', 'γ', 'δ', 'ε', 'η', 'θ', 'λ', 'μ', 'ν', 'π', 'ρ', 'σ', 'τ', 'φ', 'ψ', 'ω', 'Δ', 'Σ', 'Φ', 'Ω'];
-export const OPERATOR_SYMBOLS = ['·', '÷', '≤', '≥', '≠', '√', '∛', '²', '³', '^', '⁻¹', '°', 'Δ°C', '_', '|'];
+export const OPERATOR_SYMBOLS = [':=', '·', '÷', '≤', '≥', '≠', '√', '∛', '²', '³', '^', '⁻¹', '°', 'Δ°C', '_', '|'];
 /** Symbols shown otherwise than inserted: ^ is a general power. */
-export const SYMBOL_GLYPHS: Readonly<Record<string, string>> = { '^': 'xⁿ' };
+export const SYMBOL_GLYPHS: Readonly<Record<string, string>> = { '^': 'xⁿ', ':=': '≔' };
 
 /**
  * Functions written for the user, as on the palettes of Mathcad: the template
@@ -267,6 +269,11 @@ function withAddedItems(toolbar: ToolbarState, known: number): ToolbarState {
   for (const added of ADDED_ITEMS) {
     if (added.since <= known || added.toolbar !== toolbar.id) continue;
     const fresh = added.ids.filter((id) => !items.includes(id));
+    // after '': at the very start.
+    if (added.after === '') {
+      items = [...fresh, ...items];
+      continue;
+    }
     const at = items.indexOf(added.after);
     items = at < 0 ? [...items, ...fresh] : [...items.slice(0, at + 1), ...fresh, ...items.slice(at + 1)];
   }

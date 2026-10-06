@@ -152,7 +152,7 @@ export function buildCommands(ctx: CommandContext): Map<string, Command> {
     list.push({
       id: `sym:${symbol}`,
       category: 'symbol',
-      label: symbol === '^' ? t(c, 'cmd.power') : t(c, 'cmd.symbol', { symbol }),
+      label: symbol === '^' ? t(c, 'cmd.power') : symbol === ':=' ? t(c, 'cmd.define') : t(c, 'cmd.symbol', { symbol }),
       glyph: SYMBOL_GLYPHS[symbol] ?? symbol,
       enabled: true,
       run: () => a.insertSymbol(symbol),

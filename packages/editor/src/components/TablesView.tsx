@@ -205,7 +205,24 @@ function TableGrid({ table, catalog, resolveFile, onChange, onImage }: GridProps
               </td>
               {row.map((cell, c) => (
                 <td key={c} className={schema.columns[c]?.type === 'quantity' ? 'num' : ''}>
-                  <input defaultValue={cell} onBlur={(e) => e.target.value !== cell && onChange(setCell(table, r, c, e.target.value))} />
+                  <input
+                    defaultValue={cell}
+                    data-cell={`${r}:${c}`}
+                    onBlur={(e) => e.target.value !== cell && onChange(setCell(table, r, c, e.target.value))}
+                    onKeyDown={(e) => {
+                      // Enter writes the cell and goes one down, as in a spreadsheet (Shift+Enter up); Tab goes right by itself.
+                      if (e.key !== 'Enter') return;
+                      e.preventDefault();
+                      const next = `${r + (e.shiftKey ? -1 : 1)}:${c}`;
+                      e.currentTarget.blur();
+                      // After the written cell renders (a timeout, not a frame: a hidden window draws none).
+                      setTimeout(() => {
+                        const target = document.querySelector<HTMLInputElement>(`.grid input[data-cell="${next}"]`);
+                        target?.focus();
+                        target?.select();
+                      });
+                    }}
+                  />
                 </td>
               ))}
               <td>

@@ -776,7 +776,7 @@ async function layersWithRealInput(picture: string) {
   await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .page .row')].at(-1).id = 'smoke-last-row'`);
   await clickOn('#smoke-last-row');
   await pressKey('End');
-  for (const line of ['r_s := roots(x^2 - 5·x + 6, x)', 'x_m := maximize(6·x·(4 - x), x: 0 .. 4)', 'M_s := 37.5 kN·m', 'q_s := 12 kN/m', 'solve L_s: M_s == q_s·L_s²/8']) {
+  for (const line of ['r_s := roots(x^2 - 5·x + 6, x)', 'x_m := maximize(6·x·(4 - x), x: 0 .. 4)', 'S_n := 23.53 mm²', 'solve d_n: S_n <= π·d_n²/4', 'M_s := 37.5 kN·m', 'q_s := 12 kN/m', 'solve L_s: M_s == q_s·L_s²/8']) {
     await pressKey('Enter');
     await typeText(line);
   }
@@ -786,10 +786,12 @@ async function layersWithRealInput(picture: string) {
   contents.sendInputEvent({ type: 'mouseUp', ...besidePage, button: 'left', clickCount: 1 });
   await pause(400);
   await takePicture(picture.replace(/[.]png$/, '-roots.png'));
-  // Roots and extremes: r_s = [2; 3], x_m = 2.
+  // Roots and extremes: r_s = [2; 3], x_m = 2; the bound of an inequality.
   const rootsAndExtremes = (await contents.executeJavaScript(`(() => {
     const rows = [...document.querySelectorAll('.layer-view.active .page .row')].map((r) => r.textContent.replace(/\\s+/g, ''));
-    return rows.some((r) => r.includes('roots') && r.endsWith('=[2;3]')) && rows.some((r) => r.includes('argmax') && r.endsWith('=2'));
+    // An inequality: S ≤ π·d²/4 ⇒ d ≥ √(4·S/π) = 5,474 mm (from S = 23,53 mm²).
+    const inequality = rows.some((r) => r.includes('⇒') && r.includes('≥') && r.endsWith('=5,474mm'));
+    return inequality && rows.some((r) => r.includes('roots') && r.endsWith('=[2;3]')) && rows.some((r) => r.includes('argmax') && r.endsWith('=2'));
   })()`)) as boolean;
   const solveRow =`[...document.querySelectorAll('.layer-view.active .page .row')].find((r) => r.textContent.includes('L_s') || r.textContent.includes('Ls'))`;
   // The root is set as MathML (msqrt): the text has no √ in it.

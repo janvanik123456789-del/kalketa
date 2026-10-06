@@ -44,12 +44,16 @@ export type Expr =
   /** An item of a series, counted from 1: CF[1]. */
   | { readonly kind: 'index'; readonly object: Expr; readonly index: Expr; /** The column of a matrix item: A[i, j]. */ readonly column?: Expr; readonly span: Span };
 
-/** One equation of a solve statement: left == right. */
+/** One equation of a solve statement: left == right, or an inequality left ≤ right. */
 export interface Equation {
   readonly left: Expr;
   readonly right: Expr;
+  /** An inequality (one unknown only): solved for its bound, then on which side the solutions lie. */
+  readonly relation?: Inequality;
   readonly span: Span;
 }
+
+export type Inequality = '<' | '<=' | '>' | '>=';
 
 /** Parameter of a user function. */
 export interface Param {

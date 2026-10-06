@@ -225,7 +225,7 @@ ${checkLines(block.lines)}
 /** Lines aligned on "=": the left-hand side only on the first line. */
 function equationTable(lines: readonly EquationLine[], note: string | undefined, defineOperator: string): string {
   const rows = lines.map((line, i) => {
-    const lhs = line.lhs ? math(line.lhs) : '';
+    const lhs = line.lhs ? `${line.lead ? `<span class="lead">${esc(line.lead)}</span>` : ''}${math(line.lhs)}` : '';
     const op = line.op ?? (line.lhs ? defineOperator : i > 0 ? '=' : '');
     return `<tr class="${line.role}"><td class="lhs">${lhs}</td><td class="op">${op}</td><td class="rhs">${math(line.rhs)}</td><td class="note">${i === 0 ? comment(note) : ''}</td></tr>`;
   });
@@ -242,7 +242,7 @@ function equationFlow(lines: readonly EquationLine[], note: string | undefined, 
   const lhs = lines[0]?.lhs;
   const parts = lines.map((line, i) => {
     const op = line.op ?? (line.lhs ? defineOperator : i > 0 ? '=' : '');
-    const own = i > 0 && line.lhs ? `${math(line.lhs)}` : '';
+    const own = i > 0 && line.lhs ? `${line.lead ? `<span class="lead">${esc(line.lead)}</span>` : ''}${math(line.lhs)}` : '';
     return `<span class="part ${line.role}${own ? ' own' : ''}">${own}${op ? `<span class="op">${esc(op)}</span>` : ''}${math(line.rhs)}</span>`;
   });
   const comment = note ? `<span class="part note">${esc(note)}</span>` : '';
@@ -337,6 +337,8 @@ h3, h4, h5, h6 { font-size: 11pt; margin: 4mm 0 1.5mm; break-after: avoid; }
 .page-break, .clear { clear: both; }
 /* A derivation checked step by step: a quiet mark under it. */
 .derived { margin: 0.3mm 0 0 6mm; font-size: 8pt; color: #2e7d32; }
+/* ⇒ before the unknown that follows from an inequality. */
+.lead { margin: 0 0.6em; }
 /* The stop above a freely placed picture: as tall as it is moved down, no width, so the text beside it is not narrowed. */
 .wrap-stop { width: 0; margin: 0; }
 .wrap-stop.wrap-right { float: right; }

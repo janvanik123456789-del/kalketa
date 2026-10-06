@@ -61,6 +61,8 @@ export const en: Catalog = {
     'E-NO-BOUNDS': '{function} without bounds is a notation of theory and cannot be calculated. Give bounds (e.g. integral(y^2, y: 0 m .. h)) or use a value from a table.',
     'E-SOLVE-ROOTS': 'The equation has more positive solutions for {name} ({roots}). Pick one by an interval, e.g. solve {name}: … in 0 m .. 1 m.',
     'E-ROOTS-POLYNOMIAL': 'roots: the expression is no polynomial in {name} (degree {max} at most, whole powers, division only by what has no {name}).',
+    'E-SOLVE-INEQUALITY': 'solve takes an inequality (≤, ≥, <, >) for one unknown and one inequality only.',
+    'E-SOLVE-SIDE': 'The inequality does not tell on which side of the bound of {name} the solutions lie (it holds on both sides there, or on none).',
     'E-PLOT-POSITION': 'The placement of the chart "{place}" cannot be read. For example: place: "width=40% wrap=right dx=5% dy=10mm" (side= is for pictures only).',
     'E-PLOT-SAMPLES': 'The number of points of a chart (samples) must be a whole number from 2 to {max}.',
     'E-PLOT-LENGTH': 'The series of a chart must have as many items as its x axis.',

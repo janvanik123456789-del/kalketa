@@ -61,6 +61,8 @@ export const cs: Catalog = {
     'E-NO-BOUNDS': '{function} bez mezí je zápis pro teorii a nejde spočítat. Zadejte meze (např. integral(y^2, y: 0 m .. h)), nebo použijte hodnotu z tabulky.',
     'E-SOLVE-ROOTS': 'Rovnice má pro {name} víc kladných řešení ({roots}). Vyberte jedno intervalem, např. solve {name}: … in 0 m .. 1 m.',
     'E-ROOTS-POLYNOMIAL': 'roots: výraz není mnohočlen v {name} (nejvýš {max}. stupně, celé mocniny, dělení jen tím, co {name} neobsahuje).',
+    'E-SOLVE-INEQUALITY': 'Nerovnici (≤, ≥, <, >) řeší solve jen pro jednu neznámou a jednu nerovnici.',
+    'E-SOLVE-SIDE': 'Z nerovnice nejde určit, na které straně hranice {name} leží řešení (nerovnice tam platí na obou stranách, nebo na žádné).',
     'E-PLOT-POSITION': 'Umístění grafu „{place}“ nejde přečíst. Příklad: place: "width=40% wrap=right dx=5% dy=10mm" (side= je jen pro obrázky).',
     'E-PLOT-SAMPLES': 'Počet bodů grafu (samples) musí být celé číslo od 2 do {max}.',
     'E-PLOT-LENGTH': 'Řady v grafu musí mít stejně prvků jako osa x.',

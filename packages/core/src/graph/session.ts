@@ -19,7 +19,7 @@ import { checkDerivation, type DerivationStep } from '../eval/derive.js';
 import { DIMENSIONLESS_NAME } from '../lang/parser.js';
 import { DIMENSIONLESS, dim, type Dimension } from '../units/dimension.js';
 import type { BlockCaller, BlockSource } from '../eval/blocks.js';
-import type { BinaryOperator, Expr, Sheet, Statement } from '../lang/ast.js';
+import type { BinaryOperator, Expr, Inequality, Sheet, Statement } from '../lang/ast.js';
 import { parse } from '../lang/parser.js';
 import type { Table, TableRead } from '../tables/table.js';
 import { sameDim } from '../units/dimension.js';
@@ -61,7 +61,7 @@ export interface StatementResult {
   /** A derivation (derive a == b, y := a == b == c): whether each step holds. */
   readonly derivation?: readonly DerivationStep[];
   /** Values found by a solve statement, in the order of its unknowns; the formula of one expressed. */
-  readonly solutions?: readonly { readonly name: string; readonly value: Quantity; readonly display: DisplayValue; readonly formula?: Expr }[];
+  readonly solutions?: readonly { readonly name: string; readonly value: Quantity; readonly display: DisplayValue; readonly formula?: Expr; readonly relation?: Inequality }[];
   /** Names this statement read, in order of first use (including undefined ones). */
   readonly dependencies: readonly string[];
   /** Table data this statement read directly. */
@@ -418,6 +418,7 @@ export class SheetSession {
           value: found.values[i]!,
           display: toDisplay(found.values[i]!, context.registry),
           ...(found.formula ? { formula: found.formula } : {}),
+          ...(found.relation ? { relation: found.relation } : {}),
         }));
         return { status: 'ok', solutions, dependencies, tableReads, diagnostics: ctx.warnings };
       }

@@ -413,10 +413,11 @@ class LineParser {
       }
       const left = this.parseAdditive();
       const eq = this.peek();
-      if (eq.type !== '==' && eq.type !== '=') fail('E-SYNTAX', eq.span, { expected: '==', found: eq.text || 'end-of-line' });
+      const relation = eq.type === '<' || eq.type === '<=' || eq.type === '>' || eq.type === '>=' ? eq.type : undefined;
+      if (eq.type !== '==' && eq.type !== '=' && !relation) fail('E-SYNTAX', eq.span, { expected: '==', found: eq.text || 'end-of-line' });
       this.next();
       const right = this.parseAdditive();
-      equations.push({ left, right, span: spanOf(left, right) });
+      equations.push({ left, right, ...(relation ? { relation } : {}), span: spanOf(left, right) });
       const after = this.peek();
       if (after.type !== ',' && after.type !== 'newline' && after.type !== 'eof' && !this.isKeyword('in') && !this.isKeyword('guess')) {
         fail('E-SYNTAX', after.span, { expected: 'end-of-line', found: after.text });
@@ -424,6 +425,9 @@ class LineParser {
     }
     if (equations.length === 0) fail('E-SYNTAX', this.end.span, { expected: '==', found: 'end-of-line' });
     if (range && unknowns.length !== 1) fail('E-SYNTAX', range.low.span, { expected: 'guess', found: 'in' });
+    // An inequality has a side of its bound: one unknown, one inequality.
+    const inequality = equations.find((e) => e.relation);
+    if (inequality && (unknowns.length !== 1 || equations.length !== 1)) fail('E-SOLVE-INEQUALITY', inequality.span);
     return { kind: 'solve', unknowns, equations, ...(range ? { range } : {}), guesses, span: lineSpan };
   }
 

@@ -89,6 +89,8 @@ export const DIAGNOSTIC_SEVERITY = {
   'E-NO-BOUNDS': 'error',
   'E-SOLVE-ROOTS': 'error',
   'E-ROOTS-POLYNOMIAL': 'error',
+  'E-SOLVE-INEQUALITY': 'error',
+  'E-SOLVE-SIDE': 'error',
   'E-PLOT-LENGTH': 'error',
   'E-NOT-FUNCTION': 'error',
   'E-RECURSION': 'error',

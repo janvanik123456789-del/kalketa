@@ -23,7 +23,7 @@
  */
 
 import { CalcError, fail, type Span } from '../diagnostics.js';
-import type { Expr, Statement } from '../lang/ast.js';
+import type { Expr, Inequality, Statement } from '../lang/ast.js';
 import { sameDim, type Dimension } from '../units/dimension.js';
 import { baseUnitSymbol } from '../units/display.js';
 import { DIMENSIONLESS } from '../units/dimension.js';
@@ -56,10 +56,50 @@ export interface Solved {
   readonly values: Quantity[];
   /** The formula a single unknown was expressed by; absent when it was found numerically. */
   readonly formula?: Expr;
+  /**
+   * From an inequality: on which side of the value found the solutions lie,
+   * S ≤ π·d²/4 -> d ≥ … (the value is the bound: the least d).
+   */
+  readonly relation?: Inequality;
 }
 
-/** Solves the statement. */
+/** Solves the statement; an inequality for its bound, then the side of the solutions. */
 export function solveStatement(statement: SolveStatement, ctx: EvalContext, evaluate: Evaluate): Solved {
+  const solved = solveEquations(statement, ctx, evaluate);
+  const relation = statement.equations[0]?.relation;
+  return relation ? { ...solved, relation: sideOf(statement, relation, solved.values[0]!, ctx, evaluate) } : solved;
+}
+
+/**
+ * Which side of the bound x₀ satisfies the inequality, tried just above and
+ * just below it: S ≤ π·d²/4 holds for d above its bound, so d ≥ d₀.
+ */
+function sideOf(statement: SolveStatement, relation: Inequality, bound: Quantity, ctx: EvalContext, evaluate: Evaluate): Inequality {
+  const name = statement.unknowns[0]!.name;
+  const equation = statement.equations[0]!;
+  const quiet: EvalContext = { ...ctx, warnings: [], tableReads: [] };
+  const holds = (si: number): boolean | undefined => {
+    const at: EvalContext = { ...quiet, lookup: (n, span) => (n === name ? { ...bound, si } : ctx.lookup(n, span)) };
+    try {
+      const left = asQuantity(evaluate(equation.left, at), equation.left.span);
+      const right = asQuantity(evaluate(equation.right, at), equation.right.span);
+      const d = left.si - right.si;
+      return relation === '<' ? d < 0 : relation === '<=' ? d <= 0 : relation === '>' ? d > 0 : d >= 0;
+    } catch (err) {
+      if (err instanceof CalcError) return undefined;
+      throw err;
+    }
+  };
+  const step = Math.max(Math.abs(bound.si) * 1e-4, 1e-12);
+  const above = holds(bound.si + step);
+  const below = holds(bound.si - step);
+  const strict = relation === '<' || relation === '>';
+  if (above && !below) return strict ? '>' : '>=';
+  if (below && !above) return strict ? '<' : '<=';
+  return fail('E-SOLVE-SIDE', statement.span, { name });
+}
+
+function solveEquations(statement: SolveStatement, ctx: EvalContext, evaluate: Evaluate): Solved {
   const { unknowns, equations } = statement;
   if (equations.length !== unknowns.length) {
     fail('E-SOLVE-COUNT', statement.span, { unknowns: unknowns.length, equations: equations.length });

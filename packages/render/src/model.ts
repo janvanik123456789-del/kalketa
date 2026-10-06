@@ -54,6 +54,8 @@ export interface EquationLine {
   readonly rhs: MathNode;
   /** Sign between the sides when it is not the defining one: "=" in an equation. */
   readonly op?: string;
+  /** Before the left side: "⇒" where an inequality gives the unknown. */
+  readonly lead?: string;
 }
 
 export interface Message {
@@ -299,7 +301,9 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
       }
       case 'solve': {
         // The equations as written, then the values found.
-        const lines: EquationLine[] = s.equations.map((eq) => ({ role: 'formula', lhs: formulaNode(eq.left, formulaOptions()), op: '=', rhs: formulaNode(eq.right, formulaOptions()) }));
+        // An inequality keeps its sign; the unknown follows from it: S ≤ π·d²/4 ⇒ d ≥ √(4·S/π).
+        const sign = (r: string | undefined) => (r ? ({ '<': '<', '<=': '≤', '>': '>', '>=': '≥' } as Record<string, string>)[r]! : '=');
+        const lines: EquationLine[] = s.equations.map((eq) => ({ role: 'formula', lhs: formulaNode(eq.left, formulaOptions()), op: sign(eq.relation), rhs: formulaNode(eq.right, formulaOptions()) }));
         // The interval decides which root is found: "0 ≤ x ≤ 10".
         if (s.range && s.unknowns[0]) {
           const range = row(formulaNode(s.range.low, formulaOptions()), mo('≤'), nameNode(s.unknowns[0].name), mo('≤'), formulaNode(s.range.high, formulaOptions()));
@@ -309,12 +313,12 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
           const value = valueNode(found.display.value, found.display.unit, numberFormat(digits), found.display.im, dateFormat);
           // A formula of numbers only (x² + 2·x = 8) says nothing the result does not.
           if (!found.formula || !readsNames(found.formula)) {
-            lines.push({ role: 'result', lhs: nameNode(found.name), op: '=', rhs: value });
+            lines.push({ role: 'result', lhs: nameNode(found.name), op: sign(found.relation), rhs: value, ...(found.relation ? { lead: '⇒' } : {}) });
             continue;
           }
           // Expressed by a formula: L = √(8·M_Ed/q) = √(8·37,5 kN·m / 12 kN/m) = 5 m, checkable by hand.
           const formula = formulaNode(found.formula, formulaOptions());
-          lines.push({ role: 'formula', lhs: nameNode(found.name), op: '=', rhs: formula });
+          lines.push({ role: 'formula', lhs: nameNode(found.name), op: sign(found.relation), rhs: formula, ...(found.relation ? { lead: '⇒' } : {}) });
           const substituted = formulaNode(found.formula, formulaOptions(substitution(result, quantityNode, formulaOptions())));
           if (mode.substitution && toText(substituted) !== toText(formula)) lines.push({ role: 'substitution', rhs: substituted });
           lines.push({ role: 'result', rhs: value });

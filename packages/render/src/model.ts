@@ -65,7 +65,7 @@ export interface Message {
 
 export type PrintBlock =
   | { readonly kind: 'heading'; readonly line: number; readonly level: number; readonly text: string }
-  | { readonly kind: 'paragraph'; readonly line: number; readonly text: string }
+  | { readonly kind: 'paragraph'; readonly line: number; readonly text: string; readonly cites?: readonly string[] }
   | {
       readonly kind: 'picture';
       readonly line: number;
@@ -233,7 +233,7 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
         blocks.push({ kind: 'heading', line: s.span.line, level: s.level, text: s.text });
         break;
       case 'text':
-        blocks.push({ kind: 'paragraph', line: s.span.line, text: s.text });
+        blocks.push({ kind: 'paragraph', line: s.span.line, text: s.text, ...(s.cites ? { cites: s.cites } : {}) });
         break;
       case 'picture': {
         const src = options.resolveFile?.(s.path);

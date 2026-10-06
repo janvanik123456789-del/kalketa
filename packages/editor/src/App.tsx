@@ -267,12 +267,17 @@ export function App() {
 
   useEffect(() => {
     document.title = `${label}${dirty ? ' •' : ''} — Kalketa`;
-    desktop?.setCloseGuard({ dirty: anyDirty, message: t(ui, 'editor.closeUnsaved'), discard: t(ui, 'editor.discard'), cancel: t(ui, 'editor.cancel') });
+    // The message names the documents: an unsaved one in another tab is no mystery then.
+    const names = docs.tabs
+      .filter(isDirty)
+      .map((d) => t(ui, d.fileRef === undefined ? 'editor.unsavedNew' : 'editor.unsavedFile', { name: docLabel(d) }))
+      .join(', ');
+    desktop?.setCloseGuard({ dirty: anyDirty, message: t(ui, 'editor.closeUnsaved', { names }), discard: t(ui, 'editor.discard'), cancel: t(ui, 'editor.cancel') });
     if (!anyDirty || desktop) return;
     const warn = (e: BeforeUnloadEvent) => e.preventDefault();
     window.addEventListener('beforeunload', warn);
     return () => window.removeEventListener('beforeunload', warn);
-  }, [label, dirty, anyDirty, ui]);
+  }, [label, dirty, anyDirty, ui, docs.tabs]);
 
   // ------------------------------------------------------------------------
   // Document changes (all go through the undo history)

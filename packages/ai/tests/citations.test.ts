@@ -22,6 +22,13 @@ describe('citations', () => {
     ]);
   });
 
+  it('forgives glued words of a scan and a left-out reference in brackets, and sees no quote in sheet code', () => {
+    const scan = [{ id: 'ST:T1', title: 'Střih', text: 'Průřez nýtu máv tomto případě tvar kruhu. Zatížen silou 1600 N (viz Obr. 28). Míru volte 1,5.' }];
+    expect(checkCitations('"Průřez nýtu má v tomto případě tvar kruhu." [ST:T1]', scan)[0]!.status).toBe('ok');
+    expect(checkCitations('"Zatížen silou 1600 N. Míru volte 1,5." [ST:T1]', scan)[0]!.status).toBe('ok');
+    expect(checkCitations('check "Průměr nýtu": d ≤ d_vol  source "[ST:T1]"', scan)).toEqual([{ id: 'ST:T1', status: 'ok' }]);
+  });
+
   it('takes a quotation after the citation, behind a colon', () => {
     expect(checkCitations('**Podle [T2]:** „Doporučený limit průhybu stropních nosníků je L/250.“', theory)).toEqual([
       { id: 'T2', status: 'ok', quote: 'Doporučený limit průhybu stropních nosníků je L/250.' },

@@ -16,8 +16,9 @@ export interface AiSettings {
   readonly effort?: AiEffort;
 }
 
-export type AiEffort = 'low' | 'medium' | 'high';
-export const AI_EFFORTS: readonly AiEffort[] = ['low', 'medium', 'high'];
+/** 'none': a local model answers at once, without thinking (Claude takes it as low). */
+export type AiEffort = 'none' | 'low' | 'medium' | 'high';
+export const AI_EFFORTS: readonly AiEffort[] = ['none', 'low', 'medium', 'high'];
 
 export const AI_OFF = 'none';
 

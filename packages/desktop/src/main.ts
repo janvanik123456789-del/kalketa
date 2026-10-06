@@ -163,6 +163,7 @@ function createWindow(options: { blank?: boolean } = {}): BrowserWindow {
     if (!guard.dirty) return;
     const choice = dialog.showMessageBoxSync(win, {
       type: 'warning',
+      title: 'Kalketa',
       message: guard.message,
       buttons: [guard.discard, guard.cancel],
       defaultId: 1,
@@ -1763,8 +1764,9 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
   await clickOn('.ai-settings label.field > span');
   for (let i = 0; i < 3; i++) await pressKey('Down');
   for (let i = 0; i < 40 && !((await contents.executeJavaScript(`document.querySelector('.ai-status')?.textContent ?? ''`)) as string).includes('Připojeno'); i++) await pause(150);
-  // Thinking depth: from "as the model decides" one down to "low".
+  // Thinking depth: from "as the model decides" past "none" (a local server offers it) to "low".
   await clickOn('.ai-settings label.field:has(.ai-effort) > span');
+  await pressKey('Down');
   await pressKey('Down');
   await pause(200);
   await clickOn('.dialog-buttons button.default');

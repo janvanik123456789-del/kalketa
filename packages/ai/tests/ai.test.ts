@@ -191,6 +191,8 @@ describe('chat with a local server', () => {
     await chat({ provider: 'server', model: 'qwen', system: '', turns: [], effort: 'low', onText: () => {} }, { fetch: streaming([event({ content: 'OK' })], seen) });
     expect(JSON.parse(seen.body!).reasoning_effort).toBe('low');
     expect(parseAiSettings({ provider: 'server', effort: 'low' })).toMatchObject({ effort: 'low' });
+    await chat({ provider: 'server', model: 'qwen', system: '', turns: [], effort: 'none', onText: () => {} }, { fetch: streaming([event({ content: 'OK' })], seen) });
+    expect(JSON.parse(seen.body!)).toMatchObject({ reasoning_effort: 'none', chat_template_kwargs: { enable_thinking: false } });
     expect(parseAiSettings({ provider: 'server', effort: 'extreme' })).not.toHaveProperty('effort');
   });
 

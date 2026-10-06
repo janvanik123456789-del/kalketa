@@ -139,6 +139,13 @@ describe('parser: statements', () => {
     expect(kinds).toEqual(['heading', 'text', 'comment', 'directive', 'definition', 'display']);
   });
 
+  it('takes the sources after a text line, and nothing else there', () => {
+    expect(statements('"Mez kluzu je polovina meze pevnosti." [ST:T1][T2]')[0]).toMatchObject({ kind: 'text', cites: ['ST:T1', 'T2'] });
+    expect(parseCodes('"Text" [T1')).toEqual(['E-SYNTAX']);
+    expect(parseCodes('"Text" [ST:]')).toEqual(['E-SYNTAX']);
+    expect(parseCodes('"Text" 5')).toEqual(['E-MISSING-OPERATOR']);
+  });
+
   it('keeps trailing comments and target units', () => {
     const s = statements('M := 37.5 kN·m | kN·m \' moment')[0]!;
     expect(s).toMatchObject({ kind: 'definition', name: 'M', comment: 'moment' });

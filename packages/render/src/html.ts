@@ -146,7 +146,7 @@ export function renderBlockHtml(block: PrintBlock, catalog: Catalog, options: Bl
       return `<h${level}>${esc(block.text)}</h${level}>`;
     }
     case 'paragraph':
-      return `<p class="text">${esc(block.text)}</p>`;
+      return `<p class="text">${esc(block.text)}${(block.cites ?? []).map((c) => ` <span class="source">[${esc(c)}]</span>`).join('')}</p>`;
     case 'page-break':
       return '<div class="page-break"></div>';
     case 'clear':
@@ -397,7 +397,7 @@ tr.result td.rhs math { font-weight: bold; }
 .check.passed { border-left-color: #2e7d32; }
 .check.failed, .check.not-evaluated { border-left-color: #c62828; }
 .check .label { font-weight: 600; margin-right: 3mm; }
-.check .source, .summary td:last-child { color: #555; font-size: 9pt; }
+.check .source, .text .source, .summary td:last-child { color: #555; font-size: 9pt; }
 .check .verdict { margin-top: 0.8mm; }
 .check .utilization { margin-right: 4mm; }
 .check .status { font-weight: 700; }

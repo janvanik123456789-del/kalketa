@@ -180,7 +180,7 @@ export async function chat(request: ChatRequest, transport: Transport = {}): Pro
         system: request.system,
         messages: request.turns.map((t) => ({ role: t.role, content: t.text })),
         // A conversation needs no deep thinking unless the user asks for it; on a refusal the API answers with a fallback model.
-        ...(current ? { output_config: { effort: request.effort ?? 'medium' }, betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' as const } : {}),
+        ...(current ? { output_config: { effort: request.effort === 'none' ? 'low' : (request.effort ?? 'medium') }, betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' as const } : {}),
       },
       request.signal ? { signal: request.signal } : {},
     );
@@ -276,6 +276,8 @@ async function chatOpenAi(provider: ProviderInfo, request: ChatRequest, fetchFn:
         max_tokens: 16384,
         // As Cline sends it; servers that do not know it leave it out.
         ...(request.effort ? { reasoning_effort: request.effort } : {}),
+        // No thinking at all, in the vLLM / llama.cpp spelling too.
+        ...(request.effort === 'none' ? { chat_template_kwargs: { enable_thinking: false } } : {}),
         messages: [{ role: 'system', content: request.system }, ...request.turns.map((t) => ({ role: t.role, content: t.text }))],
       }),
       ...(request.signal ? { signal: request.signal } : {}),

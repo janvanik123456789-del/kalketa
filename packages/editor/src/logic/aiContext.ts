@@ -106,7 +106,67 @@ export function languageGuide(): string {
     'check "Bending": σ ≤ f_y  source "EN 1993-1-1, 6.2.5"  is a check (label and source optional); utilization = left / right.',
     'A derivation as in a textbook: y := M/(E·I) == F·l^3/(3·E·I) (the last member gives y), or "derive a == b == c" on its own; the program checks every step in general, so write each step as an equal form. "derive M_mp := l^3·F/3" introduces a symbol of theory without values. sum(ΔS·y^2), sum(F_i·a_i, i) and integral(y^2, dS) without bounds are notations of theory (Σ, ∫) with no value.',
     'A table in the sheet (measured data): a line "table Name:" and indented rows "| col [unit] | … |", the first row the header; Name.col is a series. fit(Name.y, x: Name.t, kind: "linear"|"poly2"|"poly3"|"exp"|"power"|"log") gives a fitted function f(t); plot(Name.y, f(x), x: Name.t) shows points and the curve.',
-    '#, ##, ### are headings; \' starts a comment; a line in "quotes" is printed text.',
+    'Text: a printed paragraph is a whole line in straight double quotes ("Volíme průměr nýtu 6 mm."); no quote mark inside, no formula after it, only its sources may follow: "…" [T1] or [ST:T1]. A note beside a formula is a comment after \' on the same line. #, ##, ### are headings.',
+    'Names as in the source: Greek letters and indexes (σ_k, τ_dov, R_m), never spelled out (sigma_k); multiply with · (not *).',
+    'A table row: row := pick(Table, "key") (or pick(Table, column: value)); a value of it: row.column, or at once pick(Table, "key").column. A row is no number: pick(…) | mm is wrong, pick(…).d | mm is right.',
     `Built-in functions: ${functions}.`,
+    'Sample fragments of a sheet (write in this form):',
+    ...SHEET_FRAGMENTS.map((f) => `--- ${f.topic}\n${f.source}`),
   ].join('\n');
 }
+
+/**
+ * Short pieces of a sheet, one thing each, that the guide shows the model so it
+ * writes in the form at once instead of guessing (tests check each one runs clean).
+ */
+export const SHEET_FRAGMENTS: readonly { readonly topic: string; readonly source: string }[] = [
+  {
+    topic: 'headings, text and comments',
+    source: ['# Výpočet průměru nýtu', '## Zadání', '"Nýt je namáhán smykem v jednom střihu."', "F := 1600 N            ' zatěžující síla", 'n := 1.5', '"Mez kluzu v tahu je přibližně polovina meze pevnosti." [T1]', 'R_m := 340 MPa', 'σ_k := R_m/2'].join('\n'),
+  },
+  {
+    topic: 'a value read from a table',
+    source: [
+      'table Nyty:',
+      '    | oznaceni | d [mm] |',
+      '    | N6 | 6 |',
+      '    | N8 | 8 |',
+      'nyt := pick(Nyty, "N8")',
+      'd_vol := nyt.d | mm',
+      'd_6 := pick(Nyty, "N6").d',
+    ].join('\n'),
+  },
+  {
+    topic: 'definitions, a result shown, the unit of a result',
+    source: ['L := 6 m', 'q := 10 kN/m', 'M_Ed := q·L²/8 | kN·m', 'M_Ed ='].join('\n'),
+  },
+  {
+    topic: 'an inequality solved for the unknown, then the chosen value',
+    source: ['F := 1600 N', 'τ_dov := 68 MPa', 'S_min := F/τ_dov | mm²', '"Průřez nýtu je kruh, odkud pro průměr platí:"', 'solve d: S_min ≤ π·d²/4', '"Volíme průměr nýtu 6 mm."', 'd_n := 6 mm'].join('\n'),
+  },
+  {
+    topic: 'an equation solved in an interval',
+    source: 'solve x: x² + 2·x == 8 in 0 .. 10',
+  },
+  {
+    topic: 'a check with its source',
+    source: ['σ := 150 MPa', 'f_y := 235 MPa', 'check "Ohyb": σ ≤ f_y  source "EN 1993-1-1, 6.2.5"'].join('\n'),
+  },
+  {
+    topic: 'a derivation checked step by step',
+    source: ['F := 2 kN', 'l := 1.5 m', 'E := 210 GPa', 'I := 800 cm⁴', 'M := F·l', 'φ := M·l/(2·E·I) == F·l²/(2·E·I)'].join('\n'),
+  },
+  {
+    topic: 'measured points, a fitted curve and its chart',
+    source: [
+      'table Mereni:',
+      '    | t [s] | T [°C] |',
+      '    | 0 | 20.1 |',
+      '    | 10 | 25.3 |',
+      '    | 20 | 29.8 |',
+      '    | 30 | 33.9 |',
+      'T_fit := fit(Mereni.T, x: Mereni.t, kind: "linear")',
+      'plot(Mereni.T, T_fit(x), x: Mereni.t)',
+    ].join('\n'),
+  },
+];

@@ -153,7 +153,7 @@ export function AiSettingsSection({ catalog, draft, onChange, aiOn = true }: { c
               }}
             >
               <option value="">{t(catalog, 'ai.effortDefault')}</option>
-              {AI_EFFORTS.map((e) => (
+              {AI_EFFORTS.filter((e) => e !== 'none' || provider.api === 'openai-compatible').map((e) => (
                 <option key={e} value={e}>
                   {t(catalog, `ai.effort.${e}` as UiKey)}
                 </option>

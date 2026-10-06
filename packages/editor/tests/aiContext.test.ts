@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { evaluateSheet } from '@kalketa/core';
-import { languageGuide, sheetContext } from '../src/logic/aiContext.js';
+import { languageGuide, SHEET_FRAGMENTS, sheetContext } from '../src/logic/aiContext.js';
 
 describe('what the AI sees of a sheet', () => {
   it('gets the text, the findings in English and the results by line', () => {
@@ -15,6 +15,15 @@ describe('what the AI sees of a sheet', () => {
 
   it('knows the built-in functions from the core', () => {
     expect(languageGuide()).toMatch(/Built-in functions: .*sqrt\(/);
+  });
+
+  it('shows sample fragments that all run clean', () => {
+    expect(languageGuide()).toContain('--- headings, text and comments');
+    for (const fragment of SHEET_FRAGMENTS) {
+      const result = evaluateSheet(fragment.source);
+      const found = [...result.diagnostics, ...result.statements.flatMap((s) => s.diagnostics)].map((d) => d.code);
+      expect(found, fragment.topic).toEqual([]);
+    }
   });
 });
 

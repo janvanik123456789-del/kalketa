@@ -251,6 +251,8 @@ class LineParser {
     if (first.type === 'string' && this.tokens.length === 1) {
       return { kind: 'text', text: first.text, span: lineSpan };
     }
+    const cites = first.type === 'string' ? citationsOf(this.tokens.slice(1)) : undefined;
+    if (cites) return { kind: 'text', text: first.text, cites, span: lineSpan };
     if (first.type === 'ident' && first.text === 'check' && this.peek(1).type !== ':=') {
       return this.parseCheck(lineSpan);
     }
@@ -1009,6 +1011,31 @@ export interface PictureLine extends Placement {
 const PICTURE = /^!\[([^\]]*)\]\(([^()\s]+)\)\s*(?:\{([^}]*)\})?$/;
 
 /** "![Schéma](images/sheet/a.png){width=40% side=right}" -> its parts; undefined when malformed. */
+/**
+ * The sources after a text line, "…" [T1] or [ST:T1][T2]: section ids of the
+ * sheet's sources or of a theory library. Anything else is not a citation.
+ */
+function citationsOf(tokens: readonly Token[]): string[] | undefined {
+  const cites: string[] = [];
+  let i = 0;
+  while (i < tokens.length) {
+    if (tokens[i]!.type !== '[') return undefined;
+    const parts: string[] = [];
+    i++;
+    while (i < tokens.length && tokens[i]!.type !== ']') {
+      const t = tokens[i]!;
+      const expected = parts.length % 2 === 0 ? 'ident' : ':';
+      if (t.type !== expected) return undefined;
+      parts.push(t.text);
+      i++;
+    }
+    if (i >= tokens.length || parts.length % 2 === 0) return undefined;
+    cites.push(parts.join(''));
+    i++;
+  }
+  return cites.length > 0 ? cites : undefined;
+}
+
 export function parsePicture(text: string): PictureLine | undefined {
   const match = PICTURE.exec(text.trim());
   if (!match) return undefined;

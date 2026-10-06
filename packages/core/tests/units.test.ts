@@ -130,6 +130,24 @@ describe('quantities', () => {
     expectValue('d := 20 mm\nL := 0.5 m\nπ·d²/4·L | cm³', Math.PI * 100e-6 * 0.5 * 1e6, 'cm³');
   });
 
+  it('keeps the scale of the calculation: no N/MPa, no metres from millimetres, MPa from N·mm', () => {
+    // A rivet in N and MPa (a test of 2026-10-05): the area in mm², the diameter in mm.
+    expectValue('F := 1600 N\nτ := 68 MPa\nS := F/τ\nS =', 23.5294, 'mm²', 3);
+    expectValue('F := 1600 N\nτ := 68 MPa\nS := F/τ\nd := √(4·S/π)\nd =', 5.4734, 'mm', 3);
+    expectValue('a := 20 mm\nb := 30 mm\nsqrt(a² + b²)', 36.0555, 'mm', 3);
+    expectValue('S := 314 mm²\n(4·S/π)^0.5', 19.9949, 'mm', 3);
+    expectValue('V := 27 cm³\ncbrt(V)', 3, 'cm');
+    // Stress from N·mm and mm³ or from N and mm², also below 1; a load in kN on m² in kPa.
+    expectValue('M := 62500 N·mm\nW := 400 mm³\nM/W', 156.25, 'MPa');
+    expectValue('F := 800 N\nA := 1000 mm²\nF/A', 0.8, 'MPa');
+    expectValue('F := 10 kN\nA := 2 m²\nF/A', 5, 'kPa');
+    expectValue('P := 5 kN\nv := 2 m/s\nP·v', 10, 'kW');
+    // Units of one kind mixed (m and cm): the prefix that shows the value from 1 up.
+    expectValue('M := 37.5 kN·m\nW := 194.3 cm³\nM/W', 193.0, 'MPa', 1);
+    // A moment stays kN·m, never kJ.
+    expectValue('q := 12 kN/m\nL := 5 m\nq·L²/8', 37.5, 'kN·m');
+  });
+
   it('shows preferred SI units for computed results', () => {
     expectValue('2 kg · 3 m/s²', 6, 'N');
     expectValue('10 N · 2 m / 4 s', 5, 'W');

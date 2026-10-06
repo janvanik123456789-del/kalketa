@@ -5,7 +5,7 @@
  * is the same).
  */
 
-import { divideDims, isDimensionless, multiplyDims, sameDim, type Dimension } from './dimension.js';
+import { divideDims, isDimensionless, multiplyDims, powerDim, sameDim, superscript, type Dimension } from './dimension.js';
 import type { ResolvedUnit } from './unitExpr.js';
 
 const SUPER: Readonly<Record<string, string>> = { '⁰': '0', '¹': '1', '²': '2', '³': '3', '⁴': '4', '⁵': '5', '⁶': '6', '⁷': '7', '⁸': '8', '⁹': '9', '⁻': '-' };
@@ -62,12 +62,21 @@ export function formatTerms(terms: ReadonlyMap<string, number>): string {
 }
 
 /**
- * The unit of a · b or a / b from the units the operands carry. Undefined when
- * the result has a name of its own (force N, pressure Pa, power W…: shown
- * so, as before), when it has no dimension, or when the units do not compose
- * readably (more than three symbols, temperatures).
+ * The unit of a · b or a / b from the units the operands carry, in the scale
+ * the calculation is written in (docs/03-jazyk.md, ch. 4.2a):
+ * - a single unit stays (kN·m / m = kN);
+ * - a dimension with a name of its own takes it with the prefix of the same
+ *   size: N·mm / mm³ = MPa, kN/m² = kPa, MPa·mm² = N, kN·m/s = kW (energy
+ *   excepted: a moment stays kN·m);
+ * - a mix of kinds that is a power of a length takes it: N/MPa = mm²
+ *   (two units of one kind, mm²·m, stay apart only in SI: m³);
+ * - where units of one kind mix, a named unit that would show less than 1
+ *   takes the next smaller prefix: kN·m / cm³ is 0,193 GPa, shown as 193 MPa
+ *   (N/mm² stays MPa, also for 0,8 MPa);
+ * - else the composed unit when it reads well (kN/m, kg/m³), or SI.
+ * Undefined for no dimension, temperatures and what does not compose readably.
  */
-export function composedHint(op: '*' | '/', a: ResolvedUnit, b: ResolvedUnit, units: UnitNames): ResolvedUnit | undefined {
+export function composedHint(op: '*' | '/', a: ResolvedUnit, b: ResolvedUnit, units: UnitNames, value?: number): ResolvedUnit | undefined {
   if (a.offset !== undefined || b.offset !== undefined) return undefined;
   const ta = unitTerms(a.symbol);
   const tb = unitTerms(b.symbol);
@@ -76,13 +85,39 @@ export function composedHint(op: '*' | '/', a: ResolvedUnit, b: ResolvedUnit, un
   for (const [name, e] of tb) terms.set(name, (terms.get(name) ?? 0) + (op === '*' ? e : -e));
   for (const [name, e] of terms) if (e === 0) terms.delete(name);
   const dim = op === '*' ? multiplyDims(a.dim, b.dim) : divideDims(a.dim, b.dim);
-  // A single unit (kN) is kept; a compound one (MPa·mm²) gives way to a name of its own (N).
-  if (terms.size === 0 || terms.size > 3 || isDimensionless(dim) || (terms.size > 1 && units.hasOwnName(dim))) return undefined;
-  // mm² · m is not a unit to show: two units of one dimension stay apart only in SI (m³).
-  const dims = [...terms.keys()].map((name) => units.dimOf(name));
-  if (dims.some((d, i) => !d || dims.some((e, j) => j > i && e && sameDim(d, e)))) return undefined;
+  if (terms.size === 0 || isDimensionless(dim)) return undefined;
   const factor = op === '*' ? a.factor * b.factor : a.factor / b.factor;
+  const dims = [...terms.keys()].map((name) => units.dimOf(name));
+  // Two units of one kind (m and cm in kN·m/cm³): no scale of the calculation to keep.
+  const mixed = dims.some((d, i) => !d || dims.some((e, j) => j > i && e && sameDim(d, e)));
+  if (terms.size > 1) {
+    const named = units.ownUnit(dim, factor, mixed ? value : undefined);
+    if (named) return named;
+  }
+  // mm² · m is not a unit to show: two units of one dimension stay apart only in SI (m³).
+  if (mixed) return undefined;
+  if (terms.size > 1) {
+    const length = units.lengthPower(dim, factor);
+    if (length) return length;
+  }
+  if (terms.size > 3) return undefined;
   return { symbol: formatTerms(terms), factor, dim };
+}
+
+/**
+ * The unit of √x or ∛x (n = 2, 3) from the unit of x: √mm² = mm, ∛cm³ = cm,
+ * √(m²/s²) = m/s. Undefined where the root of the unit is no unit (√mm).
+ */
+export function rootHint(hint: ResolvedUnit | undefined, n: number): ResolvedUnit | undefined {
+  if (!hint || hint.offset !== undefined) return undefined;
+  const power = hint.power;
+  if (power && power.exponent % n === 0) {
+    const e = power.exponent / n;
+    return { symbol: e === 1 ? power.symbol : `${power.symbol}${superscript(e)}`, factor: power.factor ** e, dim: powerDim(power.dim, e), power: { ...power, exponent: e } };
+  }
+  const terms = unitTerms(hint.symbol);
+  if (!terms || [...terms.values()].some((e) => e % n !== 0)) return undefined;
+  return { symbol: formatTerms(new Map([...terms].map(([name, e]) => [name, e / n]))), factor: hint.factor ** (1 / n), dim: powerDim(hint.dim, 1 / n) };
 }
 
 export interface UnitNames {
@@ -90,13 +125,58 @@ export interface UnitNames {
   hasOwnName(dim: Dimension): boolean;
   /** The dimension of a unit symbol, if it is one. */
   dimOf(symbol: string): Dimension | undefined;
+  /**
+   * The unit of a named dimension in the size closest to `factor` from below,
+   * by the usual prefixes: 1e6 Pa -> MPa, 1e7 Pa -> MPa, 1 N -> N; smaller
+   * while `value` (SI) would show below 1 in it: 1.93e8 Pa in GPa -> MPa.
+   */
+  ownUnit(dim: Dimension, factor: number, value?: number): ResolvedUnit | undefined;
+  /** A power of a length unit of exactly this size: 1e-6 m² -> mm², 1e-6 m³ -> cm³. */
+  lengthPower(dim: Dimension, factor: number): ResolvedUnit | undefined;
 }
 
+/** Prefixes for the sizes of named units: an engineering choice (no hecto, deca, centi). */
+const PREFIXES = ['G', 'M', 'k', '', 'm', 'µ', 'n'];
+const LENGTHS = ['mm', 'cm', 'dm', 'm', 'km'];
+const same = (a: number, b: number) => Math.abs(a - b) <= 1e-9 * Math.max(Math.abs(a), Math.abs(b));
+
 /** For composedHint: named dimensions except energy (a moment is N·m, not J), and the units of a registry. */
-export function unitNames(resolve: (symbol: string) => { dim: Dimension } | undefined, preferred: readonly string[]): UnitNames {
-  const dims = preferred.filter((s) => s !== 'J').flatMap((s) => {
+export function unitNames(resolve: (symbol: string) => { dim: Dimension; factor: number } | undefined, preferred: readonly string[]): UnitNames {
+  const named = preferred.filter((s) => s !== 'J').flatMap((s) => {
     const unit = resolve(s);
-    return unit ? [unit.dim] : [];
+    return unit ? [{ symbol: s, dim: unit.dim }] : [];
   });
-  return { hasOwnName: (dim) => dims.some((d) => sameDim(d, dim)), dimOf: (symbol) => resolve(symbol)?.dim };
+  return {
+    hasOwnName: (dim) => named.some((n) => sameDim(n.dim, dim)),
+    dimOf: (symbol) => resolve(symbol)?.dim,
+    ownUnit: (dim, factor, value) => {
+      const base = named.find((n) => sameDim(n.dim, dim));
+      if (!base) return undefined;
+      const sizes = PREFIXES.flatMap((p) => {
+        const unit = resolve(p + base.symbol);
+        return unit && sameDim(unit.dim, dim) ? [{ symbol: p + base.symbol, factor: unit.factor }] : [];
+      });
+      const down = [...sizes].sort((a, b) => b.factor - a.factor);
+      let fits = down.find((s) => s.factor <= factor * (1 + 1e-9)) ?? down.at(-1);
+      // 0,193 GPa reads as 193 MPa.
+      while (fits && value !== undefined && value !== 0 && Math.abs(value) / fits.factor < 1) {
+        const smaller = down[down.indexOf(fits) + 1];
+        if (!smaller) break;
+        fits = smaller;
+      }
+      return fits ? { symbol: fits.symbol, factor: fits.factor, dim } : undefined;
+    },
+    lengthPower: (dim, factor) => {
+      for (const symbol of LENGTHS) {
+        const unit = resolve(symbol);
+        if (!unit) continue;
+        for (const e of [2, 3, 4]) {
+          if (sameDim(powerDim(unit.dim, e), dim) && same(unit.factor ** e, factor)) {
+            return { symbol: `${symbol}${superscript(e)}`, factor, dim, power: { symbol, exponent: e, factor: unit.factor, dim: unit.dim } };
+          }
+        }
+      }
+      return undefined;
+    },
+  };
 }

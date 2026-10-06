@@ -109,6 +109,12 @@ Tohle je nejčastější zdroj chyb, proto pravidlo **přísnější než u konk
 
 *Upřesněno 2026-10-01:* jednotky činitelů se **skládají**: `q·L²/8` z kN/m a m dá **kN·m**, `M/L` dá kN, `1000 kWh · 4,2 Kč/kWh` dá Kč. Stejné jednotky se krátí. Výjimky, kdy se výsledek ukáže v SI: složená jednotka, pro kterou existuje vlastní název (MPa·mm² → N, kg·m/s² → N), dvě jednotky stejného rozměru (mm²·m → m³) a víc než tři různé jednotky. **Joule se sám nevolí**, protože stejný rozměr má moment (kN·m); energii ukáže cílová jednotka (`| kWh`, `| J`).
 
+*Upřesněno 2026-10-06 (měřítko výpočtu):* výsledek zůstane v měřítku, ve kterém se počítá; metry se neobjeví tam, kde se počítalo v mm.
+- **Vlastní název s předponou téže velikosti:** N·mm/mm³ → **MPa**, N/mm² → MPa (i 0,8 MPa), kN/m² → **kPa**, MPa·mm² → N, kN·m/s → **kW**. Joule dál ne: moment je kN·m.
+- **Mocnina délky:** podíl či součin různých druhů, který je plochou nebo objemem, dostane mm², cm³…: `F/τ` z N a MPa → **mm²** (ne N/MPa).
+- **Odmocnina** zachová jednotku: √mm² → mm, ∛cm³ → cm, √(m²/s²) → m/s; platí pro `√`, `sqrt`, `cbrt`, `^0.5` i `^(1/3)`. `√(4·S/π)` s S v mm² → **mm**, `sqrt(a² + b²)` s a, b v mm → mm.
+- **Smíšené jednotky jednoho druhu** (m a cm v kN·m/cm³): předpona, ve které je hodnota aspoň 1: 193 MPa, ne 0,193 GPa. mm²·m dál v SI (m³).
+
 ### 4.3 Vnitřní reprezentace
 
 - Hodnota je uložena **v základních jednotkách SI** a k ní vektor exponentů dimenzí (**převzato z postgresql-unit a Calcpadu**).

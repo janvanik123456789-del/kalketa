@@ -4,6 +4,7 @@
  * sin(30°) works.
  */
 
+import { rootHint } from '../units/compose.js';
 import { fail } from '../diagnostics.js';
 import { isDimensionless, powerDim, sameDim } from '../units/dimension.js';
 import { baseUnitSymbol } from '../units/display.js';
@@ -47,7 +48,9 @@ export const MATH: readonly FunctionDef[] = [
       }
       // A real negative number has no real root: an error, as usual in a calculation.
       if (x.si < 0) a.domain(0);
-      return quantity(Math.sqrt(x.si), powerDim(x.dim, 0.5));
+      // √mm² = mm: the root of the unit, where it is one.
+      const hint = rootHint(x.hint, 2);
+      return quantity(Math.sqrt(x.si), powerDim(x.dim, 0.5), hint ? { hint } : {});
     },
   },
   {
@@ -58,7 +61,8 @@ export const MATH: readonly FunctionDef[] = [
     // Also ∛x. A negative number has a real cube root: ∛(−8) = −2.
     call: (a) => {
       const x = a.quantity(0);
-      return quantity(Math.cbrt(x.si), powerDim(x.dim, 1 / 3));
+      const hint = rootHint(x.hint, 3);
+      return quantity(Math.cbrt(x.si), powerDim(x.dim, 1 / 3), hint ? { hint } : {});
     },
   },
   {

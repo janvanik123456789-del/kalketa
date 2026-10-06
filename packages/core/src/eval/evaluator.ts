@@ -16,7 +16,7 @@ import { quantity, type MatrixValue, type Quantity, type Value, type VectorValue
 import { dateValue, isDate } from '../values/date.js';
 import { asBoolean, asComplex, asQuantity } from './coerce.js';
 import { BUILTIN_CONSTANTS, callFunction, FUNCTION_NAMES } from './functions.js';
-import { composedHint, unitNames, type UnitNames } from '../units/compose.js';
+import { composedHint, rootHint, unitNames, type UnitNames } from '../units/compose.js';
 import { PREFERRED_UNITS } from '../units/registry.js';
 import { callCalculus, isBindingCall } from './calculus.js';
 import { PLOT_FUNCTION } from './plot.js';
@@ -287,7 +287,7 @@ function arithmetic(op: BinaryOperator, left: Value, right: Value, leftExpr: Exp
       const scaled = scaledOperand(op, a, b);
       const combined = scaled ? undefined : samePowerHint(op, a, b);
       // Different units compose: kN/m · m² = kN·m (not joules, which have the same dimension).
-      const composed = scaled || combined || !a.hint || !b.hint || a.absolute || b.absolute ? undefined : composedHint(op, a.hint, b.hint, ownNames(ctx.registry));
+      const composed = scaled || combined || !a.hint || !b.hint || a.absolute || b.absolute ? undefined : composedHint(op, a.hint, b.hint, ownNames(ctx.registry), op === '*' ? a.si * b.si : a.si / b.si);
       const hint = keptHint(scaled) ? { hint: scaled!.hint! } : combined ? { hint: combined } : composed ? { hint: composed } : {};
       if (op === '*') return quantity(a.si * b.si, multiplyDims(a.dim, b.dim), hint);
       if (b.si === 0) fail('E-DIV-ZERO', rightExpr.span);
@@ -413,6 +413,12 @@ function addSubtract(op: '+' | '-', a: Quantity, b: Quantity, span: Span): Quant
 
 /** A whole power keeps the unit: (20 mm)² is 400 mm², (2 kN/m)² is 4 (kN/m)². */
 function poweredHint(a: Quantity, exponent: number): { hint?: ResolvedUnit } {
+  // x^0.5 and x^(1/3) as √x and ∛x: (mm²)^0.5 = mm.
+  const root = exponent > 0 && exponent < 1 && !a.absolute ? Math.round(1 / exponent) : 0;
+  if (root > 1 && Math.abs(1 / exponent - root) < 1e-9) {
+    const hint = rootHint(a.hint, root);
+    return hint ? { hint } : {};
+  }
   if (!a.hint || a.absolute || !Number.isInteger(exponent) || exponent === 0 || isDimensionless(a.dim)) return {};
   if (a.hint.power) return { hint: powerOf(a.hint.power, a.hint.power.exponent * exponent)! };
   const symbol = /[·/]/.test(a.hint.symbol) ? `(${a.hint.symbol})` : a.hint.symbol;

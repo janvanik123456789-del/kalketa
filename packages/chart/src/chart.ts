@@ -13,6 +13,8 @@ export interface ChartSeries {
   readonly xs: readonly number[];
   /** NaN where the curve has no value: a gap. */
   readonly ys: readonly number[];
+  /** Drawn otherwise than the chart's kind: measured points among lines, a fitted line among points. */
+  readonly mark?: 'line' | 'points';
 }
 
 export interface ChartSpec {
@@ -216,7 +218,7 @@ function curves(spec: ChartSpec, layout: ChartLayout): string {
   spec.series.forEach((s, i) => {
     const color = SERIES_COLORS[i % SERIES_COLORS.length]!;
     const points = s.xs.map((x, j) => [x, s.ys[j]!] as const);
-    if (spec.kind === 'line') {
+    if ((s.mark ?? spec.kind) === 'line') {
       // A gap (NaN) ends a piece of the curve.
       let d = '';
       let pen = false;
@@ -302,11 +304,12 @@ function legend(spec: ChartSpec, layout: ChartLayout): string {
   return spec.series
     .map((s, i) => {
       const color = SERIES_COLORS[i % SERIES_COLORS.length]!;
-      const dash = spec.kind === 'line' && SERIES_DASHES[i] ? ` stroke-dasharray="${SERIES_DASHES[i]}"` : '';
+      const kind = spec.kind === 'bar' ? 'bar' : (s.mark ?? spec.kind);
+      const dash = kind === 'line' && SERIES_DASHES[i] ? ` stroke-dasharray="${SERIES_DASHES[i]}"` : '';
       const key =
-        spec.kind === 'line'
+        kind === 'line'
           ? `<line x1="${r(x)}" x2="${r(x + 22)}" y1="${y}" y2="${y}" stroke="${color}" stroke-width="2"${dash}/>`
-          : spec.kind === 'points'
+          : kind === 'points'
             ? marker(x + 11, y, i % 4, 4, color)
             : `<rect x="${r(x + 5)}" y="${y - 6}" width="12" height="12" rx="2" fill="${color}"/>`;
       const item = `${key}<text x="${r(x + 28)}" y="${y + 4}" fill="${INK}">${label(s.label)}</text>`;

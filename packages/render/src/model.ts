@@ -150,6 +150,15 @@ export type PrintBlock =
       readonly dy?: number;
     }
   | { readonly kind: 'error'; readonly line: number; readonly source: string; readonly messages: readonly Message[] }
+  /** A table written in the sheet: its header (name and unit) and the cells as shown, numbers to the right. */
+  | {
+      readonly kind: 'datatable';
+      readonly line: number;
+      readonly name: string;
+      readonly columns: readonly { readonly name: string; readonly unit?: string; readonly numeric: boolean }[];
+      readonly rows: readonly (readonly string[])[];
+      readonly messages: readonly Message[];
+    }
   | { readonly kind: 'page-break' }
   /** @clear: what follows goes below a wrapped picture. */
   | { readonly kind: 'clear' };
@@ -248,11 +257,36 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
       case 'invalid':
         blocks.push({ kind: 'error', line: s.span.line, source: sourceText(result, s.span), messages });
         break;
+      case 'table': {
+        const table = r.value?.type === 'table' ? r.value.table : undefined;
+        const decimalSign = formatNumber(1.5, catalog).includes(',') ? ',' : '.';
+        const columns = s.columns.map((c, i) => ({ name: c.name, ...(c.unit ? { unit: c.unit } : {}), numeric: table?.columns[i]?.type === 'quantity' }));
+        const rows = s.rows.map((row) => row.map((cell, i) => cellText(cell, s.columns[i]?.format, columns[i]?.numeric ?? false, decimalSign)));
+        blocks.push({ kind: 'datatable', line: s.span.line, name: s.name, columns, rows, messages });
+        break;
+      }
       case 'definition':
       case 'display': {
         if (r.plot && s.kind === 'display' && s.expr.kind === 'call') {
           const label = r.plot.title ? t(catalog, 'print.figure', { n: String(++figures) }) : undefined;
           blocks.push(chartBlock(r.plot, s.expr, s.span.line, formulaOptions(), (v) => numberFormat(4)(v).replace('-', '−'), dateFormat, label, s.comment, messages));
+          break;
+        }
+        // A fitted curve: the call, then its equation with the numbers found, and R².
+        if (s.kind === 'definition' && r.value?.type === 'function' && r.value.fit) {
+          const fitted = r.value;
+          const fit = fitted.fit!;
+          const values = new Map(fitted.captured);
+          const numbers: FormulaOptions['substitute'] = (e) => {
+            const v = e.kind === 'variable' ? values.get(e.name) : undefined;
+            return v?.type === 'quantity' ? { node: quantityNode(v), negative: v.si < 0, hasUnit: !!v.hint || Object.keys(v.dim).length > 0 } : undefined;
+          };
+          const lines: EquationLine[] = [
+            { role: 'formula', lhs: nameNode(s.name), rhs: formulaNode(s.expr, formulaOptions()) },
+            { role: 'result', lhs: functionHead(s.name, [{ name: fit.param }], formulaOptions().argumentSeparator), op: '=', rhs: formulaNode(fitted.body, formulaOptions(numbers)) },
+            { role: 'given', lhs: sup(mi('R'), mn('2')), op: '=', rhs: mn(numberFormat(4)(fit.r2)) },
+          ];
+          blocks.push({ kind: 'equation', line: s.span.line, lines, ...(s.comment ? { comment: s.comment } : {}), messages });
           break;
         }
         if (r.value?.type === 'row') {
@@ -402,6 +436,20 @@ function besideLines(result: SheetResult, picture: StatementResult): number[] {
     previous = r;
   }
   return lines;
+}
+
+/**
+ * A cell as shown: a number with the decimal sign of the language and as many
+ * decimals as its column format says ("0.0" one, "0" none); text as written.
+ */
+function cellText(cell: string, format: string | undefined, numeric: boolean, decimalSign: string): string {
+  const text = cell.trim();
+  if (!numeric || text === '') return text;
+  const value = Number(text.replace(',', '.'));
+  if (!Number.isFinite(value)) return text;
+  const decimals = format ? (/[.,](0+)/.exec(format)?.[1]?.length ?? 0) : undefined;
+  const shown = decimals === undefined ? text.replace(',', '.') : value.toFixed(decimals);
+  return shown.replace('.', decimalSign).replace('-', '−');
 }
 
 /** Whether an expression reads names (values of the sheet), not numbers alone. */
@@ -689,7 +737,7 @@ function chartBlock(
   const unit = (u: string) => (u ? ` [${u}]` : '');
   const spec: ChartSpec = {
     kind: plot.kind,
-    series: plot.series.map((s, i) => ({ label: names[i] ?? '', xs: s.xs, ys: s.ys })),
+    series: plot.series.map((s, i) => ({ label: names[i] ?? '', xs: s.xs, ys: s.ys, ...(s.mark ? { mark: s.mark } : {}) })),
     xTitle: plot.xDates ? plot.variable : `${plot.variable}${unit(plot.xUnit)}`.trim(),
     // One curve names the axis; more curves are named in the legend.
     yTitle: (names.length === 1 ? `${names[0]}${unit(plot.yUnit)}` : unit(plot.yUnit)).trim(),

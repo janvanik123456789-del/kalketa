@@ -105,6 +105,7 @@ export function languageGuide(): string {
     'solve L: M_Ed == q·L²/8 expresses one unknown by a formula where it can (L = √(8·M_Ed/q), with its unit) and else solves numerically ("in a .. b" interval or "guess"); of more roots the interval picks. An inequality works too: solve d: S_min ≤ π·d²/4 gives d ≥ √(4·S_min/π) (d takes the bound).',
     'check "Bending": σ ≤ f_y  source "EN 1993-1-1, 6.2.5"  is a check (label and source optional); utilization = left / right.',
     'A derivation as in a textbook: y := M/(E·I) == F·l^3/(3·E·I) (the last member gives y), or "derive a == b == c" on its own; the program checks every step in general, so write each step as an equal form. "derive M_mp := l^3·F/3" introduces a symbol of theory without values. sum(ΔS·y^2), sum(F_i·a_i, i) and integral(y^2, dS) without bounds are notations of theory (Σ, ∫) with no value.',
+    'A table in the sheet (measured data): a line "table Name:" and indented rows "| col [unit] | … |", the first row the header; Name.col is a series. fit(Name.y, x: Name.t, kind: "linear"|"poly2"|"poly3"|"exp"|"power"|"log") gives a fitted function f(t); plot(Name.y, f(x), x: Name.t) shows points and the curve.',
     '#, ##, ### are headings; \' starts a comment; a line in "quotes" is printed text.',
     `Built-in functions: ${functions}.`,
   ].join('\n');

@@ -341,6 +341,21 @@ plot(CF, kind: "bar", title: "Peněžní toky")        ' řada proti pořadí 1,
 - **Umístění** jako u obrázku (11.1): `plot(M(x), x: 0 m .. L, place: "width=40% wrap=right dx=6% dy=8mm")`. Bez `place` má graf celou šířku. V editoru pravé tlačítko na grafu otevře menu obtékání a šířky, zúžený graf jde chytit myší a položit kamkoli na stránce (zápis `place` doplní program); klik bez tažení otevře řádek. `side=` je jen pro obrázky.
 - Chyby: zápis (`E-PLOT-FORM`), druh (`E-PLOT-KIND`), rozsah pozpátku (`E-PLOT-RANGE`), počet bodů (`E-PLOT-SAMPLES`), řady různé délky (`E-PLOT-LENGTH`), umístění (`E-PLOT-POSITION`).
 
+### 7.1f Proložení naměřených bodů (2026-10-06)
+
+```text
+T_lin := fit(Mereni.T, x: Mereni.t)                     ' přímka (kind: "linear" je výchozí)
+T_par := fit(Mereni.T, x: Mereni.t, kind: "poly2")      ' parabola
+T_60 := T_par(60 s)                                      ' proložená křivka jako funkce
+plot(Mereni.T, T_lin(x), T_par(x), x: Mereni.t)         ' body a křivky v jednom grafu
+```
+
+- **`fit(y, x: řada, kind: …)`** proloží body metodou nejmenších čtverců. Druhy: `linear` (a + b·x), `poly2`, `poly3`, `exp` (a·e^(b·x)), `power` (a·x^b), `log` (a + b·ln x); `exp`, `power` a `log` se prokládají na logaritmech a potřebují kladné hodnoty.
+- **Výsledek je funkce** jedné proměnné, pojmenované po sloupci x (`t`), s koeficienty v jednotkách: `T_lin(t) = 20,7 °C + 0,428 Δ°C/s·t`. V tisku je pod voláním rovnice s čísly a **R²**.
+- **Graf:** když je osa x řada naměřených hodnot (`x: Mereni.t`), čárový graf nakreslí data jako **body** a funkci proměnné (`T_lin(x)`) jako **čáru** přes celý rozsah.
+- Chyby: zápis (`E-FIT-FORM`), druh (`E-FIT-KIND`), málo bodů (`E-FIT-POINTS`), záporné hodnoty u logaritmických druhů (`E-FIT-POSITIVE`), body bez jednoznačné křivky (`E-FIT-SINGULAR`).
+- *Na později:* vlastní tvar s parametry (`fit(a + b·t + c·e^t, …)`), kosmetika tisku (osa podle sloupce, zápis záporných koeficientů).
+
 ### 7.2 Uživatelské funkce (F7)
 
 ```text
@@ -457,6 +472,20 @@ profil := find_min(Profily_IPE, by: G,
 **Inspirace:** Calcpad UI mode (`#UI` rozbalovací výběry) ukazuje, že výběr ze seznamu má smysl přímo ve výpočtu. U nás je ale **zdrojem výběru tabulka v listu**, ne pevný seznam v kódu.
 
 ---
+
+### 8.4 Tabulka v listu (2026-10-06)
+
+```text
+table Mereni:
+    | t [s] | T [°C] {0.0} | poznamka |
+    | 0     | 20.1         | start    |
+    | 10    | 25.3         |          |
+```
+
+- **Obecná tabulka přímo ve výpočtu** (naměřené body, vlastní data); katalogové tabulky (profily, materiály, průměry nýtů) zůstávají ve vrstvě Data. Řádek `table Jmeno:` a pod ním odsazené řádky `| … |` (v editoru Shift+Enter); první řádek je záhlaví: jméno sloupce, jednotka v `[ ]`, formát čísel v `{ }` (`{0.0}` jedno desetinné místo, `{0}` žádné).
+- **Ve výpočtu** je to tabulka jako z vrstvy Data: `Mereni.T` je řada v °C, `Mereni.t[3]` jedna hodnota, fungují `pick`, `find_min`, `interpolate`. Sloupec samých čísel je číselný, jiný textový; prázdné řádky se přeskočí.
+- **V tisku** tabulka se záhlavím a jednotkami, čísla podle formátu a vpravo.
+- *Na později (kosmetika):* úprava v mřížce přímo v listu, formáty jako v Excelu (procenta, vědecký zápis, zarovnání, tučně, pozadí) z nabídky pravého tlačítka.
 
 ## 9. Řešič rovnic (F8)
 

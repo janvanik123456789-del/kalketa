@@ -21,7 +21,7 @@ import { DIMENSIONLESS, dim, type Dimension } from '../units/dimension.js';
 import type { BlockCaller, BlockSource } from '../eval/blocks.js';
 import type { BinaryOperator, Expr, Inequality, Sheet, Statement } from '../lang/ast.js';
 import { parse } from '../lang/parser.js';
-import type { Table, TableRead } from '../tables/table.js';
+import { buildTable, type ColumnSchema, type Table, type TableBuildResult, type TableRead } from '../tables/table.js';
 import { sameDim } from '../units/dimension.js';
 import { baseUnitSymbol, toDisplay, type DisplayValue } from '../units/display.js';
 import { defaultRegistry, type UnitRegistry } from '../units/registry.js';
@@ -163,7 +163,7 @@ export class SheetSession {
 
     const definedAt = new Map<string, number>();
     statements.forEach((s, i) => {
-      const names = s.kind === 'definition' || s.kind === 'invalid' ? (s.name !== undefined ? [s.name] : []) : s.kind === 'solve' ? s.unknowns.map((u) => u.name) : [];
+      const names = s.kind === 'definition' || s.kind === 'invalid' || s.kind === 'table' ? (s.name !== undefined ? [s.name] : []) : s.kind === 'solve' ? s.unknowns.map((u) => u.name) : [];
       for (const name of names) if (!definedAt.has(name)) definedAt.set(name, i);
     });
 
@@ -180,6 +180,17 @@ export class SheetSession {
       if (statement.kind === 'invalid') {
         if (statement.name !== undefined && !env.has(statement.name)) env.set(statement.name, { ok: false });
         results.push({ statement, status: 'error', ...none, diagnostics: parseDiagnostics });
+        return;
+      }
+      if (statement.kind === 'table') {
+        const taken = statement.name in BUILTIN_CONSTANTS || env.has(statement.name) || tables.has(statement.name) || imports.has(statement.name) || blocks.has(statement.name);
+        if (taken) {
+          results.push({ statement, status: 'error', ...none, diagnostics: [...parseDiagnostics, diagnostic('E-REDEFINED', statement.nameSpan, { name: statement.name })] });
+          return;
+        }
+        const built = sheetTable(statement, context.registry);
+        env.set(statement.name, { ok: true, value: { type: 'table', table: built.table } });
+        results.push({ statement, status: 'ok', value: { type: 'table', table: built.table }, ...none, diagnostics: [...parseDiagnostics, ...built.diagnostics] });
         return;
       }
       if (statement.kind === 'dimension' || statement.kind === 'unit') {
@@ -491,6 +502,24 @@ function valueOrNothing(f: () => Value): Value | undefined {
   } catch {
     return undefined;
   }
+}
+
+/**
+ * A table written in the sheet as a table of the data layer: a column whose
+ * cells are all numbers holds quantities in its unit, any other one text.
+ */
+function sheetTable(statement: Extract<Statement, { kind: 'table' }>, registry: UnitRegistry): TableBuildResult {
+  const numeric = (text: string) => /^[-+]?(\d+\.?\d*|\.\d+)(e[-+]?\d+)?$/i.test(text.replace(/[\s\u00a0]/g, '').replace(',', '.'));
+  const columns: ColumnSchema[] = statement.columns.map((column, c) => {
+    const cells = statement.rows.map((r) => (r[c] ?? '').trim()).filter((t) => t !== '');
+    const type = cells.length > 0 && cells.every(numeric) ? 'quantity' : column.unit ? 'quantity' : 'text';
+    return { name: column.name, type, ...(column.unit ? { unit: column.unit } : {}) };
+  });
+  // Numbers are stored with a dot; a comma typed in a cell is a decimal comma.
+  const rows = statement.rows.map((r) => r.map((cell, c) => (columns[c]?.type === 'quantity' ? cell.replace(/[\s\u00a0]/g, '').replace(',', '.') : cell)));
+  const built = buildTable({ name: statement.name, columns }, rows.filter((r) => r.some((cell) => cell !== '')), registry);
+  // The table's own problems point at its line.
+  return { table: built.table, diagnostics: built.diagnostics.map((d) => ({ ...d, span: statement.span })) };
 }
 
 /** A value given for a block input must be of the same kind as the block's own. */

@@ -22,6 +22,7 @@ import type { ResolvedUnit } from '../units/unitExpr.js';
 import { daysOf, isDate } from '../values/date.js';
 import { quantity, type Quantity, type Value } from '../values/value.js';
 import { asQuantity } from './coerce.js';
+import { freeNames } from './userFunctions.js';
 import type { EvalContext } from './evaluator.js';
 
 type CallExpr = Extract<Expr, { kind: 'call' }>;
@@ -39,6 +40,11 @@ const MARK_SAMPLES = 11;
 const MAX_SAMPLES = 2001;
 
 export interface PlotSeries {
+  /**
+   * Over measured x (x: Mereni.t): the data as points, a function of x as a
+   * line over their whole range (a fitted curve through its points).
+   */
+  readonly mark?: 'line' | 'points';
   /** x of every point, in the unit of the x axis (days for dates). */
   readonly xs: readonly number[];
   /** y of every point in the unit of the y axis; NaN where the expression has no value (a gap). */
@@ -81,8 +87,16 @@ export function plotStatement(call: CallExpr, ctx: EvalContext, evaluate: Evalua
   const binder = binders[0];
   const xs = binder ? samplePoints(binder, call, plotKind, ctx, evaluate) : undefined;
 
+  // Over measured x (a series, not a range) a line chart shows the data as points and a
+  // function of x (a fitted curve) as a line through their whole range.
+  const dense = xs && binder && binder.value.kind !== 'range' && plotKind === 'line' && xs.length > 1 && !isDate(xs[0]!) ? across(xs) : undefined;
   // y of every curve at every point; a point without a value is a gap, not a failed chart.
-  const columns = call.args.map((arg) => (xs ? curve(arg, binder!.name, xs, ctx, evaluate) : series(arg, ctx, evaluate)));
+  const drawn = call.args.map((arg) => {
+    if (!xs) return { at: undefined, values: series(arg, ctx, evaluate), mark: undefined };
+    if (dense && freeNames(arg, new Set()).has(binder!.name)) return { at: dense, values: curve(arg, binder!.name, dense, ctx, evaluate), mark: 'line' as const };
+    return { at: xs, values: curve(arg, binder!.name, xs, ctx, evaluate), mark: dense ? ('points' as const) : undefined };
+  });
+  const columns = drawn.map((d) => d.values);
   const ys = columns.flat().find((q): q is Quantity => q !== undefined);
   if (!ys) {
     // Not one value: report why, from the first point.
@@ -117,9 +131,22 @@ export function plotStatement(call: CallExpr, ctx: EvalContext, evaluate: Evalua
     xUnit: x.unit,
     yUnit: yUnitSymbol,
     ...(x.dates ? { xDates: true } : {}),
-    series: columns.map((c) => ({ xs: x.values, ys: c.map(y) })),
+    series: drawn.map((d) => ({
+      xs: d.at && d.at !== xs ? d.at.map((q) => toDisplay(q, ctx.registry, xs![0]!.hint).value) : x.values,
+      ys: d.values.map(y),
+      ...(d.mark ? { mark: d.mark } : {}),
+    })),
     ...(place && Object.keys(place).length ? { place } : {}),
   };
+}
+
+/** Points evenly across the range of measured x, for a smooth curve through them. */
+function across(xs: readonly Quantity[]): Quantity[] {
+  const values = xs.map((q) => q.si);
+  const [low, high] = [Math.min(...values), Math.max(...values)];
+  const first = xs[0]!;
+  const extra = { ...(first.hint ? { hint: first.hint } : {}), ...(first.absolute ? { absolute: true } : {}) };
+  return Array.from({ length: LINE_SAMPLES }, (_, i) => quantity(low + ((high - low) * i) / (LINE_SAMPLES - 1), first.dim, extra));
 }
 
 /** A text option (kind: "bar", title: "Moment"). */

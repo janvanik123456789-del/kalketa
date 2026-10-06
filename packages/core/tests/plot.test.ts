@@ -48,13 +48,25 @@ describe('plot', () => {
     expect(data.kind).toBe('points');
     expect(data.series[0]!.xs).toEqual([0, 1, 2, 3]);
     expect(data.series[0]!.ys).toEqual([0, 2, 3, 3.5]);
+    // A function of x over measured x: a smooth line across their range.
     const fn = plot('t := [0, 1, 2] s\nplot((2 m/s²)·x², x: t)');
-    expect(fn.series[0]!.ys).toEqual([0, 2, 8]);
+    expect(fn.series[0]!.mark).toBe('line');
+    expect([fn.series[0]!.ys[0], fn.series[0]!.ys.at(-1)]).toEqual([0, 8]);
+    expect(fn.series[0]!.xs.length).toBeGreaterThan(100);
     const bars = plot('CF := [-100, 30, 40, 50] CZK\nplot(CF, kind: "bar", title: "Peněžní toky")');
     expect(bars.title).toBe('Peněžní toky');
     expect(bars.variable).toBe('');
     expect(bars.series[0]!.xs).toEqual([1, 2, 3, 4]);
     expect(bars.yUnit).toBe('CZK');
+  });
+
+  it('draws measured points as points and a curve fitted through them as a line', () => {
+    const chart = plot('table Mereni:\n    | t [s] | T [°C] |\n    | 0 | 20.1 |\n    | 10 | 25.3 |\n    | 20 | 29.8 |\n    | 30 | 33.9 |\nT_fit := fit(Mereni.T, x: Mereni.t)\nplot(Mereni.T, T_fit(x), x: Mereni.t)');
+    expect(chart.series.map((s) => s.mark)).toEqual(['points', 'line']);
+    expect(chart.series[0]!.xs).toEqual([0, 10, 20, 30]);
+    expect(chart.series[1]!.ys[0]).toBeCloseTo(20.39, 2);
+    expect(chart.series[1]!.ys.at(-1)).toBeCloseTo(34.16, 2);
+    expect(chart.yUnit).toBe('°C');
   });
 
   it('has a variable of its own, and leaves gaps where the expression has no value', () => {

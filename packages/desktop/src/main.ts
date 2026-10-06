@@ -780,6 +780,21 @@ async function layersWithRealInput(picture: string) {
     await pressKey('Enter');
     await typeText(line);
   }
+  // A table of measured points in the sheet (its rows by Shift+Enter), a line fitted through them, used.
+  await pressKey('Enter');
+  await typeText('table P_s:');
+  for (const row of ['    | t [s] | y [m] |', '    | 0 | 1 |', '    | 1 | 3 |', '    | 2 | 5 |']) {
+    // Shift+Enter as the keyboard sends it: the key and the character of a new line.
+    smokeWindow!.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Enter', modifiers: ['shift'] });
+    smokeWindow!.webContents.sendInputEvent({ type: 'char', keyCode: '\r', modifiers: ['shift'] });
+    smokeWindow!.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'Enter', modifiers: ['shift'] });
+    await pause(150);
+    await typeText(row);
+  }
+  for (const line of ['f_s := fit(P_s.y; x: P_s.t)', 'y_3 := f_s(3 s)']) {
+    await pressKey('Enter');
+    await typeText(line);
+  }
   // A click on the grey beside the page closes the line (the middle of the view may be a row of the second page).
   const besidePage = (await contents.executeJavaScript(`(() => { const p = document.querySelector('.layer-view.active .page').getBoundingClientRect(); return { x: Math.round(p.left - 30), y: Math.round(p.top + 100) }; })()`)) as { x: number; y: number };
   contents.sendInputEvent({ type: 'mouseDown', ...besidePage, button: 'left', clickCount: 1 });
@@ -791,7 +806,9 @@ async function layersWithRealInput(picture: string) {
     const rows = [...document.querySelectorAll('.layer-view.active .page .row')].map((r) => r.textContent.replace(/\\s+/g, ''));
     // An inequality: S ≤ π·d²/4 ⇒ d ≥ √(4·S/π) = 5,474 mm (from S = 23,53 mm²).
     const inequality = rows.some((r) => r.includes('⇒') && r.includes('≥') && r.endsWith('=5,474mm'));
-    return inequality && rows.some((r) => r.includes('roots') && r.endsWith('=[2;3]')) && rows.some((r) => r.includes('argmax') && r.endsWith('=2'));
+    // The table typed in the sheet shows as a table; the line fitted through it gives y(3 s) = 7 m.
+    const measured = !!document.querySelector('.layer-view.active .page table.data-table') && rows.some((r) => r.includes('R2') && r.includes('=1')) && rows.some((r) => r.includes('y3≔') && r.endsWith('=7m'));
+    return measured && inequality && rows.some((r) => r.includes('roots') && r.endsWith('=[2;3]')) && rows.some((r) => r.includes('argmax') && r.endsWith('=2'));
   })()`)) as boolean;
   const solveRow =`[...document.querySelectorAll('.layer-view.active .page .row')].find((r) => r.textContent.includes('L_s') || r.textContent.includes('Ls'))`;
   // The root is set as MathML (msqrt): the text has no √ in it.

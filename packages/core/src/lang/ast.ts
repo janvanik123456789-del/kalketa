@@ -103,6 +103,13 @@ export type Statement =
       /** After derive: a symbol of theory; names without a value are no error. */
       readonly symbolic?: boolean;
     })
+  /**
+   * A table written in the sheet (measured points…):
+   *   table Mereni:
+   *       | t [s] | T [°C] {0.0} |
+   *       | 0     | 20.1         |
+   */
+  | (StatementBase & { readonly kind: 'table'; readonly name: string; readonly nameSpan: Span; readonly columns: readonly SheetColumn[]; readonly rows: readonly (readonly string[])[] })
   /** A derivation on its own (theory): derive a == b == c; every step is checked to hold. */
   | (StatementBase & { readonly kind: 'derive'; readonly members: readonly Expr[] })
   | (StatementBase & { readonly kind: 'display'; readonly expr: Expr; readonly target?: UnitExpr })
@@ -134,6 +141,13 @@ export type Statement =
       readonly guesses: readonly NamedArg[];
     })
   | (StatementBase & { readonly kind: 'invalid'; /** Name if the line looked like a definition. */ readonly name?: string });
+
+/** A column of a table in the sheet: its name, unit and format of its numbers ("0.0"). */
+export interface SheetColumn {
+  readonly name: string;
+  readonly unit?: string;
+  readonly format?: string;
+}
 
 export interface Sheet {
   readonly statements: readonly Statement[];

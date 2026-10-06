@@ -6,6 +6,7 @@
  * display.
  */
 
+import type { FitInfo } from '../eval/fit.js';
 import type { SheetResult } from '../graph/session.js';
 import type { Expr } from '../lang/ast.js';
 import type { Cell, Table } from '../tables/table.js';
@@ -68,6 +69,8 @@ export interface FunctionValue {
   readonly params: readonly string[];
   readonly body: Expr;
   readonly captured: ReadonlyMap<string, Value>;
+  /** A curve fitted through points (fit(…)): its kind, coefficients and R², for print. */
+  readonly fit?: FitInfo;
 }
 
 /** Result of a block (N1 := Prosty_nosnik(L: 6 m)): its values, read as N1.M_max. */

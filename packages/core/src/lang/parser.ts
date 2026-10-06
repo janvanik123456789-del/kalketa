@@ -45,17 +45,29 @@ export const BINDING_FUNCTIONS: ReadonlySet<string> = new Set(['integral', 'deri
 export const BINDING_OPTIONS: ReadonlySet<string> = new Set(['order', 'kind', 'title', 'samples']);
 
 export function parse(source: string, options: ParseOptions): ParseResult {
-  const lexed = tokenize(source);
-  const diagnostics: Diagnostic[] = [...lexed.diagnostics];
+  // Tables written in the sheet are read on their own: their cells are text, not expressions.
+  const { tables, rest } = sheetTables(source);
+  const lexed = tokenize(rest);
+  const diagnostics: Diagnostic[] = [...lexed.diagnostics, ...tables.flatMap((t) => t.diagnostics)];
   const statements: Statement[] = [];
   const defined = new Set<string>(options.predefined ?? []);
   // The sheet's own units, known from their "unit" line on.
   const units = new Set<string>();
+  // A table goes in among the statements where it stands, and is a name from there on.
+  const pending = [...tables];
+  const tablesBefore = (offset: number) => {
+    while (pending[0] && pending[0].statement.span.offset < offset) {
+      const table = pending.shift()!;
+      defined.add(table.statement.name);
+      statements.push(table.statement);
+    }
+  };
 
   for (const line of splitLines(lexed.tokens)) {
     const comments = line.filter((t) => t.type === 'comment');
     const tokens = line.filter((t) => t.type !== 'comment');
     const comment = comments.length > 0 ? comments.map((t) => t.text).join(' ') : undefined;
+    if (line[0]) tablesBefore(line[0].span.offset);
 
     if (tokens.length === 0) {
       if (comments.length > 0) statements.push(withComment({ kind: 'comment', span: comments[0]!.span }, comment));
@@ -75,8 +87,68 @@ export function parse(source: string, options: ParseOptions): ParseResult {
     }
     statements.push(withComment(statement, comment));
   }
+  tablesBefore(Infinity);
 
   return { sheet: { statements }, diagnostics };
+}
+
+const TABLE_HEAD = /^table[ \t]+([\p{L}_][\p{L}\p{N}_]*)[ \t]*:[ \t]*$/u;
+const TABLE_ROW = /^[ \t]+\|/;
+const COLUMN = /^([\p{L}_][\p{L}\p{N}_]*)\s*(?:\[([^\]]*)\])?\s*(?:\{([^}]*)\})?$/u;
+
+/**
+ * The tables written in the sheet, and the source with their lines blanked
+ * (same length, so every other span stays where it was):
+ *
+ *   table Mereni:
+ *       | t [s] | T [°C] {0.0} | poznamka |
+ *       | 0     | 20.1         | start    |
+ */
+function sheetTables(source: string): { tables: { statement: Extract<Statement, { kind: 'table' }>; diagnostics: Diagnostic[] }[]; rest: string } {
+  const lines = source.split('\n');
+  const tables: { statement: Extract<Statement, { kind: 'table' }>; diagnostics: Diagnostic[] }[] = [];
+  const starts: number[] = [];
+  let offset = 0;
+  for (const line of lines) {
+    starts.push(offset);
+    offset += line.length + 1;
+  }
+  const blank = new Set<number>();
+  for (let i = 0; i < lines.length; i++) {
+    const head = TABLE_HEAD.exec(lines[i]!.replace(/\r$/, ''));
+    if (!head) continue;
+    let end = i;
+    while (end + 1 < lines.length && TABLE_ROW.test(lines[end + 1]!)) end++;
+    const diagnostics: Diagnostic[] = [];
+    const lineSpan = (n: number): Span => ({ offset: starts[n]!, length: lines[n]!.replace(/\r$/, '').length, line: n + 1, column: 1 });
+    const cells = (n: number) => {
+      const text = lines[n]!.replace(/\r$/, '').trim();
+      return text.replace(/^\|/, '').replace(/\|$/, '').split('|').map((c) => c.trim());
+    };
+    const columns = end > i ? cells(i + 1).map((text) => {
+      const match = COLUMN.exec(text);
+      if (!match) diagnostics.push(diagnostic('E-TABLE-SCHEMA', lineSpan(i + 1), { table: head[1]!, problem: 'column-name', value: text }));
+      return { name: match?.[1] ?? text, ...(match?.[2]?.trim() ? { unit: match[2].trim() } : {}), ...(match?.[3]?.trim() ? { format: match[3].trim() } : {}) };
+    }) : [];
+    if (columns.length === 0) diagnostics.push(diagnostic('E-TABLE-SCHEMA', lineSpan(i), { table: head[1]!, problem: 'no-columns', value: '' }));
+    const rows = [];
+    for (let n = i + 2; n <= end; n++) {
+      const row = cells(n);
+      if (row.length > columns.length) diagnostics.push(diagnostic('E-TABLE-CELL', lineSpan(n), { table: head[1]!, row: n - i - 1, column: '', value: row.slice(columns.length).join(' | ') }));
+      rows.push(row.slice(0, columns.length));
+    }
+    const nameAt = lines[i]!.indexOf(head[1]!, 5);
+    const span: Span = { offset: starts[i]!, length: starts[end]! + lines[end]!.replace(/\r$/, '').length - starts[i]!, line: i + 1, column: 1 };
+    tables.push({
+      statement: { kind: 'table', name: head[1]!, nameSpan: { offset: starts[i]! + nameAt, length: head[1]!.length, line: i + 1, column: nameAt + 1 }, columns, rows, span },
+      diagnostics,
+    });
+    for (let n = i; n <= end; n++) blank.add(n);
+    i = end;
+  }
+  if (blank.size === 0) return { tables, rest: source };
+  const rest = lines.map((line, n) => (blank.has(n) ? line.replace(/[^\r]/g, ' ') : line)).join('\n');
+  return { tables, rest };
 }
 
 function withComment(statement: Statement, comment: string | undefined): Statement {

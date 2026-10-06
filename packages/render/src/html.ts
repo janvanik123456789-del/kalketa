@@ -215,6 +215,16 @@ ${checkLines(block.lines)}
 <div class="verdict">${utilization}<span class="status">${esc(verdict)}</span></div>${messages(block.messages)}
 </section>`;
     }
+    case 'datatable': {
+      const head = block.columns.map((c) => `<th${c.numeric ? ' class="num"' : ''}>${esc(c.name)}${c.unit ? ` <span class="unit">[${esc(c.unit)}]</span>` : ''}</th>`).join('');
+      const body = block.rows.map((row) => `<tr>${row.map((cell, i) => `<td${block.columns[i]?.numeric ? ' class="num"' : ''}>${esc(cell)}</td>`).join('')}</tr>`).join('\n');
+      return `<section class="block datatable" data-line="${block.line}">
+<table class="data-table"><caption>${esc(block.name)}</caption><thead><tr>${head}</tr></thead>
+<tbody>
+${body}
+</tbody></table>${messages(block.messages)}
+</section>`;
+    }
     case 'error':
       return `<section class="block error" data-line="${block.line}">
 <pre class="source">${esc(block.source)}</pre>${messages(block.messages)}
@@ -350,6 +360,14 @@ h3, h4, h5, h6 { font-size: 11pt; margin: 4mm 0 1.5mm; break-after: avoid; }
 .picture .missing-image { padding: 4mm; border: 1px dashed #c62828; color: #c62828; font-size: 9pt; }
 .block { margin: 1.5mm 0 2.5mm; break-inside: avoid; }
 table.eq { border-collapse: collapse; }
+/* A table written in the sheet: lines under the header and at the end, numbers to the right. */
+table.data-table { border-collapse: collapse; margin: 2mm 0; font-size: 9.5pt; }
+table.data-table caption { text-align: left; font-weight: 600; padding-bottom: 1mm; }
+table.data-table th, table.data-table td { padding: 0.6mm 3mm; text-align: left; }
+table.data-table th { border-bottom: 0.8pt solid #333; font-weight: 600; }
+table.data-table tbody tr:last-child td { border-bottom: 0.8pt solid #333; }
+table.data-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+table.data-table .unit { font-weight: 400; }
 table.eq td { padding: 0.6mm 1.2mm; vertical-align: middle; }
 td.lhs { text-align: right; min-width: 14mm; }
 td.op { text-align: center; width: 4mm; }

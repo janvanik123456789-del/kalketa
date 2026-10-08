@@ -19,6 +19,15 @@ describe('derivations', () => {
     expect(codes('derive x^2 == 2·x')).toEqual(['E-DERIVE-STEP']);
   });
 
+  it('write out functions of the sheet into their formulas, so the names they read vary too (cube under water)', () => {
+    const sheet = 'a := 0.1 m\nh := 0.3 m\nE := 210 GPa\nρ := 1000 kg/m³\ng := 9.81 m/s²\np_v(z) := ρ·g·(h - z)\nε_xx(z) := -p_v(z)/E\n';
+    const cube = result(`${sheet}ΔV := integral(integral(integral(2·ε_xx(z) - ρ·g·(h - a)/E, x: 0 m .. a), y: 0 m .. a), z: 0 m .. a) == -ρ·g·a³/E·(3·h - 2·a)`, 8);
+    expect(cube.derivation).toEqual([{ ok: true }]);
+    expect(cube.display!.value).toBeCloseTo(-0.0327, 6);
+    // Still a wrong step when the formula of the function makes it one.
+    expect(result(`${sheet}w := ε_xx(a) == -ρ·g·h/E`, 8).derivation).toEqual([{ ok: false, problem: 'differs' }]);
+  });
+
   it('end in a definition: the value from the last member, the steps checked with the values of the sheet', () => {
     const source = 'q := 12 kN/m\nL := 5 m\nM := q·L²/8\ny := M/(2 m) == q·L²/(8·2 m) == q·L^2/(16 m) | kN';
     const sheet = evaluateSheet(source);

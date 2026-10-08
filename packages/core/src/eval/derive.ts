@@ -134,7 +134,7 @@ export function checkDerivation(
  * Σ and ∫ without bounds, members of tables and records, functions the sheet
  * does not know. Equal parts (by their notation) share one name.
  */
-function opaqueParts(expr: Expr, ctx: EvalContext, evaluate: Evaluate, atoms: Expr[], keys: Map<string, number>): Expr {
+function opaqueParts(expr: Expr, ctx: EvalContext, evaluate: Evaluate, atoms: Expr[], keys: Map<string, number>, depth = 0): Expr {
   const part = (key: string, of: Expr): Expr => {
     let index = keys.get(key);
     if (index === undefined) {
@@ -143,7 +143,15 @@ function opaqueParts(expr: Expr, ctx: EvalContext, evaluate: Evaluate, atoms: Ex
     }
     return { kind: 'variable', name: `${ATOM}${index}`, span: of.span };
   };
-  const inner = (e: Expr) => opaqueParts(e, ctx, evaluate, atoms, keys);
+  const inner = (e: Expr) => opaqueParts(e, ctx, evaluate, atoms, keys, depth);
+  // A function of the sheet (ε_xx(z) := -p_v(z)/E) stands for its formula: written out, the names
+  // it reads vary with the others, so ε_xx(z) and -ρ·g·(h - z)/E are found equal. A fitted
+  // curve keeps its own coefficients; a function calling itself is written out a few times only.
+  const own = expr.kind === 'call' && depth < MAX_INLINE ? tryValue(() => ctx.lookup(expr.name, expr.span)) : undefined;
+  if (expr.kind === 'call' && own?.type === 'function' && !own.fit && own.params.length === expr.args.length && expr.named.length === 0) {
+    const args = new Map(own.params.map((p, i) => [p, expr.args[i]!] as const));
+    return opaqueParts(substitute(own.body, args), ctx, evaluate, atoms, keys, depth + 1);
+  }
   // Σ and ∫ without bounds are linear: the body times a factor of their own for each dS or i,
   // so Σ a·b = Σ b·a and E·∫f dS = ∫E·f dS hold, ∫f·g dS = ∫f dS·∫g dS does not.
   const symbolicSum = expr.kind === 'call' && expr.name === 'sum' && expr.args.length === 1 && expr.named.length === 0 && tryValue(() => evaluate(expr, ctx)) === undefined;
@@ -167,6 +175,30 @@ function opaqueParts(expr: Expr, ctx: EvalContext, evaluate: Evaluate, atoms: Ex
       return { ...expr, items: expr.items.map(inner) };
     case 'index':
       return { ...expr, object: inner(expr.object), index: inner(expr.index), ...(expr.column ? { column: inner(expr.column) } : {}) };
+    default:
+      return expr;
+  }
+}
+
+/** How deep functions of the sheet are written out into their formulas. */
+const MAX_INLINE = 8;
+
+/** The body of a function with its parameters replaced by the arguments of the call. */
+function substitute(expr: Expr, args: ReadonlyMap<string, Expr>): Expr {
+  const s = (e: Expr) => substitute(e, args);
+  switch (expr.kind) {
+    case 'variable':
+      return args.get(expr.name) ?? expr;
+    case 'unary':
+      return { ...expr, operand: s(expr.operand) };
+    case 'binary':
+      return { ...expr, left: s(expr.left), right: s(expr.right) };
+    case 'call':
+      return { ...expr, args: expr.args.map(s), named: expr.named.map((n) => ({ ...n, value: s(n.value) })) };
+    case 'vector':
+      return { ...expr, items: expr.items.map(s) };
+    case 'index':
+      return { ...expr, object: s(expr.object), index: s(expr.index), ...(expr.column ? { column: s(expr.column) } : {}) };
     default:
       return expr;
   }

@@ -651,7 +651,7 @@ export function valueNode(value: number, unit: string, format: (value: number) =
   const numberNode = (x: number): MathNode => {
     const text = format(x);
     const e = /^(.*)E(-?\d+)$/.exec(text);
-    return e ? row(mn(e[1]!), mo('·'), sup(mn('10'), mn(e[2]!.replace('-', '−')))) : mn(text.replace('-', '−'));
+    return e ? row(mn(e[1]!.replace('-', '−')), mo('·'), sup(mn('10'), mn(e[2]!.replace('-', '−')))) : mn(text.replace('-', '−'));
   };
   if (!im) return unit ? row(numberNode(value), THIN_SPACE, mu(unit)) : numberNode(value);
   // A complex value: "(3 + 4j) Ω"; the imaginary unit is j.

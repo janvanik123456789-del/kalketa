@@ -112,6 +112,9 @@ describe('toolbar layout', () => {
     expect(old.toolbars.find((t) => t.id === 'operators')!.items[0]).toBe('sym::=');
     const stored = JSON.stringify({ ...old, items: 4, toolbars: old.toolbars.map((t) => (t.id === 'operators' ? { ...t, items: t.items.filter((i) => i !== 'sym::=') } : t)) });
     expect(parseLayout(stored).toolbars.find((t) => t.id === 'operators')!.items.slice(0, 2)).toEqual(['sym::=', 'sym:·']);
+    // The vector arrow comes next to the index.
+    const items = parseLayout(stored).toolbars.find((t) => t.id === 'operators')!.items;
+    expect(items[items.indexOf('sym:_') + 1]).toBe('sym:⃗');
   });
 
   it('gives a layout from before the AI chat its button on the View toolbar', () => {

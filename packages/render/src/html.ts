@@ -8,7 +8,7 @@
  */
 
 import { t, type Catalog } from '@kalketa/i18n';
-import { esc, mn, nameNode, sup, toMathML, type MathNode } from './math.js';
+import { esc, mn, nameNode, sup, toMathML, VECTOR_ARROW, type MathNode } from './math.js';
 import { NOTES_CSS } from './notes.js';
 import type { EquationLine, Message, PrintBlock, PrintDocument, SummaryRow } from './model.js';
 
@@ -35,8 +35,8 @@ export interface HtmlOptions {
  */
 export type CalcStyle = 'compact' | 'airy';
 
-// A name with an index or a power in text, written as in a formula: σ_Kt, S_min, d^2, m_1^2.
-const TEXT_NAME = /(\p{L}[\p{L}\p{N}]*)(_[\p{L}\p{N}_]*[\p{L}\p{N}])?(\^-?[\p{L}\p{N}]+)?/gu;
+// A name with an index, a vector arrow or a power in text, written as in a formula: σ_Kt, S_min, p⃗_1, d^2.
+const TEXT_NAME = /(\p{L}[\p{L}\p{N}\p{M}]*)(_[\p{L}\p{N}\p{M}_]*[\p{L}\p{N}\p{M}])?(\^-?[\p{L}\p{N}]+)?/gu;
 
 /**
  * Text of a paragraph or heading: names with an index (the _ of the Operators toolbar)
@@ -46,7 +46,7 @@ export function textHtml(text: string): string {
   let out = '';
   let last = 0;
   for (const m of text.matchAll(TEXT_NAME)) {
-    if (!m[2] && !m[3]) continue;
+    if (!m[2] && !m[3] && !m[1]!.includes(VECTOR_ARROW)) continue;
     const name = nameNode(m[1]! + (m[2] ?? ''));
     const power = m[3]?.slice(1);
     out += esc(text.slice(last, m.index)) + toMathML(power ? sup(name, /^-?\d+$/.test(power) ? mn(power.replace('-', '−')) : nameNode(power)) : name);

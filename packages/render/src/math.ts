@@ -27,7 +27,9 @@ export type MathNode =
   | { readonly k: 'table'; readonly rows: readonly (readonly MathNode[])[] }
   /** Base with limits under and over it: ∑ from k = 1 to n. */
   | { readonly k: 'underover'; readonly b: MathNode; readonly u: MathNode; readonly o: MathNode }
-  | { readonly k: 'paren'; readonly c: MathNode };
+  | { readonly k: 'paren'; readonly c: MathNode }
+  /** A vector: an arrow over the name with its index, p⃗₁. */
+  | { readonly k: 'vec'; readonly b: MathNode };
 
 export const mi = (t: string, normal = false): MathNode => (normal ? { k: 'i', t, normal } : { k: 'i', t });
 export const mn = (t: string): MathNode => ({ k: 'n', t });
@@ -44,12 +46,18 @@ export const subsup = (b: MathNode, s: MathNode, e: MathNode): MathNode => ({ k:
 export const table = (rows: readonly (readonly MathNode[])[]): MathNode => ({ k: 'table', rows });
 export const underover = (b: MathNode, u: MathNode, o: MathNode): MathNode => ({ k: 'underover', b, u, o });
 export const paren = (c: MathNode): MathNode => ({ k: 'paren', c });
+export const vec = (b: MathNode): MathNode => ({ k: 'vec', b });
+
+/** The combining arrow written after a letter of a name (p⃗_1): the name is a vector. */
+export const VECTOR_ARROW = '⃗';
 
 /**
  * A variable name as printed: the first "_" starts a subscript (Calcpad);
  * one-letter parts are italic, longer ones upright. "M_Ed" -> M with subscript Ed.
+ * An arrow written after a letter makes it a vector: "p⃗_1" -> p₁ with an arrow over both.
  */
 export function nameNode(name: string): MathNode {
+  if (name.includes(VECTOR_ARROW)) return vec(nameNode(name.replaceAll(VECTOR_ARROW, '')));
   const at = name.indexOf('_');
   const part = (text: string): MathNode => (/^\d+$/.test(text) ? mn(text) : mi(text, [...text].length > 1));
   if (at <= 0 || at === name.length - 1) return part(name);
@@ -93,6 +101,8 @@ function ml(node: MathNode): string {
       return `<munderover>${ml(node.b)}${ml(node.u)}${ml(node.o)}</munderover>`;
     case 'paren':
       return `<mrow><mo>(</mo>${ml(node.c)}<mo>)</mo></mrow>`;
+    case 'vec':
+      return `<mover>${ml(node.b)}<mo stretchy="false">→</mo></mover>`;
   }
 }
 
@@ -124,6 +134,8 @@ export function toText(node: MathNode): string {
       return `${toText(node.b)}[${toText(node.k === 'subsup' ? node.s : node.u)}..${toText(node.k === 'subsup' ? node.e : node.o)}]`;
     case 'paren':
       return `(${toText(node.c)})`;
+    case 'vec':
+      return `vec(${toText(node.b)})`;
   }
 }
 

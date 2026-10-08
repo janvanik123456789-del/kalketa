@@ -46,3 +46,15 @@ describe('text with indexes', () => {
     expect(html).toContain('ne &lt; a &gt; ani');
   });
 });
+
+describe('vectors', () => {
+  it('put the arrow written after a letter over the name with its index, in formulas and in text', () => {
+    const html = textHtml('Hybnost p⃗_1 a rychlost v⃗.');
+    expect(html).toContain('<mover><msub><mi>p</mi><mn>1</mn></msub><mo stretchy="false">→</mo></mover>');
+    expect(html).toContain('<mover><mi>v</mi><mo stretchy="false">→</mo></mover>');
+    const sheet = evaluateSheet('m_s := 0.01 kg\nv⃗_1 := 400 m/s\np⃗_1 := m_s·v⃗_1');
+    expect(sheet.diagnostics).toEqual([]);
+    const lines = buildPrintDocument(sheet, { catalog: catalogFor('cs'), registry: defaultRegistry, title: 'V' }).blocks.flatMap((b) => (b.kind === 'equation' ? b.lines : []));
+    expect(lines.map((l) => (l.lhs ? toText(l.lhs) : ''))).toContain('vec(p_1)');
+  });
+});

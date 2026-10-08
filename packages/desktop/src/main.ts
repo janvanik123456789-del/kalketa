@@ -831,7 +831,9 @@ async function layersWithRealInput(picture: string) {
   await pressKey('Enter');
   await typeText('"Mez kluzu σ');
   await clickOn('.tool-button[title="Vložit _"]');
-  await typeText('Kt"');
+  await typeText('Kt a p');
+  await clickOn('.tool-button[title^="Vektor"]');
+  await typeText('"');
   await clickOn('.sheet-scroll');
   await pause(400);
   const typedDefs = (await contents.executeJavaScript(`(() => {
@@ -840,7 +842,7 @@ async function layersWithRealInput(picture: string) {
     return {
       rows: rows.map((r) => r.textContent.replace(/\\s+/g, '')),
       errors: rows.filter((r) => r.classList.contains('has-error')).length,
-      indexed: !!rows[2]?.querySelector('p.text math msub'),
+      indexed: !!rows[2]?.querySelector('p.text math msub') && !!rows[2]?.querySelector('p.text math mover'),
     };
   })()`)) as { rows: string[]; errors: number; indexed: boolean };
   await clickOn('#smoke-def-0', ['control']);

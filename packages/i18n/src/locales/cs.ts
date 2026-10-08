@@ -364,6 +364,7 @@ export const cs: Catalog = {
     'cmd.help.about': '&O programu Kalketa',
     'cmd.symbol': 'Vložit {symbol}',
     'cmd.define': 'Definice ≔ (:=)',
+    'cmd.vector': 'Vektor: šipka nad písmenem před kurzorem (p⃗_1)',
     'cmd.power': 'Obecná mocnina xⁿ (^)',
     'cmd.fn.root': 'n-tá odmocnina root(x; n)',
     'rev.title': 'Revize výpočtu',

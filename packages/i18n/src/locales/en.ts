@@ -364,6 +364,7 @@ export const en: Catalog = {
     'cmd.help.about': '&About Kalketa',
     'cmd.symbol': 'Insert {symbol}',
     'cmd.define': 'Definition ≔ (:=)',
+    'cmd.vector': 'Vector: an arrow over the letter before the cursor (p⃗_1)',
     'cmd.power': 'General power xⁿ (^)',
     'cmd.fn.root': 'n-th root root(x, n)',
     'rev.title': 'Revisions of the calculation',

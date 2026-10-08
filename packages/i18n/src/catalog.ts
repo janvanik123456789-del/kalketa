@@ -197,6 +197,7 @@ export const UI_KEYS = [
   'help.functionsInsert',
   'cmd.symbol',
   'cmd.define',
+  'cmd.vector',
   'cmd.power',
   'cmd.fn.root',
   'rev.title',

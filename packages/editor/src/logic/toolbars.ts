@@ -47,17 +47,19 @@ const ADDED_ITEMS: readonly { readonly since: number; readonly toolbar: string; 
   { since: 4, toolbar: 'functions', after: 'fn:solve', ids: ['fn:derive'] },
   // The definition sign first, above ·: a plain = typed by mistake is fixed with one click.
   { since: 5, toolbar: 'operators', after: '', ids: ['sym::='] },
+  // A vector arrow over the letter before the cursor (p⃗_1), next to the index.
+  { since: 6, toolbar: 'operators', after: 'sym:_', ids: ['sym:⃗'] },
 ];
-export const ITEMS_VERSION = 5;
+export const ITEMS_VERSION = 6;
 
 export const SEPARATOR = '|';
 
 const dock = (d: Dock, band: number, order: number): ToolbarPlace => ({ kind: 'dock', dock: d, band, order });
 
 export const GREEK_SYMBOLS = ['α', 'β', 'γ', 'δ', 'ε', 'η', 'θ', 'λ', 'μ', 'ν', 'π', 'ρ', 'σ', 'τ', 'φ', 'ψ', 'ω', 'Δ', 'Σ', 'Φ', 'Ω'];
-export const OPERATOR_SYMBOLS = [':=', '·', '÷', '≤', '≥', '≠', '√', '∛', '²', '³', '^', '⁻¹', '°', 'Δ°C', '_', '|'];
+export const OPERATOR_SYMBOLS = [':=', '·', '÷', '≤', '≥', '≠', '√', '∛', '²', '³', '^', '⁻¹', '°', 'Δ°C', '_', '⃗', '|'];
 /** Symbols shown otherwise than inserted: ^ is a general power. */
-export const SYMBOL_GLYPHS: Readonly<Record<string, string>> = { '^': 'xⁿ', ':=': '≔' };
+export const SYMBOL_GLYPHS: Readonly<Record<string, string>> = { '^': 'xⁿ', ':=': '≔', '⃗': 'a⃗' };
 
 /**
  * Functions written for the user, as on the palettes of Mathcad: the template

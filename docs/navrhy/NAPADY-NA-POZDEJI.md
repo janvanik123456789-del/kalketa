@@ -102,3 +102,15 @@ Na „Analyzuj výpočet.“ model přemýšlel asi 4 minuty a pak nedal žádn�
 - Rozpoznat konec kvůli limitu (`finish_reason: "length"` u lokálních serverů, `stop_reason: "max_tokens"` u Clauda) a místo prázdné bubliny napsat, co se stalo: model nestihl odpovědět, zkuste nižší hloubku přemýšlení nebo užší otázku.
 - Prázdnou odpověď do rozhovoru neukládat.
 - Zvážit vyšší limit pro lokální servery (kontext tvého serveru je 64k) nebo ho odvodit z velikosti kontextu.
+
+## Výpočetní jádro
+
+### Volitelná přesnost výpočtu a dvě jádra, rychlé a přesné (2026-10-08)
+
+Nápad uživatele, inspirace Maple. Maple má dvě číselné soustavy: hardwarová čísla (double, asi 15 platných číslic, rychlá) a softwarová čísla s libovolnou přesností řízenou proměnnou `Digits`; při `Digits ≤ 15` a čistě číselné úloze sám použije hardwarová čísla. Kalketa dnes počítá jen v double.
+
+- **Rychlé jádro:** dnešní, double. Výchozí pro všechno.
+- **Přesné jádro:** desetinná čísla s volitelnou přesností (knihovna typu decimal.js nebo big.js; jednotky a rozměry zůstávají stejné, mění se jen typ čísla). Řádově pomalejší, takže jen na vyžádání: pro celý list v nastavení, nebo pro jeden řádek či blok (`@precise 30`).
+- **Kdy má smysl:** odečítání téměř stejných čísel (ztráta platných číslic), špatně podmíněné soustavy a matice, řady a finanční výpočty s mnoha kroky, ověření výsledku rychlého jádra („spočítej znovu přesně a porovnej“, rozdíl jako varování).
+- **Otázky:** funkce bez přesné verze (speciální funkce, numerické integrály, řešiče) počítají dál v double a výsledek se označí; jak to ukázat v tisku; výkon u grafů (ty vždy rychlým jádrem).
+- **Souvislost:** zaokrouhlení je jen zobrazení (RESIC-A-STYLY.md, bod 4d); přesnost výpočtu (tolerance řešičů, později volba jádra) patří do nastavení programu.

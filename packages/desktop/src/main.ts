@@ -11,7 +11,7 @@
 
 import { app, BrowserWindow, clipboard, ClipboardItem, dialog, ipcMain, Menu, nativeImage, shell, type IpcMainInvokeEvent } from 'electron';
 import { execFileSync } from 'node:child_process';
-import { cpSync, existsSync, mkdtempSync, readFileSync } from 'node:fs';
+import { appendFileSync, cpSync, existsSync, mkdtempSync, readFileSync } from 'node:fs';
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, dirname, extname, join, resolve } from 'node:path';
@@ -107,12 +107,33 @@ let smokeWindow: BrowserWindow | undefined;
 }
 
 const smokeTest = process.env['KALKETA_SMOKE_TEST'];
+
+/**
+ * How long the start takes, by phase, in seconds since the process began: one line per start
+ * in startup.log of the profile, so a slow start can be told where it loses its time.
+ */
+const startupMarks: string[] = [];
+function startupMark(name: string, seconds = process.uptime()): void {
+  if (startupMarks.some((m) => m.startsWith(`${name} `))) return;
+  startupMarks.push(`${name} ${seconds.toFixed(2)}`);
+  // Written once both are known: the window seen and the last session's files open.
+  const done = (n: string) => startupMarks.some((m) => m.startsWith(`${n} `));
+  if (!done('shown') || !done('restored')) return;
+  try {
+    appendFileSync(join(app.getPath('userData'), 'startup.log'), `${new Date().toISOString()} ${startupMarks.join(', ')}\n`);
+  } catch {
+    // Not written: the start is not slower for it.
+  }
+}
+startupMark('main');
 /** File given on the command line or by double click, before the window was ready. */
 let pendingOpen: string | undefined = sheetArgument(process.argv);
 
 // The smoke test runs with a fresh profile, so it neither sees nor changes the
 // user's toolbars, language or recent files.
 if (smokeTest) app.setPath('userData', mkdtempSync(join(tmpdir(), 'kalketa-smoke-')));
+// A profile of its own, to measure or try a start beside a running Kalketa.
+else if (process.env['KALKETA_USER_DATA']) app.setPath('userData', process.env['KALKETA_USER_DATA']);
 
 function editorEntry(): { url?: string; file?: string } {
   const devUrl = process.env['KALKETA_DEV_URL'];
@@ -181,11 +202,23 @@ function createWindow(options: { blank?: boolean } = {}): BrowserWindow {
     });
     win.webContents.once('did-finish-load', () => void runSmokeTest(smokeTest));
   } else if (!smokeTest) {
-    win.once('ready-to-show', () => win.show());
+    win.once('ready-to-show', () => {
+      startupMark('shown');
+      win.show();
+    });
+    win.webContents.once('did-finish-load', () => startupMark('loaded'));
+    // The page says when it has opened the files of the last session.
+    win.webContents.on('console-message', (details) => {
+      if (details.message === '[startup] restored') startupMark('restored');
+    });
     // Without a GPU (a virtual machine without 3D, Wayland) the first paint may never be reported:
     // the window shows anyway, else the program runs with no window to see.
     setTimeout(() => {
-      if (!win.isDestroyed() && !win.isVisible()) win.show();
+      if (!win.isDestroyed() && !win.isVisible()) {
+        startupMark('unpainted');
+        startupMark('shown');
+        win.show();
+      }
     }, 3000);
   }
   win.webContents.once('did-finish-load', () => {
@@ -2227,6 +2260,7 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   void app.whenReady().then(() => {
+    startupMark('ready');
     Menu.setApplicationMenu(null); // the editor has its own menus, toolbars and shortcuts
     registerBridge();
     createWindow();

@@ -571,6 +571,8 @@ export function App() {
         showRef.current(await openBytes(file.name, file.bytes, { kind: 'path', path: file.path }));
         opened++;
       }
+      // For startup.log of the desktop program: the files of the last session are open.
+      console.info('[startup] restored');
       // None of them is there any more: the sample, as at the first start.
       if (paths.length > 0 && opened === 0) showRef.current({ document: exampleDocument(undefined, t(ui, 'samples.prefix')), diagnostics: [] });
       restored.current = true;

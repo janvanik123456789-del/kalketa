@@ -8,7 +8,7 @@
  */
 
 import { t, type Catalog } from '@kalketa/i18n';
-import { esc, toMathML, type MathNode } from './math.js';
+import { esc, mn, nameNode, sup, toMathML, type MathNode } from './math.js';
 import { NOTES_CSS } from './notes.js';
 import type { EquationLine, Message, PrintBlock, PrintDocument, SummaryRow } from './model.js';
 
@@ -34,6 +34,26 @@ export interface HtmlOptions {
  * never the calculation.
  */
 export type CalcStyle = 'compact' | 'airy';
+
+// A name with an index or a power in text, written as in a formula: σ_Kt, S_min, d^2, m_1^2.
+const TEXT_NAME = /(\p{L}[\p{L}\p{N}]*)(_[\p{L}\p{N}_]*[\p{L}\p{N}])?(\^-?[\p{L}\p{N}]+)?/gu;
+
+/**
+ * Text of a paragraph or heading: names with an index (the _ of the Operators toolbar)
+ * and powers (^) look as they do in the formulas around; everything else is plain text.
+ */
+export function textHtml(text: string): string {
+  let out = '';
+  let last = 0;
+  for (const m of text.matchAll(TEXT_NAME)) {
+    if (!m[2] && !m[3]) continue;
+    const name = nameNode(m[1]! + (m[2] ?? ''));
+    const power = m[3]?.slice(1);
+    out += esc(text.slice(last, m.index)) + toMathML(power ? sup(name, /^-?\d+$/.test(power) ? mn(power.replace('-', '−')) : nameNode(power)) : name);
+    last = m.index! + m[0].length;
+  }
+  return out + esc(text.slice(last));
+}
 
 /** An input ("L := 6 m"): one line, no formula. In the compact style inputs stand side by side. */
 export function isInput(block: PrintBlock): boolean {
@@ -143,10 +163,10 @@ export function renderBlockHtml(block: PrintBlock, catalog: Catalog, options: Bl
   switch (block.kind) {
     case 'heading': {
       const level = Math.min(block.level + 1, 6);
-      return `<h${level}>${esc(block.text)}</h${level}>`;
+      return `<h${level}>${textHtml(block.text)}</h${level}>`;
     }
     case 'paragraph':
-      return `<p class="text">${esc(block.text)}${(block.cites ?? []).map((c) => ` <span class="source">[${esc(c)}]</span>`).join('')}</p>`;
+      return `<p class="text">${textHtml(block.text)}${(block.cites ?? []).map((c) => ` <span class="source">[${esc(c)}]</span>`).join('')}</p>`;
     case 'page-break':
       return '<div class="page-break"></div>';
     case 'clear':

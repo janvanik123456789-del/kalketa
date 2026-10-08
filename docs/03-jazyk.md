@@ -50,7 +50,7 @@ Ohyb: σ = 193.3 MPa ≤ fy = 235 MPa   využití 82 %  ✓   [EN 1993-1-1, 6.2.
 | Rovnice pro řešič | `x² + 2·x == 8` | viz kap. 9 |
 | Komentář | `' text` | Převzato z Calcpadu a Mathcadu |
 | Nadpisy | `#`, `##`, `###` | Známé z Markdownu, v tisku kapitoly |
-| Volný text | řádek bez výrazu v uvozovkách `"…"`, nebo blok `text: …`; za textem smí stát odkazy na zdroj `"…" [T1]`, `[ST:T1]` (2026-10-06) | v tisku odstavec, odkaz šedě za ním |
+| Volný text | řádek bez výrazu v uvozovkách `"…"`, nebo blok `text: …`; za textem smí stát odkazy na zdroj `"…" [T1]`, `[ST:T1]` (2026-10-06) | v tisku odstavec, odkaz šedě za ním; jména s indexem a mocniny v textu (`σ_Kt`, `mm^2`) se vysází jako ve vzorci (2026-10-08) |
 | Cílová jednotka | `výraz \| kN·m` | **Převzato z Calcpadu.** Určuje jednotku zobrazení. |
 | Pořadí | proměnná musí být definovaná **výše** | Čte se shora dolů jako technický výpočet. Graf závislostí přesto přepočítává jen potřebné. |
 

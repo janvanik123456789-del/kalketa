@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildTable, defaultRegistry, evaluateSheet, type Table } from '@kalketa/core';
 import { catalogFor } from '@kalketa/i18n';
-import { buildPrintDocument, toText } from '../src/index.js';
+import { buildPrintDocument, textHtml, toText } from '../src/index.js';
 
 const cs = catalogFor('cs');
 const plain = (text: string) => text.replace(/\s+/g, ' ');
@@ -34,5 +34,15 @@ describe('readable printouts', () => {
 
   it('print a unit after a name without parentheses', () => {
     expect(lines('kurz := 24.7\nunit EUR := kurz·CZK')[0]).toBe('1 EUR = kurz CZK');
+  });
+});
+
+describe('text with indexes', () => {
+  it('writes names with an index and powers as in a formula, the rest as text', () => {
+    const html = textHtml('Mez kluzu σ_Kt a plocha S_min v mm^2, ne < a > ani snake case bez indexu.');
+    expect(html).toContain('<math display="inline"><msub><mi>σ</mi><mi mathvariant="normal">Kt</mi></msub></math>');
+    expect(html).toContain('<msup><mi mathvariant="normal">mm</mi><mn>2</mn></msup>');
+    expect(html).toContain('Mez kluzu ');
+    expect(html).toContain('ne &lt; a &gt; ani');
   });
 });

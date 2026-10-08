@@ -827,21 +827,30 @@ async function layersWithRealInput(picture: string) {
   await clickOn('.menubar-item:nth-child(4) > button');
   await clickMenu('Definice');
   await typeText('k_d1 + 1');
+  // Text with an index from the _ button of the Operators toolbar: printed as in a formula.
+  await pressKey('Enter');
+  await typeText('"Mez kluzu σ');
+  await clickOn('.tool-button[title="Vložit _"]');
+  await typeText('Kt"');
   await clickOn('.sheet-scroll');
   await pause(400);
   const typedDefs = (await contents.executeJavaScript(`(() => {
-    const rows = [...document.querySelectorAll('.layer-view.active .page .row')].slice(-2);
+    const rows = [...document.querySelectorAll('.layer-view.active .page .row')].slice(-3);
     rows.forEach((r, i) => (r.id = 'smoke-def-' + i));
-    return { rows: rows.map((r) => r.textContent.replace(/\\s+/g, '')), errors: rows.filter((r) => r.classList.contains('has-error')).length };
-  })()`)) as { rows: string[]; errors: number };
+    return {
+      rows: rows.map((r) => r.textContent.replace(/\\s+/g, '')),
+      errors: rows.filter((r) => r.classList.contains('has-error')).length,
+      indexed: !!rows[2]?.querySelector('p.text math msub'),
+    };
+  })()`)) as { rows: string[]; errors: number; indexed: boolean };
   await clickOn('#smoke-def-0', ['control']);
-  await clickOn('#smoke-def-1', ['shift']);
+  await clickOn('#smoke-def-2', ['shift']);
   const markedRows = (await contents.executeJavaScript(`document.querySelectorAll('.layer-view.active .page .row.marked').length`)) as number;
   await pressKey('Delete');
   await pause(400);
   const rowsAfterDelete = (await contents.executeJavaScript(rowsNow)) as number;
   const definitionAtCursor =
-    typedDefs.errors === 0 && typedDefs.rows[0]!.includes('≔2') && typedDefs.rows[1]!.includes('=3') && markedRows === 2 && rowsAfterDelete === rowsBeforeDefs;
+    typedDefs.errors === 0 && typedDefs.rows[0]!.includes('≔2') && typedDefs.rows[1]!.includes('=3') && typedDefs.indexed && markedRows === 3 && rowsAfterDelete === rowsBeforeDefs;
 
   // solve without an interval: the unknown is expressed by a formula, its unit comes from it;
   // the right button puts the formula in as a definition.

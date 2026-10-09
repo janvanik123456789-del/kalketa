@@ -57,7 +57,7 @@ export interface Layout {
   /** Significant digits of printed numbers. */
   readonly digits: number;
   /** How the calculation is set (docs/navrhy/RESIC-A-STYLY.md); a file without it keeps the airy style it was made with. */
-  readonly style?: 'compact' | 'airy';
+  readonly style?: 'compact' | 'airy' | 'book';
   /** Where the summary of checks stands: at the top (when left out), at the bottom, or nowhere. */
   readonly summary?: 'top' | 'bottom' | 'none';
   /** Equation numbers at the right: none (when left out), of lines with a formula, of every result. */

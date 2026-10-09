@@ -627,7 +627,25 @@ async function layersWithRealInput(picture: string) {
   await clickOn('.summary-box', [], 'right');
   await clickMenu('Souhrn posudků nahoře');
   await pause(400);
-  const summaryOk = summaryOpens && summaryAtEnd && ((await contents.executeJavaScript(`document.querySelector('.layer-view.active .page-body > [data-item]')?.classList.contains('summary-box') ?? false`)) as boolean);
+  // File > Properties: the book style centres the formulas and numbers them; set back as it was.
+  const chooseStyle = async (style: string) => {
+    await clickOn('.menubar-item:nth-child(1) > button');
+    await clickMenu('Vlastnosti výpočtu');
+    await pause(300);
+    const order = ['compact', 'airy', 'book'];
+    const from = order.indexOf((await contents.executeJavaScript(`document.querySelector('.props-style').value`)) as string);
+    await clickOn('.props-style');
+    for (let i = from; i !== order.indexOf(style); i += order.indexOf(style) > from ? 1 : -1) await pressKey(order.indexOf(style) > from ? 'Down' : 'Up');
+    await pressKey('Return');
+    await clickOn('.dialog-buttons button.default');
+    await pause(400);
+    return order[from]!;
+  };
+  const styleBefore = await chooseStyle('book');
+  const bookStyle = (await contents.executeJavaScript(`!!document.querySelector('.layer-view.active .block.equation.book') && !!document.querySelector('.layer-view.active .eq-number')`)) as boolean;
+  await takePicture(picture.replace(/[.]png$/, '-book.png'));
+  await chooseStyle(styleBefore);
+  const summaryOk = bookStyle && summaryOpens && summaryAtEnd && ((await contents.executeJavaScript(`document.querySelector('.layer-view.active .page-body > [data-item]')?.classList.contains('summary-box') ?? false`)) as boolean);
   const samplesOk =sampleTab.tabs.length === 2 && sampleTab.tabs[0] === 'Vzor – Posouzení nosníku N1' && sampleTab.tabs[1] === 'Vzor – Dimenzování kabelu a úbytek napětí' && sampleTab.errors === 0;
   await clickOn('.layer-tab.add'); // a menu of the kinds of layers
   const addKinds = (await contents.executeJavaScript(`document.querySelectorAll('.context-menu .menu-row').length`)) as number;
@@ -1631,7 +1649,7 @@ async function layersWithRealInput(picture: string) {
     blocksOk = shown.errors === 0 && shown.text.includes('Prosty nosnik 1.2') && shown.text.includes('45');
     await takePicture(picture.replace(/[.]png$/, '-blocks.png'));
   }
-  return { ...state, derivations, summaryOk, summaryOpens, summaryAtEnd, definitionAtCursor, solveFormatted, sheetGridOk, sheetGrid, tableEnter, tableEnterAt, lastRowEnter, draggedRows, bothFormatted, roundedOn, equationNumber, solvedByFormula, rootsAndExtremes, tableRowAdded, chartSteps, samplesOk, sampleTab, newKeepsExample, citations, notesPicture, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, toolIcons, aiSettings, aiChat, pdfCleanup, theoryLibrary, study, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, placedFree, strictPlaced, canvasOk, besideText, pictures, blocksOk };
+  return { ...state, derivations, summaryOk, summaryOpens, summaryAtEnd, bookStyle, definitionAtCursor, solveFormatted, sheetGridOk, sheetGrid, tableEnter, tableEnterAt, lastRowEnter, draggedRows, bothFormatted, roundedOn, equationNumber, solvedByFormula, rootsAndExtremes, tableRowAdded, chartSteps, samplesOk, sampleTab, newKeepsExample, citations, notesPicture, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, toolIcons, aiSettings, aiChat, pdfCleanup, theoryLibrary, study, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, placedFree, strictPlaced, canvasOk, besideText, pictures, blocksOk };
 }
 
 /** The tidied sources saved as a library (.kalkt) and attached in the chat: the model cites it by its key. */

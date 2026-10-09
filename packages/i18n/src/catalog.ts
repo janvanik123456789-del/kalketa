@@ -317,6 +317,7 @@ export const UI_KEYS = [
   'props.digits',
   'props.style',
   'props.styleCompact',
+  'props.styleBook',
   'props.styleAiry',
   'customize.title',
   'customize.toolbars',

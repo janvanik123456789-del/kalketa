@@ -439,6 +439,7 @@ export const cs: Catalog = {
     'props.landscape': 'na šířku',
     'props.style': 'Styl výpočtu',
     'props.styleCompact': 'Školní (úsporný): výpočet na jednom řádku',
+    'props.styleBook': 'knižní (vzorce na střed, čísla rovnic)',
     'props.styleAiry': 'Vzdušný: každý krok na svém řádku',
     'props.digits': 'Platné číslice',
     'customize.title': 'Přizpůsobit panely nástrojů',

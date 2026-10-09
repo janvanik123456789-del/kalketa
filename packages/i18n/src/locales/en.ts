@@ -439,6 +439,7 @@ export const en: Catalog = {
     'props.landscape': 'landscape',
     'props.style': 'Calculation style',
     'props.styleCompact': 'School (compact): a calculation on one line',
+    'props.styleBook': 'book (formulas centred, equation numbers)',
     'props.styleAiry': 'Airy: each step on a line of its own',
     'props.digits': 'Significant digits',
     'customize.title': 'Customize toolbars',

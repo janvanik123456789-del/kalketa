@@ -160,3 +160,13 @@ describe('equation numbers', () => {
     expect(printHtml(evaluateSheet(SHEET), { catalog: catalogFor('cs'), registry: defaultRegistry, title: 'E', equations: 'formulas' })).toContain('<span class="eq-number">(2)</span></div>');
   });
 });
+
+describe('the book style', () => {
+  it('centres the formulas and numbers them at the right', async () => {
+    const { printHtml } = await import('../src/index.js');
+    const html = printHtml(evaluateSheet('a := 2 m\nc := a·3'), { catalog: catalogFor('cs'), registry: defaultRegistry, title: 'B', style: 'book', equations: 'formulas' });
+    expect(html).toContain('class="block equation book numbered"');
+    expect(html).toContain('<span class="eq-number">(1)</span>');
+    expect(html).toContain('.block.equation.book table.eq { margin-left: auto; margin-right: auto; }');
+  });
+});

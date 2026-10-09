@@ -218,9 +218,10 @@ export function PropertiesDialog({ catalog, doc, onApply, onClose }: { catalog: 
       </label>
       <label className="field">
         <span>{t(catalog, 'props.style')}</span>
-        <select className="props-style" value={layout.style ?? 'airy'} onChange={(e) => setLayout({ ...layout, style: e.target.value as 'compact' | 'airy' })}>
+        <select className="props-style" value={layout.style ?? 'airy'} onChange={(e) => setLayout({ ...layout, style: e.target.value as 'compact' | 'airy' | 'book' })}>
           <option value="compact">{t(catalog, 'props.styleCompact')}</option>
           <option value="airy">{t(catalog, 'props.styleAiry')}</option>
+          <option value="book">{t(catalog, 'props.styleBook')}</option>
         </select>
       </label>
       <label className="field">
@@ -229,7 +230,7 @@ export function PropertiesDialog({ catalog, doc, onApply, onClose }: { catalog: 
       </label>
       <label className="field">
         <span>{t(catalog, 'props.equations')}</span>
-        <select className="props-equations" value={layout.equations ?? 'none'} onChange={(e) => setLayout({ ...layout, equations: e.target.value as 'none' | 'formulas' | 'results' })}>
+        <select className="props-equations" value={layout.equations ?? (layout.style === 'book' ? 'formulas' : 'none')} onChange={(e) => setLayout({ ...layout, equations: e.target.value as 'none' | 'formulas' | 'results' })}>
           {(['none', 'formulas', 'results'] as const).map((p) => (
             <option key={p} value={p}>
               {t(catalog, `equations.${p}`)}

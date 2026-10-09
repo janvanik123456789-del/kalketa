@@ -33,7 +33,8 @@ export interface HtmlOptions {
  * line; "airy" sets each step on a line of its own. Only the setting changes,
  * never the calculation.
  */
-export type CalcStyle = 'compact' | 'airy';
+/** compact: a line per step chain (school); airy: a line per step; book: formulas centred, as textbooks set them. */
+export type CalcStyle = 'compact' | 'airy' | 'book';
 
 // A name with an index, a vector arrow or a power in text, written as in a formula: σ_Kt, S_min, p⃗_1, d^2.
 const TEXT_NAME = /(\p{L}[\p{L}\p{N}\p{M}]*)(_[\p{L}\p{N}\p{M}_]*[\p{L}\p{N}\p{M}])?(\^-?[\p{L}\p{N}]+)?/gu;
@@ -225,7 +226,7 @@ export function renderBlockHtml(block: PrintBlock, catalog: Catalog, options: Bl
       return `${stop}<figure class="block chart${place}" data-line="${block.line}"${styles.length ? ` style="${styles.join(';')}"` : ''}>${block.svg}${caption}${messages(block.messages)}</figure>`;
     }
     case 'equation':
-      return `<section class="block equation${options.style === 'compact' ? ' compact' : ''}${block.number !== undefined ? ' numbered' : ''}" data-line="${block.line}">
+      return `<section class="block equation${options.style === 'compact' ? ' compact' : options.style === 'book' ? ' book' : ''}${block.number !== undefined ? ' numbered' : ''}" data-line="${block.line}">
 ${numbered(options.style === 'compact' ? equationFlow(block.lines, block.comment, options.defineOperator ?? '=') : equationTable(block.lines, block.comment, options.defineOperator ?? '='), block.number)}${block.derived ? `<div class="derived">✓ ${esc(t(catalog, 'print.derived'))}</div>` : ''}${imported(block.imported, catalog)}${blockCalc(block.blockCalc, catalog)}${messages(block.messages)}
 </section>`;
     case 'selection': {
@@ -455,6 +456,7 @@ tr.result td.rhs math { font-weight: bold; }
 .check .source, .text .source, .summary td:last-child { color: #555; font-size: 9pt; }
 .block.equation.numbered .eq-body { position: relative; padding-right: 12mm; }
 .eq-number { position: absolute; right: 0; bottom: 0.15em; }
+.block.equation.book table.eq { margin-left: auto; margin-right: auto; }
 .check .verdict { margin-top: 0.8mm; }
 .check .utilization { margin-right: 4mm; }
 .check .status { font-weight: 700; }

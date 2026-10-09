@@ -636,8 +636,8 @@ async function layersWithRealInput(picture: string) {
     const from = order.indexOf((await contents.executeJavaScript(`document.querySelector('.props-style').value`)) as string);
     await clickOn('.props-style');
     for (let i = from; i !== order.indexOf(style); i += order.indexOf(style) > from ? 1 : -1) await pressKey(order.indexOf(style) > from ? 'Down' : 'Up');
-    await pressKey('Return');
-    await clickOn('.dialog-buttons button.default');
+    // Arrows on a closed select change its value; Enter may close the dialog with it already.
+    if ((await contents.executeJavaScript(`!!document.querySelector('.dialog-buttons button.default')`)) as boolean) await clickOn('.dialog-buttons button.default');
     await pause(400);
     return order[from]!;
   };

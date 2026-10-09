@@ -141,3 +141,22 @@ describe('format of a solve line', () => {
     expect(shown).toContain('(5,47 mm)/(1 mm)');
   });
 });
+
+describe('equation numbers', () => {
+  const doc = (source: string, equations: 'none' | 'formulas' | 'results') =>
+    buildPrintDocument(evaluateSheet(source), { catalog: catalogFor('cs'), registry: defaultRegistry, digits: 4, title: 'E', equations });
+  const SHEET = 'a := 2 m\nb := 3 m\nc := a + b {eq=soucet}\n"Podle (#soucet) a (#jiny)."\nd := c·2\ne := c·3 {noeq}\nf := 4 m {eq}';
+
+  it('number the formulas in order, skip what the line says, keep plain inputs out', () => {
+    const numbers = doc(SHEET, 'formulas').blocks.flatMap((b) => (b.kind === 'equation' ? [b.number ?? null] : []));
+    expect(numbers).toEqual([null, null, 1, 2, null, 3]);
+    expect(doc(SHEET, 'none').blocks.flatMap((b) => (b.kind === 'equation' ? [b.number ?? null] : []))).toEqual([null, null, 1, null, null, 2]);
+  });
+
+  it('put the number of a named equation into text, and its number at the right of the printout', async () => {
+    const paragraph = doc(SHEET, 'formulas').blocks.find((b) => b.kind === 'paragraph');
+    expect(paragraph?.kind === 'paragraph' && paragraph.text).toBe('Podle (1) a (#jiny).');
+    const { printHtml } = await import('../src/index.js');
+    expect(printHtml(evaluateSheet(SHEET), { catalog: catalogFor('cs'), registry: defaultRegistry, title: 'E', equations: 'formulas' })).toContain('<span class="eq-number">(2)</span></div>');
+  });
+});

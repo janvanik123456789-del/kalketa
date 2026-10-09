@@ -38,6 +38,8 @@ export interface PrintOptions {
   readonly subtitle?: string;
   /** Where the summary of checks goes. */
   readonly summary?: 'top' | 'bottom' | 'none';
+  /** Which equations get a number at the right: none, those with a formula, every one with a result. */
+  readonly equations?: EquationNumbers;
   /** Resolves a path inside the sheet (images/...) to a URL, e.g. a data: URI. */
   readonly resolveFile?: (path: string) => string | undefined;
   /** The editor shows everything: @hide does not hide there. */
@@ -94,6 +96,8 @@ export type PrintBlock =
       readonly kind: 'equation';
       readonly line: number;
       readonly lines: readonly EquationLine[];
+      /** Its number at the right, (5), when the sheet numbers equations. */
+      readonly number?: number;
       readonly comment?: string;
       /** Values taken from auxiliary calculations, e.g. "q (Příloha A: Zatížení)". */
       readonly imported?: readonly string[];
@@ -447,8 +451,34 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
     ...(options.subtitle ? { subtitle: options.subtitle } : {}),
     language: catalog.locale,
     ...(position !== 'none' && rows.length > 0 ? { summary: { position, rows, allPassed: rows.every((r) => r.passed) } } : {}),
-    blocks,
+    blocks: numberEquations(blocks, result, options.equations ?? 'none'),
   };
+}
+
+export type EquationNumbers = 'none' | 'formulas' | 'results';
+
+/**
+ * Equation numbers (1), (2) … at the right, in order down the sheet, as books number them:
+ * by the setting of the sheet, a line's own {eq} or {noeq} deciding for it. A line named
+ * {eq=hooke} is referred to from text as (#hooke), which becomes its number wherever it stands.
+ */
+function numberEquations(blocks: PrintBlock[], result: SheetResult, mode: EquationNumbers): PrintBlock[] {
+  const formats = new Map(result.statements.map((r) => [r.statement.span.line, r.statement.format] as const));
+  const names = new Map<string, number>();
+  let next = 0;
+  const numbered = blocks.map((block): PrintBlock => {
+    if (block.kind !== 'equation') return block;
+    const format = formats.get(block.line);
+    const byMode = mode === 'results' ? block.lines.some((l) => l.role === 'result' || l.role === 'formula') : mode === 'formulas' && block.lines.some((l) => l.role === 'formula');
+    if (format?.noeq || !(format?.eq || byMode)) return block;
+    const number = ++next;
+    if (typeof format?.eq === 'string') names.set(format.eq, number);
+    return { ...block, number };
+  });
+  if (names.size === 0) return numbered;
+  // (#hooke) in text and headings: the number of the equation so named; an unknown name stays visible.
+  const refer = (text: string) => text.replace(/\(#([\p{L}_][\p{L}\p{N}_]*)\)/gu, (whole, name: string) => (names.has(name) ? `(${names.get(name)})` : whole));
+  return numbered.map((block) => (block.kind === 'paragraph' || block.kind === 'heading' ? { ...block, text: refer(block.text) } : block));
 }
 
 /**

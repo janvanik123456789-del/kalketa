@@ -96,7 +96,7 @@ type RowChange = (change: (text: string) => string) => void;
  * the calculation goes on with the exact value. Significant digits ({digits=3}) stay a matter
  * of the text: the menu shows them only on a line that has them.
  */
-function formatMenuItems(seg: Segment, catalog: Catalog, change: RowChange, shown?: (decimals: number) => string): MenuItem[] {
+function formatMenuItems(seg: Segment, catalog: Catalog, change: RowChange, shown?: (decimals: number) => string, numbered?: boolean): MenuItem[] {
   const current = lineFormatOf(seg.text);
   const rounded = lineAttributesOf(seg.text).has('rounded');
   const choose = (format: LineFormatChoice) => change((text) => withLineFormat(text, format));
@@ -122,6 +122,23 @@ function formatMenuItems(seg: Segment, catalog: Catalog, change: RowChange, show
       checked: rounded,
       enabled: current !== undefined,
       run: () => change((text) => withLineAttribute(text, 'rounded', rounded ? undefined : '')),
+    },
+    { kind: 'separator' },
+    {
+      // Against the setting of the sheet: {eq} numbers this line, {noeq} leaves it without.
+      kind: 'action',
+      label: t(catalog, 'equations.number'),
+      checked: !!numbered,
+      run: () => change((text) => withLineAttribute(withLineAttribute(text, numbered ? 'eq' : 'noeq', undefined), numbered ? 'noeq' : 'eq', '')),
+    },
+    {
+      kind: 'action',
+      label: t(catalog, 'equations.name'),
+      run: () =>
+        void ask(t(catalog, 'equations.nameAsk'), lineAttributesOf(seg.text).get('eq') ?? '').then((name) => {
+          const clean = name?.trim().replace(/[^\p{L}\p{N}_]+/gu, '_');
+          if (clean) change((text) => withLineAttribute(withLineAttribute(text, 'noeq', undefined), 'eq', clean));
+        }),
     },
   ];
 }
@@ -625,7 +642,8 @@ export function SheetView(props: Props) {
             const row = formatMenu.seg.statement !== undefined ? result.statements[formatMenu.seg.statement] : undefined;
             const display = row?.display ?? row?.solutions?.[0]?.display;
             const shown = display && !display.im && Number.isFinite(display.value) ? (n: number) => `${formatNumber(display.value, props.printCatalog, { decimals: n }).replace('-', '−')}${display.unit ? ` ${display.unit}` : ''}` : undefined;
-            const items = formatMenuItems(formatMenu.seg, props.uiCatalog, change, shown);
+            const own = blockByLine.get(formatMenu.seg.start);
+            const items = formatMenuItems(formatMenu.seg, props.uiCatalog, change, shown, own?.kind === 'equation' && own.number !== undefined);
             const solveLine = formatMenu.solveLine;
             return solveLine
               ? [{ kind: 'action' as const, label: t(props.uiCatalog, 'solve.toDefinition'), run: () => props.onReplace(formatMenu.seg.start, formatMenu.seg.end, solveLine) }, { kind: 'separator' as const }, ...items]

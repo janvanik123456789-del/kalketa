@@ -9,7 +9,7 @@
 import type { SheetResult, UnitRegistry } from '@kalketa/core';
 import { formatDate, t, type Catalog } from '@kalketa/i18n';
 import { appendixHtml, renderBlocksHtml, renderHtml, type CalcStyle } from './html.js';
-import { buildPrintDocument } from './model.js';
+import { buildPrintDocument, type EquationNumbers } from './model.js';
 import { notesHtml } from './notes.js';
 
 export * from './math.js';
@@ -32,6 +32,8 @@ export interface PrintSettings {
   readonly paper?: 'A4' | 'A3' | 'Letter';
   readonly orientation?: 'portrait' | 'landscape';
   readonly summary?: 'top' | 'bottom' | 'none';
+  /** Equation numbers at the right (1), (2) …: none, of formulas, of every result. */
+  readonly equations?: EquationNumbers;
   readonly resolveFile?: (path: string) => string | undefined;
   /** Layers printed after the sheet, in this order, as Appendix A, B, … */
   readonly appendices?: readonly PrintAppendix[];
@@ -85,6 +87,7 @@ export function printHtml(result: SheetResult, settings: PrintSettings): string 
     title: settings.title,
     ...(settings.subtitle !== undefined ? { subtitle: settings.subtitle } : {}),
     ...(settings.summary !== undefined ? { summary: settings.summary } : {}),
+    ...(settings.equations !== undefined ? { equations: settings.equations } : {}),
   });
 
   const rendered = appendices.map((appendix) => {

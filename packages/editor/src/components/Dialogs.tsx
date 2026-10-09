@@ -228,6 +228,16 @@ export function PropertiesDialog({ catalog, doc, onApply, onClose }: { catalog: 
         <input type="number" min={1} max={15} value={layout.digits} onChange={(e) => setLayout({ ...layout, digits: Number(e.target.value) })} />
       </label>
       <label className="field">
+        <span>{t(catalog, 'props.equations')}</span>
+        <select className="props-equations" value={layout.equations ?? 'none'} onChange={(e) => setLayout({ ...layout, equations: e.target.value as 'none' | 'formulas' | 'results' })}>
+          {(['none', 'formulas', 'results'] as const).map((p) => (
+            <option key={p} value={p}>
+              {t(catalog, `equations.${p}`)}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="field">
         <span>{t(catalog, 'props.summary')}</span>
         <select className="props-summary" value={layout.summary ?? 'top'} onChange={(e) => setLayout({ ...layout, summary: e.target.value as 'top' | 'bottom' | 'none' })}>
           {(['top', 'bottom', 'none'] as const).map((p) => (

@@ -916,6 +916,19 @@ async function layersWithRealInput(picture: string) {
     rows.forEach((r, i) => (r.id = 'smoke-def-' + i));
     return rows[1]?.textContent.replace(/\\s+/g, '') ?? '';
   })()`)) as string;
+  // The right button: an equation number at the right of this line, (1); taken away again.
+  await clickOn('#smoke-def-1', [], 'right');
+  await clickMenu('Číslo rovnice vpravo');
+  await pause(400);
+  const equationNumber = (await contents.executeJavaScript(`(() => {
+    const rows = [...document.querySelectorAll('.layer-view.active .page .row')].slice(-3);
+    rows.forEach((r, i) => (r.id = 'smoke-def-' + i));
+    return rows[1]?.querySelector('.eq-number')?.textContent ?? '';
+  })()`)) as string;
+  await clickOn('#smoke-def-1', [], 'right');
+  await clickMenu('Číslo rovnice vpravo');
+  await pause(400);
+  await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .page .row')].slice(-3).forEach((r, i) => (r.id = 'smoke-def-' + i))`);
   // Dragged over the line numbers, the button held: the rows passed are marked; Esc clears them.
   const gutters = (await contents.executeJavaScript(`[0, 2].map((i) => {
     const g = document.querySelector('#smoke-def-' + i + ' .gutter');
@@ -939,7 +952,7 @@ async function layersWithRealInput(picture: string) {
   await pause(400);
   const rowsAfterDelete = (await contents.executeJavaScript(rowsNow)) as number;
   const definitionAtCursor =
-    typedDefs.errors === 0 && typedDefs.rows[0]!.includes('≔2') && typedDefs.rows[1]!.includes('=3') && typedDefs.indexed && /=3,3[45]/.test(formatted) && bothFormatted[0]!.includes('2,3') && !bothFormatted[0]!.includes('2,34') && bothFormatted[1]!.includes('=3,3') && !bothFormatted[1]!.includes('3,34') && roundedOn.endsWith('=3,3') && italicText.includes('italic') && draggedRows === 3 && markedRows === 3 && rowsAfterDelete === rowsBeforeDefs;
+    typedDefs.errors === 0 && typedDefs.rows[0]!.includes('≔2') && typedDefs.rows[1]!.includes('=3') && typedDefs.indexed && /=3,3[45]/.test(formatted) && bothFormatted[0]!.includes('2,3') && !bothFormatted[0]!.includes('2,34') && bothFormatted[1]!.includes('=3,3') && !bothFormatted[1]!.includes('3,34') && roundedOn.endsWith('=3,3') && equationNumber === '(1)' && italicText.includes('italic') && draggedRows === 3 && markedRows === 3 && rowsAfterDelete === rowsBeforeDefs;
 
   // solve without an interval: the unknown is expressed by a formula, its unit comes from it;
   // the right button puts the formula in as a definition.
@@ -1618,7 +1631,7 @@ async function layersWithRealInput(picture: string) {
     blocksOk = shown.errors === 0 && shown.text.includes('Prosty nosnik 1.2') && shown.text.includes('45');
     await takePicture(picture.replace(/[.]png$/, '-blocks.png'));
   }
-  return { ...state, derivations, summaryOk, summaryOpens, summaryAtEnd, definitionAtCursor, solveFormatted, sheetGridOk, sheetGrid, tableEnter, tableEnterAt, lastRowEnter, draggedRows, bothFormatted, roundedOn, solvedByFormula, rootsAndExtremes, tableRowAdded, chartSteps, samplesOk, sampleTab, newKeepsExample, citations, notesPicture, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, toolIcons, aiSettings, aiChat, pdfCleanup, theoryLibrary, study, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, placedFree, strictPlaced, canvasOk, besideText, pictures, blocksOk };
+  return { ...state, derivations, summaryOk, summaryOpens, summaryAtEnd, definitionAtCursor, solveFormatted, sheetGridOk, sheetGrid, tableEnter, tableEnterAt, lastRowEnter, draggedRows, bothFormatted, roundedOn, equationNumber, solvedByFormula, rootsAndExtremes, tableRowAdded, chartSteps, samplesOk, sampleTab, newKeepsExample, citations, notesPicture, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, toolIcons, aiSettings, aiChat, pdfCleanup, theoryLibrary, study, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, placedFree, strictPlaced, canvasOk, besideText, pictures, blocksOk };
 }
 
 /** The tidied sources saved as a library (.kalkt) and attached in the chat: the model cites it by its key. */

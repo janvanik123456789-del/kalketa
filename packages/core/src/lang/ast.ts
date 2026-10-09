@@ -93,6 +93,9 @@ export interface LineFormat {
   readonly color?: TextColor;
   /** The rows below calculate with the value as shown ({decimals=2 rounded}), not the exact one. */
   readonly rounded?: boolean;
+  /** The equation number of the line: {eq} numbered, {eq=hooke} numbered and named for (#hooke) in text, {noeq} never. */
+  readonly eq?: true | string;
+  readonly noeq?: boolean;
 }
 
 /** Fonts of text by kind, not by name: each machine and printout has its own of the kind. */

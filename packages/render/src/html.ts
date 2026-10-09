@@ -97,6 +97,11 @@ ${body}
 </section>`;
 }
 
+/** An equation with its number at the right, level with its last line: (5). */
+function numbered(body: string, number: number | undefined): string {
+  return number === undefined ? body : `<div class="eq-body">${body}<span class="eq-number">(${number})</span></div>`;
+}
+
 function blockCalc(title: string | undefined, catalog: Catalog): string {
   return title ? `\n<div class="imported">${esc(t(catalog, 'print.blockCalc'))}: ${esc(title)}</div>` : '';
 }
@@ -220,8 +225,8 @@ export function renderBlockHtml(block: PrintBlock, catalog: Catalog, options: Bl
       return `${stop}<figure class="block chart${place}" data-line="${block.line}"${styles.length ? ` style="${styles.join(';')}"` : ''}>${block.svg}${caption}${messages(block.messages)}</figure>`;
     }
     case 'equation':
-      return `<section class="block equation${options.style === 'compact' ? ' compact' : ''}" data-line="${block.line}">
-${options.style === 'compact' ? equationFlow(block.lines, block.comment, options.defineOperator ?? '=') : equationTable(block.lines, block.comment, options.defineOperator ?? '=')}${block.derived ? `<div class="derived">✓ ${esc(t(catalog, 'print.derived'))}</div>` : ''}${imported(block.imported, catalog)}${blockCalc(block.blockCalc, catalog)}${messages(block.messages)}
+      return `<section class="block equation${options.style === 'compact' ? ' compact' : ''}${block.number !== undefined ? ' numbered' : ''}" data-line="${block.line}">
+${numbered(options.style === 'compact' ? equationFlow(block.lines, block.comment, options.defineOperator ?? '=') : equationTable(block.lines, block.comment, options.defineOperator ?? '='), block.number)}${block.derived ? `<div class="derived">✓ ${esc(t(catalog, 'print.derived'))}</div>` : ''}${imported(block.imported, catalog)}${blockCalc(block.blockCalc, catalog)}${messages(block.messages)}
 </section>`;
     case 'selection': {
       const condition = block.condition
@@ -448,6 +453,8 @@ tr.result td.rhs math { font-weight: bold; }
 .check.failed, .check.not-evaluated { border-left-color: #c62828; }
 .check .label { font-weight: 600; margin-right: 3mm; }
 .check .source, .text .source, .summary td:last-child { color: #555; font-size: 9pt; }
+.block.equation.numbered .eq-body { position: relative; padding-right: 12mm; }
+.eq-number { position: absolute; right: 0; bottom: 0.15em; }
 .check .verdict { margin-top: 0.8mm; }
 .check .utilization { margin-right: 4mm; }
 .check .status { font-weight: 700; }

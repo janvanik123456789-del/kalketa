@@ -86,6 +86,7 @@ export const DIAGNOSTIC_SEVERITY = {
   'E-DERIVE-STEP': 'error',
   'E-DERIVE-UNITS': 'error',
   'W-DERIVE-UNVERIFIED': 'warning',
+  'W-FORMAT': 'warning',
   'E-NO-BOUNDS': 'error',
   'E-SOLVE-ROOTS': 'error',
   'E-ROOTS-POLYNOMIAL': 'error',

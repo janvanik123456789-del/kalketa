@@ -15,7 +15,7 @@
  */
 
 import { CalcError, diagnostic, fail, type Diagnostic, type Span } from '../diagnostics.js';
-import type { BinaryOperator, Equation, Expr, NamedArg, Param, Sheet, Statement, UnitExpr } from './ast.js';
+import type { BinaryOperator, Equation, Expr, LineFormat, NamedArg, Param, Sheet, Statement, UnitExpr } from './ast.js';
 import { tokenize, type Token, type TokenType } from './lexer.js';
 
 export interface ParseOptions {
@@ -65,7 +65,9 @@ export function parse(source: string, options: ParseOptions): ParseResult {
 
   for (const line of splitLines(lexed.tokens)) {
     const comments = line.filter((t) => t.type === 'comment');
-    const tokens = line.filter((t) => t.type !== 'comment');
+    const attributes = line.filter((t) => t.type === 'attributes');
+    const tokens = line.filter((t) => t.type !== 'comment' && t.type !== 'attributes');
+    const format = attributes.length > 0 ? lineFormat(attributes, diagnostics, (tokens[0] ?? attributes[0]!).span) : undefined;
     const comment = comments.length > 0 ? comments.map((t) => t.text).join(' ') : undefined;
     if (line[0]) tablesBefore(line[0].span.offset);
 
@@ -85,7 +87,7 @@ export function parse(source: string, options: ParseOptions): ParseResult {
       statement = { kind: 'invalid', span: spanOf(tokens[0]!, tokens[tokens.length - 1]!), ...(name ? { name } : {}) };
       if (name) defined.add(name);
     }
-    statements.push(withComment(statement, comment));
+    statements.push(withFormat(withComment(statement, comment), format));
   }
   tablesBefore(Infinity);
 
@@ -149,6 +151,24 @@ function sheetTables(source: string): { tables: { statement: Extract<Statement, 
   if (blank.size === 0) return { tables, rest: source };
   const rest = lines.map((line, n) => (blank.has(n) ? line.replace(/[^\r]/g, ' ') : line)).join('\n');
   return { tables, rest };
+}
+
+function withFormat(statement: Statement, format: LineFormat | undefined): Statement {
+  return format === undefined || Object.keys(format).length === 0 ? statement : { ...statement, format };
+}
+
+/** {decimals=2} or {digits=3}: whole numbers 0 to 15 (digits from 1); anything else is reported. */
+function lineFormat(tokens: readonly Token[], diagnostics: Diagnostic[], at: Span): LineFormat {
+  const format: { decimals?: number; digits?: number } = {};
+  for (const token of tokens) {
+    for (const item of token.text.split(/\s+/).filter(Boolean)) {
+      const [key, value] = item.split('=');
+      const n = Number(value);
+      if ((key === 'decimals' || key === 'digits') && Number.isInteger(n) && n >= (key === 'digits' ? 1 : 0) && n <= 15) format[key] = n;
+      else diagnostics.push(diagnostic('W-FORMAT', at, { item }));
+    }
+  }
+  return format;
 }
 
 function withComment(statement: Statement, comment: string | undefined): Statement {

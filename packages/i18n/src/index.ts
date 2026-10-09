@@ -41,6 +41,11 @@ export function formatDiagnostic(d: Diagnostic, catalog: Catalog): string {
 export interface NumberFormatOptions {
   /** Significant digits (default 4). */
   readonly digits?: number;
+  /**
+   * Places after the decimal sign instead, always shown (5,47; 23,53). A number too small
+   * or too large for them is written with an exponent and as many significant digits.
+   */
+  readonly decimals?: number;
 }
 
 /**
@@ -74,6 +79,13 @@ export function formatNumber(value: number, catalog: Catalog, options: NumberFor
   const digits = options.digits ?? 4;
   const abs = Math.abs(value);
   const scientific = abs !== 0 && (abs >= 1e9 || abs < 1e-4);
+  const decimals = options.decimals;
+  if (decimals !== undefined && !scientific && (abs === 0 || abs >= 10 ** -decimals / 2)) {
+    return new Intl.NumberFormat(catalog.locale, { minimumFractionDigits: decimals, maximumFractionDigits: decimals }).format(value);
+  }
+  if (decimals !== undefined) {
+    return new Intl.NumberFormat(catalog.locale, { maximumSignificantDigits: Math.max(1, decimals + 1), notation: 'scientific' }).format(value);
+  }
   return new Intl.NumberFormat(catalog.locale, {
     maximumSignificantDigits: digits,
     ...(scientific ? { notation: 'scientific' } : {}),

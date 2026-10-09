@@ -24,7 +24,7 @@ import {
   type Value,
 } from '@kalketa/core';
 import { chartLayout, chartSvg, type ChartLayout, type ChartSpec } from '@kalketa/chart';
-import { formatDate, formatDiagnostic, formatNumber, t, type Catalog } from '@kalketa/i18n';
+import { formatDate, formatDiagnostic, formatNumber, t, type Catalog, type NumberFormatOptions } from '@kalketa/i18n';
 import { formulaNode, hasSubstitutableParts, THIN_SPACE, type FormulaOptions, type Substituted } from './formula.js';
 import { mi, mn, mo, mtext, mu, nameNode, paren, row, sup, toText, type MathNode, table } from './math.js';
 
@@ -192,7 +192,9 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
   const mode: Mode = { substitution: true, resultOnly: false, hidden: false, digits: options.digits };
   const blocks: PrintBlock[] = [];
   const decimalComma = formatNumber(1.5, catalog).includes(',');
-  const numberFormat = (digits: number) => (value: number) => formatNumber(value, catalog, { digits });
+  const numberFormat = (spec: NumberFormatOptions) => (value: number) => formatNumber(value, catalog, spec);
+  // How each name was shown on its own line ({decimals=2}): so it is shown in every substitution below.
+  const formats = new Map<string, NumberFormatOptions>();
 
   // Blocks used in the sheet: their names are words, not math symbols.
   const blockNames = new Set(result.statements.flatMap((r) => (r.value?.type === 'record' ? [r.value.block] : [])));
@@ -202,7 +204,7 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
     date: dateFormat,
     ...(blockNames.size > 0 ? { textNames: blockNames } : {}),
     ...(recordNames.size > 0 ? { recordNames } : {}),
-    literal: numberFormat(15),
+    literal: numberFormat({ digits: 15 }),
     argumentSeparator: decimalComma ? ';' : ',',
     booleans: { true: catalog.terms['true'] ?? 'true', false: catalog.terms['false'] ?? 'false' },
     ...(substitute ? { substitute } : {}),
@@ -222,10 +224,12 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
     }
     if (mode.hidden && !options.showHidden && s.kind !== 'heading') continue;
     const messages = r.diagnostics.map((d) => ({ severity: d.severity, text: formatDiagnostic(d, catalog) }));
-    const digits = mode.digits;
-    const quantityNode = (q: Quantity) => {
+    // The line's own format, else the significant digits of the sheet or of @digits above.
+    const spec: NumberFormatOptions = s.format?.decimals !== undefined ? { decimals: s.format.decimals } : { digits: s.format?.digits ?? mode.digits };
+    if (s.format && (s.kind === 'definition' || s.kind === 'invalid') && s.name) formats.set(s.name, spec);
+    const quantityNode = (q: Quantity, name?: string) => {
       const shown = toDisplay(q, options.registry);
-      return valueNode(shown.value, shown.unit, numberFormat(digits), shown.im, dateFormat);
+      return valueNode(shown.value, shown.unit, numberFormat((name && formats.get(name)) || spec), shown.im, dateFormat);
     };
 
     switch (s.kind) {
@@ -269,7 +273,7 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
       case 'display': {
         if (r.plot && s.kind === 'display' && s.expr.kind === 'call') {
           const label = r.plot.title ? t(catalog, 'print.figure', { n: String(++figures) }) : undefined;
-          blocks.push(chartBlock(r.plot, s.expr, s.span.line, formulaOptions(), (v) => numberFormat(4)(v).replace('-', '−'), dateFormat, label, s.comment, messages));
+          blocks.push(chartBlock(r.plot, s.expr, s.span.line, formulaOptions(), (v) => numberFormat({ digits: 4 })(v).replace('-', '−'), dateFormat, label, s.comment, messages));
           break;
         }
         // A fitted curve: the call, then its equation with the numbers found, and R².
@@ -284,7 +288,7 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
           const lines: EquationLine[] = [
             { role: 'formula', lhs: nameNode(s.name), rhs: formulaNode(s.expr, formulaOptions()) },
             { role: 'result', lhs: functionHead(s.name, [{ name: fit.param }], formulaOptions().argumentSeparator), op: '=', rhs: formulaNode(fitted.body, formulaOptions(numbers)) },
-            { role: 'given', lhs: sup(mi('R'), mn('2')), op: '=', rhs: mn(numberFormat(4)(fit.r2)) },
+            { role: 'given', lhs: sup(mi('R'), mn('2')), op: '=', rhs: mn(numberFormat({ digits: 4 })(fit.r2)) },
           ];
           blocks.push({ kind: 'equation', line: s.span.line, lines, ...(s.comment ? { comment: s.comment } : {}), messages });
           break;
@@ -297,13 +301,13 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
         // A user function shows as "A_kruh(d) = π·d²/4": its parameters have no values to substitute.
         const params = s.kind === 'definition' ? s.params : undefined;
         const lhs = s.kind !== 'definition' ? undefined : params ? functionHead(s.name, params, formulaOptions().argumentSeparator) : nameNode(s.name);
-        const valueLines = equationLines(r, s.expr, lhs, params ? { ...mode, substitution: false } : mode, formulaOptions, substitute, numberFormat(digits));
+        const valueLines = equationLines(r, s.expr, lhs, params ? { ...mode, substitution: false } : mode, formulaOptions, substitute, numberFormat(spec));
         // y := a == b == c: every member, then the substitution and the result of the last one.
         const chain = s.kind === 'definition' ? s.derivation : undefined;
         const lines = chain
           ? [
               ...chain.map((m, i): EquationLine => (i === 0 && lhs ? { role: 'formula', lhs, rhs: formulaNode(m, formulaOptions()) } : { role: 'formula', rhs: formulaNode(m, formulaOptions()) })),
-              ...(isGiven(s.expr) ? [] : equationLines(r, s.expr, undefined, mode, formulaOptions, substitute, numberFormat(digits)).filter((l, i) => !(i === 0 && l.role === 'formula'))),
+              ...(isGiven(s.expr) ? [] : equationLines(r, s.expr, undefined, mode, formulaOptions, substitute, numberFormat(spec)).filter((l, i) => !(i === 0 && l.role === 'formula'))),
             ]
           : valueLines;
         const derived = !!r.derivation && r.derivation.every((step) => step.ok);
@@ -344,7 +348,7 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
           lines.push({ role: 'formula', op: '', rhs: range });
         }
         for (const found of r.solutions ?? []) {
-          const value = valueNode(found.display.value, found.display.unit, numberFormat(digits), found.display.im, dateFormat);
+          const value = valueNode(found.display.value, found.display.unit, numberFormat(spec), found.display.im, dateFormat);
           // A formula of numbers only (x² + 2·x = 8) says nothing the result does not.
           if (!found.formula || !readsNames(found.formula)) {
             lines.push({ role: 'result', lhs: nameNode(found.name), op: sign(found.relation), rhs: value, ...(found.relation ? { lead: '⇒' } : {}) });
@@ -542,12 +546,12 @@ function resultNode(
 }
 
 /** Replaces variables and table columns by their values. */
-function substitution(result: SheetResult, quantityNode: (q: Quantity) => MathNode, formulaOptions: FormulaOptions) {
-  const wrap = (value: Value | undefined): Substituted | undefined => {
+function substitution(result: SheetResult, quantityNode: (q: Quantity, name?: string) => MathNode, formulaOptions: FormulaOptions) {
+  const wrap = (value: Value | undefined, name?: string): Substituted | undefined => {
     if (!value) return undefined;
     if (value.type === 'quantity') {
       // A complex value is a sum: it needs parentheses like a negative one.
-      return { node: quantityNode(value), negative: value.si < 0 || !!value.im, hasUnit: !!value.hint || Object.keys(value.dim).length > 0 };
+      return { node: quantityNode(value, name), negative: value.si < 0 || !!value.im, hasUnit: !!value.hint || Object.keys(value.dim).length > 0 };
     }
     if (value.type === 'text' || value.type === 'boolean') {
       const text = value.type === 'text' ? `"${value.value}"` : value.value ? formulaOptions.booleans.true : formulaOptions.booleans.false;
@@ -556,7 +560,7 @@ function substitution(result: SheetResult, quantityNode: (q: Quantity) => MathNo
     return undefined;
   };
   return (expr: Expr): Substituted | undefined => {
-    if (expr.kind === 'variable') return wrap(result.values.get(expr.name));
+    if (expr.kind === 'variable') return wrap(result.values.get(expr.name), expr.name);
     if (expr.kind === 'member' && expr.object.kind === 'variable') {
       const object = result.values.get(expr.object.name);
       if (object?.type !== 'row') return undefined;

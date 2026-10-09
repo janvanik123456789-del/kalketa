@@ -12,6 +12,7 @@ import { isInput, renderBlockHtml, renderSummary, type CalcStyle, type PrintBloc
 import { isCanvasPath } from '@kalketa/canvas';
 import { paginate, type PageGeometry } from '../logic/pages.js';
 import { segments, type Segment } from '../logic/segments.js';
+import { lineFormatOf, withLineFormat, type LineFormatChoice } from '../logic/lineFormat.js';
 import { defineShortcut } from '../logic/shortcuts.js';
 import { pickOf } from '../logic/pick.js';
 import { placeable } from '../logic/placement.js';
@@ -80,12 +81,36 @@ interface Props {
 
 const NO_COMMANDS: ReadonlyMap<string, Command> = new Map<string, Command>();
 
+/**
+ * The menu of a row with a result: how its numbers are shown, here and in every substitution
+ * below. Only the display changes; the calculation goes on with the exact value.
+ */
+function formatMenuItems(seg: Segment, catalog: Catalog, replace: (text: string) => void): MenuItem[] {
+  const current = lineFormatOf(seg.text);
+  const choose = (format: LineFormatChoice) => replace(withLineFormat(seg.text, format));
+  return [
+    { kind: 'action', label: t(catalog, 'format.default'), checked: current === undefined, run: () => choose(undefined) },
+    {
+      kind: 'submenu',
+      label: t(catalog, 'format.decimals'),
+      items: [0, 1, 2, 3, 4].map((n): MenuItem => ({ kind: 'action', label: String(n), checked: current !== undefined && 'decimals' in current && current.decimals === n, run: () => choose({ decimals: n }) })),
+    },
+    {
+      kind: 'submenu',
+      label: t(catalog, 'format.digits'),
+      items: [2, 3, 4, 5, 6].map((n): MenuItem => ({ kind: 'action', label: String(n), checked: current !== undefined && 'digits' in current && current.digits === n, run: () => choose({ digits: n }) })),
+    },
+  ];
+}
+
 export function SheetView(props: Props) {
   const { source, result, print, editing } = props;
   // The menu of a picture: opened by clicking it (or right click).
   const [pictureMenu, setPictureMenu] = useState<{ seg: Segment; at: { x: number; y: number }; flow?: boolean } | undefined>();
   // The right button on a solve line whose unknown was expressed by a formula.
   const [solveMenu, setSolveMenu] = useState<{ seg: Segment; line: string; at: { x: number; y: number } } | undefined>();
+  // The right button on a row with a result: how its numbers are shown ({decimals=2} at its end).
+  const [formatMenu, setFormatMenu] = useState<{ seg: Segment; at: { x: number; y: number } } | undefined>();
   // Where a dragged picture would land: a line across the page body.
   const [dropMark, setDropMark] = useState<{ x: number; y: number; width: number } | undefined>();
   // Where a picture placed freely would stand while it is dragged.
@@ -505,6 +530,14 @@ export function SheetView(props: Props) {
           onClose={() => setSolveMenu(undefined)}
         />
       )}
+      {formatMenu && (
+        <ContextMenu
+          items={formatMenuItems(formatMenu.seg, props.uiCatalog, (text) => props.onReplace(formatMenu.seg.start, formatMenu.seg.end, text))}
+          commands={NO_COMMANDS}
+          at={formatMenu.at}
+          onClose={() => setFormatMenu(undefined)}
+        />
+      )}
       {aiMenu && (
         <ContextMenu
           items={[
@@ -644,6 +677,12 @@ export function SheetView(props: Props) {
             const equation = statement.statement.equations[0]!.span;
             const from = result.source.slice(equation.offset, equation.offset + equation.length).replace(/\s+/g, ' ');
             setSolveMenu({ seg, line: `${solution.name} := ${formatExpr(solution.formula)}  ' ${t(props.uiCatalog, 'solve.expressedFrom')} ${from}`, at: { x: e.clientX, y: e.clientY } });
+            return;
+          }
+          if ((block?.kind === 'equation' || block?.kind === 'check') && !(e.target as HTMLElement).closest('textarea')) {
+            e.preventDefault();
+            props.onSelect(seg.statement);
+            setFormatMenu({ seg, at: { x: e.clientX, y: e.clientY } });
             return;
           }
           if ((block?.kind !== 'picture' && block?.kind !== 'chart') || !(e.target as HTMLElement).closest('figure')) return;

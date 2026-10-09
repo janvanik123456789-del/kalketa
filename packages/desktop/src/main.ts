@@ -845,6 +845,16 @@ async function layersWithRealInput(picture: string) {
       indexed: !!rows[2]?.querySelector('p.text math msub') && !!rows[2]?.querySelector('p.text math mover'),
     };
   })()`)) as { rows: string[]; errors: number; indexed: boolean };
+  // The right button on a result: two decimal places, here and wherever it is substituted.
+  await clickOn('#smoke-def-1', [], 'right');
+  await clickMenu('Desetinná místa');
+  await clickMenu('2');
+  await pause(400);
+  const formatted = (await contents.executeJavaScript(`(() => {
+    const rows = [...document.querySelectorAll('.layer-view.active .page .row')].slice(-3);
+    rows.forEach((r, i) => (r.id = 'smoke-def-' + i));
+    return rows[1]?.textContent.replace(/\\s+/g, '') ?? '';
+  })()`)) as string;
   await clickOn('#smoke-def-0', ['control']);
   await clickOn('#smoke-def-2', ['shift']);
   const markedRows = (await contents.executeJavaScript(`document.querySelectorAll('.layer-view.active .page .row.marked').length`)) as number;
@@ -852,7 +862,7 @@ async function layersWithRealInput(picture: string) {
   await pause(400);
   const rowsAfterDelete = (await contents.executeJavaScript(rowsNow)) as number;
   const definitionAtCursor =
-    typedDefs.errors === 0 && typedDefs.rows[0]!.includes('≔2') && typedDefs.rows[1]!.includes('=3') && typedDefs.indexed && markedRows === 3 && rowsAfterDelete === rowsBeforeDefs;
+    typedDefs.errors === 0 && typedDefs.rows[0]!.includes('≔2') && typedDefs.rows[1]!.includes('=3') && typedDefs.indexed && formatted.includes('=3,00') && markedRows === 3 && rowsAfterDelete === rowsBeforeDefs;
 
   // solve without an interval: the unknown is expressed by a formula, its unit comes from it;
   // the right button puts the formula in as a definition.

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { defaultRegistry, parse } from '@kalketa/core';
 import { deleteLineRanges, deleteLines, insertLineAfter, moveLines, replaceLines, segments } from '../src/logic/segments.js';
+import { lineFormatOf, withLineFormat } from '../src/logic/lineFormat.js';
 import { pageGeometry, paginate } from '../src/logic/pages.js';
 import { createHistory, MERGE_WINDOW_MS, record, redo, undo } from '../src/logic/history.js';
 import { defineShortcut, definedName } from '../src/logic/shortcuts.js';
@@ -193,5 +194,22 @@ describe('table editing', () => {
     // The table is saved and read back after every change; an empty last row must not vanish.
     const added = addRow(addRow(toEditable(stored)));
     expect(toEditable(fromEditable(added)).rows).toEqual([['A', '1.5'], ['B', '2'], ['', ''], ['', '']]);
+  });
+});
+
+describe('format of a line', () => {
+  it('writes the format before a comment, replaces it and takes it away', () => {
+    expect(withLineFormat("S := F/τ | mm²  ' plocha", { decimals: 2 })).toBe("S := F/τ | mm² {decimals=2}  ' plocha");
+    expect(withLineFormat('S := F/τ {decimals=2}', { digits: 3 })).toBe('S := F/τ {digits=3}');
+    expect(withLineFormat("S := F/τ {decimals=2}  ' plocha", undefined)).toBe("S := F/τ  ' plocha");
+    expect(withLineFormat('solve x: a == b {decimals=1}\n    c == d', undefined)).toBe('solve x: a == b\n    c == d');
+    // An apostrophe in a string is no comment.
+    expect(withLineFormat('check "Mike\'s": a ≤ b', { decimals: 1 })).toBe('check "Mike\'s": a ≤ b {decimals=1}');
+  });
+
+  it('reads the format back', () => {
+    expect(lineFormatOf("S := F/τ {decimals=2}  ' plocha")).toEqual({ decimals: 2 });
+    expect(lineFormatOf('d := 5 mm {digits=3}')).toEqual({ digits: 3 });
+    expect(lineFormatOf('d := 5 mm')).toBeUndefined();
   });
 });

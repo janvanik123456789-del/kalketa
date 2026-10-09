@@ -54,7 +54,30 @@ describe('vectors', () => {
     expect(html).toContain('<mover><mi>v</mi><mo stretchy="false">→</mo></mover>');
     const sheet = evaluateSheet('m_s := 0.01 kg\nv⃗_1 := 400 m/s\np⃗_1 := m_s·v⃗_1');
     expect(sheet.diagnostics).toEqual([]);
-    const lines = buildPrintDocument(sheet, { catalog: catalogFor('cs'), registry: defaultRegistry, title: 'V' }).blocks.flatMap((b) => (b.kind === 'equation' ? b.lines : []));
+    const lines = buildPrintDocument(sheet, { catalog: catalogFor('cs'), registry: defaultRegistry, digits: 4, title: 'V' }).blocks.flatMap((b) => (b.kind === 'equation' ? b.lines : []));
     expect(lines.map((l) => (l.lhs ? toText(l.lhs) : ''))).toContain('vec(p_1)');
+  });
+});
+
+describe('format of a line', () => {
+  const lines = (source: string) =>
+    buildPrintDocument(evaluateSheet(source), { catalog: catalogFor('cs'), registry: defaultRegistry, digits: 4, title: 'F' })
+      .blocks.flatMap((b) => (b.kind === 'equation' ? b.lines : []))
+      .map((l) => toText(l.rhs).replace(/\s+/g, ' '));
+
+  it('shows a result with its decimals, in its line and in every substitution below; the calculation stays exact', () => {
+    const shown = lines('S := 23.5294 mm² {decimals=2}\nd := √(4·S/π) | mm  {digits=3}  \' průměr\nk := d/(1 mm)');
+    expect(shown).toContain('23,53 mm²');
+    expect(shown).toContain('√((4·23,53 mm²)/π)');
+    expect(shown).toContain('5,47 mm');
+    // d substituted with its own three digits; k from the exact d.
+    expect(shown).toContain('(5,47 mm)/(1 mm)');
+    expect(shown.at(-1)).toBe('5,473');
+  });
+
+  it('reports a format it does not know and leaves the line as it was', () => {
+    const sheet = evaluateSheet('a := 1.23456 {decimals=x}');
+    expect(sheet.diagnostics.map((d) => d.code)).toEqual(['W-FORMAT']);
+    expect(sheet.statements[0]!.display!.value).toBeCloseTo(1.23456);
   });
 });

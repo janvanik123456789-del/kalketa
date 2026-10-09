@@ -76,6 +76,14 @@ interface StatementBase {
   readonly span: Span;
   /** Trailing ' comment on the same line. */
   readonly comment?: string;
+  /** How the line is shown, {decimals=2} at its end: never how it is calculated. */
+  readonly format?: LineFormat;
+}
+
+/** Shown with so many places after the decimal sign, or so many significant digits. */
+export interface LineFormat {
+  readonly decimals?: number;
+  readonly digits?: number;
 }
 
 export type Statement =

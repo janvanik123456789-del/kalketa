@@ -11,7 +11,7 @@ import { daysFromCivil, isValidDay } from '../values/date.js';
 
 export type TokenType =
   | 'number' | 'ident' | 'string' | 'superscript' | 'date'
-  | 'heading' | 'comment' | 'directive' | 'picture'
+  | 'heading' | 'comment' | 'directive' | 'picture' | 'attributes'
   | '+' | '-' | '*' | '/' | '^' | '√' | '∛'
   | '(' | ')' | '[' | ']' | ',' | '.' | '..' | ':' | '|'
   | ':=' | '=' | '==' | '!=' | '<' | '<=' | '>' | '>='
@@ -121,6 +121,17 @@ export function tokenize(source: string, options: LexOptions = {}): LexResult {
         push('directive', start, source.slice(start + 1, pos));
       }
       continue;
+    }
+
+    // How the line is shown, at its end (before a comment): σ_k := R_m/2 | MPa  {decimals=1}
+    if (ch === '{') {
+      const end = lineEnd(source, pos);
+      const attributes = /^\{([^{}'"\n]*)\}[ \t]*(?='|$)/.exec(source.slice(pos, end).replace(/\r$/, ''));
+      if (attributes) {
+        pos += attributes[0].length;
+        push('attributes', start, attributes[1]!.trim());
+        continue;
+      }
     }
 
     // Comment: ' until end of line.

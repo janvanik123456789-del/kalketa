@@ -565,7 +565,8 @@ check "Rozpočet": N_celk ≤ 2_500_000 CZK   source "zadání investora"
 | `@sub` / `@nosub` | vzorec s dosazením / bez dosazení |
 | `@result` | jen výsledek (`a = 5 m`) |
 | `@hide` | spočítat, ale netisknout (pomocné výpočty) |
-| `@digits 3` | počet platných číslic |
+| `@digits 3` | počet platných číslic pro tento a další řádky |
+| `{decimals=2}` / `{digits=3}` na konci řádku (před komentářem) | jen tento výsledek: desetinná místa / platné číslice; platí i pro dosazení této veličiny ve všech vzorcích níže. Výpočet běží dál s přesnou hodnotou. V editoru pravé tlačítko na řádku → Desetinná místa / Platné číslice (2026-10-09) |
 | `@page` | zalomení stránky |
 | `@clear` | konec obtékání: další řádky začnou pod obtékaným obrázkem (Vložit → Konec obtékání) |
 

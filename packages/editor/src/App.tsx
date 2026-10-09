@@ -1641,6 +1641,7 @@ export function App() {
           onEdit={(range) => (l.locked && range ? setNotice(t(ui, 'layers.lockedNotice')) : setEditing(range))}
           onSelect={setSelected}
           onReplace={(start, end, lines) => replaceIn(l, start, end, lines)}
+          onReplaceRows={(rows) => setLayerText(l, [...rows].sort((a, b) => b.start - a.start).reduce((text, r) => replaceLines(text, r.start, r.end, r.text), textOf(l)))}
           onInsertAfter={(line) => {
             setLayerText(l, insertLineAfter(source, line));
             setEditing({ start: line + 1, end: line + 1 });

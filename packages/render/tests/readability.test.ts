@@ -100,3 +100,21 @@ describe('a minus before a fraction', () => {
     expect(renderBlockHtml(doc.blocks.at(-1)!, cs)).toContain('<mo>−</mo><mfrac><mrow><mi>ρ</mi><mo>·</mo><mi>g</mi></mrow><mi>E</mi></mfrac>');
   });
 });
+
+describe('more of the style of text', () => {
+  it('aligns and colors a line; italic and bold words inside it', async () => {
+    const { printHtml } = await import('../src/index.js');
+    const html = printHtml(evaluateSheet('"Volíme *nejbližší vyšší* průměr, tedy **6 mm**; 2 * 3 zůstane." {align=center color=blue}'), { catalog: catalogFor('cs'), registry: defaultRegistry, title: 'S' });
+    expect(html).toContain('style="text-align: center; color: #1a4f9c"');
+    expect(html).toContain('Volíme <em>nejbližší vyšší</em> průměr, tedy <strong>6 mm</strong>; 2 * 3 zůstane.');
+    expect(textHtml('*σ_k* je mez')).toContain('<em><math');
+  });
+});
+
+describe('style of a heading', () => {
+  it('takes its attributes off its text', async () => {
+    const { printHtml } = await import('../src/index.js');
+    const html = printHtml(evaluateSheet('# Výpočet\n## Zadání {color=blue align=center}'), { catalog: catalogFor('cs'), registry: defaultRegistry, title: 'Výpočet' });
+    expect(html).toContain('<h3 style="text-align: center; color: #1a4f9c">Zadání</h3>');
+  });
+});

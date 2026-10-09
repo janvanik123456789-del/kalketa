@@ -5,8 +5,8 @@
  */
 
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
-import { formatExpr, formatPicture, fromDecimalComma, parsePicture, toDecimalComma, type SheetResult, type Statement } from '@kalketa/core';
-import { formatDate, formatNumber, t, type Catalog } from '@kalketa/i18n';
+import { formatExpr, formatPicture, fromDecimalComma, parsePicture, TEXT_ALIGNS, TEXT_COLORS, toDecimalComma, type SheetResult, type Statement } from '@kalketa/core';
+import { formatDate, formatNumber, t, type Catalog, type UiKey } from '@kalketa/i18n';
 import { labelParts, xPosition, xValueAt } from '@kalketa/chart';
 import { isInput, renderBlockHtml, renderSummary, type CalcStyle, type PrintBlock, type PrintDocument } from '@kalketa/render';
 import { isCanvasPath } from '@kalketa/canvas';
@@ -41,6 +41,8 @@ interface Props {
   onSelect(statement: number | undefined): void;
   /** Replaces lines start..end with text; returns nothing, the source flows back through props. */
   onReplace(start: number, end: number, text: string): void;
+  /** Several rows at once (a format set to all marked rows), in one step to undo. */
+  onReplaceRows(rows: readonly { start: number; end: number; text: string }[]): void;
   onInsertAfter(line: number): void;
   onDelete(start: number, end: number): void;
   /** Several rows at once (marked ones), in one step to undo. */
@@ -81,13 +83,16 @@ interface Props {
 
 const NO_COMMANDS: ReadonlyMap<string, Command> = new Map<string, Command>();
 
+/** A change of the text of a row, put to one row or to all rows marked. */
+type RowChange = (change: (text: string) => string) => void;
+
 /**
  * The menu of a row with a result: how its numbers are shown, here and in every substitution
  * below. Only the display changes; the calculation goes on with the exact value.
  */
-function formatMenuItems(seg: Segment, catalog: Catalog, replace: (text: string) => void): MenuItem[] {
+function formatMenuItems(seg: Segment, catalog: Catalog, change: RowChange): MenuItem[] {
   const current = lineFormatOf(seg.text);
-  const choose = (format: LineFormatChoice) => replace(withLineFormat(seg.text, format));
+  const choose = (format: LineFormatChoice) => change((text) => withLineFormat(text, format));
   return [
     { kind: 'action', label: t(catalog, 'format.default'), checked: current === undefined, run: () => choose(undefined) },
     {
@@ -103,40 +108,32 @@ function formatMenuItems(seg: Segment, catalog: Catalog, replace: (text: string)
   ];
 }
 
-/** The menu of a text line: size, font, italic and bold, written as {size=12 italic} at its end. */
-function textMenuItems(seg: Segment, catalog: Catalog, replace: (text: string) => void): MenuItem[] {
+const TEXT_KEYS = ['size', 'font', 'italic', 'bold', 'align', 'color'];
+
+/** The menu of a text line or heading: size, font, italic, bold, alignment and color, written as {size=12 italic} at its end. */
+function textMenuItems(seg: Segment, catalog: Catalog, change: RowChange): MenuItem[] {
   const current = lineAttributesOf(seg.text);
-  const set = (key: string, value: string | undefined) => replace(withLineAttribute(seg.text, key, value));
-  const styled = ['size', 'font', 'italic', 'bold'].some((key) => current.has(key));
+  const set = (key: string, value: string | undefined) => change((text) => withLineAttribute(text, key, value));
+  const choices = (key: string, values: readonly (string | undefined)[], label: (value: string) => string): MenuItem[] =>
+    values.map((value): MenuItem => ({
+      kind: 'action',
+      label: value === undefined ? t(catalog, 'textStyle.defaultValue') : label(value),
+      checked: value === undefined ? !current.has(key) : current.get(key) === value,
+      run: () => set(key, value),
+    }));
   return [
     {
       kind: 'action',
       label: t(catalog, 'textStyle.default'),
-      checked: !styled,
-      run: () => replace(withLineAttributes(seg.text, new Map([...current].filter(([key]) => !['size', 'font', 'italic', 'bold'].includes(key))))),
+      checked: !TEXT_KEYS.some((key) => current.has(key)),
+      run: () => change((text) => withLineAttributes(text, new Map([...lineAttributesOf(text)].filter(([key]) => !TEXT_KEYS.includes(key))))),
     },
-    {
-      kind: 'submenu',
-      label: t(catalog, 'textStyle.size'),
-      items: [undefined, 9, 10, 11, 12, 14, 16, 20].map((n): MenuItem => ({
-        kind: 'action',
-        label: n === undefined ? t(catalog, 'textStyle.defaultValue') : `${n} pt`,
-        checked: n === undefined ? !current.has('size') : current.get('size') === String(n),
-        run: () => set('size', n === undefined ? undefined : String(n)),
-      })),
-    },
-    {
-      kind: 'submenu',
-      label: t(catalog, 'textStyle.font'),
-      items: ([undefined, 'serif', 'sans', 'mono'] as const).map((font): MenuItem => ({
-        kind: 'action',
-        label: t(catalog, font === undefined ? 'textStyle.defaultValue' : `textStyle.font.${font}`),
-        checked: font === undefined ? !current.has('font') : current.get('font') === font,
-        run: () => set('font', font),
-      })),
-    },
+    { kind: 'submenu', label: t(catalog, 'textStyle.size'), items: choices('size', [undefined, '9', '10', '11', '12', '14', '16', '20'], (n) => `${n} pt`) },
+    { kind: 'submenu', label: t(catalog, 'textStyle.font'), items: choices('font', [undefined, 'serif', 'sans', 'mono'], (f) => t(catalog, `textStyle.font.${f}` as UiKey)) },
     { kind: 'action', label: t(catalog, 'textStyle.italic'), checked: current.has('italic'), run: () => set('italic', current.has('italic') ? undefined : '') },
     { kind: 'action', label: t(catalog, 'textStyle.bold'), checked: current.has('bold'), run: () => set('bold', current.has('bold') ? undefined : '') },
+    { kind: 'submenu', label: t(catalog, 'textStyle.align'), items: choices('align', [undefined, ...TEXT_ALIGNS], (a) => t(catalog, `textStyle.align.${a}` as UiKey)) },
+    { kind: 'submenu', label: t(catalog, 'textStyle.color'), items: choices('color', [undefined, ...TEXT_COLORS], (c) => t(catalog, `textStyle.color.${c}` as UiKey)) },
   ];
 }
 
@@ -587,7 +584,12 @@ export function SheetView(props: Props) {
       )}
       {formatMenu && (
         <ContextMenu
-          items={(formatMenu.text ? textMenuItems : formatMenuItems)(formatMenu.seg, props.uiCatalog, (text) => props.onReplace(formatMenu.seg.start, formatMenu.seg.end, text))}
+          items={(formatMenu.text ? textMenuItems : formatMenuItems)(formatMenu.seg, props.uiCatalog, (change) => {
+            // On a marked row: every marked row at once, one step to undo.
+            const rows = marked.has(formatMenu.seg.start) && marked.size > 1 ? segs.filter((s) => marked.has(s.start)) : [formatMenu.seg];
+            if (rows.length === 1) props.onReplace(rows[0]!.start, rows[0]!.end, change(rows[0]!.text));
+            else props.onReplaceRows(rows.map((s) => ({ start: s.start, end: s.end, text: change(s.text) })));
+          })}
           commands={NO_COMMANDS}
           at={formatMenu.at}
           onClose={() => setFormatMenu(undefined)}
@@ -703,8 +705,9 @@ export function SheetView(props: Props) {
           }
           if ((isEditing && !figure) || (e.target as HTMLElement).closest('.pick-control')) return;
           e.preventDefault();
-          if (marked.size > 0) setMarked(new Set());
-          markAnchor.current = undefined;
+          // The right button on a marked row keeps the marks: its menu works on all of them.
+          if (marked.size > 0 && !(e.button !== 0 && marked.has(seg.start))) setMarked(new Set());
+          if (e.button === 0) markAnchor.current = undefined;
           // The right button only selects and opens a menu (onContextMenu), never the line.
           if (e.button !== 0) {
             if (!figure) props.onSelect(seg.statement);
@@ -740,10 +743,10 @@ export function SheetView(props: Props) {
             setSolveMenu({ seg, line: `${solution.name} := ${formatExpr(solution.formula)}  ' ${t(props.uiCatalog, 'solve.expressedFrom')} ${from}`, at: { x: e.clientX, y: e.clientY } });
             return;
           }
-          if ((block?.kind === 'equation' || block?.kind === 'check' || block?.kind === 'paragraph') && !(e.target as HTMLElement).closest('textarea')) {
+          if ((block?.kind === 'equation' || block?.kind === 'check' || block?.kind === 'paragraph' || block?.kind === 'heading') && !(e.target as HTMLElement).closest('textarea')) {
             e.preventDefault();
             props.onSelect(seg.statement);
-            setFormatMenu({ seg, at: { x: e.clientX, y: e.clientY }, text: block.kind === 'paragraph' });
+            setFormatMenu({ seg, at: { x: e.clientX, y: e.clientY }, text: block.kind === 'paragraph' || block.kind === 'heading' });
             return;
           }
           if ((block?.kind !== 'picture' && block?.kind !== 'chart') || !(e.target as HTMLElement).closest('figure')) return;

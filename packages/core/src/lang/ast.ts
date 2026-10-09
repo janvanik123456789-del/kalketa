@@ -89,10 +89,17 @@ export interface LineFormat {
   readonly font?: TextFont;
   readonly italic?: boolean;
   readonly bold?: boolean;
+  readonly align?: TextAlign;
+  readonly color?: TextColor;
 }
 
 /** Fonts of text by kind, not by name: each machine and printout has its own of the kind. */
 export type TextFont = 'serif' | 'sans' | 'mono';
+export type TextAlign = 'left' | 'center' | 'right' | 'justify';
+/** Colors by name, few and print-safe: what a calculation needs to mark, not a palette. */
+export type TextColor = 'gray' | 'blue' | 'red' | 'green';
+export const TEXT_ALIGNS: readonly TextAlign[] = ['left', 'center', 'right', 'justify'];
+export const TEXT_COLORS: readonly TextColor[] = ['gray', 'blue', 'red', 'green'];
 
 export type Statement =
   | (StatementBase & { readonly kind: 'heading'; readonly level: number; readonly text: string })

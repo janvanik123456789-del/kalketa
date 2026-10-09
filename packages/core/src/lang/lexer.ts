@@ -112,9 +112,17 @@ export function tokenize(source: string, options: LexOptions = {}): LexResult {
         let level = 0;
         while (source[pos] === '#') { level++; pos++; }
         const end = lineEnd(source, pos);
-        const text = source.slice(pos, end).trim();
-        pos = end;
+        const line = source.slice(pos, end);
+        // "## Zadání {color=blue}": the attributes of the heading are not its text.
+        const attributes = /\s*\{([^{}'"\n]*)\}\s*$/.exec(line);
+        const text = (attributes ? line.slice(0, attributes.index) : line).trim();
+        pos = attributes ? pos + attributes.index : end;
         push('heading', start, text, level);
+        if (attributes) {
+          const at = pos;
+          pos = end;
+          push('attributes', at, attributes[1]!.trim());
+        }
       } else {
         pos++;
         while (pos < source.length && isIdentPart(source[pos]!)) pos++;

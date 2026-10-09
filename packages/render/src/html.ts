@@ -38,12 +38,10 @@ export type CalcStyle = 'compact' | 'airy';
 // A name with an index, a vector arrow or a power in text, written as in a formula: σ_Kt, S_min, p⃗_1, d^2.
 const TEXT_NAME = /(\p{L}[\p{L}\p{N}\p{M}]*)(_[\p{L}\p{N}\p{M}_]*[\p{L}\p{N}\p{M}])?(\^-?[\p{L}\p{N}]+)?/gu;
 
-/**
- * Text of a paragraph or heading: names with an index (the _ of the Operators toolbar)
- * and powers (^) look as they do in the formulas around; everything else is plain text.
- */
 /** Fonts by kind, as the printout and every machine have some of each. */
 const FONTS = { serif: '"Cambria", "Times New Roman", serif', sans: '"Calibri", "Arial", sans-serif', mono: '"Consolas", "Courier New", monospace' } as const;
+/** Dark enough to read on paper and in black-and-white print. */
+const COLORS = { gray: '#5f6368', blue: '#1a4f9c', red: '#b3261e', green: '#2e7d32' } as const;
 
 /** The style of a text line ({size=12 italic}) as a style attribute; nothing when it sets none. */
 function styleAttribute(style: TextStyle | undefined): string {
@@ -53,11 +51,27 @@ function styleAttribute(style: TextStyle | undefined): string {
     style.font ? `font-family: ${FONTS[style.font]}` : '',
     style.italic ? 'font-style: italic' : '',
     style.bold ? 'font-weight: bold' : '',
+    style.align ? `text-align: ${style.align}` : '',
+    style.color ? `color: ${COLORS[style.color]}` : '',
   ].filter(Boolean);
   return rules.length > 0 ? ` style="${esc(rules.join('; '))}"` : '';
 }
 
+/**
+ * Text of a paragraph or heading: names with an index (the _ of the Operators toolbar)
+ * and powers (^) look as they do in the formulas around; *italic* and **bold** words as
+ * in Markdown; everything else is plain text.
+ */
 export function textHtml(text: string): string {
+  return emphasis(namesInText(text));
+}
+
+/** **bold** and *italic* parts; a lone * (2 * 3) stays as it is. Tags hold no *, so they are safe. */
+function emphasis(html: string): string {
+  return html.replace(/\*\*(\S(?:.*?\S)?)\*\*/g, '<strong>$1</strong>').replace(/(^|[^*])\*(\S(?:[^*]*?\S)?)\*(?!\*)/g, '$1<em>$2</em>');
+}
+
+function namesInText(text: string): string {
   let out = '';
   let last = 0;
   for (const m of text.matchAll(TEXT_NAME)) {
@@ -178,7 +192,7 @@ export function renderBlockHtml(block: PrintBlock, catalog: Catalog, options: Bl
   switch (block.kind) {
     case 'heading': {
       const level = Math.min(block.level + 1, 6);
-      return `<h${level}>${textHtml(block.text)}</h${level}>`;
+      return `<h${level}${styleAttribute(block.style)}>${textHtml(block.text)}</h${level}>`;
     }
     case 'paragraph':
       return `<p class="text"${styleAttribute(block.style)}>${textHtml(block.text)}${(block.cites ?? []).map((c) => ` <span class="source">[${esc(c)}]</span>`).join('')}</p>`;

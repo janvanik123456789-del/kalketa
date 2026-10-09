@@ -65,7 +65,7 @@ export interface Message {
 }
 
 export type PrintBlock =
-  | { readonly kind: 'heading'; readonly line: number; readonly level: number; readonly text: string }
+  | { readonly kind: 'heading'; readonly line: number; readonly level: number; readonly text: string; readonly style?: TextStyle }
   | { readonly kind: 'paragraph'; readonly line: number; readonly text: string; readonly cites?: readonly string[]; readonly style?: TextStyle }
   | {
       readonly kind: 'picture';
@@ -194,6 +194,8 @@ export interface TextStyle {
   readonly font?: 'serif' | 'sans' | 'mono';
   readonly italic?: boolean;
   readonly bold?: boolean;
+  readonly align?: 'left' | 'center' | 'right' | 'justify';
+  readonly color?: 'gray' | 'blue' | 'red' | 'green';
 }
 
 function textStyle(format: LineFormat | undefined): TextStyle | undefined {
@@ -203,6 +205,8 @@ function textStyle(format: LineFormat | undefined): TextStyle | undefined {
     ...(format.font ? { font: format.font } : {}),
     ...(format.italic ? { italic: true } : {}),
     ...(format.bold ? { bold: true } : {}),
+    ...(format.align ? { align: format.align } : {}),
+    ...(format.color ? { color: format.color } : {}),
   };
   return Object.keys(style).length > 0 ? style : undefined;
 }
@@ -254,7 +258,7 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
 
     switch (s.kind) {
       case 'heading':
-        blocks.push({ kind: 'heading', line: s.span.line, level: s.level, text: s.text });
+        blocks.push({ kind: 'heading', line: s.span.line, level: s.level, text: s.text, ...(textStyle(s.format) ? { style: textStyle(s.format)! } : {}) });
         break;
       case 'text':
         blocks.push({ kind: 'paragraph', line: s.span.line, text: s.text, ...(s.cites ? { cites: s.cites } : {}), ...(textStyle(s.format) ? { style: textStyle(s.format)! } : {}) });

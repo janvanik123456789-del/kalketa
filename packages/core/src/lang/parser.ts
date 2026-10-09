@@ -15,7 +15,7 @@
  */
 
 import { CalcError, diagnostic, fail, type Diagnostic, type Span } from '../diagnostics.js';
-import type { BinaryOperator, Equation, Expr, LineFormat, NamedArg, Param, Sheet, Statement, UnitExpr } from './ast.js';
+import { TEXT_ALIGNS, TEXT_COLORS, type BinaryOperator, type Equation, type Expr, type LineFormat, type NamedArg, type Param, type Sheet, type Statement, type TextAlign, type TextColor, type UnitExpr } from './ast.js';
 import { tokenize, type Token, type TokenType } from './lexer.js';
 
 export interface ParseOptions {
@@ -171,6 +171,8 @@ function lineFormat(tokens: readonly Token[], diagnostics: Diagnostic[], at: Spa
       else if (key === 'size' && Number.isFinite(n) && n >= 6 && n <= 48) format.size = n;
       else if (key === 'font' && (value === 'serif' || value === 'sans' || value === 'mono')) format.font = value;
       else if ((key === 'italic' || key === 'bold') && value === undefined) format[key] = true;
+      else if (key === 'align' && (TEXT_ALIGNS as readonly string[]).includes(value ?? '')) format.align = value as TextAlign;
+      else if (key === 'color' && (TEXT_COLORS as readonly string[]).includes(value ?? '')) format.color = value as TextColor;
       else diagnostics.push(diagnostic('W-FORMAT', at, { item }));
     }
   }

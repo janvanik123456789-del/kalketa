@@ -327,7 +327,8 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
         const lines = chain
           ? [
               ...chain.map((m, i): EquationLine => (i === 0 && lhs ? { role: 'formula', lhs, rhs: formulaNode(m, formulaOptions()) } : { role: 'formula', rhs: formulaNode(m, formulaOptions()) })),
-              ...(isGiven(s.expr) ? [] : equationLines(r, s.expr, undefined, mode, formulaOptions, substitute, numberFormat(spec)).filter((l, i) => !(i === 0 && l.role === 'formula'))),
+              // A function has no values for its parameters: its derivation ends in its formula.
+              ...(isGiven(s.expr) || params ? [] : equationLines(r, s.expr, undefined, mode, formulaOptions, substitute, numberFormat(spec)).filter((l, i) => !(i === 0 && l.role === 'formula'))),
             ]
           : valueLines;
         const derived = !!r.derivation && r.derivation.every((step) => step.ok);

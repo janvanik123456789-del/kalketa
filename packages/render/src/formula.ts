@@ -158,6 +158,11 @@ function render(expr: Expr, o: FormulaOptions): Rendered {
         const group = render(expr.left, o);
         return { node: row(group.prec >= ATOM ? group.node : paren(group.node), THIN_SPACE, render(expr.right, o).node), prec: 6 };
       }
+      // −ρ·g/E as the books write it: the minus before the fraction, not in its numerator.
+      if (expr.operator === '/') {
+        const positive = withoutLeadingMinus(expr.left);
+        if (positive) return { node: row(mo('−'), frac(render(positive, o).node, render(expr.right, o).node)), prec: 6, negative: true };
+      }
       return renderBinary(expr.operator, render(expr.left, o), render(expr.right, o));
     case 'call':
       return renderCall(expr, o);
@@ -180,6 +185,16 @@ function render(expr: Expr, o: FormulaOptions): Rendered {
       return { node: expr.object.kind === 'variable' ? sub(object.node, index) : row(wrap(object, object.prec < ATOM), mo('['), index, mo(']')), prec: ATOM };
     }
   }
+}
+
+/** −a·b without its minus (a·b); undefined when it does not start with one. */
+function withoutLeadingMinus(expr: Expr): Expr | undefined {
+  if (expr.kind === 'unary' && expr.operator === '-') return expr.operand;
+  if (expr.kind === 'binary' && expr.operator === '*') {
+    const left = withoutLeadingMinus(expr.left);
+    return left ? { ...expr, left } : undefined;
+  }
+  return undefined;
 }
 
 function renderBinary(op: BinaryOperator, left: Rendered, right: Rendered): Rendered {

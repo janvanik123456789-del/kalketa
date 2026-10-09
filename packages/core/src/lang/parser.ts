@@ -355,13 +355,24 @@ class LineParser {
    */
   private parseDerivedDefinition(lineSpan: Span, symbolic: boolean): Statement {
     const nameToken = this.peek();
-    if (nameToken.type !== 'ident' || this.peek(1).type !== ':=') fail('E-SYNTAX', nameToken.span, { expected: 'name', found: nameToken.text });
+    // A function may be derived too: dV(z) := 2·ε_xx(z) + ε_zz == −ρ·g/E·(3·h − 2·z − a).
+    const isFunction = nameToken.type === 'ident' && this.peek(1).type === '(';
+    if (nameToken.type !== 'ident' || (this.peek(1).type !== ':=' && !isFunction)) fail('E-SYNTAX', nameToken.span, { expected: 'name', found: nameToken.text });
     if (KEYWORDS.has(nameToken.text)) fail('E-RESERVED', nameToken.span, { name: nameToken.text });
     this.next();
+    const params = isFunction ? this.parseParams() : undefined;
     this.expect(':=', ':=');
     this.freeNames = true;
-    const members = this.parseChain(symbolic ? 1 : 2);
-    const target = this.parseTarget();
+    const added = (params ?? []).map((p) => p.name).filter((name) => !this.defined.has(name));
+    added.forEach((name) => this.defined.add(name));
+    let members: Expr[];
+    let target: UnitExpr | undefined;
+    try {
+      members = this.parseChain(symbolic ? 1 : 2);
+      target = this.parseTarget();
+    } finally {
+      added.forEach((name) => this.defined.delete(name));
+    }
     this.defined.add(nameToken.text);
     this.expectEnd();
     return {
@@ -372,6 +383,7 @@ class LineParser {
       ...(members.length > 1 ? { derivation: members } : {}),
       ...(symbolic ? { symbolic } : {}),
       ...(target ? { target } : {}),
+      ...(params ? { params } : {}),
       span: lineSpan,
     };
   }

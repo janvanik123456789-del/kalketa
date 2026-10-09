@@ -91,3 +91,12 @@ describe('style of a text line', () => {
     expect(evaluateSheet('"Text" {size=100 underline}').diagnostics.map((d) => d.code)).toEqual(['W-FORMAT', 'W-FORMAT']);
   });
 });
+
+describe('a minus before a fraction', () => {
+  it('stands before it, as in the books (−ρ·g/E), not in its numerator', async () => {
+    const { renderBlockHtml } = await import('../src/index.js');
+    const cs = catalogFor('cs');
+    const doc = buildPrintDocument(evaluateSheet('ρ := 1000 kg/m³\ng := 9.81 m/s²\nE := 210 GPa\nk := -ρ·g/E'), { catalog: cs, registry: defaultRegistry, digits: 3, title: 'M' });
+    expect(renderBlockHtml(doc.blocks.at(-1)!, cs)).toContain('<mo>−</mo><mfrac><mrow><mi>ρ</mi><mo>·</mo><mi>g</mi></mrow><mi>E</mi></mfrac>');
+  });
+});

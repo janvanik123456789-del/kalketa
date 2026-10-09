@@ -17,7 +17,7 @@
 
 import { diagnostic, type Diagnostic, type Span } from '../diagnostics.js';
 import type { Expr } from '../lang/ast.js';
-import { sameDim } from '../units/dimension.js';
+import { DIMENSIONLESS, sameDim, type Dimension } from '../units/dimension.js';
 import { baseUnitSymbol } from '../units/display.js';
 import { quantity, type Quantity, type Value } from '../values/value.js';
 import type { EvalContext } from './evaluator.js';
@@ -49,16 +49,21 @@ export function isUnboundedCall(expr: Expr): boolean {
 /**
  * @param formulaOf the formula of a name the sheet calculated above (M := q·L²/8);
  *   undefined for given values, symbols and anything else.
+ * @param params parameters of a function being derived (dV(z) := … == …): they vary like
+ *   symbols, in the dimension that makes every member a value (z in h − z: a length).
  */
 export function checkDerivation(
   members: readonly Expr[],
   ctx: EvalContext,
   evaluate: Evaluate,
   formulaOf: (name: string) => Expr | undefined = () => undefined,
+  params: readonly string[] = [],
 ): { steps: DerivationStep[]; diagnostics: Diagnostic[] } {
   const atoms: Expr[] = [];
   const keys = new Map<string, number>();
-  const rewritten = members.map((m) => opaqueParts(m, ctx, evaluate, atoms, keys));
+  // Parameters are names of the members only: the sheet's values of the same names do not count.
+  const own = params.length > 0 ? { ...ctx, lookup: (name: string, span: Span) => (params.includes(name) ? quantity(1) : ctx.lookup(name, span)) } : ctx;
+  const rewritten = members.map((m) => opaqueParts(m, own, evaluate, atoms, keys));
   const formulas = new Map<string, Expr | undefined>();
   const formula = (name: string): Expr | undefined => {
     if (!formulas.has(name)) {
@@ -68,13 +73,17 @@ export function checkDerivation(
     return formulas.get(name);
   };
 
+  let paramDims: readonly Dimension[] = params.map(() => DIMENSIONLESS);
   const sample = (point: number): (Quantity | undefined)[] => {
     const known = new Map<string, Value>();
     const lookup = (name: string, span: Span): Value => {
       const done = known.get(name);
       if (done) return done;
       let value: Value;
-      if (name.startsWith(ATOM)) {
+      const param = params.indexOf(name);
+      if (param >= 0) {
+        value = quantity(randomFactor(name, point), paramDims[param]);
+      } else if (name.startsWith(ATOM)) {
         const index = Number(name.slice(ATOM.length));
         value = scaled(tryValue(() => evaluate(atoms[index]!, ctx)), name, point);
       } else {
@@ -91,6 +100,10 @@ export function checkDerivation(
       return value?.type === 'quantity' ? value : undefined;
     });
   };
+  if (params.length > 0) paramDims = dimensionsOfParams(params, members, ctx, (dims) => {
+    paramDims = dims;
+    return sample(0).every(Boolean);
+  });
   const points = Array.from({ length: SAMPLES }, (_, i) => sample(i));
   // Numbers put in ("= 12·5²/8 = 37,5") hold for the values of the sheet only: such a step is checked with them.
   const actual = members.map((m) => {
@@ -178,6 +191,38 @@ function opaqueParts(expr: Expr, ctx: EvalContext, evaluate: Evaluate, atoms: Ex
     default:
       return expr;
   }
+}
+
+/**
+ * The dimensions of the parameters with which every member has a value: tried from the
+ * dimensions of the names the members read, and none (a pure number), in turn.
+ */
+function dimensionsOfParams(params: readonly string[], members: readonly Expr[], ctx: EvalContext, works: (dims: readonly Dimension[]) => boolean): readonly Dimension[] {
+  const names = new Set<string>();
+  const walk = (e: Expr): void => {
+    if (e.kind === 'variable') names.add(e.name);
+    else if (e.kind === 'unary') walk(e.operand);
+    else if (e.kind === 'binary') (walk(e.left), walk(e.right));
+    else if (e.kind === 'call') (e.args.forEach(walk), e.named.forEach((n) => walk(n.value)));
+  };
+  members.forEach(walk);
+  const candidates: Dimension[] = [DIMENSIONLESS];
+  for (const name of names) {
+    if (params.includes(name)) continue;
+    const value = tryValue(() => ctx.lookup(name, members[0]!.span));
+    if (value?.type === 'quantity' && !candidates.some((d) => sameDim(d, value.dim))) candidates.push(value.dim);
+  }
+  // Every combination, the first that works; a few parameters only, so few tries.
+  let tries = 0;
+  const pick = (i: number, chosen: Dimension[]): readonly Dimension[] | undefined => {
+    if (i === params.length) return ++tries <= 200 && works(chosen) ? chosen : undefined;
+    for (const d of candidates) {
+      const found = pick(i + 1, [...chosen, d]);
+      if (found) return found;
+    }
+    return undefined;
+  };
+  return pick(0, []) ?? params.map(() => DIMENSIONLESS);
 }
 
 /** How deep functions of the sheet are written out into their formulas. */

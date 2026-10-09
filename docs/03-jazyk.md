@@ -518,6 +518,8 @@ solve (I_1, I_2):
 
 ### 9.1 Odvození (řetěz rovností s kontrolou)
 
+- **Odvození funkce (2026-10-09):** `dV(z) := 2·ε_xx(z) + ε_zz == −ρ·g/E·(3·h − 2·z − a)`. Parametr se při kontrole mění jako symbol v rozměru, se kterým mají všechny členy hodnotu; funkce se počítá z posledního členu. Funkce listu se při kontrole rozvinou do svých vzorců.
+
 ```text
 y := M/(E·I) == F·l^3/(3·E·I)                      ' odvození končí definicí: y z posledního členu
 M_Ed := q·L²/8 == 12 kN/m·(5 m)²/8 == 37.5 kN·m      ' i s dosazením čísel

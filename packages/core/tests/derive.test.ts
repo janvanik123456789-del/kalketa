@@ -28,6 +28,16 @@ describe('derivations', () => {
     expect(result(`${sheet}w := ε_xx(a) == -ρ·g·h/E`, 8).derivation).toEqual([{ ok: false, problem: 'differs' }]);
   });
 
+  it('derive a function: its parameter varies in the dimension the members need, the function calculates', () => {
+    const sheet = 'a := 0.1 m\nh := 0.3 m\nE := 210 GPa\nρ := 1000 kg/m³\ng := 9.81 m/s²\nε_xx(z) := -ρ·g·(h - z)/E\nε_zz := -ρ·g·(h - a)/E\n';
+    const derived = result(`${sheet}dV(z) := 2·ε_xx(z) + ε_zz == -ρ·g/E·(2·(h - z) + (h - a)) == -ρ·g/E·(3·h - 2·z - a)\nq := dV(0.05 m)`, 8);
+    expect(derived.derivation).toEqual([{ ok: true }, { ok: true }]);
+    expect(derived.diagnostics).toEqual([]);
+    expect(result(`${sheet}dV(z) := 2·ε_xx(z) + ε_zz == -ρ·g/E·(2·(h - z) + (h - a))\nq := dV(0.05 m)`, 9).display!.value).toBeCloseTo(-3.27e-8, 10);
+    // z in a wrong place: the step does not hold.
+    expect(result(`${sheet}w(z) := 2·ε_xx(z) + ε_zz == -ρ·g/E·(3·h - z - a)`, 8).derivation).toEqual([{ ok: false, problem: 'differs' }]);
+  });
+
   it('end in a definition: the value from the last member, the steps checked with the values of the sheet', () => {
     const source = 'q := 12 kN/m\nL := 5 m\nM := q·L²/8\ny := M/(2 m) == q·L²/(8·2 m) == q·L^2/(16 m) | kN';
     const sheet = evaluateSheet(source);

@@ -387,7 +387,8 @@ export class SheetSession {
     // A derivation is checked step by step; a wrong step is an error, yet the value of its last member
     // is still calculated, so the rest of the sheet does not fall apart.
     const members = statement.kind === 'derive' ? statement.members : statement.kind === 'definition' ? statement.derivation : undefined;
-    const derived = members ? checkDerivation(members, ctx, evaluate, (name) => context.formulas.get(name)) : undefined;
+    const params = statement.kind === 'definition' ? statement.params?.map((p) => p.name) : undefined;
+    const derived = members ? checkDerivation(members, ctx, evaluate, (name) => context.formulas.get(name), params) : undefined;
     if (statement.kind === 'derive') {
       return { status: 'ok', derivation: derived!.steps, dependencies, tableReads, diagnostics: [...ctx.warnings, ...derived!.diagnostics] };
     }

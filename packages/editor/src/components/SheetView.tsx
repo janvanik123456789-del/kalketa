@@ -89,23 +89,37 @@ const NO_COMMANDS: ReadonlyMap<string, Command> = new Map<string, Command>();
 type RowChange = (change: (text: string) => string) => void;
 
 /**
- * The menu of a row with a result: how its numbers are shown, here and in every substitution
- * below. Only the display changes; the calculation goes on with the exact value.
+ * The menu of a row with a result: to how many decimal places it is shown, here and in every
+ * substitution below, each choice with the result as it would look. Only the display changes;
+ * the calculation goes on with the exact value. Significant digits ({digits=3}) stay a matter
+ * of the text: the menu shows them only on a line that has them.
  */
-function formatMenuItems(seg: Segment, catalog: Catalog, change: RowChange): MenuItem[] {
+function formatMenuItems(seg: Segment, catalog: Catalog, change: RowChange, shown?: (decimals: number) => string): MenuItem[] {
   const current = lineFormatOf(seg.text);
+  const rounded = lineAttributesOf(seg.text).has('rounded');
   const choose = (format: LineFormatChoice) => change((text) => withLineFormat(text, format));
+  const preview = (n: number) => (shown ? `  (${shown(n)})` : '');
   return [
     { kind: 'action', label: t(catalog, 'format.default'), checked: current === undefined, run: () => choose(undefined) },
+    ...[0, 1, 2, 3, 4].map(
+      (n): MenuItem => ({
+        kind: 'action',
+        label: `${t(catalog, `format.places.${n}` as UiKey)}${preview(n)}`,
+        checked: current !== undefined && 'decimals' in current && current.decimals === n,
+        run: () => choose({ decimals: n }),
+      }),
+    ),
+    ...(current !== undefined && 'digits' in current
+      ? [{ kind: 'action' as const, label: t(catalog, 'format.digitsWritten', { n: String(current.digits) }), checked: true, run: () => undefined }]
+      : []),
+    { kind: 'separator' },
     {
-      kind: 'submenu',
-      label: t(catalog, 'format.decimals'),
-      items: [0, 1, 2, 3, 4].map((n): MenuItem => ({ kind: 'action', label: String(n), checked: current !== undefined && 'decimals' in current && current.decimals === n, run: () => choose({ decimals: n }) })),
-    },
-    {
-      kind: 'submenu',
-      label: t(catalog, 'format.digits'),
-      items: [2, 3, 4, 5, 6].map((n): MenuItem => ({ kind: 'action', label: String(n), checked: current !== undefined && 'digits' in current && current.digits === n, run: () => choose({ digits: n }) })),
+      // The rows below go on with the value as shown, so a sum of shown values is the shown sum.
+      kind: 'action',
+      label: t(catalog, 'format.rounded'),
+      checked: rounded,
+      enabled: current !== undefined,
+      run: () => change((text) => withLineAttribute(text, 'rounded', rounded ? undefined : '')),
     },
   ];
 }
@@ -596,12 +610,19 @@ export function SheetView(props: Props) {
       )}
       {formatMenu && (
         <ContextMenu
-          items={(formatMenu.text ? textMenuItems : formatMenuItems)(formatMenu.seg, props.uiCatalog, (change) => {
+          items={(() => {
             // On a marked row: every marked row at once, one step to undo.
-            const rows = marked.has(formatMenu.seg.start) && marked.size > 1 ? segs.filter((s) => marked.has(s.start)) : [formatMenu.seg];
-            if (rows.length === 1) props.onReplace(rows[0]!.start, rows[0]!.end, change(rows[0]!.text));
-            else props.onReplaceRows(rows.map((s) => ({ start: s.start, end: s.end, text: change(s.text) })));
-          })}
+            const change: RowChange = (f) => {
+              const rows = marked.has(formatMenu.seg.start) && marked.size > 1 ? segs.filter((s) => marked.has(s.start)) : [formatMenu.seg];
+              if (rows.length === 1) props.onReplace(rows[0]!.start, rows[0]!.end, f(rows[0]!.text));
+              else props.onReplaceRows(rows.map((s) => ({ start: s.start, end: s.end, text: f(s.text) })));
+            };
+            if (formatMenu.text) return textMenuItems(formatMenu.seg, props.uiCatalog, change);
+            // The result of the row as each choice would show it: "5,47 mm".
+            const display = formatMenu.seg.statement !== undefined ? result.statements[formatMenu.seg.statement]?.display : undefined;
+            const shown = display && !display.im && Number.isFinite(display.value) ? (n: number) => `${formatNumber(display.value, props.printCatalog, { decimals: n }).replace('-', '−')}${display.unit ? ` ${display.unit}` : ''}` : undefined;
+            return formatMenuItems(formatMenu.seg, props.uiCatalog, change, shown);
+          })()}
           commands={NO_COMMANDS}
           at={formatMenu.at}
           onClose={() => setFormatMenu(undefined)}

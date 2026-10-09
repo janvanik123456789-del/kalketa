@@ -69,6 +69,8 @@ export function withLineFormat(text: string, format: LineFormatChoice): string {
   const next = new Map(lineAttributesOf(text));
   next.delete('decimals');
   next.delete('digits');
+  // Calculating on with the rounded value means nothing without a rounding.
+  if (format === undefined) next.delete('rounded');
   if (format && 'decimals' in format) next.set('decimals', String(format.decimals));
   if (format && 'digits' in format) next.set('digits', String(format.digits));
   return withLineAttributes(text, next);

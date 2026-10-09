@@ -91,6 +91,8 @@ export interface LineFormat {
   readonly bold?: boolean;
   readonly align?: TextAlign;
   readonly color?: TextColor;
+  /** The rows below calculate with the value as shown ({decimals=2 rounded}), not the exact one. */
+  readonly rounded?: boolean;
 }
 
 /** Fonts of text by kind, not by name: each machine and printout has its own of the kind. */

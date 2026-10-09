@@ -118,3 +118,13 @@ describe('style of a heading', () => {
     expect(html).toContain('<h3 style="text-align: center; color: #1a4f9c">Zadání</h3>');
   });
 });
+
+describe('calculating on with the rounded value', () => {
+  it('gives the rows below the value as shown when the line asks for it, the exact one otherwise', () => {
+    const k = (source: string) => evaluateSheet(source).statements.at(-1)!.display!.value;
+    expect(k('S := 23.5294 mm² {decimals=2 rounded}\nk := S/(1 mm²)')).toBe(23.53);
+    expect(k('S := 23.5294 mm² {decimals=2}\nk := S/(1 mm²)')).toBeCloseTo(23.5294, 10);
+    // Two shown values add up to the shown sum.
+    expect(k('a := 1.004 {decimals=2 rounded}\nb := 1.004 {decimals=2 rounded}\nc := a + b')).toBeCloseTo(2, 12);
+  });
+});

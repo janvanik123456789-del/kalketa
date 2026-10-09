@@ -859,8 +859,7 @@ async function layersWithRealInput(picture: string) {
   })()`)) as { rows: string[]; errors: number; indexed: boolean };
   // The right button on a result: two decimal places, here and wherever it is substituted.
   await clickOn('#smoke-def-1', [], 'right');
-  await clickMenu('Desetinná místa');
-  await clickMenu('2');
+  await clickMenu('Výsledek na 2 desetinná');
   await pause(400);
   const formatted = (await contents.executeJavaScript(`(() => {
     const rows = [...document.querySelectorAll('.layer-view.active .page .row')].slice(-3);
@@ -880,14 +879,27 @@ async function layersWithRealInput(picture: string) {
   await clickOn('#smoke-def-0', ['control']);
   await clickOn('#smoke-def-1', ['control']);
   await clickOn('#smoke-def-1', [], 'right');
-  await clickMenu('Platné číslice');
-  await clickMenu('2');
+  await clickMenu('Výsledek na 1 desetinné');
   await pause(400);
   const bothFormatted = (await contents.executeJavaScript(`(() => {
     const rows = [...document.querySelectorAll('.layer-view.active .page .row')].slice(-3);
     rows.forEach((r, i) => (r.id = 'smoke-def-' + i));
     return rows.slice(0, 2).map((r) => r.textContent.replace(/\\s+/g, ''));
   })()`)) as string[];
+  // "Calculate on with the rounded value" on k_d1 (2,3): k_d2 shown in full is then 3,3, not 3,345.
+  await pressKey('Escape');
+  await clickOn('#smoke-def-0', [], 'right');
+  await clickMenu('Počítat dále se zaokrouhlenou');
+  await pause(400);
+  await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .page .row')].slice(-3).forEach((r, i) => (r.id = 'smoke-def-' + i))`);
+  await clickOn('#smoke-def-1', [], 'right');
+  await clickMenu('Výsledek: výchozí');
+  await pause(400);
+  const roundedOn = (await contents.executeJavaScript(`(() => {
+    const rows = [...document.querySelectorAll('.layer-view.active .page .row')].slice(-3);
+    rows.forEach((r, i) => (r.id = 'smoke-def-' + i));
+    return rows[1]?.textContent.replace(/\\s+/g, '') ?? '';
+  })()`)) as string;
   // Dragged over the line numbers, the button held: the rows passed are marked; Esc clears them.
   const gutters = (await contents.executeJavaScript(`[0, 2].map((i) => {
     const g = document.querySelector('#smoke-def-' + i + ' .gutter');
@@ -911,7 +923,7 @@ async function layersWithRealInput(picture: string) {
   await pause(400);
   const rowsAfterDelete = (await contents.executeJavaScript(rowsNow)) as number;
   const definitionAtCursor =
-    typedDefs.errors === 0 && typedDefs.rows[0]!.includes('≔2') && typedDefs.rows[1]!.includes('=3') && typedDefs.indexed && /=3,3[45]/.test(formatted) && bothFormatted[0]!.includes('2,3') && !bothFormatted[0]!.includes('2,34') && bothFormatted[1]!.includes('=3,3') && !bothFormatted[1]!.includes('3,34') && italicText.includes('italic') && draggedRows === 3 && markedRows === 3 && rowsAfterDelete === rowsBeforeDefs;
+    typedDefs.errors === 0 && typedDefs.rows[0]!.includes('≔2') && typedDefs.rows[1]!.includes('=3') && typedDefs.indexed && /=3,3[45]/.test(formatted) && bothFormatted[0]!.includes('2,3') && !bothFormatted[0]!.includes('2,34') && bothFormatted[1]!.includes('=3,3') && !bothFormatted[1]!.includes('3,34') && roundedOn.endsWith('=3,3') && italicText.includes('italic') && draggedRows === 3 && markedRows === 3 && rowsAfterDelete === rowsBeforeDefs;
 
   // solve without an interval: the unknown is expressed by a formula, its unit comes from it;
   // the right button puts the formula in as a definition.
@@ -1583,7 +1595,7 @@ async function layersWithRealInput(picture: string) {
     blocksOk = shown.errors === 0 && shown.text.includes('Prosty nosnik 1.2') && shown.text.includes('45');
     await takePicture(picture.replace(/[.]png$/, '-blocks.png'));
   }
-  return { ...state, derivations, definitionAtCursor, sheetGridOk, sheetGrid, tableEnter, tableEnterAt, lastRowEnter, draggedRows, bothFormatted, solvedByFormula, rootsAndExtremes, tableRowAdded, chartSteps, samplesOk, sampleTab, newKeepsExample, citations, notesPicture, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, toolIcons, aiSettings, aiChat, pdfCleanup, theoryLibrary, study, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, placedFree, strictPlaced, canvasOk, besideText, pictures, blocksOk };
+  return { ...state, derivations, definitionAtCursor, sheetGridOk, sheetGrid, tableEnter, tableEnterAt, lastRowEnter, draggedRows, bothFormatted, roundedOn, solvedByFormula, rootsAndExtremes, tableRowAdded, chartSteps, samplesOk, sampleTab, newKeepsExample, citations, notesPicture, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, toolIcons, aiSettings, aiChat, pdfCleanup, theoryLibrary, study, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, placedFree, strictPlaced, canvasOk, besideText, pictures, blocksOk };
 }
 
 /** The tidied sources saved as a library (.kalkt) and attached in the chat: the model cites it by its key. */

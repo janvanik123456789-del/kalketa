@@ -115,6 +115,13 @@ describe('incremental recalculation', () => {
     expect(result.values.get('v')).toMatchObject({ si: 10 });
   });
 
+  it('recalculates a line that is asked to go on with its rounded value, and the lines below', () => {
+    const session = new SheetSession();
+    expect(session.update('a := 2.345 {decimals=1}\nb := a + 1').values.get('b')).toMatchObject({ si: 3.345 });
+    const rounded = session.update('a := 2.345 {decimals=1 rounded}\nb := a + 1').values.get('b');
+    expect(rounded?.type === 'quantity' && rounded.si).toBeCloseTo(3.3, 12);
+  });
+
   it('notices when a missing name gets defined', () => {
     const session = new SheetSession();
     expect(session.update('y := x · 2').diagnostics.map((d) => d.code)).toEqual(['E-UNDEFINED']);

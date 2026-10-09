@@ -19,7 +19,7 @@ import { checkDerivation, type DerivationStep } from '../eval/derive.js';
 import { DIMENSIONLESS_NAME } from '../lang/parser.js';
 import { DIMENSIONLESS, dim, type Dimension } from '../units/dimension.js';
 import type { BlockCaller, BlockSource } from '../eval/blocks.js';
-import type { BinaryOperator, Expr, Inequality, Sheet, Statement } from '../lang/ast.js';
+import type { BinaryOperator, Expr, Inequality, LineFormat, Sheet, Statement } from '../lang/ast.js';
 import { parse } from '../lang/parser.js';
 import { buildTable, type ColumnSchema, type Table, type TableBuildResult, type TableRead } from '../tables/table.js';
 import { sameDim } from '../units/dimension.js';
@@ -226,8 +226,12 @@ export class SheetSession {
 
       // An input given from outside is part of what the line means.
       const given = statement.kind === 'definition' && statement.input ? inputs.get(statement.name) : undefined;
+      // The format of the line ({decimals=2 rounded}) is not in its span, yet rounded changes its value.
       const key =
-        source.slice(statement.span.offset, statement.span.offset + statement.span.length) + (given ? `\u0000${fingerprint(given)}` : '') + (unitsKey ? `\u0000${unitsKey}` : '');
+        source.slice(statement.span.offset, statement.span.offset + statement.span.length) +
+        (given ? `\u0000${fingerprint(given)}` : '') +
+        (unitsKey ? `\u0000${unitsKey}` : '') +
+        (statement.format?.rounded ? `\u0000${JSON.stringify(statement.format)}` : '');
       const cached = this.cache.get(key);
       let result: PartialResult;
       // Results with diagnostics are not reused: their spans point into the old source.
@@ -468,6 +472,8 @@ export class SheetSession {
           value = { ...value, hint: target };
         }
       }
+      // {decimals=2 rounded}: the rows below go on with the value as shown, not the exact one.
+      if (statement.format?.rounded && value.type === 'quantity') value = roundedAsShown(value, statement.format, context.registry, target);
       const display = value.type === 'quantity' ? toDisplay(value, context.registry, target) : undefined;
       // A series is shown in one unit: the target, else the unit of its first item.
       const unit = target ?? (value.type === 'vector' ? value.items.find((q) => q.hint)?.hint : undefined);
@@ -495,6 +501,18 @@ export class SheetSession {
       throw err;
     }
   }
+}
+
+/**
+ * The value as its line shows it ({decimals=2} or {digits=3} in its unit), for a line that asks
+ * the calculation to go on with it ({rounded}). A temperature with a zero point stays exact.
+ */
+function roundedAsShown(q: Quantity, format: LineFormat, registry: UnitRegistry, target: ResolvedUnit | undefined): Quantity {
+  if (q.im || q.absolute || (format.decimals === undefined && format.digits === undefined)) return q;
+  const shown = toDisplay(q, registry, target).value;
+  if (shown === 0 || !Number.isFinite(shown)) return q;
+  const rounded = format.decimals !== undefined ? Number(shown.toFixed(format.decimals)) : Number(shown.toPrecision(format.digits));
+  return { ...q, si: (q.si * rounded) / shown };
 }
 
 function valueOrNothing(f: () => Value): Value | undefined {

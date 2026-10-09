@@ -170,7 +170,7 @@ function lineFormat(tokens: readonly Token[], diagnostics: Diagnostic[], at: Spa
       if ((key === 'decimals' || key === 'digits') && Number.isInteger(n) && n >= (key === 'digits' ? 1 : 0) && n <= 15) format[key] = n;
       else if (key === 'size' && Number.isFinite(n) && n >= 6 && n <= 48) format.size = n;
       else if (key === 'font' && (value === 'serif' || value === 'sans' || value === 'mono')) format.font = value;
-      else if ((key === 'italic' || key === 'bold') && value === undefined) format[key] = true;
+      else if ((key === 'italic' || key === 'bold' || key === 'rounded') && value === undefined) format[key] = true;
       else if (key === 'align' && (TEXT_ALIGNS as readonly string[]).includes(value ?? '')) format.align = value as TextAlign;
       else if (key === 'color' && (TEXT_COLORS as readonly string[]).includes(value ?? '')) format.color = value as TextColor;
       else diagnostics.push(diagnostic('W-FORMAT', at, { item }));

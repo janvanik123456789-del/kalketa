@@ -1095,8 +1095,16 @@ export function App() {
     return `${base}_${n}`;
   };
 
-  const insert = (kind: 'heading' | 'text' | 'definition' | 'check' | 'pick' | 'pageBreak' | 'clear' | 'chart') => {
+  const insert = (kind: 'heading' | 'text' | 'definition' | 'check' | 'pick' | 'pageBreak' | 'clear' | 'chart' | 'sheetTable') => {
     switch (kind) {
+      case 'sheetTable': {
+        // A table in the sheet (measured points): opened as a grid to fill in.
+        const after = currentRange()?.end ?? lineCount;
+        const lines = [`table ${uniqueName('Tabulka')}:`, '    | x [m] | y [kN] |', '    |       |        |'];
+        setSource(insertLineAfter(text, after, lines.join('\n')));
+        setEditing({ start: after + 1, end: after + lines.length });
+        return;
+      }
       case 'heading':
         return insertLine('## ');
       case 'text':
@@ -1509,7 +1517,7 @@ export function App() {
     },
     {
       label: t(ui, 'menu.insert'),
-      items: [cmd('insert.heading'), cmd('insert.text'), cmd('insert.definition'), cmd('insert.check'), cmd('insert.pick'), cmd('insert.pageBreak'), cmd('insert.clear'), sep, cmd('insert.picture'), cmd('insert.canvas'), cmd('insert.chart'), cmd('insert.newTable'), cmd('insert.importTable'), cmd('insert.block'),
+      items: [cmd('insert.heading'), cmd('insert.text'), cmd('insert.definition'), cmd('insert.check'), cmd('insert.pick'), cmd('insert.pageBreak'), cmd('insert.clear'), sep, cmd('insert.picture'), cmd('insert.canvas'), cmd('insert.chart'), cmd('insert.sheetTable'), cmd('insert.newTable'), cmd('insert.importTable'), cmd('insert.block'),
         ...(doc.blocks.size > 0
           ? [
               {

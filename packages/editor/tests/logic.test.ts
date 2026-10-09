@@ -223,3 +223,20 @@ describe('style of a text line', () => {
     expect(withLineAttribute('"Text" {italic}', 'italic', undefined)).toBe('"Text"');
   });
 });
+
+describe('a table in the sheet as cells', () => {
+  it('reads the cells and writes them back padded, as text that parses again', async () => {
+    const { parseSheetTable, formatSheetTable, setSheetCell, addSheetRow, addSheetColumn, deleteSheetColumn, cellShown, cellWritten } = await import('../src/logic/sheetTableEdit.js');
+    const text = 'table Mereni:\n    | t [s] | T [°C] {0.0} |\n    | 0 | 20.1 |\n    | 10 | 25.3 |';
+    const cells = parseSheetTable(text)!;
+    expect(cells.name).toBe('Mereni');
+    expect(cells.rows).toEqual([['t [s]', 'T [°C] {0.0}'], ['0', '20.1'], ['10', '25.3']]);
+    const more = addSheetRow(setSheetCell(cells, 2, 1, '25.4'));
+    expect(formatSheetTable(more)).toBe('table Mereni:\n    | t [s] | T [°C] {0.0} |\n    | 0     | 20.1         |\n    | 10    | 25.4         |\n    |       |              |');
+    expect(formatSheetTable(deleteSheetColumn(addSheetColumn(cells, 'p'), 0)).split('\n')[1]).toBe('    | T [°C] {0.0} | p |');
+    expect(parse(formatSheetTable(more), { isUnit: (n) => defaultRegistry.isUnit(n) }).diagnostics).toEqual([]);
+    expect(cellShown('20.1', true)).toBe('20,1');
+    expect(cellWritten('20,1', true)).toBe('20.1');
+    expect(parseSheetTable('x := 5')).toBeUndefined();
+  });
+});

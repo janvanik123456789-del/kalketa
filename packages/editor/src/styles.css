@@ -308,6 +308,13 @@ table.grid .col-meta select, table.grid .col-meta input.unit { font-size: 12px; 
 table.grid .col-meta input.unit { width: 64px; }
 table.grid td { border: 1px solid var(--line); padding: 0; }
 table.grid td input { border: none; padding: 3px 6px; width: 100%; min-width: 60px; background: transparent; }
+.sheet-table-grid { margin: 2px 0 4px; font: 13px/1.4 system-ui, sans-serif; }
+.sheet-table-head { display: flex; gap: 6px; align-items: center; margin-bottom: 4px; }
+.sheet-table-head strong { margin-right: 6px; }
+.sheet-table-grid table.grid { margin-bottom: 0; }
+.sheet-table-grid tr.header input { font-weight: 600; background: #f4f6f9; }
+.sheet-table-grid td.row-tools, .sheet-table-grid tr.column-tools td { border: none; text-align: center; }
+.sheet-table-grid td input { min-width: 70px; }
 table.grid td input:focus { outline: 2px solid var(--accent); outline-offset: -2px; background: #fff; }
 table.grid td.num input { text-align: right; font-variant-numeric: tabular-nums; }
 table.grid td.row-tools { white-space: nowrap; padding: 0 4px; background: #fafbfc; }

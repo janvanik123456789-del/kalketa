@@ -17,6 +17,8 @@ import { defineShortcut } from '../logic/shortcuts.js';
 import { pickOf } from '../logic/pick.js';
 import { placeable } from '../logic/placement.js';
 import { PickControl } from './PickControl.js';
+import { SheetTableGrid } from './SheetTableGrid.js';
+import { parseSheetTable } from '../logic/sheetTableEdit.js';
 import { ContextMenu, type MenuItem } from './MenuBar.js';
 import { ask } from './Ask.js';
 import type { Command } from '../commands.js';
@@ -144,6 +146,9 @@ export function SheetView(props: Props) {
   // The right button on a solve line whose unknown was expressed by a formula.
   const [solveMenu, setSolveMenu] = useState<{ seg: Segment; line: string; at: { x: number; y: number } } | undefined>();
   // The right button on a row with a result: how its numbers are shown ({decimals=2} at its end).
+  // A table of the sheet opens as a grid (by its first line): only a row that is a table when it
+  // opens, so a table being typed stays in the text; "as text" closes the grid.
+  const [gridAt, setGridAt] = useState<number | undefined>();
   const [formatMenu, setFormatMenu] = useState<{ seg: Segment; at: { x: number; y: number }; text?: boolean } | undefined>();
   // Where a dragged picture would land: a line across the page body.
   const [dropMark, setDropMark] = useState<{ x: number; y: number; width: number } | undefined>();
@@ -152,6 +157,13 @@ export function SheetView(props: Props) {
   // The menu of an AI mark: reviewed, or where it came from.
   const [aiMenu, setAiMenu] = useState<{ id: string; at: { x: number; y: number } } | undefined>();
   const segs = segments(source, result.sheet.statements, editing);
+  useEffect(() => {
+    const opened = editing ? segs.find((s) => s.start === editing.start) : undefined;
+    const statement = opened?.statement !== undefined ? result.statements[opened.statement]?.statement : undefined;
+    setGridAt(opened && statement?.kind === 'table' ? opened.start : undefined);
+    // Only when another row opens, not while the open one changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing?.start]);
   // Rows marked for deleting, by their first line: Ctrl+click one, Shift+click a range; Delete removes them.
   const [marked, setMarked] = useState<ReadonlySet<number>>(() => new Set());
   const markAnchor = useRef<number | undefined>(undefined);
@@ -665,6 +677,11 @@ export function SheetView(props: Props) {
     );
   }
 
+  /** The cells of a table of the sheet to edit as a grid, unless it was asked for as text. */
+  function gridOf(seg: Segment, statement: Statement | undefined) {
+    return statement?.kind === 'table' && gridAt === seg.start ? parseSheetTable(seg.text) : undefined;
+  }
+
   function rowItem(seg: Segment, measured = true) {
     const statement = seg.statement !== undefined ? result.statements[seg.statement] : undefined;
     const isEditing = editing?.start === seg.start;
@@ -773,7 +790,16 @@ export function SheetView(props: Props) {
           {seg.start}
         </span>
         <div className="content">
-          {isEditing ? (
+          {isEditing && gridOf(seg, statement?.statement) ? (
+            <SheetTableGrid
+              table={gridOf(seg, statement?.statement)!}
+              decimalComma={props.decimalComma}
+              catalog={props.uiCatalog}
+              onChange={(text) => props.onReplace(seg.start, seg.end, text)}
+              onDone={() => props.onEdit(undefined)}
+              onText={() => setGridAt(undefined)}
+            />
+          ) : isEditing ? (
             <RowEditor
               seg={seg}
               initialCursor={editing?.cursor}
@@ -810,7 +836,7 @@ export function SheetView(props: Props) {
                 if (item) props.onReplace(seg.start, seg.end, item.write({ ...item.place, width }));
               }}
             />
-          ) : block ? (
+          ) : block && !(isEditing && gridOf(seg, statement?.statement)) ? (
             <Block block={block} catalog={props.printCatalog} {...(props.calcStyle ? { style: props.calcStyle } : {})} />
           ) : (
             !isEditing && <PlainLine text={props.decimalComma ? toDecimalComma(seg.text) : seg.text} />

@@ -475,6 +475,8 @@ profil := find_min(Profily_IPE, by: G,
 
 ### 8.4 Tabulka v listu (2026-10-06)
 
+**Úprava v mřížce (2026-10-09):** klik na tabulku v listu ji otevře jako mřížku buněk (Enter dolů, na posledním řádku přidá řádek; Shift+Enter nahoru; Tab vpravo; Esc konec). Záhlaví se píše `název [jednotka] {formát}`. Zápis v textu se při tom zarovná do sloupců. Novou tabulku vloží Vložit → Tabulka v listu.
+
 ```text
 table Mereni:
     | t [s] | T [°C] {0.0} | poznamka |

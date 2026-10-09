@@ -128,3 +128,16 @@ describe('calculating on with the rounded value', () => {
     expect(k('a := 1.004 {decimals=2 rounded}\nb := 1.004 {decimals=2 rounded}\nc := a + b')).toBeCloseTo(2, 12);
   });
 });
+
+describe('format of a solve line', () => {
+  it('shows the unknown found with its decimals, below too, and goes on with it rounded when asked', () => {
+    const sheet = evaluateSheet('S := 23.53 mm²\nsolve d: S ≤ π·d²/4 {decimals=2 rounded}\nk := d/(1 mm)');
+    expect(sheet.diagnostics).toEqual([]);
+    expect(sheet.statements.at(-1)!.display!.value).toBeCloseTo(5.47, 12);
+    const shown = buildPrintDocument(sheet, { catalog: catalogFor('cs'), registry: defaultRegistry, digits: 4, title: 'S' })
+      .blocks.flatMap((b) => (b.kind === 'equation' ? b.lines : []))
+      .map((l) => toText(l.rhs).replace(/\s+/g, ' '));
+    expect(shown).toContain('5,47 mm');
+    expect(shown).toContain('(5,47 mm)/(1 mm)');
+  });
+});

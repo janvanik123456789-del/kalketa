@@ -251,6 +251,8 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
     // The line's own format, else the significant digits of the sheet or of @digits above.
     const spec: NumberFormatOptions = s.format?.decimals !== undefined ? { decimals: s.format.decimals } : { digits: s.format?.digits ?? mode.digits };
     if (s.format && (s.kind === 'definition' || s.kind === 'invalid') && s.name) formats.set(s.name, spec);
+    // The unknowns of a solve line are shown below as the line shows them.
+    if (s.format && s.kind === 'solve') for (const u of s.unknowns) formats.set(u.name, spec);
     const quantityNode = (q: Quantity, name?: string) => {
       const shown = toDisplay(q, options.registry);
       return valueNode(shown.value, shown.unit, numberFormat((name && formats.get(name)) || spec), shown.im, dateFormat);

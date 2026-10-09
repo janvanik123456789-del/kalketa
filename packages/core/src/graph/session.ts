@@ -429,10 +429,12 @@ export class SheetSession {
 
       if (statement.kind === 'solve') {
         const found = solveStatement(statement, ctx, evaluate);
+        // {decimals=2 rounded} on a solve line: the rows below go on with the values as shown.
+        const values = found.values.map((v) => (statement.format?.rounded ? roundedAsShown(v, statement.format, context.registry, undefined) : v));
         const solutions = statement.unknowns.map((u, i) => ({
           name: u.name,
-          value: found.values[i]!,
-          display: toDisplay(found.values[i]!, context.registry),
+          value: values[i]!,
+          display: toDisplay(values[i]!, context.registry),
           ...(found.formula ? { formula: found.formula } : {}),
           ...(found.relation ? { relation: found.relation } : {}),
         }));

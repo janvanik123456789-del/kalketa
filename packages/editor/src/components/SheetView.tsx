@@ -157,13 +157,12 @@ export function SheetView(props: Props) {
   const { source, result, print, editing } = props;
   // The menu of a picture: opened by clicking it (or right click).
   const [pictureMenu, setPictureMenu] = useState<{ seg: Segment; at: { x: number; y: number }; flow?: boolean } | undefined>();
-  // The right button on a solve line whose unknown was expressed by a formula.
-  const [solveMenu, setSolveMenu] = useState<{ seg: Segment; line: string; at: { x: number; y: number } } | undefined>();
   // The right button on a row with a result: how its numbers are shown ({decimals=2} at its end).
   // A table of the sheet opens as a grid (by its first line): only a row that is a table when it
   // opens, so a table being typed stays in the text; "as text" closes the grid.
   const [gridAt, setGridAt] = useState<number | undefined>();
-  const [formatMenu, setFormatMenu] = useState<{ seg: Segment; at: { x: number; y: number }; text?: boolean } | undefined>();
+  // A solve line expressed by a formula also offers that formula as a definition of its own.
+  const [formatMenu, setFormatMenu] = useState<{ seg: Segment; at: { x: number; y: number }; text?: boolean; solveLine?: string } | undefined>();
   // Where a dragged picture would land: a line across the page body.
   const [dropMark, setDropMark] = useState<{ x: number; y: number; width: number } | undefined>();
   // Where a picture placed freely would stand while it is dragged.
@@ -600,14 +599,6 @@ export function SheetView(props: Props) {
         </div>
       )}
       {pictureMenu && <ContextMenu items={pictureMenu.flow ? flowItems(pictureMenu.seg, pictureMenu.at) : pictureItems(pictureMenu.seg)} commands={NO_COMMANDS} at={pictureMenu.at} onClose={() => setPictureMenu(undefined)} />}
-      {solveMenu && (
-        <ContextMenu
-          items={[{ kind: 'action', label: t(props.uiCatalog, 'solve.toDefinition'), run: () => props.onReplace(solveMenu.seg.start, solveMenu.seg.end, solveMenu.line) }]}
-          commands={NO_COMMANDS}
-          at={solveMenu.at}
-          onClose={() => setSolveMenu(undefined)}
-        />
-      )}
       {formatMenu && (
         <ContextMenu
           items={(() => {
@@ -618,10 +609,15 @@ export function SheetView(props: Props) {
               else props.onReplaceRows(rows.map((s) => ({ start: s.start, end: s.end, text: f(s.text) })));
             };
             if (formatMenu.text) return textMenuItems(formatMenu.seg, props.uiCatalog, change);
-            // The result of the row as each choice would show it: "5,47 mm".
-            const display = formatMenu.seg.statement !== undefined ? result.statements[formatMenu.seg.statement]?.display : undefined;
+            // The result of the row as each choice would show it: "5,47 mm" (of a solve line, its first unknown).
+            const row = formatMenu.seg.statement !== undefined ? result.statements[formatMenu.seg.statement] : undefined;
+            const display = row?.display ?? row?.solutions?.[0]?.display;
             const shown = display && !display.im && Number.isFinite(display.value) ? (n: number) => `${formatNumber(display.value, props.printCatalog, { decimals: n }).replace('-', '−')}${display.unit ? ` ${display.unit}` : ''}` : undefined;
-            return formatMenuItems(formatMenu.seg, props.uiCatalog, change, shown);
+            const items = formatMenuItems(formatMenu.seg, props.uiCatalog, change, shown);
+            const solveLine = formatMenu.solveLine;
+            return solveLine
+              ? [{ kind: 'action' as const, label: t(props.uiCatalog, 'solve.toDefinition'), run: () => props.onReplace(formatMenu.seg.start, formatMenu.seg.end, solveLine) }, { kind: 'separator' as const }, ...items]
+              : items;
           })()}
           commands={NO_COMMANDS}
           at={formatMenu.at}
@@ -778,7 +774,7 @@ export function SheetView(props: Props) {
             props.onSelect(seg.statement);
             const equation = statement.statement.equations[0]!.span;
             const from = result.source.slice(equation.offset, equation.offset + equation.length).replace(/\s+/g, ' ');
-            setSolveMenu({ seg, line: `${solution.name} := ${formatExpr(solution.formula)}  ' ${t(props.uiCatalog, 'solve.expressedFrom')} ${from}`, at: { x: e.clientX, y: e.clientY } });
+            setFormatMenu({ seg, at: { x: e.clientX, y: e.clientY }, solveLine: `${solution.name} := ${formatExpr(solution.formula)}  ' ${t(props.uiCatalog, 'solve.expressedFrom')} ${from}` });
             return;
           }
           if ((block?.kind === 'equation' || block?.kind === 'check' || block?.kind === 'paragraph' || block?.kind === 'heading') && !(e.target as HTMLElement).closest('textarea')) {

@@ -855,6 +855,15 @@ async function layersWithRealInput(picture: string) {
     rows.forEach((r, i) => (r.id = 'smoke-def-' + i));
     return rows[1]?.textContent.replace(/\\s+/g, '') ?? '';
   })()`)) as string;
+  // The right button on text: italic.
+  await clickOn('#smoke-def-2', [], 'right');
+  await clickMenu('Kurzíva');
+  await pause(400);
+  const italicText = (await contents.executeJavaScript(`(() => {
+    const rows = [...document.querySelectorAll('.layer-view.active .page .row')].slice(-3);
+    rows.forEach((r, i) => (r.id = 'smoke-def-' + i));
+    return rows[2]?.querySelector('p.text')?.getAttribute('style') ?? '';
+  })()`)) as string;
   await clickOn('#smoke-def-0', ['control']);
   await clickOn('#smoke-def-2', ['shift']);
   const markedRows = (await contents.executeJavaScript(`document.querySelectorAll('.layer-view.active .page .row.marked').length`)) as number;
@@ -862,7 +871,7 @@ async function layersWithRealInput(picture: string) {
   await pause(400);
   const rowsAfterDelete = (await contents.executeJavaScript(rowsNow)) as number;
   const definitionAtCursor =
-    typedDefs.errors === 0 && typedDefs.rows[0]!.includes('≔2') && typedDefs.rows[1]!.includes('=3') && typedDefs.indexed && formatted.includes('=3,00') && markedRows === 3 && rowsAfterDelete === rowsBeforeDefs;
+    typedDefs.errors === 0 && typedDefs.rows[0]!.includes('≔2') && typedDefs.rows[1]!.includes('=3') && typedDefs.indexed && formatted.includes('=3,00') && italicText.includes('italic') && markedRows === 3 && rowsAfterDelete === rowsBeforeDefs;
 
   // solve without an interval: the unknown is expressed by a formula, its unit comes from it;
   // the right button puts the formula in as a definition.

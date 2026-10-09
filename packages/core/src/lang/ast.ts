@@ -84,7 +84,15 @@ interface StatementBase {
 export interface LineFormat {
   readonly decimals?: number;
   readonly digits?: number;
+  /** Of a text line: size in points, the font family, italic, bold. */
+  readonly size?: number;
+  readonly font?: TextFont;
+  readonly italic?: boolean;
+  readonly bold?: boolean;
 }
+
+/** Fonts of text by kind, not by name: each machine and printout has its own of the kind. */
+export type TextFont = 'serif' | 'sans' | 'mono';
 
 export type Statement =
   | (StatementBase & { readonly kind: 'heading'; readonly level: number; readonly text: string })

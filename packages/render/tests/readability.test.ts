@@ -81,3 +81,13 @@ describe('format of a line', () => {
     expect(sheet.statements[0]!.display!.value).toBeCloseTo(1.23456);
   });
 });
+
+describe('style of a text line', () => {
+  it('prints the size, font, italic and bold the line sets, and nothing more', async () => {
+    const { printHtml } = await import('../src/index.js');
+    const html = printHtml(evaluateSheet('"Volíme nýt 6 mm." {size=12 italic font=serif}\n"Obyčejný text."'), { catalog: catalogFor('cs'), registry: defaultRegistry, title: 'S' });
+    expect(html).toContain('<p class="text" style="font-size: 12pt; font-family: &quot;Cambria&quot;, &quot;Times New Roman&quot;, serif; font-style: italic">Volíme nýt 6 mm.</p>');
+    expect(html).toContain('<p class="text">Obyčejný text.</p>');
+    expect(evaluateSheet('"Text" {size=100 underline}').diagnostics.map((d) => d.code)).toEqual(['W-FORMAT', 'W-FORMAT']);
+  });
+});

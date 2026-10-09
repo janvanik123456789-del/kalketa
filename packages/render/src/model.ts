@@ -16,6 +16,7 @@ import {
   toDisplay,
   type Diagnostic,
   type Expr,
+  type LineFormat,
   type PlotResult,
   type Quantity,
   type SheetResult,
@@ -65,7 +66,7 @@ export interface Message {
 
 export type PrintBlock =
   | { readonly kind: 'heading'; readonly line: number; readonly level: number; readonly text: string }
-  | { readonly kind: 'paragraph'; readonly line: number; readonly text: string; readonly cites?: readonly string[] }
+  | { readonly kind: 'paragraph'; readonly line: number; readonly text: string; readonly cites?: readonly string[]; readonly style?: TextStyle }
   | {
       readonly kind: 'picture';
       readonly line: number;
@@ -187,6 +188,25 @@ interface Mode {
   digits: number;
 }
 
+/** How a text line looks, {size=12 italic font=serif}: only what the line sets. */
+export interface TextStyle {
+  readonly size?: number;
+  readonly font?: 'serif' | 'sans' | 'mono';
+  readonly italic?: boolean;
+  readonly bold?: boolean;
+}
+
+function textStyle(format: LineFormat | undefined): TextStyle | undefined {
+  if (!format) return undefined;
+  const style: TextStyle = {
+    ...(format.size !== undefined ? { size: format.size } : {}),
+    ...(format.font ? { font: format.font } : {}),
+    ...(format.italic ? { italic: true } : {}),
+    ...(format.bold ? { bold: true } : {}),
+  };
+  return Object.keys(style).length > 0 ? style : undefined;
+}
+
 export function buildPrintDocument(result: SheetResult, options: PrintOptions): PrintDocument {
   const { catalog } = options;
   const mode: Mode = { substitution: true, resultOnly: false, hidden: false, digits: options.digits };
@@ -237,7 +257,7 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
         blocks.push({ kind: 'heading', line: s.span.line, level: s.level, text: s.text });
         break;
       case 'text':
-        blocks.push({ kind: 'paragraph', line: s.span.line, text: s.text, ...(s.cites ? { cites: s.cites } : {}) });
+        blocks.push({ kind: 'paragraph', line: s.span.line, text: s.text, ...(s.cites ? { cites: s.cites } : {}), ...(textStyle(s.format) ? { style: textStyle(s.format)! } : {}) });
         break;
       case 'picture': {
         const src = options.resolveFile?.(s.path);

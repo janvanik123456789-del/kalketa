@@ -10,7 +10,7 @@
 import { t, type Catalog } from '@kalketa/i18n';
 import { esc, mn, nameNode, sup, toMathML, VECTOR_ARROW, type MathNode } from './math.js';
 import { NOTES_CSS } from './notes.js';
-import type { EquationLine, Message, PrintBlock, PrintDocument, SummaryRow } from './model.js';
+import type { EquationLine, Message, PrintBlock, PrintDocument, SummaryRow, TextStyle } from './model.js';
 
 export interface HtmlOptions {
   readonly catalog: Catalog;
@@ -42,6 +42,21 @@ const TEXT_NAME = /(\p{L}[\p{L}\p{N}\p{M}]*)(_[\p{L}\p{N}\p{M}_]*[\p{L}\p{N}\p{M
  * Text of a paragraph or heading: names with an index (the _ of the Operators toolbar)
  * and powers (^) look as they do in the formulas around; everything else is plain text.
  */
+/** Fonts by kind, as the printout and every machine have some of each. */
+const FONTS = { serif: '"Cambria", "Times New Roman", serif', sans: '"Calibri", "Arial", sans-serif', mono: '"Consolas", "Courier New", monospace' } as const;
+
+/** The style of a text line ({size=12 italic}) as a style attribute; nothing when it sets none. */
+function styleAttribute(style: TextStyle | undefined): string {
+  if (!style) return '';
+  const rules = [
+    style.size !== undefined ? `font-size: ${style.size}pt` : '',
+    style.font ? `font-family: ${FONTS[style.font]}` : '',
+    style.italic ? 'font-style: italic' : '',
+    style.bold ? 'font-weight: bold' : '',
+  ].filter(Boolean);
+  return rules.length > 0 ? ` style="${esc(rules.join('; '))}"` : '';
+}
+
 export function textHtml(text: string): string {
   let out = '';
   let last = 0;
@@ -166,7 +181,7 @@ export function renderBlockHtml(block: PrintBlock, catalog: Catalog, options: Bl
       return `<h${level}>${textHtml(block.text)}</h${level}>`;
     }
     case 'paragraph':
-      return `<p class="text">${textHtml(block.text)}${(block.cites ?? []).map((c) => ` <span class="source">[${esc(c)}]</span>`).join('')}</p>`;
+      return `<p class="text"${styleAttribute(block.style)}>${textHtml(block.text)}${(block.cites ?? []).map((c) => ` <span class="source">[${esc(c)}]</span>`).join('')}</p>`;
     case 'page-break':
       return '<div class="page-break"></div>';
     case 'clear':

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { defaultRegistry, parse } from '@kalketa/core';
 import { deleteLineRanges, deleteLines, insertLineAfter, moveLines, replaceLines, segments } from '../src/logic/segments.js';
-import { lineFormatOf, withLineFormat } from '../src/logic/lineFormat.js';
+import { lineAttributesOf, lineFormatOf, withLineAttribute, withLineFormat } from '../src/logic/lineFormat.js';
 import { pageGeometry, paginate } from '../src/logic/pages.js';
 import { createHistory, MERGE_WINDOW_MS, record, redo, undo } from '../src/logic/history.js';
 import { defineShortcut, definedName } from '../src/logic/shortcuts.js';
@@ -211,5 +211,15 @@ describe('format of a line', () => {
     expect(lineFormatOf("S := F/τ {decimals=2}  ' plocha")).toEqual({ decimals: 2 });
     expect(lineFormatOf('d := 5 mm {digits=3}')).toEqual({ digits: 3 });
     expect(lineFormatOf('d := 5 mm')).toBeUndefined();
+  });
+});
+
+describe('style of a text line', () => {
+  it('sets one attribute and keeps the others', () => {
+    const text = withLineAttribute(withLineAttribute('"Volíme nýt 6 mm."', 'size', '12'), 'italic', '');
+    expect(text).toBe('"Volíme nýt 6 mm." {size=12 italic}');
+    expect([...lineAttributesOf(text)]).toEqual([['size', '12'], ['italic', '']]);
+    expect(withLineAttribute(text, 'size', undefined)).toBe('"Volíme nýt 6 mm." {italic}');
+    expect(withLineAttribute('"Text" {italic}', 'italic', undefined)).toBe('"Text"');
   });
 });

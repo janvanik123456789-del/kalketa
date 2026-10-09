@@ -157,14 +157,20 @@ function withFormat(statement: Statement, format: LineFormat | undefined): State
   return format === undefined || Object.keys(format).length === 0 ? statement : { ...statement, format };
 }
 
-/** {decimals=2} or {digits=3}: whole numbers 0 to 15 (digits from 1); anything else is reported. */
+/**
+ * {decimals=2} or {digits=3} (whole numbers 0 to 15, digits from 1); of text {size=12} (6 to 48 pt),
+ * {font=serif|sans|mono}, {italic}, {bold}. Anything else is reported.
+ */
 function lineFormat(tokens: readonly Token[], diagnostics: Diagnostic[], at: Span): LineFormat {
-  const format: { decimals?: number; digits?: number } = {};
+  const format: { -readonly [K in keyof LineFormat]: LineFormat[K] } = {};
   for (const token of tokens) {
     for (const item of token.text.split(/\s+/).filter(Boolean)) {
       const [key, value] = item.split('=');
       const n = Number(value);
       if ((key === 'decimals' || key === 'digits') && Number.isInteger(n) && n >= (key === 'digits' ? 1 : 0) && n <= 15) format[key] = n;
+      else if (key === 'size' && Number.isFinite(n) && n >= 6 && n <= 48) format.size = n;
+      else if (key === 'font' && (value === 'serif' || value === 'sans' || value === 'mono')) format.font = value;
+      else if ((key === 'italic' || key === 'bold') && value === undefined) format[key] = true;
       else diagnostics.push(diagnostic('W-FORMAT', at, { item }));
     }
   }

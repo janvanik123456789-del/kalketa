@@ -12,7 +12,7 @@ import { isInput, renderBlockHtml, renderSummary, type CalcStyle, type PrintBloc
 import { isCanvasPath } from '@kalketa/canvas';
 import { paginate, type PageGeometry } from '../logic/pages.js';
 import { segments, type Segment } from '../logic/segments.js';
-import { lineFormatOf, withLineFormat, type LineFormatChoice } from '../logic/lineFormat.js';
+import { lineAttributesOf, lineFormatOf, withLineAttribute, withLineAttributes, withLineFormat, type LineFormatChoice } from '../logic/lineFormat.js';
 import { defineShortcut } from '../logic/shortcuts.js';
 import { pickOf } from '../logic/pick.js';
 import { placeable } from '../logic/placement.js';
@@ -103,6 +103,43 @@ function formatMenuItems(seg: Segment, catalog: Catalog, replace: (text: string)
   ];
 }
 
+/** The menu of a text line: size, font, italic and bold, written as {size=12 italic} at its end. */
+function textMenuItems(seg: Segment, catalog: Catalog, replace: (text: string) => void): MenuItem[] {
+  const current = lineAttributesOf(seg.text);
+  const set = (key: string, value: string | undefined) => replace(withLineAttribute(seg.text, key, value));
+  const styled = ['size', 'font', 'italic', 'bold'].some((key) => current.has(key));
+  return [
+    {
+      kind: 'action',
+      label: t(catalog, 'textStyle.default'),
+      checked: !styled,
+      run: () => replace(withLineAttributes(seg.text, new Map([...current].filter(([key]) => !['size', 'font', 'italic', 'bold'].includes(key))))),
+    },
+    {
+      kind: 'submenu',
+      label: t(catalog, 'textStyle.size'),
+      items: [undefined, 9, 10, 11, 12, 14, 16, 20].map((n): MenuItem => ({
+        kind: 'action',
+        label: n === undefined ? t(catalog, 'textStyle.defaultValue') : `${n} pt`,
+        checked: n === undefined ? !current.has('size') : current.get('size') === String(n),
+        run: () => set('size', n === undefined ? undefined : String(n)),
+      })),
+    },
+    {
+      kind: 'submenu',
+      label: t(catalog, 'textStyle.font'),
+      items: ([undefined, 'serif', 'sans', 'mono'] as const).map((font): MenuItem => ({
+        kind: 'action',
+        label: t(catalog, font === undefined ? 'textStyle.defaultValue' : `textStyle.font.${font}`),
+        checked: font === undefined ? !current.has('font') : current.get('font') === font,
+        run: () => set('font', font),
+      })),
+    },
+    { kind: 'action', label: t(catalog, 'textStyle.italic'), checked: current.has('italic'), run: () => set('italic', current.has('italic') ? undefined : '') },
+    { kind: 'action', label: t(catalog, 'textStyle.bold'), checked: current.has('bold'), run: () => set('bold', current.has('bold') ? undefined : '') },
+  ];
+}
+
 export function SheetView(props: Props) {
   const { source, result, print, editing } = props;
   // The menu of a picture: opened by clicking it (or right click).
@@ -110,7 +147,7 @@ export function SheetView(props: Props) {
   // The right button on a solve line whose unknown was expressed by a formula.
   const [solveMenu, setSolveMenu] = useState<{ seg: Segment; line: string; at: { x: number; y: number } } | undefined>();
   // The right button on a row with a result: how its numbers are shown ({decimals=2} at its end).
-  const [formatMenu, setFormatMenu] = useState<{ seg: Segment; at: { x: number; y: number } } | undefined>();
+  const [formatMenu, setFormatMenu] = useState<{ seg: Segment; at: { x: number; y: number }; text?: boolean } | undefined>();
   // Where a dragged picture would land: a line across the page body.
   const [dropMark, setDropMark] = useState<{ x: number; y: number; width: number } | undefined>();
   // Where a picture placed freely would stand while it is dragged.
@@ -532,7 +569,7 @@ export function SheetView(props: Props) {
       )}
       {formatMenu && (
         <ContextMenu
-          items={formatMenuItems(formatMenu.seg, props.uiCatalog, (text) => props.onReplace(formatMenu.seg.start, formatMenu.seg.end, text))}
+          items={(formatMenu.text ? textMenuItems : formatMenuItems)(formatMenu.seg, props.uiCatalog, (text) => props.onReplace(formatMenu.seg.start, formatMenu.seg.end, text))}
           commands={NO_COMMANDS}
           at={formatMenu.at}
           onClose={() => setFormatMenu(undefined)}
@@ -679,10 +716,10 @@ export function SheetView(props: Props) {
             setSolveMenu({ seg, line: `${solution.name} := ${formatExpr(solution.formula)}  ' ${t(props.uiCatalog, 'solve.expressedFrom')} ${from}`, at: { x: e.clientX, y: e.clientY } });
             return;
           }
-          if ((block?.kind === 'equation' || block?.kind === 'check') && !(e.target as HTMLElement).closest('textarea')) {
+          if ((block?.kind === 'equation' || block?.kind === 'check' || block?.kind === 'paragraph') && !(e.target as HTMLElement).closest('textarea')) {
             e.preventDefault();
             props.onSelect(seg.statement);
-            setFormatMenu({ seg, at: { x: e.clientX, y: e.clientY } });
+            setFormatMenu({ seg, at: { x: e.clientX, y: e.clientY }, text: block.kind === 'paragraph' });
             return;
           }
           if ((block?.kind !== 'picture' && block?.kind !== 'chart') || !(e.target as HTMLElement).closest('figure')) return;

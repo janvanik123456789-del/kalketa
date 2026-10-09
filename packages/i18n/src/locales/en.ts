@@ -340,6 +340,7 @@ export const en: Catalog = {
     'cmd.edit.copy': '&Copy',
     'cmd.edit.paste': '&Paste',
     'cmd.edit.duplicateLine': '&Duplicate line',
+    'cmd.edit.selectAll': 'Select &all',
     'cmd.edit.deleteLine': 'De&lete line',
     'cmd.view.fit1': '&One page',
     'cmd.view.fit2': '&Two pages side by side',

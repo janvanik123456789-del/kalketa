@@ -340,6 +340,7 @@ export const cs: Catalog = {
     'cmd.edit.copy': '&Kopírovat',
     'cmd.edit.paste': 'V&ložit',
     'cmd.edit.duplicateLine': '&Duplikovat řádek',
+    'cmd.edit.selectAll': 'Vybrat &vše',
     'cmd.edit.deleteLine': '&Smazat řádek',
     'cmd.view.fit1': '&Jedna stránka',
     'cmd.view.fit2': '&Dvě stránky vedle sebe',

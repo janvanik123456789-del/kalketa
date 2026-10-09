@@ -170,6 +170,8 @@ export function App() {
   const [tableEditor, setTableEditor] = useState(false);
   const [editing, setEditing] = useState<EditRange | undefined>();
   const [selected, setSelected] = useState<number | undefined>();
+  // Each Edit > Select all (Ctrl+A) counts up: the active sheet marks all its rows.
+  const [selectAll, setSelectAll] = useState(0);
   const [notice, setNotice] = useState<string | undefined>();
   const [dialog, setDialog] = useState<DialogKind | undefined>();
   const [zoomChoice, setZoomChoice] = useState(() => stored('kalketa.zoom') ?? 'fit2');
@@ -1299,6 +1301,10 @@ export function App() {
         const lines = text.split('\n').slice(range.start - 1, range.end).join('\n');
         setSource(insertLineAfter(text, range.end, lines));
       },
+      selectAll: () => {
+        setEditing(undefined);
+        setSelectAll((n) => n + 1);
+      },
       deleteLine: () => {
         const range = currentRange();
         if (!range) return;
@@ -1424,7 +1430,9 @@ export function App() {
         return;
       }
       // Clipboard keys stay native; in other fields undo/redo stay native too.
-      if (['Ctrl+X', 'Ctrl+C', 'Ctrl+V', 'Ctrl+A'].includes(key)) return;
+      if (['Ctrl+X', 'Ctrl+C', 'Ctrl+V'].includes(key)) return;
+      // In a line or a field Ctrl+A selects its text; elsewhere it marks the rows of the sheet, not the whole window.
+      if (key === 'Ctrl+A' && (inRow || inField)) return;
       if (inField && ['Ctrl+Z', 'Ctrl+Y'].includes(key)) return;
       const aliases: Readonly<Record<string, string>> = { 'Ctrl+Shift+Z': 'Ctrl+Y', 'Ctrl+=': 'Ctrl++' };
       const wanted = aliases[key] ?? key;
@@ -1483,7 +1491,7 @@ export function App() {
     },
     {
       label: t(ui, 'menu.edit'),
-      items: [cmd('edit.undo'), cmd('edit.redo'), sep, cmd('edit.cut'), cmd('edit.copy'), cmd('edit.paste'), sep, cmd('edit.duplicateLine'), cmd('edit.deleteLine')],
+      items: [cmd('edit.undo'), cmd('edit.redo'), sep, cmd('edit.cut'), cmd('edit.copy'), cmd('edit.paste'), sep, cmd('edit.duplicateLine'), cmd('edit.deleteLine'), sep, cmd('edit.selectAll')],
     },
     {
       label: t(ui, 'menu.view'),
@@ -1652,6 +1660,7 @@ export function App() {
           {...(footer && l.kind === 'sheet' ? { footer } : {})}
           editing={active ? editing : undefined}
           selected={active ? selected : undefined}
+          {...(active ? { selectAll } : {})}
           resolveFile={resolveFile}
           onEdit={(range) => (l.locked && range ? setNotice(t(ui, 'layers.lockedNotice')) : setEditing(range))}
           onSelect={setSelected}

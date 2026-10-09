@@ -132,6 +132,7 @@ export const UI_KEYS = [
   'cmd.edit.paste',
   'cmd.edit.duplicateLine',
   'cmd.edit.deleteLine',
+  'cmd.edit.selectAll',
   'cmd.view.fit1',
   'cmd.view.fit2',
   'cmd.view.fit3',

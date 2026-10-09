@@ -56,6 +56,8 @@ export interface CommandContext {
     clipboard(action: 'cut' | 'copy' | 'paste'): void;
     duplicateLine(): void;
     deleteLine(): void;
+    /** Marks every row of the sheet (outside a text field; there Ctrl+A selects its text). */
+    selectAll(): void;
     setZoom(choice: string): void;
     zoomBy(direction: 1 | -1): void;
     setPane(pane: 'details' | 'tables' | 'layers' | 'chat' | 'none'): void;
@@ -105,6 +107,7 @@ export function buildCommands(ctx: CommandContext): Map<string, Command> {
   add('edit.paste', 'edit', () => a.clipboard('paste'), { shortcut: 'Ctrl+V' });
   add('edit.duplicateLine', 'edit', a.duplicateLine, { shortcut: 'Ctrl+D' });
   add('edit.deleteLine', 'edit', a.deleteLine, { shortcut: 'Ctrl+Shift+K' });
+  add('edit.selectAll', 'edit', a.selectAll, { shortcut: 'Ctrl+A' });
 
   add('view.fit1', 'view', () => a.setZoom('fit1'), { checked: ctx.zoomChoice === 'fit1' });
   add('view.fit2', 'view', () => a.setZoom('fit2'), { checked: ctx.zoomChoice === 'fit2' });

@@ -47,6 +47,8 @@ interface Props {
   onReplaceRows(rows: readonly { start: number; end: number; text: string }[]): void;
   /** Where the summary of checks stands (its menu). */
   onSummary?(position: 'top' | 'bottom' | 'none'): void;
+  /** Counts up with each Select all: every row is marked then. */
+  readonly selectAll?: number;
   onInsertAfter(line: number): void;
   onDelete(start: number, end: number): void;
   /** Several rows at once (marked ones), in one step to undo. */
@@ -200,6 +202,11 @@ export function SheetView(props: Props) {
   // Rows marked for deleting, by their first line: Ctrl+click one, Shift+click a range; Delete removes them.
   const [marked, setMarked] = useState<ReadonlySet<number>>(() => new Set());
   const markAnchor = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    if (props.selectAll) setMarked(new Set(segs.filter((s) => s.text.trim() !== '').map((s) => s.start)));
+    // Only when Select all is asked for again.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.selectAll]);
   useEffect(() => setMarked(new Set()), [source]);
   useEffect(() => {
     if (marked.size === 0) return;

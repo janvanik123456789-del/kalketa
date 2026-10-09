@@ -187,6 +187,24 @@ export function SheetView(props: Props) {
     }
     props.onEdit(undefined);
   };
+  /** Marks from a row to the one under the mouse while the button is held (by the line numbers). */
+  const dragMark = (from: Segment) => {
+    props.onEdit(undefined);
+    markAnchor.current = from.start;
+    setMarked(new Set([from.start]));
+    const a = segs.indexOf(from);
+    const move = (e: MouseEvent) => {
+      const line = Number((document.elementFromPoint(e.clientX, e.clientY)?.closest('.row[data-line]') as HTMLElement | null)?.dataset['line']);
+      const b = segs.findIndex((s) => s.start === line);
+      if (a >= 0 && b >= 0) setMarked(new Set(segs.slice(Math.min(a, b), Math.max(a, b) + 1).map((s) => s.start)));
+    };
+    const up = () => {
+      window.removeEventListener('mousemove', move);
+      window.removeEventListener('mouseup', up);
+    };
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+  };
   const blockByLine = new Map<number, PrintBlock>();
   for (const block of print.blocks) if ('line' in block) blockByLine.set(block.line, block);
 
@@ -675,6 +693,12 @@ export function SheetView(props: Props) {
           if (e.button === 0 && (e.ctrlKey || e.shiftKey) && !(e.target as HTMLElement).closest('textarea, .pick-control')) {
             e.preventDefault();
             mark(seg, e.shiftKey);
+            return;
+          }
+          // Pressed on the line number: rows are marked, dragged over the numbers as many as passed.
+          if (e.button === 0 && (e.target as HTMLElement).closest('.gutter') && !(e.target as HTMLElement).closest('button')) {
+            e.preventDefault();
+            dragMark(seg);
             return;
           }
           if ((isEditing && !figure) || (e.target as HTMLElement).closest('.pick-control')) return;

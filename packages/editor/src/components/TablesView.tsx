@@ -208,13 +208,21 @@ function TableGrid({ table, catalog, resolveFile, onChange, onImage }: GridProps
                   <input
                     defaultValue={cell}
                     data-cell={`${r}:${c}`}
-                    onBlur={(e) => e.target.value !== cell && onChange(setCell(table, r, c, e.target.value))}
+                    onFocus={(e) => delete e.currentTarget.dataset['written']}
+                    onBlur={(e) => !e.target.dataset['written'] && e.target.value !== cell && onChange(setCell(table, r, c, e.target.value))}
                     onKeyDown={(e) => {
                       // Enter writes the cell and goes one down, as in a spreadsheet (Shift+Enter up); Tab goes right by itself.
                       if (e.key !== 'Enter') return;
                       e.preventDefault();
                       const next = `${r + (e.shiftKey ? -1 : 1)}:${c}`;
-                      e.currentTarget.blur();
+                      if (!e.shiftKey && r === table.rows.length - 1) {
+                        // From the last row a new one: the cell and the row in one change (its blur writes nothing more).
+                        const value = e.currentTarget.value;
+                        e.currentTarget.dataset['written'] = '1';
+                        onChange(addRow(value !== cell ? setCell(table, r, c, value) : table));
+                      } else {
+                        e.currentTarget.blur();
+                      }
                       // After the written cell renders (a timeout, not a frame: a hidden window draws none).
                       setTimeout(() => {
                         const target = document.querySelector<HTMLInputElement>(`.grid input[data-cell="${next}"]`);

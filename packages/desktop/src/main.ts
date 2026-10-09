@@ -594,7 +594,19 @@ async function layersWithRealInput(picture: string) {
   await pressKey('Enter');
   await pause(200);
   const tableEnterAt = (await contents.executeJavaScript(`(document.activeElement?.tagName ?? '') + ':' + (document.activeElement?.getAttribute('data-cell') ?? '')`)) as string;
-  const tableEnter = tableEnterAt === 'INPUT:1:1';
+  // Enter in the last row writes the cell and adds a row below, the cursor in it.
+  await clickOn('.grid-wrap table.grid tbody tr:last-child td:nth-child(3) input');
+  await typeText('7');
+  await pressKey('Enter');
+  await pause(300);
+  const lastRowEnter = (await contents.executeJavaScript(`(() => {
+    const rows = [...document.querySelectorAll('.grid-wrap table.grid tbody tr')];
+    const written = rows.at(-2)?.querySelector('td:nth-child(3) input')?.value;
+    return { rows: rows.length, written, focused: document.activeElement === rows.at(-1)?.querySelector('td:nth-child(3) input') };
+  })()`)) as { rows: number; written: string; focused: boolean };
+  const tableEnter = tableEnterAt === 'INPUT:1:1' && lastRowEnter.rows === rowsAfter + 1 && lastRowEnter.written === '7' && lastRowEnter.focused;
+  await clickOn('.grid-wrap table.grid tbody tr:last-child td:last-child button');
+  await pause(300);
   await clickOn('.grid-wrap table.grid tbody tr:last-child td:last-child button');
   await pause(300);
   const rowsBack = (await contents.executeJavaScript(tableRows)) as number;
@@ -864,6 +876,22 @@ async function layersWithRealInput(picture: string) {
     rows.forEach((r, i) => (r.id = 'smoke-def-' + i));
     return rows[2]?.querySelector('p.text')?.getAttribute('style') ?? '';
   })()`)) as string;
+  // Dragged over the line numbers, the button held: the rows passed are marked; Esc clears them.
+  const gutters = (await contents.executeJavaScript(`[0, 2].map((i) => {
+    const g = document.querySelector('#smoke-def-' + i + ' .gutter');
+    g.scrollIntoView({ block: 'center' });
+    const r = g.getBoundingClientRect();
+    return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+  })`)) as { x: number; y: number }[];
+  contents.sendInputEvent({ type: 'mouseDown', ...gutters[0]!, button: 'left', clickCount: 1 });
+  for (let step = 1; step <= 4; step++) {
+    contents.sendInputEvent({ type: 'mouseMove', x: gutters[0]!.x, y: Math.round(gutters[0]!.y + ((gutters[1]!.y - gutters[0]!.y) * step) / 4), button: 'left' });
+    await pause(50);
+  }
+  contents.sendInputEvent({ type: 'mouseUp', ...gutters[1]!, button: 'left', clickCount: 1 });
+  await pause(200);
+  const draggedRows = (await contents.executeJavaScript(`document.querySelectorAll('.layer-view.active .page .row.marked').length`)) as number;
+  await pressKey('Escape');
   await clickOn('#smoke-def-0', ['control']);
   await clickOn('#smoke-def-2', ['shift']);
   const markedRows = (await contents.executeJavaScript(`document.querySelectorAll('.layer-view.active .page .row.marked').length`)) as number;
@@ -871,7 +899,7 @@ async function layersWithRealInput(picture: string) {
   await pause(400);
   const rowsAfterDelete = (await contents.executeJavaScript(rowsNow)) as number;
   const definitionAtCursor =
-    typedDefs.errors === 0 && typedDefs.rows[0]!.includes('≔2') && typedDefs.rows[1]!.includes('=3') && typedDefs.indexed && formatted.includes('=3,00') && italicText.includes('italic') && markedRows === 3 && rowsAfterDelete === rowsBeforeDefs;
+    typedDefs.errors === 0 && typedDefs.rows[0]!.includes('≔2') && typedDefs.rows[1]!.includes('=3') && typedDefs.indexed && formatted.includes('=3,00') && italicText.includes('italic') && draggedRows === 3 && markedRows === 3 && rowsAfterDelete === rowsBeforeDefs;
 
   // solve without an interval: the unknown is expressed by a formula, its unit comes from it;
   // the right button puts the formula in as a definition.
@@ -1526,7 +1554,7 @@ async function layersWithRealInput(picture: string) {
     blocksOk = shown.errors === 0 && shown.text.includes('Prosty nosnik 1.2') && shown.text.includes('45');
     await takePicture(picture.replace(/[.]png$/, '-blocks.png'));
   }
-  return { ...state, derivations, definitionAtCursor, tableEnter, tableEnterAt, solvedByFormula, rootsAndExtremes, tableRowAdded, chartSteps, samplesOk, sampleTab, newKeepsExample, citations, notesPicture, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, toolIcons, aiSettings, aiChat, pdfCleanup, theoryLibrary, study, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, placedFree, strictPlaced, canvasOk, besideText, pictures, blocksOk };
+  return { ...state, derivations, definitionAtCursor, tableEnter, tableEnterAt, lastRowEnter, draggedRows, solvedByFormula, rootsAndExtremes, tableRowAdded, chartSteps, samplesOk, sampleTab, newKeepsExample, citations, notesPicture, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, toolIcons, aiSettings, aiChat, pdfCleanup, theoryLibrary, study, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, placedFree, strictPlaced, canvasOk, besideText, pictures, blocksOk };
 }
 
 /** The tidied sources saved as a library (.kalkt) and attached in the chat: the model cites it by its key. */

@@ -165,6 +165,8 @@ export type PrintBlock =
   | { readonly kind: 'clear' };
 
 export interface SummaryRow {
+  /** The line of the check in the sheet: a click on the row opens it. */
+  readonly line?: number;
   readonly label: string;
   readonly utilization?: string;
   readonly passed: boolean;
@@ -431,6 +433,7 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
   const rows: SummaryRow[] = result.checks.map((c) => {
     const statement = result.statements[c.statement]!;
     return {
+      line: statement.statement.span.line,
       label: c.label ?? `${t(catalog, 'checks.check')} ${statement.statement.span.line}`,
       ...(c.utilization !== undefined ? { utilization: percent(c.utilization, catalog) } : {}),
       passed: c.passed,

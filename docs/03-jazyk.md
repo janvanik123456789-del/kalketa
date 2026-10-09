@@ -544,6 +544,8 @@ derive E·integral(y^2, dS) == integral(E·y^2, dS)  ' odvození samo, nic nedef
 
 ## 10. Podmínky (posudky)
 
+**Souhrn posudků (2026-10-09):** tabulka všech posudků nahoře na první stránce je generovaná, nepíše se. Klik na posudek v ní otevře jeho řádek `check` k úpravě (tam jde i smazat). Pravé tlačítko na souhrnu nebo Vlastnosti výpočtu: souhrn nahoře / na konci / nezobrazovat (`layout.json`, `summary`).
+
 ```text
 check "Ohyb": σ ≤ material.fy        source "EN 1993-1-1, 6.2.5"
 check "Rozpočet": N_celk ≤ 2_500_000 CZK   source "zadání investora"

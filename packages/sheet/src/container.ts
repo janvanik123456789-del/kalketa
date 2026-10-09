@@ -58,6 +58,8 @@ export interface Layout {
   readonly digits: number;
   /** How the calculation is set (docs/navrhy/RESIC-A-STYLY.md); a file without it keeps the airy style it was made with. */
   readonly style?: 'compact' | 'airy';
+  /** Where the summary of checks stands: at the top (when left out), at the bottom, or nowhere. */
+  readonly summary?: 'top' | 'bottom' | 'none';
 }
 
 export const DEFAULT_LAYOUT: Layout = { paper: 'A4', orientation: 'portrait', digits: 4 };

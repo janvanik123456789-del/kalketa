@@ -317,7 +317,8 @@ export function renderSummary(rows: readonly SummaryRow[], allPassed: boolean, c
     .map((r) => {
       const status = !r.evaluated ? `? ${t(catalog, 'checks.notEvaluated')}` : r.passed ? `✓ ${t(catalog, 'checks.passed')}` : `✗ ${t(catalog, 'checks.failed')}`;
       const cls = !r.evaluated || !r.passed ? ' class="failed"' : '';
-      return `<tr${cls}><td>${esc(r.label)}</td><td class="num">${esc(r.utilization ?? '')}</td><td>${esc(status)}</td><td>${esc(r.source ?? '')}</td></tr>`;
+      const line = r.line !== undefined ? ` data-line="${r.line}"` : '';
+      return `<tr${cls}${line}><td>${esc(r.label)}</td><td class="num">${esc(r.utilization ?? '')}</td><td>${esc(status)}</td><td>${esc(r.source ?? '')}</td></tr>`;
     })
     .join('\n');
   const failed = rows.filter((r) => !r.passed).length;

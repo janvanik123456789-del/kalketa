@@ -45,6 +45,8 @@ interface Props {
   onReplace(start: number, end: number, text: string): void;
   /** Several rows at once (a format set to all marked rows), in one step to undo. */
   onReplaceRows(rows: readonly { start: number; end: number; text: string }[]): void;
+  /** Where the summary of checks stands (its menu). */
+  onSummary?(position: 'top' | 'bottom' | 'none'): void;
   onInsertAfter(line: number): void;
   onDelete(start: number, end: number): void;
   /** Several rows at once (marked ones), in one step to undo. */
@@ -162,6 +164,7 @@ export function SheetView(props: Props) {
   // opens, so a table being typed stays in the text; "as text" closes the grid.
   const [gridAt, setGridAt] = useState<number | undefined>();
   // A solve line expressed by a formula also offers that formula as a definition of its own.
+  const [summaryMenu, setSummaryMenu] = useState<{ x: number; y: number } | undefined>();
   const [formatMenu, setFormatMenu] = useState<{ seg: Segment; at: { x: number; y: number }; text?: boolean; solveLine?: string } | undefined>();
   // Where a dragged picture would land: a line across the page body.
   const [dropMark, setDropMark] = useState<{ x: number; y: number; width: number } | undefined>();
@@ -244,7 +247,7 @@ export function SheetView(props: Props) {
   // unless they are taller than a page; then the picture goes back above the lines.
   const [tooTall, setTooTall] = useState<ReadonlySet<number>>(() => new Set());
   type Item = { kind: 'summary' } | { kind: 'row'; seg: Segment } | { kind: 'side'; picture: Segment; rows: Segment[]; block: Extract<PrintBlock, { kind: 'picture' }> } | { kind: 'flow'; rows: Segment[] };
-  const items: Item[] = print.summary ? [{ kind: 'summary' }] : [];
+  const items: Item[] = print.summary?.position === 'top' ? [{ kind: 'summary' }] : [];
   // Compact style: inputs one after another stand side by side, as in print; each stays a row of its own to edit.
   const inputAt = (seg: Segment | undefined) => {
     const block = seg && seg.statement !== undefined && editing?.start !== seg.start ? blockByLine.get(seg.start) : undefined;
@@ -269,6 +272,7 @@ export function SheetView(props: Props) {
       items.push({ kind: 'row', seg });
     }
   }
+  if (print.summary?.position === 'bottom') items.push({ kind: 'summary' });
   const breakAfter = items.map((item) => item.kind === 'row' && /^\s*@page\b/.test(item.seg.text));
 
   // Pagination measures the rendered items, then places them on pages. Heights
@@ -599,6 +603,14 @@ export function SheetView(props: Props) {
         </div>
       )}
       {pictureMenu && <ContextMenu items={pictureMenu.flow ? flowItems(pictureMenu.seg, pictureMenu.at) : pictureItems(pictureMenu.seg)} commands={NO_COMMANDS} at={pictureMenu.at} onClose={() => setPictureMenu(undefined)} />}
+      {summaryMenu && props.onSummary && (
+        <ContextMenu
+          items={(['top', 'bottom', 'none'] as const).map((p): MenuItem => ({ kind: 'action', label: t(props.uiCatalog, `summary.${p}`), checked: (print.summary?.position ?? 'none') === p, run: () => props.onSummary!(p) }))}
+          commands={NO_COMMANDS}
+          at={summaryMenu}
+          onClose={() => setSummaryMenu(undefined)}
+        />
+      )}
       {formatMenu && (
         <ContextMenu
           items={(() => {
@@ -678,6 +690,22 @@ export function SheetView(props: Props) {
         key="summary"
         data-item
         className="summary-box"
+        title={t(props.uiCatalog, 'summary.hint')}
+        // A check in the summary opens its line; the right button says where the summary stands.
+        onMouseDown={(e) => {
+          if (e.button !== 0) return;
+          const line = Number((e.target as HTMLElement).closest('tr[data-line]')?.getAttribute('data-line'));
+          const seg = segs.find((s) => s.start === line);
+          if (!seg) return;
+          e.preventDefault();
+          props.onEdit({ start: seg.start, end: seg.end });
+          props.onSelect(seg.statement);
+        }}
+        onContextMenu={(e) => {
+          if (!props.onSummary) return;
+          e.preventDefault();
+          setSummaryMenu({ x: e.clientX, y: e.clientY });
+        }}
         dangerouslySetInnerHTML={{
           __html: renderSummary(print.summary!.rows, print.summary!.allPassed, props.printCatalog),
         }}

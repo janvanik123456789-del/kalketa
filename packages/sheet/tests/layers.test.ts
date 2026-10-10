@@ -116,7 +116,7 @@ describe('.calc format version 2', () => {
     let calc = addLayer(base.layers, 'calc', 'Zatížení');
     let layers = updateLayer(calc.layers, calc.id, { text: 'q := 2 kN/m', appendix: true });
     const notes = addLayer(layers, 'sources', 'Teorie');
-    layers = updateLayer(notes.layers, notes.id, { text: '# Ohyb\n> ČSN EN 1993-1-1, čl. 6.2.5', locked: true, visible: false });
+    layers = updateLayer(notes.layers, notes.id, { text: `# Ohyb\n> ČSN EN 1993-1-1, čl. 6.2.5\n\n![](layers/${notes.id}/images/obr1.png)`, locked: true, visible: false });
     const doc: SheetDocument = { ...base, layers, files: new Map([[`layers/${notes.id}/images/obr1.png`, new Uint8Array([1, 2])]]) };
 
     const bytes = await writeSheetFile(doc);

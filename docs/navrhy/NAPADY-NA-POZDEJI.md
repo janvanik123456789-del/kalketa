@@ -116,3 +116,16 @@ Nápad uživatele, inspirace Maple. Maple má dvě číselné soustavy: hardwaro
 - **Kdy má smysl:** odečítání téměř stejných čísel (ztráta platných číslic), špatně podmíněné soustavy a matice, řady a finanční výpočty s mnoha kroky, ověření výsledku rychlého jádra („spočítej znovu přesně a porovnej“, rozdíl jako varování).
 - **Otázky:** funkce bez přesné verze (speciální funkce, numerické integrály, řešiče) počítají dál v double a výsledek se označí; jak to ukázat v tisku; výkon u grafů (ty vždy rychlým jádrem).
 - **Souvislost:** zaokrouhlení je jen zobrazení (RESIC-A-STYLY.md, bod 4d); přesnost výpočtu (tolerance řešičů, později volba jádra) patří do nastavení programu.
+
+## Samostatné programy
+
+### Převodník technických skript z PDF, co nejmenší a s ověřenými vzorci (2026-10-10)
+
+Nápad uživatele: z toho, co umí vrstva Podklady, udělat samostatný program. Kniha z PDF (i skenovaná) se převede na text, ověřené vzorce a úsporné obrázky.
+
+- **Co už máme:** čtení textu a rozvržení stránky, výřezy obrázků a vzorců, přečtení skenu znovu pomocí AI, vzorce z výřezů do zápisu Kalkety, ověření řetězů jádrem (odvození, dosazení, zaokrouhlení ≐), popisy obrázků pro hledání, knihovna teorie .kalkt.
+- **Čím by se lišil:** Marker, Docling, MinerU a Nougat převádějí PDF na Markdown. DjVu a smíšená komprese (ABBYY FineReader, Adobe) zmenšují skeny. Žádný z nich neověří, že je vzorec přečtený správně. To umí jen naše jádro.
+- **Velikost (příklad nýtu, strany 36–38):** text 8 kB, obrázky 317 kB, z toho výřezy vzorců 68 kB, tedy asi 110 kB na stranu. Malý výsledek potřebuje: zahodit výřez potvrzeného vzorce (v Kalketě hotovo 2026-10-10), kresby ukládat jako 1–2bitové nebo vektorové, výřezy ořezat přesně na kresbu. Cíl je jednotky až desítky kB na stranu.
+- **Co by přibylo:** výstup (HTML, EPUB nebo nové PDF s podmnožinou písem), dávkové zpracování celé knihy s pokračováním po přerušení, odhad ceny AI za stranu před spuštěním, porovnání se stranou originálu.
+- **Otázky:** autorská práva při šíření převedených knih (zatím jen pro vlastní potřebu), náklady na AI pro celé knihy, lokální model pro čtení vzorců.
+- **Postup:** kód zůstane v Kalketě jako balíček; samostatný program (nejdřív příkazová řádka) až když se osvědčí.

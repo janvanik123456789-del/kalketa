@@ -187,6 +187,17 @@ function PictureView({ node, selected, updateAttributes, extension, editor, getP
           ▸ {catalog ? t(catalog, 'kalk.cutout') : ''}
           {caption ? ` · ${caption}` : ''}
         </button>
+        <button
+          type="button"
+          className="cutout-delete"
+          title={catalog ? t(catalog, 'kalk.cutoutDeleteTip') : ''}
+          onClick={() => {
+            const at = getPos();
+            if (typeof at === 'number') editor.chain().deleteRange({ from: at, to: at + node.nodeSize }).run();
+          }}
+        >
+          {catalog ? t(catalog, 'kalk.cutoutDelete') : '✕'}
+        </button>
       </NodeViewWrapper>
     );
   }
@@ -263,15 +274,25 @@ function CodeView({ node, editor, getPos }: ReactNodeViewProps) {
   const { from } = editor.state.selection;
   const inside = typeof at === 'number' && from > at && from < at + node.nodeSize;
   const say = (key: UiKey) => (catalog ? t(catalog, key) : '');
-  /** The note of the AI taken away: the user has checked the formula. */
-  const confirm = () => {
-    const pos = getPos();
+  const above = typeof at === 'number' ? editor.state.doc.resolve(at).nodeBefore : null;
+  const hasCutout = !!above && isCutout(above);
+  /**
+   * The note of the AI taken away: the user has checked the formula. The cut-out it was
+   * read from goes too (the formula stands for it, the file gets smaller), unless kept.
+   */
+  const confirm = (keepCutout: boolean) => {
+    let pos = getPos();
     if (typeof pos !== 'number') return;
     const text = node.textContent
       .split('\n')
       .filter((l) => !isAiNote(l))
       .join('\n');
-    const tr = editor.state.tr.replaceWith(pos + 1, pos + node.nodeSize - 1, editor.schema.text(text));
+    let tr = editor.state.tr.replaceWith(pos + 1, pos + node.nodeSize - 1, editor.schema.text(text));
+    const before = tr.doc.resolve(pos).nodeBefore;
+    if (!keepCutout && before && isCutout(before)) {
+      tr = tr.delete(pos - before.nodeSize, pos);
+      pos = pos - before.nodeSize;
+    }
     // The cursor goes past the formula: confirmed, it shows as printed at once.
     const after = pos + (tr.doc.nodeAt(pos)?.nodeSize ?? 0);
     tr.setSelection(Selection.near(tr.doc.resolve(Math.min(after, tr.doc.content.size))));
@@ -309,9 +330,16 @@ function CodeView({ node, editor, getPos }: ReactNodeViewProps) {
           )}
           <div className="kalk-actions">
             {!confirmed && lines.some(isAiNote) && (
-              <button type="button" className="kalk-confirm" title={say('kalk.confirmTip')} onClick={confirm}>
-                {say('kalk.confirm')}
-              </button>
+              <>
+                <button type="button" className="kalk-confirm" title={say('kalk.confirmTip')} onClick={() => confirm(false)}>
+                  {say('kalk.confirm')}
+                </button>
+                {hasCutout && (
+                  <button type="button" className="kalk-confirm-keep" title={say('kalk.confirmKeepTip')} onClick={() => confirm(true)}>
+                    {say('kalk.confirmKeep')}
+                  </button>
+                )}
+              </>
             )}
             {confirmed && (
               <button type="button" className="kalk-edit" onClick={() => setEditing((v) => !v)}>
@@ -323,6 +351,11 @@ function CodeView({ node, editor, getPos }: ReactNodeViewProps) {
       )}
     </NodeViewWrapper>
   );
+}
+
+/** A cut-out of a formula from a study PDF (…/vzorec-s37.png), the picture its formula is read from. */
+function isCutout(node: { type: { name: string }; attrs: Record<string, unknown> }): boolean {
+  return node.type.name === 'image' && /\/vzorec-[^/]*$/.test(String(node.attrs['path'] ?? ''));
 }
 
 /** The index of a letter (σ_Kt in the text of the sources): set below, as in a formula. */

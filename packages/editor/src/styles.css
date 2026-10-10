@@ -633,6 +633,8 @@ button.icon:hover { color: var(--accent); }
 .kalk-preview.confirmed .kalk-actions { opacity: 0; }
 .word-code.confirmed:hover .kalk-actions { opacity: 1; }
 .word-cutout-folded button { border: none; background: none; color: #777; font-size: 12px; padding: 0; cursor: pointer; }
+.word-cutout-folded .cutout-delete { margin-left: 12px; }
+.word-cutout-folded .cutout-delete:hover { color: #b00020; }
 .kalk-preview .kalk-check.ok { color: #2e7d32; }
 .kalk-preview .kalk-check.bad { color: #a15c00; }
 .kalk-preview code.kalk-bad { color: #a12828; }

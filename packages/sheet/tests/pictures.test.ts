@@ -23,3 +23,21 @@ describe('files from before the rename', () => {
     expect(read.document?.source).toBe('L := 5 m');
   });
 });
+
+describe('pictures of the sources no text refers to', () => {
+  it('are not saved, others are', async () => {
+    const png = new Uint8Array([137, 80, 78, 71]);
+    const base = newDocument('T', 'L := 5 m');
+    const doc = {
+      ...base,
+      layers: [...base.layers, { id: 'layer3', kind: 'sources' as const, name: 'Kniha', visible: true, locked: false, appendix: false, text: '![s. 36](layers/layer3/images/obrazek-s36.png)\n\n```kalk\nτ_S := G·γ\n```' }],
+      files: new Map([
+        ['layers/layer3/images/obrazek-s36.png', png],
+        ['layers/layer3/images/vzorec-s37.png', png],
+        ['images/sheet/unused.png', png],
+      ]),
+    };
+    const read = await readSheetFile(await writeSheetFile(doc));
+    expect([...read.document!.files.keys()].sort()).toEqual(['images/sheet/unused.png', 'layers/layer3/images/obrazek-s36.png']);
+  });
+});

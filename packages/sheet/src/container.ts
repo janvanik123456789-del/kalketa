@@ -299,8 +299,17 @@ export function sheetEntries(doc: SheetDocument): [string, Uint8Array][] {
     entries.push([`blocks/${name}/block.cc`, strToU8(block.source)]);
     entries.push([`blocks/${name}/block.json`, json({ version: block.version, ...(block.origin !== undefined ? { origin: block.origin } : {}) })]);
   }
+  // A picture of the sources no text refers to any more (a cut-out of a confirmed formula, a
+  // picture deleted) is not saved: the file gets smaller as the sources are worked through.
+  const texts = [doc.source, ...doc.layers.map((l) => l.text ?? '')];
+  const sources = new Set(doc.layers.filter((l) => l.kind === 'sources').map((l) => l.id));
+  const unused = (path: string) => {
+    const own = /^layers\/([^/]+)\/images\//.exec(path);
+    return !!own && sources.has(own[1]!) && !texts.some((text) => text.includes(path));
+  };
   for (const path of [...doc.files.keys()].sort()) {
     if (!isSafePath(path)) throw new Error(`Unsafe path in sheet document: ${path}`);
+    if (unused(path)) continue;
     entries.push([path, doc.files.get(path)!]);
   }
   return entries;

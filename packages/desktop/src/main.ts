@@ -635,7 +635,12 @@ async function layersWithRealInput(picture: string) {
     const order = ['compact', 'airy', 'book'];
     const from = order.indexOf((await contents.executeJavaScript(`document.querySelector('.props-style').value`)) as string);
     await clickOn('.props-style');
-    for (let i = from; i !== order.indexOf(style); i += order.indexOf(style) > from ? 1 : -1) await pressKey(order.indexOf(style) > from ? 'Down' : 'Up');
+    // Arrow by arrow until the select says it (a key may get lost while the dialog opens).
+    for (let tries = 0; tries < 8; tries++) {
+      const now = order.indexOf((await contents.executeJavaScript(`document.querySelector('.props-style').value`)) as string);
+      if (now === order.indexOf(style)) break;
+      await pressKey(order.indexOf(style) > now ? 'Down' : 'Up');
+    }
     // Arrows on a closed select change its value; Enter may close the dialog with it already.
     if ((await contents.executeJavaScript(`!!document.querySelector('.dialog-buttons button.default')`)) as boolean) await clickOn('.dialog-buttons button.default');
     await pause(400);
@@ -651,7 +656,8 @@ async function layersWithRealInput(picture: string) {
     await clickMenu('Vlastnosti výpočtu');
     await pause(300);
     await clickOn('.props-verdict');
-    await pressKey(key);
+    const wanted = key === 'Down' ? 'future' : 'present';
+    for (let tries = 0; tries < 4 && (await contents.executeJavaScript(`document.querySelector('.props-verdict').value`)) !== wanted; tries++) await pressKey(key);
     if ((await contents.executeJavaScript(`!!document.querySelector('.dialog-buttons button.default')`)) as boolean) await clickOn('.dialog-buttons button.default');
     await pause(400);
   };

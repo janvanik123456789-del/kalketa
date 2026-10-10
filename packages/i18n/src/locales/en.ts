@@ -727,6 +727,7 @@ export const en: Catalog = {
     'pdf.preview': 'Preview',
     'word.noHeadings': 'The sources have no headings, so the model cannot cite them. Add headings with the paragraph style, or for text from a PDF with Tidy text from a PDF.',
     'word.caption': 'Picture caption',
+    'word.width': 'Width {percent} %',
     'word.captionEmpty': 'no caption (double-click to add one)',
     'word.undo': 'Undo',
     'word.redo': 'Redo',

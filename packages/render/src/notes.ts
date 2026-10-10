@@ -38,7 +38,7 @@ type Block =
   | { readonly kind: 'table'; readonly head: string[]; readonly align: Align[]; readonly rows: string[][] }
   | { readonly kind: 'rule' }
   | { readonly kind: 'quote'; readonly lines: string[] }
-  | { readonly kind: 'figure'; readonly caption: string; readonly path: string; readonly description?: string };
+  | { readonly kind: 'figure'; readonly caption: string; readonly path: string; readonly description?: string; readonly place: FigurePlace };
 
 type Align = 'left' | 'right' | 'center';
 
@@ -61,6 +61,35 @@ const FIGURE = /^!\[([^\]]*)\]\(([^)\s]+)\)\s*(?:\{([^}]*)\})?\s*$/;
 /** What a figure shows, written for search and readers of the screen: {alt="průběh momentu"}. */
 export function figureDescription(attributes: string | undefined): string | undefined {
   return /(?:^|\s)alt="([^"]*)"/.exec(attributes ?? '')?.[1];
+}
+
+/** Where a figure stands: {width=60% align=center}, its width a share of the text width. */
+export interface FigurePlace {
+  readonly width?: number;
+  readonly align?: 'left' | 'center' | 'right';
+}
+
+export function figurePlace(attributes: string | undefined): FigurePlace {
+  const text = (attributes ?? '').replace(/"[^"]*"/g, '""');
+  const width = Number(/(?:^|\s)width=(\d+(?:\.\d+)?)%/.exec(text)?.[1]);
+  const align = /(?:^|\s)align=(left|center|right)\b/.exec(text)?.[1] as FigurePlace['align'];
+  return { ...(width > 0 && width <= 100 ? { width } : {}), ...(align ? { align } : {}) };
+}
+
+/** The attributes of a figure ({…}, braces included) with its place changed; empty when nothing is left. */
+export function withFigurePlace(attributes: string | undefined, place: FigurePlace): string {
+  const inner = (attributes ?? '').replace(/^\{|\}$/g, '');
+  const kept = (inner.match(/\S+="[^"]*"|\S+/g) ?? []).filter((a) => !/^(width|align)=/.test(a));
+  const all = [...kept, ...(place.width !== undefined ? [`width=${Math.round(place.width)}%`] : []), ...(place.align ? [`align=${place.align}`] : [])];
+  return all.length > 0 ? `{${all.join(' ')}}` : '';
+}
+
+/** The style of a placed figure: its width, and the margins that align it. */
+export function figureStyle(place: FigurePlace): string {
+  return [
+    ...(place.width !== undefined ? [`width:${place.width}%`] : []),
+    ...(place.align === 'center' ? ['margin-left:auto', 'margin-right:auto'] : place.align === 'right' ? ['margin-left:auto', 'margin-right:0'] : []),
+  ].join(';');
 }
 
 export function notesHtml(text: string, options: NotesOptions = {}): string {
@@ -95,7 +124,8 @@ export function notesHtml(text: string, options: NotesOptions = {}): string {
           const src = options.resolveFile?.(block.path);
           const alt = block.description ?? block.caption;
           const image = src ? `<img src="${esc(src)}" alt="${esc(alt)}"${block.description ? ` title="${esc(block.description)}"` : ''}>` : `<div class="missing-image">${esc(block.path)}</div>`;
-          const figure = `<figure>${image}${block.caption ? `<figcaption>${inline(block.caption)}</figcaption>` : ''}</figure>`;
+          const style = figureStyle(block.place);
+          const figure = `<figure${style ? ` class="placed" style="${style}"` : ''}>${image}${block.caption ? `<figcaption>${inline(block.caption)}</figcaption>` : ''}</figure>`;
           // The cut-out of a formula whose formula is confirmed below: the formula stands for it, the cut-out a click away.
           const next = all[i + 1];
           if (/\/vzorec-[^/]*$/.test(block.path) && next?.kind === 'code' && next.lang === 'kalk' && kalkConfirmed(next.lines)) {
@@ -174,7 +204,7 @@ function parseBlocks(text: string): Block[] {
     } else if (figure) {
       flush();
       const description = figureDescription(figure[3]);
-      blocks.push({ kind: 'figure', caption: figure[1]!, path: figure[2]!, ...(description ? { description } : {}) });
+      blocks.push({ kind: 'figure', caption: figure[1]!, path: figure[2]!, ...(description ? { description } : {}), place: figurePlace(figure[3]) });
     } else if (bullet) {
       if (current?.kind !== 'list') flush();
       current ??= { kind: 'list', items: [] };
@@ -253,7 +283,7 @@ export interface KalkLine {
 
 /** The note the AI leaves on a formula it read from a picture, until the user confirms it. */
 export function isAiNote(line: string): boolean {
-  return /^'\s*✦/.test(line.trim()) || /^'.*AI \(/.test(line.trim());
+  return /^'\s*✦/.test(line.trim()) || /^'.*\bAI \(/.test(line.trim());
 }
 
 /** A block of formulas with no note of the AI left: confirmed, shown as the book prints it. */
@@ -390,5 +420,8 @@ export const NOTES_CSS = `.notes { font-size: 10.5pt; line-height: 1.5; }
 .notes blockquote.citation { margin: 2mm 0; padding: 1mm 0 1mm 3mm; border-left: 1mm solid #9aa6b4; color: #333; font-style: italic; }
 .notes figure { margin: 3mm 0; break-inside: avoid; }
 .notes figure img { max-width: 100%; max-height: 110mm; }
+.notes figure.placed { display: table; }
+.notes figure.placed figcaption { display: table-caption; caption-side: bottom; }
+.notes figure.placed[style*="width"] img { width: 100%; max-height: none; }
 .notes figcaption { font-size: 9pt; color: #555; margin-top: 1mm; }
 .notes .missing-image { padding: 4mm; border: 1px dashed #c62828; color: #c62828; font-size: 9pt; }`;

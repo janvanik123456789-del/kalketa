@@ -631,6 +631,7 @@ export const UI_KEYS = [
   'pdf.preview',
   'word.noHeadings',
   'word.caption',
+  'word.width',
   'word.captionEmpty',
   'word.undo',
   'word.redo',

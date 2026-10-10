@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { notesHtml } from '../src/index.js';
+import { figurePlace, withFigurePlace } from '../src/notes.js';
 
 describe('notes Markdown, as models write it', () => {
   it('shows `code` as written, without marks inside it', () => {
@@ -66,5 +67,16 @@ describe('a worked example of the book in the sources', () => {
     expect(check(['derive S_min := F/τ_Dov_s == 1600/68 == 25 mm²'])).toContain('krok 2 nesouhlasí');
     // The numbers as the language of the user writes them.
     expect(kalkLines([tau], cs)[0]!.html).toContain('<mn>0,6</mn>');
+  });
+});
+
+describe('placed figures of the sources', () => {
+  it('read and write the width and the alignment, keeping the description', () => {
+    expect(figurePlace('alt="průběh momentu" width=60% align=center')).toEqual({ width: 60, align: 'center' });
+    expect(figurePlace('alt="width=50%"')).toEqual({});
+    expect(withFigurePlace('{alt="a b"}', { width: 40, align: 'right' })).toBe('{alt="a b" width=40% align=right}');
+    expect(withFigurePlace('{width=40% align=right}', {})).toBe('');
+    const html = notesHtml('![Nosník](obrazky/n.png){width=50% align=center}', { resolveFile: () => 'data:image/png;base64,' });
+    expect(html).toContain('<figure class="placed" style="width:50%;margin-left:auto;margin-right:auto">');
   });
 });

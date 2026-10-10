@@ -7,12 +7,13 @@
  * stay as they were. A heading carries the id of its theory section as an
  * attribute, shown as a badge and never typed.
  */
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { EditorContent, Extension, Mark, NodeViewContent, NodeViewWrapper, ReactNodeViewRenderer, useEditor, type Editor, type JSONContent, type ReactNodeViewProps } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import CodeBlock from '@tiptap/extension-code-block';
 import { NodeSelection, Selection } from '@tiptap/pm/state';
-import { figureDescription, isAiNote, kalkConfirmed, kalkLines } from '@kalketa/render';
+import { figureDescription, figurePlace, figureStyle, isAiNote, kalkConfirmed, kalkLines, withFigurePlace, type FigurePlace } from '@kalketa/render';
 import Image, { type ImageOptions } from '@tiptap/extension-image';
 import { TableKit } from '@tiptap/extension-table';
 import { t, type Catalog, type UiKey } from '@kalketa/i18n';
@@ -21,6 +22,7 @@ import { desktop } from '../document.js';
 import { docToNotes, notesToDoc } from '../logic/notesDoc.js';
 import { captionOf, isPictureType, type IncomingPicture } from '../logic/pictures.js';
 import { ask } from './Ask.js';
+import { ContextMenu, type MenuItem } from './MenuBar.js';
 import { PdfCleanupDialog } from './PdfCleanup.js';
 
 interface Props {
@@ -84,9 +86,15 @@ const NotesAttributes = Extension.create({
   },
 });
 
+const NO_COMMANDS = new Map();
+
+/** Widths offered in the menu of a picture, as shares of the text width. */
+const WIDTHS = [25, 50, 75, 100];
+
 /**
  * A picture of the layer with its caption under it, as printed. The caption is
- * changed by a double click.
+ * changed by a double click, the width by dragging a corner, the alignment and
+ * the width also from the menu of the right button.
  */
 function PictureView({ node, selected, updateAttributes, extension, editor, getPos }: ReactNodeViewProps) {
   const options = extension.options as { captionLabel?: string; captionEmpty?: string };
@@ -103,6 +111,68 @@ function PictureView({ node, selected, updateAttributes, extension, editor, getP
     return () => void editor.off('update', update);
   }, [editor]);
   const [shown, setShown] = useState(false);
+  const [menu, setMenu] = useState<{ x: number; y: number } | undefined>();
+  const [dragged, setDragged] = useState<number | undefined>();
+  const extra = String(node.attrs['extra'] ?? '');
+  const place = figurePlace(extra.replace(/^\{|\}$/g, ''));
+  const shownPlace: FigurePlace = dragged !== undefined ? { ...place, width: dragged } : place;
+  const placeAs = (next: FigurePlace) => updateAttributes({ extra: withFigurePlace(extra, next) || null });
+  const editCaption = () =>
+    void ask(options.captionLabel ?? 'Caption', caption).then((next) => {
+      if (next !== undefined) updateAttributes({ alt: next.replace(/[[\]]/g, '').trim() });
+    });
+  // A corner dragged: the width as a share of the text width; a centred picture grows on both sides.
+  const resize = (e: ReactMouseEvent, corner: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const figure = (e.currentTarget as HTMLElement).closest('figure');
+    const text = figure?.parentElement?.closest('.ProseMirror');
+    if (!figure || !text) return;
+    const style = getComputedStyle(text);
+    // On the screen, as the mouse moves: the text width zoomed as the page is.
+    const full = (text.getBoundingClientRect().width * (text.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight))) / text.clientWidth;
+    const start = figure.getBoundingClientRect().width;
+    const x0 = e.clientX;
+    const sign = corner.endsWith('w') ? -1 : 1;
+    const factor = place.align === 'center' ? 2 : 1;
+    let width = Math.round((start / full) * 100);
+    const move = (m: MouseEvent) => {
+      width = Math.max(5, Math.min(100, Math.round(((start + sign * factor * (m.clientX - x0)) / full) * 100)));
+      setDragged(width);
+    };
+    const up = () => {
+      window.removeEventListener('mousemove', move);
+      window.removeEventListener('mouseup', up);
+      setDragged(undefined);
+      placeAs({ ...place, width });
+    };
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+  };
+  const menuItems = (): MenuItem[] => {
+    const say = (key: UiKey, fallback: string, params?: Record<string, string | number>) => (catalog ? t(catalog, key, params) : fallback);
+    const align = place.align ?? 'left';
+    const { width: _width, ...unsized } = place;
+    const { align: _align, ...unaligned } = place;
+    return [
+      { kind: 'action', label: say('picture.alignLeft', 'Left'), checked: align === 'left', run: () => placeAs(unaligned) },
+      { kind: 'action', label: say('picture.center', 'Centre'), checked: align === 'center', run: () => placeAs({ ...place, align: 'center' }) },
+      { kind: 'action', label: say('picture.alignRight', 'Right'), checked: align === 'right', run: () => placeAs({ ...place, align: 'right' }) },
+      { kind: 'separator' },
+      ...WIDTHS.map((w): MenuItem => ({ kind: 'action', label: say('word.width', `${w} %`, { percent: w }), checked: place.width === w, run: () => placeAs({ ...place, width: w }) })),
+      { kind: 'action', label: say('picture.natural', 'Natural size'), checked: place.width === undefined, run: () => placeAs(unsized) },
+      { kind: 'separator' },
+      { kind: 'action', label: say('picture.caption', 'Caption…'), run: editCaption },
+      {
+        kind: 'action',
+        label: say('picture.delete', 'Delete picture'),
+        run: () => {
+          const at = getPos();
+          if (typeof at === 'number') editor.chain().focus().deleteRange({ from: at, to: at + node.nodeSize }).run();
+        },
+      },
+    ];
+  };
   const pos = getPos();
   const next = typeof pos === 'number' ? editor.state.doc.nodeAt(pos + node.nodeSize) : null;
   const folded =
@@ -123,17 +193,31 @@ function PictureView({ node, selected, updateAttributes, extension, editor, getP
   return (
     <NodeViewWrapper
       as="figure"
-      className={`word-figure${selected ? ' selected' : ''}`}
-      onDoubleClick={() =>
-        void ask(options.captionLabel ?? 'Caption', caption).then((next) => {
-          if (next !== undefined) updateAttributes({ alt: next.replace(/[[\]]/g, '').trim() });
-        })
-      }
+      className={`word-figure${selected ? ' selected' : ''}${shownPlace.width !== undefined ? ' sized' : ''}`}
+      style={styleOf(figureStyle(shownPlace))}
+      onDoubleClick={editCaption}
+      onContextMenu={(e: ReactMouseEvent) => {
+        e.preventDefault();
+        const at = getPos();
+        if (typeof at === 'number') editor.commands.setNodeSelection(at);
+        setMenu({ x: e.clientX, y: e.clientY });
+      }}
     >
       <img src={String(node.attrs['src'] ?? '')} alt={description ?? caption} {...(description ? { title: description } : {})} data-path={String(node.attrs['path'] ?? '')} draggable={false} />
       <figcaption className={caption ? '' : 'empty'}>{caption || options.captionEmpty}</figcaption>
+      {(['nw', 'ne', 'sw', 'se'] as const).map((corner) => (
+        <span key={corner} className={`picture-handle ${corner}`} contentEditable={false} title={catalog ? t(catalog, 'editor.pictureResize') : ''} onMouseDown={(e) => resize(e, corner)} />
+      ))}
+      {dragged !== undefined && <span className="picture-size">{dragged} %</span>}
+      {menu && createPortal(<ContextMenu items={menuItems()} commands={NO_COMMANDS} at={menu} onClose={() => setMenu(undefined)} />, document.body)}
     </NodeViewWrapper>
   );
+}
+
+/** A style of the render package (width:60%;margin-left:auto) as React wants it. */
+function styleOf(css: string): Record<string, string> | undefined {
+  if (!css) return undefined;
+  return Object.fromEntries(css.split(';').map((d) => d.split(':')).map(([k, v]) => [k!.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase()), v!]));
 }
 
 /** A picture of the layer: where it is stored in the sheet, and what to show while editing. */

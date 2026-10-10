@@ -727,6 +727,7 @@ export const cs: Catalog = {
     'pdf.preview': 'Náhled',
     'word.noHeadings': 'Podklady nemají nadpisy, takže model z nich nemůže citovat. Nadpisy doplníte stylem odstavce, u textu z PDF tlačítkem Vyčistit text z PDF.',
     'word.caption': 'Popisek obrázku',
+    'word.width': 'Šířka {percent} %',
     'word.captionEmpty': 'bez popisku (dvojklikem doplníte)',
     'word.undo': 'Zpět',
     'word.redo': 'Znovu',

@@ -40,6 +40,8 @@ export interface PrintOptions {
   readonly summary?: 'top' | 'bottom' | 'none';
   /** Which equations get a number at the right: none, those with a formula, every one with a result. */
   readonly equations?: EquationNumbers;
+  /** How a check says its result: VYHOVUJE (default), VYHOVÍ, or a sign only. */
+  readonly verdict?: VerdictForm;
   /** Resolves a path inside the sheet (images/...) to a URL, e.g. a data: URI. */
   readonly resolveFile?: (path: string) => string | undefined;
   /** The editor shows everything: @hide does not hide there. */
@@ -129,6 +131,8 @@ export type PrintBlock =
       readonly evaluated: boolean;
       readonly utilization?: string;
       readonly source?: string;
+      /** The result in words, in the form of the sheet: "✓ VYHOVUJE". */
+      readonly verdict: string;
       readonly messages: readonly Message[];
     }
   | {
@@ -176,6 +180,8 @@ export interface SummaryRow {
   readonly passed: boolean;
   readonly evaluated: boolean;
   readonly source?: string;
+  /** The result in words, in the form of the sheet. */
+  readonly verdict: string;
 }
 
 export interface PrintDocument {
@@ -413,6 +419,7 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
           evaluated: check !== undefined,
           ...(check?.utilization !== undefined ? { utilization: percent(check.utilization, catalog) } : {}),
           ...(s.source !== undefined ? { source: s.source } : {}),
+          verdict: verdictText(check !== undefined, check?.passed ?? false, catalog, options.verdict),
           messages,
         });
         break;
@@ -442,6 +449,7 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
       ...(c.utilization !== undefined ? { utilization: percent(c.utilization, catalog) } : {}),
       passed: c.passed,
       evaluated: statement.check !== undefined,
+      verdict: verdictText(statement.check !== undefined, c.passed, catalog, options.verdict),
       ...(c.source !== undefined ? { source: c.source } : {}),
     };
   });
@@ -456,6 +464,18 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
 }
 
 export type EquationNumbers = 'none' | 'formulas' | 'results';
+
+/** present: VYHOVUJE / NEVYHOVUJE; future: VYHOVÍ / NEVYHOVÍ (as ČVUT writes it); sign: ✓ / ✗ only. */
+export type VerdictForm = 'present' | 'future' | 'sign';
+
+/** The result of a check in the form the sheet chose; not evaluated stays said in words. */
+export function verdictText(evaluated: boolean, passed: boolean, catalog: Catalog, form: VerdictForm = 'present'): string {
+  if (!evaluated) return `? ${t(catalog, 'checks.notEvaluated')}`;
+  const sign = passed ? '✓' : '✗';
+  if (form === 'sign') return sign;
+  const key = form === 'future' ? (passed ? 'checks.passedFuture' : 'checks.failedFuture') : passed ? 'checks.passed' : 'checks.failed';
+  return `${sign} ${t(catalog, key)}`;
+}
 
 /**
  * Equation numbers (1), (2) … at the right, in order down the sheet, as books number them:

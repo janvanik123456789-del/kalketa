@@ -249,11 +249,7 @@ ${condition}</table>${messages(block.messages)}
     }
     case 'check': {
       const status = !block.evaluated ? 'not-evaluated' : block.passed ? 'passed' : 'failed';
-      const verdict = !block.evaluated
-        ? `? ${t(catalog, 'checks.notEvaluated')}`
-        : block.passed
-          ? `✓ ${t(catalog, 'checks.passed')}`
-          : `✗ ${t(catalog, 'checks.failed')}`;
+      const verdict = block.verdict;
       const utilization = block.utilization ? `<span class="utilization">${esc(t(catalog, 'checks.utilization'))} ${esc(block.utilization)}</span>` : '';
       const source = block.source ? `<span class="source">[${esc(block.source)}]</span>` : '';
       if (options.style === 'compact') {
@@ -321,7 +317,7 @@ function checkLines(lines: readonly EquationLine[]): string {
 export function renderSummary(rows: readonly SummaryRow[], allPassed: boolean, catalog: Catalog): string {
   const body = rows
     .map((r) => {
-      const status = !r.evaluated ? `? ${t(catalog, 'checks.notEvaluated')}` : r.passed ? `✓ ${t(catalog, 'checks.passed')}` : `✗ ${t(catalog, 'checks.failed')}`;
+      const status = r.verdict;
       const cls = !r.evaluated || !r.passed ? ' class="failed"' : '';
       const line = r.line !== undefined ? ` data-line="${r.line}"` : '';
       return `<tr${cls}${line}><td>${esc(r.label)}</td><td class="num">${esc(r.utilization ?? '')}</td><td>${esc(status)}</td><td>${esc(r.source ?? '')}</td></tr>`;

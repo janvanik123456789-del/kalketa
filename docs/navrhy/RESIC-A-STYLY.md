@@ -103,7 +103,7 @@ Prošli jsme veřejné pokyny vysokých škol a profesních organizací:
 4. **Odkazy na normy a zdroje** u vzorců, které nejsou běžné (ETH), a u převzatých veličin význam a zdroj (ETH). Všude seznam použitých norem a programů s verzí.
 5. **Kontrolovatelnost a přehlednost** jako hlavní měřítko (ČVUT, ČKAIT, Duisburg „prüfbar“).
 6. **Číslování stran** po oddílech, u vložených stran písmeno (ETH „1.3.2A“). **Hlavička** se jménem, datem a stranou x/y (Rowan, britské listy).
-7. **Výsledek posudku slovem:** VYHOVÍ / NEVYHOVÍ (ČVUT).
+7. **Výsledek posudku slovem:** VYHOVÍ / NEVYHOVÍ (ČVUT). **Hotovo:** posudky a souhrn píšou výsledek slovem; od 2026-10-10 tvar podle Vlastností výpočtu → Výsledek posudku: ✓ VYHOVUJE / ✗ NEVYHOVUJE (výchozí), ✓ VYHOVÍ / ✗ NEVYHOVÍ, nebo jen značka ✓ / ✗ (`layout.json`, `verdict`).
 8. **Rekapitulace zatížení v tabulce:** charakteristická hodnota, součinitel, návrhová hodnota (ČVUT, vzor BEK3).
 9. **Skici a schémata** u výpočtu (všude). **Pozice** (číslo prvku) jako osa členění (německá „Positionsstatik“).
 

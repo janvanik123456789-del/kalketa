@@ -247,10 +247,10 @@ export function App() {
         openPanes.flatMap((id) => {
           const l = layerById(id);
           if (l?.kind !== 'sheet' && l?.kind !== 'calc') return [];
-          return [[id, buildPrintDocument(resultOf(l), { catalog: printCatalog, registry: defaultRegistry, digits: doc.layout.digits, title: '', showHidden: true, resolveFile, ...(doc.layout.summary ? { summary: doc.layout.summary } : {}), ...(equationNumbers(doc.layout) ? { equations: equationNumbers(doc.layout)! } : {}) })] as const];
+          return [[id, buildPrintDocument(resultOf(l), { catalog: printCatalog, registry: defaultRegistry, digits: doc.layout.digits, title: '', showHidden: true, resolveFile, ...(doc.layout.summary ? { summary: doc.layout.summary } : {}), ...(equationNumbers(doc.layout) ? { equations: equationNumbers(doc.layout)! } : {}), ...(doc.layout.verdict ? { verdict: doc.layout.verdict } : {}) })] as const];
         }),
       ),
-    [evaluation, openKey, printCatalog, doc.layout.digits, doc.layout.summary, doc.layout.equations, doc.layout.style, resolveFile],
+    [evaluation, openKey, printCatalog, doc.layout.digits, doc.layout.summary, doc.layout.equations, doc.layout.style, doc.layout.verdict, resolveFile],
   );
 
   useEffect(() => {
@@ -698,6 +698,7 @@ export function App() {
       style: doc.layout.style ?? 'airy',
       ...(doc.layout.summary ? { summary: doc.layout.summary } : {}),
       ...(equationNumbers(doc.layout) ? { equations: equationNumbers(doc.layout)! } : {}),
+      ...(doc.layout.verdict ? { verdict: doc.layout.verdict } : {}),
     });
   /** Unreviewed AI lines: the user is asked first; they print marked, with a notice. */
   const confirmAiPrint = async () => unreviewedAiLines().size === 0 || (await askConfirm(t(ui, 'print.aiConfirm')));

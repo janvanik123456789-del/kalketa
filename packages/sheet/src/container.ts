@@ -62,6 +62,8 @@ export interface Layout {
   readonly summary?: 'top' | 'bottom' | 'none';
   /** Equation numbers at the right: none (when left out), of lines with a formula, of every result. */
   readonly equations?: 'none' | 'formulas' | 'results';
+  /** How a check says its result: VYHOVUJE (when left out), VYHOVÍ, or a sign only. */
+  readonly verdict?: 'present' | 'future' | 'sign';
 }
 
 export const DEFAULT_LAYOUT: Layout = { paper: 'A4', orientation: 'portrait', digits: 4 };

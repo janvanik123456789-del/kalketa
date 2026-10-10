@@ -170,3 +170,16 @@ describe('the book style', () => {
     expect(html).toContain('.block.equation.book table.eq { margin-left: auto; margin-right: auto; }');
   });
 });
+
+describe('the result of a check', () => {
+  it('says it in the form the sheet chose, in the check and in the summary', async () => {
+    const { printHtml } = await import('../src/index.js');
+    const sheet = evaluateSheet('σ := 150 MPa\ncheck "Ohyb": σ ≤ 235 MPa\ncheck "Tah": σ ≤ 100 MPa');
+    const html = (verdict?: 'present' | 'future' | 'sign') => printHtml(sheet, { catalog: catalogFor('cs'), registry: defaultRegistry, title: 'V', ...(verdict ? { verdict } : {}) });
+    expect(html()).toContain('✓ VYHOVUJE');
+    expect(html('future')).toContain('✓ VYHOVÍ');
+    expect(html('future')).toContain('✗ NEVYHOVÍ');
+    expect(html('future')).not.toContain('VYHOVUJE');
+    expect(html('sign')).not.toMatch(/VYHOV/);
+  });
+});

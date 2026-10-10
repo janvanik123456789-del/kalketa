@@ -239,6 +239,16 @@ export function PropertiesDialog({ catalog, doc, onApply, onClose }: { catalog: 
         </select>
       </label>
       <label className="field">
+        <span>{t(catalog, 'props.verdict')}</span>
+        <select className="props-verdict" value={layout.verdict ?? 'present'} onChange={(e) => setLayout({ ...layout, verdict: e.target.value as 'present' | 'future' | 'sign' })}>
+          {(['present', 'future', 'sign'] as const).map((p) => (
+            <option key={p} value={p}>
+              {t(catalog, `verdict.${p}`)}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="field">
         <span>{t(catalog, 'props.summary')}</span>
         <select className="props-summary" value={layout.summary ?? 'top'} onChange={(e) => setLayout({ ...layout, summary: e.target.value as 'top' | 'bottom' | 'none' })}>
           {(['top', 'bottom', 'none'] as const).map((p) => (

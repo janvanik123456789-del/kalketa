@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { kalkFormula, notesHtml } from '../src/index.js';
+import { kalkFormula, kalkLines, notesHtml } from '../src/index.js';
 
 describe('formulas in the sources', () => {
   it('are typeset from the calculation language, nothing computed', () => {
@@ -21,5 +21,17 @@ describe('formulas in the sources', () => {
     // A formula with no note of the AI on it stands as printed: centred.
     expect(html).toContain('<div class="kalk confirmed"><div class="kalk-formula"');
     expect(html).toContain('<pre class="code"><code>w := 1</code></pre>');
+  });
+});
+
+describe('a line of the book with ⇒ and a bound followed by a chain', () => {
+  it('typesets the parts joined by ⇒ and checks the chain of the bound', () => {
+    const [line] = kalkLines(['S_min <= π·d^2/4 ⇒ d >= sqrt(4·S_min/π) == sqrt(4·23.53/π) ≈ 5.5 mm']);
+    expect(line!.html).not.toContain('kalk-bad');
+    expect(line!.html).toContain('⇒');
+    expect(line!.html).toContain('≐');
+    expect(line!.check?.ok).toBe(true);
+    // A wrong number at the end shows, numbered through the line.
+    expect(kalkLines(['S_min <= π·d^2/4 ⇒ d >= sqrt(4·S_min/π) == sqrt(4·23.53/π) ≈ 7.5 mm'])[0]!.check?.ok).toBe(false);
   });
 });

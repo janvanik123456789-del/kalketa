@@ -44,3 +44,16 @@ describe('formulas read from pictures', () => {
     expect(sent?.messages[0]?.content[1]?.image_url?.url).toBe('data:image/png;base64,AAAA');
   });
 });
+
+describe('figures described for search', () => {
+  it('are asked for in the language of the user, and a formula is no figure', async () => {
+    const { figurePrompt, cleanFigureDescription, terms } = await import('@kalketa/ai');
+    expect(figurePrompt('Czech')).toContain('in Czech');
+    expect(cleanFigureDescription('Průběh ohybového momentu prostého nosníku.')).toBe('Průběh ohybového momentu prostého nosníku');
+    expect(cleanFigureDescription('Obrázek ukazuje "zkos" {y}')).toBe('zkos y');
+    expect(cleanFigureDescription('formula')).toBeUndefined();
+    // Written after the picture, the words of the description are words of its section.
+    const line = '![Pružnost a pevnost, s. 36](images/obr.png){alt="průběh ohybového momentu"}';
+    expect(terms(line)).toEqual(expect.arrayContaining(terms('ohybového momentu')));
+  });
+});

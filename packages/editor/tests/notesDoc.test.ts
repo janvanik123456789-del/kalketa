@@ -73,3 +73,13 @@ describe('notes between Markdown and the word-processor editor', () => {
     expect(docToNotes(notesToDoc(''))).toBe('');
   });
 });
+
+describe('a figure with its description', () => {
+  it('keeps the description through the editor and shows it as the text of the picture', () => {
+    const text = '![Pružnost a pevnost, s. 36](layers/l3/images/obr.png){alt="průběh ohybového momentu"}';
+    expect(docToNotes(notesToDoc(text)).trimEnd()).toBe(text);
+    const html = notesHtml(text, { resolveFile: () => 'data:image/png;base64,AA' });
+    expect(html).toContain('alt="průběh ohybového momentu" title="průběh ohybového momentu"');
+    expect(html).toContain('<figcaption>Pružnost a pevnost, s. 36</figcaption>');
+  });
+});

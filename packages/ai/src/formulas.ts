@@ -21,6 +21,33 @@ export function formulaPrompt(): string {
   ].join('\n');
 }
 
+/**
+ * What the model is asked about a figure of the sources: a short description to find it by
+ * (and for readers of the screen), in the language of the user. A cut-out of a formula is
+ * no figure: the answer is then "formula", and the figure gets no description.
+ */
+export function figurePrompt(language: string): string {
+  return [
+    `The image is a figure from an engineering textbook. Describe what it shows in one short phrase in ${language}, as a caption to find it by: the kind of picture and its subject (e.g. "diagram of the bending moment of a simply supported beam").`,
+    '- No "The image shows", no full stop at the end, no quotation marks, at most 15 words.',
+    '- Name the quantities and the structure as an engineer would, not colours or layout.',
+    '- If the image holds only a formula or text, answer: formula',
+  ].join('\n');
+}
+
+/** The description of a figure from the model's answer; undefined when it is no figure. */
+export function cleanFigureDescription(answer: string): string | undefined {
+  const text = answer
+    .replace(/^\s*```[\w-]*\s*$/gm, '')
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .find((l) => l !== '');
+  if (!text || /^formula\.?$/i.test(text)) return undefined;
+  // Kept to what the attribute holds: no quotes or braces, one line, not too long.
+  const clean = text.replace(/["{}]/g, '').replace(/^(the image shows|obrázek ukazuje|na obrázku je)\s*/i, '').replace(/\.\s*$/, '').trim();
+  return clean ? clean.slice(0, 160) : undefined;
+}
+
 const GREEK: Readonly<Record<string, string>> = {
   alpha: 'α', beta: 'β', gamma: 'γ', delta: 'δ', epsilon: 'ε', varepsilon: 'ε', zeta: 'ζ', eta: 'η', theta: 'θ', vartheta: 'θ', iota: 'ι', kappa: 'κ', lambda: 'λ', mu: 'μ', nu: 'ν', xi: 'ξ', pi: 'π', rho: 'ρ', sigma: 'σ', tau: 'τ', upsilon: 'υ', phi: 'φ', varphi: 'φ', chi: 'χ', psi: 'ψ', omega: 'ω',
   Gamma: 'Γ', Delta: 'Δ', Theta: 'Θ', Lambda: 'Λ', Xi: 'Ξ', Pi: 'Π', Sigma: 'Σ', Phi: 'Φ', Psi: 'Ψ', Omega: 'Ω',

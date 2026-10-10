@@ -12,7 +12,7 @@ import { EditorContent, Extension, NodeViewContent, NodeViewWrapper, ReactNodeVi
 import StarterKit from '@tiptap/starter-kit';
 import CodeBlock from '@tiptap/extension-code-block';
 import { NodeSelection } from '@tiptap/pm/state';
-import { kalkLines } from '@kalketa/render';
+import { figureDescription, kalkLines } from '@kalketa/render';
 import Image, { type ImageOptions } from '@tiptap/extension-image';
 import { TableKit } from '@tiptap/extension-table';
 import { t, type Catalog, type UiKey } from '@kalketa/i18n';
@@ -43,6 +43,7 @@ interface Props {
    * (with a note that the AI wrote it); undefined when it found none or the AI is off.
    */
   readFormula?(path: string): Promise<string | undefined>;
+  describeFigure?(path: string): Promise<string | undefined>;
   /**
    * Opens the cut-outs from a study PDF; each one comes to `place` with its caption and the
    * text that stood next to it on the page. Absent when there is no study PDF.
@@ -86,6 +87,8 @@ const NotesAttributes = Extension.create({
 function PictureView({ node, selected, updateAttributes, extension }: ReactNodeViewProps) {
   const options = extension.options as { captionLabel?: string; captionEmpty?: string };
   const caption = String(node.attrs['alt'] ?? '');
+  // What the figure shows, written for search ({alt="…"} after it): the text of the picture and its tooltip.
+  const description = figureDescription(String(node.attrs['extra'] ?? '').replace(/^\{|\}$/g, ''));
   return (
     <NodeViewWrapper
       as="figure"
@@ -96,7 +99,7 @@ function PictureView({ node, selected, updateAttributes, extension }: ReactNodeV
         })
       }
     >
-      <img src={String(node.attrs['src'] ?? '')} alt={caption} draggable={false} />
+      <img src={String(node.attrs['src'] ?? '')} alt={description ?? caption} {...(description ? { title: description } : {})} data-path={String(node.attrs['path'] ?? '')} draggable={false} />
       <figcaption className={caption ? '' : 'empty'}>{caption || options.captionEmpty}</figcaption>
     </NodeViewWrapper>
   );
@@ -175,7 +178,7 @@ function withPictures(doc: JSONContent, resolveFile: (path: string) => string | 
   return doc.content ? { ...doc, content: doc.content.map((c) => withPictures(c, resolveFile)) } : doc;
 }
 
-export function NotesWord({ text, title, catalog, readOnly, resolveFile, onChange, onSettle, pickImage, picturePath, onSaveLibrary, pickPdfCrop, readFormula }: Props) {
+export function NotesWord({ text, title, catalog, readOnly, resolveFile, onChange, onSettle, pickImage, picturePath, onSaveLibrary, pickPdfCrop, readFormula, describeFigure }: Props) {
   // What the editor last gave out: a text coming back unchanged is not loaded again.
   const emitted = useRef(text);
   // Texts given out and not seen back yet. A late echo of an older one (the page was busy while the
@@ -340,6 +343,39 @@ export function NotesWord({ text, title, catalog, readOnly, resolveFile, onChang
     setReading(undefined);
   };
 
+  // Figures being described: how many done of how many; asked to stop as the formulas are.
+  const [describing, setDescribing] = useState<{ done: number; of: number }>();
+  const stopDescribing = useRef(false);
+  /**
+   * Every figure without a description, cut-outs of formulas left out: the AI writes what it
+   * shows ({alt="…"} after the picture), so the theory finds it by its words. Done ones are
+   * skipped, so a stopped run goes on where it was.
+   */
+  const describeFigures = async () => {
+    if (!describeFigure) return;
+    const paths: string[] = [];
+    editor.state.doc.forEach((node) => {
+      const path = String(node.attrs['path'] ?? '');
+      if (node.type.name === 'image' && path && !/\/vzorec-[^/]*$/.test(path) && !/(?:^|\s)alt="/.test(String(node.attrs['extra'] ?? ''))) paths.push(path);
+    });
+    setDescribing({ done: 0, of: paths.length });
+    stopDescribing.current = false;
+    for (const [n, path] of paths.entries()) {
+      if (stopDescribing.current) break;
+      const description = await describeFigure(path);
+      setDescribing({ done: n + 1, of: paths.length });
+      if (!description) continue;
+      // Found again: the text may have changed meanwhile.
+      editor.state.doc.forEach((node, offset) => {
+        if (node.type.name !== 'image' || node.attrs['path'] !== path) return;
+        const rest = String(node.attrs['extra'] ?? '').replace(/^\{|\}$/g, '').replace(/(?:^|\s)alt="[^"]*"/, '').trim();
+        const extra = `{${[rest, `alt="${description}"`].filter(Boolean).join(' ')}}`;
+        editor.view.dispatch(editor.state.tr.setNodeMarkup(offset, undefined, { ...node.attrs, extra }));
+      });
+    }
+    setDescribing(undefined);
+  };
+
   const insertPicture = async (pick: Props['pickImage'] = pickImage) => {
     // The dialog takes the focus; the picture goes where the cursor was.
     const at = editor.state.selection.from;
@@ -422,6 +458,17 @@ export function NotesWord({ text, title, catalog, readOnly, resolveFile, onChang
             onClick={() => (reading ? (stopReading.current = true) : void readFormulas())}
           >
             {reading ? `ƒx ${reading.done}/${reading.of} ■` : 'ƒx ✦'}
+          </Tool>
+        )}
+        {describeFigure && (
+          <Tool
+            label={describing ? t(catalog, 'word.describeStop') : t(catalog, 'word.describe')}
+            title={describing ? t(catalog, 'word.describeStop') : t(catalog, 'word.describeTip')}
+            className="word-describe-ai"
+            disabled={readOnly}
+            onClick={() => (describing ? (stopDescribing.current = true) : void describeFigures())}
+          >
+            {describing ? `🖼 ${describing.done}/${describing.of} ■` : '🖼 ✦'}
           </Tool>
         )}
         <Tool label={t(catalog, 'word.codeBlock')} active={editor.isActive('codeBlock')} disabled={readOnly} onClick={() => editor.chain().focus().toggleCodeBlock().run()}>

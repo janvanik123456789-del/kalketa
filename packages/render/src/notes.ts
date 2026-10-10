@@ -38,7 +38,7 @@ type Block =
   | { readonly kind: 'table'; readonly head: string[]; readonly align: Align[]; readonly rows: string[][] }
   | { readonly kind: 'rule' }
   | { readonly kind: 'quote'; readonly lines: string[] }
-  | { readonly kind: 'figure'; readonly caption: string; readonly path: string };
+  | { readonly kind: 'figure'; readonly caption: string; readonly path: string; readonly description?: string };
 
 type Align = 'left' | 'right' | 'center';
 
@@ -56,7 +56,12 @@ function cells(line: string): string[] {
     .map((c) => c.trim());
 }
 
-const FIGURE = /^!\[([^\]]*)\]\(([^)\s]+)\)\s*(?:\{[^}]*\})?\s*$/;
+const FIGURE = /^!\[([^\]]*)\]\(([^)\s]+)\)\s*(?:\{([^}]*)\})?\s*$/;
+
+/** What a figure shows, written for search and readers of the screen: {alt="průběh momentu"}. */
+export function figureDescription(attributes: string | undefined): string | undefined {
+  return /(?:^|\s)alt="([^"]*)"/.exec(attributes ?? '')?.[1];
+}
 
 export function notesHtml(text: string, options: NotesOptions = {}): string {
   return parseBlocks(text)
@@ -88,7 +93,8 @@ export function notesHtml(text: string, options: NotesOptions = {}): string {
           return `<blockquote class="citation">${block.lines.map(inline).join('<br>')}</blockquote>`;
         case 'figure': {
           const src = options.resolveFile?.(block.path);
-          const image = src ? `<img src="${esc(src)}" alt="${esc(block.caption)}">` : `<div class="missing-image">${esc(block.path)}</div>`;
+          const alt = block.description ?? block.caption;
+          const image = src ? `<img src="${esc(src)}" alt="${esc(alt)}"${block.description ? ` title="${esc(block.description)}"` : ''}>` : `<div class="missing-image">${esc(block.path)}</div>`;
           return `<figure>${image}${block.caption ? `<figcaption>${inline(block.caption)}</figcaption>` : ''}</figure>`;
         }
       }
@@ -161,7 +167,8 @@ function parseBlocks(text: string): Block[] {
       blocks.push({ kind: 'heading', level: heading[1]!.length, text: heading[2]! });
     } else if (figure) {
       flush();
-      blocks.push({ kind: 'figure', caption: figure[1]!, path: figure[2]! });
+      const description = figureDescription(figure[3]);
+      blocks.push({ kind: 'figure', caption: figure[1]!, path: figure[2]!, ...(description ? { description } : {}) });
     } else if (bullet) {
       if (current?.kind !== 'list') flush();
       current ??= { kind: 'list', items: [] };

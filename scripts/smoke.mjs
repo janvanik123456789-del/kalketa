@@ -54,7 +54,10 @@ const fakeApi = createServer((request, response) => {
       // A formula read from a picture: the picture came, the formula goes back, a chain of equal forms as models write it.
       if (!body.stream && Array.isArray(body.messages?.[0]?.content) && body.messages[0].content.some((c) => c.type === 'image_url' && String(c.image_url?.url).startsWith('data:image/png;base64,'))) {
         response.writeHead(200, { 'content-type': 'application/json' });
-        response.end(JSON.stringify({ object: 'chat.completion', model: 'local-smoke-7b', choices: [{ index: 0, message: { role: 'assistant', content: 'M = F·a = a·F' }, finish_reason: 'stop' }] }));
+        // A figure is described, a formula read.
+        const figure = body.messages[0].content.some((c) => c.type === 'text' && String(c.text).includes('figure from an engineering textbook'));
+        const content = figure ? 'Průběh ohybového momentu prostého nosníku.' : 'M = F·a = a·F';
+        response.end(JSON.stringify({ object: 'chat.completion', model: 'local-smoke-7b', choices: [{ index: 0, message: { role: 'assistant', content }, finish_reason: 'stop' }] }));
         return;
       }
       if (!body.stream) {

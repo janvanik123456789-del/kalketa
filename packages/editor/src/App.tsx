@@ -14,7 +14,7 @@ import { emptyScene, readScene, writeScene, type CanvasScene } from '@kalketa/ca
 import { CanvasEditor } from '@kalketa/canvas/editor';
 import { addLayer, allDiagnostics, appendixLayers, blockAppendices, documentBlocks, isRemovable, LayerSessions, MAIN_LAYER, removeLayer, freezeRevision, removeRevision, revisionDocument, revisionState, shortHash, tablesByLayer, theorySections, updateLayer, withTheoryIds, conversationsOf, hasConversations, withConversation, withoutConversation, aiMemoryOf, withAiMemory, linkedLibraries, librarySections, entriesOf, newSheetsOf, withEntries, studyAdvice, studyNotes, LARGE_STUDY_PAGES, type StudySettings, aiMadeLines, type SheetEntry, evaluateDocument, type ChangeEntry, type Conversation, type AddableLayerKind, type Layer, type RevisionState, type SheetDocument } from '@kalketa/sheet';
 import { buildCommands, shortcutOf, type Command } from './commands.js';
-import { applyProposal, applyProposals, cleanFormula, cleanMemory, parseNewSheets, DEFAULT_AI_SETTINGS, parseAiSettings, parseProposals, providerById, replacedLines, type ChangeProposal, type AiSettings, type ChatTurn } from '@kalketa/ai';
+import { applyProposal, applyProposals, cleanFigureDescription, cleanFormula, cleanMemory, parseNewSheets, DEFAULT_AI_SETTINGS, parseAiSettings, parseProposals, providerById, replacedLines, type ChangeProposal, type AiSettings, type ChatTurn } from '@kalketa/ai';
 import { ChatPane } from './components/ChatPane.js';
 import { TheoryLibraryDialog } from './components/TheoryLibraryDialog.js';
 import { sourceText, useTheoryLibraries, withoutDuplicates, type FoundLibrary } from './theoryLibraries.js';
@@ -416,7 +416,11 @@ export function App() {
    * read images) and writes the formula in the calculation language; a note says the
    * AI wrote it, until the user reviews it and deletes the note.
    */
-  const readFormula = async (path: string): Promise<string | undefined> => {
+  /**
+   * A picture of the sheet read by the model (it must read images): a formula written in the
+   * calculation language, or a figure described for search. Passing failures are tried again.
+   */
+  const askAboutPicture = async (path: string, purpose: 'formula' | 'figure'): Promise<{ text: string; model: string } | undefined> => {
     if (!desktop) return undefined;
     if (!aiOn) {
       setNotice(t(ui, 'formula.aiOff'));
@@ -429,7 +433,16 @@ export function App() {
     for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
     const type = path.endsWith('.jpg') || path.endsWith('.jpeg') ? 'image/jpeg' : 'image/png';
     try {
-      const ask = { provider: provider.id, model: aiSettings.model, ...(aiSettings.url ? { url: aiSettings.url } : {}), ...(aiSettings.effort ? { effort: aiSettings.effort } : {}), image: { type, data: btoa(binary) } };
+      const ask = {
+        provider: provider.id,
+        model: aiSettings.model,
+        ...(aiSettings.url ? { url: aiSettings.url } : {}),
+        ...(aiSettings.effort ? { effort: aiSettings.effort } : {}),
+        purpose,
+        // The description is written in the language of the user, who searches with it.
+        language: language === 'cs' ? 'Czech' : 'English',
+        image: { type, data: btoa(binary) },
+      };
       // A busy or restarting server fails now and then: tried again after a pause, twice.
       let result = await desktop.aiFormula(ask);
       for (const pause of [3000, 10000]) {
@@ -442,12 +455,22 @@ export function App() {
         setNotice(t(ui, 'formula.failed', { problem: result.problem }));
         return undefined;
       }
-      const lines = cleanFormula(result.text);
-      return lines ? [`' ${t(ui, 'formula.byAi', { model: result.model })}`, ...lines].join('\n') : undefined;
+      return { text: result.text, model: result.model };
     } catch (error) {
       setNotice(t(ui, 'formula.failed', { problem: error instanceof Error ? error.message : String(error) }));
       return undefined;
     }
+  };
+  /** A formula block for a picture: a note says the AI wrote it, until the user reviews it. */
+  const readFormula = async (path: string): Promise<string | undefined> => {
+    const answer = await askAboutPicture(path, 'formula');
+    const lines = answer ? cleanFormula(answer.text) : undefined;
+    return lines ? [`' ${t(ui, 'formula.byAi', { model: answer!.model })}`, ...lines].join('\n') : undefined;
+  };
+  /** What a figure shows, for search: none for a picture of a formula. */
+  const describeFigure = async (path: string): Promise<string | undefined> => {
+    const answer = await askAboutPicture(path, 'figure');
+    return answer ? cleanFigureDescription(answer.text) : undefined;
   };
   // A cut-out from a study PDF being chosen: the sources wait for it.
   const [cropping, setCropping] = useState<(picture: IncomingPicture, caption: string, anchor: CutAnchor) => void>();
@@ -1636,7 +1659,7 @@ export function App() {
             : {})}
           {...(desktop && l.kind === 'sources' ? { onSaveLibrary: () => setLibraryLayer(l.id) } : {})}
           {...(desktop && l.kind === 'sources' && libraries.found.some((f) => f.study?.content.kind === 'pdf') ? { pickPdfCrop } : {})}
-          {...(desktop && l.kind === 'sources' ? { readFormula } : {})}
+          {...(desktop && l.kind === 'sources' ? { readFormula, describeFigure } : {})}
           onChange={(next, files) => setLayerText(l, next, `${l.id}:notes`, files)}
           onSettle={() => {
             // New headings get their theory ids once the user stops typing in them.

@@ -40,6 +40,8 @@ export interface PrintSettings {
   readonly appendices?: readonly PrintAppendix[];
   /** Left of the page footer: the revision and fingerprint (revisionFooter). */
   readonly footer?: string;
+  /** Right of the page head: the author and the date. */
+  readonly headRight?: string;
   /** Lines of the sheet (statement starts) the AI made and nobody reviewed yet. */
   readonly aiLines?: ReadonlySet<number>;
   /** How the calculation is set; "airy" when absent. */
@@ -108,6 +110,7 @@ export function printHtml(result: SheetResult, settings: PrintSettings): string 
     ...(settings.paper ? { paper: settings.paper } : {}),
     ...(settings.orientation ? { orientation: settings.orientation } : {}),
     ...(settings.footer ? { footer: settings.footer } : {}),
+    ...(settings.headRight ? { headRight: settings.headRight } : {}),
     ...(settings.aiLines && settings.aiLines.size > 0 ? { aiLines: settings.aiLines } : {}),
     ...(settings.style ? { style: settings.style } : {}),
   });

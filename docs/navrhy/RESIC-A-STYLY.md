@@ -102,7 +102,7 @@ Prošli jsme veřejné pokyny vysokých škol a profesních organizací:
 3. **Rozumné zaokrouhlení:** 2–3 platné číslice, „žádná zdánlivá přesnost“ (ETH, Rowan). Kalketa má dnes výchozí 4.
 4. **Odkazy na normy a zdroje** u vzorců, které nejsou běžné (ETH), a u převzatých veličin význam a zdroj (ETH). Všude seznam použitých norem a programů s verzí.
 5. **Kontrolovatelnost a přehlednost** jako hlavní měřítko (ČVUT, ČKAIT, Duisburg „prüfbar“).
-6. **Číslování stran** po oddílech, u vložených stran písmeno (ETH „1.3.2A“). **Hlavička** se jménem, datem a stranou x/y (Rowan, britské listy).
+6. **Číslování stran** po oddílech, u vložených stran písmeno (ETH „1.3.2A“). **Hlavička** se jménem, datem a stranou x/y (Rowan, britské listy). **Hlavička hotova 2026-10-10:** vlevo název, vpravo autor (Vlastnosti výpočtu) a datum poslední změny, dole strana x z y a otisk revize; v listu i v tisku a PDF. **Číslování po oddílech zbývá:** tisk dělá Chromium z plynulé stránky přes CSS `@page`, kde je jen průběžný čítač stran a název oddílu do záhlaví nejde přenést (bez `string-set`); jmenované stránky by zalomily stránku u každého oddílu. Šlo by jen tak, že tisk převezme stránkování listu z editoru (SheetView už stránkuje sám) a strany si očísluje Kalketa.
 7. **Výsledek posudku slovem:** VYHOVÍ / NEVYHOVÍ (ČVUT). **Hotovo:** posudky a souhrn píšou výsledek slovem; od 2026-10-10 tvar podle Vlastností výpočtu → Výsledek posudku: ✓ VYHOVUJE / ✗ NEVYHOVUJE (výchozí), ✓ VYHOVÍ / ✗ NEVYHOVÍ, nebo jen značka ✓ / ✗ (`layout.json`, `verdict`).
 8. **Rekapitulace zatížení v tabulce:** charakteristická hodnota, součinitel, návrhová hodnota (ČVUT, vzor BEK3).
 9. **Skici a schémata** u výpočtu (všude). **Pozice** (číslo prvku) jako osa členění (německá „Positionsstatik“).

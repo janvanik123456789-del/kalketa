@@ -72,6 +72,8 @@ interface Props {
   readonly zoom: number;
   /** Title in the page header. */
   readonly title: string;
+  /** Right of the page head: author and date. */
+  readonly headRight?: string;
   /** Left of the page footer: the revision and fingerprint, as printed. */
   readonly footer?: string;
   readonly uiCatalog: Catalog;
@@ -684,6 +686,7 @@ export function SheetView(props: Props) {
             }}
           >
             <div className="page-head">{props.title}</div>
+            {props.headRight && <div className="page-head-right">{props.headRight}</div>}
             <div className="page-body">
               {page.map((item) =>
                 item.kind === 'summary' ? (

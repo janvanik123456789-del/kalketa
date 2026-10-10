@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { defaultRegistry, formatPicture, parsePicture, rowLabel, toDecimalComma, type Diagnostic, type Statement } from '@kalketa/core';
-import { catalogFor, CATALOGS, formatDiagnostic, formatNumber, t, type Catalog } from '@kalketa/i18n';
+import { catalogFor, CATALOGS, formatDate, formatDiagnostic, formatNumber, t, type Catalog } from '@kalketa/i18n';
 import { buildPrintDocument, printHtml, revisionFooter, type PrintAppendix } from '@kalketa/render';
 import { emptyScene, readScene, writeScene, type CanvasScene } from '@kalketa/canvas';
 import { CanvasEditor } from '@kalketa/canvas/editor';
@@ -658,6 +658,8 @@ export function App() {
       clearTimeout(timer);
     };
   }, [doc]);
+  // Right of the page head: who made the calculation and when it was last changed.
+  const headRight = [doc.manifest.author?.trim(), formatDate(Math.floor(Date.parse(doc.manifest.modified) / 86_400_000), printCatalog)].filter(Boolean).join(' · ');
   const footer = revState
     ? revisionFooter(printCatalog, {
         hash: shortHash(revState.hash),
@@ -694,6 +696,7 @@ export function App() {
       ...(doc.manifest.author ? { subtitle: doc.manifest.author } : {}),
       appendices: [...appendixLayers(doc.layers, evaluation, (l) => layerName(l, printCatalog)).map(withAiProtocol), ...blockAppendices(evaluation.main)],
       ...(footer ? { footer } : {}),
+      headRight,
       aiLines: unreviewedAiLines(),
       style: doc.layout.style ?? 'airy',
       ...(doc.layout.summary ? { summary: doc.layout.summary } : {}),
@@ -1724,6 +1727,7 @@ export function App() {
           geometry={geometry}
           zoom={zoom}
           title={l.kind === 'calc' ? nameOf(l) : (/^[ \t]*#(?!#)[ \t]*(.+?)[ \t]*$/m.exec(doc.source)?.[1] ?? doc.manifest.title)}
+          headRight={headRight}
           uiCatalog={printCatalog}
           decimalComma={decimalComma}
           calcStyle={doc.layout.style ?? 'airy'}

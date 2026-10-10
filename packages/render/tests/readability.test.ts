@@ -183,3 +183,13 @@ describe('the result of a check', () => {
     expect(html('sign')).not.toMatch(/VYHOV/);
   });
 });
+
+describe('the head of a page', () => {
+  it('has the title on the left and the author with the date on the right', async () => {
+    const { printHtml } = await import('../src/index.js');
+    const html = printHtml(evaluateSheet('a := 1'), { catalog: catalogFor('cs'), registry: defaultRegistry, title: 'Nosník', headRight: 'Jan Novák · 10. 10. 2026' });
+    expect(html).toContain('@top-left { content: "Nosník";');
+    expect(html).toContain('@top-right { content: "Jan Novák · 10. 10. 2026";');
+    expect(html).toContain('counter(page)');
+  });
+});

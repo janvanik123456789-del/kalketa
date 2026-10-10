@@ -20,6 +20,8 @@ export interface HtmlOptions {
   readonly appendices?: readonly string[];
   /** Left of the page footer: the revision and fingerprint (see revisionFooter). */
   readonly footer?: string;
+  /** Right of the page head: the author and the date. */
+  readonly headRight?: string;
   /** Lines (statement starts) the AI made and nobody reviewed: marked in the margin, with a notice at the top. */
   readonly aiLines?: ReadonlySet<number>;
   /** How the calculation is set: "compact" (school) or "airy" (a step per line). */
@@ -362,7 +364,8 @@ function stylesheet(doc: PrintDocument, options: HtmlOptions): string {
   return `@page {
   size: ${page};
   margin: 18mm 16mm 18mm 20mm;
-  @top-left { content: ${cssString(doc.title)}; font: 8pt sans-serif; color: #555; }
+  @top-left { content: ${cssString(doc.title)}; font: 8pt sans-serif; color: #555; }${options.headRight ? `
+  @top-right { content: ${cssString(options.headRight)}; font: 8pt sans-serif; color: #555; }` : ''}
   @bottom-right { content: ${pageLabel} counter(page) ${of} counter(pages); font: 8pt sans-serif; color: #555; }${options.footer ? `
   @bottom-left { content: ${cssString(options.footer)}; font: 8pt sans-serif; color: #555; }` : ''}
 }

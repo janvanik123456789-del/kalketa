@@ -344,7 +344,12 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
         const chain = s.kind === 'definition' ? s.derivation : undefined;
         const lines = chain
           ? [
-              ...chain.map((m, i): EquationLine => (i === 0 && lhs ? { role: 'formula', lhs, rhs: formulaNode(m, formulaOptions()) } : { role: 'formula', rhs: formulaNode(m, formulaOptions()) })),
+              // A member equal when rounded is set after ≐, as the book writes it.
+              ...chain.map((m, i): EquationLine =>
+                i === 0 && lhs
+                  ? { role: 'formula', lhs, rhs: formulaNode(m, formulaOptions()) }
+                  : { role: 'formula', rhs: formulaNode(m, formulaOptions()), ...(s.kind === 'definition' && s.approx?.includes(i - 1) ? { op: '≐' } : {}) },
+              ),
               // A function has no values for its parameters: its derivation ends in its formula.
               ...(isGiven(s.expr) || params ? [] : equationLines(r, s.expr, undefined, mode, formulaOptions, substitute, numberFormat(spec)).filter((l, i) => !(i === 0 && l.role === 'formula'))),
             ]
@@ -371,7 +376,8 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
       case 'derive': {
         // A derivation of theory: a = b = c, every step checked.
         const [first, ...rest] = s.members.map((m) => formulaNode(m, formulaOptions()));
-        const lines: EquationLine[] = rest.map((rhs, i) => (i === 0 ? { role: 'formula', lhs: first!, op: '=', rhs } : { role: 'formula', rhs }));
+        const op = (i: number) => (s.approx?.includes(i) ? '≐' : '=');
+        const lines: EquationLine[] = rest.map((rhs, i) => (i === 0 ? { role: 'formula', lhs: first!, op: op(0), rhs } : { role: 'formula', rhs, op: op(i) }));
         const derived = !!r.derivation && r.derivation.every((step) => step.ok);
         blocks.push({ kind: 'equation', line: s.span.line, lines, ...(s.comment ? { comment: s.comment } : {}), ...(derived ? { derived } : {}), messages });
         break;

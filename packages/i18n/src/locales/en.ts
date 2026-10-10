@@ -369,6 +369,7 @@ export const en: Catalog = {
     'cmd.symbol': 'Insert {symbol}',
     'cmd.define': 'Definition ≔ (:=)',
     'cmd.vector': 'Vector: an arrow over the letter before the cursor (p⃗_1)',
+    'cmd.rounded': 'Equal when rounded ≐ (a step of a derivation to a rounded result)',
     'cmd.power': 'General power xⁿ (^)',
     'cmd.fn.root': 'n-th root root(x, n)',
     'rev.title': 'Revisions of the calculation',

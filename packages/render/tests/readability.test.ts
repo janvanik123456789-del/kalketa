@@ -193,3 +193,13 @@ describe('the head of a page', () => {
     expect(html).toContain('counter(page)');
   });
 });
+
+describe('a rounded result', () => {
+  it('is set after ≐ in the sheet and in the sources', async () => {
+    const { kalkLines } = await import('../src/index.js');
+    const lines = buildPrintDocument(evaluateSheet('S := 23.53 mm²\nd := sqrt(4·S/π) ≐ 5.5 mm'), { catalog: catalogFor('cs'), registry: defaultRegistry, digits: 4, title: 'R' })
+      .blocks.flatMap((b) => (b.kind === 'equation' ? b.lines : []));
+    expect(lines.some((l) => l.op === '≐')).toBe(true);
+    expect(kalkLines(['derive d := √(4·S_min/π) == 5.47 ≐ 5.5 mm'])[0]!.html).toContain('<mo>≐</mo>');
+  });
+});

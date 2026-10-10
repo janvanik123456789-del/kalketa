@@ -271,6 +271,7 @@ export const UI_KEYS = [
   'cmd.symbol',
   'cmd.define',
   'cmd.vector',
+  'cmd.rounded',
   'cmd.power',
   'cmd.fn.root',
   'rev.title',

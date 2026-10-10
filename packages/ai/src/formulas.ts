@@ -168,14 +168,19 @@ function toKalkLines(line: string, numbered: (printed: string) => void): string[
   );
   if (text === '' || /≤|≥|<|>|≠/.test(text)) return text ? [text] : [];
   // "y := a == b == c" (the model mixed both) is read as the chain "y = a = b = c".
-  const parts = text.split(/\s*(?::=|==|=)\s*/);
+  // The members and what joins them: = (or := and ==), or ≐ (≈) where the book rounds.
+  const pieces = text.split(/\s*(:=|==|≐|≈|=)\s*/);
+  const parts = pieces.filter((_, i) => i % 2 === 0);
+  const joins = pieces.filter((_, i) => i % 2 === 1).map((j) => (j === '≐' || j === '≈' ? '≐' : '=='));
   if (parts.length < 2 || parts.some((p) => p === '')) return [text];
   const [left, ...rest] = parts;
   // A name, or a function with its parameters ("M_o(x)"), is defined; anything else is compared.
   const defined = /^[\p{L}][\p{L}\p{N}_]*(\([\p{L}\p{N}_,\s]*\))?$/u.test(left!);
-  if (rest.length === 1 && !derived) return [defined ? `${left} := ${rest[0]}` : `${left} == ${rest[0]}`];
-  // A chain (or what came as derive): one derivation of theory, its names symbols without values.
-  return [defined ? `derive ${left} := ${rest.join(' == ')}` : `derive ${left} == ${rest.join(' == ')}`];
+  const rounded = joins.includes('≐');
+  if (rest.length === 1 && !derived && !rounded) return [defined ? `${left} := ${rest[0]}` : `${left} == ${rest[0]}`];
+  // A chain (or what came as derive, or a rounded result): one derivation of theory, its names symbols without values.
+  const chain = rest.map((member, i) => (i === 0 ? member : `${joins[i]} ${member}`)).join(' ');
+  return [defined && joins[0] !== '≐' ? `derive ${left} := ${chain}` : `derive ${left} ${joins[0]} ${chain}`];
 }
 
 /** The lines of the model's answer in the calculation language; undefined when it found no formula. */

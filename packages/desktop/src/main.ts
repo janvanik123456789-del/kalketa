@@ -1015,6 +1015,11 @@ async function layersWithRealInput(picture: string) {
     await pressKey('Enter');
     await typeText(line);
   }
+  // A rounded result: ≐ from the Operators toolbar (a key cannot type it).
+  await pressKey('Enter');
+  await typeText('d_r := sqrt(4·S_n/π) ');
+  await clickOn('.tool-button[title^="Rovná se po zaokrouhlení"]');
+  await typeText(' 5,5 mm');
   // A table of measured points in the sheet (its rows by Shift+Enter), a line fitted through them, used.
   await pressKey('Enter');
   await typeText('table P_s:');
@@ -1043,7 +1048,9 @@ async function layersWithRealInput(picture: string) {
     const inequality = rows.some((r) => r.includes('⇒') && r.includes('≥') && r.endsWith('=5,474mm'));
     // The table typed in the sheet shows as a table; the line fitted through it gives y(3 s) = 7 m.
     const measured = !!document.querySelector('.layer-view.active .page table.data-table') && rows.some((r) => r.includes('R2') && r.includes('=1')) && rows.some((r) => r.includes('y3≔') && r.endsWith('=7m'));
-    return measured && inequality && rows.some((r) => r.includes('roots') && r.endsWith('=[2;3]')) && rows.some((r) => r.includes('argmax') && r.endsWith('=2'));
+    // A rounded result of a derivation: set after ≐, the step holds.
+    const rounded = [...document.querySelectorAll('.layer-view.active .page .row')].some((r) => r.textContent.replace(/\\s+/g, '').includes('≐5,5mm') && !r.classList.contains('has-error'));
+    return rounded && measured && inequality && rows.some((r) => r.includes('roots') && r.endsWith('=[2;3]')) && rows.some((r) => r.includes('argmax') && r.endsWith('=2'));
   })()`)) as boolean;
   // A click on the table in the sheet opens it as a grid; Enter in its last row adds one; Esc closes it.
   await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .page .row')].find((r) => r.querySelector('table.data-table')).id = 'smoke-table-row'`);

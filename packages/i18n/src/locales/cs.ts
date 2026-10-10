@@ -369,6 +369,7 @@ export const cs: Catalog = {
     'cmd.symbol': 'Vložit {symbol}',
     'cmd.define': 'Definice ≔ (:=)',
     'cmd.vector': 'Vektor: šipka nad písmenem před kurzorem (p⃗_1)',
+    'cmd.rounded': 'Rovná se po zaokrouhlení ≐ (krok odvození k zaokrouhlenému výsledku)',
     'cmd.power': 'Obecná mocnina xⁿ (^)',
     'cmd.fn.root': 'n-tá odmocnina root(x; n)',
     'rev.title': 'Revize výpočtu',

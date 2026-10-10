@@ -392,7 +392,8 @@ export class SheetSession {
     // is still calculated, so the rest of the sheet does not fall apart.
     const members = statement.kind === 'derive' ? statement.members : statement.kind === 'definition' ? statement.derivation : undefined;
     const params = statement.kind === 'definition' ? statement.params?.map((p) => p.name) : undefined;
-    const derived = members ? checkDerivation(members, ctx, evaluate, (name) => context.formulas.get(name), params) : undefined;
+    const approx = statement.kind === 'definition' || statement.kind === 'derive' ? statement.approx : undefined;
+    const derived = members ? checkDerivation(members, ctx, evaluate, (name) => context.formulas.get(name), params, approx) : undefined;
     if (statement.kind === 'derive') {
       return { status: 'ok', derivation: derived!.steps, dependencies, tableReads, diagnostics: [...ctx.warnings, ...derived!.diagnostics] };
     }

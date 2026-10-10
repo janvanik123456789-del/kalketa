@@ -36,6 +36,8 @@ export interface DerivationStep {
 
 /** Points at which the members are compared. */
 const SAMPLES = 5;
+/** A step equal when rounded (≐, 5,473 ≐ 5,5): as far apart as a result rounded to two digits. */
+const ROUNDED = 0.01;
 /** Relative difference still taken as equal (rounding of different but equal forms). */
 const TOLERANCE = 1e-9;
 /** Name of an opaque part in the rewritten members. */
@@ -58,6 +60,7 @@ export function checkDerivation(
   evaluate: Evaluate,
   formulaOf: (name: string) => Expr | undefined = () => undefined,
   params: readonly string[] = [],
+  approx: readonly number[] = [],
 ): { steps: DerivationStep[]; diagnostics: Diagnostic[] } {
   const atoms: Expr[] = [];
   const keys = new Map<string, number>();
@@ -127,7 +130,7 @@ export function checkDerivation(
         diagnostics.push(diagnostic('E-DERIVE-UNITS', span, { step: i + 1, left: baseUnitSymbol(a.dim), right: baseUnitSymbol(b.dim) }));
         break;
       }
-      if (!equal(a, b)) {
+      if (!equal(a, b, approx.includes(i) ? ROUNDED : TOLERANCE)) {
         problem = 'differs';
         diagnostics.push(diagnostic('E-DERIVE-STEP', span, { step: i + 1 }));
         break;
@@ -313,9 +316,9 @@ function randomFactor(name: string, point: number): number {
   return 0.6 + 1.3 * unit;
 }
 
-function equal(a: Quantity, b: Quantity): boolean {
+function equal(a: Quantity, b: Quantity, tolerance = TOLERANCE): boolean {
   const size = Math.max(Math.hypot(a.si, a.im ?? 0), Math.hypot(b.si, b.im ?? 0));
-  return Math.hypot(a.si - b.si, (a.im ?? 0) - (b.im ?? 0)) <= TOLERANCE * size;
+  return Math.hypot(a.si - b.si, (a.im ?? 0) - (b.im ?? 0)) <= tolerance * size;
 }
 
 function between(a: Span, b: Span): Span {

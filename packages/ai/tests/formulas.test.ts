@@ -68,6 +68,9 @@ describe('formulas as the book prints them', () => {
     expect(cleanFormula('y = M/(E·I) = F·l^3/(3·E·I) (12a)')).toEqual(['derive y := M/(E·I) == F·l^3/(3·E·I) {eq=12a}']);
     // Decimal commas as the book prints them.
     expect(cleanFormula('τ_Dov,s = τ_Ks·K_I/n = 0,6·170·1/1,5 = 68 MPa,')).toEqual(['derive τ_Dov_s := τ_Ks·K_I/n == 0.6·170·1/1.5 == 68 MPa']);
+    // A rounded result keeps its sign.
+    expect(cleanFormula('d = √(4·S_min/π) = 5,47 ≐ 5,5 mm')).toEqual(['derive d := √(4·S_min/π) == 5.47 ≐ 5.5 mm']);
+    expect(cleanFormula('d ≈ 5,5 mm')).toEqual(['derive d ≐ 5.5 mm']);
     // Commas of arguments stay.
     expect(cleanFormula('M = max(M_a, M_b)')).toEqual(['M := max(M_a, M_b)']);
   });

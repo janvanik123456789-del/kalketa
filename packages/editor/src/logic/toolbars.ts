@@ -49,15 +49,17 @@ const ADDED_ITEMS: readonly { readonly since: number; readonly toolbar: string; 
   { since: 5, toolbar: 'operators', after: '', ids: ['sym::='] },
   // A vector arrow over the letter before the cursor (p⃗_1), next to the index.
   { since: 6, toolbar: 'operators', after: 'sym:_', ids: ['sym:⃗'] },
+  // Equal when rounded, for a rounded result of a derivation (5,47 ≐ 5,5 mm).
+  { since: 7, toolbar: 'operators', after: 'sym:≠', ids: ['sym:≐'] },
 ];
-export const ITEMS_VERSION = 6;
+export const ITEMS_VERSION = 7;
 
 export const SEPARATOR = '|';
 
 const dock = (d: Dock, band: number, order: number): ToolbarPlace => ({ kind: 'dock', dock: d, band, order });
 
 export const GREEK_SYMBOLS = ['α', 'β', 'γ', 'δ', 'ε', 'η', 'θ', 'λ', 'μ', 'ν', 'π', 'ρ', 'σ', 'τ', 'φ', 'ψ', 'ω', 'Δ', 'Σ', 'Φ', 'Ω'];
-export const OPERATOR_SYMBOLS = [':=', '·', '÷', '≤', '≥', '≠', '√', '∛', '²', '³', '^', '⁻¹', '°', 'Δ°C', '_', '⃗', '|'];
+export const OPERATOR_SYMBOLS = [':=', '·', '÷', '≤', '≥', '≠', '≐', '√', '∛', '²', '³', '^', '⁻¹', '°', 'Δ°C', '_', '⃗', '|'];
 /** Symbols shown otherwise than inserted: ^ is a general power. */
 export const SYMBOL_GLYPHS: Readonly<Record<string, string>> = { '^': 'xⁿ', ':=': '≔', '⃗': 'a⃗' };
 

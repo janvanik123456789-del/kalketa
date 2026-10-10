@@ -129,6 +129,8 @@ export type Statement =
        * the last one is also `expr`; each step is checked to hold.
        */
       readonly derivation?: readonly Expr[];
+      /** Steps of the derivation equal when rounded (≐): step i joins members i and i + 1. */
+      readonly approx?: readonly number[];
       /** After derive: a symbol of theory; names without a value are no error. */
       readonly symbolic?: boolean;
     })
@@ -140,7 +142,7 @@ export type Statement =
    */
   | (StatementBase & { readonly kind: 'table'; readonly name: string; readonly nameSpan: Span; readonly columns: readonly SheetColumn[]; readonly rows: readonly (readonly string[])[] })
   /** A derivation on its own (theory): derive a == b == c; every step is checked to hold. */
-  | (StatementBase & { readonly kind: 'derive'; readonly members: readonly Expr[] })
+  | (StatementBase & { readonly kind: 'derive'; readonly members: readonly Expr[]; readonly approx?: readonly number[] })
   | (StatementBase & { readonly kind: 'display'; readonly expr: Expr; readonly target?: UnitExpr })
   | (StatementBase & {
       readonly kind: 'check';

@@ -14,7 +14,7 @@ export type TokenType =
   | 'heading' | 'comment' | 'directive' | 'picture' | 'attributes'
   | '+' | '-' | '*' | '/' | '^' | '√' | '∛'
   | '(' | ')' | '[' | ']' | ',' | '.' | '..' | ':' | '|'
-  | ':=' | '=' | '==' | '!=' | '<' | '<=' | '>' | '>='
+  | ':=' | '=' | '==' | '≐' | '!=' | '<' | '<=' | '>' | '>='
   | 'newline' | 'eof';
 
 export interface Token {
@@ -42,6 +42,8 @@ const SUPERSCRIPTS: Readonly<Record<string, string>> = {
 const OPERATORS: readonly (readonly [string, TokenType])[] = [
   [':=', ':='], ['==', '=='], ['!=', '!='], ['<=', '<='], ['>=', '>='],
   ['≠', '!='], ['≤', '<='], ['≥', '>='],
+  // Equal when rounded, as Czech books write a rounded result (≐), and its other spelling (≈).
+  ['≐', '≐'], ['≈', '≐'],
   ['+', '+'], ['-', '-'], ['−', '-'], ['*', '*'], ['·', '*'], ['⋅', '*'], ['×', '*'],
   ['/', '/'], ['÷', '/'], ['^', '^'], ['√', '√'], ['∛', '∛'],
   ['(', '('], [')', ')'], ['[', '['], [']', ']'], [',', ','], ['..', '..'], ['…', '..'], ['.', '.'],

@@ -330,7 +330,7 @@ class LineParser {
     for (const token of this.tokens.slice(from)) {
       if (token.type === '(' || token.type === '[') depth++;
       else if (token.type === ')' || token.type === ']') depth--;
-      else if (token.type === '==' && depth === 0) members++;
+      else if ((token.type === '==' || token.type === '≐') && depth === 0) members++;
     }
     return members;
   }
@@ -349,8 +349,9 @@ class LineParser {
     if (defineAt !== -1) return this.parseDerivedDefinition(lineSpan, true);
     this.freeNames = true;
     const members = this.parseChain();
+    const approx = this.approx;
     this.expectEnd();
-    return { kind: 'derive', members, span: lineSpan };
+    return { kind: 'derive', members, ...(approx.length > 0 ? { approx } : {}), span: lineSpan };
   }
 
   /**
@@ -371,8 +372,10 @@ class LineParser {
     added.forEach((name) => this.defined.add(name));
     let members: Expr[];
     let target: UnitExpr | undefined;
+    let approx: number[] = [];
     try {
       members = this.parseChain(symbolic ? 1 : 2);
+      approx = this.approx;
       target = this.parseTarget();
     } finally {
       added.forEach((name) => this.defined.delete(name));
@@ -385,6 +388,7 @@ class LineParser {
       nameSpan: nameToken.span,
       expr: members.at(-1)!,
       ...(members.length > 1 ? { derivation: members } : {}),
+      ...(approx.length > 0 ? { approx } : {}),
       ...(symbolic ? { symbolic } : {}),
       ...(target ? { target } : {}),
       ...(params ? { params } : {}),
@@ -392,10 +396,15 @@ class LineParser {
     };
   }
 
-  /** a == b == c (also with "="): at least `least` members. */
+  /** Steps of the chain last read that are equal when rounded (≐): step i joins members i and i + 1. */
+  private approx: number[] = [];
+
+  /** a == b == c (also with "="), a step also ≐ (equal when rounded): at least `least` members. */
   private parseChain(least = 2): Expr[] {
     const members = [this.parseAdditive()];
-    while (this.peek().type === '==' || this.peek().type === '=') {
+    this.approx = [];
+    while (this.peek().type === '==' || this.peek().type === '=' || this.peek().type === '≐') {
+      if (this.peek().type === '≐') this.approx.push(members.length - 1);
       this.next();
       members.push(this.parseAdditive());
     }

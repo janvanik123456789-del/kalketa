@@ -226,7 +226,9 @@ export function kalkFormula(line: string, catalog?: Catalog): { readonly html: s
 function kalkStatement(s: Statement, line: string, catalog?: Catalog): { readonly html: string; readonly ok: boolean } {
   const bad = { html: `<code class="kalk-bad">${esc(line)}</code>`, ok: false };
   const options = kalkOptions(catalog);
-  const chain = (members: readonly MathNode[]) => members.flatMap((m, i) => (i > 0 ? [mo('='), m] : [m]));
+  // Between the members = or, where the step is equal when rounded, ≐.
+  const approx = s.kind === 'definition' || s.kind === 'derive' ? (s.approx ?? []) : [];
+  const chain = (members: readonly MathNode[]) => members.flatMap((m, i) => (i > 0 ? [mo(approx.includes(i - 1) ? '≐' : '='), m] : [m]));
   let node: MathNode | undefined;
   if (s.kind === 'definition') {
     const name = s.params && s.params.length > 0 ? row(nameNode(s.name), paren(row(...s.params.flatMap((p, i) => (i > 0 ? [mo(','), nameNode(p.name)] : [nameNode(p.name)]))))) : nameNode(s.name);

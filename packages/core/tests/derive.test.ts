@@ -97,3 +97,19 @@ describe('derivations', () => {
     expect(evaluateSheet('h := 2 m\nI := integral(y^2, y: 0 m .. h)').values.get('I')).toMatchObject({ si: expect.closeTo(8 / 3, 9) });
   });
 });
+
+describe('a step equal when rounded (≐)', () => {
+  it('holds as far as a rounded result is from the exact one, and no further', () => {
+    const r = (source: string) => evaluateSheet(source).statements.at(-1)!;
+    const sheet = 'S := 23.53 mm²\n';
+    const d = r(`${sheet}d := sqrt(4·S/π) ≐ 5.5 mm`);
+    expect(d.derivation).toEqual([{ ok: true }]);
+    expect(d.display).toMatchObject({ value: 5.5, unit: 'mm' });
+    // Two digits off is no rounding.
+    expect(r(`${sheet}d := sqrt(4·S/π) ≐ 5.8 mm`).derivation).toEqual([{ ok: false, problem: 'differs' }]);
+    // An equal sign is still exact; ≈ is the same as ≐.
+    expect(r(`${sheet}d := sqrt(4·S/π) == 5.5 mm`).derivation).toEqual([{ ok: false, problem: 'differs' }]);
+    expect(r(`${sheet}d := sqrt(4·S/π) ≈ 5.5 mm`).derivation).toEqual([{ ok: true }]);
+    expect(r('derive a := b·(c + d) == b·c + b·d ≐ b·c + b·d').derivation).toEqual([{ ok: true }, { ok: true }]);
+  });
+});

@@ -14,6 +14,7 @@ export function formulaPrompt(): string {
   return [
     'The image is a formula cut out of an engineering textbook. Write it in the Kalketa calculation language and nothing else: no code block, no LaTeX, no explanation.',
     '- One line per formula. A definition as `name := expression`; an equality that is not a definition as `left == right`.',
+    '- A chain of equal forms (a derivation, y = a = b = c) stays one line: `derive y := a == b == c`, or `derive a == b == c` when it starts with no name. Do not split it.',
     '- Operators + - · / ^ and parentheses; subscripts with an underscore (M_max, R_A); Greek letters as they are (σ, π); functions as sqrt(x), sin(x).',
     '- Leave out the number of the formula, like (51), and any words around it.',
     '- If the image holds no formula, answer: none',
@@ -75,12 +76,15 @@ export function latexToKalk(latex: string): string {
 
 /**
  * One line as the calculation language has it: LaTeX converted, the end of a
- * sentence and a formula number left out, "y = expression" made a definition and
- * further equalities of a chain comparisons: "M = R_A·a = R_B·b" →
- * "M := R_A·a" and "R_A·a == R_B·b".
+ * sentence and a formula number left out, "y = expression" made a definition, a
+ * chain of equalities kept as one derivation of theory, checked step by step:
+ * "M = R_A·a = R_B·b" → "derive M := R_A·a == R_B·b".
  */
 export function toKalk(line: string): string[] {
   let text = line.replace(/^\s*(\$\$?|\\\[|\\\()\s*|\s*(\$\$?|\\\]|\\\))\s*$/g, '').trim();
+  // Written as asked already: "derive y := a == b == c".
+  const derived = /^derive\s+/.exec(text);
+  if (derived) text = text.slice(derived[0].length);
   if (/\\[A-Za-z]|[{}]/.test(text)) text = latexToKalk(text);
   text = text
     .replace(/\s*\(\d{1,3}\)\s*$/, '')
@@ -94,9 +98,9 @@ export function toKalk(line: string): string[] {
   const [left, ...rest] = parts;
   // A name, or a function with its parameters ("M_o(x)"), is defined; anything else is compared.
   const defined = /^[\p{L}][\p{L}\p{N}_]*(\([\p{L}\p{N}_,\s]*\))?$/u.test(left!);
-  const lines = [defined ? `${left} := ${rest[0]}` : `${left} == ${rest[0]}`];
-  for (let i = 1; i < rest.length; i++) lines.push(`${rest[i - 1]} == ${rest[i]}`);
-  return lines;
+  if (rest.length === 1 && !derived) return [defined ? `${left} := ${rest[0]}` : `${left} == ${rest[0]}`];
+  // A chain (or what came as derive): one derivation of theory, its names symbols without values.
+  return [defined ? `derive ${left} := ${rest.join(' == ')}` : `derive ${left} == ${rest.join(' == ')}`];
 }
 
 /** The lines of the model's answer in the calculation language; undefined when it found no formula. */

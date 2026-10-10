@@ -429,7 +429,15 @@ export function App() {
     for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
     const type = path.endsWith('.jpg') || path.endsWith('.jpeg') ? 'image/jpeg' : 'image/png';
     try {
-      const result = await desktop.aiFormula({ provider: provider.id, model: aiSettings.model, ...(aiSettings.url ? { url: aiSettings.url } : {}), image: { type, data: btoa(binary) } });
+      const ask = { provider: provider.id, model: aiSettings.model, ...(aiSettings.url ? { url: aiSettings.url } : {}), ...(aiSettings.effort ? { effort: aiSettings.effort } : {}), image: { type, data: btoa(binary) } };
+      // A busy or restarting server fails now and then: tried again after a pause, twice.
+      let result = await desktop.aiFormula(ask);
+      for (const pause of [3000, 10000]) {
+        const passing = !result.ok && (result.problem === 'notRunning' || result.problem === 'empty' || (result.problem === 'provider' && /^5\d\d/.test(result.detail ?? '')));
+        if (!passing) break;
+        await new Promise((resolve) => setTimeout(resolve, pause));
+        result = await desktop.aiFormula(ask);
+      }
       if (!result.ok) {
         setNotice(t(ui, 'formula.failed', { problem: result.problem }));
         return undefined;

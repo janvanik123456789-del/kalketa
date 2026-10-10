@@ -18,13 +18,18 @@ describe('formulas read from pictures', () => {
   it('come into the calculation language from LaTeX or a plain equation', () => {
     // As the user's local model wrote the cut-out "y = 5·Q·l³ / (384·E·I)".
     expect(cleanFormula('$$y = \\frac{5 \\cdot Q \\cdot l^{3}}{384 \\cdot E \\cdot I}$$')).toEqual(['y := (5·Q·l^3)/(384·E·I)']);
-    expect(cleanFormula('M_omax = R_A · a = R_B · b.')).toEqual(['M_omax := R_A·a', 'R_A·a == R_B·b']);
+    // A chain stays one derivation, checked step by step.
+    expect(cleanFormula('M_omax = R_A · a = R_B · b.')).toEqual(['derive M_omax := R_A·a == R_B·b']);
+    expect(formulaPrompt()).toContain('derive y := a == b == c');
     expect(cleanFormula('\\sigma_{max} = \\frac{M}{W_{y}} \\leq f_{y}')).toEqual(['σ_max = (M)/(W_y) ≤ f_y']);
     expect(cleanFormula('w = \\sqrt{\\frac{a}{b}} (12)')).toEqual(['w := sqrt((a)/(b))']);
     expect(cleanFormula('w := L/250')).toEqual(['w := L/250']);
     // As the user's local model wrote two cut-outs of the textbook.
     expect(cleanFormula('M_o(x) == F·x')).toEqual(['M_o(x) := F·x']);
-    expect(cleanFormula('y := M_mp/(E·I) == (l^3·F)/(3·E·I) == F·l^3/(3·E·I)')).toEqual(['y := M_mp/(E·I)', 'M_mp/(E·I) == (l^3·F)/(3·E·I)', '(l^3·F)/(3·E·I) == F·l^3/(3·E·I)']);
+    expect(cleanFormula('y := M_mp/(E·I) == (l^3·F)/(3·E·I) == F·l^3/(3·E·I)')).toEqual(['derive y := M_mp/(E·I) == (l^3·F)/(3·E·I) == F·l^3/(3·E·I)']);
+    expect(cleanFormula('derive y := a/b == a·b^-1')).toEqual(['derive y := a/b == a·b^-1']);
+    expect(cleanFormula('derive w := L/250')).toEqual(['derive w := L/250']);
+    expect(cleanFormula('a·b = c = d')).toEqual(['derive a·b == c == d']);
   });
 
   it('go to a local server with the picture, answered at once', async () => {

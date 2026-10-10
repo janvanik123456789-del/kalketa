@@ -34,3 +34,20 @@ describe('notes Markdown, as models write it', () => {
     expect(notesHtml('## Klopení {#T3}')).toBe('<h3>Klopení <span class="tid">T3</span></h3>');
   });
 });
+
+describe('formulas of the sources checked as derivations', () => {
+  it('typeset the whole chain, check its steps with the symbols the block introduces, and mark a wrong one', async () => {
+    const { kalkLines } = await import('../src/index.js');
+    const { catalogFor } = await import('@kalketa/i18n');
+    const lines = kalkLines(
+      ["' AI z obrázku", 'derive M_mp := l^3·F/3', 'derive y := M_mp/(E·I) == (l^3·F)/(3·E·I) == F·l^3/(3·E·I)', 'derive w := q·L^4/(8·E·I) == q·L^3/(8·E·I)'],
+      catalogFor('cs'),
+    );
+    expect(lines[0]).toMatchObject({ note: 'AI z obrázku' });
+    expect(lines[1]!.check).toBeUndefined();
+    expect(lines[2]!.check).toEqual({ ok: true, text: '✓ odvození ověřeno' });
+    expect(lines[2]!.html.match(/<mo>=<\/mo>/g)).toHaveLength(3);
+    expect(lines[3]!.check?.ok).toBe(false);
+    expect(lines[3]!.check?.text).toContain('krok 1 nesouhlasí');
+  });
+});

@@ -206,6 +206,8 @@ export interface ImageRequest {
   readonly prompt: string;
   /** The picture: its type ("image/png") and its bytes as base64. */
   readonly image: { readonly type: string; readonly data: string };
+  /** How long a local model may think; 'none' answers at once (as in a conversation). */
+  readonly effort?: AiEffort;
   readonly signal?: AbortSignal;
 }
 
@@ -222,7 +224,10 @@ export async function askAboutImage(request: ImageRequest, transport: Transport 
         body: JSON.stringify({
           model: request.model,
           stream: false,
-          max_tokens: 4096,
+          // A thinking model spends most of the room on thinking: 4096 tokens were too few for a page of a textbook.
+          max_tokens: 16384,
+          ...(request.effort ? { reasoning_effort: request.effort } : {}),
+          ...(request.effort === 'none' ? { chat_template_kwargs: { enable_thinking: false } } : {}),
           messages: [{ role: 'user', content: [{ type: 'text', text: request.prompt }, { type: 'image_url', image_url: { url: `data:${request.image.type};base64,${request.image.data}` } }] }],
         }),
         ...(request.signal ? { signal: request.signal } : {}),

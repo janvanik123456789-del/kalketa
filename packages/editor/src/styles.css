@@ -608,6 +608,9 @@ button.icon:hover { color: var(--accent); }
 .word-code.kalk-block pre { margin-bottom: 0; border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
 .kalk-preview { border: 1px solid #d5dae1; border-top: none; padding: 4px 10px; background: #fff; }
 .kalk-preview .kalk-formula { margin: 2px 0; }
+.kalk-preview .kalk-check { display: block; font-size: 0.85em; }
+.kalk-preview .kalk-check.ok { color: #2e7d32; }
+.kalk-preview .kalk-check.bad { color: #a15c00; }
 .kalk-preview code.kalk-bad { color: #a12828; }
 .kalk-preview .kalk-note { color: #5a3fa6; font-size: 12px; }
 

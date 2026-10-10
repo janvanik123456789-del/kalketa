@@ -214,7 +214,7 @@ export function registerAiBridge(fromEditor: (event: IpcMainInvokeEvent) => unkn
   ipcMain.handle('kalketa:ai-memory', (event, ask: ChatAsk) => run(event, ask, true));
 
   // A formula read from a picture: the picture and the instruction, one answer.
-  ipcMain.handle('kalketa:ai-formula', async (event, ask: { provider: unknown; model: unknown; url?: unknown; image: { type: unknown; data: unknown } }): Promise<ChatResult> => {
+  ipcMain.handle('kalketa:ai-formula', async (event, ask: { provider: unknown; model: unknown; url?: unknown; effort?: unknown; image: { type: unknown; data: unknown } }): Promise<ChatResult> => {
     fromEditor(event);
     const id = allowed(ask.provider);
     const model = typeof ask.model === 'string' ? ask.model : '';
@@ -228,6 +228,7 @@ export function registerAiBridge(fromEditor: (event: IpcMainInvokeEvent) => unkn
       ...(keys.has(id) ? { apiKey: keys.get(id)! } : {}),
       prompt: formulaPrompt(),
       image: { type: ask.image.type, data: ask.image.data },
+      ...(AI_EFFORTS.find((e) => e === ask.effort) ? { effort: AI_EFFORTS.find((e) => e === ask.effort)! } : {}),
     });
   });
 

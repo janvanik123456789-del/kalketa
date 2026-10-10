@@ -18,13 +18,16 @@
  * Everything else is shown as text; no HTML from the notes is ever passed on.
  */
 
-import { defaultRegistry, parse } from '@kalketa/core';
+import { defaultRegistry, evaluateSheet, parse, type Statement } from '@kalketa/core';
+import { t, type Catalog } from '@kalketa/i18n';
 import { formulaNode, type FormulaOptions } from './formula.js';
 import { esc, mo, nameNode, paren, row, toMathML, type MathNode } from './math.js';
 
 export interface NotesOptions {
   /** Resolves an image path inside the sheet to a URL (e.g. a data: URI). */
   readonly resolveFile?: (path: string) => string | undefined;
+  /** For the words of the check of derivations in ```kalk blocks (without it, signs only). */
+  readonly catalog?: Catalog;
 }
 
 type Block =
@@ -71,7 +74,7 @@ export function notesHtml(text: string, options: NotesOptions = {}): string {
         case 'list':
           return `<ul>${block.items.map((item) => `<li${item.sub ? ' class="sub"' : ''}>${inline(item.text)}</li>`).join('')}</ul>`;
         case 'code':
-          return block.lang === 'kalk' ? kalkHtml(block.lines) : `<pre class="code"><code>${esc(block.lines.join('\n'))}</code></pre>`;
+          return block.lang === 'kalk' ? kalkHtml(block.lines, options.catalog) : `<pre class="code"><code>${esc(block.lines.join('\n'))}</code></pre>`;
         case 'rule':
           return '<hr>';
         case 'table': {
@@ -192,22 +195,68 @@ export function kalkFormula(line: string): { readonly html: string; readonly ok:
   const s = parsed.sheet.statements.find((x) => x.kind !== 'comment');
   const bad = { html: `<code class="kalk-bad">${esc(line)}</code>`, ok: false };
   if (!s || parsed.diagnostics.some((d) => d.severity === 'error')) return bad;
+  return kalkStatement(s, line);
+}
+
+/** A statement of a ```kalk block typeset: a derivation with all its members, y = a = b = c. */
+function kalkStatement(s: Statement, line: string): { readonly html: string; readonly ok: boolean } {
+  const bad = { html: `<code class="kalk-bad">${esc(line)}</code>`, ok: false };
+  const chain = (members: readonly MathNode[]) => members.flatMap((m, i) => (i > 0 ? [mo('='), m] : [m]));
   let node: MathNode | undefined;
   if (s.kind === 'definition') {
     const name = s.params && s.params.length > 0 ? row(nameNode(s.name), paren(row(...s.params.flatMap((p, i) => (i > 0 ? [mo(','), nameNode(p.name)] : [nameNode(p.name)]))))) : nameNode(s.name);
-    node = row(name, mo('='), formulaNode(s.expr, KALK_OPTIONS));
-  } else if (s.kind === 'display' || s.kind === 'check') node = formulaNode(s.expr, KALK_OPTIONS);
+    node = row(name, mo('='), ...chain((s.derivation ?? [s.expr]).map((m) => formulaNode(m, KALK_OPTIONS))));
+  } else if (s.kind === 'derive') node = row(...chain(s.members.map((m) => formulaNode(m, KALK_OPTIONS))));
+  else if (s.kind === 'display' || s.kind === 'check') node = formulaNode(s.expr, KALK_OPTIONS);
   if (!node) return bad;
   const label = s.kind === 'check' && s.label ? `<span class="kalk-label">${esc(s.label)}:</span> ` : '';
   return { html: `${label}${toMathML(node, 'block')}`, ok: true };
 }
 
-function kalkHtml(lines: readonly string[]): string {
+/** A line of a ```kalk block: a note, or a formula typeset with the check of its derivation. */
+export interface KalkLine {
+  readonly note?: string;
+  readonly source: string;
+  readonly html: string;
+  /** The check of a derivation: ok, or which step does not hold and why. */
+  readonly check?: { readonly ok: boolean; readonly text: string };
+}
+
+/**
+ * The lines of a ```kalk block, typeset, the block checked as one: a symbol it introduces
+ * (derive M_mp := …) holds for the lines below. Every derivation is checked step by step,
+ * so a formula the model read from a picture wrongly shows; a step may also be a
+ * substitution of another relation of the book, which the check cannot know.
+ */
+export function kalkLines(lines: readonly string[], catalog?: Catalog): KalkLine[] {
+  const shown = lines.map((l) => l.trim()).filter((l) => l !== '');
+  const formulas = shown.filter((l) => !l.startsWith("'"));
+  const result = formulas.length > 0 ? evaluateSheet(formulas.join('\n')) : undefined;
+  const byLine = new Map(result?.statements.map((r) => [r.statement.span.line, r] as const) ?? []);
+  const say = (key: Parameters<typeof t>[1], step?: number, sign = '') => (catalog ? t(catalog, key, step !== undefined ? { step: String(step) } : {}) : sign);
+  let at = 0;
+  return shown.map((l): KalkLine => {
+    if (l.startsWith("'")) return { note: l.slice(1).trim(), source: l, html: '' };
+    const r = byLine.get(++at);
+    const typeset = r && !r.diagnostics.some((d) => d.code === 'E-SYNTAX') ? kalkStatement(r.statement, l) : kalkFormula(l);
+    const steps = r?.derivation;
+    if (!steps || steps.length === 0) return { source: l, html: typeset.html };
+    const wrong = steps.findIndex((s) => !s.ok);
+    if (wrong < 0) return { source: l, html: typeset.html, check: { ok: true, text: say('kalk.derived', undefined, '✓') } };
+    const problem = steps[wrong]!.problem;
+    const key = problem === 'units' ? 'kalk.stepUnits' : problem === 'unverified' ? 'kalk.stepUnverified' : 'kalk.stepDiffers';
+    return { source: l, html: typeset.html, check: { ok: false, text: say(key, wrong + 1, `⚠ ${wrong + 1}`) } };
+  });
+}
+
+function kalkHtml(lines: readonly string[], catalog?: Catalog): string {
   // A line starting with ' is a note to the formulas ("' AI wrote this from a picture").
-  const formulas = lines
-    .filter((l) => l.trim() !== '')
-    .map((l) => (l.trim().startsWith("'") ? `<div class="kalk-note">${esc(l.trim().slice(1).trim())}</div>` : `<div class="kalk-formula" title="${esc(l.trim())}">${kalkFormula(l.trim()).html}</div>`));
-  return `<div class="kalk">${formulas.join('')}</div>`;
+  const html = kalkLines(lines, catalog).map((l) =>
+    l.note !== undefined
+      ? `<div class="kalk-note">${esc(l.note)}</div>`
+      : `<div class="kalk-formula" title="${esc(l.source)}">${l.html}${l.check ? `<span class="kalk-check ${l.check.ok ? 'ok' : 'bad'}">${esc(l.check.text)}</span>` : ''}</div>`,
+  );
+  return `<div class="kalk">${html.join('')}</div>`;
 }
 
 /** Inline markup: `code` as written, then links, bold and italic on the rest (escaped first). */
@@ -244,6 +293,9 @@ export const NOTES_CSS = `.notes { font-size: 10.5pt; line-height: 1.5; }
 .notes .kalk-formula math { display: inline-block; }
 .notes .kalk-label { color: #555; font-size: 0.95em; }
 .notes code.kalk-bad { color: #a12828; }
+.notes .kalk-check { display: block; font-size: 0.85em; }
+.notes .kalk-check.ok { color: #2e7d32; }
+.notes .kalk-check.bad { color: #a15c00; }
 .notes .kalk-note { color: #5a3fa6; font-size: 0.9em; }
 .notes pre.code { margin: 2mm 0; padding: 1.5mm 2mm; background: #f3f5f8; border: 1px solid #d5dae1; white-space: pre-wrap; }
 .notes blockquote.citation { margin: 2mm 0; padding: 1mm 0 1mm 3mm; border-left: 1mm solid #9aa6b4; color: #333; font-style: italic; }

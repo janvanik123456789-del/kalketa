@@ -7,12 +7,12 @@
  * stay as they were. A heading carries the id of its theory section as an
  * attribute, shown as a badge and never typed.
  */
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { EditorContent, Extension, NodeViewContent, NodeViewWrapper, ReactNodeViewRenderer, useEditor, type Editor, type JSONContent, type ReactNodeViewProps } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import CodeBlock from '@tiptap/extension-code-block';
 import { NodeSelection } from '@tiptap/pm/state';
-import { kalkFormula } from '@kalketa/render';
+import { kalkLines } from '@kalketa/render';
 import Image, { type ImageOptions } from '@tiptap/extension-image';
 import { TableKit } from '@tiptap/extension-table';
 import { t, type Catalog, type UiKey } from '@kalketa/i18n';
@@ -124,8 +124,12 @@ const NotesImage = Image.extend<ImageOptions & { captionLabel: string; captionEm
  * sheet and shown under them typeset as formulas; a line the language does not
  * read is marked. Other code blocks stay as written.
  */
+/** The words of the user's language for the node views (the check of derivations in ```kalk). */
+const WordCatalog = createContext<Catalog | undefined>(undefined);
+
 function CodeView({ node }: ReactNodeViewProps) {
   const kalk = node.attrs['language'] === 'kalk';
+  const catalog = useContext(WordCatalog);
   const lines = node.textContent.split('\n').filter((l) => l.trim() !== '');
   return (
     <NodeViewWrapper className={`word-code${kalk ? ' kalk-block' : ''}`}>
@@ -134,13 +138,16 @@ function CodeView({ node }: ReactNodeViewProps) {
       </pre>
       {kalk && lines.length > 0 && (
         <div className="kalk-preview" contentEditable={false}>
-          {lines.map((l, i) =>
-            l.trim().startsWith("'") ? (
+          {kalkLines(lines, catalog).map((l, i) =>
+            l.note !== undefined ? (
               <div key={i} className="kalk-note">
-                {l.trim().slice(1).trim()}
+                {l.note}
               </div>
             ) : (
-              <div key={i} className="kalk-formula" dangerouslySetInnerHTML={{ __html: kalkFormula(l.trim()).html }} />
+              <div key={i} className="kalk-formula" title={l.source}>
+                <div dangerouslySetInnerHTML={{ __html: l.html }} />
+                {l.check && <span className={`kalk-check ${l.check.ok ? 'ok' : 'bad'}`}>{l.check.text}</span>}
+              </div>
             ),
           )}
         </div>
@@ -297,6 +304,9 @@ export function NotesWord({ text, title, catalog, readOnly, resolveFile, onChang
 
   // Formulas being read from cut-outs: how many done of how many.
   const [reading, setReading] = useState<{ done: number; of: number }>();
+  // Asked to stop: the formula being read is finished, no further one is begun. Read again, it goes on
+  // with the cut-outs that have no formula yet.
+  const stopReading = useRef(false);
   /**
    * The selected picture, else every formula cut-out (vzorec-…) without a formula under it,
    * else (cut-outs made by hand) every picture without one; read by the model, each
@@ -314,7 +324,9 @@ export function NotesWord({ text, title, catalog, readOnly, resolveFile, onChang
     const formulas = unwritten.filter((p) => /\/vzorec-[^/]*$/.test(p));
     const paths = selected ? [selected] : formulas.length > 0 ? formulas : unwritten;
     setReading({ done: 0, of: paths.length });
+    stopReading.current = false;
     for (const [n, path] of paths.entries()) {
+      if (stopReading.current) break;
       const block = await readFormula(path);
       setReading({ done: n + 1, of: paths.length });
       if (block === undefined) continue;
@@ -402,8 +414,14 @@ export function NotesWord({ text, title, catalog, readOnly, resolveFile, onChang
           ƒx
         </Tool>
         {readFormula && (
-          <Tool label={t(catalog, 'word.formulaAi')} title={t(catalog, 'word.formulaAiTip')} className="word-formula-ai" disabled={readOnly || !!reading} onClick={() => void readFormulas()}>
-            {reading ? `ƒx ${reading.done}/${reading.of}` : 'ƒx ✦'}
+          <Tool
+            label={reading ? t(catalog, 'word.formulaAiStop') : t(catalog, 'word.formulaAi')}
+            title={reading ? t(catalog, 'word.formulaAiStop') : t(catalog, 'word.formulaAiTip')}
+            className="word-formula-ai"
+            disabled={readOnly}
+            onClick={() => (reading ? (stopReading.current = true) : void readFormulas())}
+          >
+            {reading ? `ƒx ${reading.done}/${reading.of} ■` : 'ƒx ✦'}
           </Tool>
         )}
         <Tool label={t(catalog, 'word.codeBlock')} active={editor.isActive('codeBlock')} disabled={readOnly} onClick={() => editor.chain().focus().toggleCodeBlock().run()}>
@@ -477,7 +495,9 @@ export function NotesWord({ text, title, catalog, readOnly, resolveFile, onChang
       <div className="word-scroll">
         <div className="word-page page-like">
           <h2 className="notes-title">{title}</h2>
-          <EditorContent editor={editor as Editor} className="notes word-text" />
+          <WordCatalog.Provider value={catalog}>
+            <EditorContent editor={editor as Editor} className="notes word-text" />
+          </WordCatalog.Provider>
         </div>
       </div>
     </div>

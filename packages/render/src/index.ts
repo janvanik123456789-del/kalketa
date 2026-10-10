@@ -16,7 +16,7 @@ export * from './math.js';
 export { formulaNode, hasSubstitutableParts, type FormulaOptions } from './formula.js';
 export * from './model.js';
 export { renderHtml, renderBlockHtml, renderBlocksHtml, sideGroupHtml, renderSummary, appendixHtml, isInput, textHtml, BLOCK_CSS, type HtmlOptions, type BlockHtmlOptions, type CalcStyle } from './html.js';
-export { kalkFormula, notesHtml, notesImages, NOTES_CSS, type NotesOptions } from './notes.js';
+export { kalkFormula, kalkLines, notesHtml, notesImages, NOTES_CSS, type KalkLine, type NotesOptions } from './notes.js';
 
 /** A layer printed after the sheet. */
 export type PrintAppendix =

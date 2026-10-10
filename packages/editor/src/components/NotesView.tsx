@@ -75,7 +75,7 @@ export function NotesView({ layer, title, catalog, readOnly, resolveFile, fileEx
         <div className="notes-preview page-like ai-notes">
           <style>{NOTES_CSS}</style>
           <h2 className="notes-title">{title}</h2>
-          {text.trim() && <div className="notes" dangerouslySetInnerHTML={{ __html: notesHtml(text, { resolveFile }) }} />}
+          {text.trim() && <div className="notes" dangerouslySetInnerHTML={{ __html: notesHtml(text, { resolveFile, catalog }) }} />}
           <SourcesView sources={sources} catalog={catalog} />
           {changes.length > 0 && (
             <section className="ai-changes">

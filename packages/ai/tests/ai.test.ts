@@ -168,6 +168,25 @@ describe('chat with a local server', () => {
     }) as typeof fetch;
   const event = (delta: object) => `data: ${JSON.stringify({ model: 'qwen', choices: [{ delta }] })}\n\n`;
 
+  it('asks again without thinking when a local model thinks past the limit', async () => {
+    const bodies: string[] = [];
+    let cut = 0;
+    const thinker = event({ reasoning_content: 'x'.repeat(100) });
+    const fetchFn = (async (url: string | URL | Request, init?: RequestInit) => {
+      bodies.push(String(init?.body));
+      // The first time it thinks on and on; asked again, it answers at once.
+      const events = bodies.length === 1 ? Array.from({ length: 20 }, () => thinker) : [event({ content: 'Hned.' }), 'data: [DONE]\n\n'];
+      return streaming(events)(url, init);
+    }) as typeof fetch;
+    const result = await chat({ provider: 'server', model: 'qwen', system: '', turns: [], thinkingLimit: 100, onText: () => {}, onThinkingCut: () => cut++ }, { fetch: fetchFn });
+    expect(result).toEqual({ ok: true, text: 'Hned.', model: 'qwen', thinkingCut: true });
+    expect(cut).toBe(1);
+    expect(JSON.parse(bodies[1]!)).toMatchObject({ reasoning_effort: 'none', chat_template_kwargs: { enable_thinking: false } });
+    // Without a limit it thinks as long as it likes.
+    const free = await chat({ provider: 'server', model: 'qwen', system: '', turns: [], onText: () => {} }, { fetch: streaming([thinker, thinker, event({ content: 'Pak.' }), 'data: [DONE]\n\n']) });
+    expect(free).toEqual({ ok: true, text: 'Pak.', model: 'qwen' });
+  });
+
   it('streams the answer piece by piece and reports thinking', async () => {
     const pieces: string[] = [];
     const thinking: string[] = [];
@@ -194,6 +213,8 @@ describe('chat with a local server', () => {
     await chat({ provider: 'server', model: 'qwen', system: '', turns: [], effort: 'none', onText: () => {} }, { fetch: streaming([event({ content: 'OK' })], seen) });
     expect(JSON.parse(seen.body!)).toMatchObject({ reasoning_effort: 'none', chat_template_kwargs: { enable_thinking: false } });
     expect(parseAiSettings({ provider: 'server', effort: 'extreme' })).not.toHaveProperty('effort');
+    expect(parseAiSettings({ provider: 'server', thinkingLimit: 2000 })).toMatchObject({ thinkingLimit: 2000 });
+    expect(parseAiSettings({ provider: 'server', thinkingLimit: 123 })).not.toHaveProperty('thinkingLimit');
   });
 
   it('says when the server does not run, or Claude has no key', async () => {

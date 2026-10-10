@@ -6,8 +6,8 @@
  * them for their models as soon as one is picked.
  */
 import { useEffect, useState } from 'react';
-import { AI_EFFORTS, AI_OFF, allowedProviders, isLoopback, modelAllowed, NO_POLICY, parseAiPolicy, providerById, type AiPolicy, type AiSettings, type ModelChoice, type ProviderInfo } from '@kalketa/ai';
-import { t, type Catalog, type UiKey } from '@kalketa/i18n';
+import { AI_EFFORTS, AI_OFF, DEFAULT_THINKING_LIMIT, THINKING_LIMITS, allowedProviders, isLoopback, modelAllowed, NO_POLICY, parseAiPolicy, providerById, type AiPolicy, type AiSettings, type ModelChoice, type ProviderInfo } from '@kalketa/ai';
+import { formatNumber, t, type Catalog, type UiKey } from '@kalketa/i18n';
 import { desktop, type AiKeyState } from '../document.js';
 
 /** What the dialog keeps until OK: the settings and a newly typed key. */
@@ -160,6 +160,23 @@ export function AiSettingsSection({ catalog, draft, onChange, aiOn = true }: { c
               ))}
             </select>
           </label>
+          {provider.api === 'openai-compatible' && draft.settings.effort !== 'none' && (
+            // A local model thinking past this is asked again without thinking: an answer in minutes, not none after ten.
+            <label className="field">
+              <span>{t(catalog, 'ai.thinkingLimit')}</span>
+              <select
+                className="ai-thinking-limit"
+                value={draft.settings.thinkingLimit ?? DEFAULT_THINKING_LIMIT}
+                onChange={(e) => setSettings({ ...draft.settings, thinkingLimit: Number(e.target.value) })}
+              >
+                {THINKING_LIMITS.map((n) => (
+                  <option key={n} value={n}>
+                    {n === 0 ? t(catalog, 'ai.thinkingLimit.0') : t(catalog, 'ai.thinkingLimit.n', { n: formatNumber(n, catalog) })}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           {provider.needsKey && (
             <>
               <label className="field">

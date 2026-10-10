@@ -88,6 +88,22 @@ const fakeApi = createServer((request, response) => {
         response.end(event('[DONE]'));
         return;
       }
+      // "Přemýšlej dlouho": thinks on and on (past any limit) unless asked not to think at all.
+      if (question.startsWith('Přemýšlej dlouho')) {
+        if (body.reasoning_effort === 'none') {
+          response.write(event({ model: 'local-smoke-7b', choices: [{ delta: { content: 'Odpověď hned.' } }] }));
+          response.end(event('[DONE]'));
+          return;
+        }
+        let sent = 0;
+        const think = () => {
+          if (response.destroyed || sent++ > 200) return void response.end();
+          response.write(event({ model: 'local-smoke-7b', choices: [{ delta: { reasoning_content: 'hmm '.repeat(250) } }] }));
+          setTimeout(think, 5);
+        };
+        think();
+        return;
+      }
       // "Napiš nový…": a whole new calculation, and how many other open sheets the briefing had.
       if (question.startsWith('Napiš nový')) {
         const lf = String.fromCharCode(10);

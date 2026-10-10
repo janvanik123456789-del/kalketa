@@ -23,10 +23,10 @@ function escapeAttr(text: string): string {
 const MAX_THOUGHT = 6000;
 
 /** Pieces of answers by request, from the one listener the bridge allows. */
-const listeners = new Map<string, (piece: { readonly text?: string; readonly thinking?: string }) => void>();
+const listeners = new Map<string, (piece: { readonly text?: string; readonly thinking?: string; readonly cut?: boolean }) => void>();
 let listening = false;
 
-function listen(id: string, listener: (piece: { readonly text?: string; readonly thinking?: string }) => void): () => void {
+function listen(id: string, listener: (piece: { readonly text?: string; readonly thinking?: string; readonly cut?: boolean }) => void): () => void {
   if (!listening && desktop) {
     desktop.onAiChatEvent((piece) => listeners.get(piece.id)?.(piece));
     listening = true;
@@ -106,7 +106,8 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTur
   }, [libraryMenu]);
   const [draft, setDraft] = useState('');
   // `thought`: the model's thinking so far (its end), shown folded while the answer has not begun.
-  const [answer, setAnswer] = useState<{ id: string; text: string; thinking: boolean; thought: string; started: number }>();
+  // `cut`: the model thought past the limit of the settings; asked again without thinking.
+  const [answer, setAnswer] = useState<{ id: string; text: string; thinking: boolean; thought: string; started: number; cut?: boolean }>();
   const thoughtBox = useRef<HTMLDivElement>(null);
   // The latest thinking stays in view while it grows.
   useEffect(() => {
@@ -192,7 +193,13 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTur
     const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     setAnswer({ id, text: '', thinking: false, thought: '', started: Date.now() });
     const stop = listen(id, (piece) =>
-      setAnswer((a) => (a && a.id === id ? { ...a, text: a.text + (piece.text ?? ''), thinking: a.thinking || !!piece.thinking, thought: (a.thought + (piece.thinking ?? '')).slice(-MAX_THOUGHT) } : a)),
+      setAnswer((a) =>
+        a && a.id === id
+          ? piece.cut
+            ? { ...a, cut: true, thinking: false, thought: '', started: Date.now() }
+            : { ...a, text: a.text + (piece.text ?? ''), thinking: a.thinking || !!piece.thinking, thought: (a.thought + (piece.thinking ?? '')).slice(-MAX_THOUGHT) }
+          : a,
+      ),
     );
     try {
       const { sheet, languageGuide, memory } = context();
@@ -202,6 +209,7 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTur
         model: settings.model,
         ...(settings.url ? { url: settings.url } : {}),
         ...(settings.effort ? { effort: settings.effort } : {}),
+        ...(settings.thinkingLimit !== undefined ? { thinkingLimit: settings.thinkingLimit } : {}),
         language: catalog.locale,
         sheet,
         languageGuide,
@@ -214,7 +222,8 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTur
           ...asked,
           {
             role: 'assistant',
-            text: result.truncated ? `${result.text}\n\n*${t(catalog, 'chat.truncated')}*` : result.text,
+            // Notes kept with the answer: cut by the length limit, or written without thinking past the limit.
+            text: `${result.text}${result.truncated ? `\n\n*${t(catalog, 'chat.truncated')}*` : ''}${result.thinkingCut ? `\n\n*${t(catalog, 'chat.thinkingCut')}*` : ''}`,
             time: new Date().toISOString(),
             model: result.model,
             ...(result.theory ? { theory: result.theory } : {}),
@@ -323,6 +332,7 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTur
             <div className="chat-turn assistant writing" dangerouslySetInnerHTML={{ __html: answerHtml(answer.text) }} />
           ) : (
             <div className="chat-turn assistant writing">
+              {answer.cut && <div className="chat-thinking-cut">{t(catalog, 'chat.thinkingCutNow')}</div>}
               {answer.thought.trim() ? (
                 // Folded: a click shows what the model is thinking about, so a long wait is not a blank one.
                 <details className="chat-thought">

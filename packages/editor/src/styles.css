@@ -436,6 +436,7 @@ button.icon:hover { color: var(--accent); }
 .chat-turn.writing { color: #48505a; }
 .chat-thought summary { cursor: pointer; }
 .chat-thought-text { margin-top: 4px; max-height: 180px; overflow: auto; white-space: pre-wrap; font-size: 12px; color: #6b737d; border-left: 2px solid #d5dae1; padding-left: 6px; }
+.chat-thinking-cut { font-size: 12px; color: #a15c00; margin-bottom: 4px; }
 .chat-error { color: #a12828; font-size: 12px; }
 .chat-input-row { display: flex; gap: 6px; align-items: stretch; }
 .chat-input { flex: 1; resize: vertical; min-height: 44px; font: inherit; padding: 4px 6px; border: 1px solid #aab2bd; border-radius: 2px; }

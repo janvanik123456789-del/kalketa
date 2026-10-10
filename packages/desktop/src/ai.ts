@@ -13,7 +13,7 @@ import { app, ipcMain, safeStorage, type IpcMainInvokeEvent } from 'electron';
 import { existsSync, readFileSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import { AI_EFFORTS, allowedProviders, CITED_ID, FIGURE_CONTEXT_CHARS, figurePrompt, formulaPrompt, memoryInstruction, modelAllowed, prepareBriefing, NO_POLICY, parseAiPolicy, providerById, type AiPolicy, type AiSheetContext, type ChatTurn } from '@kalketa/ai';
+import { AI_EFFORTS, DEFAULT_THINKING_LIMIT, THINKING_LIMITS, allowedProviders, CITED_ID, FIGURE_CONTEXT_CHARS, figurePrompt, formulaPrompt, memoryInstruction, modelAllowed, prepareBriefing, NO_POLICY, parseAiPolicy, providerById, type AiPolicy, type AiSheetContext, type ChatTurn } from '@kalketa/ai';
 import { askAboutImage, chat, discoverLocal, testConnection, tryModel, type AnswerResult, type ChatResult, type ConnectionResult } from '@kalketa/ai/connect';
 
 export interface AiKeyState {
@@ -32,6 +32,7 @@ interface ChatAsk {
   readonly model: string;
   readonly url?: string;
   readonly effort?: string;
+  readonly thinkingLimit?: number;
   readonly language: string;
   readonly sheet: AiSheetContext;
   readonly languageGuide?: string;
@@ -173,7 +174,7 @@ export function registerAiBridge(fromEditor: (event: IpcMainInvokeEvent) => unkn
     await loadKeys();
     const controller = new AbortController();
     running.set(ask.id, controller);
-    const send = (piece: { text?: string; thinking?: string }) => {
+    const send = (piece: { text?: string; thinking?: string; cut?: boolean }) => {
       if (!memory && !event.sender.isDestroyed()) event.sender.send('kalketa:ai-chat-event', { id: ask.id, ...piece });
     };
     // The theory for the question: the last two questions of the user, and what was cited so far.
@@ -201,6 +202,9 @@ export function registerAiBridge(fromEditor: (event: IpcMainInvokeEvent) => unkn
         turns: memory ? [...turns, { role: 'user' as const, text: memoryInstruction(ask.memory ?? '') }] : turns,
         onText: (text) => send({ text }),
         onThinking: (delta) => send({ thinking: delta }),
+        // Thinking past the limit of the settings: asked again without it, the user told so.
+        ...(typeof ask.thinkingLimit === 'number' && THINKING_LIMITS.includes(ask.thinkingLimit) ? { thinkingLimit: ask.thinkingLimit } : { thinkingLimit: DEFAULT_THINKING_LIMIT }),
+        onThinkingCut: () => send({ cut: true }),
         signal: controller.signal,
       });
       return prepared.theory && result.ok && !memory ? { ...result, theory: { sent: prepared.theory.sent, total: prepared.theory.total } } : result;

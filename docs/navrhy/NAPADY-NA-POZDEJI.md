@@ -39,6 +39,8 @@ Výřez z PDF vloží vzorec jako obrázek. Člověk ho přečte, model ani výp
 
 ### Nastavení lokálního modelu: přemýšlení a vzorkování (2026-10-04, na doladění)
 
+**2026-10-10:** hloubka přemýšlení „žádná“ (2026-10-06) a **strop přemýšlení** v Nastavení → AI u místních serverů (bez stropu / 2 000 / 4 000 / 8 000 tokenů, výchozí 4 000): rozhovor počítá znaky přemýšlení (asi 4 na token); přeleze-li strop dřív, než model začne psát, spojení zruší a otázku pošle znovu bez přemýšlení, odpověď nese poznámku. Čtení obrázků (vzorce, popisy) zkusí po vyčerpaném limitu bez textu jednou znovu bez přemýšlení. Vzorkování (temperature, presence_penalty) se nastavuje v serveru (Strata: blok `sampling` v konfiguraci).
+
 Lokální model (`qwen3.8-flash…iq3_xxs` přes llama.cpp) se v přemýšlení zacyklí na „možná“ a odpověď trvá 3–5 minut. Hloubka přemýšlení se posílá jako `reasoning_effort`, ale llama.cpp ji nejspíš ignoruje. Hrubá kvantizace (asi 3 bity) k opakování přispívá.
 
 1. **Přemýšlení zapnuto/vypnuto** v Nastavení AI pro lokální server, nejspíš přes `chat_template_kwargs: {enable_thinking: false}`. Ověřit na serveru uživatele (127.0.0.1:8080), které parametry opravdu bere.

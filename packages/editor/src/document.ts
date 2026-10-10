@@ -105,7 +105,7 @@ export interface DesktopBridge {
   aiTry(provider: string, model: string, url?: string): Promise<{ readonly ok: true; readonly reply: string; readonly ms: number } | { readonly ok: false; readonly problem: string; readonly detail?: string }>;
   /** A conversation turn; the answer arrives in pieces through onAiChatEvent, the promise gives the whole. */
   aiChat(ask: AiChatAsk): Promise<
-    | { readonly ok: true; readonly text: string; readonly model: string; readonly truncated?: boolean; readonly theory?: { readonly sent: readonly string[]; readonly total: number } }
+    | { readonly ok: true; readonly text: string; readonly model: string; readonly truncated?: boolean; readonly thinkingCut?: boolean; readonly theory?: { readonly sent: readonly string[]; readonly total: number } }
     | { readonly ok: false; readonly problem: string; readonly detail?: string }
   >;
   aiChatCancel(id: string): Promise<void>;
@@ -124,7 +124,7 @@ export interface DesktopBridge {
   /** Saves a library into one of the folders; an existing file only with `replace`. */
   theorySave(request: { folder: TheoryFolder; sheetPath?: string; title: string; bytes: Uint8Array; replace?: boolean }): Promise<{ readonly path: string; readonly exists?: boolean }>;
   theoryFolders(sheetPath?: string): Promise<{ readonly kind: TheoryFolder; readonly dir: string }[]>;
-  onAiChatEvent(listener: (piece: { readonly id: string; readonly text?: string; readonly thinking?: string }) => void): void;
+  onAiChatEvent(listener: (piece: { readonly id: string; readonly text?: string; readonly thinking?: string; readonly cut?: boolean }) => void): void;
   /** Local servers running now, with their models, by provider. */
   aiDiscover(): Promise<Record<string, readonly { readonly id: string; readonly name: string }[]>>;
 }
@@ -138,6 +138,8 @@ export interface AiChatAsk {
   readonly url?: string;
   /** How long the model may think: low, medium, high; absent = as the model decides. */
   readonly effort?: string;
+  /** Tokens of thinking at most (local models); 0 no limit. */
+  readonly thinkingLimit?: number;
   /** The user's language; the model answers in it. */
   readonly language: string;
   readonly sheet: {

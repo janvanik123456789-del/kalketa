@@ -146,14 +146,23 @@ export interface ChatRequest {
   onText(delta: string): void;
   /** Each piece of the model's thinking before it writes (local models that report it, Claude's summary). */
   onThinking?(delta: string): void;
+  /**
+   * A local model may think this many tokens at most before it writes; past it the question is
+   * asked again without thinking (onThinkingCut says so). Absent or 0: no limit.
+   */
+  readonly thinkingLimit?: number;
+  onThinkingCut?(): void;
   readonly signal?: AbortSignal;
 }
+
+/** A token of thinking is about this many characters (English and Czech alike, roughly). */
+const CHARS_PER_TOKEN = 4;
 
 /**
  * The answer, or why there is none. `truncated`: the answer stopped at the length
  * limit. A model that spends the whole limit on thinking gives no text: 'cutOff'.
  */
-export type ChatResult = { readonly ok: true; readonly text: string; readonly model: string; readonly truncated?: boolean } | { readonly ok: false; readonly problem: ConnectionProblem; readonly detail?: string };
+export type ChatResult = { readonly ok: true; readonly text: string; readonly model: string; readonly truncated?: boolean; readonly thinkingCut?: boolean } | { readonly ok: false; readonly problem: ConnectionProblem; readonly detail?: string };
 
 /** What a finished answer is: text, cut off by the limit, or nothing at all. */
 function finished(text: string, model: string, atLimit: boolean): ChatResult {
@@ -237,7 +246,10 @@ export async function askAboutImage(request: ImageRequest, transport: Transport 
     }
     if (!response.ok) return { ok: false, problem: 'provider', detail: `${response.status} ${(await response.text().catch(() => '')).slice(0, 200)}`.trim() };
     const body = (await response.json().catch(() => ({}))) as { model?: string; choices?: { message?: { content?: string | null }; finish_reason?: string | null }[] };
-    return finished(body.choices?.[0]?.message?.content ?? '', body.model ?? request.model, body.choices?.[0]?.finish_reason === 'length');
+    const result = finished(body.choices?.[0]?.message?.content ?? '', body.model ?? request.model, body.choices?.[0]?.finish_reason === 'length');
+    // The whole room spent on thinking, nothing written: once more without thinking.
+    if (!result.ok && result.problem === 'cutOff' && request.effort !== 'none') return askAboutImage({ ...request, effort: 'none' }, transport);
+    return result;
   }
   if (!request.apiKey?.trim()) return { ok: false, problem: 'noKey' };
   const client = new Anthropic({ apiKey: request.apiKey.trim(), authToken: null, maxRetries: 1 });
@@ -269,6 +281,9 @@ export async function askAboutImage(request: ImageRequest, transport: Transport 
 /** POST /v1/chat/completions with stream: true; the answer comes as server-sent events. */
 async function chatOpenAi(provider: ProviderInfo, request: ChatRequest, fetchFn: typeof fetch): Promise<ChatResult> {
   if (provider.urlEditable && request.url !== undefined && !serverUrl(request.url)) return { ok: false, problem: 'badUrl' };
+  // Our own stop, for thinking past the limit; the user's cancel stops it too.
+  const own = new AbortController();
+  request.signal?.addEventListener('abort', () => own.abort());
   let response: Response;
   try {
     response = await fetchFn(`${localUrl(provider, request.url)}/v1/chat/completions`, {
@@ -285,7 +300,7 @@ async function chatOpenAi(provider: ProviderInfo, request: ChatRequest, fetchFn:
         ...(request.effort === 'none' ? { chat_template_kwargs: { enable_thinking: false } } : {}),
         messages: [{ role: 'system', content: request.system }, ...request.turns.map((t) => ({ role: t.role, content: t.text }))],
       }),
-      ...(request.signal ? { signal: request.signal } : {}),
+      signal: own.signal,
     });
   } catch {
     return request.signal?.aborted ? { ok: false, problem: 'cancelled' } : { ok: false, problem: 'notRunning' };
@@ -294,6 +309,9 @@ async function chatOpenAi(provider: ProviderInfo, request: ChatRequest, fetchFn:
   let text = '';
   let model = request.model;
   let atLimit = false;
+  let thought = 0;
+  let overthought = false;
+  const limit = request.thinkingLimit && request.thinkingLimit > 0 ? request.thinkingLimit * CHARS_PER_TOKEN : Infinity;
   try {
     for await (const data of serverSentData(response.body)) {
       if (data === '[DONE]') break;
@@ -301,7 +319,16 @@ async function chatOpenAi(provider: ProviderInfo, request: ChatRequest, fetchFn:
       if (event.model) model = event.model;
       if (event.choices?.[0]?.finish_reason === 'length') atLimit = true;
       const delta = event.choices?.[0]?.delta;
-      if (delta?.reasoning_content) request.onThinking?.(delta.reasoning_content);
+      if (delta?.reasoning_content) {
+        request.onThinking?.(delta.reasoning_content);
+        thought += delta.reasoning_content.length;
+        // Still thinking past the limit, nothing of the answer written: stopped, asked again below.
+        if (thought > limit && text === '') {
+          overthought = true;
+          own.abort();
+          break;
+        }
+      }
       if (delta?.content) {
         text += delta.content;
         request.onText(delta.content);
@@ -309,7 +336,13 @@ async function chatOpenAi(provider: ProviderInfo, request: ChatRequest, fetchFn:
     }
   } catch (error) {
     if (request.signal?.aborted) return { ok: false, problem: 'cancelled' };
-    return { ok: false, problem: 'provider', detail: error instanceof Error ? error.message : String(error) };
+    if (!overthought) return { ok: false, problem: 'provider', detail: error instanceof Error ? error.message : String(error) };
+  }
+  if (overthought && !request.signal?.aborted) {
+    // The same question without thinking: an answer at once instead of none after minutes.
+    request.onThinkingCut?.();
+    const again = await chatOpenAi(provider, { ...request, effort: 'none', thinkingLimit: 0 }, fetchFn);
+    return again.ok ? { ...again, thinkingCut: true } : again;
   }
   return finished(text, model, atLimit);
 }

@@ -2085,6 +2085,7 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
   let layerShown = { memory: '', sheet: [] as string[], unknown: [] as string[], hiddenConversations: -1 };
   let resumed: string[] = [];
   let newSheet = { head: '', others: '', opened: { tab: '', rows: 0, marked: 0, errors: '' }, state: '' };
+  let thinkingCut = '';
   let together = { allButton: '', acceptedAll: 0, undoneAll: -1, copy: { tab: '', rows: 0, marked: 0, badges: 0 }, original: { rows: -1, state: 0 } };
   let proposal = { card: '', accepted: false, state: '', undone: false, journal: '', marked: '', reviewed: false, markedAgain: false, printAsks: '', printClosed: false };
   if (aiTab) {
@@ -2156,6 +2157,12 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
     await pause(400);
     const undone = !(await contents.executeJavaScript(inSheet)) && (await contents.executeJavaScript(`!!document.querySelector('.chat-pane .proposal-accept')`));
     proposal = { card, accepted, state, undone: undone as boolean, journal, marked, reviewed, markedAgain, printAsks, printClosed };
+    // A model thinking past the limit of the settings: asked again without thinking, the answer says so.
+    await clickOn('.chat-input');
+    await typeText('Přemýšlej dlouho.');
+    await pressKey('Enter');
+    for (let i = 0; i < 60 && !(await contents.executeJavaScript(`[...document.querySelectorAll('.chat-turn.assistant:not(.writing)')].some((t) => t.textContent.includes('Odpověď hned.'))`)); i++) await pause(150);
+    thinkingCut = (await contents.executeJavaScript(`[...document.querySelectorAll('.chat-turn.assistant:not(.writing)')].pop()?.textContent ?? ''`)) as string;
     // Two changes that belong together: accepted at once (one Undo takes both back), then into a new sheet.
     await clickOn('.chat-input');
     await typeText('Navrhni dvě změny.');
@@ -2241,6 +2248,7 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
     proposal.printAsks.startsWith('Výpočet obsahuje řádky navržené AI') && proposal.printClosed &&
     newSheet.head === 'Nový list: Nosník se silou · řádků: 4' && Number(newSheet.others) >= 2 &&
     newSheet.opened.tab.startsWith('Nosník se silou') && newSheet.opened.marked >= 3 && newSheet.opened.errors.startsWith('chyba: 0') && newSheet.state.startsWith('Otevřeno jako „Nosník se silou“') &&
+    thinkingCut.includes('Odpověď hned.') && thinkingCut.includes('bez přemýšlení') &&
     together.allButton === 'Přijmout vše (2)' && together.acceptedAll === 2 && together.undoneAll === 0 &&
     together.copy.tab.includes('(upravená kopie)') && together.copy.rows === 2 && together.copy.marked === 2 && together.copy.badges === 2 && together.original.rows === 0 && together.original.state === 2 &&
     paneTabs === 'Podrobnosti *Tabulky Vrstvy AI|tables' && thoughtFolded && thought === 'Nejdřív zkontroluji průhyb na řádku 12.'

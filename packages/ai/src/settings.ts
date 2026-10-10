@@ -14,7 +14,15 @@ export interface AiSettings {
   readonly url?: string;
   /** How long the model may think before it answers; absent = as the model or server decides. */
   readonly effort?: AiEffort;
+  /**
+   * A local model may think this many tokens at most; past it the question goes again without
+   * thinking. Absent: DEFAULT_THINKING_LIMIT; 0: no limit.
+   */
+  readonly thinkingLimit?: number;
 }
+
+export const THINKING_LIMITS: readonly number[] = [0, 2000, 4000, 8000];
+export const DEFAULT_THINKING_LIMIT = 4000;
 
 /** 'none': a local model answers at once, without thinking (Claude takes it as low). */
 export type AiEffort = 'none' | 'low' | 'medium' | 'high';
@@ -33,5 +41,6 @@ export function parseAiSettings(value: unknown): AiSettings {
   const model = typeof raw['model'] === 'string' && raw['model'].trim() !== '' ? raw['model'] : provider.defaultModel;
   const url = provider.urlEditable && typeof raw['url'] === 'string' ? serverUrl(raw['url']) : undefined;
   const effort = AI_EFFORTS.find((e) => e === raw['effort']);
-  return { provider: provider.id, model, ...(url ? { url } : {}), ...(effort ? { effort } : {}) };
+  const thinkingLimit = THINKING_LIMITS.find((n) => n === raw['thinkingLimit']);
+  return { provider: provider.id, model, ...(url ? { url } : {}), ...(effort ? { effort } : {}), ...(thinkingLimit !== undefined ? { thinkingLimit } : {}) };
 }

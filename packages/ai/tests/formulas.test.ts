@@ -71,6 +71,8 @@ describe('formulas as the book prints them', () => {
     // A rounded result keeps its sign.
     expect(cleanFormula('d = √(4·S_min/π) = 5,47 ≐ 5,5 mm')).toEqual(['derive d := √(4·S_min/π) == 5.47 ≐ 5.5 mm']);
     expect(cleanFormula('d ≈ 5,5 mm')).toEqual(['derive d ≐ 5.5 mm']);
+    // A small angle, its function without parentheses as the book prints it.
+    expect(cleanFormula('γ ≐ tg γ = Δl/l')).toEqual(['derive γ ≐ tg(γ) == Δl/l']);
     // Commas of arguments stay.
     expect(cleanFormula('M = max(M_a, M_b)')).toEqual(['M := max(M_a, M_b)']);
   });

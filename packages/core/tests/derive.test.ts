@@ -112,4 +112,15 @@ describe('a step equal when rounded (≐)', () => {
     expect(r(`${sheet}d := sqrt(4·S/π) ≈ 5.5 mm`).derivation).toEqual([{ ok: true }]);
     expect(r('derive a := b·(c + d) == b·c + b·d ≐ b·c + b·d').derivation).toEqual([{ ok: true }, { ok: true }]);
   });
+
+  it('holds for small values of the symbols of theory, as a small angle (γ ≐ tg γ)', () => {
+    const r = (source: string) => evaluateSheet(source).statements.at(-1)!;
+    expect(r('derive γ ≐ tan(γ) == tan(γ)').derivation).toEqual([{ ok: true }, { ok: true }]);
+    expect(r('derive sin(γ) ≐ γ').derivation).toEqual([{ ok: true }]);
+    expect(r('derive γ ≐ 2·γ').derivation).toEqual([{ ok: false, problem: 'differs' }]);
+    // A small angle from geometry: Δl small against l.
+    expect(r('derive γ := atan(Δl/l)\nderive γ ≐ tg(γ) == Δl/l').derivation).toEqual([{ ok: true }, { ok: true }]);
+    // Exact steps are not taken small.
+    expect(r('derive γ == tan(γ)').derivation).toEqual([{ ok: false, problem: 'differs' }]);
+  });
 });

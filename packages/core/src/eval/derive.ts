@@ -38,6 +38,8 @@ export interface DerivationStep {
 const SAMPLES = 5;
 /** A step equal when rounded (≐, 5,473 ≐ 5,5): as far apart as a result rounded to two digits. */
 const ROUNDED = 0.01;
+/** How small the symbols of theory are for a ≐ step that holds for small values only (γ ≐ tg γ). */
+const SMALL = 1e-3;
 /** Relative difference still taken as equal (rounding of different but equal forms). */
 const TOLERANCE = 1e-9;
 /** Name of an opaque part in the rewritten members. */
@@ -77,7 +79,10 @@ export function checkDerivation(
   };
 
   let paramDims: readonly Dimension[] = params.map(() => DIMENSIONLESS);
-  const sample = (point: number): (Quantity | undefined)[] => {
+  // The symbols of theory met (no value in the sheet): a ≐ step may hold when they, or one of them, get small.
+  const symbols = new Set<string>();
+  // small: how small a symbol of theory or a parameter is taken (1 = as usual).
+  const sample = (point: number, small: (name: string) => number = () => 1): (Quantity | undefined)[] => {
     const known = new Map<string, Value>();
     const lookup = (name: string, span: Span): Value => {
       const done = known.get(name);
@@ -85,14 +90,17 @@ export function checkDerivation(
       let value: Value;
       const param = params.indexOf(name);
       if (param >= 0) {
-        value = quantity(randomFactor(name, point), paramDims[param]);
+        symbols.add(name);
+        value = quantity(randomFactor(name, point) * small(name), paramDims[param]);
       } else if (name.startsWith(ATOM)) {
         const index = Number(name.slice(ATOM.length));
         value = scaled(tryValue(() => evaluate(atoms[index]!, ctx)), name, point);
       } else {
         const own = formula(name);
         const calculated = own ? tryValue(() => evaluate(own, at)) : undefined;
-        value = calculated ?? scaled(tryValue(() => ctx.lookup(name, span)), name, point);
+        const real = calculated ? undefined : tryValue(() => ctx.lookup(name, span));
+        if (!calculated && !real) symbols.add(name);
+        value = calculated ?? scaled(real, name, point, small(name));
       }
       known.set(name, value);
       return value;
@@ -108,6 +116,12 @@ export function checkDerivation(
     return sample(0).every(Boolean);
   });
   const points = Array.from({ length: SAMPLES }, (_, i) => sample(i));
+  // All the symbols small (γ ≐ tg γ), or one of them (Δl ≪ l in atan(Δl/l) ≐ Δl/l).
+  let smallPoints: (Quantity | undefined)[][][] | undefined;
+  const smallVariants = () => {
+    const at = (small: (name: string) => number) => Array.from({ length: SAMPLES }, (_, p) => sample(p, small));
+    return [at(() => SMALL), ...[...symbols].map((one) => at((name) => (name === one ? SMALL : 1)))];
+  };
   // Numbers put in ("= 12·5²/8 = 37,5") hold for the values of the sheet only: such a step is checked with them.
   const actual = members.map((m) => {
     const value = tryValue(() => evaluate(m, { ...ctx, warnings: [] }));
@@ -131,6 +145,11 @@ export function checkDerivation(
         break;
       }
       if (!equal(a, b, approx.includes(i) ? ROUNDED : TOLERANCE)) {
+        // An approximation of theory for small values: it holds as the symbols get small.
+        if (approx.includes(i) && !numbers) {
+          smallPoints ??= smallVariants();
+          if (smallPoints.some((variant) => variant.every((v) => !v[i] || !v[i + 1] || equal(v[i]!, v[i + 1]!, ROUNDED)))) break;
+        }
         problem = 'differs';
         diagnostics.push(diagnostic('E-DERIVE-STEP', span, { step: i + 1 }));
         break;
@@ -298,9 +317,9 @@ function tryValue(f: () => Value): Value | undefined {
  * The value a name takes at one point: its own value (unit and all) times a
  * random factor, or a random plain number when it has none (a symbol of theory).
  */
-function scaled(real: Value | undefined, name: string, point: number): Value {
+function scaled(real: Value | undefined, name: string, point: number, small = 1): Value {
   const factor = randomFactor(name, point);
-  if (!real) return quantity(factor);
+  if (!real) return quantity(factor * small);
   if (real.type === 'quantity') return { ...real, si: real.si * factor, ...(real.im ? { im: real.im * factor } : {}) };
   if (real.type === 'vector') return { ...real, items: real.items.map((q) => ({ ...q, si: q.si * factor })) };
   return real;

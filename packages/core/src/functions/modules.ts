@@ -196,6 +196,10 @@ export const TRIG: readonly FunctionDef[] = [
   plain('sin', 'trig', Math.sin),
   plain('cos', 'trig', Math.cos),
   plain('tan', 'trig', Math.tan),
+  // As Czech and other books write them: tg α, cotg α.
+  plain('tg', 'trig', Math.tan),
+  plain('cot', 'trig', (x) => 1 / Math.tan(x)),
+  plain('cotg', 'trig', (x) => 1 / Math.tan(x)),
   plain('asin', 'trig', Math.asin, (x) => x >= -1 && x <= 1),
   plain('acos', 'trig', Math.acos, (x) => x >= -1 && x <= 1),
   plain('atan', 'trig', Math.atan),

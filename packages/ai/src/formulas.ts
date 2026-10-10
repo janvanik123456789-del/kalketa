@@ -15,7 +15,7 @@ export function formulaPrompt(): string {
     'The image is a formula cut out of an engineering textbook. Write it in the Kalketa calculation language and nothing else: no code block, no LaTeX, no explanation.',
     '- One line per formula. A definition as `name := expression`; an equality that is not a definition as `left == right`.',
     '- A chain of equal forms (a derivation, y = a = b = c) stays one line: `derive y := a == b == c`, or `derive a == b == c` when it starts with no name. Do not split it.',
-    '- Operators + - · / ^ and parentheses; subscripts with an underscore (M_max, R_A), a subscript of several parts with more underscores (τ_Sk_s for τ with Sk,s below); Greek letters as they are (σ, π); functions as sqrt(x), sin(x).',
+    '- Operators + - · / ^ and parentheses; subscripts with an underscore (M_max, R_A), a subscript of several parts with more underscores (τ_Sk_s for τ with Sk,s below); Greek letters as they are (σ, π); functions as sqrt(x), sin(x), tg(x), always with parentheses.',
     '- If the formula has a number at its right, like (32), end the line with {eq=32}. Leave out any words around the formula.',
     '- If the image holds no formula, answer: none',
   ].join('\n');
@@ -159,6 +159,8 @@ function toKalkLines(line: string, numbered: (printed: string) => void): string[
   if (/\\[A-Za-z]|[{}]/.test(text)) text = latexToKalk(text);
   // Decimal commas as the book prints them (0,6·σ_Kt; 1,5): the language writes a point.
   text = text.replace(/(\d),(\d)/g, '$1.$2');
+  // A function the book writes without parentheses: tg γ, sin α_1.
+  text = text.replace(/(?<![\p{L}\p{N}_])(sin|cos|tan|tg|cot|cotg|ln)\s+([\p{L}][\p{L}\p{N}_]*)/gu, '$1($2)');
   text = subscriptParts(
     text
       .replace(/[.,;]?\s*\((\d{1,3}[a-z]?)\)\s*$/, (_, n: string) => (numbered(n), ''))

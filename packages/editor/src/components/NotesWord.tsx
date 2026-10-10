@@ -43,7 +43,7 @@ interface Props {
    * (with a note that the AI wrote it); undefined when it found none or the AI is off.
    */
   readFormula?(path: string): Promise<string | undefined>;
-  describeFigure?(path: string): Promise<string | undefined>;
+  describeFigure?(path: string, context: string): Promise<string | undefined>;
   /**
    * Opens the cut-outs from a study PDF; each one comes to `place` with its caption and the
    * text that stood next to it on the page. Absent when there is no study PDF.
@@ -425,22 +425,44 @@ export function NotesWord({ text, title, catalog, readOnly, resolveFile, onChang
   const [describing, setDescribing] = useState<{ done: number; of: number }>();
   const stopDescribing = useRef(false);
   /**
-   * Every figure without a description, cut-outs of formulas left out: the AI writes what it
-   * shows ({alt="…"} after the picture), so the theory finds it by its words. Done ones are
-   * skipped, so a stopped run goes on where it was.
+   * The text of the sources around a figure, its place marked: what the book says before it
+   * (up to 2000 characters) and after it (its title "Obr. 25 …" and the explanation, up to 1000).
+   */
+  const textAround = (path: string): string => {
+    const blocks: string[] = [];
+    let at = -1;
+    editor.state.doc.forEach((node) => {
+      if (node.type.name === 'image') {
+        if (node.attrs['path'] === path) at = blocks.length;
+        blocks.push(node.attrs['alt'] ? `[${String(node.attrs['alt'])}]` : '');
+      } else blocks.push(node.textContent);
+    });
+    if (at < 0) return '';
+    const before = blocks.slice(0, at).filter(Boolean).join('\n').slice(-2000);
+    const after = blocks.slice(at + 1).filter(Boolean).join('\n').slice(0, 1000);
+    return `${before}\n[THE FIGURE${blocks[at] ? ` ${blocks[at]}` : ''}]\n${after}`;
+  };
+  /**
+   * Every figure without a description, cut-outs of formulas left out: the AI reads it with the
+   * text around it and writes what it shows ({alt="…"} after the picture), so the theory finds it
+   * by its words. Done ones are skipped, so a stopped run goes on where it was; a selected figure
+   * is described anew.
    */
   const describeFigures = async () => {
     if (!describeFigure) return;
-    const paths: string[] = [];
-    editor.state.doc.forEach((node) => {
-      const path = String(node.attrs['path'] ?? '');
-      if (node.type.name === 'image' && path && !/\/vzorec-[^/]*$/.test(path) && !/(?:^|\s)alt="/.test(String(node.attrs['extra'] ?? ''))) paths.push(path);
-    });
+    const selected = editor.state.selection instanceof NodeSelection && editor.state.selection.node.type.name === 'image' ? String(editor.state.selection.node.attrs['path'] ?? '') : '';
+    const paths: string[] = selected ? [selected] : [];
+    if (!selected) {
+      editor.state.doc.forEach((node) => {
+        const path = String(node.attrs['path'] ?? '');
+        if (node.type.name === 'image' && path && !/\/vzorec-[^/]*$/.test(path) && !/(?:^|\s)alt="/.test(String(node.attrs['extra'] ?? ''))) paths.push(path);
+      });
+    }
     setDescribing({ done: 0, of: paths.length });
     stopDescribing.current = false;
     for (const [n, path] of paths.entries()) {
       if (stopDescribing.current) break;
-      const description = await describeFigure(path);
+      const description = await describeFigure(path, textAround(path));
       setDescribing({ done: n + 1, of: paths.length });
       if (!description) continue;
       // Found again: the text may have changed meanwhile.

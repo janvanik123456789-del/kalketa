@@ -49,9 +49,12 @@ describe('figures described for search', () => {
   it('are asked for in the language of the user, and a formula is no figure', async () => {
     const { figurePrompt, cleanFigureDescription, terms } = await import('@kalketa/ai');
     expect(figurePrompt('Czech')).toContain('in Czech');
-    expect(cleanFigureDescription('Průběh ohybového momentu prostého nosníku.')).toBe('Průběh ohybového momentu prostého nosníku');
+    expect(cleanFigureDescription('Průběh ohybového momentu prostého nosníku.')).toBe('Průběh ohybového momentu prostého nosníku.');
     expect(cleanFigureDescription('Obrázek ukazuje "zkos" {y}')).toBe('zkos y');
     expect(cleanFigureDescription('formula')).toBeUndefined();
+    // Read with the text around it, in a few sentences, as the model may list them.
+    expect(figurePrompt('Czech', 'Obr. 25 Prostý smyk')).toContain('Obr. 25 Prostý smyk');
+    expect(cleanFigureDescription('1. Obr. 25 ukazuje prostý smyk.\n2. Síly F působí na společné nositelce.')).toBe('Obr. 25 ukazuje prostý smyk. Síly F působí na společné nositelce.');
     // Written after the picture, the words of the description are words of its section.
     const line = '![Pružnost a pevnost, s. 36](images/obr.png){alt="průběh ohybového momentu"}';
     expect(terms(line)).toEqual(expect.arrayContaining(terms('ohybového momentu')));

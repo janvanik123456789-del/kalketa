@@ -21,17 +21,28 @@ export function formulaPrompt(): string {
   ].join('\n');
 }
 
+/** How much of the text around a figure goes with it: enough for its subject, not a chapter. */
+export const FIGURE_CONTEXT_CHARS = 3000;
+
 /**
- * What the model is asked about a figure of the sources: a short description to find it by
- * (and for readers of the screen), in the language of the user. A cut-out of a formula is
- * no figure: the answer is then "formula", and the figure gets no description.
+ * What the model is asked about a figure of the sources: a description in a few sentences,
+ * read with the text around the figure (what the book says before and after it, its caption
+ * like "Obr. 25 Prostý smyk"), so it names the subject as the book does, not only what it
+ * looks like. Written in the language of that text (of the user without it). A cut-out of
+ * a formula is no figure: the answer is then "formula".
  */
-export function figurePrompt(language: string): string {
+export function figurePrompt(language: string, context = ''): string {
   return [
-    `The image is a figure from an engineering textbook. Describe what it shows in one short phrase in ${language}, as a caption to find it by: the kind of picture and its subject (e.g. "diagram of the bending moment of a simply supported beam").`,
-    '- No "The image shows", no full stop at the end, no quotation marks, at most 15 words.',
-    '- Name the quantities and the structure as an engineer would, not colours or layout.',
+    'The image is a figure from an engineering textbook. Below is the text of the book around it.',
+    `Write in the language of the text around the figure (in ${language} when there is none), 2 to 4 sentences:`,
+    '1. what the figure shows and its subject as the book names it (the figure number and title when the text gives them, e.g. "Obr. 25 Prostý smyk");',
+    '2. what is drawn: the body or structure, the loads and quantities with their symbols (F, the sections I and II, …), and what the figure explains;',
+    '3. how it relates to the text (which effect, condition or formula it illustrates).',
+    '- Plain sentences, no list, no quotation marks or braces, no "The image shows". Only what the image and the text support; do not invent values.',
     '- If the image holds only a formula or text, answer: formula',
+    '',
+    'Text around the figure:',
+    context.trim().slice(0, FIGURE_CONTEXT_CHARS) || '(none)',
   ].join('\n');
 }
 
@@ -40,12 +51,13 @@ export function cleanFigureDescription(answer: string): string | undefined {
   const text = answer
     .replace(/^\s*```[\w-]*\s*$/gm, '')
     .split(/\r?\n/)
-    .map((l) => l.trim())
-    .find((l) => l !== '');
+    .map((l) => l.replace(/^\s*(?:[-*•]|\d+[.)])\s+/, '').trim())
+    .filter((l) => l !== '')
+    .join(' ');
   if (!text || /^formula\.?$/i.test(text)) return undefined;
-  // Kept to what the attribute holds: no quotes or braces, one line, not too long.
-  const clean = text.replace(/["{}]/g, '').replace(/^(the image shows|obrázek ukazuje|na obrázku je)\s*/i, '').replace(/\.\s*$/, '').trim();
-  return clean ? clean.slice(0, 160) : undefined;
+  // Kept to what the attribute holds: no quotes or braces, one line, a few sentences.
+  const clean = text.replace(/["{}]/g, '').replace(/^(the image shows|obrázek ukazuje|na obrázku je)\s*/i, '').replace(/\s+/g, ' ').trim();
+  return clean ? clean.slice(0, 700) : undefined;
 }
 
 const GREEK: Readonly<Record<string, string>> = {

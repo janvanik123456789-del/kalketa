@@ -37,7 +37,7 @@ interface Props {
   /** A formula block for a picture of the layer, read by a model. */
   readFormula?(path: string): Promise<string | undefined>;
   /** What a figure shows, written by the AI for search; none for a picture of a formula. */
-  describeFigure?(path: string): Promise<string | undefined>;
+  describeFigure?(path: string, context: string): Promise<string | undefined>;
   /** AI notes: where the AI drew from, by source (the main part of the layer). */
   readonly sources?: readonly SourceGroup[];
   /** AI notes: the sheet's memory for the model. */

@@ -13,7 +13,7 @@ import { app, ipcMain, safeStorage, type IpcMainInvokeEvent } from 'electron';
 import { existsSync, readFileSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import { AI_EFFORTS, allowedProviders, CITED_ID, figurePrompt, formulaPrompt, memoryInstruction, modelAllowed, prepareBriefing, NO_POLICY, parseAiPolicy, providerById, type AiPolicy, type AiSheetContext, type ChatTurn } from '@kalketa/ai';
+import { AI_EFFORTS, allowedProviders, CITED_ID, FIGURE_CONTEXT_CHARS, figurePrompt, formulaPrompt, memoryInstruction, modelAllowed, prepareBriefing, NO_POLICY, parseAiPolicy, providerById, type AiPolicy, type AiSheetContext, type ChatTurn } from '@kalketa/ai';
 import { askAboutImage, chat, discoverLocal, testConnection, tryModel, type AnswerResult, type ChatResult, type ConnectionResult } from '@kalketa/ai/connect';
 
 export interface AiKeyState {
@@ -215,7 +215,7 @@ export function registerAiBridge(fromEditor: (event: IpcMainInvokeEvent) => unkn
 
   // A formula read from a picture: the picture and the instruction, one answer.
   // A figure described instead (purpose 'figure'), in the language of the user.
-  ipcMain.handle('kalketa:ai-formula', async (event, ask: { provider: unknown; model: unknown; url?: unknown; effort?: unknown; purpose?: unknown; language?: unknown; image: { type: unknown; data: unknown } }): Promise<ChatResult> => {
+  ipcMain.handle('kalketa:ai-formula', async (event, ask: { provider: unknown; model: unknown; url?: unknown; effort?: unknown; purpose?: unknown; language?: unknown; context?: unknown; image: { type: unknown; data: unknown } }): Promise<ChatResult> => {
     fromEditor(event);
     const id = allowed(ask.provider);
     const model = typeof ask.model === 'string' ? ask.model : '';
@@ -227,7 +227,7 @@ export function registerAiBridge(fromEditor: (event: IpcMainInvokeEvent) => unkn
       model,
       ...(typeof ask.url === 'string' ? { url: ask.url } : {}),
       ...(keys.has(id) ? { apiKey: keys.get(id)! } : {}),
-      prompt: ask.purpose === 'figure' ? figurePrompt(typeof ask.language === 'string' && /^[A-Za-z ]{2,30}$/.test(ask.language) ? ask.language : 'English') : formulaPrompt(),
+      prompt: ask.purpose === 'figure' ? figurePrompt(typeof ask.language === 'string' && /^[A-Za-z ]{2,30}$/.test(ask.language) ? ask.language : 'English', typeof ask.context === 'string' ? ask.context.slice(0, FIGURE_CONTEXT_CHARS) : '') : formulaPrompt(),
       image: { type: ask.image.type, data: ask.image.data },
       ...(AI_EFFORTS.find((e) => e === ask.effort) ? { effort: AI_EFFORTS.find((e) => e === ask.effort)! } : {}),
     });

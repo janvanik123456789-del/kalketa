@@ -56,7 +56,9 @@ const fakeApi = createServer((request, response) => {
         response.writeHead(200, { 'content-type': 'application/json' });
         // A figure is described, a formula read.
         const figure = body.messages[0].content.some((c) => c.type === 'text' && String(c.text).includes('figure from an engineering textbook'));
-        const content = figure ? 'Průběh ohybového momentu prostého nosníku.' : 'M = F·a = a·F (7)';
+        // A figure is described from the text of the book around it, which must come with it.
+        const withText = body.messages[0].content.some((c) => c.type === 'text' && String(c.text).includes('Ohybový moment a průhyb'));
+        const content = figure ? (withText ? 'Průběh ohybového momentu prostého nosníku.' : 'No text came.') : 'M = F·a = a·F (7)';
         response.end(JSON.stringify({ object: 'chat.completion', model: 'local-smoke-7b', choices: [{ index: 0, message: { role: 'assistant', content }, finish_reason: 'stop' }] }));
         return;
       }

@@ -420,7 +420,7 @@ export function App() {
    * A picture of the sheet read by the model (it must read images): a formula written in the
    * calculation language, or a figure described for search. Passing failures are tried again.
    */
-  const askAboutPicture = async (path: string, purpose: 'formula' | 'figure'): Promise<{ text: string; model: string } | undefined> => {
+  const askAboutPicture = async (path: string, purpose: 'formula' | 'figure', context = ''): Promise<{ text: string; model: string } | undefined> => {
     if (!desktop) return undefined;
     if (!aiOn) {
       setNotice(t(ui, 'formula.aiOff'));
@@ -439,6 +439,7 @@ export function App() {
         ...(aiSettings.url ? { url: aiSettings.url } : {}),
         ...(aiSettings.effort ? { effort: aiSettings.effort } : {}),
         purpose,
+        ...(context ? { context } : {}),
         // The description is written in the language of the user, who searches with it.
         language: language === 'cs' ? 'Czech' : 'English',
         image: { type, data: btoa(binary) },
@@ -469,8 +470,8 @@ export function App() {
     return lines ? [`' ✦ ${t(ui, 'formula.byAi', { model: answer!.model })}`, ...lines].join('\n') : undefined;
   };
   /** What a figure shows, for search: none for a picture of a formula. */
-  const describeFigure = async (path: string): Promise<string | undefined> => {
-    const answer = await askAboutPicture(path, 'figure');
+  const describeFigure = async (path: string, context: string): Promise<string | undefined> => {
+    const answer = await askAboutPicture(path, 'figure', context);
     return answer ? cleanFigureDescription(answer.text) : undefined;
   };
   // A cut-out from a study PDF being chosen: the sources wait for it.

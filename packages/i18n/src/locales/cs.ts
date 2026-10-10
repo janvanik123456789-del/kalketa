@@ -799,6 +799,7 @@ export const cs: Catalog = {
     'kalk.confirmTip': 'Vzorec je přepsaný správně: poznámka AI zmizí a vzorec se ukáže jako v knize (na střed, s číslem), výřez se sbalí.',
     'kalk.edit': '✎ Upravit zápis',
     'kalk.editDone': 'Skrýt zápis',
+    'kalk.derivedWithValues': '✓ odvození ověřeno, dosazené hodnoty dávají výsledek',
     'kalk.derived': '✓ odvození ověřeno',
     'kalk.stepDiffers': '⚠ krok {step} nesouhlasí: špatně přečtený vzorec, nebo dosazení jiného vztahu',
     'kalk.stepUnits': '⚠ krok {step}: jiné jednotky',

@@ -203,6 +203,7 @@ export const UI_KEYS = [
   'kalk.confirmTip',
   'kalk.edit',
   'kalk.editDone',
+  'kalk.derivedWithValues',
   'kalk.derived',
   'kalk.stepDiffers',
   'kalk.stepUnits',

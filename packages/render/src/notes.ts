@@ -18,8 +18,8 @@
  * Everything else is shown as text; no HTML from the notes is ever passed on.
  */
 
-import { defaultRegistry, evaluateSheet, parse, type Statement } from '@kalketa/core';
-import { t, type Catalog } from '@kalketa/i18n';
+import { defaultRegistry, evaluateSheet, formatExpr, fromDecimalComma, parse, type Expr, type Statement } from '@kalketa/core';
+import { formatNumber, t, type Catalog } from '@kalketa/i18n';
 import { formulaNode, type FormulaOptions } from './formula.js';
 import { esc, mo, nameNode, paren, row, toMathML, type MathNode } from './math.js';
 
@@ -198,29 +198,41 @@ function parseBlocks(text: string): Block[] {
 
 const KALK_OPTIONS: FormulaOptions = { literal: (v) => String(v), argumentSeparator: ',', booleans: { true: 'true', false: 'false' } };
 
+/** Numbers as the user's language writes them (0,6 in Czech), when it is known. */
+function kalkOptions(catalog?: Catalog): FormulaOptions {
+  if (!catalog || !formatNumber(1.5, catalog).includes(',')) return KALK_OPTIONS;
+  return { ...KALK_OPTIONS, literal: (v) => formatNumber(v, catalog, { digits: 15 }), argumentSeparator: ';' };
+}
+
+/** A line written with decimal commas, as the book prints it (0,6·σ_Kt), read as the language has it. */
+function readable(line: string): string {
+  return /\d,\d/.test(line) ? fromDecimalComma(line) : line;
+}
+
 /**
  * One line of the calculation language typeset as a formula, symbolically (nothing
  * is computed): "w := 5·q·L⁴/(384·E·I)" as w = 5·q·L⁴ over 384·E·I. A line the
  * language does not read stays as written, marked.
  */
-export function kalkFormula(line: string): { readonly html: string; readonly ok: boolean } {
-  const parsed = parse(line, { isUnit: (name) => defaultRegistry.isUnit(name) });
+export function kalkFormula(line: string, catalog?: Catalog): { readonly html: string; readonly ok: boolean } {
+  const parsed = parse(readable(line), { isUnit: (name) => defaultRegistry.isUnit(name) });
   const s = parsed.sheet.statements.find((x) => x.kind !== 'comment');
   const bad = { html: `<code class="kalk-bad">${esc(line)}</code>`, ok: false };
   if (!s || parsed.diagnostics.some((d) => d.severity === 'error')) return bad;
-  return kalkStatement(s, line);
+  return kalkStatement(s, line, catalog);
 }
 
 /** A statement of a ```kalk block typeset: a derivation with all its members, y = a = b = c. */
-function kalkStatement(s: Statement, line: string): { readonly html: string; readonly ok: boolean } {
+function kalkStatement(s: Statement, line: string, catalog?: Catalog): { readonly html: string; readonly ok: boolean } {
   const bad = { html: `<code class="kalk-bad">${esc(line)}</code>`, ok: false };
+  const options = kalkOptions(catalog);
   const chain = (members: readonly MathNode[]) => members.flatMap((m, i) => (i > 0 ? [mo('='), m] : [m]));
   let node: MathNode | undefined;
   if (s.kind === 'definition') {
     const name = s.params && s.params.length > 0 ? row(nameNode(s.name), paren(row(...s.params.flatMap((p, i) => (i > 0 ? [mo(','), nameNode(p.name)] : [nameNode(p.name)]))))) : nameNode(s.name);
-    node = row(name, mo('='), ...chain((s.derivation ?? [s.expr]).map((m) => formulaNode(m, KALK_OPTIONS))));
-  } else if (s.kind === 'derive') node = row(...chain(s.members.map((m) => formulaNode(m, KALK_OPTIONS))));
-  else if (s.kind === 'display' || s.kind === 'check') node = formulaNode(s.expr, KALK_OPTIONS);
+    node = row(name, mo('='), ...chain((s.derivation ?? [s.expr]).map((m) => formulaNode(m, options))));
+  } else if (s.kind === 'derive') node = row(...chain(s.members.map((m) => formulaNode(m, options))));
+  else if (s.kind === 'display' || s.kind === 'check') node = formulaNode(s.expr, options);
   if (!node) return bad;
   const label = s.kind === 'check' && s.label ? `<span class="kalk-label">${esc(s.label)}:</span> ` : '';
   return { html: `${label}${toMathML(node, 'block')}`, ok: true };
@@ -256,24 +268,62 @@ export function kalkConfirmed(lines: readonly string[]): boolean {
 export function kalkLines(lines: readonly string[], catalog?: Catalog): KalkLine[] {
   const shown = lines.map((l) => l.trim()).filter((l) => l !== '');
   const formulas = shown.filter((l) => !l.startsWith("'"));
-  const result = formulas.length > 0 ? evaluateSheet(formulas.join('\n')) : undefined;
+  const result = formulas.length > 0 ? evaluateSheet(formulas.map(readable).join('\n')) : undefined;
   const byLine = new Map(result?.statements.map((r) => [r.statement.span.line, r] as const) ?? []);
   const say = (key: Parameters<typeof t>[1], step?: number, sign = '') => (catalog ? t(catalog, key, step !== undefined ? { step: String(step) } : {}) : sign);
   let at = 0;
   return shown.map((l): KalkLine => {
     if (l.startsWith("'")) return { note: l.slice(1).trim(), source: l, html: '' };
     const r = byLine.get(++at);
-    const typeset = r && !r.diagnostics.some((d) => d.code === 'E-SYNTAX') ? kalkStatement(r.statement, l) : kalkFormula(l);
+    const typeset = r && !r.diagnostics.some((d) => d.code === 'E-SYNTAX') ? kalkStatement(r.statement, l, catalog) : kalkFormula(l, catalog);
     const eq = r?.statement.format?.eq;
     const own = { source: l, html: typeset.html, ...(typeof eq === 'string' && /^\d/.test(eq) ? { number: eq } : {}) };
     const steps = r?.derivation;
     if (!steps || steps.length === 0) return own;
-    const wrong = steps.findIndex((s) => !s.ok);
-    if (wrong < 0) return { ...own, check: { ok: true, text: say('kalk.derived', undefined, '✓') } };
-    const problem = steps[wrong]!.problem;
+    // A worked example of a book: values put in for the symbols (not to be checked here, the
+    // sources have no values), and a calculation of numbers whose unit the book writes at its
+    // result only (0,6·170·1/1,5 = 68 MPa): checked by its numbers.
+    const members = r?.statement.kind === 'definition' ? (r.statement.derivation ?? []) : r?.statement.kind === 'derive' ? r.statement.members : [];
+    const verdicts = steps.map((s, i): boolean | 'put-in' => {
+      if (s.ok) return true;
+      const [a, b] = [members[i], members[i + 1]];
+      if (!a || !b) return false;
+      if (readsSymbols(a) && !readsSymbols(b)) return 'put-in';
+      if (!readsSymbols(a) && !readsSymbols(b)) return sameNumber(a, b);
+      return false;
+    });
+    const wrong = verdicts.findIndex((v) => v === false);
+    if (wrong < 0) return { ...own, check: { ok: true, text: say(verdicts.includes('put-in') ? 'kalk.derivedWithValues' : 'kalk.derived', undefined, '✓') } };
+    // Numbers that give another number differ, whatever unit only one of them writes.
+    const numbersOnly = !!members[wrong] && !!members[wrong + 1] && !readsSymbols(members[wrong]!) && !readsSymbols(members[wrong + 1]!);
+    const problem = numbersOnly ? 'differs' : steps[wrong]!.problem;
     const key = problem === 'units' ? 'kalk.stepUnits' : problem === 'unverified' ? 'kalk.stepUnverified' : 'kalk.stepDiffers';
     return { ...own, check: { ok: false, text: say(key, wrong + 1, `⚠ ${wrong + 1}`) } };
   });
+}
+
+/** Whether a member of a chain reads symbols (names, not only numbers and units). */
+function readsSymbols(expr: Expr): boolean {
+  switch (expr.kind) {
+    case 'variable':
+      return true;
+    case 'unary':
+      return readsSymbols(expr.operand);
+    case 'binary':
+      return readsSymbols(expr.left) || readsSymbols(expr.right);
+    case 'call':
+      return expr.args.some(readsSymbols) || expr.named.some((n) => readsSymbols(n.value));
+    default:
+      return false;
+  }
+}
+
+/** Two members of numbers only with the same number, whatever unit only one of them writes. */
+function sameNumber(a: Expr, b: Expr): boolean {
+  const value = (e: Expr) => evaluateSheet(`x := ${formatExpr(e)}`).statements[0]?.display?.value;
+  const [x, y] = [value(a), value(b)];
+  // Books round what they print (23,53 for 23,529…): half a per cent apart is the same number.
+  return x !== undefined && y !== undefined && Math.abs(x - y) <= 0.005 * Math.max(Math.abs(x), Math.abs(y));
 }
 
 function kalkHtml(lines: readonly string[], catalog?: Catalog): string {

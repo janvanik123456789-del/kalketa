@@ -157,6 +157,8 @@ function toKalkLines(line: string, numbered: (printed: string) => void): string[
   const derived = /^derive\s+/.exec(text);
   if (derived) text = text.slice(derived[0].length);
   if (/\\[A-Za-z]|[{}]/.test(text)) text = latexToKalk(text);
+  // Decimal commas as the book prints them (0,6·σ_Kt; 1,5): the language writes a point.
+  text = text.replace(/(\d),(\d)/g, '$1.$2');
   text = subscriptParts(
     text
       .replace(/[.,;]?\s*\((\d{1,3}[a-z]?)\)\s*$/, (_, n: string) => (numbered(n), ''))

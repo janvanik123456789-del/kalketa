@@ -51,3 +51,20 @@ describe('formulas of the sources checked as derivations', () => {
     expect(lines[3]!.check?.text).toContain('krok 1 nesouhlasí');
   });
 });
+
+describe('a worked example of the book in the sources', () => {
+  it('reads decimal commas, takes the values put in, checks the numbers and finds a wrong result', async () => {
+    const { kalkLines } = await import('../src/index.js');
+    const { catalogFor } = await import('@kalketa/i18n');
+    const cs = catalogFor('cs');
+    const check = (block: string[]) => kalkLines(block, cs).at(-1)!.check?.text ?? '';
+    const tau = 'derive τ_Dov_s := τ_Ks·K_I / n == 0,6·σ_Kt·K_I / n == 0,6·170·1 / 1,5 == 68 MPa';
+    // A relation of the theory put in (τ_Ks = 0,6·σ_Kt) is not known to the check, until it is written above.
+    expect(check([tau])).toContain('krok 1 nesouhlasí');
+    expect(check(['derive τ_Ks := 0,6·σ_Kt', tau])).toBe('✓ odvození ověřeno, dosazené hodnoty dávají výsledek');
+    expect(check(['derive S_min := F/τ_Dov_s == 1600/68 == 23,53 mm²'])).toContain('✓');
+    expect(check(['derive S_min := F/τ_Dov_s == 1600/68 == 25 mm²'])).toContain('krok 2 nesouhlasí');
+    // The numbers as the language of the user writes them.
+    expect(kalkLines([tau], cs)[0]!.html).toContain('<mn>0,6</mn>');
+  });
+});

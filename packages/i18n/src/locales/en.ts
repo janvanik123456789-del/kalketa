@@ -799,6 +799,7 @@ export const en: Catalog = {
     'kalk.confirmTip': 'The formula is written right: the note of the AI goes and the formula shows as in the book (centred, numbered), the cut-out folds away.',
     'kalk.edit': '✎ Edit the formula',
     'kalk.editDone': 'Hide the formula',
+    'kalk.derivedWithValues': '✓ derivation checked, the values put in give the result',
     'kalk.derived': '✓ derivation checked',
     'kalk.stepDiffers': '⚠ step {step} does not hold: a formula read wrongly, or another relation substituted',
     'kalk.stepUnits': '⚠ step {step}: other units',

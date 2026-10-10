@@ -65,7 +65,7 @@ export function figureDescription(attributes: string | undefined): string | unde
 
 export function notesHtml(text: string, options: NotesOptions = {}): string {
   return parseBlocks(text)
-    .map((block) => {
+    .map((block, i, all) => {
       switch (block.kind) {
         case 'heading': {
           const level = Math.min(block.level + 1, 6);
@@ -95,7 +95,13 @@ export function notesHtml(text: string, options: NotesOptions = {}): string {
           const src = options.resolveFile?.(block.path);
           const alt = block.description ?? block.caption;
           const image = src ? `<img src="${esc(src)}" alt="${esc(alt)}"${block.description ? ` title="${esc(block.description)}"` : ''}>` : `<div class="missing-image">${esc(block.path)}</div>`;
-          return `<figure>${image}${block.caption ? `<figcaption>${inline(block.caption)}</figcaption>` : ''}</figure>`;
+          const figure = `<figure>${image}${block.caption ? `<figcaption>${inline(block.caption)}</figcaption>` : ''}</figure>`;
+          // The cut-out of a formula whose formula is confirmed below: the formula stands for it, the cut-out a click away.
+          const next = all[i + 1];
+          if (/\/vzorec-[^/]*$/.test(block.path) && next?.kind === 'code' && next.lang === 'kalk' && kalkConfirmed(next.lines)) {
+            return `<details class="cutout"><summary>${esc(options.catalog ? t(options.catalog, 'kalk.cutout') : '▸')}${block.caption ? ` · ${inline(block.caption)}` : ''}</summary>${figure}</details>`;
+          }
+          return figure;
         }
       }
     })
@@ -227,6 +233,18 @@ export interface KalkLine {
   readonly html: string;
   /** The check of a derivation: ok, or which step does not hold and why. */
   readonly check?: { readonly ok: boolean; readonly text: string };
+  /** The number the book gave the formula ({eq=32}): shown at the right, (32). */
+  readonly number?: string;
+}
+
+/** The note the AI leaves on a formula it read from a picture, until the user confirms it. */
+export function isAiNote(line: string): boolean {
+  return /^'\s*✦/.test(line.trim()) || /^'.*AI \(/.test(line.trim());
+}
+
+/** A block of formulas with no note of the AI left: confirmed, shown as the book prints it. */
+export function kalkConfirmed(lines: readonly string[]): boolean {
+  return lines.some((l) => l.trim() !== '' && !l.trim().startsWith("'")) && !lines.some(isAiNote);
 }
 
 /**
@@ -246,24 +264,30 @@ export function kalkLines(lines: readonly string[], catalog?: Catalog): KalkLine
     if (l.startsWith("'")) return { note: l.slice(1).trim(), source: l, html: '' };
     const r = byLine.get(++at);
     const typeset = r && !r.diagnostics.some((d) => d.code === 'E-SYNTAX') ? kalkStatement(r.statement, l) : kalkFormula(l);
+    const eq = r?.statement.format?.eq;
+    const own = { source: l, html: typeset.html, ...(typeof eq === 'string' && /^\d/.test(eq) ? { number: eq } : {}) };
     const steps = r?.derivation;
-    if (!steps || steps.length === 0) return { source: l, html: typeset.html };
+    if (!steps || steps.length === 0) return own;
     const wrong = steps.findIndex((s) => !s.ok);
-    if (wrong < 0) return { source: l, html: typeset.html, check: { ok: true, text: say('kalk.derived', undefined, '✓') } };
+    if (wrong < 0) return { ...own, check: { ok: true, text: say('kalk.derived', undefined, '✓') } };
     const problem = steps[wrong]!.problem;
     const key = problem === 'units' ? 'kalk.stepUnits' : problem === 'unverified' ? 'kalk.stepUnverified' : 'kalk.stepDiffers';
-    return { source: l, html: typeset.html, check: { ok: false, text: say(key, wrong + 1, `⚠ ${wrong + 1}`) } };
+    return { ...own, check: { ok: false, text: say(key, wrong + 1, `⚠ ${wrong + 1}`) } };
   });
 }
 
 function kalkHtml(lines: readonly string[], catalog?: Catalog): string {
   // A line starting with ' is a note to the formulas ("' AI wrote this from a picture").
+  // Confirmed (no note of the AI left), the formulas stand as the book prints them: centred, numbered.
+  const confirmed = kalkConfirmed(lines);
   const html = kalkLines(lines, catalog).map((l) =>
     l.note !== undefined
-      ? `<div class="kalk-note">${esc(l.note)}</div>`
-      : `<div class="kalk-formula" title="${esc(l.source)}">${l.html}${l.check ? `<span class="kalk-check ${l.check.ok ? 'ok' : 'bad'}">${esc(l.check.text)}</span>` : ''}</div>`,
+      ? confirmed
+        ? ''
+        : `<div class="kalk-note">${esc(l.note)}</div>`
+      : `<div class="kalk-formula" title="${esc(l.source)}">${l.html}${l.number ? `<span class="kalk-number">(${esc(l.number)})</span>` : ''}${l.check && !(confirmed && l.check.ok) ? `<span class="kalk-check ${l.check.ok ? 'ok' : 'bad'}">${esc(l.check.text)}</span>` : ''}</div>`,
   );
-  return `<div class="kalk">${html.join('')}</div>`;
+  return `<div class="kalk${confirmed ? ' confirmed' : ''}">${html.join('')}</div>`;
 }
 
 /** Inline markup: `code` as written, then links, bold and italic on the rest (escaped first). */
@@ -301,6 +325,10 @@ export const NOTES_CSS = `.notes { font-size: 10.5pt; line-height: 1.5; }
 .notes .kalk-label { color: #555; font-size: 0.95em; }
 .notes code.kalk-bad { color: #a12828; }
 .notes .kalk-check { display: block; font-size: 0.85em; }
+.notes .kalk.confirmed .kalk-formula { position: relative; text-align: center; padding: 0 12mm; }
+.notes .kalk-number { position: absolute; right: 0; top: 50%; transform: translateY(-50%); }
+.notes details.cutout { margin: 0; font-size: 0.85em; color: #666; }
+.notes details.cutout summary { cursor: pointer; }
 .notes .kalk-check.ok { color: #2e7d32; }
 .notes .kalk-check.bad { color: #a15c00; }
 .notes .kalk-note { color: #5a3fa6; font-size: 0.9em; }

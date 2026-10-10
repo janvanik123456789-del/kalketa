@@ -22,7 +22,7 @@ describe('formulas read from pictures', () => {
     expect(cleanFormula('M_omax = R_A · a = R_B · b.')).toEqual(['derive M_omax := R_A·a == R_B·b']);
     expect(formulaPrompt()).toContain('derive y := a == b == c');
     expect(cleanFormula('\\sigma_{max} = \\frac{M}{W_{y}} \\leq f_{y}')).toEqual(['σ_max = (M)/(W_y) ≤ f_y']);
-    expect(cleanFormula('w = \\sqrt{\\frac{a}{b}} (12)')).toEqual(['w := sqrt((a)/(b))']);
+    expect(cleanFormula('w = \\sqrt{\\frac{a}{b}} (12)')).toEqual(['w := sqrt((a)/(b)) {eq=12}']);
     expect(cleanFormula('w := L/250')).toEqual(['w := L/250']);
     // As the user's local model wrote two cut-outs of the textbook.
     expect(cleanFormula('M_o(x) == F·x')).toEqual(['M_o(x) := F·x']);
@@ -55,5 +55,15 @@ describe('figures described for search', () => {
     // Written after the picture, the words of the description are words of its section.
     const line = '![Pružnost a pevnost, s. 36](images/obr.png){alt="průběh ohybového momentu"}';
     expect(terms(line)).toEqual(expect.arrayContaining(terms('ohybového momentu')));
+  });
+});
+
+describe('formulas as the book prints them', () => {
+  it('keep the number of the formula and write a subscript of several parts', () => {
+    expect(cleanFormula('τ_s = G·γ, (32)')).toEqual(['τ_s := G·γ {eq=32}']);
+    expect(cleanFormula('τ_Sk,s ≤ τ_Dov,s. {eq=33}')).toEqual(['τ_Sk_s ≤ τ_Dov_s {eq=33}']);
+    expect(cleanFormula('y = M/(E·I) = F·l^3/(3·E·I) (12a)')).toEqual(['derive y := M/(E·I) == F·l^3/(3·E·I) {eq=12a}']);
+    // Commas of arguments stay.
+    expect(cleanFormula('M = max(M_a, M_b)')).toEqual(['M := max(M_a, M_b)']);
   });
 });

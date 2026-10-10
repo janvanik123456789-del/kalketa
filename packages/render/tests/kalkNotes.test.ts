@@ -18,7 +18,8 @@ describe('formulas in the sources', () => {
 
   it('come as a ```kalk block; other code stays as written', () => {
     const html = notesHtml(['Průhyb:', '', '```kalk', 'w := 5·q·L^4/(384·E·I)', '```', '', '```', 'w := 1', '```'].join('\n'));
-    expect(html).toContain('<div class="kalk"><div class="kalk-formula"');
+    // A formula with no note of the AI on it stands as printed: centred.
+    expect(html).toContain('<div class="kalk confirmed"><div class="kalk-formula"');
     expect(html).toContain('<pre class="code"><code>w := 1</code></pre>');
   });
 });

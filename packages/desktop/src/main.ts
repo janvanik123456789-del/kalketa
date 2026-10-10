@@ -1874,6 +1874,21 @@ async function studyWithRealInput(contents: Electron.WebContents, picture: strin
       check: block?.querySelector('.kalk-check')?.textContent ?? '',
     };
   })()`)) as { note: string; math: number; underPicture: boolean; code: string; check: string };
+  // Confirmed, the formula stands as the book prints it: centred, its number (7) at the right, the cut-out folded away.
+  await clickOn('.layer-view.active .kalk-confirm');
+  await pause(400);
+  const confirmedFormula = (await contents.executeJavaScript(`(() => {
+    const block = [...document.querySelectorAll('.layer-view.active .word-code.confirmed')].find((b) => (b.querySelector('code')?.textContent ?? '').includes('derive M'));
+    return {
+      confirmed: !!block,
+      codeHidden: !!block?.classList.contains('code-hidden'),
+      number: block?.querySelector('.kalk-number')?.textContent ?? '',
+      note: !!block?.querySelector('.kalk-note'),
+      folded: !!document.querySelector('.layer-view.active .word-cutout-folded'),
+    };
+  })()`)) as { confirmed: boolean; codeHidden: boolean; number: string; note: boolean; folded: boolean };
+  await contents.executeJavaScript(`document.querySelector('.layer-view.active .word-cutout-folded')?.scrollIntoView({ block: 'center' })`);
+  await takePicture(picture.replace(/[.]png$/, '-formula.png'));
   // Figures described for search: the picture of page 22 gets what it shows, the cut-out of the formula does not.
   await clickOn('.layer-view.active .word-describe-ai');
   for (let i = 0; i < 40 && !(await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .word-text img')].some((img) => img.getAttribute('title'))`)); i++) await pause(150);
@@ -1903,13 +1918,13 @@ async function studyWithRealInput(contents: Electron.WebContents, picture: strin
   await clickOn('.pane-tab[data-pane="details"]');
   await pause(300);
   const cited = answer.ok.map((c) => /^PP:T(\d+)$/.exec(c ?? '')?.[1]).filter(Boolean).map(Number);
-  await writeFile(picture.replace(/[.]png$/, '-study.json'), JSON.stringify({ offered, suggested, chosen, sources, cropPage, stillOpen, cropped, formula, fromPicture, described, card, listed, answer, cited }, null, 2));
+  await writeFile(picture.replace(/[.]png$/, '-study.json'), JSON.stringify({ offered, suggested, chosen, sources, cropPage, stillOpen, cropped, formula, fromPicture, confirmedFormula, described, card, listed, answer, cited }, null, 2));
   return (
     offered.file.startsWith('Pruznost a pevnost.pdf') && offered.file.includes('PDF, 62 s.') && offered.reads === 'AI čte 62 z 62.' && offered.large && offered.key === 'PP' &&
     offered.chapters.length === 4 && ohyb >= 0 && chosen.reads === 'AI čte 21 z 62.' && !chosen.large && suggested !== '' &&
     !sources.dialog && sources.headings[0] === 'H2:2 Ohyb (s. 21–24)' && sources.headings[1] === 'H3:2.1 Průhyb nosníku (s. 25–40)' && sources.headings.length === 2 && sources.text.includes('Strana 30.') && !sources.text.includes('Strana 20.') &&
     cropPage === '21' && !!fitted && !!zoomed && zoomed.w > fitted.w * 1.2 && stillOpen === 'Vloženo: 2' && !cropped.dialog && cropped.pictures.length === picturesBefore + 2 && cropped.pictures.filter((c) => /^Pružnost a pevnost, s\. 21\|\d+$/.test(c) && Number(c.split('|')[1]) > 400).length === 2 &&
-    formula.math === 1 && formula.bad === 0 && fromPicture.note.includes('přepsala AI (local-smoke-7b)') && fromPicture.math === 1 && fromPicture.underPicture && fromPicture.code.includes('derive M := F·a == a·F') && fromPicture.check.includes('odvození ověřeno') && described.includes('figure:Průběh ohybového momentu prostého nosníku') && described.some((d) => d === 'formula:') && sources.cuts.length === 2 && sources.cuts.every((c) => c === 'Pružnost a pevnost, s. 22') && sources.notice.includes('obrázků (1) a vzorců (1)') && !sources.text.includes('(51)') && sources.text.includes('Text pod vzorcem na straně 22.') && cropped.afterPage21 === 'img' &&
+    formula.math === 1 && formula.bad === 0 && fromPicture.note.includes('přepsala AI (local-smoke-7b)') && fromPicture.math === 1 && fromPicture.underPicture && fromPicture.code.includes('derive M := F·a == a·F {eq=7}') && fromPicture.check.includes('odvození ověřeno') && confirmedFormula.confirmed && confirmedFormula.codeHidden && confirmedFormula.number === '(7)' && !confirmedFormula.note && confirmedFormula.folded && described.includes('figure:Průběh ohybového momentu prostého nosníku') && !described.some((d) => d.startsWith('formula:') && d !== 'formula:') && sources.cuts.length === 2 && sources.cuts.every((c) => c === 'Pružnost a pevnost, s. 22') && sources.notice.includes('obrázků (1) a vzorců (1)') && !sources.text.includes('(51)') && sources.text.includes('Text pod vzorcem na straně 22.') && cropped.afterPage21 === 'img' &&
     card.key === 'PP' && JSON.stringify(card.chapters) === JSON.stringify([ohyb]) &&
     at >= 0 && listed[at]!.includes('AI čte 21 z 62.') &&
     cited.length === 1 && cited[0]! >= 21 && cited[0]! <= 41

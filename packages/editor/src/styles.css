@@ -607,8 +607,20 @@ button.icon:hover { color: var(--accent); }
 /* A formula in Kalketa notation in the sources: the line as written, typeset under it. */
 .word-code.kalk-block pre { margin-bottom: 0; border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
 .kalk-preview { border: 1px solid #d5dae1; border-top: none; padding: 4px 10px; background: #fff; }
-.kalk-preview .kalk-formula { margin: 2px 0; }
+.kalk-preview .kalk-formula { margin: 2px 0; position: relative; }
 .kalk-preview .kalk-check { display: block; font-size: 0.85em; }
+/* A confirmed formula stands as the book prints it: centred, its number at the right, its text hidden. */
+.word-code.code-hidden > pre { display: none; }
+.word-code.confirmed { background: transparent; border-color: transparent; }
+.word-code.code-hidden .kalk-preview { border-color: transparent; }
+.kalk-preview.confirmed math { font-family: "Cambria Math", "STIX Two Math", "Latin Modern Math", math; font-size: 1.15em; }
+.kalk-preview.confirmed .kalk-formula { position: relative; text-align: center; padding: 0 12mm; }
+.kalk-preview .kalk-number { position: absolute; right: 0; top: 50%; transform: translateY(-50%); }
+.kalk-preview .kalk-actions { display: flex; gap: 6px; justify-content: flex-end; }
+.kalk-preview .kalk-actions button { font-size: 12px; padding: 1px 8px; }
+.kalk-preview.confirmed .kalk-actions { opacity: 0; }
+.word-code.confirmed:hover .kalk-actions { opacity: 1; }
+.word-cutout-folded button { border: none; background: none; color: #777; font-size: 12px; padding: 0; cursor: pointer; }
 .kalk-preview .kalk-check.ok { color: #2e7d32; }
 .kalk-preview .kalk-check.bad { color: #a15c00; }
 .kalk-preview code.kalk-bad { color: #a12828; }

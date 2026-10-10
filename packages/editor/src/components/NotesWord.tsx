@@ -11,8 +11,8 @@ import { createContext, useContext, useEffect, useRef, useState, type ReactNode 
 import { EditorContent, Extension, NodeViewContent, NodeViewWrapper, ReactNodeViewRenderer, useEditor, type Editor, type JSONContent, type ReactNodeViewProps } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import CodeBlock from '@tiptap/extension-code-block';
-import { NodeSelection } from '@tiptap/pm/state';
-import { figureDescription, kalkLines } from '@kalketa/render';
+import { NodeSelection, Selection } from '@tiptap/pm/state';
+import { figureDescription, isAiNote, kalkConfirmed, kalkLines } from '@kalketa/render';
 import Image, { type ImageOptions } from '@tiptap/extension-image';
 import { TableKit } from '@tiptap/extension-table';
 import { t, type Catalog, type UiKey } from '@kalketa/i18n';
@@ -84,11 +84,38 @@ const NotesAttributes = Extension.create({
  * A picture of the layer with its caption under it, as printed. The caption is
  * changed by a double click.
  */
-function PictureView({ node, selected, updateAttributes, extension }: ReactNodeViewProps) {
+function PictureView({ node, selected, updateAttributes, extension, editor, getPos }: ReactNodeViewProps) {
   const options = extension.options as { captionLabel?: string; captionEmpty?: string };
+  const catalog = useContext(WordCatalog);
   const caption = String(node.attrs['alt'] ?? '');
   // What the figure shows, written for search ({alt="…"} after it): the text of the picture and its tooltip.
   const description = figureDescription(String(node.attrs['extra'] ?? '').replace(/^\{|\}$/g, ''));
+  // The cut-out of a formula confirmed below folds away: the formula stands for it. Its block
+  // changes without this view, so every change of the text is looked at.
+  const [, redraw] = useState(0);
+  useEffect(() => {
+    const update = () => redraw((n) => n + 1);
+    editor.on('update', update);
+    return () => void editor.off('update', update);
+  }, [editor]);
+  const [shown, setShown] = useState(false);
+  const pos = getPos();
+  const next = typeof pos === 'number' ? editor.state.doc.nodeAt(pos + node.nodeSize) : null;
+  const folded =
+    /\/vzorec-[^/]*$/.test(String(node.attrs['path'] ?? '')) &&
+    next?.type.name === 'codeBlock' &&
+    next.attrs['language'] === 'kalk' &&
+    kalkConfirmed(next.textContent.split('\n'));
+  if (folded && !shown) {
+    return (
+      <NodeViewWrapper as="div" className="word-cutout-folded" contentEditable={false}>
+        <button type="button" onClick={() => setShown(true)}>
+          ▸ {catalog ? t(catalog, 'kalk.cutout') : ''}
+          {caption ? ` · ${caption}` : ''}
+        </button>
+      </NodeViewWrapper>
+    );
+  }
   return (
     <NodeViewWrapper
       as="figure"
@@ -130,17 +157,55 @@ const NotesImage = Image.extend<ImageOptions & { captionLabel: string; captionEm
 /** The words of the user's language for the node views (the check of derivations in ```kalk). */
 const WordCatalog = createContext<Catalog | undefined>(undefined);
 
-function CodeView({ node }: ReactNodeViewProps) {
+function CodeView({ node, editor, getPos }: ReactNodeViewProps) {
   const kalk = node.attrs['language'] === 'kalk';
   const catalog = useContext(WordCatalog);
   const lines = node.textContent.split('\n').filter((l) => l.trim() !== '');
+  // Confirmed (no note of the AI left): the formula as the book prints it, its text a click away.
+  const confirmed = kalk && kalkConfirmed(lines);
+  const [editing, setEditing] = useState(false);
+  // The cursor in the block: its text shows, whatever it is (a formula being typed is confirmed too).
+  const [, redraw] = useState(0);
+  useEffect(() => {
+    const update = () => redraw((n) => n + 1);
+    editor.on('selectionUpdate', update);
+    return () => void editor.off('selectionUpdate', update);
+  }, [editor]);
+  const at = getPos();
+  const { from } = editor.state.selection;
+  const inside = typeof at === 'number' && from > at && from < at + node.nodeSize;
+  const say = (key: UiKey) => (catalog ? t(catalog, key) : '');
+  /** The note of the AI taken away: the user has checked the formula. */
+  const confirm = () => {
+    const pos = getPos();
+    if (typeof pos !== 'number') return;
+    const text = node.textContent
+      .split('\n')
+      .filter((l) => !isAiNote(l))
+      .join('\n');
+    const tr = editor.state.tr.replaceWith(pos + 1, pos + node.nodeSize - 1, editor.schema.text(text));
+    // The cursor goes past the formula: confirmed, it shows as printed at once.
+    const after = pos + (tr.doc.nodeAt(pos)?.nodeSize ?? 0);
+    tr.setSelection(Selection.near(tr.doc.resolve(Math.min(after, tr.doc.content.size))));
+    editor.view.dispatch(tr);
+    setEditing(false);
+  };
   return (
-    <NodeViewWrapper className={`word-code${kalk ? ' kalk-block' : ''}`}>
+    <NodeViewWrapper className={`word-code${kalk ? ' kalk-block' : ''}${confirmed ? ' confirmed' : ''}${confirmed && !editing && !inside ? ' code-hidden' : ''}`}>
       <pre>
         <NodeViewContent<'code'> as="code" />
       </pre>
       {kalk && lines.length > 0 && (
-        <div className="kalk-preview" contentEditable={false}>
+        <div
+          className={`kalk-preview${confirmed ? ' confirmed' : ''}`}
+          contentEditable={false}
+          // A click on the formula as printed puts the cursor into its text.
+          onMouseDown={(e) => {
+            if (!confirmed || (e.target as HTMLElement).closest('button') || typeof at !== 'number') return;
+            e.preventDefault();
+            editor.chain().focus().setTextSelection(at + node.nodeSize - 1).run();
+          }}
+        >
           {kalkLines(lines, catalog).map((l, i) =>
             l.note !== undefined ? (
               <div key={i} className="kalk-note">
@@ -149,10 +214,23 @@ function CodeView({ node }: ReactNodeViewProps) {
             ) : (
               <div key={i} className="kalk-formula" title={l.source}>
                 <div dangerouslySetInnerHTML={{ __html: l.html }} />
-                {l.check && <span className={`kalk-check ${l.check.ok ? 'ok' : 'bad'}`}>{l.check.text}</span>}
+                {l.number && <span className="kalk-number">({l.number})</span>}
+                {l.check && !(confirmed && l.check.ok) && <span className={`kalk-check ${l.check.ok ? 'ok' : 'bad'}`}>{l.check.text}</span>}
               </div>
             ),
           )}
+          <div className="kalk-actions">
+            {!confirmed && lines.some(isAiNote) && (
+              <button type="button" className="kalk-confirm" title={say('kalk.confirmTip')} onClick={confirm}>
+                {say('kalk.confirm')}
+              </button>
+            )}
+            {confirmed && (
+              <button type="button" className="kalk-edit" onClick={() => setEditing((v) => !v)}>
+                {say(editing ? 'kalk.editDone' : 'kalk.edit')}
+              </button>
+            )}
+          </div>
         </div>
       )}
     </NodeViewWrapper>

@@ -465,7 +465,8 @@ export function App() {
   const readFormula = async (path: string): Promise<string | undefined> => {
     const answer = await askAboutPicture(path, 'formula');
     const lines = answer ? cleanFormula(answer.text) : undefined;
-    return lines ? [`' ${t(ui, 'formula.byAi', { model: answer!.model })}`, ...lines].join('\n') : undefined;
+    // ✦ marks the note of the AI in any language, until the user confirms the formula.
+    return lines ? [`' ✦ ${t(ui, 'formula.byAi', { model: answer!.model })}`, ...lines].join('\n') : undefined;
   };
   /** What a figure shows, for search: none for a picture of a formula. */
   const describeFigure = async (path: string): Promise<string | undefined> => {

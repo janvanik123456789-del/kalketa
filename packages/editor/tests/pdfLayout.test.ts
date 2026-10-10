@@ -48,7 +48,7 @@ describe('a PDF page laid out for the sources', () => {
   });
 
   it('takes a scanned page for no picture, and joins a figure drawn in pieces', () => {
-    expect(pageLayout([line(60, 'Text skenované stránky.')], [{ top: 0, bottom: 842, left: 0, right: 595 }], page)).toEqual([{ kind: 'text', text: 'Text skenované stránky.' }]);
+    expect(pageLayout([line(60, 'Text skenované stránky.')], [{ top: 0, bottom: 842, left: 0, right: 595 }], page)).toEqual([{ kind: 'text', text: 'Text skenované stránky.', box: { top: 60, bottom: 72, left: 70, right: 520 } }]);
     const pieces = pageLayout([], [{ top: 100, bottom: 200, left: 100, right: 200 }, { top: 203, bottom: 300, left: 100, right: 200 }, { top: 0, bottom: 5, left: 0, right: 5 }], page);
     expect(pieces).toHaveLength(1);
     expect(pieces[0]).toMatchObject({ kind: 'cut', why: 'picture', box: { top: 96, bottom: 304 } });

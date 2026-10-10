@@ -189,3 +189,36 @@ export function cleanFormula(answer: string): string[] | undefined {
   const out = lines.flatMap(toKalk);
   return out.length > 0 ? out : undefined;
 }
+
+/**
+ * What the model is asked about a part of a scanned page: its text written again from the
+ * picture, the text the scan's recognition (OCR) read given as a hint. The recognition reads
+ * Greek letters, indexes and formulas wrongly (σ as "<r", τ as "T", γ as "y", Δl as "AI");
+ * the model sees what is printed.
+ */
+export function rereadPrompt(ocr: string): string {
+  return [
+    'The image is a part of a scanned page of an engineering textbook. Below is the text the scan recognition (OCR) read from it; it has errors, above all in Greek letters, indexes and formulas.',
+    'Write the text of the image again exactly as printed, in its own language:',
+    '- the same words in the same order; correct only what the recognition read wrongly;',
+    '- Greek letters as Greek (σ, τ, γ, Δ), an index with an underscore (σ_Kt, K_I, τ_Dov_s), multiplication as ·, numbers as printed (0,6);',
+    '- a formula inside a sentence written on its line in the sentence (τ_Ks = 0,6·σ_Kt = 0,6·170 = 102 MPa);',
+    '- paragraphs separated by one blank line; a word divided at the end of a line written whole;',
+    '- no comments, no headings marks, no code blocks, no page numbers or running heads.',
+    '',
+    'Text from the recognition:',
+    ocr.trim().slice(0, 6000),
+  ].join('\n');
+}
+
+/** The text of the model's answer, as paragraphs; undefined when there is none. */
+export function cleanReread(answer: string): string | undefined {
+  const text = answer
+    .replace(/^\s*```[\w-]*\s*$/gm, '')
+    .split(/\r?\n/)
+    .map((l) => l.trimEnd())
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+  return text || undefined;
+}

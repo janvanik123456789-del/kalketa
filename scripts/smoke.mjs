@@ -54,6 +54,14 @@ const fakeApi = createServer((request, response) => {
       // A formula read from a picture: the picture came, the formula goes back, a chain of equal forms as models write it.
       if (!body.stream && Array.isArray(body.messages?.[0]?.content) && body.messages[0].content.some((c) => c.type === 'image_url' && String(c.image_url?.url).startsWith('data:image/png;base64,'))) {
         response.writeHead(200, { 'content-type': 'application/json' });
+        // A part of a scanned page read again: the text of the recognition, with what it read wrongly put right.
+        const prompt = body.messages[0].content.find((c) => c.type === 'text')?.text ?? '';
+        if (String(prompt).includes('scanned page of an engineering textbook')) {
+          const ocr = String(prompt).split('Text from the recognition:')[1]?.trim() ?? '';
+          const fixed = ocr.replace(/\n/g, ' ').replace('Ohybový moment', 'Ohybový moment σ_Kt');
+          response.end(JSON.stringify({ object: 'chat.completion', model: 'local-smoke-7b', choices: [{ index: 0, message: { role: 'assistant', content: fixed }, finish_reason: 'stop' }] }));
+          return;
+        }
         // A figure is described, a formula read.
         const figure = body.messages[0].content.some((c) => c.type === 'text' && String(c.text).includes('figure from an engineering textbook'));
         // A figure is described from the text of the book around it, which must come with it.

@@ -38,6 +38,10 @@ interface Props {
   readFormula?(path: string): Promise<string | undefined>;
   /** What a figure shows, written by the AI for search; none for a picture of a formula. */
   describeFigure?(path: string, context: string): Promise<string | undefined>;
+  /** The text of the pages read again from the PDF (AI); while it runs, how far, and how to stop it. */
+  rereadText?(): void;
+  readonly rereading?: { readonly done: number; readonly of: number };
+  onStopReread?(): void;
   /** AI notes: where the AI drew from, by source (the main part of the layer). */
   readonly sources?: readonly SourceGroup[];
   /** AI notes: the sheet's memory for the model. */
@@ -54,7 +58,7 @@ interface Props {
   onDeleteConversation?(id: string): void;
 }
 
-export function NotesView({ layer, title, catalog, readOnly, resolveFile, fileExists, onChange, onSettle, onSaveLibrary, pickPdfCrop, readFormula, describeFigure, sources = [], memory = '', onForgetMemory, changes = [], onDecide, onReview, conversations = [], onContinueConversation, onDeleteConversation }: Props) {
+export function NotesView({ layer, title, catalog, readOnly, resolveFile, fileExists, onChange, onSettle, onSaveLibrary, pickPdfCrop, readFormula, describeFigure, rereadText, rereading, onStopReread, sources = [], memory = '', onForgetMemory, changes = [], onDecide, onReview, conversations = [], onContinueConversation, onDeleteConversation }: Props) {
   const [showConversations, setShowConversations] = useState(false);
   const text = layer.text ?? '';
 
@@ -116,7 +120,7 @@ export function NotesView({ layer, title, catalog, readOnly, resolveFile, fileEx
   return (
     <div className="notes-view word">
       <style>{NOTES_CSS}</style>
-      <NotesWord text={text} title={title} catalog={catalog} readOnly={readOnly} resolveFile={resolveFile} onChange={onChange} {...(onSettle ? { onSettle } : {})} pickImage={pickImage} picturePath={pathFor} {...(onSaveLibrary ? { onSaveLibrary } : {})} {...(pickPdfCrop ? { pickPdfCrop } : {})} {...(readFormula ? { readFormula } : {})} {...(describeFigure ? { describeFigure } : {})} />
+      <NotesWord text={text} title={title} catalog={catalog} readOnly={readOnly} resolveFile={resolveFile} onChange={onChange} {...(onSettle ? { onSettle } : {})} pickImage={pickImage} picturePath={pathFor} {...(onSaveLibrary ? { onSaveLibrary } : {})} {...(pickPdfCrop ? { pickPdfCrop } : {})} {...(readFormula ? { readFormula } : {})} {...(describeFigure ? { describeFigure } : {})} {...(rereadText ? { rereadText } : {})} {...(rereading ? { rereading } : {})} {...(onStopReread ? { onStopReread } : {})} />
     </div>
   );
 }

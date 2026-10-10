@@ -339,6 +339,7 @@ function layerInfo(l: Layer): Omit<Layer, 'text'> {
     locked: l.locked,
     appendix: l.appendix,
     ...(l.tables !== undefined ? { tables: l.tables } : {}),
+    ...(l.source !== undefined ? { source: l.source } : {}),
   };
 }
 
@@ -359,6 +360,7 @@ function parseLayers(value: unknown): Layer[] {
       locked: l.locked === true,
       appendix: l.appendix === true,
       ...(l.kind === 'data' ? { tables: Array.isArray(l.tables) ? l.tables.filter((t): t is string => typeof t === 'string') : [] } : {}),
+      ...(l.kind === 'sources' && typeof l.source === 'string' ? { source: l.source } : {}),
     };
   });
   const sheets = layers.filter((l) => l.kind === 'sheet');

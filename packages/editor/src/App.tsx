@@ -14,7 +14,7 @@ import { emptyScene, readScene, writeScene, type CanvasScene } from '@kalketa/ca
 import { CanvasEditor } from '@kalketa/canvas/editor';
 import { addLayer, allDiagnostics, appendixLayers, blockAppendices, documentBlocks, isRemovable, LayerSessions, MAIN_LAYER, removeLayer, freezeRevision, removeRevision, revisionDocument, revisionState, shortHash, tablesByLayer, theorySections, updateLayer, withTheoryIds, conversationsOf, hasConversations, withConversation, withoutConversation, aiMemoryOf, withAiMemory, linkedLibraries, librarySections, entriesOf, newSheetsOf, withEntries, studyAdvice, studyNotes, LARGE_STUDY_PAGES, type StudySettings, aiMadeLines, type SheetEntry, evaluateDocument, type ChangeEntry, type Conversation, type AddableLayerKind, type Layer, type RevisionState, type SheetDocument } from '@kalketa/sheet';
 import { buildCommands, shortcutOf, type Command } from './commands.js';
-import { applyProposal, applyProposals, cleanFigureDescription, cleanFormula, cleanMemory, parseNewSheets, DEFAULT_AI_SETTINGS, parseAiSettings, parseProposals, providerById, replacedLines, type ChangeProposal, type AiSettings, type ChatTurn } from '@kalketa/ai';
+import { applyProposal, applyProposals, cleanFigureDescription, cleanFormula, cleanReread, cleanMemory, parseNewSheets, DEFAULT_AI_SETTINGS, parseAiSettings, parseProposals, providerById, replacedLines, type ChangeProposal, type AiSettings, type ChatTurn } from '@kalketa/ai';
 import { ChatPane } from './components/ChatPane.js';
 import { TheoryLibraryDialog } from './components/TheoryLibraryDialog.js';
 import { sourceText, useTheoryLibraries, withoutDuplicates, type FoundLibrary } from './theoryLibraries.js';
@@ -23,6 +23,10 @@ import { aiProtocol } from './logic/aiProtocol.js';
 import { StudyDialog } from './components/StudyDialog.js';
 import { PdfCropDialog, type CutAnchor } from './components/PdfCropDialog.js';
 import { studyImport } from './logic/studyImport.js';
+import { RereadDialog } from './components/RereadDialog.js';
+import { cutOut, loadPdf, pageContent } from './logic/pdfDocs.js';
+import { pageLayout } from './logic/pdfLayout.js';
+import { matchRun, sourcePageLabels, textRuns, type RereadChange, type TextRun } from './logic/pdfReread.js';
 import { proposalEffect, type ProposalEffect } from './logic/proposalEffect.js';
 import type { NewSheetView, ProposalView } from './components/ProposalCard.js';
 import type { AnswerProposals } from './components/ChatPane.js';
@@ -405,7 +409,8 @@ export function App() {
       const move = (s: string) => (added.id === planned ? s : s.split(`layers/${planned}/`).join(`layers/${added.id}/`));
       const files = new Map(present.files);
       for (const [path, bytes] of made.files) files.set(move(path), bytes);
-      return { ...present, files, layers: updateLayer(added.layers, added.id, { text: move(made.text) }) };
+      // The study file is remembered: its pages can be read again (Read text again from the PDF).
+      return { ...present, files, layers: updateLayer(added.layers, added.id, { text: move(made.text), ...(content.kind === 'pdf' ? { source: file.path } : {}) }) };
     });
     activate(id);
     setNotice(t(ui, made.pictures + made.formulas > 0 ? 'study.toSourcesCuts' : 'study.toSourcesDone', { name, pictures: String(made.pictures), formulas: String(made.formulas) }));
@@ -421,17 +426,21 @@ export function App() {
    * calculation language, or a figure described for search. Passing failures are tried again.
    */
   const askAboutPicture = async (path: string, purpose: 'formula' | 'figure', context = ''): Promise<{ text: string; model: string } | undefined> => {
+    const bytes = doc.files.get(path);
+    if (!bytes) return undefined;
+    return askAboutImage(bytes, path.endsWith('.jpg') || path.endsWith('.jpeg') ? 'image/jpeg' : 'image/png', purpose, context);
+  };
+  /** A picture given as bytes (a part of a page of a PDF, a picture of the sheet) read by the model. */
+  const askAboutImage = async (bytes: Uint8Array, type: string, purpose: 'formula' | 'figure' | 'text', context = ''): Promise<{ text: string; model: string } | undefined> => {
     if (!desktop) return undefined;
     if (!aiOn) {
       setNotice(t(ui, 'formula.aiOff'));
       return undefined;
     }
-    const bytes = doc.files.get(path);
     const provider = providerById(aiSettings.provider);
-    if (!bytes || !provider) return undefined;
+    if (!provider) return undefined;
     let binary = '';
     for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-    const type = path.endsWith('.jpg') || path.endsWith('.jpeg') ? 'image/jpeg' : 'image/png';
     try {
       const ask = {
         provider: provider.id,
@@ -469,6 +478,64 @@ export function App() {
     // ✦ marks the note of the AI in any language, until the user confirms the formula.
     return lines ? [`' ✦ ${t(ui, 'formula.byAi', { model: answer!.model })}`, ...lines].join('\n') : undefined;
   };
+  // Text of the sources read again from the pages of its PDF: how far it is, and the changes to confirm.
+  const [rereading, setRereading] = useState<{ done: number; of: number }>();
+  const stopReread = useRef(false);
+  const [reread, setReread] = useState<{ layer: string; changes: readonly RereadChange[] }>();
+  /**
+   * Every run of text of the pages the sources took, cut out of its PDF and written again by the
+   * model, the old text as a hint; each changed paragraph goes to the user to confirm. The PDF is
+   * the one the layer was taken from, else the study file named as the layer.
+   */
+  const rereadSources = async (layerId: string) => {
+    const target = doc.layers.find((l) => l.id === layerId);
+    if (!target || !desktop) return;
+    if (!aiOn) return setNotice(t(ui, 'formula.aiOff'));
+    const sheetPath = tab.path;
+    const plain = (s: string) => s.toLowerCase().replace(/\.pdf$/, '').replace(/[^\p{L}\p{N}]+/gu, '');
+    let path = target.source;
+    if (!path) {
+      const list = await desktop.theoryList(sheetPath);
+      path = list.find((e) => e.study && /\.pdf$/i.test(e.path) && plain(e.path.split(/[\\/]/).pop() ?? '') === plain(target.name ?? ''))?.path;
+    }
+    if (!path) return setNotice(t(ui, 'reread.noPdf'));
+    const study = await desktop.studyRead(path, sheetPath);
+    const labels = study.content.labels;
+    const pages = sourcePageLabels(target.text ?? '')
+      .map((label) => (labels ? labels.indexOf(label) + 1 : Number(label)))
+      .filter((p) => Number.isInteger(p) && p > 0);
+    if (pages.length === 0) return setNotice(t(ui, 'reread.noPages'));
+    const pdf = await loadPdf(path, sheetPath);
+    const sources = target.text ?? '';
+    const changes: RereadChange[] = [];
+    stopReread.current = false;
+    // The runs of all pages first: the count is known, and the progress says it.
+    const runs: { page: number; run: TextRun }[] = [];
+    for (const p of pages) {
+      const page = await pdf.getPage(p);
+      const { lines, pictures, drawn, width, height } = await pageContent(page);
+      for (const run of textRuns(pageLayout(lines, pictures, { width, height }, drawn))) runs.push({ page: p, run });
+    }
+    setRereading({ done: 0, of: runs.length });
+    for (const [n, { page: p, run }] of runs.entries()) {
+      if (stopReread.current) break;
+      const page = await pdf.getPage(p);
+      // A little room around the lines, so no letter is cut.
+      const box = { top: run.box.top - 4, bottom: run.box.bottom + 4, left: run.box.left - 6, right: run.box.right + 6 };
+      const answer = await askAboutImage(await cutOut(page, box), 'image/png', 'text', run.text);
+      setRereading({ done: n + 1, of: runs.length });
+      const text = answer ? cleanReread(answer.text) : undefined;
+      const match = text ? matchRun(sources, run.text) : undefined;
+      if (!text || !match || text.replace(/\s+/g, ' ') === match.old.replace(/\s+/g, ' ')) continue;
+      // A paragraph two runs share is changed once.
+      if (changes.some((c) => c.from <= match.to && match.from <= c.to)) continue;
+      changes.push({ ...match, text });
+    }
+    setRereading(undefined);
+    if (changes.length === 0) return setNotice(t(ui, 'reread.nothing'));
+    setReread({ layer: layerId, changes });
+  };
+
   /** What a figure shows, for search: none for a picture of a formula. */
   const describeFigure = async (path: string, context: string): Promise<string | undefined> => {
     const answer = await askAboutPicture(path, 'figure', context);
@@ -1665,7 +1732,7 @@ export function App() {
             : {})}
           {...(desktop && l.kind === 'sources' ? { onSaveLibrary: () => setLibraryLayer(l.id) } : {})}
           {...(desktop && l.kind === 'sources' && libraries.found.some((f) => f.study?.content.kind === 'pdf') ? { pickPdfCrop } : {})}
-          {...(desktop && l.kind === 'sources' ? { readFormula, describeFigure } : {})}
+          {...(desktop && l.kind === 'sources' ? { readFormula, describeFigure, rereadText: () => void rereadSources(l.id), onStopReread: () => (stopReread.current = true), ...(rereading ? { rereading } : {}) } : {})}
           onChange={(next, files) => setLayerText(l, next, `${l.id}:notes`, files)}
           onSettle={() => {
             // New headings get their theory ids once the user stops typing in them.
@@ -2028,6 +2095,21 @@ export function App() {
             })
           }
           onClose={() => setDialog(undefined)}
+        />
+      )}
+      {reread && (
+        <RereadDialog
+          catalog={ui}
+          changes={reread.changes}
+          onApply={(chosen) => {
+            const target = doc.layers.find((l) => l.id === reread.layer);
+            if (!target) return;
+            // Each paragraph replaced where it stands now; one the user changed meanwhile stays.
+            let text = target.text ?? '';
+            for (const c of chosen) if (text.includes(c.old)) text = text.replace(c.old, c.text);
+            setLayerText(target, text);
+          }}
+          onClose={() => setReread(undefined)}
         />
       )}
       {dialog === 'properties' && <PropertiesDialog catalog={ui} doc={doc} onApply={(next) => change(next)} onClose={() => setDialog(undefined)} />}

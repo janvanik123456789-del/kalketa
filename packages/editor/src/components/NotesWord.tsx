@@ -44,6 +44,10 @@ interface Props {
    */
   readFormula?(path: string): Promise<string | undefined>;
   describeFigure?(path: string, context: string): Promise<string | undefined>;
+  /** The text of the pages read again from the PDF (AI); while it runs, how far, and how to stop it. */
+  rereadText?(): void;
+  readonly rereading?: { readonly done: number; readonly of: number };
+  onStopReread?(): void;
   /**
    * Opens the cut-outs from a study PDF; each one comes to `place` with its caption and the
    * text that stood next to it on the page. Absent when there is no study PDF.
@@ -256,7 +260,7 @@ function withPictures(doc: JSONContent, resolveFile: (path: string) => string | 
   return doc.content ? { ...doc, content: doc.content.map((c) => withPictures(c, resolveFile)) } : doc;
 }
 
-export function NotesWord({ text, title, catalog, readOnly, resolveFile, onChange, onSettle, pickImage, picturePath, onSaveLibrary, pickPdfCrop, readFormula, describeFigure }: Props) {
+export function NotesWord({ text, title, catalog, readOnly, resolveFile, onChange, onSettle, pickImage, picturePath, onSaveLibrary, pickPdfCrop, readFormula, describeFigure, rereadText, rereading, onStopReread }: Props) {
   // What the editor last gave out: a text coming back unchanged is not loaded again.
   const emitted = useRef(text);
   // Texts given out and not seen back yet. A late echo of an older one (the page was busy while the
@@ -558,6 +562,17 @@ export function NotesWord({ text, title, catalog, readOnly, resolveFile, onChang
             onClick={() => (reading ? (stopReading.current = true) : void readFormulas())}
           >
             {reading ? `ƒx ${reading.done}/${reading.of} ■` : 'ƒx ✦'}
+          </Tool>
+        )}
+        {rereadText && (
+          <Tool
+            label={rereading ? t(catalog, 'word.rereadStop') : t(catalog, 'word.reread')}
+            title={rereading ? t(catalog, 'word.rereadStop') : t(catalog, 'word.rereadTip')}
+            className="word-reread-ai"
+            disabled={readOnly}
+            onClick={() => (rereading ? onStopReread?.() : rereadText())}
+          >
+            {rereading ? `¶ ${rereading.done}/${rereading.of} ■` : '¶ ✦'}
           </Tool>
         )}
         {describeFigure && (

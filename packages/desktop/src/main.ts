@@ -1919,6 +1919,16 @@ async function studyWithRealInput(contents: Electron.WebContents, picture: strin
   for (let i = 0; i < 40 && !(await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .word-text img')].some((img) => img.getAttribute('title'))`)); i++) await pause(150);
   await pause(300);
   const described = (await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .word-text img')].map((img) => ((img.getAttribute('data-path') ?? '').includes('/vzorec-') ? 'formula' : 'figure') + ':' + (img.getAttribute('title') ?? ''))`)) as string[];
+  // The text of the pages read again from the PDF: the changes come to be confirmed, then they are in the sources.
+  await clickOn('.layer-view.active .word-reread-ai');
+  for (let i = 0; i < 80 && !(await contents.executeJavaScript(`!!document.querySelector('.reread-apply')`)); i++) await pause(150);
+  const rereadChanges = (await contents.executeJavaScript(`document.querySelectorAll('.reread-change').length`)) as number;
+  if (rereadChanges > 0) await clickOn('.reread-apply');
+  await pause(500);
+  const reread = {
+    changes: rereadChanges,
+    fixed: (await contents.executeJavaScript(`(document.querySelector('.layer-view.active .word-text')?.textContent ?? '').includes('Ohybový moment σ_Kt')`)) as boolean,
+  };
   const card = existsSync(join(dir, 'Pruznost a pevnost.pdf.kalketa.json')) ? (JSON.parse(await readFile(join(dir, 'Pruznost a pevnost.pdf.kalketa.json'), 'utf8')) as { key?: string; chapters?: number[] }) : {};
 
   // The chat: the book is offered among the libraries, with how much of it is read.
@@ -1943,13 +1953,13 @@ async function studyWithRealInput(contents: Electron.WebContents, picture: strin
   await clickOn('.pane-tab[data-pane="details"]');
   await pause(300);
   const cited = answer.ok.map((c) => /^PP:T(\d+)$/.exec(c ?? '')?.[1]).filter(Boolean).map(Number);
-  await writeFile(picture.replace(/[.]png$/, '-study.json'), JSON.stringify({ offered, suggested, chosen, sources, cropPage, stillOpen, cropped, formula, fromPicture, confirmedFormula, described, card, listed, answer, cited }, null, 2));
+  await writeFile(picture.replace(/[.]png$/, '-study.json'), JSON.stringify({ offered, suggested, chosen, sources, cropPage, stillOpen, cropped, formula, fromPicture, confirmedFormula, described, reread, card, listed, answer, cited }, null, 2));
   return (
     offered.file.startsWith('Pruznost a pevnost.pdf') && offered.file.includes('PDF, 62 s.') && offered.reads === 'AI čte 62 z 62.' && offered.large && offered.key === 'PP' &&
     offered.chapters.length === 4 && ohyb >= 0 && chosen.reads === 'AI čte 21 z 62.' && !chosen.large && suggested !== '' &&
     !sources.dialog && sources.headings[0] === 'H2:2 Ohyb (s. 21–24)' && sources.headings[1] === 'H3:2.1 Průhyb nosníku (s. 25–40)' && sources.headings.length === 2 && sources.text.includes('Strana 30.') && !sources.text.includes('Strana 20.') &&
     cropPage === '21' && !!fitted && !!zoomed && zoomed.w > fitted.w * 1.2 && stillOpen === 'Vloženo: 2' && !cropped.dialog && cropped.pictures.length === picturesBefore + 2 && cropped.pictures.filter((c) => /^Pružnost a pevnost, s\. 21\|\d+$/.test(c) && Number(c.split('|')[1]) > 400).length === 2 &&
-    formula.math === 1 && formula.bad === 0 && fromPicture.note.includes('přepsala AI (local-smoke-7b)') && fromPicture.math === 1 && fromPicture.underPicture && fromPicture.code.includes('derive M := F·a == a·F {eq=7}') && fromPicture.check.includes('odvození ověřeno') && confirmedFormula.confirmed && confirmedFormula.codeHidden && confirmedFormula.number === '(7)' && !confirmedFormula.note && confirmedFormula.folded && described.includes('figure:Průběh ohybového momentu prostého nosníku.') && !described.some((d) => d.startsWith('formula:') && d !== 'formula:') && sources.cuts.length === 2 && sources.cuts.every((c) => c === 'Pružnost a pevnost, s. 22') && sources.notice.includes('obrázků (1) a vzorců (1)') && !sources.text.includes('(51)') && sources.text.includes('Text pod vzorcem na straně 22.') && cropped.afterPage21 === 'img' &&
+    formula.math === 1 && formula.bad === 0 && fromPicture.note.includes('přepsala AI (local-smoke-7b)') && fromPicture.math === 1 && fromPicture.underPicture && fromPicture.code.includes('derive M := F·a == a·F {eq=7}') && fromPicture.check.includes('odvození ověřeno') && confirmedFormula.confirmed && confirmedFormula.codeHidden && confirmedFormula.number === '(7)' && !confirmedFormula.note && confirmedFormula.folded && reread.changes > 0 && reread.fixed && described.includes('figure:Průběh ohybového momentu prostého nosníku.') && !described.some((d) => d.startsWith('formula:') && d !== 'formula:') && sources.cuts.length === 2 && sources.cuts.every((c) => c === 'Pružnost a pevnost, s. 22') && sources.notice.includes('obrázků (1) a vzorců (1)') && !sources.text.includes('(51)') && sources.text.includes('Text pod vzorcem na straně 22.') && cropped.afterPage21 === 'img' &&
     card.key === 'PP' && JSON.stringify(card.chapters) === JSON.stringify([ohyb]) &&
     at >= 0 && listed[at]!.includes('AI čte 21 z 62.') &&
     cited.length === 1 && cited[0]! >= 21 && cited[0]! <= 41

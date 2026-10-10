@@ -26,7 +26,8 @@ export interface LayoutLine extends Box {
   readonly text: string;
 }
 
-export type LayoutItem = { readonly kind: 'text'; readonly text: string } | { readonly kind: 'cut'; readonly box: Box; readonly why: 'picture' | 'formula' };
+/** A line of text keeps where it is (`box`): its part of the page can be read again (pdfReread.ts). */
+export type LayoutItem = { readonly kind: 'text'; readonly text: string; readonly box?: Box } | { readonly kind: 'cut'; readonly box: Box; readonly why: 'picture' | 'formula' };
 
 /** A picture covering more of the page than this is a scanned page. */
 const SCAN_SHARE = 0.6;
@@ -221,7 +222,7 @@ export function pageLayout(lines: readonly LayoutLine[], pictures: readonly Box[
     else placed.push(c);
   }
   const items: { top: number; item: LayoutItem }[] = [
-    ...text.map((l) => ({ top: l.top, item: { kind: 'text' as const, text: l.text } })),
+    ...text.map((l) => ({ top: l.top, item: { kind: 'text' as const, text: l.text, box: { top: l.top, bottom: l.bottom, left: l.left, right: l.right } } })),
     ...placed.map((c) => ({ top: c.box.top, item: { kind: 'cut' as const, box: c.box, why: c.why } })),
   ];
   return items.sort((a, b) => a.top - b.top).map((x) => x.item);

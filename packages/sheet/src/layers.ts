@@ -29,6 +29,8 @@ export interface Layer {
   readonly text?: string;
   /** data: names of its tables. */
   readonly tables?: readonly string[];
+  /** sources: the study file it was taken from (its path among the theory folders), to read it again. */
+  readonly source?: string;
 }
 
 export const MAIN_LAYER = 'main';

@@ -1927,7 +1927,7 @@ async function studyWithRealInput(contents: Electron.WebContents, picture: strin
   await pause(500);
   const reread = {
     changes: rereadChanges,
-    fixed: (await contents.executeJavaScript(`(document.querySelector('.layer-view.active .word-text')?.textContent ?? '').includes('Ohybový moment σ_Kt')`)) as boolean,
+    fixed: (await contents.executeJavaScript(`(document.querySelector('.layer-view.active .word-text')?.textContent ?? '').includes('Ohybový moment σKt') && !!document.querySelector('.layer-view.active .word-text sub')`)) as boolean,
   };
   const card = existsSync(join(dir, 'Pruznost a pevnost.pdf.kalketa.json')) ? (JSON.parse(await readFile(join(dir, 'Pruznost a pevnost.pdf.kalketa.json'), 'utf8')) as { key?: string; chapters?: number[] }) : {};
 

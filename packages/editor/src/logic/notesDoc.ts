@@ -145,7 +145,7 @@ function unescape(text: string): string {
 
 type Mark = { type: string; attrs?: Record<string, unknown> };
 
-/** Inline markup: `code`, [text](https://…), **bold**, *italic*; the rest is text. */
+/** Inline markup: `code`, [text](https://…), **bold**, *italic*, an index after a letter (σ_Kt); the rest is text. */
 export function inline(text: string, marks: readonly Mark[] = []): JSONContent[] {
   const out: JSONContent[] = [];
   const push = (t: string, m: readonly Mark[]) => {
@@ -162,7 +162,9 @@ export function inline(text: string, marks: readonly Mark[] = []): JSONContent[]
     const bold = /^\*\*(.+?)\*\*/.exec(rest);
     const italic = /^\*([^*]+)\*/.exec(rest);
     const escaped = /^\\(.)/.exec(rest);
-    const match = escaped ?? code ?? link ?? bold ?? italic;
+    // σ_Kt, τ_Dov,s, τ_Dov_s: the index of the letter before it, as the sheet sets a name.
+    const index = i > 0 && /\p{L}/u.test(text[i - 1]!) ? /^_([\p{L}\p{N}]+(?:[,_][\p{L}\p{N}]+)*)/u.exec(rest) : null;
+    const match = escaped ?? code ?? link ?? bold ?? italic ?? index;
     if (!match) {
       plain += text[i];
       i++;
@@ -173,6 +175,7 @@ export function inline(text: string, marks: readonly Mark[] = []): JSONContent[]
     if (match === escaped) plain += escaped![1];
     else if (match === code) push(code![1]!, [...marks, { type: 'code' }]);
     else if (match === link) out.push(...inline(link![1]!, [...marks, { type: 'link', attrs: { href: link![2] } }]));
+    else if (match === index) push(index![1]!.replace(/_/g, ','), [...marks, { type: 'subscript' }]);
     else if (match === bold) out.push(...inline(bold![1]!, [...marks, { type: 'bold' }]));
     else out.push(...inline(italic![1]!, [...marks, { type: 'italic' }]));
     i += match[0].length;
@@ -275,6 +278,8 @@ function inlineText(content: readonly JSONContent[] | undefined): string {
       continue;
     }
     let text = node.text.replace(/[\\`*[\]]/g, (c) => `\\${c}`);
+    // An index is written back as the language writes it: σ_Kt, τ_Dov_s.
+    if (has('subscript')) text = `_${text.replace(/,/g, '_')}`;
     if (has('italic')) text = `*${text}*`;
     if (has('bold')) text = `**${text}**`;
     const link = marks.find((m) => m.type === 'link');

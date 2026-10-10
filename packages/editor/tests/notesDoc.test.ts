@@ -83,3 +83,19 @@ describe('a figure with its description', () => {
     expect(html).toContain('<figcaption>Pružnost a pevnost, s. 36</figcaption>');
   });
 });
+
+describe('indexes in the text of the sources', () => {
+  it('are set below their letter and written back as the language writes them', () => {
+    const text = 'Mez pevnosti σ_Pt = 340 MPa a napětí τ_Dov,s; soubor `a_b.txt` a odkaz [x](https://a.cz/a_b) zůstanou.';
+    const doc = notesToDoc(text);
+    const nodes = JSON.stringify(doc);
+    expect(nodes).toContain('{"type":"text","text":"Pt","marks":[{"type":"subscript"}]}');
+    expect(nodes).toContain('{"type":"text","text":"Dov,s","marks":[{"type":"subscript"}]}');
+    expect(docToNotes(doc).trimEnd()).toBe(text.replace('τ_Dov,s', 'τ_Dov_s'));
+    const html = notesHtml(text);
+    expect(html).toContain('σ<sub>Pt</sub>');
+    expect(html).toContain('τ<sub>Dov,s</sub>');
+    expect(html).toContain('<code>a_b.txt</code>');
+    expect(html).toContain('href="https://a.cz/a_b"');
+  });
+});

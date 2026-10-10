@@ -8,7 +8,7 @@
  * attribute, shown as a badge and never typed.
  */
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
-import { EditorContent, Extension, NodeViewContent, NodeViewWrapper, ReactNodeViewRenderer, useEditor, type Editor, type JSONContent, type ReactNodeViewProps } from '@tiptap/react';
+import { EditorContent, Extension, Mark, NodeViewContent, NodeViewWrapper, ReactNodeViewRenderer, useEditor, type Editor, type JSONContent, type ReactNodeViewProps } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import CodeBlock from '@tiptap/extension-code-block';
 import { NodeSelection, Selection } from '@tiptap/pm/state';
@@ -241,6 +241,14 @@ function CodeView({ node, editor, getPos }: ReactNodeViewProps) {
   );
 }
 
+/** The index of a letter (σ_Kt in the text of the sources): set below, as in a formula. */
+const NotesSubscript = Mark.create({
+  name: 'subscript',
+  excludes: 'code',
+  parseHTML: () => [{ tag: 'sub' }],
+  renderHTML: () => ['sub', 0],
+});
+
 const NotesCodeBlock = CodeBlock.extend({
   addNodeView() {
     return ReactNodeViewRenderer(CodeView);
@@ -288,6 +296,7 @@ export function NotesWord({ text, title, catalog, readOnly, resolveFile, onChang
         codeBlock: false,
       }),
       NotesCodeBlock,
+      NotesSubscript,
       NotesImage.configure({ inline: false, allowBase64: true, captionLabel: t(catalog, 'word.caption'), captionEmpty: t(catalog, 'word.captionEmpty') }),
       TableKit.configure({ table: { resizable: false } }),
       NotesAttributes,

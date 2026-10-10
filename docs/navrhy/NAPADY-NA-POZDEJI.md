@@ -129,3 +129,12 @@ Nápad uživatele: z toho, co umí vrstva Podklady, udělat samostatný program.
 - **Co by přibylo:** výstup (HTML, EPUB nebo nové PDF s podmnožinou písem), dávkové zpracování celé knihy s pokračováním po přerušení, odhad ceny AI za stranu před spuštěním, porovnání se stranou originálu.
 - **Otázky:** autorská práva při šíření převedených knih (zatím jen pro vlastní potřebu), náklady na AI pro celé knihy, lokální model pro čtení vzorců.
 - **Postup:** kód zůstane v Kalketě jako balíček; samostatný program (nejdřív příkazová řádka) až když se osvědčí.
+
+### Nákresy z výřezů jako vektory, na plátně Kalkety (2026-10-10)
+
+Nápad uživatele. Technické nákresy ze skript jsou čárové kresby. Vektorově zaberou zlomek místa a dají se upravit.
+
+- **Možnosti:** klasické obtahování (Potrace, Inkscape, Image Trace v Illustratoru) bez AI, dobré u čistých kreseb z PDF, u skenů roztřepené. Vektorizéry s AI (Vectorizer.AI, Recraft) jsou lepší u skenů, ale placené, obrázek jde ven a výsledkem je obrys. Model, který čte obrázky, může napsat SVG (Claude, výzkum StarVector a OmniSVG): rozumí šipkám, kótám a popiskům, ale u složitých nákresů si domýšlí.
+- **Pro Kalketu:** model převede nákres na prvky vlastního plátna (čáry, šipky, obdélníky, popisky „F“, „Δl“), ne na SVG. Výřez se tak stane upravitelným obrázkem použitelným i v listu (nýt ze sbírky) a zabere jednotky kB. Ověřuje se jako u vzorců: návrh AI vedle výřezu, uživatel potvrdí, výřez se pak odstraní.
+- **Předpoklad:** plátno musí nejdřív umět kóty, oblouky a šrafy. Bez nich nákresy ze skript nepřevedeme.
+- **Pro převodník:** i bez Kalkety jako výstup SVG, s obtahováním jako levnou cestou a modelem tam, kde je potřeba porozumět nákresu.

@@ -19,7 +19,7 @@ import { checkDerivation, type DerivationStep } from '../eval/derive.js';
 import { DIMENSIONLESS_NAME } from '../lang/parser.js';
 import { DIMENSIONLESS, dim, type Dimension } from '../units/dimension.js';
 import type { BlockCaller, BlockSource } from '../eval/blocks.js';
-import type { BinaryOperator, Expr, Inequality, LineFormat, Sheet, Statement } from '../lang/ast.js';
+import { TABLE_TOTAL, type BinaryOperator, type Expr, type Inequality, type LineFormat, type Sheet, type Statement } from '../lang/ast.js';
 import { parse } from '../lang/parser.js';
 import { buildTable, type ColumnSchema, type Table, type TableBuildResult, type TableRead } from '../tables/table.js';
 import { sameDim } from '../units/dimension.js';
@@ -188,7 +188,20 @@ export class SheetSession {
           results.push({ statement, status: 'error', ...none, diagnostics: [...parseDiagnostics, diagnostic('E-REDEFINED', statement.nameSpan, { name: statement.name })] });
           return;
         }
-        const built = sheetTable(statement, context.registry);
+        // Calculated columns read the values of the sheet above the table.
+        const outer = (name: string, span: Span): Value => {
+          const entry = env.get(name);
+          if (entry?.ok) return entry.value;
+          if (entry) throw new DependencyFailed(name);
+          const imported = imports.get(name);
+          if (imported) return imported.value;
+          const table = tables.get(name);
+          if (table) return { type: 'table', table };
+          const at = definedAt.get(name);
+          if (at !== undefined && at > index) throw new CalcError(diagnostic('E-DEFINED-LATER', span, { name }));
+          throw new CalcError(diagnostic('E-UNDEFINED', span, { name }));
+        };
+        const built = sheetTable(statement, context.registry, outer);
         env.set(statement.name, { ok: true, value: { type: 'table', table: built.table } });
         results.push({ statement, status: 'ok', value: { type: 'table', table: built.table }, ...none, diagnostics: [...parseDiagnostics, ...built.diagnostics] });
         return;
@@ -530,18 +543,75 @@ function valueOrNothing(f: () => Value): Value | undefined {
  * A table written in the sheet as a table of the data layer: a column whose
  * cells are all numbers holds quantities in its unit, any other one text.
  */
-function sheetTable(statement: Extract<Statement, { kind: 'table' }>, registry: UnitRegistry): TableBuildResult {
+function sheetTable(statement: Extract<Statement, { kind: 'table' }>, registry: UnitRegistry, outer: (name: string, span: Span) => Value): TableBuildResult {
   const numeric = (text: string) => /^[-+]?(\d+\.?\d*|\.\d+)(e[-+]?\d+)?$/i.test(text.replace(/[\s\u00a0]/g, '').replace(',', '.'));
+  // A row of totals (a cell Σ) is no row of data: it sums the rows above it.
+  const isTotal = (r: readonly string[]) => r.some((cell) => cell.trim() === TABLE_TOTAL);
+  const dataRows = statement.rows.filter((r) => !isTotal(r));
   const columns: ColumnSchema[] = statement.columns.map((column, c) => {
-    const cells = statement.rows.map((r) => (r[c] ?? '').trim()).filter((t) => t !== '');
-    const type = cells.length > 0 && cells.every(numeric) ? 'quantity' : column.unit ? 'quantity' : 'text';
+    const cells = dataRows.map((r) => (r[c] ?? '').trim()).filter((t) => t !== '');
+    const type = column.formula || (cells.length > 0 && cells.every(numeric)) ? 'quantity' : column.unit ? 'quantity' : 'text';
     return { name: column.name, type, ...(column.unit ? { unit: column.unit } : {}) };
   });
   // Numbers are stored with a dot; a comma typed in a cell is a decimal comma.
-  const rows = statement.rows.map((r) => r.map((cell, c) => (columns[c]?.type === 'quantity' ? cell.replace(/[\s\u00a0]/g, '').replace(',', '.') : cell)));
-  const built = buildTable({ name: statement.name, columns }, rows.filter((r) => r.some((cell) => cell !== '')), registry);
+  const clean = (r: readonly string[]) => r.map((cell, c) => (columns[c]?.type === 'quantity' ? cell.replace(/[\s\u00a0]/g, '').replace(',', '.') : cell));
+  const kept = statement.rows.filter((r) => isTotal(r) || r.some((cell) => cell !== ''));
+  const built = buildTable({ name: statement.name, columns }, kept.filter((r) => !isTotal(r)).map(clean), registry);
   // The table's own problems point at its line.
-  return { table: built.table, diagnostics: built.diagnostics.map((d) => ({ ...d, span: statement.span })) };
+  const diagnostics = built.diagnostics.map((d) => ({ ...d, span: statement.span }));
+  if (!statement.columns.some((c) => c.formula) && !kept.some(isTotal)) return { table: built.table, diagnostics };
+
+  const rows = built.table.rows.map((r) => [...r]);
+  // Calculated columns, left to right: an empty cell gets the formula with the cells of its row.
+  for (const [c, column] of statement.columns.entries()) {
+    if (!column.formula) continue;
+    const unit = built.table.columns[c]?.resolvedUnit;
+    for (const [r, row] of rows.entries()) {
+      if (row[c] !== null) continue;
+      const lookup = (name: string, span: Span): Value => {
+        const at = statement.columns.findIndex((col) => col.name === name);
+        if (at < 0) return outer(name, span);
+        const cell = row[at];
+        if (!cell) throw new CalcError(diagnostic('E-TABLE-EMPTY', statement.span, { table: statement.name, column: name, row: String(r + 1) }));
+        return cell;
+      };
+      try {
+        const value = evaluate(column.formula, { registry, warnings: [], lookup });
+        if (value.type !== 'quantity') throw new CalcError(diagnostic('E-TABLE-FORMULA', statement.span, { table: statement.name, column: column.name, found: typeName(value), unit: column.unit ?? '' }));
+        if (unit && !sameDim(value.dim, unit.dim)) throw new CalcError(diagnostic('E-TABLE-FORMULA', statement.span, { table: statement.name, column: column.name, found: baseUnitSymbol(value.dim), unit: column.unit ?? '' }));
+        row[c] = unit ? { ...value, hint: unit } : value;
+      } catch (err) {
+        if (!(err instanceof CalcError) && !(err instanceof DependencyFailed)) throw err;
+        if (err instanceof CalcError) diagnostics.push({ ...err.diagnostic, span: statement.span });
+        // One report for the column, not one for each row.
+        break;
+      }
+    }
+  }
+  // Rows of totals: each column with Σ summed over the rows of data since the last row of totals.
+  const totals: { after: number; cells: (Value | null)[] }[] = [];
+  let after = 0;
+  let from = 0;
+  for (const raw of kept) {
+    if (!isTotal(raw)) {
+      after++;
+      continue;
+    }
+    const cells = statement.columns.map((column, c): Value | null => {
+      const text = (raw[c] ?? '').trim();
+      if (text !== TABLE_TOTAL) return text === '' ? null : { type: 'text', value: text };
+      const values = rows.slice(from, after).map((row) => row[c]).filter((v): v is Quantity => v?.type === 'quantity');
+      if (values.length === 0) return null;
+      if (values.some((v) => !sameDim(v.dim, values[0]!.dim))) return null;
+      return { ...values[0]!, si: values.reduce((sum, v) => sum + v.si, 0) };
+    });
+    totals.push({ after, cells });
+    from = after;
+  }
+  // Calculated cells change with the sheet, not with the text of the table.
+  const computed = rows.flatMap((row) => row.map((v) => (v?.type === 'quantity' ? v.si : 0))).join(',');
+  const table: Table = { ...built.table, rows, ...(totals.length > 0 ? { totals } : {}), fingerprint: `${built.table.fingerprint}:${computed}` };
+  return { table, diagnostics };
 }
 
 /** A value given for a block input must be of the same kind as the block's own. */

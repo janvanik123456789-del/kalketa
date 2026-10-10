@@ -269,8 +269,13 @@ ${checkLines(block.lines)}
 </section>`;
     }
     case 'datatable': {
-      const head = block.columns.map((c) => `<th${c.numeric ? ' class="num"' : ''}>${esc(c.name)}${c.unit ? ` <span class="unit">[${esc(c.unit)}]</span>` : ''}</th>`).join('');
-      const body = block.rows.map((row) => `<tr>${row.map((cell, i) => `<td${block.columns[i]?.numeric ? ' class="num"' : ''}>${esc(cell)}</td>`).join('')}</tr>`).join('\n');
+      // The name typeset (g_k with k below), the formula of a calculated column under it, so the table can be checked.
+      const head = block.columns
+        .map((c) => `<th${c.numeric ? ' class="num"' : ''}>${toMathML(nameNode(c.name))}${c.unit ? ` <span class="unit">[${esc(c.unit)}]</span>` : ''}${c.formula ? `<div class="formula">= ${toMathML(c.formula)}</div>` : ''}</th>`)
+        .join('');
+      const body = block.rows
+        .map((row, n) => `<tr${block.totals?.includes(n) ? ' class="total"' : ''}>${row.map((cell, i) => `<td${block.columns[i]?.numeric ? ' class="num"' : ''}>${esc(cell)}</td>`).join('')}</tr>`)
+        .join('\n');
       return `<section class="block datatable" data-line="${block.line}">
 <table class="data-table"><caption>${esc(block.name)}</caption><thead><tr>${head}</tr></thead>
 <tbody>
@@ -423,6 +428,8 @@ table.data-table th { border-bottom: 0.8pt solid #333; font-weight: 600; }
 table.data-table tbody tr:last-child td { border-bottom: 0.8pt solid #333; }
 table.data-table .num { text-align: right; font-variant-numeric: tabular-nums; }
 table.data-table .unit { font-weight: 400; }
+table.data-table th .formula { font-weight: 400; font-size: 8.5pt; color: #444; }
+table.data-table tr.total td { font-weight: 600; border-top: 0.6pt solid #333; }
 table.eq td { padding: 0.6mm 1.2mm; vertical-align: middle; }
 td.lhs { text-align: right; min-width: 14mm; }
 td.op { text-align: center; width: 4mm; }

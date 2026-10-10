@@ -178,7 +178,12 @@ export interface SheetColumn {
   readonly name: string;
   readonly unit?: string;
   readonly format?: string;
+  /** "g_d [kN/m²] = g_k·γ_G": its empty cells are calculated, row by row, from the columns and the sheet. */
+  readonly formula?: Expr;
 }
+
+/** A cell of a sheet table that sums its column over the rows above it (back to the last such row). */
+export const TABLE_TOTAL = 'Σ';
 
 export interface Sheet {
   readonly statements: readonly Statement[];

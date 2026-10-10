@@ -186,6 +186,7 @@ export const UI_KEYS = [
   'sheetTable.asText',
   'sheetTable.done',
   'sheetTable.headerHint',
+  'sheetTable.computed',
   'props.summary',
   'summary.top',
   'summary.bottom',

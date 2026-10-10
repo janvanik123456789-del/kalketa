@@ -18,7 +18,7 @@ describe('a table written in the sheet', () => {
   it('prints as a table: the header with units, numbers in the column format and to the right', () => {
     const html = printHtml(evaluateSheet(MEASURED), { catalog: cs, registry: defaultRegistry, title: 'T' });
     expect(html).toContain('<caption>Mereni</caption>');
-    expect(html).toContain('<th class="num">T <span class="unit">[°C]</span></th>');
+    expect(html).toContain('<th class="num"><math display="inline"><mi>T</mi></math> <span class="unit">[°C]</span></th>');
     expect(html).toContain('<td class="num">25,3</td>');
     expect(html).toContain('<td>tlak</td>');
   });
@@ -53,5 +53,18 @@ describe('fit: a curve through measured points', () => {
     expect(codes('F := fit(Mereni.T, x: Mereni.t, kind: "log")')).toEqual(['E-FIT-POSITIVE']);
     expect(codes('F := fit(Mereni.T, x: Mereni.t, kind: "spline")')).toEqual(['E-FIT-KIND']);
     expect(codes('F := fit(Mereni.T, x: Mereni.t, kind: "poly3")')).toEqual(['E-FIT-POINTS']);
+  });
+});
+
+describe('a load recapitulation in a sheet table', () => {
+  it('calculates a column from its formula, sums the rows of totals, prints both', () => {
+    const source = 'γ_G := 1.35\ntable Stale:\n    | polozka | h [mm] | ρ [kN/m³] | g_k [kN/m²] = h·ρ | g_d [kN/m²] = g_k·γ_G |\n    | dlažba | 10 | 22 | | |\n    | beton | 150 | 25 | | |\n    | Celkem | | | Σ | Σ |\ng := sum(Stale.g_d)';
+    const result = evaluateSheet(source);
+    expect(result.diagnostics).toEqual([]);
+    expect(result.statements.at(-1)!.display).toMatchObject({ value: 5.3595, unit: 'kN/m²' });
+    const html = printHtml(result, { catalog: cs, registry: defaultRegistry, title: 'T' });
+    expect(html).toContain('<tr class="total"><td>Celkem</td><td class="num"></td><td class="num"></td><td class="num">3,97</td><td class="num">5,36</td></tr>');
+    expect(html).toContain('<td class="num">0,22</td><td class="num">0,297</td>');
+    expect(html).toContain('<div class="formula">= ');
   });
 });

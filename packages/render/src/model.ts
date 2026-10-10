@@ -13,6 +13,7 @@
 
 import {
   formatUnit,
+  TABLE_TOTAL,
   toDisplay,
   type Diagnostic,
   type Expr,
@@ -164,8 +165,10 @@ export type PrintBlock =
       readonly kind: 'datatable';
       readonly line: number;
       readonly name: string;
-      readonly columns: readonly { readonly name: string; readonly unit?: string; readonly numeric: boolean }[];
+      readonly columns: readonly { readonly name: string; readonly unit?: string; readonly numeric: boolean; /** A calculated column: its formula. */ readonly formula?: MathNode }[];
       readonly rows: readonly (readonly string[])[];
+      /** Which rows are totals (Σ), set apart. */
+      readonly totals?: readonly number[];
       readonly messages: readonly Message[];
     }
   | { readonly kind: 'page-break' }
@@ -302,9 +305,32 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
       case 'table': {
         const table = r.value?.type === 'table' ? r.value.table : undefined;
         const decimalSign = formatNumber(1.5, catalog).includes(',') ? ',' : '.';
-        const columns = s.columns.map((c, i) => ({ name: c.name, ...(c.unit ? { unit: c.unit } : {}), numeric: table?.columns[i]?.type === 'quantity' }));
-        const rows = s.rows.map((row) => row.map((cell, i) => cellText(cell, s.columns[i]?.format, columns[i]?.numeric ?? false, decimalSign)));
-        blocks.push({ kind: 'datatable', line: s.span.line, name: s.name, columns, rows, messages });
+        const columns = s.columns.map((c, i) => ({
+          name: c.name,
+          ...(c.unit ? { unit: c.unit } : {}),
+          numeric: table?.columns[i]?.type === 'quantity',
+          ...(c.formula ? { formula: formulaNode(c.formula, formulaOptions()) } : {}),
+        }));
+        // A calculated cell or a total: its value in the unit of the column, as its format says.
+        const shown = (value: Value | null | undefined, i: number): string | undefined => {
+          if (value?.type !== 'quantity') return undefined;
+          const number = value.hint ? (value.si - (value.hint.offset ?? 0)) / value.hint.factor : value.si;
+          const decimals = s.columns[i]?.format ? (/[.,](0+)/.exec(s.columns[i]!.format!)?.[1]?.length ?? 0) : undefined;
+          return (decimals === undefined ? numberFormat({ digits: 4 })(number) : number.toFixed(decimals).replace('.', decimalSign)).replace('-', '−');
+        };
+        const totals: number[] = [];
+        let data = 0;
+        let total = 0;
+        const rows = s.rows.map((row, n) => {
+          if (row.some((cell) => cell.trim() === TABLE_TOTAL)) {
+            totals.push(n);
+            const cells = table?.totals?.[total++]?.cells;
+            return row.map((cell, i) => (cell.trim() === TABLE_TOTAL ? (shown(cells?.[i], i) ?? '') : cell.trim()));
+          }
+          const values = row.some((cell) => cell !== '') ? table?.rows[data++] : undefined;
+          return row.map((cell, i) => (s.columns[i]?.formula && cell.trim() === '' ? (shown(values?.[i], i) ?? '') : cellText(cell, s.columns[i]?.format, columns[i]?.numeric ?? false, decimalSign)));
+        });
+        blocks.push({ kind: 'datatable', line: s.span.line, name: s.name, columns, rows, ...(totals.length > 0 ? { totals } : {}), messages });
         break;
       }
       case 'definition':

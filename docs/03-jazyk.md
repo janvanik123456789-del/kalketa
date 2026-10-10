@@ -487,6 +487,22 @@ table Mereni:
 - **Obecná tabulka přímo ve výpočtu** (naměřené body, vlastní data); katalogové tabulky (profily, materiály, průměry nýtů) zůstávají ve vrstvě Data. Řádek `table Jmeno:` a pod ním odsazené řádky `| … |` (v editoru Shift+Enter); první řádek je záhlaví: jméno sloupce, jednotka v `[ ]`, formát čísel v `{ }` (`{0.0}` jedno desetinné místo, `{0}` žádné).
 - **Ve výpočtu** je to tabulka jako z vrstvy Data: `Mereni.T` je řada v °C, `Mereni.t[3]` jedna hodnota, fungují `pick`, `find_min`, `interpolate`. Sloupec samých čísel je číselný, jiný textový; prázdné řádky se přeskočí.
 - **V tisku** tabulka se záhlavím a jednotkami, čísla podle formátu a vpravo.
+- **Počítaný sloupec a součty (2026-10-10), např. rekapitulace zatížení:**
+
+  ```text
+  γ_G := 1.35
+  table Stale:
+      | polozka | h [mm] | ρ [kN/m³] | g_k [kN/m²] = h·ρ | g_d [kN/m²] = g_k·γ_G |
+      | dlažba  | 10     | 22        |                   |                       |
+      | beton   | 150    | 25        |                   |                       |
+      | Celkem  |        |           | Σ                 | Σ                     |
+  g := sum(Stale.g_d)
+  ```
+
+  - Vzorec stojí v záhlaví za `=`. Prázdné buňky sloupce se spočtou po řádcích ze sloupců téhož řádku a z hodnot listu nad tabulkou. Vyplněná buňka platí, jak je napsaná (ruční výjimka). Sloupce se počítají zleva, takže vzorec smí číst počítaný sloupec vlevo od sebe. Ve vzorci mají jména sloupců přednost před jednotkami (`h` je výška, ne hodina).
+  - Výsledek se převede na jednotku záhlaví. Jiný rozměr je chyba `E-TABLE-FORMULA`.
+  - Buňka `Σ` sečte sloupec od posledního řádku součtů, takže jde i o mezisoučty (stálé, proměnné). Řádek součtů nepatří mezi data: `sum(Stale.g_d)` sečte jen řádky položek.
+  - V tisku je vzorec pod záhlavím sloupce a řádek součtů tučně s čarou nad ním. Jména sloupců se sázejí jako ve vzorcích (g_k s indexem).
 - *Na později (kosmetika):* úprava v mřížce přímo v listu, formáty jako v Excelu (procenta, vědecký zápis, zarovnání, tučně, pozadí) z nabídky pravého tlačítka.
 
 ## 9. Řešič rovnic (F8)

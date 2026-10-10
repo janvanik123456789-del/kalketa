@@ -1064,6 +1064,29 @@ async function layersWithRealInput(picture: string) {
     await pressKey('Enter');
     await typeText(line);
   }
+  // A load recapitulation: a column calculated from its formula, a row of totals (Σ), the total used.
+  await pressKey('Enter');
+  await typeText('γ_G := 1,35');
+  await pressKey('Enter');
+  await typeText('table R_z:');
+  for (const row of ['    | polozka | h [mm] | ρ [kN/m³] | g_k [kN/m²] = h·ρ | g_d [kN/m²] = g_k·γ_G |', '    | dlazba | 10 | 22 | | |', '    | beton | 150 | 25 | | |', '    | Celkem | | | Σ | Σ |']) {
+    smokeWindow!.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Enter', modifiers: ['shift'] });
+    smokeWindow!.webContents.sendInputEvent({ type: 'char', keyCode: '\r', modifiers: ['shift'] });
+    smokeWindow!.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'Enter', modifiers: ['shift'] });
+    await pause(150);
+    // The header at a person's pace: keys faster than anyone types, right after the formula
+    // turns valid, run into React's limit of nested updates (error #185) and lose the ·.
+    if (row.includes('h·ρ')) {
+      for (const ch of row) {
+        contents.sendInputEvent({ type: 'char', keyCode: ch });
+        await pause(120);
+      }
+      continue;
+    }
+    await typeText(row);
+  }
+  await pressKey('Enter');
+  await typeText('g_z := sum(R_z.g_d)');
   // A click on the grey beside the page closes the line (the middle of the view may be a row of the second page).
   const besidePage = (await contents.executeJavaScript(`(() => { const p = document.querySelector('.layer-view.active .page').getBoundingClientRect(); return { x: Math.round(p.left - 30), y: Math.round(p.top + 100) }; })()`)) as { x: number; y: number };
   contents.sendInputEvent({ type: 'mouseDown', ...besidePage, button: 'left', clickCount: 1 });
@@ -1078,8 +1101,9 @@ async function layersWithRealInput(picture: string) {
     // The table typed in the sheet shows as a table; the line fitted through it gives y(3 s) = 7 m.
     const measured = !!document.querySelector('.layer-view.active .page table.data-table') && rows.some((r) => r.includes('R2') && r.includes('=1')) && rows.some((r) => r.includes('y3≔') && r.endsWith('=7m'));
     // A rounded result of a derivation: set after ≐, the step holds.
+    const recap = [...document.querySelectorAll('.layer-view.active .page .datatable tr.total')].some((r) => r.textContent.replace(/\\s+/g, '').includes('Celkem3,975,36')) && [...document.querySelectorAll('.layer-view.active .page .row')].some((r) => r.textContent.replace(/\\s+/g, '').includes('5,36kN/m²'));
     const rounded = [...document.querySelectorAll('.layer-view.active .page .row')].some((r) => r.textContent.replace(/\\s+/g, '').includes('≐5,5mm') && !r.classList.contains('has-error'));
-    return rounded && measured && inequality && rows.some((r) => r.includes('roots') && r.endsWith('=[2;3]')) && rows.some((r) => r.includes('argmax') && r.endsWith('=2'));
+    return recap && rounded && measured && inequality && rows.some((r) => r.includes('roots') && r.endsWith('=[2;3]')) && rows.some((r) => r.includes('argmax') && r.endsWith('=2'));
   })()`)) as boolean;
   // A click on the table in the sheet opens it as a grid; Enter in its last row adds one; Esc closes it.
   await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .page .row')].find((r) => r.querySelector('table.data-table')).id = 'smoke-table-row'`);

@@ -101,6 +101,8 @@ export function SheetTableGrid({ table: initial, decimalComma, catalog, onChange
                     data-cell={`${row}:${column}`}
                     defaultValue={cellShown(cell, decimalComma)}
                     title={row === 0 ? t(catalog, 'sheetTable.headerHint') : undefined}
+                    // A cell of a calculated column left empty gets its value from the formula.
+                    placeholder={row > 0 && (table.rows[0]?.[column] ?? '').includes('=') ? t(catalog, 'sheetTable.computed') : undefined}
                     onBlur={(e) => {
                       const value = cellWritten(e.target.value, decimalComma);
                       if (value !== cell) change(setSheetCell(table, row, column, value));

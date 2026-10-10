@@ -54,6 +54,8 @@ export interface Table {
   readonly source?: TableSource;
   /** Content hash; changes whenever schema or data change. */
   readonly fingerprint: string;
+  /** Rows of totals of a sheet table (Σ): after how many rows of data, and their cells. */
+  readonly totals?: readonly { readonly after: number; readonly cells: readonly Cell[] }[];
 }
 
 /** A read of table data, recorded for provenance. */

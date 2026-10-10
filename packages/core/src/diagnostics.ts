@@ -119,6 +119,7 @@ export const DIAGNOSTIC_SEVERITY = {
   'E-TABLE-KEY': 'error',
   'E-TABLE-COLUMN': 'error',
   'E-TABLE-EMPTY': 'error',
+  'E-TABLE-FORMULA': 'error',
   'E-TABLE-NO-MATCH': 'error',
   'E-TABLE-INTERPOLATE': 'error',
   'W-EXTRAPOLATION': 'warning',

@@ -46,7 +46,7 @@ export const BINDING_OPTIONS: ReadonlySet<string> = new Set(['order', 'kind', 't
 
 export function parse(source: string, options: ParseOptions): ParseResult {
   // Tables written in the sheet are read on their own: their cells are text, not expressions.
-  const { tables, rest } = sheetTables(source);
+  const { tables, rest } = sheetTables(source, options);
   const lexed = tokenize(rest);
   const diagnostics: Diagnostic[] = [...lexed.diagnostics, ...tables.flatMap((t) => t.diagnostics)];
   const statements: Statement[] = [];
@@ -96,7 +96,7 @@ export function parse(source: string, options: ParseOptions): ParseResult {
 
 const TABLE_HEAD = /^table[ \t]+([\p{L}_][\p{L}\p{N}_]*)[ \t]*:[ \t]*$/u;
 const TABLE_ROW = /^[ \t]+\|/;
-const COLUMN = /^([\p{L}_][\p{L}\p{N}_]*)\s*(?:\[([^\]]*)\])?\s*(?:\{([^}]*)\})?$/u;
+const COLUMN = /^([\p{L}_][\p{L}\p{N}_]*)\s*(?:\[([^\]]*)\])?\s*(?:\{([^}]*)\})?\s*(?:=\s*(.+))?$/u;
 
 /**
  * The tables written in the sheet, and the source with their lines blanked
@@ -106,7 +106,7 @@ const COLUMN = /^([\p{L}_][\p{L}\p{N}_]*)\s*(?:\[([^\]]*)\])?\s*(?:\{([^}]*)\})?
  *       | t [s] | T [°C] {0.0} | poznamka |
  *       | 0     | 20.1         | start    |
  */
-function sheetTables(source: string): { tables: { statement: Extract<Statement, { kind: 'table' }>; diagnostics: Diagnostic[] }[]; rest: string } {
+function sheetTables(source: string, options: ParseOptions): { tables: { statement: Extract<Statement, { kind: 'table' }>; diagnostics: Diagnostic[] }[]; rest: string } {
   const lines = source.split('\n');
   const tables: { statement: Extract<Statement, { kind: 'table' }>; diagnostics: Diagnostic[] }[] = [];
   const starts: number[] = [];
@@ -127,10 +127,21 @@ function sheetTables(source: string): { tables: { statement: Extract<Statement, 
       const text = lines[n]!.replace(/\r$/, '').trim();
       return text.replace(/^\|/, '').replace(/\|$/, '').split('|').map((c) => c.trim());
     };
+    // In a formula of a column the names of the columns are no units (h is a height, not an hour).
+    const names = end > i ? cells(i + 1).map((text) => COLUMN.exec(text)?.[1] ?? '') : [];
+    const isUnit = (name: string) => !names.includes(name) && options.isUnit(name);
     const columns = end > i ? cells(i + 1).map((text) => {
       const match = COLUMN.exec(text);
       if (!match) diagnostics.push(diagnostic('E-TABLE-SCHEMA', lineSpan(i + 1), { table: head[1]!, problem: 'column-name', value: text }));
-      return { name: match?.[1] ?? text, ...(match?.[2]?.trim() ? { unit: match[2].trim() } : {}), ...(match?.[3]?.trim() ? { format: match[3].trim() } : {}) };
+      // The formula of a calculated column, read as an expression of the language.
+      let formula: Expr | undefined;
+      if (match?.[4]) {
+        const read = parse(match[4], { isUnit });
+        const statement = read.sheet.statements.find((s) => s.kind !== 'comment');
+        if (statement?.kind === 'display' && read.diagnostics.every((d) => d.severity !== 'error')) formula = statement.expr;
+        else diagnostics.push(diagnostic('E-TABLE-SCHEMA', lineSpan(i + 1), { table: head[1]!, problem: 'formula', value: match[4] }));
+      }
+      return { name: match?.[1] ?? text, ...(match?.[2]?.trim() ? { unit: match[2].trim() } : {}), ...(match?.[3]?.trim() ? { format: match[3].trim() } : {}), ...(formula ? { formula } : {}) };
     }) : [];
     if (columns.length === 0) diagnostics.push(diagnostic('E-TABLE-SCHEMA', lineSpan(i), { table: head[1]!, problem: 'no-columns', value: '' }));
     const rows = [];

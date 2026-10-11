@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { addItem, drawn, itemsIn, liveNames, turned, emptyScene, endMoved, itemAt, migrate, moved, newId, readScene, reordered, resized, sceneSvg, writeScene, type CanvasItem } from '../src/index.js';
-import { htmlOf, runsOf, type RichNode } from '../src/editor/TextEditor.js';
+import { htmlOf, runsOf, type RichNode } from '../src/editor/richText.js';
 
 const rect: CanvasItem = { id: 'i1', type: 'rect', x: 10, y: 10, w: 20, h: 10, stroke: { color: '#000', width: 0.5 }, fill: 'none' };
 

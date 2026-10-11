@@ -9,7 +9,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type DragEvent as ReactDragEvent, type MouseEvent as ReactMouseEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { sceneBody, type CanvasItem, type CanvasScene } from '../scene.js';
-import { addItem, boxOf, drawn, endMoved, endsOf, findItem, itemAt, moved, newId, removeItem, reordered, replaceItem, resized, snap, type Corner, type Tool } from '../edit.js';
+import { addItem, boxOf, drawn, endMoved, endsOf, findItem, isSupportTool, itemAt, moved, newId, placedSupport, removeItem, reordered, replaceItem, resized, snap, turned, type Corner, type Tool } from '../edit.js';
 import { fromFile, isPictureType, picturePath, pixelSize, type CanvasPicture } from './pictures.js';
 import { canvasTexts, type CanvasTextKey } from './texts.js';
 import './canvas.css';
@@ -42,7 +42,7 @@ type Drag =
   | { kind: 'move'; id: string; from: { x: number; y: number }; original: CanvasItem }
   | { kind: 'corner'; id: string; corner: Corner }
   | { kind: 'end'; id: string; end: 1 | 2 | 3 }
-  | { kind: 'draw'; tool: Exclude<Tool, 'select' | 'text'>; from: { x: number; y: number } }
+  | { kind: 'draw'; tool: Exclude<Tool, 'select' | 'text' | 'pin' | 'roller' | 'fixed'>; from: { x: number; y: number } }
   | { kind: 'size'; from: { x: number; y: number }; original: { width: number; height: number } };
 
 const WIDTHS = [0.25, 0.35, 0.5, 0.7, 1];
@@ -57,6 +57,10 @@ const TOOLS: readonly { tool: Tool; glyph: string; key: string }[] = [
   { tool: 'dimension', glyph: '↔', key: 'D' },
   { tool: 'arc', glyph: '◠', key: 'O' },
   { tool: 'moment', glyph: '↻', key: 'M' },
+  { tool: 'pin', glyph: '△', key: 'P' },
+  { tool: 'roller', glyph: '⍙', key: 'K' },
+  { tool: 'fixed', glyph: '▥', key: 'F' },
+  { tool: 'load', glyph: '⇊', key: 'Q' },
 ];
 
 export function CanvasEditor(props: CanvasEditorProps) {
@@ -139,6 +143,12 @@ export function CanvasEditor(props: CanvasEditorProps) {
       if (hit) drag.current = { kind: 'move', id: hit.id, from: at, original: hit };
     } else if (tool === 'text') {
       void addText(at);
+    } else if (isSupportTool(tool)) {
+      // A support goes where it is clicked.
+      const id = newId(scene);
+      commit(addItem(scene, placedSupport(tool, id, at.x, at.y, colour, lineWidth)));
+      setSelected(id);
+      setTool('select');
     } else {
       drag.current = { kind: 'draw', tool, from: at };
     }
@@ -169,9 +179,9 @@ export function CanvasEditor(props: CanvasEditorProps) {
         const id = newId(previous);
         const shape = drawn(d.tool, id, d.from.x, d.from.y, at.x, at.y, colour, lineWidth, filled ? colour + '33' : 'none', '', fontSize, hatched);
         setTool('select');
-        if (shape.type === 'dimension') {
-          // A dimension says what it measures: its label is asked for right away.
-          void ask(text('dimensionPrompt')).then((label) => {
+        if (shape.type === 'dimension' || shape.type === 'load') {
+          // A dimension says what it measures, a load how much: its label is asked for right away.
+          void ask(text(shape.type === 'load' ? 'loadPrompt' : 'dimensionPrompt')).then((label) => {
             if (label === undefined) return;
             commit(addItem(previous, { ...shape, text: label.trim() }), previous);
             setSelected(id);
@@ -214,8 +224,8 @@ export function CanvasEditor(props: CanvasEditorProps) {
   };
 
   const editText = async (target: CanvasItem) => {
-    if (target.type === 'dimension') {
-      const value = await ask(text('dimensionPrompt'), target.text);
+    if (target.type === 'dimension' || target.type === 'load') {
+      const value = await ask(text(target.type === 'load' ? 'loadPrompt' : 'dimensionPrompt'), target.text);
       if (value !== undefined) commit(replaceItem(scene, { ...target, text: value.trim() }));
       return;
     }
@@ -260,8 +270,8 @@ export function CanvasEditor(props: CanvasEditorProps) {
     const colourNow = change.colour ?? colour;
     const strokeOf = (s: { width: number }) => ({ color: colourNow, width: change.width ?? s.width });
     if (item.type === 'text') commit(replaceItem(scene, { ...item, color: colourNow, size: change.size ?? item.size }));
-    else if (item.type === 'line' || item.type === 'arrow' || item.type === 'arc') commit(replaceItem(scene, { ...item, stroke: strokeOf(item.stroke) }));
-    else if (item.type === 'dimension') commit(replaceItem(scene, { ...item, stroke: strokeOf(item.stroke), size: change.size ?? item.size }));
+    else if (item.type === 'line' || item.type === 'arrow' || item.type === 'arc' || item.type === 'support') commit(replaceItem(scene, { ...item, stroke: strokeOf(item.stroke) }));
+    else if (item.type === 'dimension' || item.type === 'load') commit(replaceItem(scene, { ...item, stroke: strokeOf(item.stroke), size: change.size ?? item.size }));
     else if (item.type === 'rect' || item.type === 'ellipse') {
       const fill = change.fill ?? item.fill !== 'none';
       const { hatch: _hatch, ...plain } = item;
@@ -396,6 +406,9 @@ export function CanvasEditor(props: CanvasEditorProps) {
             ))}
           </select>
           <span className="canvas-sep" />
+          <button type="button" disabled={item?.type !== 'support'} title={text('turn')} data-canvas="turn" onClick={() => item && commit(replaceItem(scene, turned(item)))}>
+            ⟳
+          </button>
           <button type="button" disabled={!item} title={text('front')} onClick={() => item && commit(reordered(scene, item.id, 'front'))}>
             ⬒
           </button>

@@ -279,7 +279,7 @@ Každá fáze končí procházejícími testy. **MVP = referenční výpočet R1
   - zarovnání a rozmístění (vlevo, na střed, rovnoměrně), přichytávání k prvkům,
   - víceřádkový text psaný přímo do kresby místo dialogu, tučné písmo, zarovnání textu,
   - otočení prvků, ořez obrázku, průhlednost,
-  - další tvary: mnohoúhelník, křivka; knihovny značek (podpory, klouby, zatížení, elektrické značky). **Hotovo 2026-10-11:** oblouk (O, čtvrtkruh od středu ke kraji) a moment (M, tři čtvrtiny se šipkou), táhla začátku (s poloměrem) a konce; šrafy obdélníku a elipsy (přepínač Šrafy, čáry 45° po 1,5 mm v barvě obrysu),
+  - další tvary: mnohoúhelník, křivka; knihovny značek (klouby v prutu, osamělé síly s popiskem, elektrické značky). **Hotovo 2026-10-11:** značky mechaniky: podpora kloubová (P) a posuvná (K) a vetknutí (F) kliknutím na bod, roh mění velikost, tlačítko ⟳ otočí o 90°; spojité zatížení (Q) tažením podél prutu, šipky po 3 mm k prutu, popisek (q), táhlo uprostřed mění délku šipek; oblouk (O, čtvrtkruh od středu ke kraji) a moment (M, tři čtvrtiny se šipkou), táhla začátku (s poloměrem) a konce; šrafy obdélníku a elipsy (přepínač Šrafy, čáry 45° po 1,5 mm v barvě obrysu),
   - kopírování a vkládání prvků (i mezi plátny), export plátna jako SVG nebo PNG.
 - **Další vkládané prvky mimo výpočet** (1. 10. 2026), každý jako samostatný modul stejným vzorem jako plátno:
   - ~~**graf** funkce nebo řady z výpočtu či tabulky~~ – první verze hotová (1. 10. 2026, kap. 7.1e jazyka),

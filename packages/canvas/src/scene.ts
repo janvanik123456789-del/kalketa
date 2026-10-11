@@ -33,7 +33,20 @@ export type CanvasItem =
    * An arc around (cx, cy): from the angle `start` by `sweep` degrees (on screen, clockwise
    * from the right), with an arrowhead at its end for a moment or a rotation.
    */
-  | (ItemBase & { readonly type: 'arc'; readonly cx: number; readonly cy: number; readonly r: number; readonly start: number; readonly sweep: number; readonly arrow?: boolean; readonly stroke: Stroke });
+  | (ItemBase & { readonly type: 'arc'; readonly cx: number; readonly cy: number; readonly r: number; readonly start: number; readonly sweep: number; readonly arrow?: boolean; readonly stroke: Stroke })
+  /**
+   * A support at the point (x, y) where it holds the structure: a pin (fixed hinge), a
+   * roller (moves along the ground), a fixed end (a wall). Turned by `angle` degrees
+   * (0: a pin or roller below the point, the wall of a fixed end on its left); `size` its height.
+   */
+  | (ItemBase & { readonly type: 'support'; readonly kind: SupportKind; readonly x: number; readonly y: number; readonly size: number; readonly angle: number; readonly stroke: Stroke })
+  /**
+   * A distributed load on the line from point 1 to 2: arrows `height` long pointing at the
+   * line from its left side (as a dimension stands), joined at their tails, with its label (q).
+   */
+  | (ItemBase & { readonly type: 'load'; readonly x1: number; readonly y1: number; readonly x2: number; readonly y2: number; readonly height: number; readonly text: string; readonly size: number; readonly stroke: Stroke });
+
+export type SupportKind = 'pin' | 'roller' | 'fixed';
 
 export interface CanvasScene {
   readonly version: number;
@@ -94,7 +107,7 @@ export function sceneBody(scene: CanvasScene, resolveFile: (path: string) => str
 
 /** An arrowhead per colour of the arrows, dimensions and arcs (markers take no colour from their line everywhere); a hatch per colour. */
 function arrowDefs(scene: CanvasScene): string {
-  const pointed = (i: CanvasItem) => i.type === 'arrow' || i.type === 'dimension' || (i.type === 'arc' && i.arrow);
+  const pointed = (i: CanvasItem) => i.type === 'arrow' || i.type === 'dimension' || i.type === 'load' || (i.type === 'arc' && i.arrow);
   const colours = [...new Set(scene.items.flatMap((i) => (pointed(i) && 'stroke' in i ? [i.stroke.color] : [])))];
   const hatches = [...new Set(scene.items.flatMap((i) => ((i.type === 'rect' || i.type === 'ellipse') && i.hatch ? [i.stroke.color] : [])))];
   if (colours.length === 0 && hatches.length === 0) return '';
@@ -121,6 +134,46 @@ export function dimensionLine(item: Extract<CanvasItem, { type: 'dimension' }>):
   const nx = (item.y2 - item.y1) / length;
   const ny = -(item.x2 - item.x1) / length;
   return { x1: item.x1 + nx * item.offset, y1: item.y1 + ny * item.offset, x2: item.x2 + nx * item.offset, y2: item.y2 + ny * item.offset, nx, ny };
+}
+
+/** The left normal of the direction from point 1 to 2 (up for left to right), as a dimension and a load use it. */
+function normal(x1: number, y1: number, x2: number, y2: number): { nx: number; ny: number } {
+  const length = Math.hypot(x2 - x1, y2 - y1) || 1;
+  return { nx: (y2 - y1) / length, ny: -(x2 - x1) / length };
+}
+
+/** The line of the tails of a load: its two ends, `height` beside the loaded line. */
+export function loadTop(item: Extract<CanvasItem, { type: 'load' }>): { x1: number; y1: number; x2: number; y2: number; nx: number; ny: number } {
+  const { nx, ny } = normal(item.x1, item.y1, item.x2, item.y2);
+  return { x1: item.x1 + nx * item.height, y1: item.y1 + ny * item.height, x2: item.x2 + nx * item.height, y2: item.y2 + ny * item.height, nx, ny };
+}
+
+/** Short strokes of the ground under a line from (x1, y) to (x2, y), as a support is drawn. */
+function ground(x1: number, x2: number, y: number, s: number, line: string): string {
+  const strokes: string[] = [`<line x1="${n(x1)}" y1="${n(y)}" x2="${n(x2)}" y2="${n(y)}" ${line}/>`];
+  const step = s / 5;
+  for (let x = x1 + step; x <= x2 + 1e-9; x += step) strokes.push(`<line x1="${n(x)}" y1="${n(y)}" x2="${n(x - step)}" y2="${n(y + step)}" ${line}/>`);
+  return strokes.join('');
+}
+
+/** A support drawn around its point at the origin, before it is turned and moved. */
+function supportShape(kind: SupportKind, s: number, line: string): string {
+  const half = s * 0.45;
+  if (kind === 'fixed') {
+    // The wall: a line through the point, its hatch on the far side.
+    const strokes: string[] = [`<line x1="0" y1="${n(-s * 0.75)}" x2="0" y2="${n(s * 0.75)}" ${line}/>`];
+    const step = s / 5;
+    for (let y = -s * 0.75 + step; y <= s * 0.75 + 1e-9; y += step) strokes.push(`<line x1="0" y1="${n(y)}" x2="${n(-step)}" y2="${n(y - step)}" ${line}/>`);
+    return strokes.join('');
+  }
+  const base = kind === 'pin' ? s * 0.8 : s * 0.62;
+  const triangle = `<path d="M0 0L${n(-half)} ${n(base)}L${n(half)} ${n(base)}Z" fill="#fff" ${line}/>`;
+  const hinge = `<circle cx="0" cy="0" r="${n(s * 0.09)}" fill="#fff" ${line}/>`;
+  if (kind === 'pin') return triangle + ground(-s * 0.7, s * 0.7, base, s, line) + hinge;
+  // The roller: its wheels under the triangle, the ground under them.
+  const wheel = s * 0.08;
+  const wheels = [-half / 2, half / 2].map((x) => `<circle cx="${n(x)}" cy="${n(base + wheel)}" r="${n(wheel)}" fill="#fff" ${line}/>`).join('');
+  return triangle + wheels + ground(-s * 0.7, s * 0.7, base + 2 * wheel, s, line) + hinge;
 }
 
 /** A point of an arc at an angle (degrees, clockwise from the right on screen). */
@@ -164,6 +217,30 @@ export function itemSvg(item: CanvasItem, resolveFile: (path: string) => string 
         `<text x="${n(mx)}" y="${n(my)}" font-size="${n(item.size)}" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="${colour}" text-anchor="middle" dominant-baseline="central" transform="rotate(${n(angle)} ${n(mx)} ${n(my)})">${esc(item.text)}</text>` +
         `</g>`
       );
+    }
+    case 'support': {
+      const line = `stroke="${esc(item.stroke.color)}" stroke-width="${n(item.stroke.width)}" stroke-linejoin="round"`;
+      return `<g class="cc-support cc-${item.kind}" transform="translate(${n(item.x)} ${n(item.y)}) rotate(${n(item.angle)})">${supportShape(item.kind, item.size, line)}</g>`;
+    }
+    case 'load': {
+      const top = loadTop(item);
+      const length = Math.hypot(item.x2 - item.x1, item.y2 - item.y1);
+      // An arrow every 3 mm or so, one at each end.
+      const count = Math.max(2, Math.round(length / 3) + 1);
+      const arrows = Array.from({ length: count }, (_, i) => {
+        const t = i / (count - 1);
+        const bx = item.x1 + (item.x2 - item.x1) * t;
+        const by = item.y1 + (item.y2 - item.y1) * t;
+        return `<line x1="${n(bx + top.nx * item.height)}" y1="${n(by + top.ny * item.height)}" x2="${n(bx)}" y2="${n(by)}" ${stroke(item.stroke)} marker-end="url(#${arrowId(item.stroke.color)})"/>`;
+      }).join('');
+      const away = 0.6 + item.size / 2;
+      const side = item.height >= 0 ? 1 : -1;
+      const mx = (top.x1 + top.x2) / 2 + top.nx * side * away;
+      const my = (top.y1 + top.y2) / 2 + top.ny * side * away;
+      const label = item.text
+        ? `<text x="${n(mx)}" y="${n(my)}" font-size="${n(item.size)}" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="${esc(item.stroke.color)}" text-anchor="middle" dominant-baseline="central">${esc(item.text)}</text>`
+        : '';
+      return `<g class="cc-load">${arrows}<line x1="${n(top.x1)}" y1="${n(top.y1)}" x2="${n(top.x2)}" y2="${n(top.y2)}" ${stroke(item.stroke)}/>${label}</g>`;
     }
     case 'arc': {
       const from = arcPoint(item, item.start);

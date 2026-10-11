@@ -3,9 +3,26 @@
  * window keeps its own undo history by keeping the scenes.
  */
 
-import { arcPoint, dimensionLine, type CanvasItem, type CanvasScene } from './scene.js';
+import { arcPoint, dimensionLine, loadTop, type CanvasItem, type CanvasScene, type SupportKind } from './scene.js';
 
-export type Tool = 'select' | 'text' | 'line' | 'arrow' | 'rect' | 'ellipse' | 'dimension' | 'arc' | 'moment';
+export type Tool = 'select' | 'text' | 'line' | 'arrow' | 'rect' | 'ellipse' | 'dimension' | 'arc' | 'moment' | 'load' | SupportKind;
+
+/** Tools that put a support where the canvas is clicked. */
+export const SUPPORT_TOOLS: readonly SupportKind[] = ['pin', 'roller', 'fixed'];
+export const isSupportTool = (tool: Tool): tool is SupportKind => (SUPPORT_TOOLS as readonly string[]).includes(tool);
+/** Height of a new support and length of the arrows of a new load, in millimetres. */
+export const SUPPORT_SIZE = 6;
+export const LOAD_HEIGHT = 6;
+
+/** A new support at (x, y). */
+export function placedSupport(kind: SupportKind, id: string, x: number, y: number, colour: string, width: number): CanvasItem {
+  return { id, type: 'support', kind, x, y, size: SUPPORT_SIZE, angle: 0, stroke: { color: colour, width } };
+}
+
+/** The item turned by a quarter, clockwise on screen (a support). */
+export function turned(item: CanvasItem): CanvasItem {
+  return item.type === 'support' ? { ...item, angle: (item.angle + 90) % 360 } : item;
+}
 
 /** How far beside the measured points a new dimension is drawn, in millimetres. */
 export const DIMENSION_OFFSET = 6;
@@ -68,6 +85,14 @@ export function boxOf(item: CanvasItem): Box {
     }
     case 'arc':
       return { x: item.cx - item.r, y: item.cy - item.r, w: 2 * item.r, h: 2 * item.r };
+    case 'support':
+      return { x: item.x - item.size, y: item.y - item.size, w: 2 * item.size, h: 2 * item.size };
+    case 'load': {
+      const top = loadTop(item);
+      const xs = [item.x1, item.x2, top.x1, top.x2];
+      const ys = [item.y1, item.y2, top.y1, top.y2];
+      return { x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys) };
+    }
     default:
       return { x: item.x, y: item.y, w: item.w, h: item.h };
   }
@@ -79,7 +104,10 @@ export function moved(item: CanvasItem, dx: number, dy: number): CanvasItem {
     case 'line':
     case 'arrow':
     case 'dimension':
+    case 'load':
       return { ...item, x1: item.x1 + dx, y1: item.y1 + dy, x2: item.x2 + dx, y2: item.y2 + dy };
+    case 'support':
+      return { ...item, x: item.x + dx, y: item.y + dy };
     case 'arc':
       return { ...item, cx: item.cx + dx, cy: item.cy + dy };
     case 'text':
@@ -94,6 +122,8 @@ export function moved(item: CanvasItem, dx: number, dy: number): CanvasItem {
  * picture keeps its proportions; a text changes its size with the height.
  */
 export function resized(item: CanvasItem, corner: Corner, x: number, y: number): CanvasItem {
+  // A support keeps its point; a corner dragged out makes it bigger.
+  if (item.type === 'support') return { ...item, size: Math.max(MIN_SIZE, Math.round(Math.max(Math.abs(x - item.x), Math.abs(y - item.y)) * 2) / 2) };
   const box = boxOf(item);
   const fixedX = corner === 'nw' || corner === 'sw' ? box.x + box.w : box.x;
   const fixedY = corner === 'nw' || corner === 'ne' ? box.y + box.h : box.y;
@@ -112,6 +142,7 @@ export function resized(item: CanvasItem, corner: Corner, x: number, y: number):
     case 'arrow':
     case 'dimension':
     case 'arc':
+    case 'load':
       return item;
     case 'text':
       return { ...item, x: left, y: top, size: Math.max(1.5, Math.round((h / (item.text.split('\n').length * 1.25)) * 10) / 10) };
@@ -138,7 +169,11 @@ export function endMoved(item: CanvasItem, end: 1 | 2 | 3, x: number, y: number)
     const d = dimensionLine(item);
     return { ...item, offset: Math.round(((x - item.x1) * d.nx + (y - item.y1) * d.ny) * 2) / 2 };
   }
-  if (item.type !== 'line' && item.type !== 'arrow' && item.type !== 'dimension') return item;
+  if (item.type === 'load' && end === 3) {
+    const top = loadTop(item);
+    return { ...item, height: Math.round(((x - item.x1) * top.nx + (y - item.y1) * top.ny) * 2) / 2 || 0.5 };
+  }
+  if (item.type !== 'line' && item.type !== 'arrow' && item.type !== 'dimension' && item.type !== 'load') return item;
   return end === 1 ? { ...item, x1: x, y1: y } : { ...item, x2: x, y2: y };
 }
 
@@ -153,6 +188,10 @@ export function endsOf(item: CanvasItem): { end: 1 | 2 | 3; x: number; y: number
     const from = arcPoint(item, item.start);
     const to = arcPoint(item, item.start + item.sweep);
     return [{ end: 1, ...from }, { end: 2, ...to }];
+  }
+  if (item.type === 'load') {
+    const top = loadTop(item);
+    return [{ end: 1, x: item.x1, y: item.y1 }, { end: 2, x: item.x2, y: item.y2 }, { end: 3, x: (top.x1 + top.x2) / 2, y: (top.y1 + top.y2) / 2 }];
   }
   return undefined;
 }
@@ -214,6 +253,8 @@ export function drawn(tool: Exclude<Tool, 'select' | 'text'>, id: string, x1: nu
   const stroke = { color: colour, width };
   if (tool === 'line' || tool === 'arrow') return { id, type: tool, x1, y1, x2, y2, stroke };
   if (tool === 'dimension') return { id, type: 'dimension', x1, y1, x2, y2, offset: DIMENSION_OFFSET, text: label, size, stroke };
+  if (tool === 'load') return { id, type: 'load', x1, y1, x2, y2, height: LOAD_HEIGHT, text: label, size, stroke };
+  if (isSupportTool(tool)) return placedSupport(tool, id, x2, y2, colour, width);
   if (tool === 'arc' || tool === 'moment') {
     const start = (Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI;
     return { id, type: 'arc', cx: x1, cy: y1, r: Math.max(MIN_SIZE / 2, Math.hypot(x2 - x1, y2 - y1)), start, sweep: tool === 'moment' ? 270 : 90, ...(tool === 'moment' ? { arrow: true } : {}), stroke };

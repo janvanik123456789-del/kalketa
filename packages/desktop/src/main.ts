@@ -1688,13 +1688,33 @@ async function layersWithRealInput(picture: string) {
     await pause(200);
     await clickOn('.canvas-window [data-canvas="hatch"]');
     await pause(200);
+    // A beam on its supports: a pin and a roller clicked at its ends, a fixed end turned, a load along it.
+    const click = async (point: { x: number; y: number }) => {
+      contents.sendInputEvent({ type: 'mouseDown', ...point, button: 'left', clickCount: 1 });
+      contents.sendInputEvent({ type: 'mouseUp', ...point, button: 'left', clickCount: 1 });
+      await pause(200);
+    };
+    await clickOn('.canvas-window [data-tool="pin"]');
+    await click(inWindow(0.55, 0.92));
+    await clickOn('.canvas-window [data-tool="roller"]');
+    await click(inWindow(0.75, 0.92));
+    await clickOn('.canvas-window [data-tool="fixed"]');
+    await click(inWindow(0.05, 0.15));
+    await clickOn('.canvas-window [data-canvas="turn"]');
+    await clickOn('.canvas-window [data-tool="load"]');
+    await drawDrag(inWindow(0.55, 0.8), inWindow(0.75, 0.8), 'canvas-load');
+    await pause(300);
+    await typeText('q');
+    await pressKey('Enter');
+    await pause(300);
     await takePicture(picture.replace(/[.]png$/, '-canvas-mechanics.png'));
     await clickOn('.canvas-window [data-canvas="done"]');
     await pause(500);
     const mechanics = (await contents.executeJavaScript(`(() => {
       const img = [...document.querySelectorAll('.layer-view.active figure img')].find((i) => i.src.startsWith('data:image/svg+xml'));
       const svg = img ? decodeURIComponent(img.src.slice(img.src.indexOf(',') + 1)) : '';
-      return svg.includes('class="cc-dimension"') && svg.includes('>l</text>') && /<path d="M[^"]*A/.test(svg) && svg.includes('fill="url(#cc-hatch-');
+      return svg.includes('class="cc-dimension"') && svg.includes('>l</text>') && /<path d="M[^"]*A/.test(svg) && svg.includes('fill="url(#cc-hatch-') &&
+        svg.includes('cc-support cc-pin') && svg.includes('cc-support cc-roller') && svg.includes('rotate(90)"><line x1="0"') && svg.includes('class="cc-load"') && svg.includes('>q</text>');
     })()`)) as boolean;
     canvasOk = mechanics &&
       /<rect x="[\d.]+" y="[\d.]+" width="[\d.]+"/.test(items) && shown.includes('<rect') && shown.includes('marker-end') && shown.includes('L = 5 m') && reopened === 3 && inlineEditing && windowEditing && !(await contents.executeJavaScript(`!!document.querySelector('.canvas-window, .canvas-inline')`));

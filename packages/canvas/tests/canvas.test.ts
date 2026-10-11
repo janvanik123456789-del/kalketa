@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addItem, drawn, emptyScene, endMoved, itemAt, migrate, moved, newId, readScene, reordered, resized, sceneSvg, writeScene, type CanvasItem } from '../src/index.js';
+import { addItem, drawn, turned, emptyScene, endMoved, itemAt, migrate, moved, newId, readScene, reordered, resized, sceneSvg, writeScene, type CanvasItem } from '../src/index.js';
 
 const rect: CanvasItem = { id: 'i1', type: 'rect', x: 10, y: 10, w: 20, h: 10, stroke: { color: '#000', width: 0.5 }, fill: 'none' };
 
@@ -84,5 +84,31 @@ describe('drawings of mechanics: dimensions, arcs and moments, hatches', () => {
     const svg = sceneSvg(addItem(emptyScene(), drawn('rect', 'r1', 0, 0, 20, 10, '#1565c0', 0.35, 'none', '', 3.5, true)));
     expect(svg).toContain('<pattern id="cc-hatch-1565c0"');
     expect(svg).toContain('fill="url(#cc-hatch-1565c0)"');
+  });
+});
+
+describe('supports and loads', () => {
+  it('puts a support at its point, turns it by a quarter and sizes it from a corner', () => {
+    const pin = drawn('pin', 's1', 0, 0, 30, 40, '#000', 0.35, 'none');
+    expect(pin).toMatchObject({ type: 'support', kind: 'pin', x: 30, y: 40, size: 6, angle: 0 });
+    const svg = sceneSvg(addItem(emptyScene(), pin));
+    expect(svg).toContain('<g class="cc-support cc-pin" transform="translate(30 40) rotate(0)">');
+    expect(svg).toContain('<circle cx="0" cy="0"');
+    expect(turned(turned(pin))).toMatchObject({ angle: 180 });
+    expect(resized(pin, 'se', 40, 44)).toMatchObject({ size: 10, x: 30, y: 40 });
+    expect(sceneSvg(addItem(emptyScene(), drawn('roller', 's2', 0, 0, 10, 10, '#000', 0.35, 'none')))).toContain('cc-roller');
+    expect(sceneSvg(addItem(emptyScene(), drawn('fixed', 's3', 0, 0, 10, 10, '#000', 0.35, 'none')))).toContain('cc-fixed');
+  });
+
+  it('draws a load as arrows pointing at its line, joined at their tails, with its label', () => {
+    const load = drawn('load', 'q1', 10, 30, 40, 30, '#000', 0.25, 'none', 'q', 3.5);
+    expect(load).toMatchObject({ type: 'load', height: 6, text: 'q' });
+    const svg = sceneSvg(addItem(emptyScene(), load));
+    // 30 mm: an arrow every 3 mm, from y 24 down to the line at y 30.
+    expect(svg.match(/marker-end="url\(#cc-arrow-000\)"/g)).toHaveLength(11);
+    expect(svg).toContain('<line x1="10" y1="24" x2="10" y2="30"');
+    expect(svg).toContain('<line x1="10" y1="24" x2="40" y2="24"');
+    expect(svg).toMatch(/>q<\/text>/);
+    expect(endMoved(load, 3, 25, 20)).toMatchObject({ height: 10 });
   });
 });

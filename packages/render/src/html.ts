@@ -200,7 +200,8 @@ export function renderBlockHtml(block: PrintBlock, catalog: Catalog, options: Bl
   switch (block.kind) {
     case 'heading': {
       const level = Math.min(block.level + 1, 6);
-      return `<h${level}${styleAttribute(block.style)}>${textHtml(block.text)}</h${level}>`;
+      const position = block.position ? `<span class="position">${esc(block.position)}</span> ` : '';
+      return `<h${level}${styleAttribute(block.style)}${block.position ? ' class="position-head"' : ''}>${position}${textHtml(block.text)}</h${level}>`;
     }
     case 'paragraph':
       return `<p class="text"${styleAttribute(block.style)}>${textHtml(block.text)}${(block.cites ?? []).map((c) => ` <span class="source">[${esc(c)}]</span>`).join('')}</p>`;
@@ -387,6 +388,7 @@ ${NOTES_CSS}
 export const BLOCK_CSS = `math { font-family: "Cambria Math", "STIX Two Math", "Latin Modern Math", math; font-size: 1.1em; math-style: normal; }
 h1 { font-size: 17pt; margin: 0 0 1mm; }
 h2 { font-size: 13pt; margin: 6mm 0 2mm; border-bottom: 0.4pt solid #999; break-after: avoid; }
+.position-head .position { display: inline-block; min-width: 16mm; margin-right: 2mm; }
 h3, h4, h5, h6 { font-size: 11pt; margin: 4mm 0 1.5mm; break-after: avoid; }
 .subtitle { margin: 0 0 4mm; color: #444; }
 .text { margin: 1.5mm 0; }

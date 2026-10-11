@@ -70,7 +70,7 @@ export interface Message {
 }
 
 export type PrintBlock =
-  | { readonly kind: 'heading'; readonly line: number; readonly level: number; readonly text: string; readonly style?: TextStyle }
+  | { readonly kind: 'heading'; readonly line: number; readonly level: number; readonly text: string; readonly style?: TextStyle; /** "Pos. 1" before the title of a position. */ readonly position?: string }
   | { readonly kind: 'paragraph'; readonly line: number; readonly text: string; readonly cites?: readonly string[]; readonly style?: TextStyle }
   | {
       readonly kind: 'picture';
@@ -238,11 +238,14 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
   // Blocks used in the sheet: their names are words, not math symbols.
   const blockNames = new Set(result.statements.flatMap((r) => (r.value?.type === 'record' ? [r.value.block] : [])));
   const recordNames = new Set([...result.values].flatMap(([name, value]) => (value.type === 'record' ? [name] : [])));
+  // Positions read in formulas (Pos1.A) print as A (Pos. 1).
+  const positionLabels = new Map([...result.values].flatMap(([name, value]) => (value.type === 'record' && value.position !== undefined ? [[name, t(catalog, 'print.position', { n: value.position })] as const] : [])));
   const dateFormat = (days: number) => formatDate(days, catalog);
   const formulaOptions = (substitute?: FormulaOptions['substitute']): FormulaOptions => ({
     date: dateFormat,
     ...(blockNames.size > 0 ? { textNames: blockNames } : {}),
     ...(recordNames.size > 0 ? { recordNames } : {}),
+    ...(positionLabels.size > 0 ? { positionLabels } : {}),
     literal: numberFormat({ digits: 15 }),
     argumentSeparator: decimalComma ? ';' : ',',
     booleans: { true: catalog.terms['true'] ?? 'true', false: catalog.terms['false'] ?? 'false' },
@@ -275,7 +278,14 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
 
     switch (s.kind) {
       case 'heading':
-        blocks.push({ kind: 'heading', line: s.span.line, level: s.level, text: s.text, ...(textStyle(s.format) ? { style: textStyle(s.format)! } : {}) });
+        blocks.push({
+          kind: 'heading',
+          line: s.span.line,
+          level: s.level,
+          text: s.text,
+          ...(textStyle(s.format) ? { style: textStyle(s.format)! } : {}),
+          ...(r.position !== undefined ? { position: t(catalog, 'print.position', { n: r.position }) } : {}),
+        });
         break;
       case 'text':
         blocks.push({ kind: 'paragraph', line: s.span.line, text: s.text, ...(s.cites ? { cites: s.cites } : {}), ...(textStyle(s.format) ? { style: textStyle(s.format)! } : {}) });

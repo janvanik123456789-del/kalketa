@@ -82,8 +82,10 @@ export interface RecordValue {
   readonly inputs: ReadonlyMap<string, Value>;
   /** All values of the block, inputs included. */
   readonly values: ReadonlyMap<string, Value>;
-  /** The block calculated with these inputs, for print and provenance. */
-  readonly result: SheetResult;
+  /** The block calculated with these inputs, for print and provenance (none for a position of the sheet). */
+  readonly result?: SheetResult;
+  /** A position of the sheet (Pos. 1): its label, its values read as Pos1.A. */
+  readonly position?: string;
 }
 
 /** A series of numbers of one dimension: cash flows by year, measurements. */

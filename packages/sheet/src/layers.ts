@@ -212,7 +212,7 @@ export type AppendixLayer =
 export function blockAppendices(main: SheetResult): AppendixLayer[] {
   return main.statements.flatMap((r): AppendixLayer[] => {
     const s = r.statement;
-    if (s.kind !== 'definition' || r.value?.type !== 'record') return [];
+    if (s.kind !== 'definition' || r.value?.type !== 'record' || !r.value.result) return [];
     return [{ kind: 'calc', layer: `block:${s.name}`, name: `${r.value.block.replaceAll('_', ' ')} – ${s.name}`, result: r.value.result }];
   });
 }

@@ -184,6 +184,8 @@ function lineFormat(tokens: readonly Token[], diagnostics: Diagnostic[], at: Spa
       else if ((key === 'italic' || key === 'bold' || key === 'rounded' || key === 'noeq') && value === undefined) format[key] = true;
       // A name for references (eq=hooke), or the number a book gave the formula (eq=32, eq=12a).
       else if (key === 'eq' && (value === undefined || /^[\p{L}\p{N}_]+$/u.test(value))) format.eq = value ?? true;
+      // A position: numbered on (pos), or as the calculation numbers it (pos=3, pos=12a).
+      else if (key === 'pos' && (value === undefined || /^[\p{L}\p{N}_]+$/u.test(value))) format.pos = value ?? true;
       else if (key === 'align' && (TEXT_ALIGNS as readonly string[]).includes(value ?? '')) format.align = value as TextAlign;
       else if (key === 'color' && (TEXT_COLORS as readonly string[]).includes(value ?? '')) format.color = value as TextColor;
       else diagnostics.push(diagnostic('W-FORMAT', at, { item }));

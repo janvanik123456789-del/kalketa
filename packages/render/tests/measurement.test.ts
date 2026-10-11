@@ -68,3 +68,11 @@ describe('a load recapitulation in a sheet table', () => {
     expect(html).toContain('<div class="formula">= ');
   });
 });
+
+describe('positions in print', () => {
+  it('put Pos. n before the title and print a value of another position as A (Pos. 1)', () => {
+    const html = printHtml(evaluateSheet('## Stropní deska {pos}\nA := 10 kN\n## Průvlak {pos}\nF := Pos1.A'), { catalog: cs, registry: defaultRegistry, title: 'T' });
+    expect(html).toContain('<h3 class="position-head"><span class="position">Pos. 1</span> Stropní deska</h3>');
+    expect(html).toContain('<mtext>Pos. 1</mtext>');
+  });
+});

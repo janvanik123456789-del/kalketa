@@ -60,6 +60,8 @@ export interface StatementResult {
   readonly plot?: PlotResult;
   /** A derivation (derive a == b, y := a == b == c): whether each step holds. */
   readonly derivation?: readonly DerivationStep[];
+  /** A heading that starts a position: its label (1, 2, 3a), its values then read as Pos1.A. */
+  readonly position?: string;
   /** Values found by a solve statement, in the order of its unknowns; the formula of one expressed. */
   readonly solutions?: readonly { readonly name: string; readonly value: Quantity; readonly display: DisplayValue; readonly formula?: Expr; readonly relation?: Inequality }[];
   /** Names this statement read, in order of first use (including undefined ones). */
@@ -174,8 +176,44 @@ export class SheetSession {
     let reused = 0;
     const none = { dependencies: [], tableReads: [] } as const;
 
+    // Positions: the names defined in one hold until the next one starts; then they are its
+    // values (Pos1.A) and the next position may define the same names again.
+    let position: { label: string; names: string[] } | undefined;
+    let numbered = 0;
+    // The last position keeps its names at the end of the sheet: the values of the sheet stay
+    // whole for what reads them (other layers, the values a canvas shows).
+    const closePosition = (last = false) => {
+      if (!position) return;
+      const values = new Map<string, Value>();
+      for (const name of position.names) {
+        const entry = env.get(name);
+        if (entry?.ok) values.set(name, entry.value);
+        if (last) continue;
+        env.delete(name);
+        context.formulas.delete(name);
+      }
+      env.set(positionName(position.label), { ok: true, value: { type: 'record', block: positionName(position.label), version: '', inputs: new Map(), values, position: position.label } });
+      position = undefined;
+    };
+    const definedHere = (statement: Statement) => {
+      if (!position) return;
+      const names = statement.kind === 'definition' || statement.kind === 'table' ? [statement.name] : statement.kind === 'solve' ? statement.unknowns.map((u) => u.name) : [];
+      for (const name of names) if (env.has(name) && !position.names.includes(name)) position.names.push(name);
+    };
+
     statements.forEach((statement, index) => {
       const parseDiagnostics = parsed.diagnostics.filter((d) => within(d.span, statement.span));
+
+      if (statement.kind === 'heading' && statement.format?.pos !== undefined) {
+        closePosition();
+        const given = statement.format.pos;
+        // A number given goes on from there (pos=3 and then pos is 4); a label like 3a does not.
+        const label = given === true ? String(++numbered) : given;
+        if (given !== true && /^\d+$/.test(given)) numbered = Number(given);
+        position = { label, names: [] };
+        results.push({ statement, status: 'none', ...none, position: label, diagnostics: parseDiagnostics });
+        return;
+      }
 
       if (statement.kind === 'invalid') {
         if (statement.name !== undefined && !env.has(statement.name)) env.set(statement.name, { ok: false });
@@ -203,6 +241,7 @@ export class SheetSession {
         };
         const built = sheetTable(statement, context.registry, outer);
         env.set(statement.name, { ok: true, value: { type: 'table', table: built.table } });
+        definedHere(statement);
         results.push({ statement, status: 'ok', value: { type: 'table', table: built.table }, ...none, diagnostics: [...parseDiagnostics, ...built.diagnostics] });
         return;
       }
@@ -272,8 +311,10 @@ export class SheetSession {
           env.set(u.name, found ? { ok: true, value: found.value } : { ok: false });
         });
       }
+      definedHere(statement);
       results.push({ statement, ...result, diagnostics: [...parseDiagnostics, ...result.diagnostics] });
     });
+    closePosition(true);
 
     this.cache = nextCache;
     const values = new Map<string, Value>();
@@ -665,6 +706,11 @@ function checkSummary(results: readonly StatementResult[]): CheckSummaryItem[] {
     const { label, source } = r.statement;
     return [{ statement: index, passed: false, ...(label !== undefined ? { label } : {}), ...(source !== undefined ? { source } : {}) }];
   });
+}
+
+/** The name the values of a position are read by: Pos1, Pos3a. */
+export function positionName(label: string): string {
+  return `Pos${label}`;
 }
 
 /** Evaluates a sheet once, without keeping a cache. */

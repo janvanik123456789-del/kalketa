@@ -173,6 +173,10 @@ function textMenuItems(seg: Segment, catalog: Catalog, change: RowChange): MenuI
     { kind: 'action', label: t(catalog, 'textStyle.bold'), checked: current.has('bold'), run: () => set('bold', current.has('bold') ? undefined : '') },
     { kind: 'submenu', label: t(catalog, 'textStyle.align'), items: choices('align', [undefined, ...TEXT_ALIGNS], (a) => t(catalog, `textStyle.align.${a}` as UiKey)) },
     { kind: 'submenu', label: t(catalog, 'textStyle.color'), items: choices('color', [undefined, ...TEXT_COLORS], (c) => t(catalog, `textStyle.color.${c}` as UiKey)) },
+    // A heading may start a position of the calculation (Pos. 1, 2, …), its names its own.
+    ...(/^\s*#/.test(seg.text)
+      ? [{ kind: 'separator' } as const, { kind: 'action', label: t(catalog, 'textStyle.position'), checked: current.has('pos'), run: () => set('pos', current.has('pos') ? undefined : '') } as const]
+      : []),
   ];
 }
 

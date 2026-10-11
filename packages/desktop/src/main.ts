@@ -963,6 +963,17 @@ async function layersWithRealInput(picture: string) {
     rows.forEach((r, i) => (r.id = 'smoke-def-' + i));
     return rows[2]?.querySelector('p.text')?.getAttribute('style') ?? '';
   })()`)) as string;
+  // The right button on a heading: it starts a position (Pos. 1 before its title); taken back again.
+  await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .page .row')].find((r) => r.querySelector('h2, h3, h4'))?.setAttribute('id', 'smoke-heading')`);
+  await clickOn('#smoke-heading h2, #smoke-heading h3, #smoke-heading h4', [], 'right');
+  await clickMenu('Začíná pozici');
+  await pause(400);
+  const positionShown = (await contents.executeJavaScript(`document.querySelector('.layer-view.active .page .position-head .position')?.textContent ?? ''`)) as string;
+  await contents.executeJavaScript(`document.querySelector('.layer-view.active .page .position-head')?.closest('.row')?.setAttribute('id', 'smoke-heading')`);
+  await clickOn('#smoke-heading .position-head', [], 'right');
+  await clickMenu('Začíná pozici');
+  await pause(400);
+  const positionGone = (await contents.executeJavaScript(`!document.querySelector('.layer-view.active .page .position-head')`)) as boolean;
   // Two results marked, the right button on one of them: both get two significant digits.
   await clickOn('#smoke-def-0', ['control']);
   await clickOn('#smoke-def-1', ['control']);
@@ -1033,7 +1044,7 @@ async function layersWithRealInput(picture: string) {
   await pause(400);
   const rowsAfterDelete = (await contents.executeJavaScript(rowsNow)) as number;
   const definitionAtCursor =
-    typedDefs.errors === 0 && typedDefs.rows[0]!.includes('≔2') && typedDefs.rows[1]!.includes('=3') && typedDefs.indexed && /=3,3[45]/.test(formatted) && bothFormatted[0]!.includes('2,3') && !bothFormatted[0]!.includes('2,34') && bothFormatted[1]!.includes('=3,3') && !bothFormatted[1]!.includes('3,34') && roundedOn.endsWith('=3,3') && equationNumber === '(1)' && italicText.includes('italic') && draggedRows === 3 && selectedAll.marked > 10 && selectedAll.windowText === 0 && markedRows === 3 && rowsAfterDelete === rowsBeforeDefs;
+    typedDefs.errors === 0 && typedDefs.rows[0]!.includes('≔2') && typedDefs.rows[1]!.includes('=3') && typedDefs.indexed && /=3,3[45]/.test(formatted) && bothFormatted[0]!.includes('2,3') && !bothFormatted[0]!.includes('2,34') && bothFormatted[1]!.includes('=3,3') && !bothFormatted[1]!.includes('3,34') && roundedOn.endsWith('=3,3') && equationNumber === '(1)' && positionShown === 'Pos. 1' && positionGone && italicText.includes('italic') && draggedRows === 3 && selectedAll.marked > 10 && selectedAll.windowText === 0 && markedRows === 3 && rowsAfterDelete === rowsBeforeDefs;
 
   // solve without an interval: the unknown is expressed by a formula, its unit comes from it;
   // the right button puts the formula in as a definition.

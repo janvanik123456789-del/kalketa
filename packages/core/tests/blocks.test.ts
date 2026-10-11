@@ -76,7 +76,7 @@ describe('blocks', () => {
   it('keep the calculation with the given inputs, for print', () => {
     const r = run('N1 := Prosty_nosnik(L: 6 m)');
     const record = r.values.get('N1');
-    expect(record?.type === 'record' && record.result.statements.length).toBe(6);
+    expect(record?.type === 'record' && record.result!.statements.length).toBe(6);
   });
 
   it('write their version as @version', () => {

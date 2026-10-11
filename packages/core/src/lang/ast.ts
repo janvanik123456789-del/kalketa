@@ -96,6 +96,11 @@ export interface LineFormat {
   /** The equation number of the line: {eq} numbered, {eq=hooke} numbered and named for (#hooke) in text, {noeq} never. */
   readonly eq?: true | string;
   readonly noeq?: boolean;
+  /**
+   * A heading that starts a position of the calculation ({pos}, numbered on, or {pos=3a}):
+   * the names defined in it hold until the next position, and after it as Pos1.A.
+   */
+  readonly pos?: true | string;
 }
 
 /** Fonts of text by kind, not by name: each machine and printout has its own of the kind. */

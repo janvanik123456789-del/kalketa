@@ -26,6 +26,8 @@ export interface FormulaOptions {
   readonly qualifiedMembers?: ReadonlySet<string>;
   /** Variables holding the result of a block: N1.M_max is printed as M_max(N1). */
   readonly recordNames?: ReadonlySet<string>;
+  /** Positions of the sheet by their names (Pos1) and as printed (Pos. 1). */
+  readonly positionLabels?: ReadonlyMap<string, string>;
 }
 
 export interface Substituted {
@@ -140,6 +142,9 @@ function render(expr: Expr, o: FormulaOptions): Rendered {
       return { node: expr.name === 'π' ? mi('π', true) : nameNode(expr.name), prec: ATOM };
     case 'member':
       // The value of a block names its use: N1.M_max -> M_max(N1).
+      if (expr.object.kind === 'variable' && o.positionLabels?.has(expr.object.name)) {
+        return { node: row(nameNode(expr.name), paren(mtext(o.positionLabels.get(expr.object.name)!))), prec: ATOM };
+      }
       if (expr.object.kind === 'variable' && (o.recordNames?.has(expr.object.name) || o.qualifiedMembers?.has(expr.name))) {
         return { node: row(nameNode(expr.name), paren(nameNode(expr.object.name))), prec: ATOM };
       }

@@ -505,6 +505,27 @@ table Mereni:
   - V tisku je vzorec pod záhlavím sloupce a řádek součtů tučně s čarou nad ním. Jména sloupců se sázejí jako ve vzorcích (g_k s indexem).
 - *Na později (kosmetika):* úprava v mřížce přímo v listu, formáty jako v Excelu (procenta, vědecký zápis, zarovnání, tučně, pozadí) z nabídky pravého tlačítka.
 
+### 8.5 Pozice výpočtu (2026-10-11)
+
+Statický výpočet se člení na pozice (německá „Positionsstatik“): Pos. 1 Stropní deska, Pos. 2 Průvlak… Každá pozice počítá se svými jmény, reakce jedné pozice je zatížením další.
+
+```text
+## Stropní deska {pos}          ' v tisku: Pos. 1  Stropní deska
+q := 5 kN/m
+L := 4 m
+A := q·L/2
+## Průvlak {pos}                ' Pos. 2
+F := Pos1.A                     ' reakce stropu; v tisku A (Pos. 1)
+L := 6 m                        ' L smí znovu: jména Pos. 1 skončila s ní
+A := F/2
+## Sloup {pos=7}                ' číslo podle projektu; {pos=3a} pro vloženou pozici
+N := Pos2.A + Pos1.A
+```
+
+- `{pos}` za nadpisem (v editoru pravé tlačítko na nadpisu → Začíná pozici výpočtu) otevře pozici. Čísluje se 1, 2, 3; zadané číslo (`{pos=7}`) číslování posune, označení jako `3a` ne.
+- Jména definovaná v pozici platí do začátku další pozice. Potom jsou hodnotami pozice: `Pos1.A`. Jména nad první pozicí (materiály, součinitele) platí všude.
+- Poslední pozice svá jména drží až do konce listu, takže je vidí i ostatní vrstvy a živé hodnoty plátna.
+
 ## 9. Řešič rovnic (F8)
 
 ```text

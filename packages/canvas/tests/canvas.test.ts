@@ -53,3 +53,36 @@ describe('editing a canvas', () => {
     expect(endMoved(scene.items[1]!, 2, 10, 10)).toMatchObject({ x2: 10, y2: 10 });
   });
 });
+
+describe('drawings of mechanics: dimensions, arcs and moments, hatches', () => {
+  it('draws a dimension beside its points, its label on the line, both arrowheads', () => {
+    const dimension = drawn('dimension', 'd1', 10, 40, 60, 40, '#000', 0.25, 'none', 'l', 3.5);
+    expect(dimension).toMatchObject({ type: 'dimension', offset: 6, text: 'l' });
+    const svg = sceneSvg(addItem(emptyScene(), dimension));
+    // Drawn from left to right, it stands above the points (y 40 − 6).
+    expect(svg).toContain('<line x1="10" y1="34" x2="60" y2="34"');
+    expect(svg).toContain('marker-start="url(#cc-arrow-000)" marker-end="url(#cc-arrow-000)"');
+    expect(svg).toMatch(/<text [^>]*text-anchor="middle"[^>]*>l<\/text>/);
+    // Its line dragged further away; the points and the label stay.
+    expect(endMoved(dimension, 3, 30, 25)).toMatchObject({ offset: 15, x1: 10, x2: 60 });
+    expect(itemAt(addItem(emptyScene(), dimension), 35, 34)?.id).toBe('d1');
+  });
+
+  it('draws an arc round its centre, a moment with an arrowhead, and moves its ends', () => {
+    const moment = drawn('moment', 'm1', 50, 50, 60, 50, '#c00', 0.35, 'none');
+    expect(moment).toMatchObject({ type: 'arc', cx: 50, cy: 50, r: 10, start: 0, sweep: 270, arrow: true });
+    const svg = sceneSvg(addItem(emptyScene(), moment));
+    expect(svg).toContain('<path d="M60 50A10 10 0 1 1 50 40"');
+    expect(svg).toContain('marker-end="url(#cc-arrow-c00)"');
+    // The end dragged to the bottom: a quarter round, clockwise on screen.
+    expect(endMoved(moment, 2, 50, 70)).toMatchObject({ sweep: 90, r: 10 });
+    expect(itemAt(addItem(emptyScene(), moment), 50, 60)?.id).toBe('m1');
+    expect(itemAt(addItem(emptyScene(), moment), 50, 50)).toBeUndefined();
+  });
+
+  it('hatches a section: the pattern in the colour of its outline, over the fill', () => {
+    const svg = sceneSvg(addItem(emptyScene(), drawn('rect', 'r1', 0, 0, 20, 10, '#1565c0', 0.35, 'none', '', 3.5, true)));
+    expect(svg).toContain('<pattern id="cc-hatch-1565c0"');
+    expect(svg).toContain('fill="url(#cc-hatch-1565c0)"');
+  });
+});

@@ -9,7 +9,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type DragEvent as ReactDragEvent, type MouseEvent as ReactMouseEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { sceneBody, type CanvasItem, type CanvasScene } from '../scene.js';
-import { addItem, boxOf, drawn, endMoved, findItem, itemAt, moved, newId, removeItem, reordered, replaceItem, resized, snap, type Corner, type Tool } from '../edit.js';
+import { addItem, boxOf, drawn, endMoved, endsOf, findItem, itemAt, moved, newId, removeItem, reordered, replaceItem, resized, snap, type Corner, type Tool } from '../edit.js';
 import { fromFile, isPictureType, picturePath, pixelSize, type CanvasPicture } from './pictures.js';
 import { canvasTexts, type CanvasTextKey } from './texts.js';
 import './canvas.css';
@@ -41,7 +41,7 @@ export interface CanvasEditorProps {
 type Drag =
   | { kind: 'move'; id: string; from: { x: number; y: number }; original: CanvasItem }
   | { kind: 'corner'; id: string; corner: Corner }
-  | { kind: 'end'; id: string; end: 1 | 2 }
+  | { kind: 'end'; id: string; end: 1 | 2 | 3 }
   | { kind: 'draw'; tool: Exclude<Tool, 'select' | 'text'>; from: { x: number; y: number } }
   | { kind: 'size'; from: { x: number; y: number }; original: { width: number; height: number } };
 
@@ -54,6 +54,9 @@ const TOOLS: readonly { tool: Tool; glyph: string; key: string }[] = [
   { tool: 'arrow', glyph: '↗', key: 'A' },
   { tool: 'rect', glyph: '▭', key: 'R' },
   { tool: 'ellipse', glyph: '◯', key: 'E' },
+  { tool: 'dimension', glyph: '↔', key: 'D' },
+  { tool: 'arc', glyph: '◠', key: 'O' },
+  { tool: 'moment', glyph: '↻', key: 'M' },
 ];
 
 export function CanvasEditor(props: CanvasEditorProps) {
@@ -67,6 +70,7 @@ export function CanvasEditor(props: CanvasEditorProps) {
   const [colour, setColour] = useState('#000000');
   const [lineWidth, setLineWidth] = useState(0.35);
   const [filled, setFilled] = useState(false);
+  const [hatched, setHatched] = useState(false);
   const [fontSize, setFontSize] = useState(3.5);
   const [files, setFiles] = useState<ReadonlyMap<string, Uint8Array>>(new Map());
   const [draft, setDraft] = useState<CanvasItem | undefined>();
@@ -128,7 +132,7 @@ export function CanvasEditor(props: CanvasEditorProps) {
     if (handle === 'size') {
       drag.current = { kind: 'size', from: at, original: { width: scene.width, height: scene.height } };
     } else if (handle && item) {
-      drag.current = handle === 'p1' || handle === 'p2' ? { kind: 'end', id: item.id, end: handle === 'p1' ? 1 : 2 } : { kind: 'corner', id: item.id, corner: handle as Corner };
+      drag.current = /^p[123]$/.test(handle) ? { kind: 'end', id: item.id, end: Number(handle.slice(1)) as 1 | 2 | 3 } : { kind: 'corner', id: item.id, corner: handle as Corner };
     } else if (tool === 'select') {
       const hit = itemAt(scene, at.x, at.y);
       setSelected(hit?.id);
@@ -150,7 +154,7 @@ export function CanvasEditor(props: CanvasEditorProps) {
       else if (d.kind === 'corner') preview(replaceItem(base, resized(findItem(base, d.id)!, d.corner, at.x, at.y)));
       else if (d.kind === 'end') preview(replaceItem(base, endMoved(findItem(base, d.id)!, d.end, at.x, at.y)));
       else if (d.kind === 'size') preview({ ...base, width: Math.max(20, Math.round(d.original.width + at.x - d.from.x)), height: Math.max(10, Math.round(d.original.height + at.y - d.from.y)) });
-      else setDraft(drawn(d.tool, 'draft', d.from.x, d.from.y, at.x, at.y, colour, lineWidth, filled ? colour + '33' : 'none'));
+      else setDraft(drawn(d.tool, 'draft', d.from.x, d.from.y, at.x, at.y, colour, lineWidth, filled ? colour + '33' : 'none', '', fontSize, hatched));
     };
     const up = (e: MouseEvent) => {
       const d = drag.current;
@@ -163,9 +167,19 @@ export function CanvasEditor(props: CanvasEditorProps) {
         const at = point(e, e.altKey);
         if (Math.hypot(at.x - d.from.x, at.y - d.from.y) < 1) return;
         const id = newId(previous);
-        commit(addItem(previous, drawn(d.tool, id, d.from.x, d.from.y, at.x, at.y, colour, lineWidth, filled ? colour + '33' : 'none')), previous);
-        setSelected(id);
+        const shape = drawn(d.tool, id, d.from.x, d.from.y, at.x, at.y, colour, lineWidth, filled ? colour + '33' : 'none', '', fontSize, hatched);
         setTool('select');
+        if (shape.type === 'dimension') {
+          // A dimension says what it measures: its label is asked for right away.
+          void ask(text('dimensionPrompt')).then((label) => {
+            if (label === undefined) return;
+            commit(addItem(previous, { ...shape, text: label.trim() }), previous);
+            setSelected(id);
+          });
+          return;
+        }
+        commit(addItem(previous, shape), previous);
+        setSelected(id);
         return;
       }
       setHistory((h) => (h.present === previous ? h : { past: [...h.past, previous], present: h.present, future: [] }));
@@ -200,6 +214,11 @@ export function CanvasEditor(props: CanvasEditorProps) {
   };
 
   const editText = async (target: CanvasItem) => {
+    if (target.type === 'dimension') {
+      const value = await ask(text('dimensionPrompt'), target.text);
+      if (value !== undefined) commit(replaceItem(scene, { ...target, text: value.trim() }));
+      return;
+    }
     if (target.type !== 'text') return;
     const value = await ask(text('textPrompt'), target.text);
     if (value === undefined) return;
@@ -231,18 +250,23 @@ export function CanvasEditor(props: CanvasEditorProps) {
   };
 
   /** Colour, line width, fill and font size apply to the selected item too. */
-  const restyle = (change: { colour?: string; width?: number; fill?: boolean; size?: number }) => {
+  const restyle = (change: { colour?: string; width?: number; fill?: boolean; hatch?: boolean; size?: number }) => {
     if (change.colour !== undefined) setColour(change.colour);
     if (change.width !== undefined) setLineWidth(change.width);
     if (change.fill !== undefined) setFilled(change.fill);
+    if (change.hatch !== undefined) setHatched(change.hatch);
     if (change.size !== undefined) setFontSize(change.size);
     if (!item) return;
     const colourNow = change.colour ?? colour;
+    const strokeOf = (s: { width: number }) => ({ color: colourNow, width: change.width ?? s.width });
     if (item.type === 'text') commit(replaceItem(scene, { ...item, color: colourNow, size: change.size ?? item.size }));
-    else if (item.type === 'line' || item.type === 'arrow') commit(replaceItem(scene, { ...item, stroke: { color: colourNow, width: change.width ?? item.stroke.width } }));
+    else if (item.type === 'line' || item.type === 'arrow' || item.type === 'arc') commit(replaceItem(scene, { ...item, stroke: strokeOf(item.stroke) }));
+    else if (item.type === 'dimension') commit(replaceItem(scene, { ...item, stroke: strokeOf(item.stroke), size: change.size ?? item.size }));
     else if (item.type === 'rect' || item.type === 'ellipse') {
       const fill = change.fill ?? item.fill !== 'none';
-      commit(replaceItem(scene, { ...item, stroke: { color: colourNow, width: change.width ?? item.stroke.width }, fill: fill ? colourNow + '33' : 'none' }));
+      const { hatch: _hatch, ...plain } = item;
+      const hatch = change.hatch ?? !!item.hatch;
+      commit(replaceItem(scene, { ...plain, stroke: strokeOf(item.stroke), fill: fill ? colourNow + '33' : 'none', ...(hatch ? { hatch: true } : {}) }));
     }
   };
 
@@ -361,6 +385,9 @@ export function CanvasEditor(props: CanvasEditorProps) {
           <label title={text('fill')}>
             <input type="checkbox" checked={filled} onChange={(e) => restyle({ fill: e.target.checked })} /> {text('fill')}
           </label>
+          <label title={text('hatch')}>
+            <input type="checkbox" data-canvas="hatch" checked={hatched} onChange={(e) => restyle({ hatch: e.target.checked })} /> {text('hatch')}
+          </label>
           <select value={fontSize} title={text('fontSize')} onChange={(e) => restyle({ size: Number(e.target.value) })}>
             {[2.5, 3, 3.5, 4, 5, 6, 8].map((s) => (
               <option key={s} value={s}>
@@ -472,16 +499,14 @@ export function CanvasEditor(props: CanvasEditorProps) {
   );
 }
 
-/** The frame of the selected item with its handles: corners of a box, ends of a line. */
+/** The frame of the selected item with its handles: corners of a box; ends of a line, a dimension, an arc. */
 function selectionMarks(item: CanvasItem, size: number) {
-  if (item.type === 'line' || item.type === 'arrow') {
+  const ends = endsOf(item);
+  if (ends) {
     return (
       <g className="canvas-selection">
-        {[
-          ['p1', item.x1, item.y1],
-          ['p2', item.x2, item.y2],
-        ].map(([name, x, y]) => (
-          <rect key={name as string} className="canvas-handle" data-handle={name as string} x={(x as number) - size / 2} y={(y as number) - size / 2} width={size} height={size} />
+        {ends.map(({ end, x, y }) => (
+          <rect key={end} className="canvas-handle" data-handle={`p${end}`} x={x - size / 2} y={y - size / 2} width={size} height={size} />
         ))}
       </g>
     );

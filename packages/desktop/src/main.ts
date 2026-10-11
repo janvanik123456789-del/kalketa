@@ -1671,9 +1671,32 @@ async function layersWithRealInput(picture: string) {
     await pause(400);
     const windowEditing = (await contents.executeJavaScript(`!!document.querySelector('.canvas-window .canvas-svg') && document.querySelectorAll('.canvas-window .canvas-svg g > rect, .canvas-window .canvas-svg g > line, .canvas-window .canvas-svg g > text').length === 3`)) as boolean;
     await takePicture(picture.replace(/[.]png$/, '-canvas-window.png'));
-    await pressKey('Escape');
+    // Drawings of mechanics in the window: a dimension with its label, a moment, the rectangle hatched.
+    const big = (await contents.executeJavaScript(`(() => { const r = document.querySelector('.canvas-window .canvas-svg').getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; })()`)) as { x: number; y: number; w: number; h: number };
+    const inWindow = (fx: number, fy: number) => ({ x: Math.round(big.x + big.w * fx), y: Math.round(big.y + big.h * fy) });
+    await clickOn('.canvas-window [data-tool="dimension"]');
+    await drawDrag(inWindow(0.1, 0.9), inWindow(0.45, 0.9), 'canvas-dimension');
     await pause(300);
-    canvasOk =
+    await typeText('l');
+    await pressKey('Enter');
+    await pause(300);
+    await clickOn('.canvas-window [data-tool="moment"]');
+    await drawDrag(inWindow(0.85, 0.6), inWindow(0.93, 0.6), 'canvas-moment');
+    const rectAt = inWindow(0.3, 0.45);
+    contents.sendInputEvent({ type: 'mouseDown', ...rectAt, button: 'left', clickCount: 1 });
+    contents.sendInputEvent({ type: 'mouseUp', ...rectAt, button: 'left', clickCount: 1 });
+    await pause(200);
+    await clickOn('.canvas-window [data-canvas="hatch"]');
+    await pause(200);
+    await takePicture(picture.replace(/[.]png$/, '-canvas-mechanics.png'));
+    await clickOn('.canvas-window [data-canvas="done"]');
+    await pause(500);
+    const mechanics = (await contents.executeJavaScript(`(() => {
+      const img = [...document.querySelectorAll('.layer-view.active figure img')].find((i) => i.src.startsWith('data:image/svg+xml'));
+      const svg = img ? decodeURIComponent(img.src.slice(img.src.indexOf(',') + 1)) : '';
+      return svg.includes('class="cc-dimension"') && svg.includes('>l</text>') && /<path d="M[^"]*A/.test(svg) && svg.includes('fill="url(#cc-hatch-');
+    })()`)) as boolean;
+    canvasOk = mechanics &&
       /<rect x="[\d.]+" y="[\d.]+" width="[\d.]+"/.test(items) && shown.includes('<rect') && shown.includes('marker-end') && shown.includes('L = 5 m') && reopened === 3 && inlineEditing && windowEditing && !(await contents.executeJavaScript(`!!document.querySelector('.canvas-window, .canvas-inline')`));
   }
   const besideText = sideGroup.rows === '3,4' && sideGroup.picture && sideGroup.side !== '' && widened > parseFloat(sideGroup.side) && movedPicture && wrapped && cleared && unwrapped && placedFree && strictPlaced && canvasOk;

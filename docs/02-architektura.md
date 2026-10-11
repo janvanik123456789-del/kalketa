@@ -274,12 +274,12 @@ Každá fáze končí procházejícími testy. **MVP = referenční výpočet R1
 
 - **Plátno – dokončení** (1. 10. 2026, odloženo; první verze stačí). Vše v modulu `canvas`, rozhraní k hlavnímu programu se rozšíří jen tam, kde je to uvedeno:
   - **živé hodnoty z výpočtu** v textu plátna (`{L}` → „5 m“, mění se se zadáním); rozhraní: hostitel předá funkci „jméno → hotový text“, plátno nezávisí na jádru,
-  - **kóty**: čára s hodnotou mezi dvěma body, i živou (`{L}`), styl kót (šipky, pomocné čáry),
+  - ~~**kóty**~~ **hotovo 2026-10-11:** nástroj Kóta (D) mezi dvěma body s pomocnými čarami, šipkami a popiskem (ptá se hned po nakreslení, dvojklik ho změní), táhlo uprostřed posune kótu od bodů; zbývá živá hodnota (`{L}`) a styly kót (čárka místo šipky),
   - výběr více prvků (obdélníkem a Shiftem), posun a mazání skupiny, seskupení,
   - zarovnání a rozmístění (vlevo, na střed, rovnoměrně), přichytávání k prvkům,
   - víceřádkový text psaný přímo do kresby místo dialogu, tučné písmo, zarovnání textu,
   - otočení prvků, ořez obrázku, průhlednost,
-  - další tvary: mnohoúhelník, oblouk, křivka, šrafa; knihovny značek (podpory, klouby, zatížení, elektrické značky),
+  - další tvary: mnohoúhelník, křivka; knihovny značek (podpory, klouby, zatížení, elektrické značky). **Hotovo 2026-10-11:** oblouk (O, čtvrtkruh od středu ke kraji) a moment (M, tři čtvrtiny se šipkou), táhla začátku (s poloměrem) a konce; šrafy obdélníku a elipsy (přepínač Šrafy, čáry 45° po 1,5 mm v barvě obrysu),
   - kopírování a vkládání prvků (i mezi plátny), export plátna jako SVG nebo PNG.
 - **Další vkládané prvky mimo výpočet** (1. 10. 2026), každý jako samostatný modul stejným vzorem jako plátno:
   - ~~**graf** funkce nebo řady z výpočtu či tabulky~~ – první verze hotová (1. 10. 2026, kap. 7.1e jazyka),

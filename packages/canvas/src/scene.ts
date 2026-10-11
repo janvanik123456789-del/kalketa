@@ -20,10 +20,20 @@ interface ItemBase {
 }
 
 export type CanvasItem =
-  | (ItemBase & { readonly type: 'rect' | 'ellipse'; readonly x: number; readonly y: number; readonly w: number; readonly h: number; readonly stroke: Stroke; readonly fill: string })
+  | (ItemBase & { readonly type: 'rect' | 'ellipse'; readonly x: number; readonly y: number; readonly w: number; readonly h: number; readonly stroke: Stroke; readonly fill: string; /** Hatched, as a section or the ground is drawn. */ readonly hatch?: boolean })
   | (ItemBase & { readonly type: 'line' | 'arrow'; readonly x1: number; readonly y1: number; readonly x2: number; readonly y2: number; readonly stroke: Stroke })
   | (ItemBase & { readonly type: 'text'; readonly x: number; readonly y: number; readonly text: string; readonly size: number; readonly color: string; readonly bold?: boolean })
-  | (ItemBase & { readonly type: 'image'; readonly x: number; readonly y: number; readonly w: number; readonly h: number; readonly src: string });
+  | (ItemBase & { readonly type: 'image'; readonly x: number; readonly y: number; readonly w: number; readonly h: number; readonly src: string })
+  /**
+   * A dimension: the length between two points, drawn at `offset` beside them (along the
+   * normal of the direction from point 1 to 2, turned to the left), with its label (l, 150, Δl).
+   */
+  | (ItemBase & { readonly type: 'dimension'; readonly x1: number; readonly y1: number; readonly x2: number; readonly y2: number; readonly offset: number; readonly text: string; readonly size: number; readonly stroke: Stroke })
+  /**
+   * An arc around (cx, cy): from the angle `start` by `sweep` degrees (on screen, clockwise
+   * from the right), with an arrowhead at its end for a moment or a rotation.
+   */
+  | (ItemBase & { readonly type: 'arc'; readonly cx: number; readonly cy: number; readonly r: number; readonly start: number; readonly sweep: number; readonly arrow?: boolean; readonly stroke: Stroke });
 
 export interface CanvasScene {
   readonly version: number;
@@ -82,25 +92,86 @@ export function sceneBody(scene: CanvasScene, resolveFile: (path: string) => str
   return arrowDefs(scene) + scene.items.map((item) => itemSvg(item, resolveFile)).join('');
 }
 
-/** An arrowhead per colour of the arrows in the scene (markers take no colour from their line everywhere). */
+/** An arrowhead per colour of the arrows, dimensions and arcs (markers take no colour from their line everywhere); a hatch per colour. */
 function arrowDefs(scene: CanvasScene): string {
-  const colours = [...new Set(scene.items.flatMap((i) => (i.type === 'arrow' ? [i.stroke.color] : [])))];
-  if (colours.length === 0) return '';
+  const pointed = (i: CanvasItem) => i.type === 'arrow' || i.type === 'dimension' || (i.type === 'arc' && i.arrow);
+  const colours = [...new Set(scene.items.flatMap((i) => (pointed(i) && 'stroke' in i ? [i.stroke.color] : [])))];
+  const hatches = [...new Set(scene.items.flatMap((i) => ((i.type === 'rect' || i.type === 'ellipse') && i.hatch ? [i.stroke.color] : [])))];
+  if (colours.length === 0 && hatches.length === 0) return '';
   const markers = colours.map(
     (c) => `<marker id="${arrowId(c)}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse" markerUnits="strokeWidth"><path d="M0 0L10 5L0 10z" fill="${esc(c)}"/></marker>`,
   );
-  return `<defs>${markers.join('')}</defs>`;
+  // Lines at 45° every 1.5 mm, as a section is hatched.
+  const patterns = hatches.map(
+    (c) => `<pattern id="${hatchId(c)}" width="1.5" height="1.5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="1.5" stroke="${esc(c)}" stroke-width="0.18"/></pattern>`,
+  );
+  return `<defs>${markers.join('')}${patterns.join('')}</defs>`;
 }
 
 const arrowId = (colour: string) => `cc-arrow-${colour.replace(/[^a-zA-Z0-9]/g, '')}`;
+const hatchId = (colour: string) => `cc-hatch-${colour.replace(/[^a-zA-Z0-9]/g, '')}`;
+
+/** How far the extension lines of a dimension reach past its line, in millimetres. */
+const OVERSHOOT = 1.5;
+
+/** The line of a dimension: its two ends, beside the measured points by the offset. */
+export function dimensionLine(item: Extract<CanvasItem, { type: 'dimension' }>): { x1: number; y1: number; x2: number; y2: number; nx: number; ny: number } {
+  const length = Math.hypot(item.x2 - item.x1, item.y2 - item.y1) || 1;
+  // The normal turned to the left of the direction: up for a dimension drawn from left to right.
+  const nx = (item.y2 - item.y1) / length;
+  const ny = -(item.x2 - item.x1) / length;
+  return { x1: item.x1 + nx * item.offset, y1: item.y1 + ny * item.offset, x2: item.x2 + nx * item.offset, y2: item.y2 + ny * item.offset, nx, ny };
+}
+
+/** A point of an arc at an angle (degrees, clockwise from the right on screen). */
+export function arcPoint(item: Extract<CanvasItem, { type: 'arc' }>, angle: number): { x: number; y: number } {
+  const a = (angle * Math.PI) / 180;
+  return { x: item.cx + item.r * Math.cos(a), y: item.cy + item.r * Math.sin(a) };
+}
 
 export function itemSvg(item: CanvasItem, resolveFile: (path: string) => string | undefined): string {
   const stroke = (s: Stroke) => `stroke="${esc(s.color)}" stroke-width="${n(s.width)}"`;
   switch (item.type) {
     case 'rect':
-      return `<rect x="${n(item.x)}" y="${n(item.y)}" width="${n(item.w)}" height="${n(item.h)}" fill="${esc(item.fill)}" ${stroke(item.stroke)}/>`;
-    case 'ellipse':
-      return `<ellipse cx="${n(item.x + item.w / 2)}" cy="${n(item.y + item.h / 2)}" rx="${n(item.w / 2)}" ry="${n(item.h / 2)}" fill="${esc(item.fill)}" ${stroke(item.stroke)}/>`;
+    case 'ellipse': {
+      const shape = (fill: string, outline: string) =>
+        item.type === 'rect'
+          ? `<rect x="${n(item.x)}" y="${n(item.y)}" width="${n(item.w)}" height="${n(item.h)}" fill="${fill}" ${outline}/>`
+          : `<ellipse cx="${n(item.x + item.w / 2)}" cy="${n(item.y + item.h / 2)}" rx="${n(item.w / 2)}" ry="${n(item.h / 2)}" fill="${fill}" ${outline}/>`;
+      // The hatch over the fill, the outline on top.
+      return item.hatch ? shape(esc(item.fill), 'stroke="none"') + shape(`url(#${hatchId(item.stroke.color)})`, stroke(item.stroke)) : shape(esc(item.fill), stroke(item.stroke));
+    }
+    case 'dimension': {
+      const d = dimensionLine(item);
+      const colour = esc(item.stroke.color);
+      const thin = `stroke="${colour}" stroke-width="${n(Math.min(item.stroke.width, 0.25))}"`;
+      const reach = item.offset >= 0 ? OVERSHOOT : -OVERSHOOT;
+      const extension = (x: number, y: number, ex: number, ey: number) => `<line x1="${n(x)}" y1="${n(y)}" x2="${n(ex + d.nx * reach)}" y2="${n(ey + d.ny * reach)}" ${thin}/>`;
+      // The label over the middle of the line, turned with it and never upside down.
+      let angle = (Math.atan2(d.y2 - d.y1, d.x2 - d.x1) * 180) / Math.PI;
+      if (angle > 90) angle -= 180;
+      if (angle <= -90) angle += 180;
+      const side = item.offset >= 0 ? 1 : -1;
+      // Its middle half a letter away from the line, on the side away from the measured points.
+      const away = 0.6 + item.size / 2;
+      const mx = (d.x1 + d.x2) / 2 + d.nx * side * away;
+      const my = (d.y1 + d.y2) / 2 + d.ny * side * away;
+      return (
+        `<g class="cc-dimension">` +
+        extension(item.x1, item.y1, d.x1, d.y1) +
+        extension(item.x2, item.y2, d.x2, d.y2) +
+        `<line x1="${n(d.x1)}" y1="${n(d.y1)}" x2="${n(d.x2)}" y2="${n(d.y2)}" ${stroke(item.stroke)} marker-start="url(#${arrowId(item.stroke.color)})" marker-end="url(#${arrowId(item.stroke.color)})"/>` +
+        `<text x="${n(mx)}" y="${n(my)}" font-size="${n(item.size)}" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="${colour}" text-anchor="middle" dominant-baseline="central" transform="rotate(${n(angle)} ${n(mx)} ${n(my)})">${esc(item.text)}</text>` +
+        `</g>`
+      );
+    }
+    case 'arc': {
+      const from = arcPoint(item, item.start);
+      const to = arcPoint(item, item.start + item.sweep);
+      const large = Math.abs(item.sweep) > 180 ? 1 : 0;
+      const clockwise = item.sweep >= 0 ? 1 : 0;
+      return `<path d="M${n(from.x)} ${n(from.y)}A${n(item.r)} ${n(item.r)} 0 ${large} ${clockwise} ${n(to.x)} ${n(to.y)}" fill="none" ${stroke(item.stroke)} stroke-linecap="round"${item.arrow ? ` marker-end="url(#${arrowId(item.stroke.color)})"` : ''}/>`;
+    }
     case 'line':
     case 'arrow':
       return `<line x1="${n(item.x1)}" y1="${n(item.y1)}" x2="${n(item.x2)}" y2="${n(item.y2)}" ${stroke(item.stroke)} stroke-linecap="round"${item.type === 'arrow' ? ` marker-end="url(#${arrowId(item.stroke.color)})"` : ''}/>`;

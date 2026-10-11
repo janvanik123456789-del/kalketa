@@ -3,9 +3,12 @@
  * window keeps its own undo history by keeping the scenes.
  */
 
-import type { CanvasItem, CanvasScene } from './scene.js';
+import { arcPoint, dimensionLine, type CanvasItem, type CanvasScene } from './scene.js';
 
-export type Tool = 'select' | 'text' | 'line' | 'arrow' | 'rect' | 'ellipse';
+export type Tool = 'select' | 'text' | 'line' | 'arrow' | 'rect' | 'ellipse' | 'dimension' | 'arc' | 'moment';
+
+/** How far beside the measured points a new dimension is drawn, in millimetres. */
+export const DIMENSION_OFFSET = 6;
 export type Corner = 'nw' | 'ne' | 'sw' | 'se';
 
 export interface Box {
@@ -57,6 +60,14 @@ export function boxOf(item: CanvasItem): Box {
       return { x: Math.min(item.x1, item.x2), y: Math.min(item.y1, item.y2), w: Math.abs(item.x2 - item.x1), h: Math.abs(item.y2 - item.y1) };
     case 'text':
       return textBox(item);
+    case 'dimension': {
+      const d = dimensionLine(item);
+      const xs = [item.x1, item.x2, d.x1, d.x2];
+      const ys = [item.y1, item.y2, d.y1, d.y2];
+      return { x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys) };
+    }
+    case 'arc':
+      return { x: item.cx - item.r, y: item.cy - item.r, w: 2 * item.r, h: 2 * item.r };
     default:
       return { x: item.x, y: item.y, w: item.w, h: item.h };
   }
@@ -67,7 +78,10 @@ export function moved(item: CanvasItem, dx: number, dy: number): CanvasItem {
   switch (item.type) {
     case 'line':
     case 'arrow':
+    case 'dimension':
       return { ...item, x1: item.x1 + dx, y1: item.y1 + dy, x2: item.x2 + dx, y2: item.y2 + dy };
+    case 'arc':
+      return { ...item, cx: item.cx + dx, cy: item.cy + dy };
     case 'text':
       return { ...item, x: item.x + dx, y: item.y + dy };
     default:
@@ -96,6 +110,8 @@ export function resized(item: CanvasItem, corner: Corner, x: number, y: number):
   switch (item.type) {
     case 'line':
     case 'arrow':
+    case 'dimension':
+    case 'arc':
       return item;
     case 'text':
       return { ...item, x: left, y: top, size: Math.max(1.5, Math.round((h / (item.text.split('\n').length * 1.25)) * 10) / 10) };
@@ -104,10 +120,41 @@ export function resized(item: CanvasItem, corner: Corner, x: number, y: number):
   }
 }
 
-/** One end of a line or arrow dragged to (x, y). */
-export function endMoved(item: CanvasItem, end: 1 | 2, x: number, y: number): CanvasItem {
-  if (item.type !== 'line' && item.type !== 'arrow') return item;
+/**
+ * One end of a line, an arrow or a dimension dragged to (x, y); of an arc, its start (the
+ * radius goes with it) or its end. End 3 of a dimension is its line, dragged to its distance.
+ */
+export function endMoved(item: CanvasItem, end: 1 | 2 | 3, x: number, y: number): CanvasItem {
+  if (item.type === 'arc') {
+    const angle = (Math.atan2(y - item.cy, x - item.cx) * 180) / Math.PI;
+    if (end === 1) return { ...item, r: Math.max(MIN_SIZE / 2, Math.hypot(x - item.cx, y - item.cy)), start: angle, sweep: item.sweep };
+    // The end keeps the direction of the arc and goes round at most once.
+    let sweep = angle - item.start;
+    if (item.sweep >= 0) sweep = ((sweep % 360) + 360) % 360 || 360;
+    else sweep = -((((-sweep) % 360) + 360) % 360 || 360);
+    return { ...item, sweep };
+  }
+  if (item.type === 'dimension' && end === 3) {
+    const d = dimensionLine(item);
+    return { ...item, offset: Math.round(((x - item.x1) * d.nx + (y - item.y1) * d.ny) * 2) / 2 };
+  }
+  if (item.type !== 'line' && item.type !== 'arrow' && item.type !== 'dimension') return item;
   return end === 1 ? { ...item, x1: x, y1: y } : { ...item, x2: x, y2: y };
+}
+
+/** The handles of an item that has no corners: the ends of a line, a dimension (and its line), an arc. */
+export function endsOf(item: CanvasItem): { end: 1 | 2 | 3; x: number; y: number }[] | undefined {
+  if (item.type === 'line' || item.type === 'arrow') return [{ end: 1, x: item.x1, y: item.y1 }, { end: 2, x: item.x2, y: item.y2 }];
+  if (item.type === 'dimension') {
+    const d = dimensionLine(item);
+    return [{ end: 1, x: item.x1, y: item.y1 }, { end: 2, x: item.x2, y: item.y2 }, { end: 3, x: (d.x1 + d.x2) / 2, y: (d.y1 + d.y2) / 2 }];
+  }
+  if (item.type === 'arc') {
+    const from = arcPoint(item, item.start);
+    const to = arcPoint(item, item.start + item.sweep);
+    return [{ end: 1, ...from }, { end: 2, ...to }];
+  }
+  return undefined;
 }
 
 /** The item in front (direction 1) or behind (-1) by one place; 'front' / 'back' to the end. */
@@ -129,6 +176,21 @@ export function itemAt(scene: CanvasScene, x: number, y: number, tolerance = 1.5
       if (distanceToSegment(x, y, item.x1, item.y1, item.x2, item.y2) <= tolerance + item.stroke.width / 2) return item;
       continue;
     }
+    if (item.type === 'dimension') {
+      const d = dimensionLine(item);
+      const near = [
+        distanceToSegment(x, y, d.x1, d.y1, d.x2, d.y2),
+        distanceToSegment(x, y, item.x1, item.y1, d.x1, d.y1),
+        distanceToSegment(x, y, item.x2, item.y2, d.x2, d.y2),
+      ];
+      // The label stands beside the line: a little more room there.
+      if (Math.min(...near) <= tolerance + (near[0]! <= item.size * 1.2 ? item.size : 0)) return item;
+      continue;
+    }
+    if (item.type === 'arc') {
+      if (Math.abs(Math.hypot(x - item.cx, y - item.cy) - item.r) <= tolerance + item.stroke.width / 2) return item;
+      continue;
+    }
     const b = boxOf(item);
     if (x >= b.x - tolerance / 2 && x <= b.x + b.w + tolerance / 2 && y >= b.y - tolerance / 2 && y <= b.y + b.h + tolerance / 2) return item;
   }
@@ -143,9 +205,19 @@ function distanceToSegment(px: number, py: number, x1: number, y1: number, x2: n
   return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
 }
 
-/** A new shape drawn from (x1, y1) to (x2, y2) with the given tool. */
-export function drawn(tool: Exclude<Tool, 'select' | 'text'>, id: string, x1: number, y1: number, x2: number, y2: number, colour: string, width: number, fill: string): CanvasItem {
+/**
+ * A new shape drawn from (x1, y1) to (x2, y2) with the given tool. A dimension measures
+ * between the two points; an arc goes round the first point through the second, a quarter
+ * of a circle, a moment three quarters with an arrowhead.
+ */
+export function drawn(tool: Exclude<Tool, 'select' | 'text'>, id: string, x1: number, y1: number, x2: number, y2: number, colour: string, width: number, fill: string, label = '', size = 3.5, hatch = false): CanvasItem {
   const stroke = { color: colour, width };
   if (tool === 'line' || tool === 'arrow') return { id, type: tool, x1, y1, x2, y2, stroke };
+  if (tool === 'dimension') return { id, type: 'dimension', x1, y1, x2, y2, offset: DIMENSION_OFFSET, text: label, size, stroke };
+  if (tool === 'arc' || tool === 'moment') {
+    const start = (Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI;
+    return { id, type: 'arc', cx: x1, cy: y1, r: Math.max(MIN_SIZE / 2, Math.hypot(x2 - x1, y2 - y1)), start, sweep: tool === 'moment' ? 270 : 90, ...(tool === 'moment' ? { arrow: true } : {}), stroke };
+  }
+  if (hatch) return { id, type: tool, x: Math.min(x1, x2), y: Math.min(y1, y2), w: Math.max(MIN_SIZE, Math.abs(x2 - x1)), h: Math.max(MIN_SIZE, Math.abs(y2 - y1)), stroke, fill, hatch: true };
   return { id, type: tool, x: Math.min(x1, x2), y: Math.min(y1, y2), w: Math.max(MIN_SIZE, Math.abs(x2 - x1)), h: Math.max(MIN_SIZE, Math.abs(y2 - y1)), stroke, fill };
 }

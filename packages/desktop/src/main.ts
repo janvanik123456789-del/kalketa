@@ -957,7 +957,8 @@ async function layersWithRealInput(picture: string) {
   const help = listed > 50 && userFunction.rows.some((r) => r.replace(/\s+/g, '').includes('hypot(3m;4m)=5m'));
 
   // Derivations: the a=b button of the Functions toolbar starts a derive line; a right step is marked as checked, a wrong one is an error.
-  await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .page .row')].at(-1).id = 'smoke-last-row'`);
+  // The last row by its number: a chart moved to the next page stands after it in the page, not in the sheet.
+  await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .page .row[data-line]')].sort((a, b) => Number(a.dataset.line) - Number(b.dataset.line)).at(-1).id = 'smoke-last-row'`);
   await clickOn('#smoke-last-row');
   await clickOn('.tool-button[title^="Odvození"]');
   await pause(300);
@@ -981,7 +982,7 @@ async function layersWithRealInput(picture: string) {
   // Shift+click mark rows, Delete removes them.
   const rowsNow = `document.querySelectorAll('.layer-view.active .page .row').length`;
   const rowsBeforeDefs = (await contents.executeJavaScript(rowsNow)) as number;
-  await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .page .row')].at(-1).id = 'smoke-last-row'`);
+  await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .page .row[data-line]')].sort((a, b) => Number(a.dataset.line) - Number(b.dataset.line)).at(-1).id = 'smoke-last-row'`);
   await clickOn('#smoke-last-row');
   await pressKey('End');
   await pressKey('Enter');
@@ -1114,7 +1115,7 @@ async function layersWithRealInput(picture: string) {
 
   // solve without an interval: the unknown is expressed by a formula, its unit comes from it;
   // the right button puts the formula in as a definition.
-  await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .page .row')].at(-1).id = 'smoke-last-row'`);
+  await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .page .row[data-line]')].sort((a, b) => Number(a.dataset.line) - Number(b.dataset.line)).at(-1).id = 'smoke-last-row'`);
   await clickOn('#smoke-last-row');
   await pressKey('End');
   for (const line of ['r_s := roots(x^2 - 5·x + 6, x)', 'x_m := maximize(6·x·(4 - x), x: 0 .. 4)', 'S_n := 23.53 mm²', 'solve d_n: S_n <= π·d_n²/4', 'M_s := 37.5 kN·m', 'q_s := 12 kN/m', 'solve L_s: M_s == q_s·L_s²/8']) {
@@ -1221,7 +1222,7 @@ async function layersWithRealInput(picture: string) {
     expressed.startsWith('√') && expressed.includes('=5m') && defined.text.startsWith('√') && defined.text.includes('=5m') && !defined.text.includes('solve') && solveFormatted.endsWith('=5,47mm');
 
   // Charts: Insert > Chart plots the last function of the sheet; the pointer over it reads the values.
-  await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .page .row')].at(-1).id = 'smoke-last-row'`);
+  await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .page .row[data-line]')].sort((a, b) => Number(a.dataset.line) - Number(b.dataset.line)).at(-1).id = 'smoke-last-row'`);
   await clickOn('#smoke-last-row');
   await pressKey('End');
   await pressKey('Enter');
@@ -1316,7 +1317,7 @@ async function layersWithRealInput(picture: string) {
   const charts = !!chartBox && chartBox.paths > 0 && /^x = [\d,]+ \| Mt\(x\) = /.test(chartTip) && chartPlaced;
 
   // The Functions toolbar: ∫ writes the integral with the cursor inside, the user types the integrand.
-  await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .page .row')].at(-1).id = 'smoke-last-row'`);
+  await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .page .row[data-line]')].sort((a, b) => Number(a.dataset.line) - Number(b.dataset.line)).at(-1).id = 'smoke-last-row'`);
   // The chart line may still be open (the click beside it landed on the chart): go on from it.
   const chartOpen = (await contents.executeJavaScript(`!!document.querySelector('textarea.row-editor')`)) as boolean;
   await clickOn(chartOpen ? 'textarea.row-editor' : '#smoke-last-row');
@@ -1354,7 +1355,7 @@ async function layersWithRealInput(picture: string) {
   await pressKey('Escape');
   await pause(300);
   const statusAfterFreeze = (await contents.executeJavaScript(`document.querySelector('.status-revision')?.textContent ?? ''`)) as string;
-  await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .page .row')].at(-1).id = 'smoke-last-row'`);
+  await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .page .row[data-line]')].sort((a, b) => Number(a.dataset.line) - Number(b.dataset.line)).at(-1).id = 'smoke-last-row'`);
   const rowOpen = (await contents.executeJavaScript(`!!document.querySelector('textarea.row-editor')`)) as boolean;
   await clickOn(rowOpen ? 'textarea.row-editor' : '#smoke-last-row');
   await pause(300);
@@ -1376,7 +1377,7 @@ async function layersWithRealInput(picture: string) {
   await pressKey('Escape');
 
   // Roots from the Operators toolbar: ∛ as a prefix, the n-th root as a template with the cursor inside.
-  await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .page .row')].at(-1).id = 'smoke-last-row'`);
+  await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .page .row[data-line]')].sort((a, b) => Number(a.dataset.line) - Number(b.dataset.line)).at(-1).id = 'smoke-last-row'`);
   const lineOpen = (await contents.executeJavaScript(`!!document.querySelector('textarea.row-editor')`)) as boolean;
   await clickOn(lineOpen ? 'textarea.row-editor' : '#smoke-last-row');
   await pause(300);

@@ -18,7 +18,7 @@ function nonceOf(): string {
   globalThis.crypto.getRandomValues(bytes);
   return [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
-import type { EquationLine, Message, PrintBlock, PrintDocument, SummaryRow, TextStyle } from './model.js';
+import type { EquationLine, Message, PrintBlock, PrintDocument, SummaryRow, TableRows, TextStyle } from './model.js';
 
 export interface HtmlOptions {
   readonly catalog: Catalog;
@@ -329,7 +329,7 @@ export function renderBlockHtml(block: PrintBlock, catalog: Catalog, options: Bl
     }
     case 'equation':
       return `<section class="block equation${options.style === 'compact' ? ' compact' : options.style === 'book' ? ' book' : ''}${block.number !== undefined ? ' numbered' : ''}" data-line="${block.line}">
-${numbered(options.style === 'compact' ? equationFlow(block.lines, block.comment, options.defineOperator ?? '=', block.source) : equationTable(block.lines, block.comment, options.defineOperator ?? '=', block.source), block.number)}${block.derived ? `<div class="derived">✓ ${esc(t(catalog, 'print.derived'))}</div>` : ''}${imported(block.imported, catalog)}${blockCalc(block.blockCalc, catalog)}${messages(block.messages)}
+${numbered(options.style === 'compact' ? equationFlow(block.lines, block.comment, options.defineOperator ?? '=', block.source) : equationTable(block.lines, block.comment, options.defineOperator ?? '=', block.source), block.number)}${block.table ? dataTableHtml(block.table) : ''}${block.derived ? `<div class="derived">✓ ${esc(t(catalog, 'print.derived'))}</div>` : ''}${imported(block.imported, catalog)}${blockCalc(block.blockCalc, catalog)}${messages(block.messages)}
 </section>`;
     case 'selection': {
       const condition = block.condition
@@ -368,26 +368,29 @@ ${checkLines(block.lines)}
 <div class="verdict">${utilization}<span class="status">${esc(verdict)}</span></div>${messages(block.messages)}
 </section>`;
     }
-    case 'datatable': {
-      // The name typeset (g_k with k below), the formula of a calculated column under it, so the table can be checked.
-      const head = block.columns
-        .map((c) => `<th${c.numeric ? ' class="num"' : ''}>${toMathML(nameNode(c.name))}${c.unit ? ` <span class="unit">[${esc(c.unit)}]</span>` : ''}${c.formula ? `<div class="formula">= ${toMathML(c.formula)}</div>` : ''}</th>`)
-        .join('');
-      const body = block.rows
-        .map((row, n) => `<tr${block.totals?.includes(n) ? ' class="total"' : ''}>${row.map((cell, i) => `<td${block.columns[i]?.numeric ? ' class="num"' : ''}>${esc(cell)}</td>`).join('')}</tr>`)
-        .join('\n');
+    case 'datatable':
       return `<section class="block datatable" data-line="${block.line}">
-<table class="data-table"><caption>${esc(block.name)}</caption><thead><tr>${head}</tr></thead>
-<tbody>
-${body}
-</tbody></table>${messages(block.messages)}
+${dataTableHtml(block, block.name)}${messages(block.messages)}
 </section>`;
-    }
     case 'error':
       return `<section class="block error" data-line="${block.line}">
 <pre class="source">${esc(block.source)}</pre>${messages(block.messages)}
 </section>`;
   }
+}
+
+/** A table as printed: the names typeset (g_k with k below), the formula of a calculated column under its name, rows of totals set apart. */
+function dataTableHtml(table: TableRows & { readonly totals?: readonly number[] }, caption?: string): string {
+  const head = table.columns
+    .map((c) => `<th${c.numeric ? ' class="num"' : ''}>${toMathML(nameNode(c.name))}${c.unit ? ` <span class="unit">[${esc(c.unit)}]</span>` : ''}${c.formula ? `<div class="formula">= ${toMathML(c.formula)}</div>` : ''}</th>`)
+    .join('');
+  const body = table.rows
+    .map((row, n) => `<tr${table.totals?.includes(n) ? ' class="total"' : ''}>${row.map((cell, i) => `<td${table.columns[i]?.numeric ? ' class="num"' : ''}>${esc(cell)}</td>`).join('')}</tr>`)
+    .join('\n');
+  return `<table class="data-table">${caption ? `<caption>${esc(caption)}</caption>` : ''}<thead><tr>${head}</tr></thead>
+<tbody>
+${body}
+</tbody></table>`;
 }
 
 /** Lines aligned on "=": the left-hand side only on the first line. */

@@ -191,6 +191,7 @@ export const en: Catalog = {
     interpolate: 'Linear interpolation in a table (also in two variables).',
     find_min: 'The row with the least value of a column that meets the condition.',
     find_max: 'The row with the greatest value of a column that meets the condition.',
+    filter: 'The rows of a table that meet the condition (r is the row tested), as a table.',
   },
   terms: {
     'end-of-line': 'end of line',

@@ -446,7 +446,7 @@ Tabulky žijí v datové vrstvě listu (`tables/<Název>/schema.json` + `data.cs
 | `interpolate(T, θ: 35 °C, n: 3)` | 2D (bilineární) interpolace v mřížce: tabulka má jeden řádek na bod (θ, n, k); chybí-li bod mřížky v okolí hodnoty, je to chyba | F9 ✓ |
 | `find_min(T, by: G, where: …)` | řádek s nejmenším `G`, který splní podmínku | F2 ✓ |
 | `find_max(T, by: …, where: …)` | obdobně | F2 ✓ |
-| `filter(T, where: …)` | podmnožina řádků | F10 |
+| `filter(T, where: …)` | podmnožina řádků jako tabulka: `filter(Profily_IPE, where: r.W_y ≥ 300 cm³).G` je řada, na výsledek jdou `pick`, `find_min` i další `filter`; v tisku jsou vybrané řádky pod vzorcem (2026-10-11) | F10 ✓ |
 
 *Upraveno při implementaci F2:* původně navržené `lookup(T, x: λ, y: χ)` nebylo jednoznačné (kde je zadaná hodnota?). Nově `interpolate(T, λ: 0.4)` vrací celý interpolovaný řádek a hodnota se čte stejně jako u `pick`: `interpolate(Krivka, λ: 0.4).χ`. Přesný odečet bez interpolace je `pick(T, λ: 0.4)`.
 

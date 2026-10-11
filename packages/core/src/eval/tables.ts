@@ -6,6 +6,7 @@
  *   interpolate(T, λ: λ_rel)        row interpolated linearly on a numeric column
  *   find_min(T, by: G, where: …)    row with the smallest G that satisfies the condition
  *   find_max(T, by: …, where: …)
+ *   filter(T, where: …)             the rows that satisfy the condition, as a table
  *
  * Inside `where`, `r` is the row being tested (r.Wy). Rows whose condition
  * needs an empty cell are skipped with a warning.
@@ -26,7 +27,7 @@ type Evaluate = (expr: Expr, ctx: EvalContext) => Value;
 /** Name of the row variable inside `where:` conditions. */
 export const ROW_VARIABLE = 'r';
 
-export const TABLE_FUNCTIONS: ReadonlySet<string> = new Set(['pick', 'interpolate', 'find_min', 'find_max']);
+export const TABLE_FUNCTIONS: ReadonlySet<string> = new Set(['pick', 'interpolate', 'find_min', 'find_max', 'filter']);
 
 const EPSILON = 1e-12;
 
@@ -35,6 +36,7 @@ export function callTableFunction(call: CallExpr, ctx: EvalContext, evaluate: Ev
   const result =
     call.name === 'pick' ? pick(call, table, ctx, evaluate)
     : call.name === 'interpolate' ? interpolate(call, table, ctx, evaluate)
+    : call.name === 'filter' ? filterRows(call, table, ctx, evaluate)
     : findExtreme(call, table, ctx, evaluate);
   if (result.type === 'row') record(ctx, result);
   return result;
@@ -254,6 +256,29 @@ function findExtreme(call: CallExpr, table: Table, ctx: EvalContext, evaluate: E
   if (skipped > 0) ctx.warnings.push(diagnostic('W-TABLE-ROWS-SKIPPED', call.span, { table: table.name, count: skipped }));
   if (!best) return fail('E-TABLE-NO-MATCH', call.span, { table: table.name });
   return rowValue(table, best.row);
+}
+
+/**
+ * The rows that satisfy `where`, as a table of their own: its columns are series
+ * (filter(T, where: r.W_y >= 300 cm³).G), and pick, find_min and the others read it.
+ * None may satisfy it: an empty table, which a function reading a row reports.
+ */
+function filterRows(call: CallExpr, table: Table, ctx: EvalContext, evaluate: Evaluate): Value {
+  const whereArg = namedArg(call, 'where');
+  for (const n of call.named) {
+    if (n.name !== 'where') fail('E-NAMED-ARG', n.nameSpan, { function: call.name, argument: n.name, problem: 'unknown' });
+  }
+  if (!whereArg) return fail('E-NAMED-ARG', call.span, { function: call.name, argument: 'where', problem: 'missing' });
+  if (call.args.length !== 1) return fail('E-FUNC-ARITY', call.span, { function: call.name, expected: 1, found: call.args.length });
+  let skipped = 0;
+  const kept = table.rows.filter((_, row) => {
+    const match = rowMatches(whereArg, rowValue(table, row), ctx, evaluate);
+    if (match === 'skipped') skipped++;
+    return match === 'yes';
+  });
+  if (skipped > 0) ctx.warnings.push(diagnostic('W-TABLE-ROWS-SKIPPED', call.span, { table: table.name, count: skipped }));
+  const { totals: _totals, ...rest } = table;
+  return { type: 'table', table: { ...rest, rows: kept, fingerprint: `${table.fingerprint}:${kept.map((r) => table.rows.indexOf(r)).join(',')}` } };
 }
 
 /** Evaluates `where` for one row; rows with empty cells count as skipped. */

@@ -513,4 +513,5 @@ export const TABLES: readonly FunctionDef[] = [
   { name: 'interpolate', module: 'tables', params: 'T, column: x', arity: [1, 1] },
   { name: 'find_min', module: 'tables', params: 'T, by: column, where: condition', arity: [1, 1] },
   { name: 'find_max', module: 'tables', params: 'T, by: column, where: condition', arity: [1, 1] },
+  { name: 'filter', module: 'tables', params: 'T, where: condition', arity: [1, 1] },
 ];

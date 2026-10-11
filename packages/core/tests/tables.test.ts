@@ -199,3 +199,21 @@ describe('tables in the sheet', () => {
     expect(session.update(source, { tables: [profiles, changed, curve] }).stats.evaluated).toBe(0);
   });
 });
+
+describe('filter: the rows that satisfy a condition, as a table', () => {
+  it('keeps the rows, their columns read as series, other functions read the result', () => {
+    const r = evaluateSheet('V := filter(Profily, where: r.Wy >= 100 cm³)\nn := len(V.G)\nG_min := min(V.G)\np := pick(V, "P4").G\nq := find_min(filter(Profily, where: r.G > 12 kg/m), by: G).oznaceni', { tables: [profiles] });
+    expect(r.diagnostics).toEqual([]);
+    expect(r.values.get('n')).toMatchObject({ si: 3 });
+    expect(r.values.get('G_min')).toMatchObject({ si: 15 });
+    expect(r.values.get('p')).toMatchObject({ si: 40 });
+    expect(r.values.get('q')).toEqual({ type: 'text', value: 'P2' });
+  });
+
+  it('skips the rows whose condition needs an empty cell, and may keep none', () => {
+    const r = evaluateSheet('V := filter(Profily, where: r.h > 120 mm)\nn := len(V.h)', { tables: [profiles] });
+    expect(r.diagnostics.map((d) => d.code)).toEqual(['W-TABLE-ROWS-SKIPPED']);
+    expect(r.values.get('n')).toMatchObject({ si: 2 });
+    expect(evaluateSheet('p := pick(filter(Profily, where: r.Wy > 1000 cm³), "P1")', { tables: [profiles] }).diagnostics[0]?.code).toBeDefined();
+  });
+});

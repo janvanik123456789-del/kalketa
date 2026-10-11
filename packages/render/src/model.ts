@@ -69,6 +69,12 @@ export interface Message {
   readonly text: string;
 }
 
+/** Columns and cells of a table as printed. */
+export interface TableRows {
+  readonly columns: readonly { readonly name: string; readonly unit?: string; readonly numeric: boolean; /** A calculated column: its formula. */ readonly formula?: MathNode }[];
+  readonly rows: readonly (readonly string[])[];
+}
+
 export type PrintBlock =
   | {
       readonly kind: 'heading';
@@ -120,6 +126,8 @@ export type PrintBlock =
       readonly derived?: boolean;
       /** Where the formula comes from (source "EN 1990, 6.10"). */
       readonly source?: string;
+      /** The rows of a table it works out (filter), printed under it. */
+      readonly table?: TableRows;
       readonly messages: readonly Message[];
     }
   | {
@@ -418,6 +426,8 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
           ...(blockCalc ? { blockCalc } : {}),
           ...(derived ? { derived } : {}),
           ...(s.kind === 'definition' && s.source ? { source: s.source } : {}),
+          // A table worked out (filter(T, where: …)): its rows printed below, so the choice can be checked.
+          ...(s.kind === 'definition' && r.value?.type === 'table' ? { table: tableRows(r.value.table, numberFormat({ digits: 4 })) } : {}),
           messages,
         });
         break;
@@ -581,6 +591,18 @@ function besideLines(result: SheetResult, picture: StatementResult): number[] {
  * A cell as shown: a number with the decimal sign of the language and as many
  * decimals as its column format says ("0.0" one, "0" none); text as written.
  */
+/** A table of values (the result of filter) as the print shows a table of the sheet. */
+function tableRows(table: Extract<Value, { type: 'table' }>['table'], format: (value: number) => string): TableRows {
+  const columns = table.columns.map((c) => ({ name: c.name, ...(c.unit ? { unit: c.unit } : {}), numeric: c.type === 'quantity' }));
+  const text = (cell: Value | null | undefined): string => {
+    if (!cell) return '';
+    if (cell.type === 'quantity') return format(cell.hint ? (cell.si - (cell.hint.offset ?? 0)) / cell.hint.factor : cell.si).replace('-', '−');
+    if (cell.type === 'text') return cell.value;
+    return '';
+  };
+  return { columns, rows: table.rows.map((row) => row.map(text)) };
+}
+
 function cellText(cell: string, format: string | undefined, numeric: boolean, decimalSign: string): string {
   const text = cell.trim();
   if (!numeric || text === '') return text;

@@ -191,6 +191,7 @@ export const cs: Catalog = {
     interpolate: 'Lineární interpolace v tabulce (i ve dvou proměnných).',
     find_min: 'Řádek s nejmenší hodnotou sloupce, který splňuje podmínku.',
     find_max: 'Řádek s největší hodnotou sloupce, který splňuje podmínku.',
+    filter: 'Řádky tabulky, které splňují podmínku (r je zkoušený řádek), jako tabulka.',
   },
   terms: {
     'end-of-line': 'konec řádku',

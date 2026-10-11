@@ -525,6 +525,7 @@ N := Pos2.A + Pos1.A
 - `{pos}` za nadpisem (v editoru pravé tlačítko na nadpisu → Začíná pozici výpočtu) otevře pozici. Čísluje se 1, 2, 3; zadané číslo (`{pos=7}`) číslování posune, označení jako `3a` ne.
 - Jména definovaná v pozici platí do začátku další pozice. Potom jsou hodnotami pozice: `Pos1.A`. Jména nad první pozicí (materiály, součinitele) platí všude.
 - Poslední pozice svá jména drží až do konce listu, takže je vidí i ostatní vrstvy a živé hodnoty plátna.
+- **Číslování stran po oddílech (2026-10-11):** Vlastnosti výpočtu → Číslování stran → Po oddílech. Každá pozice (bez pozic nadpis nejvyšší opakované úrovně, např. `##`) a každá příloha začne na nové straně; strany pozice 2 jsou Strana 2.1, 2.2 (v závorce pořadí v celém tisku), přílohy A.1, A.2, strany před prvním oddílem 1, 2. V záhlaví je vedle názvu listu i název oddílu (Pos. 2 Průvlak).
 
 ## 9. Řešič rovnic (F8)
 

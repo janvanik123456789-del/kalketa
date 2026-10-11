@@ -107,6 +107,8 @@ let smokeWindow: BrowserWindow | undefined;
 }
 
 const smokeTest = process.env['KALKETA_SMOKE_TEST'];
+/** The smoke test's export to PDF: where it goes, and the page numbers the printout laid out. */
+const smokePdf: { path?: string | undefined; pages?: string[] | undefined } = {};
 
 /**
  * How long the start takes, by phase, in seconds since the process began: one line per start
@@ -363,20 +365,25 @@ function registerBridge(): void {
 
   ipcMain.handle('kalketa:export-pdf', async (event, request: { html: string; suggestedName: string }) => {
     const owner = fromEditor(event);
-    const result = await dialog.showSaveDialog(owner, {
-      defaultPath: `${request.suggestedName}.pdf`,
-      filters: [{ name: 'PDF', extensions: ['pdf'] }],
-    });
+    // The smoke test exports to its own file, without the dialog, and does not open it.
+    const result = smokePdf.path
+      ? { canceled: false, filePath: smokePdf.path }
+      : await dialog.showSaveDialog(owner, {
+          defaultPath: `${request.suggestedName}.pdf`,
+          filters: [{ name: 'PDF', extensions: ['pdf'] }],
+        });
     if (result.canceled || !result.filePath) return undefined;
     const printer = await printWindow(request.html);
     try {
-      // CSS @page decides the paper size, margins and page numbers.
+      if (smokePdf.path) smokePdf.pages = (await printer.webContents.executeJavaScript(`[...document.querySelectorAll('.paged-page .pf-right')].map((e) => e.textContent)`)) as string[];
+      if (smokePdf.path) await writeFile(smokePdf.path.replace(/\.pdf$/, '-print.png'), (await printer.webContents.capturePage()).toPNG());
+      // CSS @page decides the paper size and margins; the page numbers too, unless the printout laid out its pages.
       const pdf = await printer.webContents.printToPDF({ preferCSSPageSize: true, printBackground: true });
       await writeFile(result.filePath, pdf);
     } finally {
       printer.destroy();
     }
-    void shell.openPath(result.filePath);
+    if (!smokePdf.path) void shell.openPath(result.filePath);
     return result.filePath;
   });
 
@@ -661,6 +668,33 @@ async function layersWithRealInput(picture: string) {
   })()`)) as boolean;
   await takePicture(picture.replace(/[.]png$/, '-columns.png'));
   await chooseStyle(styleBefore);
+  // Pages by sections: File > Properties, then Export to PDF; the printout lays out its pages (1.1, 2.1 …).
+  const choosePages = async (wanted: 'sections' | 'continuous') => {
+    await clickOn('.menubar-item:nth-child(1) > button');
+    await clickMenu('Vlastnosti výpočtu');
+    await pause(300);
+    await contents.executeJavaScript(`document.querySelector('.props-pages').focus()`);
+    for (let tries = 0; tries < 4 && (await contents.executeJavaScript(`document.querySelector('.props-pages').value`)) !== wanted; tries++) {
+      await pressKey(wanted === 'sections' ? 'Down' : 'Up');
+      await pause(250);
+    }
+    if ((await contents.executeJavaScript(`!!document.querySelector('.dialog-buttons button.default')`)) as boolean) await clickOn('.dialog-buttons button.default');
+    await pause(400);
+  };
+  await choosePages('sections');
+  const sectionFoot = (await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .page-foot')].map((f) => f.textContent.trim())`)) as string[];
+  await takePicture(picture.replace(/[.]png$/, '-sections.png'));
+  smokePdf.path = picture.replace(/[.]png$/, '-sections.pdf');
+  await clickOn('.menubar-item:nth-child(1) > button');
+  await clickMenu('Export do PDF');
+  for (let i = 0; i < 60 && !(smokePdf.pages && existsSync(smokePdf.path) && readFileSync(smokePdf.path).length > 0); i++) await pause(250);
+  const sectionPdf = { pages: smokePdf.pages ?? [], bytes: existsSync(smokePdf.path) ? readFileSync(smokePdf.path).length : 0 };
+  smokePdf.path = undefined;
+  await choosePages('continuous');
+  const sectionsOk =
+    sectionFoot.some((f) => /^Strana 1\.1 \(/.test(f)) && sectionFoot.some((f) => /^Strana 2\.1 \(/.test(f)) &&
+    sectionPdf.pages.some((f) => f.startsWith('Strana 1.1 (')) && sectionPdf.pages.some((f) => f.startsWith('Strana 2.1 (')) && sectionPdf.bytes > 1000;
+  await writeFile(picture.replace(/[.]png$/, '-sections.json'), JSON.stringify({ sectionFoot, sectionPdf }, null, 1));
   // File > Properties: the result of a check said as VYHOVÍ, in the checks and the summary; set back.
   const chooseVerdict = async (key: 'Down' | 'Up') => {
     await clickOn('.menubar-item:nth-child(1) > button');
@@ -681,7 +715,7 @@ async function layersWithRealInput(picture: string) {
   const verdictBack = (await contents.executeJavaScript(`(document.querySelector('.layer-view.active .pages')?.textContent ?? '').includes('VYHOVUJE')`)) as boolean;
   // The head of every page: the date of the calculation on the right.
   const pageHead = (await contents.executeJavaScript(`document.querySelector('.layer-view.active .page-head-right')?.textContent ?? ''`)) as string;
-  const summaryOk = /\d{1,2}\. \d{1,2}\. \d{4}/.test(pageHead) && bookStyle && columnsStyle && verdictFuture && verdictBack && summaryOpens && summaryAtEnd && ((await contents.executeJavaScript(`document.querySelector('.layer-view.active .page-body > [data-item]')?.classList.contains('summary-box') ?? false`)) as boolean);
+  const summaryOk = /\d{1,2}\. \d{1,2}\. \d{4}/.test(pageHead) && bookStyle && columnsStyle && sectionsOk && verdictFuture && verdictBack && summaryOpens && summaryAtEnd && ((await contents.executeJavaScript(`document.querySelector('.layer-view.active .page-body > [data-item]')?.classList.contains('summary-box') ?? false`)) as boolean);
   const samplesOk =sampleTab.tabs.length === 2 && sampleTab.tabs[0] === 'Vzor – Posouzení nosníku N1' && sampleTab.tabs[1] === 'Vzor – Dimenzování kabelu a úbytek napětí' && sampleTab.errors === 0;
   await clickOn('.layer-tab.add'); // a menu of the kinds of layers
   const addKinds = (await contents.executeJavaScript(`document.querySelectorAll('.context-menu .menu-row').length`)) as number;
@@ -2591,8 +2625,18 @@ async function takePicture(path: string): Promise<void> {
 
 /** Hidden window with the printout; no preload, no scripts needed. */
 async function printWindow(html: string): Promise<BrowserWindow> {
-  const printer = new BrowserWindow({ show: false, webPreferences: { sandbox: true, contextIsolation: true, javascript: false } });
+  // A printout with pages by sections lays out its pages with a script of its own: only then
+  // scripts run, and its policy lets in that one script alone (by its nonce).
+  const paged = html.includes('data-paged-flow=');
+  const printer = new BrowserWindow({ show: false, webPreferences: { sandbox: true, contextIsolation: true, javascript: paged } });
   await printer.loadURL(`data:text/html;charset=utf-8;base64,${Buffer.from(html, 'utf8').toString('base64')}`);
+  if (paged) {
+    // Printed once the pages are laid out (the pictures decoded first), or after ten seconds as they are.
+    for (let waited = 0; waited < 10000; waited += 100) {
+      if ((await printer.webContents.executeJavaScript('document.documentElement.dataset.paged ?? ""')) !== '') break;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+  }
   return printer;
 }
 

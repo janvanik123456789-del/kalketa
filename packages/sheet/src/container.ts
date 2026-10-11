@@ -64,6 +64,8 @@ export interface Layout {
   readonly equations?: 'none' | 'formulas' | 'results';
   /** How a check says its result: VYHOVUJE (when left out), VYHOVÍ, or a sign only. */
   readonly verdict?: 'present' | 'future' | 'sign';
+  /** Pages numbered through (when left out), or by sections: 2.1, 2.2, each section on a new page. */
+  readonly pageNumbers?: 'continuous' | 'sections';
 }
 
 export const DEFAULT_LAYOUT: Layout = { paper: 'A4', orientation: 'portrait', digits: 4 };

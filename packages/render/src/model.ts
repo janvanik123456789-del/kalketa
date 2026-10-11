@@ -70,7 +70,17 @@ export interface Message {
 }
 
 export type PrintBlock =
-  | { readonly kind: 'heading'; readonly line: number; readonly level: number; readonly text: string; readonly style?: TextStyle; /** "Pos. 1" before the title of a position. */ readonly position?: string }
+  | {
+      readonly kind: 'heading';
+      readonly line: number;
+      readonly level: number;
+      readonly text: string;
+      readonly style?: TextStyle;
+      /** "Pos. 1" before the title of a position. */
+      readonly position?: string;
+      /** The label of the position as the sheet numbers it (1, 3a): its section of pages. */
+      readonly positionLabel?: string;
+    }
   | { readonly kind: 'paragraph'; readonly line: number; readonly text: string; readonly cites?: readonly string[]; readonly style?: TextStyle }
   | {
       readonly kind: 'picture';
@@ -286,7 +296,7 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
           level: s.level,
           text: s.text,
           ...(textStyle(s.format) ? { style: textStyle(s.format)! } : {}),
-          ...(r.position !== undefined ? { position: t(catalog, 'print.position', { n: r.position }) } : {}),
+          ...(r.position !== undefined ? { position: t(catalog, 'print.position', { n: r.position }), positionLabel: r.position } : {}),
         });
         break;
       case 'text':

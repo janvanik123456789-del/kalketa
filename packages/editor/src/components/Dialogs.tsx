@@ -250,6 +250,13 @@ export function PropertiesDialog({ catalog, doc, onApply, onClose }: { catalog: 
         </select>
       </label>
       <label className="field">
+        <span>{t(catalog, 'props.pageNumbers')}</span>
+        <select className="props-pages" value={layout.pageNumbers ?? 'continuous'} onChange={(e) => setLayout({ ...layout, pageNumbers: e.target.value as 'continuous' | 'sections' })}>
+          <option value="continuous">{t(catalog, 'props.pagesContinuous')}</option>
+          <option value="sections">{t(catalog, 'props.pagesSections')}</option>
+        </select>
+      </label>
+      <label className="field">
         <span>{t(catalog, 'props.summary')}</span>
         <select className="props-summary" value={layout.summary ?? 'top'} onChange={(e) => setLayout({ ...layout, summary: e.target.value as 'top' | 'bottom' | 'none' })}>
           {(['top', 'bottom', 'none'] as const).map((p) => (

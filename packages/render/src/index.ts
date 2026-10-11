@@ -8,13 +8,14 @@
 
 import type { SheetResult, UnitRegistry } from '@kalketa/core';
 import { formatDate, t, type Catalog } from '@kalketa/i18n';
-import { appendixHtml, renderBlocksHtml, renderHtml, type CalcStyle } from './html.js';
+import { appendixHtml, renderBlocksHtml, renderHtml, type CalcStyle, type PageNumbers } from './html.js';
 import { buildPrintDocument, type EquationNumbers, type VerdictForm } from './model.js';
 import { notesHtml } from './notes.js';
 
 export * from './math.js';
 export { formulaNode, hasSubstitutableParts, type FormulaOptions } from './formula.js';
 export * from './model.js';
+export { pageLabels, sheetSections, type Section } from './paged.js';
 export { renderHtml, renderBlockHtml, renderBlocksHtml, columnsHead, sideGroupHtml, renderSummary, appendixHtml, isInput, textHtml, BLOCK_CSS, type HtmlOptions, type BlockHtmlOptions, type CalcStyle } from './html.js';
 export { figureDescription, figurePlace, figureStyle, withFigurePlace, type FigurePlace, isAiNote, kalkConfirmed, kalkFormula, kalkLines, notesHtml, notesImages, NOTES_CSS, type KalkLine, type NotesOptions } from './notes.js';
 
@@ -46,6 +47,8 @@ export interface PrintSettings {
   readonly aiLines?: ReadonlySet<number>;
   /** How the calculation is set; "airy" when absent. */
   readonly style?: CalcStyle;
+  /** Pages numbered through, or by sections (2.1, 2.2): positions, else the headings of one level; appendices A.1. */
+  readonly pageNumbers?: PageNumbers;
 }
 
 /** Where the printed content stands among the revisions of the sheet. */
@@ -94,14 +97,16 @@ export function printHtml(result: SheetResult, settings: PrintSettings): string 
     ...(settings.verdict !== undefined ? { verdict: settings.verdict } : {}),
   });
 
-  const rendered = appendices.map((appendix) => {
+  // With pages by sections each appendix is one: A, B, …
+  const sectionOf = (i: number, title: string) => (settings.pageNumbers === 'sections' ? { label: String.fromCharCode(65 + i), title } : undefined);
+  const rendered = appendices.map((appendix, i) => {
     const title = titles.get(appendix.layer)!;
     if (appendix.kind === 'notes') {
       const notes = notesHtml(appendix.text, settings.resolveFile ? { resolveFile: settings.resolveFile } : {});
-      return appendixHtml(title, `<div class="notes">${notes}</div>`);
+      return appendixHtml(title, `<div class="notes">${notes}</div>`, sectionOf(i, title));
     }
     const inner = buildPrintDocument(appendix.result, { ...common, title: appendix.name, summary: 'none' });
-    return appendixHtml(title, renderBlocksHtml(inner.blocks, settings.catalog, undefined, settings.style));
+    return appendixHtml(title, renderBlocksHtml(inner.blocks, settings.catalog, undefined, settings.style), sectionOf(i, title));
   });
 
   return renderHtml(doc, {
@@ -113,5 +118,6 @@ export function printHtml(result: SheetResult, settings: PrintSettings): string 
     ...(settings.headRight ? { headRight: settings.headRight } : {}),
     ...(settings.aiLines && settings.aiLines.size > 0 ? { aiLines: settings.aiLines } : {}),
     ...(settings.style ? { style: settings.style } : {}),
+    ...(settings.pageNumbers ? { pageNumbers: settings.pageNumbers } : {}),
   });
 }

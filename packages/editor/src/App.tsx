@@ -778,6 +778,7 @@ export function App() {
       ...(doc.layout.summary ? { summary: doc.layout.summary } : {}),
       ...(equationNumbers(doc.layout) ? { equations: equationNumbers(doc.layout)! } : {}),
       ...(doc.layout.verdict ? { verdict: doc.layout.verdict } : {}),
+      ...(doc.layout.pageNumbers ? { pageNumbers: doc.layout.pageNumbers } : {}),
     });
   /** Unreviewed AI lines: the user is asked first; they print marked, with a notice. */
   const confirmAiPrint = async () => unreviewedAiLines().size === 0 || (await askConfirm(t(ui, 'print.aiConfirm')));
@@ -1808,6 +1809,7 @@ export function App() {
           uiCatalog={printCatalog}
           decimalComma={decimalComma}
           calcStyle={doc.layout.style ?? 'airy'}
+          pageNumbers={doc.layout.pageNumbers ?? 'continuous'}
           onSummary={(summary) => change({ ...doc, layout: { ...doc.layout, summary } })}
           {...(l.kind === 'sheet' ? { aiMade: aiMarks(source), onAiReviewed: reviewProposal, onAiShow: showProposal } : {})}
         />

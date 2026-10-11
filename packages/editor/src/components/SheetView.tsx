@@ -8,7 +8,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type 
 import { formatExpr, formatPicture, fromDecimalComma, parsePicture, TEXT_ALIGNS, TEXT_COLORS, toDecimalComma, type SheetResult, type Statement } from '@kalketa/core';
 import { formatDate, formatNumber, t, type Catalog, type UiKey } from '@kalketa/i18n';
 import { labelParts, xPosition, xValueAt } from '@kalketa/chart';
-import { columnsHead, isInput, renderBlockHtml, renderSummary, type CalcStyle, type PrintBlock, type PrintDocument } from '@kalketa/render';
+import { columnsHead, isInput, pageLabels, renderBlockHtml, renderSummary, sheetSections, type CalcStyle, type PrintBlock, type PrintDocument, type Section } from '@kalketa/render';
 import { isCanvasPath } from '@kalketa/canvas';
 import { paginate, type PageGeometry } from '../logic/pages.js';
 import { segments, type Segment } from '../logic/segments.js';
@@ -81,6 +81,8 @@ interface Props {
   readonly decimalComma: boolean;
   /** How the calculation is set, as in print. */
   readonly calcStyle?: CalcStyle;
+  /** Pages by sections: a section starts a page, the pages say 2.1, 2.2 (as the printout does). */
+  readonly pageNumbers?: 'continuous' | 'sections';
   /** Lines from accepted AI changes nobody has reviewed yet: line -> the change and its tooltip. */
   readonly aiMade?: ReadonlyMap<number, { readonly id: string; readonly title: string }>;
   /** A person reviewed the lines of this change. */
@@ -303,7 +305,10 @@ export function SheetView(props: Props) {
     }
   }
   if (print.summary?.position === 'bottom') items.push({ kind: 'summary' });
-  const breakAfter = items.map((item) => item.kind === 'row' && /^\s*@page\b/.test(item.seg.text));
+  // Pages by sections: the heading of a section starts a page, as in print.
+  const sections: ReadonlyMap<number, Section> = props.pageNumbers === 'sections' ? sheetSections(print.blocks) : new Map();
+  const sectionAt = (item: Item | undefined) => (item?.kind === 'row' ? sections.get(item.seg.start) : undefined);
+  const breakAfter = items.map((item, i) => (item.kind === 'row' && /^\s*@page\b/.test(item.seg.text)) || (i + 1 < items.length && !!sectionAt(items[i + 1])));
 
   // Pagination measures the rendered items, then places them on pages. Heights
   // do not depend on the page an item is on (the margin above the first item of
@@ -351,6 +356,12 @@ export function SheetView(props: Props) {
   });
 
   const pages = starts.map((start, i) => items.slice(start, starts[i + 1] ?? items.length)).filter((page) => page.length > 0);
+  // By sections: each page says its section and its page in it (2.3), its head the section's title.
+  const sectionPages = props.pageNumbers === 'sections' ? pageLabels(pages.map((page) => sectionAt(page[0]))) : undefined;
+  const sectionTitles = (() => {
+    let title = '';
+    return pages.map((page) => (title = sectionAt(page[0])?.title ?? title));
+  })();
   const { geometry } = props;
   const mm = (value: number) => `${value}mm`;
 
@@ -689,7 +700,7 @@ export function SheetView(props: Props) {
               padding: `${mm(geometry.margin.top)} ${mm(geometry.margin.right)} ${mm(geometry.margin.bottom)} ${mm(geometry.margin.left)}`,
             }}
           >
-            <div className="page-head">{props.title}</div>
+            <div className="page-head">{sectionPages && sectionTitles[p] ? `${props.title} · ${sectionTitles[p]}` : props.title}</div>
             {props.headRight && <div className="page-head-right">{props.headRight}</div>}
             {/* The columns named on every page, in its top margin: the rows below keep the whole body. */}
             {props.calcStyle === 'columns' && (
@@ -712,7 +723,9 @@ export function SheetView(props: Props) {
             </div>
             {props.footer && <div className="page-foot-left">{props.footer}</div>}
             <div className="page-foot">
-              {t(props.uiCatalog, 'print.page')} {p + 1} {t(props.uiCatalog, 'print.of')} {pages.length}
+              {sectionPages
+                ? `${t(props.uiCatalog, 'print.page')} ${sectionPages[p]} (${p + 1} ${t(props.uiCatalog, 'print.of')} ${pages.length})`
+                : `${t(props.uiCatalog, 'print.page')} ${p + 1} ${t(props.uiCatalog, 'print.of')} ${pages.length}`}
             </div>
           </section>
         ))}

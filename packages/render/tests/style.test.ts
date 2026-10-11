@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { defaultRegistry, evaluateSheet } from '@kalketa/core';
 import { catalogFor } from '@kalketa/i18n';
-import { printHtml } from '../src/index.js';
+import { buildPrintDocument, pageLabels, printHtml, sheetSections } from '../src/index.js';
 
 const cs = catalogFor('cs');
 const sheet = ['L := 5 m', 'q := 12 kN/m', 'M := q·L^2/8', 'check "Ohyb": M ≤ 50 kN·m'].join('\n');
@@ -35,5 +35,26 @@ describe('the style with columns (a British calculation sheet)', () => {
     expect(html).toMatch(/<div class="col-ref">EN 1993-1-1, 6\.2\.5<\/div>.*<div class="out-verdict passed">.*VYHOVUJE/s);
     // Another style shows the source of a formula as a check does.
     expect(printHtml(evaluateSheet(source), { catalog: catalogFor('cs'), registry: defaultRegistry, title: 'T' })).toContain('<span class="source">[EN 1990, 6.10]</span>');
+  });
+});
+
+describe('pages numbered by sections', () => {
+  it('take positions as sections, else the headings of the highest level that comes twice', () => {
+    const blocksOf = (source: string) => buildPrintDocument(evaluateSheet(source), { catalog: cs, registry: defaultRegistry, title: 'T', digits: 4 }).blocks;
+    expect([...sheetSections(blocksOf('# Nosník\n## Zadání\nL := 5 m\n## Výpočet\nM := L·2 kN')).values()]).toEqual([{ label: '1', title: 'Zadání' }, { label: '2', title: 'Výpočet' }]);
+    expect([...sheetSections(blocksOf('# Strop\n## Deska {pos}\nA := 1 kN\n## Průvlak {pos=3a}\nF := Pos1.A')).values()]).toEqual([{ label: '1', title: 'Pos. 1 Deska' }, { label: '3a', title: 'Pos. 3a Průvlak' }]);
+    expect(pageLabels([undefined, { label: '1', title: '' }, undefined, { label: 'A', title: '' }])).toEqual(['1', '1.1', '1.2', 'A.1']);
+  });
+
+  it('give the printout its own pages: the sections marked, its script let in by its nonce only', () => {
+    const html = printHtml(evaluateSheet('# Nosník\n## Zadání\nL := 5 m\n## Výpočet\nM := L·2 kN'), { catalog: cs, registry: defaultRegistry, title: 'T', pageNumbers: 'sections' });
+    expect(html).toContain('<h3 data-section="1" data-section-title="Zadání">');
+    const nonce = /script-src 'nonce-([0-9a-f]{32})'/.exec(html)?.[1];
+    expect(nonce).toBeDefined();
+    expect(html).toContain(`<script nonce="${nonce}">`);
+    expect(html).toContain('@page { size: 210mm 297mm; margin: 0; }');
+    expect(html).not.toContain('counter(pages)');
+    // Through, as before: the browser counts the pages.
+    expect(printHtml(evaluateSheet('L := 5 m'), { catalog: cs, registry: defaultRegistry, title: 'T' })).toContain('counter(pages)');
   });
 });

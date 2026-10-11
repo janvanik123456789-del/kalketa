@@ -10,6 +10,14 @@
 import { t, type Catalog } from '@kalketa/i18n';
 import { esc, mn, nameNode, sup, toMathML, VECTOR_ARROW, type MathNode } from './math.js';
 import { NOTES_CSS } from './notes.js';
+import { PAGED_SCRIPT, PRINT_MARGINS, pagedCss, paperSize, sheetSections, type PagedConfig, type Section } from './paged.js';
+
+/** A nonce for the script of a printout: only a script carrying it runs there. */
+function nonceOf(): string {
+  const bytes = new Uint8Array(16);
+  globalThis.crypto.getRandomValues(bytes);
+  return [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
 import type { EquationLine, Message, PrintBlock, PrintDocument, SummaryRow, TextStyle } from './model.js';
 
 export interface HtmlOptions {
@@ -26,7 +34,11 @@ export interface HtmlOptions {
   readonly aiLines?: ReadonlySet<number>;
   /** How the calculation is set: "compact" (school) or "airy" (a step per line). */
   readonly style?: CalcStyle;
+  /** Pages numbered through (the browser's @page), or by sections (2.1, 2.2), laid out by the printout itself. */
+  readonly pageNumbers?: PageNumbers;
 }
+
+export type PageNumbers = 'continuous' | 'sections';
 
 /**
  * How a calculation is set (docs/navrhy/RESIC-A-STYLY.md): "compact" is the
@@ -94,8 +106,8 @@ export function isInput(block: PrintBlock): boolean {
 }
 
 /** An appendix: its own page(s) with a title, e.g. "Příloha A: Zatížení". */
-export function appendixHtml(title: string, body: string): string {
-  return `<section class="appendix">
+export function appendixHtml(title: string, body: string, section?: Section): string {
+  return `<section class="appendix"${section ? ` data-section="${esc(section.label)}" data-section-title="${esc(section.title)}"` : ''}>
 <h1 class="appendix-title">${esc(title)}</h1>
 ${body}
 </section>`;
@@ -122,9 +134,23 @@ export function renderHtml(doc: PrintDocument, options: HtmlOptions): string {
   const summary = doc.summary ? renderSummary(doc.summary.rows, doc.summary.allPassed, catalog) : '';
   // With columns the first row names them, as on a calculation sheet.
   const head = options.style === 'columns' ? columnsHead(catalog) : '';
-  const body = head + renderBlocksHtml(doc.blocks, catalog, options.aiLines, options.style);
+  const paged = options.pageNumbers === 'sections';
+  const sections = paged ? sheetSections(doc.blocks) : undefined;
+  const body = head + renderBlocksHtml(doc.blocks, catalog, options.aiLines, options.style, sections);
   const aiNotice = options.aiLines && options.aiLines.size > 0 ? `<p class="ai-notice">${esc(t(catalog, 'print.aiUnreviewed'))}</p>` : '';
-  return `<!doctype html>
+  const content = `<header class="doc-head">
+<h1>${esc(doc.title)}</h1>
+${doc.subtitle ? `<p class="subtitle">${esc(doc.subtitle)}</p>` : ''}
+</header>
+${aiNotice}
+${doc.summary?.position === 'top' ? summary : ''}
+<main>
+${body}
+</main>
+${doc.summary?.position === 'bottom' ? summary : ''}
+${(options.appendices ?? []).join('\n')}`;
+  if (!paged) {
+    return `<!doctype html>
 <html lang="${esc(doc.language)}">
 <head>
 <meta charset="utf-8">
@@ -135,20 +161,40 @@ ${stylesheet(doc, options)}
 </style>
 </head>
 <body>
-<header class="doc-head">
-<h1>${esc(doc.title)}</h1>
-${doc.subtitle ? `<p class="subtitle">${esc(doc.subtitle)}</p>` : ''}
-</header>
-${aiNotice}
-${doc.summary?.position === 'top' ? summary : ''}
-<main>
-${body}
-</main>
-${doc.summary?.position === 'bottom' ? summary : ''}
-${(options.appendices ?? []).join('\n')}
+${content}
 </body>
-</html>
-`;
+</html>`;
+  }
+  // Pages by sections: the printout lays them out itself. Its own script runs, no other (by its nonce).
+  const config: PagedConfig = {
+    ...paperSize(options.paper, options.orientation),
+    margin: PRINT_MARGINS,
+    title: doc.title,
+    ...(options.headRight ? { headRight: options.headRight } : {}),
+    ...(options.footer ? { footer: options.footer } : {}),
+    page: t(catalog, 'print.page'),
+    of: t(catalog, 'print.of'),
+  };
+  const nonce = nonceOf();
+  return `<!doctype html>
+<html lang="${esc(doc.language)}">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: blob:; style-src 'unsafe-inline'; font-src data:; script-src 'nonce-${nonce}'">
+<meta name="generator" content="Kalketa">
+<title>${esc(doc.title)}</title>
+<style>
+${stylesheet(doc, options).replace(/^@page \{[\s\S]*?\n\}\n/, '')}
+${pagedCss(config)}
+</style>
+</head>
+<body>
+<div id="flow" data-paged-flow="${esc(JSON.stringify(config))}">
+${content}
+</div>
+<script nonce="${nonce}">${PAGED_SCRIPT}</script>
+</body>
+</html>`;
 }
 
 export interface BlockHtmlOptions {
@@ -161,10 +207,14 @@ export interface BlockHtmlOptions {
  * Blocks as HTML; a side picture and the blocks beside it go into two
  * columns that stay together on one page.
  */
-export function renderBlocksHtml(blocks: readonly PrintBlock[], catalog: Catalog, aiLines?: ReadonlySet<number>, style: CalcStyle = 'airy'): string {
+export function renderBlocksHtml(blocks: readonly PrintBlock[], catalog: Catalog, aiLines?: ReadonlySet<number>, style: CalcStyle = 'airy', sections?: ReadonlyMap<number, Section>): string {
   const out: string[] = [];
-  // A block the AI made and nobody reviewed carries a mark in the margin.
-  const marked = (block: PrintBlock, html: string) => ('line' in block && aiLines?.has(block.line) ? `<div class="ai-made">${html}</div>` : html);
+  // A block the AI made and nobody reviewed carries a mark in the margin; the heading of a section its label.
+  const marked = (block: PrintBlock, html: string) => {
+    const section = block.kind === 'heading' ? sections?.get(block.line) : undefined;
+    const own = section ? html.replace(/^<h(\d)/, `<h$1 data-section="${esc(section.label)}" data-section-title="${esc(section.title)}"`) : html;
+    return 'line' in block && aiLines?.has(block.line) ? `<div class="ai-made">${own}</div>` : own;
+  };
   const options = { style };
   for (let i = 0; i < blocks.length; i++) {
     const block = blocks[i]!;

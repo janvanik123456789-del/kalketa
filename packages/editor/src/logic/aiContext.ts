@@ -109,6 +109,7 @@ export function languageGuide(): string {
     'Text: a printed paragraph is a whole line in straight double quotes ("Volíme průměr nýtu 6 mm."); no quote mark inside, no formula after it, only its sources may follow: "…" [T1] or [ST:T1]. Names with an index or a power inside text (σ_Kt, S_min, mm^2) print as in formulas. A vector has the arrow U+20D7 right after its letter: p⃗_1, v⃗ (an arrow over p with its index, as in physics books). A note beside a formula is a comment after \' on the same line. #, ##, ### are headings.',
     'How a result is shown: {decimals=2} or {digits=3} at the end of its line (before a comment); the calculation stays exact, unless the line adds rounded ({decimals=2 rounded}): the rows below then use the value as shown. {eq=name} numbers an equation at the right and text refers to it as (#name). A text line or heading may end with its style: {size=12 italic bold font=serif align=center color=blue}; inside text *italic* and **bold** words. "expr | kN·m" sets its unit.',
     'Names as in the source: Greek letters and indexes (σ_k, τ_dov, R_m), never spelled out (sigma_k); multiply with · (not *).',
+    'Positions (a structural calculation split by members: Pos. 1 slab, Pos. 2 beam): a heading ending in {pos} starts one, numbered 1, 2, 3 ({pos=7} or {pos=3a} as the project numbers it). The names defined in a position hold until the next one starts, so each position may use A, L, M_Ed again; a later position reads them as Pos1.A (a reaction of Pos. 1 as a load of Pos. 2). Names above the first position (materials, factors) hold everywhere. Use positions when the task has several members; do not repeat names across positions by suffixes (A_1, A_2) then.',
     'A table row: row := pick(Table, "key") (or pick(Table, column: value)); a value of it: row.column, or at once pick(Table, "key").column. A row is no number: pick(…) | mm is wrong, pick(…).d | mm is right.',
     `Built-in functions: ${functions}.`,
     'Sample fragments of a sheet (write in this form):',
@@ -144,6 +145,21 @@ export const SHEET_FRAGMENTS: readonly { readonly topic: string; readonly source
   {
     topic: 'an inequality solved for the unknown, then the chosen value',
     source: ['F := 1600 N', 'τ_dov := 68 MPa', 'S_min := F/τ_dov | mm²', '"Průřez nýtu je kruh, odkud pro průměr platí:"', 'solve d: S_min ≤ π·d²/4', '"Volíme průměr nýtu 6 mm."', 'd_n := 6 mm'].join('\n'),
+  },
+  {
+    topic: 'positions: each member its own names, a reaction passed on as a load',
+    source: [
+      'γ_G := 1.35',
+      '## Stropní deska {pos}',
+      'g := 5 kN/m',
+      'L := 4 m',
+      'A := γ_G·g·L/2',
+      '## Průvlak {pos}',
+      "F := Pos1.A            ' reakce stropní desky",
+      'L := 6 m',
+      'M_Ed := F·L/4',
+      'A := F/2',
+    ].join('\n'),
   },
   {
     topic: 'an equation solved in an interval',

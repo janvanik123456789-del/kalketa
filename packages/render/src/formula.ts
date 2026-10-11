@@ -118,6 +118,8 @@ export function hasSubstitutableParts(expr: Expr): boolean {
   }
 }
 
+const PRIMES = ['', '′', '″', '‴', '⁗'];
+
 function render(expr: Expr, o: FormulaOptions): Rendered {
   if (expr.kind === 'variable' || expr.kind === 'member') {
     const value = o.substitute?.(expr);
@@ -140,6 +142,11 @@ function render(expr: Expr, o: FormulaOptions): Rendered {
     case 'variable':
       // Constants are upright (ISO 80000-2): π, not the italic 𝜋.
       return { node: expr.name === 'π' ? mi('π', true) : nameNode(expr.name), prec: ATOM };
+    case 'prime': {
+      // w″, and at a point w′(0 m).
+      const head = row(nameNode(expr.name), mo(PRIMES[expr.order] ?? '′'.repeat(expr.order)));
+      return { node: expr.arg ? row(head, paren(render(expr.arg, o).node)) : head, prec: ATOM };
+    }
     case 'member':
       // The value of a block names its use: N1.M_max -> M_max(N1).
       if (expr.object.kind === 'variable' && o.positionLabels?.has(expr.object.name)) {

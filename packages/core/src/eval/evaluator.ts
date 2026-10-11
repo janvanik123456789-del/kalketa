@@ -26,6 +26,7 @@ import { BINDING_FUNCTIONS } from '../lang/parser.js';
 import { asMatrix, at, inverseOf, matrix, normalized } from '../functions/linear.js';
 import { callTableFunction, memberOf, TABLE_FUNCTIONS } from './tables.js';
 import { applyFunction, lookupFunction } from './userFunctions.js';
+import { primeName } from './ode.js';
 import type { BlockCaller, BlockInput } from './blocks.js';
 
 export interface EvalContext {
@@ -112,6 +113,8 @@ function evaluateRaw(expr: Expr, ctx: EvalContext): Value {
       return fail('E-RANGE-PLACE', expr.span);
     case 'member':
       return memberOf(evaluate(expr.object, ctx), expr.name, expr.span, expr.object.span, ctx);
+    case 'prime':
+      return primeOf(expr, ctx);
     case 'vector':
       return vectorOf(expr, ctx);
     case 'matrix':
@@ -482,3 +485,28 @@ function warnOnAbsoluteTemperature(q: Quantity, span: Span, ctx: EvalContext): v
   if (q.absolute) ctx.warnings.push(diagnostic('W-ABS-TEMP-MUL', span));
 }
 
+
+/**
+ * A derivative written with primes. In a differential equation (w″, no point) it is one of
+ * the values the solver gives. At a point (w′(0 m)): the derivative of the function there,
+ * from the solution of its equation, else numerically (order 1 or 2) as derivative() does.
+ */
+function primeOf(expr: Extract<Expr, { kind: 'prime' }>, ctx: EvalContext): Value {
+  if (!expr.arg) return ctx.lookup(primeName(expr.name, expr.order), expr.span);
+  const fn = ctx.lookup(expr.name, expr.span);
+  if (fn.type !== 'function') return fail('E-NOT-FUNCTION', expr.span, { name: expr.name });
+  if (fn.derivative) return fn.derivative(expr.order, evaluate(expr.arg, ctx), expr.span);
+  const variable = fn.params[0] ?? 'x';
+  const span = expr.span;
+  const call: Expr = {
+    kind: 'call',
+    name: 'derivative',
+    args: [{ kind: 'call', name: expr.name, args: [{ kind: 'variable', name: variable, span }], named: [], span }],
+    named: [
+      { name: variable, nameSpan: span, value: expr.arg },
+      ...(expr.order > 1 ? [{ name: 'order', nameSpan: span, value: { kind: 'number', value: expr.order, span } as Expr }] : []),
+    ],
+    span,
+  };
+  return evaluate(call, ctx);
+}

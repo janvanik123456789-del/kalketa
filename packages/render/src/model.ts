@@ -448,8 +448,14 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
         const lines: EquationLine[] = s.equations.map((eq) => ({ role: 'formula', lhs: formulaNode(eq.left, formulaOptions()), op: sign(eq.relation), rhs: formulaNode(eq.right, formulaOptions()) }));
         // The interval decides which root is found: "0 ≤ x ≤ 10".
         if (s.range && s.unknowns[0]) {
-          const range = row(formulaNode(s.range.low, formulaOptions()), mo('≤'), nameNode(s.unknowns[0].name), mo('≤'), formulaNode(s.range.high, formulaOptions()));
+          // Of a differential equation the interval is its variable's: 0 ≤ x ≤ L.
+          const range = row(formulaNode(s.range.low, formulaOptions()), mo('≤'), nameNode(s.ode?.variable ?? s.unknowns[0].name), mo('≤'), formulaNode(s.range.high, formulaOptions()));
           lines.push({ role: 'formula', op: '', rhs: range });
+        }
+        // Its solution is a function: said how it was found, read below as w(x), w′(x).
+        if (s.ode && r.ode && s.unknowns[0]) {
+          const head = row(nameNode(s.unknowns[0].name), paren(nameNode(s.ode.variable)));
+          lines.push({ role: 'result', lhs: head, op: '', rhs: mtext(t(catalog, 'print.odeSolved', { order: String(r.ode.order), steps: String(r.ode.steps) })), lead: '⇒' });
         }
         for (const found of r.solutions ?? []) {
           const value = valueNode(found.display.value, found.display.unit, numberFormat(spec), found.display.im, dateFormat);

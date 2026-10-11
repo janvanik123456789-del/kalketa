@@ -556,6 +556,30 @@ solve (I_1, I_2):
 - **V tisku** je pod rovnicí vyjádřený vzorec, dosazení a výsledek (vzorec ze samých čísel se vynechá). V editoru pravé tlačítko na řádku `solve` nabídne **Vložit vzorec jako definici**: řádek se nahradí definicí `L := sqrt(8·M_Ed/q)` s komentářem, z jaké rovnice vznikla.
 - **Nerovnice (2026-10-06):** `solve d: S_min ≤ π·d²/4` (také `<`, `>`, `≥`, `<=`, `>=`) najde hranici neznámé jako u rovnice a zkouškou těsně nad ní a pod ní určí, na které straně leží řešení; znaménko se tak otočí samo i při dělení záporným číslem (`-2·x ≤ 4` dá `x ≥ −2`). V tisku jako ve sbírce: `S_min ≤ π·d²/4 ⇒ d ≥ √(4·S_min/π) = … = 5,473 mm`. Neznámá dostane hodnotu hranice (nejmenší, či největší přípustnou). Jen jedna neznámá a jedna nerovnice (`E-SOLVE-INEQUALITY`); kde nerovnice platí na obou stranách hranice nebo na žádné (`x² ≥ 0`), chyba `E-SOLVE-SIDE`.
 
+### 9.0a Diferenciální rovnice s okrajovými podmínkami (2026-10-11)
+
+Ohybová čára nosníku bez tabulkových vzorců:
+
+```text
+q := 10 kN/m
+L := 6 m
+E := 210 GPa
+I := 8360 cm^4
+M(x) := q·x·(L − x)/2
+solve w(x): E·I·w″ == −M(x) in 0 m .. L
+    w(0 m) == 0 m
+    w(L) == 0 m
+w_max := w(L/2) | mm                 ' 9,612 mm = 5·q·L⁴/(384·E·I)
+φ_A := w′(0 m)                       ' natočení v podpoře
+plot(w(x), x: 0 m .. L) | mm         ' průhybová čára
+```
+
+- `solve w(x): …` hledá funkci. Derivace se píší jako v knize: `w′ w″ w‴ w⁗` (tlačítka ′ a ″ v liště Operátory; obyčejný apostrof je komentář). Interval `in a .. b` je povinný.
+- Rovnice řádu n potřebuje n okrajových podmínek na funkci nebo její derivace v libovolných bodech intervalu: podpora `w(0 m) == 0 m`, vetknutí navíc `w′(0 m) == 0`, volný konec konzoly `w″(L) == 0 m^-1` a `w‴(L) == 0 m^-2`. Jednotka funkce plyne z podmínek. Jde i 4. řád (`E·I·w⁗ == q`) a 1. řád (`y′ == −y/τ`, `y(0 s) == 1`).
+- Rovnice se řeší pro nejvyšší derivaci (bere se, že je v ní lineární), integruje se Rungeho–Kuttovou metodou 4. řádu na 200 krocích a hodnoty na začátku, které podmínky nechávají otevřené, dopočte metoda střelby (Newton; pro lineární rovnici přesně v jednom kroku).
+- Výsledek je funkce: `w(x)`, `w′(x)`, `w″(x)` (mezi body sítě Hermiteovou interpolací), mimo interval chyba `E-DOMAIN`. `w′(bod)` u obyčejné funkce listu spočte derivaci numericky (řád 1 a 2).
+- Chyby: chybí interval (`E-ODE-RANGE`), rovnice bez derivace nebo nelineární v nejvyšší (`E-ODE-FORM`), podmínka v jiném tvaru (`E-ODE-CONDITION`), počet nebo nezávislost podmínek (`E-ODE-CONDITIONS`), bod mimo interval (`E-ODE-POINT`).
+
 ### 9.1 Odvození (řetěz rovností s kontrolou)
 
 - **Odvození funkce (2026-10-09):** `dV(z) := 2·ε_xx(z) + ε_zz == −ρ·g/E·(3·h − 2·z − a)`. Parametr se při kontrole mění jako symbol v rozměru, se kterým mají všechny členy hodnotu; funkce se počítá z posledního členu. Funkce listu se při kontrole rozvinou do svých vzorců.

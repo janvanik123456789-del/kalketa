@@ -11,7 +11,7 @@ import { daysFromCivil, isValidDay } from '../values/date.js';
 
 export type TokenType =
   | 'number' | 'ident' | 'string' | 'superscript' | 'date'
-  | 'heading' | 'comment' | 'directive' | 'picture' | 'attributes'
+  | 'heading' | 'comment' | 'directive' | 'picture' | 'attributes' | 'prime'
   | '+' | '-' | '*' | '/' | '^' | '√' | '∛'
   | '(' | ')' | '[' | ']' | ',' | '.' | '..' | ':' | '|'
   | ':=' | '=' | '==' | '≐' | '!=' | '<' | '<=' | '>' | '>='
@@ -51,6 +51,8 @@ const OPERATORS: readonly (readonly [string, TokenType])[] = [
 ];
 
 const isDigit = (ch: string | undefined): boolean => ch !== undefined && ch >= '0' && ch <= '9';
+const PRIMES: Readonly<Record<string, number>> = { '′': 1, '″': 2, '‴': 3, '⁗': 4 };
+
 const isIdentStart = (ch: string): boolean => /[\p{L}°%‰€$£¥]/u.test(ch);
 // Superscript digits are not part of a name (L² is L squared), subscripts are (T₁).
 const isIdentPart = (ch: string): boolean => /[\p{L}\p{Nd}\p{M}_°₀-₉]/u.test(ch);
@@ -203,6 +205,14 @@ export function tokenize(source: string, options: LexOptions = {}): LexResult {
         pos++;
       }
       push('superscript', start, digits, Number(digits));
+      continue;
+    }
+
+    // Primes of a derivative, as a book writes them: w′, w″, w‴, w⁗ (its order, w′′ as w″).
+    if (ch in PRIMES) {
+      let order = 0;
+      while (pos < source.length && source[pos]! in PRIMES) order += PRIMES[source[pos++]!]!;
+      push('prime', start, source.slice(start, pos), order);
       continue;
     }
 

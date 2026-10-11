@@ -24,6 +24,8 @@ export type BinaryOperator =
   | 'and' | 'or';
 
 export type Expr =
+  /** A derivative of a function written as in a book: w″ (in its equation), w′(0 m) (at a point). */
+  | { readonly kind: 'prime'; readonly name: string; readonly order: number; readonly arg?: Expr; readonly span: Span }
   | { readonly kind: 'number'; readonly value: number; readonly unit?: UnitExpr; readonly span: Span; readonly imaginary?: boolean }
   | { readonly kind: 'string'; readonly value: string; readonly span: Span }
   /** A date: 2026-09-29, as days from 1970-01-01. */
@@ -172,6 +174,8 @@ export type Statement =
       readonly kind: 'solve';
       /** The names the statement finds and defines. */
       readonly unknowns: readonly Param[];
+      /** solve w(x): a differential equation; the unknown is a function of this variable. */
+      readonly ode?: { readonly variable: string; readonly span: Span };
       readonly equations: readonly Equation[];
       /** "in 0 .. 10": interval of a single unknown. */
       readonly range?: { readonly low: Expr; readonly high: Expr };

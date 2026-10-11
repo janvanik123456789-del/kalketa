@@ -30,6 +30,11 @@ export function formatExpr(expr: Expr): string {
   return written(expr).text;
 }
 
+/** The primes of a derivative as a book writes them: ′ ″ ‴ ⁗ (and more by ′). */
+export function primes(order: number): string {
+  return order <= 4 ? ['', '′', '″', '‴', '⁗'][order]! : '′'.repeat(order);
+}
+
 function written(expr: Expr): { text: string; priority: number } {
   switch (expr.kind) {
     case 'number': {
@@ -68,6 +73,8 @@ function written(expr: Expr): { text: string; priority: number } {
     }
     case 'member':
       return { text: `${atom(expr.object)}.${expr.name}`, priority: ATOM };
+    case 'prime':
+      return { text: `${expr.name}${primes(expr.order)}${expr.arg ? `(${formatExpr(expr.arg)})` : ''}`, priority: ATOM };
     case 'index':
       return { text: `${atom(expr.object)}[${formatExpr(expr.index)}${expr.column ? `, ${formatExpr(expr.column)}` : ''}]`, priority: ATOM };
     case 'vector':

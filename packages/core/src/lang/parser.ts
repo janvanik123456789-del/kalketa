@@ -521,6 +521,7 @@ class LineParser {
       if (unknowns.some((u) => u.name === token.text)) fail('E-REDEFINED', token.span, { name: token.text });
       unknowns.push({ name: token.text, span: token.span });
     };
+    let ode: { variable: string; span: Span } | undefined;
     if (this.peek().type === '(') {
       this.next();
       do unknown();
@@ -528,10 +529,20 @@ class LineParser {
       this.expect(')', ')');
     } else {
       unknown();
+      // solve w(x): the unknown is a function, of a differential equation.
+      if (this.peek().type === '(') {
+        this.next();
+        const variable = this.expect('ident', 'parameter');
+        this.expect(')', ')');
+        ode = { variable: variable.text, span: variable.span };
+      }
     }
     this.expect(':', ':');
-    // The unknowns are names from here on, even where they spell a unit (t, s).
+    // The unknowns are names from here on, even where they spell a unit (t, s); so is the variable of a function.
     unknowns.forEach((u) => this.defined.add(u.name));
+    // The variable is a name inside the statement only; one defined above stays so.
+    const ownVariable = ode !== undefined && !this.defined.has(ode.variable);
+    if (ode) this.defined.add(ode.variable);
 
     const equations: Equation[] = [];
     const guesses: NamedArg[] = [];
@@ -573,7 +584,8 @@ class LineParser {
     // An inequality has a side of its bound: one unknown, one inequality.
     const inequality = equations.find((e) => e.relation);
     if (inequality && (unknowns.length !== 1 || equations.length !== 1)) fail('E-SOLVE-INEQUALITY', inequality.span);
-    return { kind: 'solve', unknowns, equations, ...(range ? { range } : {}), guesses, span: lineSpan };
+    if (ode && ownVariable) this.defined.delete(ode.variable);
+    return { kind: 'solve', unknowns, equations, ...(range ? { range } : {}), guesses, ...(ode ? { ode } : {}), span: lineSpan };
   }
 
   /** unit CZK: Mena · unit ks: dimensionless · unit EUR := 25 CZK */
@@ -801,6 +813,18 @@ class LineParser {
     const name = token.text;
     if (name === 'true' || name === 'false') return { kind: 'boolean', value: name === 'true', span: token.span };
     if (KEYWORDS.has(name)) fail('E-SYNTAX', token.span, { expected: 'value', found: name });
+
+    // w″ in a differential equation, w′(0 m) at a point.
+    if (this.peek().type === 'prime') {
+      const prime = this.next();
+      if (this.peek().type === '(') {
+        this.next();
+        const arg = this.parseExpression();
+        const close = this.expect(')', ')');
+        return { kind: 'prime', name, order: prime.value, arg, span: spanOf(token, close) };
+      }
+      return { kind: 'prime', name, order: prime.value, span: spanOf(token, prime) };
+    }
 
     if (this.peek().type === '(') {
       this.next();

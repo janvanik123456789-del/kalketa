@@ -34,6 +34,8 @@ function show(expr: Expr): string {
       return `${expr.name}(${expr.args.map(show).join(', ')})`;
     case 'member':
       return `${show(expr.object)}.${expr.name}`;
+    case 'prime':
+      return `${expr.name}${"'".repeat(expr.order)}${expr.arg ? `(${show(expr.arg)})` : ''}`;
     case 'vector':
       return `[${expr.items.map(show).join(', ')}]`;
     case 'index':

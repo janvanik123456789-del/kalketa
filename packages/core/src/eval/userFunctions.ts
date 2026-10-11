@@ -106,6 +106,7 @@ export function applyFunction(fn: FunctionValue, call: CallExpr, ctx: EvalContex
     fail('E-FUNC-ARITY', call.span, { function: fn.name, expected: fn.params.length, found: call.args.length });
   }
   const args = call.args.map((arg) => evaluate(arg, ctx));
+  if (fn.native) return fn.native(args, call.span);
   const inner: EvalContext = {
     registry: ctx.registry,
     warnings: ctx.warnings,

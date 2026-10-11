@@ -14,6 +14,7 @@ import { compare, evaluate, type EvalContext } from '../eval/evaluator.js';
 import { BUILTIN_CONSTANTS } from '../eval/functions.js';
 import { defineFunction, isBuiltinFunction } from '../eval/userFunctions.js';
 import { solveStatement } from '../eval/solver.js';
+import { solveOde, type OdeInfo } from '../eval/ode.js';
 import { isPlotCall, plotStatement, type PlotResult } from '../eval/plot.js';
 import { checkDerivation, type DerivationStep } from '../eval/derive.js';
 import { DIMENSIONLESS_NAME } from '../lang/parser.js';
@@ -62,6 +63,8 @@ export interface StatementResult {
   readonly derivation?: readonly DerivationStep[];
   /** A heading that starts a position: its label (1, 2, 3a), its values then read as Pos1.A. */
   readonly position?: string;
+  /** A differential equation solved (solve w(x): …): its order and interval; the function is the value. */
+  readonly ode?: OdeInfo;
   /** Values found by a solve statement, in the order of its unknowns; the formula of one expressed. */
   readonly solutions?: readonly { readonly name: string; readonly value: Quantity; readonly display: DisplayValue; readonly formula?: Expr; readonly relation?: Inequality }[];
   /** Names this statement read, in order of first use (including undefined ones). */
@@ -307,6 +310,8 @@ export class SheetSession {
       }
       if (statement.kind === 'solve') {
         statement.unknowns.forEach((u, i) => {
+          // The solution of a differential equation is a function, its value.
+          if (statement.ode) return env.set(u.name, result.status === 'ok' && result.value ? { ok: true, value: result.value } : { ok: false });
           const found = result.solutions?.[i];
           env.set(u.name, found ? { ok: true, value: found.value } : { ok: false });
         });
@@ -482,6 +487,10 @@ export class SheetSession {
         };
       }
 
+      if (statement.kind === 'solve' && statement.ode) {
+        const { fn, info } = solveOde(statement, ctx, evaluate);
+        return { status: 'ok', value: fn, ode: info, dependencies, tableReads, diagnostics: ctx.warnings };
+      }
       if (statement.kind === 'solve') {
         const found = solveStatement(statement, ctx, evaluate);
         // {decimals=2 rounded} on a solve line: the rows below go on with the values as shown.

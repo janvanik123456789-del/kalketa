@@ -21,8 +21,31 @@ interface ItemBase {
 
 export type CanvasItem =
   | (ItemBase & { readonly type: 'rect' | 'ellipse'; readonly x: number; readonly y: number; readonly w: number; readonly h: number; readonly stroke: Stroke; readonly fill: string; /** Hatched, as a section or the ground is drawn. */ readonly hatch?: boolean })
-  | (ItemBase & { readonly type: 'line' | 'arrow'; readonly x1: number; readonly y1: number; readonly x2: number; readonly y2: number; readonly stroke: Stroke })
-  | (ItemBase & { readonly type: 'text'; readonly x: number; readonly y: number; readonly text: string; readonly size: number; readonly color: string; readonly bold?: boolean })
+  | (ItemBase & {
+      readonly type: 'line' | 'arrow';
+      readonly x1: number;
+      readonly y1: number;
+      readonly x2: number;
+      readonly y2: number;
+      readonly stroke: Stroke;
+      /** A force: its label (F, 12 kN) at the tail of the arrow. */
+      readonly text?: string;
+      readonly size?: number;
+    })
+  | (ItemBase & {
+      readonly type: 'text';
+      readonly x: number;
+      readonly y: number;
+      /** The plain text, lines by \n: what search reads and what an older program shows. */
+      readonly text: string;
+      readonly size: number;
+      readonly color: string;
+      readonly bold?: boolean;
+      /** The text as written with its formats: lines of runs, each bold, italic, underlined or coloured. */
+      readonly runs?: readonly (readonly TextRun[])[];
+      readonly font?: TextFont;
+      readonly align?: TextAlign;
+    })
   | (ItemBase & { readonly type: 'image'; readonly x: number; readonly y: number; readonly w: number; readonly h: number; readonly src: string })
   /**
    * A dimension: the length between two points, drawn at `offset` beside them (along the
@@ -46,7 +69,60 @@ export type CanvasItem =
    */
   | (ItemBase & { readonly type: 'load'; readonly x1: number; readonly y1: number; readonly x2: number; readonly y2: number; readonly height: number; readonly text: string; readonly size: number; readonly stroke: Stroke });
 
-export type SupportKind = 'pin' | 'roller' | 'fixed';
+/** A hinge is a support of a kind too: a joint in a member, a small circle. */
+export type SupportKind = 'pin' | 'roller' | 'fixed' | 'hinge';
+
+/** A piece of a line of text in one format. */
+export interface TextRun {
+  readonly text: string;
+  readonly bold?: boolean;
+  readonly italic?: boolean;
+  readonly underline?: boolean;
+  /** CSS colour; the colour of the text when absent. */
+  readonly color?: string;
+}
+
+export type TextFont = 'sans' | 'serif' | 'mono';
+export type TextAlign = 'left' | 'center' | 'right';
+
+export const FONT_FAMILIES: Readonly<Record<TextFont, string>> = {
+  sans: 'Segoe UI, Helvetica, Arial, sans-serif',
+  serif: 'Cambria, Times New Roman, serif',
+  mono: 'Consolas, Courier New, monospace',
+};
+
+/**
+ * The values of the calculation a canvas shows: {L} in a text or a label becomes "5 m"
+ * and changes with the input. The host gives them; the canvas knows no calculation.
+ */
+export type LiveValues = (name: string) => string | undefined;
+
+const LIVE = /\{([\p{L}_][\p{L}\p{N}_]*)\}/gu;
+
+/** A text with its {names} replaced by their values; a name without a value stays as written. */
+export function liveText(text: string, values?: LiveValues): string {
+  return values ? text.replace(LIVE, (whole, name: string) => values(name) ?? whole) : text;
+}
+
+/** The names a scene shows values of, in the order they first appear. */
+export function liveNames(scene: CanvasScene): string[] {
+  const names = new Set<string>();
+  for (const item of scene.items) {
+    const text = 'text' in item ? (item.text ?? '') : '';
+    for (const m of text.matchAll(LIVE)) names.add(m[1]!);
+  }
+  return [...names];
+}
+
+/** The lines of runs of a text: as written with formats, or its plain lines. */
+export function textLines(item: Extract<CanvasItem, { type: 'text' }>): readonly (readonly TextRun[])[] {
+  return item.runs && item.runs.length > 0 ? item.runs : item.text.split('\n').map((line) => [{ text: line }]);
+}
+
+/** The plain text of lines of runs. */
+export function plainText(lines: readonly (readonly TextRun[])[]): string {
+  return lines.map((line) => line.map((r) => r.text).join('')).join('\n');
+}
 
 export interface CanvasScene {
   readonly version: number;
@@ -94,15 +170,15 @@ export function writeScene(scene: CanvasScene): Uint8Array {
 const esc = (text: string) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const n = (value: number) => String(Math.round(value * 100) / 100);
 
-/** Pictures inside the canvas resolve through `resolveFile` (e.g. to data: URIs). */
-export function sceneSvg(scene: CanvasScene, resolveFile: (path: string) => string | undefined = () => undefined): string {
-  const body = sceneBody(scene, resolveFile);
+/** Pictures inside the canvas resolve through `resolveFile` (e.g. to data: URIs); {names} through `values`. */
+export function sceneSvg(scene: CanvasScene, resolveFile: (path: string) => string | undefined = () => undefined, values?: LiveValues): string {
+  const body = sceneBody(scene, resolveFile, values);
   return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${n(scene.width)}mm" height="${n(scene.height)}mm" viewBox="0 0 ${n(scene.width)} ${n(scene.height)}">${body}</svg>`;
 }
 
 /** The inside of the drawing (markers and items), for an editor that draws its own <svg>. */
-export function sceneBody(scene: CanvasScene, resolveFile: (path: string) => string | undefined = () => undefined): string {
-  return arrowDefs(scene) + scene.items.map((item) => itemSvg(item, resolveFile)).join('');
+export function sceneBody(scene: CanvasScene, resolveFile: (path: string) => string | undefined = () => undefined, values?: LiveValues): string {
+  return arrowDefs(scene) + scene.items.map((item) => itemSvg(item, resolveFile, values)).join('');
 }
 
 /** An arrowhead per colour of the arrows, dimensions and arcs (markers take no colour from their line everywhere); a hatch per colour. */
@@ -158,6 +234,7 @@ function ground(x1: number, x2: number, y: number, s: number, line: string): str
 
 /** A support drawn around its point at the origin, before it is turned and moved. */
 function supportShape(kind: SupportKind, s: number, line: string): string {
+  if (kind === 'hinge') return `<circle cx="0" cy="0" r="${n(s * 0.15)}" fill="#fff" ${line}/>`;
   const half = s * 0.45;
   if (kind === 'fixed') {
     // The wall: a line through the point, its hatch on the far side.
@@ -182,8 +259,9 @@ export function arcPoint(item: Extract<CanvasItem, { type: 'arc' }>, angle: numb
   return { x: item.cx + item.r * Math.cos(a), y: item.cy + item.r * Math.sin(a) };
 }
 
-export function itemSvg(item: CanvasItem, resolveFile: (path: string) => string | undefined): string {
+export function itemSvg(item: CanvasItem, resolveFile: (path: string) => string | undefined, values?: LiveValues): string {
   const stroke = (s: Stroke) => `stroke="${esc(s.color)}" stroke-width="${n(s.width)}"`;
+  const live = (text: string) => esc(liveText(text, values));
   switch (item.type) {
     case 'rect':
     case 'ellipse': {
@@ -214,7 +292,7 @@ export function itemSvg(item: CanvasItem, resolveFile: (path: string) => string 
         extension(item.x1, item.y1, d.x1, d.y1) +
         extension(item.x2, item.y2, d.x2, d.y2) +
         `<line x1="${n(d.x1)}" y1="${n(d.y1)}" x2="${n(d.x2)}" y2="${n(d.y2)}" ${stroke(item.stroke)} marker-start="url(#${arrowId(item.stroke.color)})" marker-end="url(#${arrowId(item.stroke.color)})"/>` +
-        `<text x="${n(mx)}" y="${n(my)}" font-size="${n(item.size)}" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="${colour}" text-anchor="middle" dominant-baseline="central" transform="rotate(${n(angle)} ${n(mx)} ${n(my)})">${esc(item.text)}</text>` +
+        `<text x="${n(mx)}" y="${n(my)}" font-size="${n(item.size)}" font-family="${FONT_FAMILIES.sans}" fill="${colour}" text-anchor="middle" dominant-baseline="central" transform="rotate(${n(angle)} ${n(mx)} ${n(my)})">${live(item.text)}</text>` +
         `</g>`
       );
     }
@@ -238,7 +316,7 @@ export function itemSvg(item: CanvasItem, resolveFile: (path: string) => string 
       const mx = (top.x1 + top.x2) / 2 + top.nx * side * away;
       const my = (top.y1 + top.y2) / 2 + top.ny * side * away;
       const label = item.text
-        ? `<text x="${n(mx)}" y="${n(my)}" font-size="${n(item.size)}" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="${esc(item.stroke.color)}" text-anchor="middle" dominant-baseline="central">${esc(item.text)}</text>`
+        ? `<text x="${n(mx)}" y="${n(my)}" font-size="${n(item.size)}" font-family="${FONT_FAMILIES.sans}" fill="${esc(item.stroke.color)}" text-anchor="middle" dominant-baseline="central">${live(item.text)}</text>`
         : '';
       return `<g class="cc-load">${arrows}<line x1="${n(top.x1)}" y1="${n(top.y1)}" x2="${n(top.x2)}" y2="${n(top.y2)}" ${stroke(item.stroke)}/>${label}</g>`;
     }
@@ -250,12 +328,34 @@ export function itemSvg(item: CanvasItem, resolveFile: (path: string) => string 
       return `<path d="M${n(from.x)} ${n(from.y)}A${n(item.r)} ${n(item.r)} 0 ${large} ${clockwise} ${n(to.x)} ${n(to.y)}" fill="none" ${stroke(item.stroke)} stroke-linecap="round"${item.arrow ? ` marker-end="url(#${arrowId(item.stroke.color)})"` : ''}/>`;
     }
     case 'line':
-    case 'arrow':
-      return `<line x1="${n(item.x1)}" y1="${n(item.y1)}" x2="${n(item.x2)}" y2="${n(item.y2)}" ${stroke(item.stroke)} stroke-linecap="round"${item.type === 'arrow' ? ` marker-end="url(#${arrowId(item.stroke.color)})"` : ''}/>`;
+    case 'arrow': {
+      const line = `<line x1="${n(item.x1)}" y1="${n(item.y1)}" x2="${n(item.x2)}" y2="${n(item.y2)}" ${stroke(item.stroke)} stroke-linecap="round"${item.type === 'arrow' ? ` marker-end="url(#${arrowId(item.stroke.color)})"` : ''}/>`;
+      if (!item.text) return line;
+      // The label of a force beyond its tail, along the arrow.
+      const size = item.size ?? 3.5;
+      const length = Math.hypot(item.x2 - item.x1, item.y2 - item.y1) || 1;
+      const lx = item.x1 - ((item.x2 - item.x1) / length) * size * 0.9;
+      const ly = item.y1 - ((item.y2 - item.y1) / length) * size * 0.9;
+      return `<g class="cc-force">${line}<text x="${n(lx)}" y="${n(ly)}" font-size="${n(size)}" font-family="${FONT_FAMILIES.sans}" fill="${esc(item.stroke.color)}" text-anchor="middle" dominant-baseline="central">${live(item.text)}</text></g>`;
+    }
     case 'text': {
-      const lines = item.text.split('\n');
-      const spans = lines.map((line, i) => `<tspan x="${n(item.x)}" dy="${i === 0 ? 0 : n(item.size * 1.25)}">${esc(line)}</tspan>`).join('');
-      return `<text x="${n(item.x)}" y="${n(item.y + item.size)}" font-size="${n(item.size)}" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="${esc(item.color)}"${item.bold ? ' font-weight="bold"' : ''}>${spans}</text>`;
+      const lines = textLines(item);
+      // Aligned in the box of its longest line (the canvas has no font metrics).
+      const width = textWidth(item);
+      const x = item.align === 'center' ? item.x + width / 2 : item.align === 'right' ? item.x + width : item.x;
+      const anchor = item.align === 'center' ? ' text-anchor="middle"' : item.align === 'right' ? ' text-anchor="end"' : '';
+      const run = (r: TextRun) => {
+        const attrs = [
+          r.bold ? ' font-weight="bold"' : '',
+          r.italic ? ' font-style="italic"' : '',
+          r.underline ? ' text-decoration="underline"' : '',
+          r.color ? ` fill="${esc(r.color)}"` : '',
+        ].join('');
+        return attrs ? `<tspan${attrs}>${live(r.text)}</tspan>` : live(r.text);
+      };
+      // An empty line keeps its height.
+      const spans = lines.map((line, i) => `<tspan x="${n(x)}" dy="${i === 0 ? 0 : n(item.size * 1.25)}">${line.map(run).join('') || ' '}</tspan>`).join('');
+      return `<text x="${n(x)}" y="${n(item.y + item.size)}" font-size="${n(item.size)}" font-family="${FONT_FAMILIES[item.font ?? 'sans']}" fill="${esc(item.color)}"${item.bold ? ' font-weight="bold"' : ''}${anchor} xml:space="preserve">${spans}</text>`;
     }
     case 'image': {
       const href = resolveFile(item.src);
@@ -269,8 +369,14 @@ export function itemSvg(item: CanvasItem, resolveFile: (path: string) => string 
   }
 }
 
+/** Width of a text: the canvas has no font metrics, a character is about 0.55 of the size wide (a monospaced one 0.6). */
+export function textWidth(item: Extract<CanvasItem, { type: 'text' }>): number {
+  const longest = Math.max(1, ...item.text.split('\n').map((l) => l.length));
+  return longest * item.size * (item.font === 'mono' ? 0.6 : 0.55);
+}
+
 /** The scene as a data: URI for an <img>. */
-export function sceneDataUri(scene: CanvasScene, resolveFile?: (path: string) => string | undefined): string {
-  const svg = sceneSvg(scene, resolveFile);
+export function sceneDataUri(scene: CanvasScene, resolveFile?: (path: string) => string | undefined, values?: LiveValues): string {
+  const svg = sceneSvg(scene, resolveFile, values);
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }

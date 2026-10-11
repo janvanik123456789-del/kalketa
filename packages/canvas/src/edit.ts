@@ -3,12 +3,12 @@
  * window keeps its own undo history by keeping the scenes.
  */
 
-import { arcPoint, dimensionLine, loadTop, type CanvasItem, type CanvasScene, type SupportKind } from './scene.js';
+import { arcPoint, dimensionLine, loadTop, textWidth, type CanvasItem, type CanvasScene, type SupportKind } from './scene.js';
 
-export type Tool = 'select' | 'text' | 'line' | 'arrow' | 'rect' | 'ellipse' | 'dimension' | 'arc' | 'moment' | 'load' | SupportKind;
+export type Tool = 'select' | 'text' | 'line' | 'arrow' | 'force' | 'rect' | 'ellipse' | 'dimension' | 'arc' | 'moment' | 'load' | SupportKind;
 
-/** Tools that put a support where the canvas is clicked. */
-export const SUPPORT_TOOLS: readonly SupportKind[] = ['pin', 'roller', 'fixed'];
+/** Tools that put a support (or a hinge) where the canvas is clicked. */
+export const SUPPORT_TOOLS: readonly SupportKind[] = ['pin', 'roller', 'fixed', 'hinge'];
 export const isSupportTool = (tool: Tool): tool is SupportKind => (SUPPORT_TOOLS as readonly string[]).includes(tool);
 /** Height of a new support and length of the arrows of a new load, in millimetres. */
 export const SUPPORT_SIZE = 6;
@@ -63,11 +63,20 @@ export function findItem(scene: CanvasScene, id: string | undefined): CanvasItem
   return id === undefined ? undefined : scene.items.find((i) => i.id === id);
 }
 
-/** Approximate box of a text: the canvas has no font metrics, a character is about 0.55 of the size wide. */
+/** Approximate box of a text (see textWidth). */
 function textBox(item: Extract<CanvasItem, { type: 'text' }>): Box {
-  const lines = item.text.split('\n');
-  const longest = Math.max(1, ...lines.map((l) => l.length));
-  return { x: item.x, y: item.y, w: longest * item.size * 0.55, h: lines.length * item.size * 1.25 };
+  return { x: item.x, y: item.y, w: textWidth(item), h: item.text.split('\n').length * item.size * 1.25 };
+}
+
+/** Whether two boxes overlap: an item is caught by a frame dragged over a part of it. */
+export function overlaps(a: Box, b: Box): boolean {
+  return a.x <= b.x + b.w && b.x <= a.x + a.w && a.y <= b.y + b.h && b.y <= a.y + a.h;
+}
+
+/** The items a frame dragged from (x1, y1) to (x2, y2) catches. */
+export function itemsIn(scene: CanvasScene, x1: number, y1: number, x2: number, y2: number): string[] {
+  const frame = { x: Math.min(x1, x2), y: Math.min(y1, y2), w: Math.abs(x2 - x1), h: Math.abs(y2 - y1) };
+  return scene.items.filter((i) => overlaps(frame, boxOf(i))).map((i) => i.id);
 }
 
 export function boxOf(item: CanvasItem): Box {
@@ -252,6 +261,7 @@ function distanceToSegment(px: number, py: number, x1: number, y1: number, x2: n
 export function drawn(tool: Exclude<Tool, 'select' | 'text'>, id: string, x1: number, y1: number, x2: number, y2: number, colour: string, width: number, fill: string, label = '', size = 3.5, hatch = false): CanvasItem {
   const stroke = { color: colour, width };
   if (tool === 'line' || tool === 'arrow') return { id, type: tool, x1, y1, x2, y2, stroke };
+  if (tool === 'force') return { id, type: 'arrow', x1, y1, x2, y2, stroke, text: label, size };
   if (tool === 'dimension') return { id, type: 'dimension', x1, y1, x2, y2, offset: DIMENSION_OFFSET, text: label, size, stroke };
   if (tool === 'load') return { id, type: 'load', x1, y1, x2, y2, height: LOAD_HEIGHT, text: label, size, stroke };
   if (isSupportTool(tool)) return placedSupport(tool, id, x2, y2, colour, width);

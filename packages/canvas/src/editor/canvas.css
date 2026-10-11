@@ -36,3 +36,14 @@
 .canvas-inline-bar button.swatch { min-width: 16px; width: 16px; height: 16px; }
 .canvas-inline-bar .canvas-sep { margin: 0 2px; }
 .canvas-info { flex: 1; color: var(--muted, #6b7480); font-size: 12px; }
+/* A frame dragged over the drawing chooses what it catches. */
+.canvas-marquee { fill: rgb(47 94 196 / 8%); stroke: var(--accent, #2f5ec4); stroke-width: 0.2; stroke-dasharray: 0.8 0.5; pointer-events: none; }
+/* A text written right in the drawing: the field over it and the bar of its formats above. */
+.canvas-text-editing { position: fixed; z-index: 400; min-width: 40px; min-height: 1.25em; line-height: 1.25; white-space: pre-wrap; outline: 1px dashed var(--accent, #2f5ec4); outline-offset: 2px; background: rgb(255 255 255 / 85%); padding: 0; margin: 0; }
+.canvas-text-editing div { margin: 0; }
+.canvas-text-bar { position: fixed; z-index: 401; display: flex; align-items: center; gap: 2px; padding: 3px 6px; background: var(--toolbar, #f3f5f8); border: 1px solid #aab2bd; border-radius: 4px; box-shadow: 0 3px 12px rgb(0 0 0 / 18%); font-size: 13px; }
+.canvas-text-bar button { min-width: 26px; height: 26px; border: 1px solid transparent; background: none; border-radius: 3px; cursor: pointer; font-size: 14px; }
+.canvas-text-bar button:hover { border-color: var(--line, #d5dbe2); background: #fff; }
+.canvas-text-bar button.swatch { min-width: 16px; width: 16px; height: 16px; border: 1px solid #fff; box-shadow: 0 0 0 1px #aab2bd; }
+.canvas-text-bar select { height: 24px; }
+.canvas-text-hint { color: var(--muted, #6b7480); font-size: 11px; margin-left: 6px; white-space: nowrap; }

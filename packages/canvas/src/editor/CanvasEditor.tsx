@@ -8,10 +8,11 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type DragEvent as ReactDragEvent, type MouseEvent as ReactMouseEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { sceneBody, type CanvasItem, type CanvasScene } from '../scene.js';
-import { addItem, boxOf, drawn, endMoved, endsOf, findItem, isSupportTool, itemAt, moved, newId, placedSupport, removeItem, reordered, replaceItem, resized, snap, turned, type Corner, type Tool } from '../edit.js';
+import { sceneBody, type CanvasItem, type CanvasScene, type LiveValues } from '../scene.js';
+import { addItem, boxOf, drawn, endMoved, endsOf, findItem, isSupportTool, itemAt, itemsIn, moved, newId, placedSupport, removeItem, reordered, replaceItem, resized, snap, turned, type Corner, type Tool } from '../edit.js';
 import { fromFile, isPictureType, picturePath, pixelSize, type CanvasPicture } from './pictures.js';
 import { canvasTexts, type CanvasTextKey } from './texts.js';
+import { TextEditor } from './TextEditor.js';
 import './canvas.css';
 
 export interface CanvasEditorProps {
@@ -36,22 +37,27 @@ export interface CanvasEditorProps {
   readonly mode?: 'inline' | 'window';
   /** From the sheet into the large window, with what was drawn so far. */
   onExpand?(scene: CanvasScene, files: ReadonlyMap<string, Uint8Array>): void;
+  /** Values of the calculation for {names} in the texts and labels. */
+  values?: LiveValues;
 }
 
 type Drag =
-  | { kind: 'move'; id: string; from: { x: number; y: number }; original: CanvasItem }
+  | { kind: 'move'; from: { x: number; y: number }; originals: readonly CanvasItem[] }
+  | { kind: 'frame'; from: { x: number; y: number }; add: readonly string[] }
   | { kind: 'corner'; id: string; corner: Corner }
   | { kind: 'end'; id: string; end: 1 | 2 | 3 }
-  | { kind: 'draw'; tool: Exclude<Tool, 'select' | 'text' | 'pin' | 'roller' | 'fixed'>; from: { x: number; y: number } }
+  | { kind: 'draw'; tool: Exclude<Tool, 'select' | 'text' | 'pin' | 'roller' | 'fixed' | 'hinge'>; from: { x: number; y: number } }
   | { kind: 'size'; from: { x: number; y: number }; original: { width: number; height: number } };
 
 const WIDTHS = [0.25, 0.35, 0.5, 0.7, 1];
+const FONT_SIZES = [2.5, 3, 3.5, 4, 5, 6, 8];
 const COLOURS = ['#000000', '#c62828', '#1565c0', '#2e7d32', '#ef6c00', '#6a1b9a', '#757575'];
 const TOOLS: readonly { tool: Tool; glyph: string; key: string }[] = [
   { tool: 'select', glyph: '↖', key: 'V' },
   { tool: 'text', glyph: 'T', key: 'T' },
   { tool: 'line', glyph: '╱', key: 'L' },
   { tool: 'arrow', glyph: '↗', key: 'A' },
+  { tool: 'force', glyph: '⇣F', key: 'S' },
   { tool: 'rect', glyph: '▭', key: 'R' },
   { tool: 'ellipse', glyph: '◯', key: 'E' },
   { tool: 'dimension', glyph: '↔', key: 'D' },
@@ -60,6 +66,7 @@ const TOOLS: readonly { tool: Tool; glyph: string; key: string }[] = [
   { tool: 'pin', glyph: '△', key: 'P' },
   { tool: 'roller', glyph: '⍙', key: 'K' },
   { tool: 'fixed', glyph: '▥', key: 'F' },
+  { tool: 'hinge', glyph: '◦', key: 'H' },
   { tool: 'load', glyph: '⇊', key: 'Q' },
 ];
 
@@ -69,7 +76,13 @@ export function CanvasEditor(props: CanvasEditorProps) {
   const inline = props.mode === 'inline';
   const [history, setHistory] = useState<{ past: CanvasScene[]; present: CanvasScene; future: CanvasScene[] }>({ past: [], present: props.scene, future: [] });
   const scene = history.present;
-  const [selected, setSelected] = useState<string | undefined>();
+  // The items chosen: one gets its handles, several move, change and go together.
+  const [chosen, setChosen] = useState<readonly string[]>([]);
+  const selected = chosen.length === 1 ? chosen[0] : undefined;
+  const setSelected = (id: string | undefined) => setChosen(id ? [id] : []);
+  const [frame, setFrame] = useState<{ x: number; y: number; w: number; h: number } | undefined>();
+  // A text being written in the drawing: shown by the field over it, not in the drawing.
+  const [writing, setWriting] = useState<Extract<CanvasItem, { type: 'text' }> | undefined>();
   const [tool, setTool] = useState<Tool>('select');
   const [colour, setColour] = useState('#000000');
   const [lineWidth, setLineWidth] = useState(0.35);
@@ -123,6 +136,7 @@ export function CanvasEditor(props: CanvasEditorProps) {
   };
 
   const item = findItem(scene, selected);
+  const group = chosen.map((id) => findItem(scene, id)).filter((i): i is CanvasItem => i !== undefined);
 
   // ---------------------------------------------------------------- mouse
   const down = (e: ReactMouseEvent) => {
@@ -139,10 +153,22 @@ export function CanvasEditor(props: CanvasEditorProps) {
       drag.current = /^p[123]$/.test(handle) ? { kind: 'end', id: item.id, end: Number(handle.slice(1)) as 1 | 2 | 3 } : { kind: 'corner', id: item.id, corner: handle as Corner };
     } else if (tool === 'select') {
       const hit = itemAt(scene, at.x, at.y);
-      setSelected(hit?.id);
-      if (hit) drag.current = { kind: 'move', id: hit.id, from: at, original: hit };
+      if (hit && e.shiftKey) {
+        // Shift adds an item to the chosen ones, or takes it away.
+        setChosen(chosen.includes(hit.id) ? chosen.filter((id) => id !== hit.id) : [...chosen, hit.id]);
+        return;
+      }
+      if (hit) {
+        const moving = chosen.includes(hit.id) ? group : [hit];
+        if (!chosen.includes(hit.id)) setSelected(hit.id);
+        drag.current = { kind: 'move', from: at, originals: moving };
+      } else {
+        // On an empty place a frame chooses what it catches.
+        if (!e.shiftKey) setChosen([]);
+        drag.current = { kind: 'frame', from: at, add: e.shiftKey ? chosen : [] };
+      }
     } else if (tool === 'text') {
-      void addText(at);
+      startWriting(at);
     } else if (isSupportTool(tool)) {
       // A support goes where it is clicked.
       const id = newId(scene);
@@ -160,7 +186,8 @@ export function CanvasEditor(props: CanvasEditorProps) {
       if (!d || !svg.current) return;
       const at = point(e, e.altKey);
       const base = before.current ?? scene;
-      if (d.kind === 'move') preview(replaceItem(base, moved(d.original, at.x - d.from.x, at.y - d.from.y)));
+      if (d.kind === 'move') preview(d.originals.reduce((s, original) => replaceItem(s, moved(original, at.x - d.from.x, at.y - d.from.y)), base));
+      else if (d.kind === 'frame') setFrame({ x: Math.min(d.from.x, at.x), y: Math.min(d.from.y, at.y), w: Math.abs(at.x - d.from.x), h: Math.abs(at.y - d.from.y) });
       else if (d.kind === 'corner') preview(replaceItem(base, resized(findItem(base, d.id)!, d.corner, at.x, at.y)));
       else if (d.kind === 'end') preview(replaceItem(base, endMoved(findItem(base, d.id)!, d.end, at.x, at.y)));
       else if (d.kind === 'size') preview({ ...base, width: Math.max(20, Math.round(d.original.width + at.x - d.from.x)), height: Math.max(10, Math.round(d.original.height + at.y - d.from.y)) });
@@ -172,6 +199,13 @@ export function CanvasEditor(props: CanvasEditorProps) {
       if (!d) return;
       const previous = before.current ?? scene;
       before.current = undefined;
+      if (d.kind === 'frame') {
+        setFrame(undefined);
+        const at = point(e, true);
+        const caught = Math.hypot(at.x - d.from.x, at.y - d.from.y) < 1 ? [] : itemsIn(previous, d.from.x, d.from.y, at.x, at.y);
+        setChosen([...new Set([...d.add, ...caught])]);
+        return;
+      }
       if (d.kind === 'draw') {
         setDraft(undefined);
         const at = point(e, e.altKey);
@@ -179,11 +213,12 @@ export function CanvasEditor(props: CanvasEditorProps) {
         const id = newId(previous);
         const shape = drawn(d.tool, id, d.from.x, d.from.y, at.x, at.y, colour, lineWidth, filled ? colour + '33' : 'none', '', fontSize, hatched);
         setTool('select');
-        if (shape.type === 'dimension' || shape.type === 'load') {
-          // A dimension says what it measures, a load how much: its label is asked for right away.
-          void ask(text(shape.type === 'load' ? 'loadPrompt' : 'dimensionPrompt')).then((label) => {
+        const prompt = shape.type === 'load' ? 'loadPrompt' : shape.type === 'dimension' ? 'dimensionPrompt' : d.tool === 'force' ? 'forcePrompt' : undefined;
+        if (prompt) {
+          // A dimension says what it measures, a load and a force how much: the label is asked for right away.
+          void ask(text(prompt)).then((label) => {
             if (label === undefined) return;
-            commit(addItem(previous, { ...shape, text: label.trim() }), previous);
+            commit(addItem(previous, { ...shape, text: label.trim() } as CanvasItem), previous);
             setSelected(id);
           });
           return;
@@ -214,25 +249,34 @@ export function CanvasEditor(props: CanvasEditorProps) {
     }
   };
 
-  const addText = async (at: { x: number; y: number }) => {
-    const value = await ask(text('textPrompt'));
-    if (!value?.trim()) return;
-    const id = newId(scene);
-    commit(addItem(scene, { id, type: 'text', x: at.x, y: at.y, text: value.trim(), size: fontSize, color: colour }));
-    setSelected(id);
+  /** A new text written where the canvas was clicked, right in the drawing. */
+  const startWriting = (at: { x: number; y: number }) => {
+    setSelected(undefined);
     setTool('select');
+    setWriting({ id: newId(scene), type: 'text', x: at.x, y: at.y, text: '', size: fontSize, color: colour });
+  };
+  /** The text written: put in, changed, or gone when nothing is left of it. */
+  const doneWriting = (written: Extract<CanvasItem, { type: 'text' }> | undefined) => {
+    const target = writing;
+    setWriting(undefined);
+    if (!target) return;
+    const old = findItem(scene, target.id);
+    if (!written) {
+      if (old) commit(removeItem(scene, old.id));
+      return;
+    }
+    commit(old ? replaceItem(scene, written) : addItem(scene, written));
+    setSelected(written.id);
   };
 
   const editText = async (target: CanvasItem) => {
-    if (target.type === 'dimension' || target.type === 'load') {
-      const value = await ask(text(target.type === 'load' ? 'loadPrompt' : 'dimensionPrompt'), target.text);
+    if (target.type === 'dimension' || target.type === 'load' || (target.type === 'arrow' && target.text !== undefined)) {
+      const key = target.type === 'load' ? 'loadPrompt' : target.type === 'dimension' ? 'dimensionPrompt' : 'forcePrompt';
+      const value = await ask(text(key), target.text);
       if (value !== undefined) commit(replaceItem(scene, { ...target, text: value.trim() }));
       return;
     }
-    if (target.type !== 'text') return;
-    const value = await ask(text('textPrompt'), target.text);
-    if (value === undefined) return;
-    commit(value.trim() ? replaceItem(scene, { ...target, text: value.trim() }) : removeItem(scene, target.id));
+    if (target.type === 'text') setWriting(target);
   };
 
   const addPictures = async (pictures: readonly CanvasPicture[]) => {
@@ -266,25 +310,31 @@ export function CanvasEditor(props: CanvasEditorProps) {
     if (change.fill !== undefined) setFilled(change.fill);
     if (change.hatch !== undefined) setHatched(change.hatch);
     if (change.size !== undefined) setFontSize(change.size);
-    if (!item) return;
-    const colourNow = change.colour ?? colour;
-    const strokeOf = (s: { width: number }) => ({ color: colourNow, width: change.width ?? s.width });
-    if (item.type === 'text') commit(replaceItem(scene, { ...item, color: colourNow, size: change.size ?? item.size }));
-    else if (item.type === 'line' || item.type === 'arrow' || item.type === 'arc' || item.type === 'support') commit(replaceItem(scene, { ...item, stroke: strokeOf(item.stroke) }));
-    else if (item.type === 'dimension' || item.type === 'load') commit(replaceItem(scene, { ...item, stroke: strokeOf(item.stroke), size: change.size ?? item.size }));
-    else if (item.type === 'rect' || item.type === 'ellipse') {
-      const fill = change.fill ?? item.fill !== 'none';
-      const { hatch: _hatch, ...plain } = item;
-      const hatch = change.hatch ?? !!item.hatch;
-      commit(replaceItem(scene, { ...plain, stroke: strokeOf(item.stroke), fill: fill ? colourNow + '33' : 'none', ...(hatch ? { hatch: true } : {}) }));
-    }
+    if (group.length === 0) return;
+    // Only what was changed goes to the chosen items: a colour chosen for several keeps their widths.
+    const restyled = (target: CanvasItem): CanvasItem => {
+      const strokeOf = (s: { color: string; width: number }) => ({ color: change.colour ?? s.color, width: change.width ?? s.width });
+      if (target.type === 'text') return { ...target, color: change.colour ?? target.color, size: change.size ?? target.size };
+      if (target.type === 'line' || target.type === 'arc' || target.type === 'support') return { ...target, stroke: strokeOf(target.stroke) };
+      if (target.type === 'arrow') return { ...target, stroke: strokeOf(target.stroke), ...(target.text !== undefined && change.size !== undefined ? { size: change.size } : {}) };
+      if (target.type === 'dimension' || target.type === 'load') return { ...target, stroke: strokeOf(target.stroke), size: change.size ?? target.size };
+      if (target.type === 'rect' || target.type === 'ellipse') {
+        const stroke = strokeOf(target.stroke);
+        const fill = change.fill ?? target.fill !== 'none';
+        const { hatch: _hatch, ...plain } = target;
+        const hatch = change.hatch ?? !!target.hatch;
+        return { ...plain, stroke, fill: fill ? stroke.color + '33' : 'none', ...(hatch ? { hatch: true } : {}) };
+      }
+      return target;
+    };
+    commit(group.reduce((s, target) => replaceItem(s, restyled(target)), scene));
   };
 
   // ---------------------------------------------------------------- keys, paste, drop
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       // Keys belong to the canvas unless a field or a question over it has them.
-      if (asking.current || (e.target as HTMLElement).matches?.('input, textarea, select')) return;
+      if (asking.current || writing || (e.target as HTMLElement).matches?.('input, textarea, select, [contenteditable]')) return;
       const ctrl = e.ctrlKey || e.metaKey;
       if (ctrl && e.key.toLowerCase() === 'z') {
         e.preventDefault();
@@ -292,19 +342,22 @@ export function CanvasEditor(props: CanvasEditorProps) {
       } else if (ctrl && e.key.toLowerCase() === 'y') {
         e.preventDefault();
         redo();
-      } else if ((e.key === 'Delete' || e.key === 'Backspace') && item) {
+      } else if (ctrl && e.key.toLowerCase() === 'a') {
         e.preventDefault();
-        commit(removeItem(scene, item.id));
-        setSelected(undefined);
-      } else if (e.key.startsWith('Arrow') && item) {
+        setChosen(scene.items.map((i) => i.id));
+      } else if ((e.key === 'Delete' || e.key === 'Backspace') && group.length > 0) {
+        e.preventDefault();
+        commit(group.reduce((s, target) => removeItem(s, target.id), scene));
+        setChosen([]);
+      } else if (e.key.startsWith('Arrow') && group.length > 0) {
         e.preventDefault();
         const step = e.shiftKey ? 5 : 0.5;
         const dx = e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0;
         const dy = e.key === 'ArrowUp' ? -step : e.key === 'ArrowDown' ? step : 0;
-        commit(replaceItem(scene, moved(item, dx, dy)));
+        commit(group.reduce((s, target) => replaceItem(s, moved(target, dx, dy)), scene));
       } else if (e.key === 'Escape') {
         e.preventDefault();
-        if (selected) setSelected(undefined);
+        if (chosen.length > 0) setChosen([]);
         // In the sheet Esc ends editing and keeps the drawing; the window closes without saving.
         else if (inline) props.onDone(scene, files);
         else props.onCancel();
@@ -336,7 +389,7 @@ export function CanvasEditor(props: CanvasEditorProps) {
     if (!inline) return;
     const outside = (e: MouseEvent) => {
       const target = e.target as Element;
-      if (asking.current || svg.current?.contains(target) || toolbar.current?.contains(target)) return;
+      if (asking.current || svg.current?.contains(target) || toolbar.current?.contains(target) || target.closest?.('.canvas-text-bar, .canvas-text-editing')) return;
       doneRef.current();
     };
     // Listening starts after the double click that opened the editing.
@@ -399,7 +452,7 @@ export function CanvasEditor(props: CanvasEditorProps) {
             <input type="checkbox" data-canvas="hatch" checked={hatched} onChange={(e) => restyle({ hatch: e.target.checked })} /> {text('hatch')}
           </label>
           <select value={fontSize} title={text('fontSize')} onChange={(e) => restyle({ size: Number(e.target.value) })}>
-            {[2.5, 3, 3.5, 4, 5, 6, 8].map((s) => (
+            {FONT_SIZES.map((s) => (
               <option key={s} value={s}>
                 {String(s).replace('.', ',')} mm
               </option>
@@ -417,12 +470,11 @@ export function CanvasEditor(props: CanvasEditorProps) {
           </button>
           <button
             type="button"
-            disabled={!item}
+            disabled={group.length === 0}
             title={text('delete')}
             onClick={() => {
-              if (!item) return;
-              commit(removeItem(scene, item.id));
-              setSelected(undefined);
+              commit(group.reduce((s, target) => removeItem(s, target.id), scene));
+              setChosen([]);
             }}
           >
             🗑
@@ -435,6 +487,21 @@ export function CanvasEditor(props: CanvasEditorProps) {
             ↷
           </button>
     </>
+  );
+
+  const writer = writing && (
+    <TextEditor
+      key={writing.id}
+      item={writing}
+      stage={() => {
+        const box = svg.current?.getBoundingClientRect();
+        return box ? { box, width: scene.width } : undefined;
+      }}
+      colours={COLOURS}
+      sizes={FONT_SIZES}
+      text={text}
+      onDone={doneWriting}
+    />
   );
 
   const stage = (
@@ -459,8 +526,14 @@ export function CanvasEditor(props: CanvasEditorProps) {
             </defs>
             <rect width={scene.width} height={scene.height} fill="#fff" />
             <rect width={scene.width} height={scene.height} fill="url(#cc-grid)" />
-            <g dangerouslySetInnerHTML={{ __html: sceneBody(draft ? addItem(scene, draft) : scene, resolve) }} />
+            <g dangerouslySetInnerHTML={{ __html: sceneBody(writing ? removeItem(scene, writing.id) : draft ? addItem(scene, draft) : scene, resolve, props.values) }} />
             {selection}
+            {chosen.length > 1 &&
+              group.map((g) => {
+                const b = boxOf(g);
+                return <rect key={g.id} className="canvas-frame" x={b.x} y={b.y} width={b.w} height={b.h} />;
+              })}
+            {frame && <rect className="canvas-marquee" x={frame.x} y={frame.y} width={frame.w} height={frame.h} />}
             <rect className="canvas-size-handle" data-handle="size" x={scene.width - handleSize} y={scene.height - handleSize} width={handleSize} height={handleSize} />
           </svg>
   );
@@ -484,6 +557,7 @@ export function CanvasEditor(props: CanvasEditorProps) {
         <div className="canvas-inline" onDragOver={(e) => e.preventDefault()} onDrop={drop}>
           {stage}
         </div>
+        {writer}
       </>
     );
   }
@@ -496,6 +570,7 @@ export function CanvasEditor(props: CanvasEditorProps) {
         <div className="canvas-stage" ref={stageBox} onDragOver={(e) => e.preventDefault()} onDrop={drop}>
           {stage}
         </div>
+        {writer}
         <div className="canvas-buttons">
           <span className="canvas-info">
             {text('size')}: {scene.width} × {scene.height} mm · {text('hint')}

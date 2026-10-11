@@ -1637,8 +1637,9 @@ async function layersWithRealInput(picture: string) {
     contents.sendInputEvent({ type: 'mouseDown', ...textAt, button: 'left', clickCount: 1 });
     contents.sendInputEvent({ type: 'mouseUp', ...textAt, button: 'left', clickCount: 1 });
     await pause(300);
+    // Written right in the drawing; Esc ends it (Enter would start a new line).
     await typeText('L = 5 m');
-    await pressKey('Enter');
+    await pressKey('Escape');
     await pause(300);
     await clickOn('.canvas-toolbar [data-tool="select"]');
     await drawDrag(at(0.25, 0.45), at(0.3, 0.45), 'canvas-move');
@@ -1704,19 +1705,47 @@ async function layersWithRealInput(picture: string) {
     await clickOn('.canvas-window [data-tool="load"]');
     await drawDrag(inWindow(0.55, 0.8), inWindow(0.75, 0.8), 'canvas-load');
     await pause(300);
-    await typeText('q');
+    // The value of q in the sheet, shown and kept up to date.
+    await typeText('{q}');
     await pressKey('Enter');
     await pause(300);
     await takePicture(picture.replace(/[.]png$/, '-canvas-mechanics.png'));
+    // The text written again as in a word processor: all of it bold (Ctrl+A, the B of its bar), a second line.
+    await contents.executeJavaScript(`document.querySelectorAll('.canvas-window .canvas-svg g text').forEach((t) => { if (t.textContent.includes('L = 5 m')) t.setAttribute('data-smoke-text', ''); })`);
+    const textBox = (await contents.executeJavaScript(`(() => { const r = document.querySelector('[data-smoke-text]').getBoundingClientRect(); return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) }; })()`)) as { x: number; y: number };
+    contents.sendInputEvent({ type: 'mouseDown', ...textBox, button: 'left', clickCount: 1 });
+    contents.sendInputEvent({ type: 'mouseUp', ...textBox, button: 'left', clickCount: 1 });
+    contents.sendInputEvent({ type: 'mouseDown', ...textBox, button: 'left', clickCount: 2 });
+    contents.sendInputEvent({ type: 'mouseUp', ...textBox, button: 'left', clickCount: 2 });
+    await pause(400);
+    const writingOpen = (await contents.executeJavaScript(`document.activeElement?.classList.contains('canvas-text-editing') === true`)) as boolean;
+    await pressKey('A', ['control']);
+    await clickOn('.canvas-text-bar [data-text="bold"]');
+    await pressKey('End', ['control']);
+    // Enter as the keyboard sends it: the key and the character of a new line.
+    contents.sendInputEvent({ type: 'keyDown', keyCode: 'Enter' });
+    contents.sendInputEvent({ type: 'char', keyCode: '\r' });
+    contents.sendInputEvent({ type: 'keyUp', keyCode: 'Enter' });
+    await pause(150);
+    await typeText('nosník');
+    await takePicture(picture.replace(/[.]png$/, '-canvas-text.png'));
+    await pressKey('Escape');
+    await pause(300);
+    // A frame dragged over both supports chooses the two of them.
+    await drawDrag(inWindow(0.5, 0.86), inWindow(0.82, 0.99), 'canvas-frame');
+    const framed = (await contents.executeJavaScript(`document.querySelectorAll('.canvas-window .canvas-svg > rect.canvas-frame').length`)) as number;
+    await pressKey('Escape');
+    await pause(200);
     await clickOn('.canvas-window [data-canvas="done"]');
     await pause(500);
     const mechanics = (await contents.executeJavaScript(`(() => {
       const img = [...document.querySelectorAll('.layer-view.active figure img')].find((i) => i.src.startsWith('data:image/svg+xml'));
       const svg = img ? decodeURIComponent(img.src.slice(img.src.indexOf(',') + 1)) : '';
       return svg.includes('class="cc-dimension"') && svg.includes('>l</text>') && /<path d="M[^"]*A/.test(svg) && svg.includes('fill="url(#cc-hatch-') &&
-        svg.includes('cc-support cc-pin') && svg.includes('cc-support cc-roller') && svg.includes('rotate(90)"><line x1="0"') && svg.includes('class="cc-load"') && svg.includes('>q</text>');
+        svg.includes('cc-support cc-pin') && svg.includes('cc-support cc-roller') && svg.includes('rotate(90)"><line x1="0"') && svg.includes('class="cc-load"') && svg.includes(' kN/m</text></g>') && !svg.includes('{q}') &&
+        svg.includes('<tspan font-weight="bold">L = 5 m</tspan>') && svg.includes('>nosník</tspan>');
     })()`)) as boolean;
-    canvasOk = mechanics &&
+    canvasOk = mechanics && writingOpen && framed === 2 &&
       /<rect x="[\d.]+" y="[\d.]+" width="[\d.]+"/.test(items) && shown.includes('<rect') && shown.includes('marker-end') && shown.includes('L = 5 m') && reopened === 3 && inlineEditing && windowEditing && !(await contents.executeJavaScript(`!!document.querySelector('.canvas-window, .canvas-inline')`));
   }
   const besideText = sideGroup.rows === '3,4' && sideGroup.picture && sideGroup.side !== '' && widened > parseFloat(sideGroup.side) && movedPicture && wrapped && cleared && unwrapped && placedFree && strictPlaced && canvasOk;

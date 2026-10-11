@@ -5,7 +5,7 @@
 
 import { documentTables, newDocument, readSheetFile, writeSheetFile, type SheetDocument, type StoredTable, type StudyRaw, type StudySettings } from '@kalketa/sheet';
 import type { Diagnostic, Table, UnitRegistry } from '@kalketa/core';
-import { isCanvasPath, readScene, sceneDataUri } from '@kalketa/canvas';
+import { isCanvasPath, liveNames, readScene, sceneDataUri, type LiveValues } from '@kalketa/canvas';
 
 export function emptyDocument(title: string, language: string): SheetDocument {
   const base = newDocument(title, `# ${title}\n\n`);
@@ -42,16 +42,19 @@ const MIME: Readonly<Record<string, string>> = {
 
 /** A file of the sheet (images/...) as a data: URI, cached per byte array. */
 const uriCache = new WeakMap<Uint8Array, string>();
-export function fileUri(doc: SheetDocument, path: string): string | undefined {
+/** A drawn canvas, cached per byte array and the values it shows ({L} = 5 m). */
+const canvasCache = new WeakMap<Uint8Array, { key: string; uri: string }>();
+export function fileUri(doc: SheetDocument, path: string, values?: LiveValues): string | undefined {
   const data = doc.files.get(path);
   // A canvas is drawn from its scene; pictures inside it resolve the same way.
   if (isCanvasPath(path)) {
     if (!data) return undefined;
-    let uri = uriCache.get(data);
-    if (!uri) {
-      uri = sceneDataUri(readScene(data), (inner) => (isCanvasPath(inner) ? undefined : fileUri(doc, inner)));
-      uriCache.set(data, uri);
-    }
+    const scene = readScene(data);
+    const key = liveNames(scene).map((name) => values?.(name) ?? '').join('\u0000');
+    const cached = canvasCache.get(data);
+    if (cached?.key === key) return cached.uri;
+    const uri = sceneDataUri(scene, (inner) => (isCanvasPath(inner) ? undefined : fileUri(doc, inner)), values);
+    canvasCache.set(data, { key, uri });
     return uri;
   }
   const mime = MIME[path.split('.').pop()?.toLowerCase() ?? ''];

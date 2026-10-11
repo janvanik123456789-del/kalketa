@@ -273,13 +273,13 @@ Každá fáze končí procházejícími testy. **MVP = referenční výpočet R1
 ### Možná (nápady odložené, zatím beze změny)
 
 - **Plátno – dokončení** (1. 10. 2026, odloženo; první verze stačí). Vše v modulu `canvas`, rozhraní k hlavnímu programu se rozšíří jen tam, kde je to uvedeno:
-  - **živé hodnoty z výpočtu** v textu plátna (`{L}` → „5 m“, mění se se zadáním); rozhraní: hostitel předá funkci „jméno → hotový text“, plátno nezávisí na jádru,
+  - ~~**živé hodnoty z výpočtu**~~ **hotovo 2026-10-11:** `{L}` v textu i popisku kóty, zatížení a síly ukáže „5 m“ (jak ho ukazuje řádek listu) a mění se se zadáním; hostitel předá funkci „jméno → hotový text“ (`LiveValues`), plátno nezávisí na jádru; jméno bez hodnoty zůstane napsané,
   - ~~**kóty**~~ **hotovo 2026-10-11:** nástroj Kóta (D) mezi dvěma body s pomocnými čarami, šipkami a popiskem (ptá se hned po nakreslení, dvojklik ho změní), táhlo uprostřed posune kótu od bodů; zbývá živá hodnota (`{L}`) a styly kót (čárka místo šipky),
-  - výběr více prvků (obdélníkem a Shiftem), posun a mazání skupiny, seskupení,
+  - ~~výběr více prvků~~ **hotovo 2026-10-11:** rámečkem, Shift+klikem a Ctrl+A; posun myší i šipkami, mazání a změna barvy či tloušťky všech naráz; zbývá seskupení,
   - zarovnání a rozmístění (vlevo, na střed, rovnoměrně), přichytávání k prvkům,
-  - víceřádkový text psaný přímo do kresby místo dialogu, tučné písmo, zarovnání textu,
+  - ~~víceřádkový text psaný přímo do kresby~~ **hotovo 2026-10-11:** jako ve Wordu, pole přímo nad textem s lištou: tučně, kurzíva, podtržení a barva i jen části textu (Ctrl+B, Ctrl+I, Ctrl+U), písmo (bezpatkové, patkové, strojové), velikost a zarovnání celého textu, Enter nový řádek, Esc nebo klik mimo konec; uloženo jako řádky úseků (`runs`) vedle prostého textu,
   - otočení prvků, ořez obrázku, průhlednost,
-  - další tvary: mnohoúhelník, křivka; knihovny značek (klouby v prutu, osamělé síly s popiskem, elektrické značky). **Hotovo 2026-10-11:** značky mechaniky: podpora kloubová (P) a posuvná (K) a vetknutí (F) kliknutím na bod, roh mění velikost, tlačítko ⟳ otočí o 90°; spojité zatížení (Q) tažením podél prutu, šipky po 3 mm k prutu, popisek (q), táhlo uprostřed mění délku šipek; oblouk (O, čtvrtkruh od středu ke kraji) a moment (M, tři čtvrtiny se šipkou), táhla začátku (s poloměrem) a konce; šrafy obdélníku a elipsy (přepínač Šrafy, čáry 45° po 1,5 mm v barvě obrysu),
+  - další tvary: mnohoúhelník, křivka; knihovny značek (elektrické značky). **Hotovo 2026-10-11:** síla (S, šipka s popiskem u konce) a kloub v prutu (H). **Hotovo 2026-10-11:** značky mechaniky: podpora kloubová (P) a posuvná (K) a vetknutí (F) kliknutím na bod, roh mění velikost, tlačítko ⟳ otočí o 90°; spojité zatížení (Q) tažením podél prutu, šipky po 3 mm k prutu, popisek (q), táhlo uprostřed mění délku šipek; oblouk (O, čtvrtkruh od středu ke kraji) a moment (M, tři čtvrtiny se šipkou), táhla začátku (s poloměrem) a konce; šrafy obdélníku a elipsy (přepínač Šrafy, čáry 45° po 1,5 mm v barvě obrysu),
   - kopírování a vkládání prvků (i mezi plátny), export plátna jako SVG nebo PNG.
 - **Další vkládané prvky mimo výpočet** (1. 10. 2026), každý jako samostatný modul stejným vzorem jako plátno:
   - ~~**graf** funkce nebo řady z výpočtu či tabulky~~ – první verze hotová (1. 10. 2026, kap. 7.1e jazyka),

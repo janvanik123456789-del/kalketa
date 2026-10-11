@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { addItem, drawn, turned, emptyScene, endMoved, itemAt, migrate, moved, newId, readScene, reordered, resized, sceneSvg, writeScene, type CanvasItem } from '../src/index.js';
+import { addItem, drawn, itemsIn, liveNames, turned, emptyScene, endMoved, itemAt, migrate, moved, newId, readScene, reordered, resized, sceneSvg, writeScene, type CanvasItem } from '../src/index.js';
+import { htmlOf, runsOf, type RichNode } from '../src/editor/TextEditor.js';
 
 const rect: CanvasItem = { id: 'i1', type: 'rect', x: 10, y: 10, w: 20, h: 10, stroke: { color: '#000', width: 0.5 }, fill: 'none' };
 
@@ -110,5 +111,43 @@ describe('supports and loads', () => {
     expect(svg).toContain('<line x1="10" y1="24" x2="40" y2="24"');
     expect(svg).toMatch(/>q<\/text>/);
     expect(endMoved(load, 3, 25, 20)).toMatchObject({ height: 10 });
+  });
+});
+
+describe('texts written as in a word processor, values of the calculation, choosing by a frame', () => {
+  it('draws runs of a text in their formats, the font and the alignment of the whole', () => {
+    const text: CanvasItem = {
+      id: 't1', type: 'text', x: 10, y: 10, text: 'Síla F\nna konci', size: 4, color: '#000', font: 'serif', align: 'center',
+      runs: [[{ text: 'Síla ' }, { text: 'F', bold: true, italic: true, color: '#c62828' }], [{ text: 'na konci', underline: true }]],
+    };
+    const svg = sceneSvg(addItem(emptyScene(), text));
+    expect(svg).toContain('font-family="Cambria, Times New Roman, serif"');
+    expect(svg).toContain('text-anchor="middle"');
+    expect(svg).toContain('<tspan font-weight="bold" font-style="italic" fill="#c62828">F</tspan>');
+    expect(svg).toContain('<tspan text-decoration="underline">na konci</tspan>');
+  });
+
+  it('shows {names} with the values the host gives, and keeps a name without one', () => {
+    const scene = addItem(addItem(emptyScene(), { id: 't1', type: 'text', x: 0, y: 0, text: 'L = {L}, {x}', size: 3.5, color: '#000' }), drawn('dimension', 'd1', 0, 20, 30, 20, '#000', 0.25, 'none', '{L}'));
+    expect(liveNames(scene)).toEqual(['L', 'x']);
+    const svg = sceneSvg(scene, undefined, (name) => (name === 'L' ? '5 m' : undefined));
+    expect(svg).toContain('L = 5 m, {x}');
+    expect(svg).toMatch(/>5 m<\/text>/);
+  });
+
+  it('reads a field written in back as runs: blocks and breaks as lines, tags and styles as formats', () => {
+    const el = (name: string, children: RichNode[], extra: Partial<RichNode> = {}): RichNode => ({ nodeType: 1, nodeName: name, textContent: null, childNodes: children, ...extra });
+    const txt = (text: string): RichNode => ({ nodeType: 3, nodeName: '#text', textContent: text, childNodes: [] });
+    const root = el('DIV', [txt('Síla '), el('B', [txt('F')]), el('DIV', [el('FONT', [txt('na konci')], { getAttribute: () => '#c62828' })]), el('DIV', [el('BR', [])]), el('DIV', [el('SPAN', [txt('x')], { style: { textDecorationLine: 'underline' } })])]);
+    expect(runsOf(root)).toEqual([[{ text: 'Síla ' }, { text: 'F', bold: true }], [{ text: 'na konci', color: '#c62828' }], [], [{ text: 'x', underline: true }]]);
+    expect(htmlOf([[{ text: 'a' }, { text: 'b', bold: true }], []])).toBe('<div>a<b>b</b></div><div><br></div>');
+  });
+
+  it('chooses by a frame what it catches, a force with its label, a hinge', () => {
+    const scene = addItem(addItem(emptyScene(), rect), drawn('force', 'f1', 50, 10, 50, 30, '#000', 0.35, 'none', 'F', 3.5));
+    expect(itemsIn(scene, 0, 0, 25, 15)).toEqual(['i1']);
+    expect(itemsIn(scene, 0, 0, 100, 100)).toEqual(['i1', 'f1']);
+    expect(sceneSvg(scene)).toMatch(/<g class="cc-force">.*>F<\/text><\/g>/);
+    expect(sceneSvg(addItem(emptyScene(), drawn('hinge', 'h1', 0, 0, 5, 5, '#000', 0.35, 'none')))).toContain('cc-hinge');
   });
 });

@@ -243,7 +243,16 @@ export function App() {
     // AI notes are in use with notes or with conversations kept in them.
     (l.kind === 'ai' && hasConversations(doc.files, l.id)) ||
     (l.kind === 'data' ? (layerTables.get(l.id)?.length ?? 0) > 0 : Boolean(l.text?.trim()));
-  const resolveFile = useCallback((path: string) => fileUri(doc, path), [doc]);
+  // What a canvas shows for {L}: the value of L in the sheet, as its line shows it (5 m).
+  const liveValues = useMemo(() => {
+    const shown = new Map<string, string>();
+    for (const r of evaluation.main.statements) {
+      if (r.statement.kind !== 'definition' || !r.display) continue;
+      shown.set(r.statement.name, `${formatNumber(r.display.value, ui, { digits: 4 })}${r.display.unit ? ` ${r.display.unit}` : ''}`.replace('-', '−'));
+    }
+    return (name: string) => shown.get(name);
+  }, [evaluation.main, ui]);
+  const resolveFile = useCallback((path: string) => fileUri(doc, path, liveValues), [doc, liveValues]);
   const openKey = openPanes.join('|');
   const prints = useMemo(
     () =>
@@ -1165,6 +1174,7 @@ export function App() {
       chooseImage={() => chooseFile('image/*')}
       area={() => document.querySelector('.layer-view.active .sheet-scroll')?.getBoundingClientRect()}
       resolveFile={resolveFile}
+      values={liveValues}
       folder={path.replace(/\.json$/, '')}
       taken={(p) => doc.files.has(p)}
       onDone={(scene, files) => {

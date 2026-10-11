@@ -138,6 +138,8 @@ export type Statement =
       readonly approx?: readonly number[];
       /** After derive: a symbol of theory; names without a value are no error. */
       readonly symbolic?: boolean;
+      /** Where the formula or the value comes from: M_Ed := … source "EN 1990, 6.10". */
+      readonly source?: string;
     })
   /**
    * A table written in the sheet (measured points…):

@@ -394,6 +394,7 @@ class LineParser {
       added.forEach((name) => this.defined.delete(name));
     }
     this.defined.add(nameToken.text);
+    const source = this.parseSource();
     this.expectEnd();
     return {
       kind: 'definition',
@@ -405,8 +406,16 @@ class LineParser {
       ...(symbolic ? { symbolic } : {}),
       ...(target ? { target } : {}),
       ...(params ? { params } : {}),
+      ...(source !== undefined ? { source } : {}),
       span: lineSpan,
     };
+  }
+
+  /** source "EN 1990, 6.10" at the end of a line: where its formula, value or condition comes from. */
+  private parseSource(): string | undefined {
+    if (!this.isKeyword('source')) return undefined;
+    this.next();
+    return this.expect('string', 'text').text;
   }
 
   /** Steps of the chain last read that are equal when rounded (≐): step i joins members i and i + 1. */
@@ -448,6 +457,7 @@ class LineParser {
       added.forEach((name) => this.defined.delete(name));
     }
     this.defined.add(nameToken.text);
+    const source = this.parseSource();
     this.expectEnd();
     return {
       kind: 'definition',
@@ -456,6 +466,7 @@ class LineParser {
       expr,
       ...(target ? { target } : {}),
       ...(params ? { params } : {}),
+      ...(source !== undefined ? { source } : {}),
       span: lineSpan,
     };
   }
@@ -485,11 +496,7 @@ class LineParser {
       this.expect(':', ':');
     }
     const expr = this.parseExpression();
-    let source: string | undefined;
-    if (this.isKeyword('source')) {
-      this.next();
-      source = this.expect('string', 'text').text;
-    }
+    const source = this.parseSource();
     this.expectEnd();
     return {
       kind: 'check',

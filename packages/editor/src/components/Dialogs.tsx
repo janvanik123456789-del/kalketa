@@ -218,10 +218,11 @@ export function PropertiesDialog({ catalog, doc, onApply, onClose }: { catalog: 
       </label>
       <label className="field">
         <span>{t(catalog, 'props.style')}</span>
-        <select className="props-style" value={layout.style ?? 'airy'} onChange={(e) => setLayout({ ...layout, style: e.target.value as 'compact' | 'airy' | 'book' })}>
+        <select className="props-style" value={layout.style ?? 'airy'} onChange={(e) => setLayout({ ...layout, style: e.target.value as 'compact' | 'airy' | 'book' | 'columns' })}>
           <option value="compact">{t(catalog, 'props.styleCompact')}</option>
           <option value="airy">{t(catalog, 'props.styleAiry')}</option>
           <option value="book">{t(catalog, 'props.styleBook')}</option>
+          <option value="columns">{t(catalog, 'props.styleColumns')}</option>
         </select>
       </label>
       <label className="field">

@@ -597,6 +597,8 @@ check "Rozpočet": N_celk ≤ 2_500_000 CZK   source "zadání investora"
 - Podmínka, kterou nešlo vyhodnotit (chyba ve vstupech), se v souhrnu vede jako **nevyhodnocená a nevyhovující**, aby nemohla zapadnout.
 - **Dohledání původu** (`kalketa trace list.cc σ`): strom vzorců a vstupů až k řádkům tabulek a jejich zdrojům. Řádky, které `find_min` jen zkoušel, se za zdroj nepovažují, jen vybraný řádek.
 - `source` je volitelný text nebo odkaz do tabulky zdrojů listu.
+- **Zdroj i u definice (2026-10-11):** `M_Ed := 1.35·G_k + 1.5·Q_k | kN·m  source "EN 1990, 6.10"`. V tisku je za vzorcem v hranatých závorkách jako u posudku, ve stylu se sloupci v levém sloupci.
+- **Styl se sloupci (2026-10-11)**, Vlastnosti výpočtu → Styl výpočtu → Se sloupci: britský výpočtový list. Vlevo odkaz (`source` definice a posudku, citace textu `[T1]`, zdroj tabulky u `pick`), uprostřed vzorec a dosazení, vpravo výsledek se jménem (M_Ed = 54 kN·m) a u posudku využití a verdikt. Nadpisy, obrázky a grafy jsou přes celou šířku. Na každé stránce je nahoře záhlaví Odkaz / Výpočet / Výsledek. Kontrolor čte pravý sloupec a ke každému číslu najde vlevo, odkud je.
 - Program z podmínek sestaví souhrnnou tabulku (viz filozofie, kap. 6.1).
 - Nesplněná podmínka **není chyba výpočtu**. Výpočet proběhne a v tisku je výrazně označená.
 

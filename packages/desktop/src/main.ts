@@ -632,14 +632,17 @@ async function layersWithRealInput(picture: string) {
     await clickOn('.menubar-item:nth-child(1) > button');
     await clickMenu('Vlastnosti výpočtu');
     await pause(300);
-    const order = ['compact', 'airy', 'book'];
+    const order = ['compact', 'airy', 'book', 'columns'];
     const from = order.indexOf((await contents.executeJavaScript(`document.querySelector('.props-style').value`)) as string);
-    await clickOn('.props-style');
+    // Focused, not opened: on a closed select an arrow changes the value (in an open list it only moves the mark).
+    await contents.executeJavaScript(`document.querySelector('.props-style').focus()`);
     // Arrow by arrow until the select says it (a key may get lost while the dialog opens).
     for (let tries = 0; tries < 8; tries++) {
       const now = order.indexOf((await contents.executeJavaScript(`document.querySelector('.props-style').value`)) as string);
       if (now === order.indexOf(style)) break;
       await pressKey(order.indexOf(style) > now ? 'Down' : 'Up');
+      // The value changes a moment later: read too soon, one more arrow would go past it.
+      await pause(250);
     }
     // Arrows on a closed select change its value; Enter may close the dialog with it already.
     if ((await contents.executeJavaScript(`!!document.querySelector('.dialog-buttons button.default')`)) as boolean) await clickOn('.dialog-buttons button.default');
@@ -649,6 +652,14 @@ async function layersWithRealInput(picture: string) {
   const styleBefore = await chooseStyle('book');
   const bookStyle = (await contents.executeJavaScript(`!!document.querySelector('.layer-view.active .block.equation.book') && !!document.querySelector('.layer-view.active .eq-number')`)) as boolean;
   await takePicture(picture.replace(/[.]png$/, '-book.png'));
+  // With columns: the sources on the left, the results and verdicts on the right, the columns named on the page.
+  await chooseStyle('columns');
+  const columnsStyle = (await contents.executeJavaScript(`(() => {
+    const view = document.querySelector('.layer-view.active');
+    return !!view.querySelector('.page-cols-head .cols-head') && !!view.querySelector('.cols .col-out .out-line') && !!view.querySelector('.cols .col-out .out-verdict') &&
+      [...view.querySelectorAll('.cols .col-ref')].some((r) => r.textContent.trim() !== '');
+  })()`)) as boolean;
+  await takePicture(picture.replace(/[.]png$/, '-columns.png'));
   await chooseStyle(styleBefore);
   // File > Properties: the result of a check said as VYHOVÍ, in the checks and the summary; set back.
   const chooseVerdict = async (key: 'Down' | 'Up') => {
@@ -670,7 +681,7 @@ async function layersWithRealInput(picture: string) {
   const verdictBack = (await contents.executeJavaScript(`(document.querySelector('.layer-view.active .pages')?.textContent ?? '').includes('VYHOVUJE')`)) as boolean;
   // The head of every page: the date of the calculation on the right.
   const pageHead = (await contents.executeJavaScript(`document.querySelector('.layer-view.active .page-head-right')?.textContent ?? ''`)) as string;
-  const summaryOk = /\d{1,2}\. \d{1,2}\. \d{4}/.test(pageHead) && bookStyle && verdictFuture && verdictBack && summaryOpens && summaryAtEnd && ((await contents.executeJavaScript(`document.querySelector('.layer-view.active .page-body > [data-item]')?.classList.contains('summary-box') ?? false`)) as boolean);
+  const summaryOk = /\d{1,2}\. \d{1,2}\. \d{4}/.test(pageHead) && bookStyle && columnsStyle && verdictFuture && verdictBack && summaryOpens && summaryAtEnd && ((await contents.executeJavaScript(`document.querySelector('.layer-view.active .page-body > [data-item]')?.classList.contains('summary-box') ?? false`)) as boolean);
   const samplesOk =sampleTab.tabs.length === 2 && sampleTab.tabs[0] === 'Vzor – Posouzení nosníku N1' && sampleTab.tabs[1] === 'Vzor – Dimenzování kabelu a úbytek napětí' && sampleTab.errors === 0;
   await clickOn('.layer-tab.add'); // a menu of the kinds of layers
   const addKinds = (await contents.executeJavaScript(`document.querySelectorAll('.context-menu .menu-row').length`)) as number;

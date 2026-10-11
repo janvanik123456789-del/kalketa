@@ -25,3 +25,15 @@ describe('calculation styles', () => {
     expect(html()).toBe(html('airy'));
   });
 });
+
+describe('the style with columns (a British calculation sheet)', () => {
+  it('puts the source on the left, the working in the middle, the result and the verdict on the right', () => {
+    const source = 'q := 12 kN/m\nL := 6 m\nM_Ed := q·L²/8 | kN·m  source "EN 1990, 6.10"\ncheck "Ohyb": M_Ed ≤ 60 kN·m  source "EN 1993-1-1, 6.2.5"';
+    const html = printHtml(evaluateSheet(source), { catalog: catalogFor('cs'), registry: defaultRegistry, title: 'T', style: 'columns' });
+    expect(html).toContain('<div class="cols cols-head"><div class="col-ref">Odkaz</div><div class="col-calc">Výpočet</div><div class="col-out">Výsledek</div></div>');
+    expect(html).toMatch(/<div class="cols"><div class="col-ref">EN 1990, 6\.10<\/div><div class="col-calc">.*<\/div><div class="col-out"><div class="out-line">.*54.*<\/div><\/div><\/div>/s);
+    expect(html).toMatch(/<div class="col-ref">EN 1993-1-1, 6\.2\.5<\/div>.*<div class="out-verdict passed">.*VYHOVUJE/s);
+    // Another style shows the source of a formula as a check does.
+    expect(printHtml(evaluateSheet(source), { catalog: catalogFor('cs'), registry: defaultRegistry, title: 'T' })).toContain('<span class="source">[EN 1990, 6.10]</span>');
+  });
+});

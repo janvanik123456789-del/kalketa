@@ -108,6 +108,8 @@ export type PrintBlock =
       readonly blockCalc?: string;
       /** A derivation whose every step was checked and holds. */
       readonly derived?: boolean;
+      /** Where the formula comes from (source "EN 1990, 6.10"). */
+      readonly source?: string;
       readonly messages: readonly Message[];
     }
   | {
@@ -405,6 +407,7 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
           ...(imported.length ? { imported } : {}),
           ...(blockCalc ? { blockCalc } : {}),
           ...(derived ? { derived } : {}),
+          ...(s.kind === 'definition' && s.source ? { source: s.source } : {}),
           messages,
         });
         break;

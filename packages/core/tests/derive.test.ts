@@ -124,3 +124,12 @@ describe('a step equal when rounded (≐)', () => {
     expect(r('derive γ == tan(γ)').derivation).toEqual([{ ok: false, problem: 'differs' }]);
   });
 });
+
+describe('the source of a definition', () => {
+  it('is read after its unit and kept with it', () => {
+    const r = evaluateSheet('G_k := 10 kN·m\nQ_k := 5 kN·m\nM_Ed := 1.35·G_k + 1.5·Q_k | kN·m  source "EN 1990, 6.10"');
+    expect(r.diagnostics).toEqual([]);
+    expect(r.statements.at(-1)!.statement).toMatchObject({ kind: 'definition', source: 'EN 1990, 6.10' });
+    expect(r.statements.at(-1)!.display).toMatchObject({ value: 21, unit: 'kN·m' });
+  });
+});

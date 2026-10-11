@@ -181,6 +181,7 @@ kbd { font: 12px Consolas, monospace; background: #fff; border: 1px solid #c4cad
 .page-body { height: 100%; position: relative; display: flow-root; }
 .page-head { position: absolute; top: 8mm; left: 20mm; font: 8pt sans-serif; color: #888; }
 .page-head-right { position: absolute; top: 8mm; right: 16mm; font: 8pt sans-serif; color: #888; }
+.page-cols-head { position: absolute; }
 .page-foot { position: absolute; bottom: 8mm; right: 16mm; font: 8pt sans-serif; color: #888; }
 .page-foot-left { position: absolute; bottom: 8mm; left: 20mm; font: 8pt sans-serif; color: #888; }
 /* File > Revisions */

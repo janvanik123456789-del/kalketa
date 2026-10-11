@@ -8,7 +8,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type 
 import { formatExpr, formatPicture, fromDecimalComma, parsePicture, TEXT_ALIGNS, TEXT_COLORS, toDecimalComma, type SheetResult, type Statement } from '@kalketa/core';
 import { formatDate, formatNumber, t, type Catalog, type UiKey } from '@kalketa/i18n';
 import { labelParts, xPosition, xValueAt } from '@kalketa/chart';
-import { isInput, renderBlockHtml, renderSummary, type CalcStyle, type PrintBlock, type PrintDocument } from '@kalketa/render';
+import { columnsHead, isInput, renderBlockHtml, renderSummary, type CalcStyle, type PrintBlock, type PrintDocument } from '@kalketa/render';
 import { isCanvasPath } from '@kalketa/canvas';
 import { paginate, type PageGeometry } from '../logic/pages.js';
 import { segments, type Segment } from '../logic/segments.js';
@@ -691,6 +691,10 @@ export function SheetView(props: Props) {
           >
             <div className="page-head">{props.title}</div>
             {props.headRight && <div className="page-head-right">{props.headRight}</div>}
+            {/* The columns named on every page, in its top margin: the rows below keep the whole body. */}
+            {props.calcStyle === 'columns' && (
+              <div className="page-cols-head" style={{ top: `calc(${mm(geometry.margin.top)} - 6mm)`, left: mm(geometry.margin.left), right: mm(geometry.margin.right) }} dangerouslySetInnerHTML={{ __html: columnsHead(props.printCatalog) }} />
+            )}
             <div className="page-body">
               {page.map((item) =>
                 item.kind === 'summary' ? (

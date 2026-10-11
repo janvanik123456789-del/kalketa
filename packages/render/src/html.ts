@@ -36,7 +36,8 @@ export interface HtmlOptions {
  * never the calculation.
  */
 /** compact: a line per step chain (school); airy: a line per step; book: formulas centred, as textbooks set them. */
-export type CalcStyle = 'compact' | 'airy' | 'book';
+/** columns: the British calculation sheet, the source on the left, the calculation, its results on the right. */
+export type CalcStyle = 'compact' | 'airy' | 'book' | 'columns';
 
 // A name with an index, a vector arrow or a power in text, written as in a formula: σ_Kt, S_min, p⃗_1, d^2.
 const TEXT_NAME = /(\p{L}[\p{L}\p{N}\p{M}]*)(_[\p{L}\p{N}\p{M}_]*[\p{L}\p{N}\p{M}])?(\^-?[\p{L}\p{N}]+)?/gu;
@@ -119,7 +120,9 @@ const SEVERITY_MARK: Readonly<Record<Message['severity'], string>> = { error: '�
 export function renderHtml(doc: PrintDocument, options: HtmlOptions): string {
   const { catalog } = options;
   const summary = doc.summary ? renderSummary(doc.summary.rows, doc.summary.allPassed, catalog) : '';
-  const body = renderBlocksHtml(doc.blocks, catalog, options.aiLines, options.style);
+  // With columns the first row names them, as on a calculation sheet.
+  const head = options.style === 'columns' ? columnsHead(catalog) : '';
+  const body = head + renderBlocksHtml(doc.blocks, catalog, options.aiLines, options.style);
   const aiNotice = options.aiLines && options.aiLines.size > 0 ? `<p class="ai-notice">${esc(t(catalog, 'print.aiUnreviewed'))}</p>` : '';
   return `<!doctype html>
 <html lang="${esc(doc.language)}">
@@ -195,8 +198,54 @@ export function sideGroupHtml(rows: string, picture: string, side: 'left' | 'rig
   return `<div class="side-group side-${side}" style="--side:${width ?? 40}%"><div class="side-rows">${rows}</div><div class="side-picture">${picture}</div></div>`;
 }
 
+/** The head of the three columns: Reference, Calculation, Result. */
+export function columnsHead(catalog: Catalog): string {
+  return `<div class="cols cols-head"><div class="col-ref">${esc(t(catalog, 'print.colRef'))}</div><div class="col-calc">${esc(t(catalog, 'print.colCalc'))}</div><div class="col-out">${esc(t(catalog, 'print.colOut'))}</div></div>`;
+}
+
+/**
+ * A block on a calculation sheet with columns: its source on the left, the working in the
+ * middle, what it gives on the right (a result with its name, a verdict). Headings,
+ * pictures and charts stay across the whole width (undefined).
+ */
+function columnsHtml(block: PrintBlock, catalog: Catalog, options: BlockHtmlOptions): string | undefined {
+  const inner: BlockHtmlOptions = { ...options, style: 'airy' };
+  const row = (ref: string | undefined, calc: string, out: string) =>
+    `<div class="cols"><div class="col-ref">${ref ? esc(ref) : ''}</div><div class="col-calc">${calc}</div><div class="col-out">${out}</div></div>`;
+  switch (block.kind) {
+    case 'equation': {
+      const first = block.lines[0];
+      const last = block.lines[block.lines.length - 1];
+      // The result goes to the right with its name; the formula and its numbers stay.
+      const split = block.lines.length > 1 && last?.role === 'result' && !last.lhs && first?.lhs;
+      const { source, ...rest } = block;
+      const calc = renderBlockHtml(split ? { ...rest, lines: block.lines.slice(0, -1) } : rest, catalog, inner);
+      const out = split ? `<div class="out-line">${math(first.lhs!)}<span class="op">${esc(last.op ?? '=')}</span>${math(last.rhs)}</div>` : '';
+      return row(source, calc, out);
+    }
+    case 'check': {
+      const { source, ...rest } = block;
+      const status = !block.evaluated ? 'not-evaluated' : block.passed ? 'passed' : 'failed';
+      const utilization = block.utilization ? `<span class="utilization">${esc(block.utilization)}</span>` : '';
+      return row(source, renderBlockHtml(rest, catalog, inner), `<div class="out-verdict ${status}">${utilization}<span class="status">${esc(block.verdict)}</span></div>`);
+    }
+    case 'selection':
+      return row(block.source, renderBlockHtml(block, catalog, inner), `<div class="out-line">${math(block.name)}<span class="op">=</span><strong>${esc(block.label)}</strong></div>`);
+    case 'paragraph': {
+      const { cites, ...rest } = block;
+      return row(cites?.length ? cites.map((c) => `[${c}]`).join(' ') : undefined, renderBlockHtml(rest, catalog, inner), '');
+    }
+    default:
+      return undefined;
+  }
+}
+
 /** One block of the print model as HTML; shared by print and the editor. */
 export function renderBlockHtml(block: PrintBlock, catalog: Catalog, options: BlockHtmlOptions = {}): string {
+  if (options.style === 'columns') {
+    const columns = columnsHtml(block, catalog, options);
+    if (columns !== undefined) return columns;
+  }
   switch (block.kind) {
     case 'heading': {
       const level = Math.min(block.level + 1, 6);
@@ -230,7 +279,7 @@ export function renderBlockHtml(block: PrintBlock, catalog: Catalog, options: Bl
     }
     case 'equation':
       return `<section class="block equation${options.style === 'compact' ? ' compact' : options.style === 'book' ? ' book' : ''}${block.number !== undefined ? ' numbered' : ''}" data-line="${block.line}">
-${numbered(options.style === 'compact' ? equationFlow(block.lines, block.comment, options.defineOperator ?? '=') : equationTable(block.lines, block.comment, options.defineOperator ?? '='), block.number)}${block.derived ? `<div class="derived">✓ ${esc(t(catalog, 'print.derived'))}</div>` : ''}${imported(block.imported, catalog)}${blockCalc(block.blockCalc, catalog)}${messages(block.messages)}
+${numbered(options.style === 'compact' ? equationFlow(block.lines, block.comment, options.defineOperator ?? '=', block.source) : equationTable(block.lines, block.comment, options.defineOperator ?? '=', block.source), block.number)}${block.derived ? `<div class="derived">✓ ${esc(t(catalog, 'print.derived'))}</div>` : ''}${imported(block.imported, catalog)}${blockCalc(block.blockCalc, catalog)}${messages(block.messages)}
 </section>`;
     case 'selection': {
       const condition = block.condition
@@ -292,11 +341,11 @@ ${body}
 }
 
 /** Lines aligned on "=": the left-hand side only on the first line. */
-function equationTable(lines: readonly EquationLine[], note: string | undefined, defineOperator: string): string {
+function equationTable(lines: readonly EquationLine[], note: string | undefined, defineOperator: string, source?: string): string {
   const rows = lines.map((line, i) => {
     const lhs = line.lhs ? `${line.lead ? `<span class="lead">${esc(line.lead)}</span>` : ''}${math(line.lhs)}` : '';
     const op = line.op ?? (line.lhs ? defineOperator : i > 0 ? '=' : '');
-    return `<tr class="${line.role}"><td class="lhs">${lhs}</td><td class="op">${op}</td><td class="rhs">${math(line.rhs)}</td><td class="note">${i === 0 ? comment(note) : ''}</td></tr>`;
+    return `<tr class="${line.role}"><td class="lhs">${lhs}</td><td class="op">${op}</td><td class="rhs">${math(line.rhs)}</td><td class="note">${i === 0 ? comment(note) + sourceRef(source) : ''}</td></tr>`;
   });
   return `<table class="eq">\n${rows.join('\n')}\n</table>`;
 }
@@ -305,7 +354,7 @@ function equationTable(lines: readonly EquationLine[], note: string | undefined,
  * The compact style: the name, then each step after its sign, all on one line;
  * the steps wrap at an equals sign under the first one when the line is full.
  */
-function equationFlow(lines: readonly EquationLine[], note: string | undefined, defineOperator: string): string {
+function equationFlow(lines: readonly EquationLine[], note: string | undefined, defineOperator: string, source?: string): string {
   // The name leads the line when the first step has it; a later step with a name of its own
   // (the result of a solved equation, "x = 2") keeps it.
   const lhs = lines[0]?.lhs;
@@ -314,7 +363,7 @@ function equationFlow(lines: readonly EquationLine[], note: string | undefined, 
     const own = i > 0 && line.lhs ? `${line.lead ? `<span class="lead">${esc(line.lead)}</span>` : ''}${math(line.lhs)}` : '';
     return `<span class="part ${line.role}${own ? ' own' : ''}">${own}${op ? `<span class="op">${esc(op)}</span>` : ''}${math(line.rhs)}</span>`;
   });
-  const comment = note ? `<span class="part note">${esc(note)}</span>` : '';
+  const comment = (note ? `<span class="part note">${esc(note)}</span>` : '') + (source ? `<span class="part">${sourceRef(source)}</span>` : '');
   return `<div class="eq-flow">${lhs ? `<span class="lhs">${math(lhs)}</span>` : ''}<span class="parts">${parts.join('')}${comment}</span></div>`;
 }
 
@@ -355,6 +404,11 @@ function comment(text: string | undefined): string {
   return text ? `<span class="comment">${esc(text)}</span>` : '';
 }
 
+/** Where a formula comes from, as a check shows it: [EN 1990, 6.10]. */
+function sourceRef(source: string | undefined): string {
+  return source ? ` <span class="source">[${esc(source)}]</span>` : '';
+}
+
 function math(node: MathNode): string {
   return toMathML(node);
 }
@@ -385,7 +439,21 @@ ${NOTES_CSS}
 }
 
 /** Styles of blocks and the summary; used by print and by the editor. */
-export const BLOCK_CSS = `math { font-family: "Cambria Math", "STIX Two Math", "Latin Modern Math", math; font-size: 1.1em; math-style: normal; }
+export const BLOCK_CSS = `/* A calculation sheet with columns: the source, the working, the results; lines between them run down the page. */
+.cols { display: grid; grid-template-columns: 22mm minmax(0, 1fr) 38mm; column-gap: 0; align-items: stretch; }
+.cols > div { min-width: 0; }
+.cols > .col-ref { border-right: 0.4pt solid #999; padding: 1.2mm 2mm 0 0; font-size: 8pt; color: #444; overflow-wrap: anywhere; }
+.cols > .col-calc { padding: 0 2.5mm; }
+.cols > .col-out { border-left: 0.4pt solid #999; padding: 1.2mm 0 0 2.5mm; }
+.cols.cols-head { border-bottom: 0.8pt solid #333; font-weight: 600; font-size: 9pt; color: #222; }
+.cols.cols-head > div { padding-top: 0; padding-bottom: 1mm; }
+.cols .col-calc .verdict, .cols .col-calc .check-head .source { display: none; }
+.cols .out-line { font-weight: bold; }
+.cols .out-line .op { margin: 0 0.3em; font-weight: normal; }
+.cols .out-verdict { display: flex; flex-direction: column; gap: 0.5mm; font-weight: bold; }
+.cols .out-verdict .utilization { font-weight: normal; font-size: 9pt; }
+.cols .out-verdict.failed .status { color: #b00020; }
+math { font-family: "Cambria Math", "STIX Two Math", "Latin Modern Math", math; font-size: 1.1em; math-style: normal; }
 h1 { font-size: 17pt; margin: 0 0 1mm; }
 h2 { font-size: 13pt; margin: 6mm 0 2mm; border-bottom: 0.4pt solid #999; break-after: avoid; }
 .position-head .position { display: inline-block; min-width: 16mm; margin-right: 2mm; }

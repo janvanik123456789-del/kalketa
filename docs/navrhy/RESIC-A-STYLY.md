@@ -118,7 +118,7 @@ Prošli jsme veřejné pokyny vysokých škol a profesních organizací:
 | Styl | Pro koho | Co dělá |
 |---|---|---|
 | **Školní / úsporný** | české a německé školy, běžná praxe | výpočet na jednom řádku (vzorec = dosazení = **výsledek**, zalomení na rovnítku), víc zadání na řádek, zvýrazněný výsledek, VYHOVÍ / NEVYHOVÍ, 3 platné číslice |
-| **Se sloupci** | britská praxe, kontrola projektu | vlevo zdroj (`source`, citace podkladů), uprostřed výpočet, vpravo výsledky a posudky; kontrolor čte pravý sloupec |
+| **Se sloupci** | britská praxe, kontrola projektu | vlevo zdroj (`source`, citace podkladů), uprostřed výpočet, vpravo výsledky a posudky; kontrolor čte pravý sloupec. **Hotovo 2026-10-11** (jazyk 10), i `source` u definic |
 | **Vzdušný** | dnešní vzhled, výuka krok za krokem | každý krok na svém řádku |
 
 Ve všech stylech hlavička (název, autor, datum, strana x/y, revize), číslování po oddílech a tabulka rekapitulace zatížení jako běžný prvek listu.

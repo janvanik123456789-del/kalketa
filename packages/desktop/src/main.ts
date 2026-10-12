@@ -1464,8 +1464,24 @@ async function layersWithRealInput(picture: string) {
       const b = (chart?.closest('.page-body') ?? document.querySelector('.layer-view.active .page-body')).getBoundingClientRect();
       return !!fig && fig.width > b.width * 0.8 && !document.querySelector('.layer-view.active .row.wrap-left, .layer-view.active .row.wrap-right');
     })()`)) as boolean;
-    chartPlaced = placed && restored;
-    chartSteps = `framed=${chartFramed} placed=${placed} restored=${restored}`;
+    // The y axis set from the chart's menu: typed into the question, the curves cut off beyond it.
+    await clickOn('.layer-view.active .block.chart svg', [], 'right');
+    await clickMenu('Rozsah osy y');
+    await pause(300);
+    await typeText('-100; 50');
+    await pressKey('Enter');
+    await pause(500);
+    const yRanged = (await contents.executeJavaScript(`(() => {
+      const svg = document.querySelector('.layer-view.active .block.chart svg.chart-svg');
+      const ticks = [...(svg?.querySelectorAll('text') ?? [])].map((t) => t.textContent.replace(/\\s+/g, '').replace('−', '-'));
+      return !!svg?.querySelector('svg[overflow="hidden"]') && ticks.includes('-100') && ticks.includes('50');
+    })()`)) as boolean;
+    await clickOn('.layer-view.active .block.chart svg', [], 'right');
+    await clickMenu('Osa y podle hodnot');
+    await pause(400);
+    const yAuto = !(await contents.executeJavaScript(`!!document.querySelector('.layer-view.active .block.chart svg svg[overflow="hidden"]')`));
+    chartPlaced = placed && restored && yRanged && yAuto;
+    chartSteps = `framed=${chartFramed} placed=${placed} restored=${restored} yRange=${yRanged} yAuto=${yAuto}`;
   }
   const charts = !!chartBox && chartBox.paths > 0 && /^x = [\d,]+ \| Mt\(x\) = /.test(chartTip) && chartPlaced;
 

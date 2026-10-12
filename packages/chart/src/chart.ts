@@ -24,6 +24,8 @@ export interface ChartSpec {
   readonly xTitle: string;
   /** Above the y axis, e.g. "M [kN·m]". */
   readonly yTitle: string;
+  /** The y axis from and to as set (ylim); the curves beyond it are cut off. Else it follows the values. */
+  readonly yRange?: readonly [number, number];
 }
 
 export interface ChartOptions {
@@ -100,7 +102,7 @@ export function chartLayout(spec: ChartSpec, options: ChartOptions = {}): ChartL
   const bar = spec.kind === 'bar';
   const categories = bar ? [...new Set(xs)].sort((a, b) => a - b) : undefined;
   // Bars stand on zero; curves get the range of their values.
-  const y = niceScale(Math.min(...ys), Math.max(...ys), 6, bar);
+  const y = spec.yRange ? fixedScale(spec.yRange[0], spec.yRange[1]) : niceScale(Math.min(...ys), Math.max(...ys), 6, bar);
   const x = categories
     ? { min: 0, max: categories.length, ticks: categories }
     : { ...niceScale(Math.min(...xs), Math.max(...xs), 8), ...tight(xs) };
@@ -110,6 +112,12 @@ export function chartLayout(spec: ChartSpec, options: ChartOptions = {}): ChartL
   const legend = spec.series.length > 1 ? 22 : 0;
   const plot = { left: Math.ceil(ticksWidth + 16), top: 26 + legend, right: width - Math.ceil(Math.min(ends, width * 0.25)), bottom: height - 40 };
   return { width, height, plot, x, y, ...(categories ? { categories } : {}) };
+}
+
+/** An axis set by hand: exactly from and to, round ticks inside. */
+function fixedScale(lo: number, hi: number): Scale {
+  const nice = niceScale(lo, hi, 6);
+  return { ...nice, min: lo, max: hi, ticks: nice.ticks.filter((t) => t >= lo - (hi - lo) * 1e-9 && t <= hi + (hi - lo) * 1e-9) };
 }
 
 /** A curve over its whole x range: the axis ends at the data, ticks stay round inside it. */
@@ -198,7 +206,13 @@ export function chartSvg(spec: ChartSpec, options: ChartOptions = {}): string {
   if (spec.xTitle) parts.push(text((plot.left + plot.right) / 2, height - 8, spec.xTitle, `text-anchor="middle" fill="${INK_2}"`));
   if (spec.yTitle) parts.push(text(plot.left - 6, plot.top - 10, spec.yTitle, `text-anchor="start" fill="${INK_2}"`));
 
-  parts.push(`<g class="chart-data">${spec.kind === 'bar' ? bars(spec, layout) : curves(spec, layout)}</g>`);
+  const data = `<g class="chart-data">${spec.kind === 'bar' ? bars(spec, layout) : curves(spec, layout)}</g>`;
+  // A y axis set by hand cuts off what lies beyond it: the data in a window of the plot area.
+  parts.push(
+    spec.yRange
+      ? `<svg x="${plot.left}" y="${plot.top}" width="${plot.right - plot.left}" height="${plot.bottom - plot.top}" viewBox="${plot.left} ${plot.top} ${plot.right - plot.left} ${plot.bottom - plot.top}" overflow="hidden">${data}</svg>`
+      : data,
+  );
   if (spec.series.length > 1) parts.push(legend(spec, layout));
   if (spec.kind !== 'bar' && spec.series.length > 1 && spec.series.length <= 4) parts.push(endLabels(spec, layout));
 

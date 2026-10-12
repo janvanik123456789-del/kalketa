@@ -56,3 +56,6 @@ Když něco spadne, ztrácí data nebo nejde dál testovat, napište to hned, ne
 
 13. ~~Napsat obecnou rovnici y := a·x² + b·x + c, která se pak doplní, a dát ji do grafu.~~
    **Vyřízeno 2026-10-12:** `y(x) := a·x^2 + b·x + c`, pak `solve x ∈ ℝ, x > 0: y(x) == 0`. Tisk: y(x) = 0, podmínky, a·x² + b·x + c = 0, s čísly 5·x² + 4·x − 10 = 0, diskriminant, kořeny. Graf: `plot(y(x), x: -3 .. 2)`. Funkce listu se teď v `solve` rozepíše vždy, i bez podmínek (`solve x: y(x) == 0` dřív hlásilo „Řešení se nenašlo“).
+
+14. ~~Nastavení rozsahu osy y v grafu: teď plyne z rozsahu x a velké hodnoty y dělají graf nečitelný v průsečíku s osou x.~~
+   **Vyřízeno 2026-10-12:** pravé tlačítko na grafu → „Rozsah osy y…“ (např. `-20; 20`), zpět „Osa y podle hodnot“. V zápisu `plot(y(x), x: -3 .. 2, ylim: -20 .. 20)`. Co leží mimo rozsah, graf ořízne.

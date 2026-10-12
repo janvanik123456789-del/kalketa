@@ -32,7 +32,7 @@ export const PLOT_FUNCTION = 'plot';
 export type PlotKind = 'line' | 'points' | 'bar';
 const KINDS: readonly PlotKind[] = ['line', 'points', 'bar'];
 /** Options of plot(...); every other named argument is the variable. */
-export const PLOT_OPTIONS: readonly string[] = ['kind', 'title', 'samples', 'place'];
+export const PLOT_OPTIONS: readonly string[] = ['kind', 'title', 'samples', 'place', 'ylim'];
 /** Curves in one chart: the categorical colours a reader still tells apart. */
 export const MAX_PLOT_SERIES = 8;
 const LINE_SAMPLES = 201;
@@ -64,6 +64,8 @@ export interface PlotResult {
   readonly series: readonly PlotSeries[];
   /** Where the chart stands among the lines (place: "width=40% wrap=right"), as a picture. */
   readonly place?: Placement;
+  /** ylim: -20 .. 20: the y axis from and to, in the unit of the y axis; what lies beyond is cut off. */
+  readonly yRange?: readonly [number, number];
 }
 
 export function isPlotCall(expr: Expr): expr is CallExpr {
@@ -115,6 +117,7 @@ export function plotStatement(call: CallExpr, ctx: EvalContext, evaluate: Evalua
   const y = (q: Quantity | undefined) => (q ? toDisplay(q, ctx.registry, yUnit).value : NaN);
   const yUnitSymbol = toDisplay(ys, ctx.registry, yUnit).unit;
   const n = columns[0]!.length;
+  const yRange = yLimits(call, yDim, y, ctx, evaluate);
   let x: { values: number[]; unit: string; dates: boolean };
   if (xs) {
     const first = xs[0]!;
@@ -137,7 +140,24 @@ export function plotStatement(call: CallExpr, ctx: EvalContext, evaluate: Evalua
       ...(d.mark ? { mark: d.mark } : {}),
     })),
     ...(place && Object.keys(place).length ? { place } : {}),
+    ...(yRange ? { yRange } : {}),
   };
+}
+
+/** ylim: low .. high, in the unit of the curves (or a pure number for pure numbers). */
+function yLimits(call: CallExpr, yDim: Dimension, y: (q: Quantity) => number, ctx: EvalContext, evaluate: Evaluate): readonly [number, number] | undefined {
+  const arg = call.named.find((n) => n.name === 'ylim');
+  if (!arg) return undefined;
+  const r = arg.value;
+  if (r.kind !== 'range') return fail('E-PLOT-YLIM', r.span, {});
+  const low = asQuantity(evaluate(r.low, ctx), r.low.span);
+  const high = asQuantity(evaluate(r.high, ctx), r.high.span);
+  for (const [q, at] of [[low, r.low], [high, r.high]] as const) {
+    if (!sameDim(q.dim, yDim)) fail('E-PLOT-UNITS', at.span, { left: baseUnitSymbol(yDim, ctx.registry.baseSymbols()), right: baseUnitSymbol(q.dim, ctx.registry.baseSymbols()) });
+  }
+  const [a, b] = [y(low), y(high)];
+  if (!(b > a)) return fail('E-PLOT-YLIM', r.span, {});
+  return [a, b];
 }
 
 /** Points evenly across the range of measured x, for a smooth curve through them. */

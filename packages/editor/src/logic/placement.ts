@@ -55,3 +55,23 @@ function closingParen(text: string, open: number): number {
   }
   return -1;
 }
+
+const YLIM = /,?\s*ylim\s*:\s*([^,()"]+?\.\.[^,()"]+?)(?=\s*[,)])/;
+
+/** The range of the y axis a plot line sets (ylim: -20 .. 20), as written; undefined when it follows the values. */
+export function plotYRange(text: string): string | undefined {
+  return PLOT.test(text) ? YLIM.exec(text)?.[1]?.trim() : undefined;
+}
+
+/** The plot line with its y axis from .. to (`range`, as written), or following the values again (undefined). */
+export function withPlotYRange(text: string, range: string | undefined): string {
+  const found = YLIM.exec(text);
+  if (found) {
+    const rest = text.slice(found.index + found[0].length);
+    return range ? `${text.slice(0, found.index)}, ylim: ${range}${rest}` : `${text.slice(0, found.index)}${rest}`;
+  }
+  if (!range) return text;
+  const close = closingParen(text, text.indexOf('('));
+  if (close < 0) return text;
+  return `${text.slice(0, close)}, ylim: ${range}${text.slice(close)}`;
+}

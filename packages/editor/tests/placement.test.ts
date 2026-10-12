@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { placeable, withPlotPlace } from '../src/logic/placement.js';
+import { placeable, plotYRange, withPlotPlace, withPlotYRange } from '../src/logic/placement.js';
 
 describe('placement of pictures and charts', () => {
   it('reads and writes the place option of a chart line', () => {
@@ -19,5 +19,17 @@ describe('placement of pictures and charts', () => {
     expect(picture.kind).toBe('picture');
     expect(picture.write({ ...picture.place, dx: 10 })).toBe('![S](a.png){width=30% wrap=left dx=10%}');
     expect(placeable('L := 5 m')).toBeUndefined();
+  });
+});
+
+describe('the range of the y axis of a chart', () => {
+  it('is read from its line, set, changed and taken away', () => {
+    const line = 'plot(y(x), x: -3 .. 2, place: "width=40%")';
+    expect(plotYRange(line)).toBeUndefined();
+    const set = withPlotYRange(line, '-15 .. 15');
+    expect(set).toBe('plot(y(x), x: -3 .. 2, place: "width=40%", ylim: -15 .. 15)');
+    expect(plotYRange(set)).toBe('-15 .. 15');
+    expect(withPlotYRange(set, '0 kN·m .. 50 kN·m')).toBe('plot(y(x), x: -3 .. 2, place: "width=40%", ylim: 0 kN·m .. 50 kN·m)');
+    expect(withPlotYRange(set, undefined)).toBe(line);
   });
 });

@@ -15,7 +15,7 @@ import { segments, type Segment } from '../logic/segments.js';
 import { lineAttributesOf, lineFormatOf, withLineAttribute, withLineAttributes, withLineFormat, type LineFormatChoice } from '../logic/lineFormat.js';
 import { defineShortcut } from '../logic/shortcuts.js';
 import { pickOf } from '../logic/pick.js';
-import { placeable } from '../logic/placement.js';
+import { placeable, plotYRange, withPlotYRange } from '../logic/placement.js';
 import { PickControl } from './PickControl.js';
 import { TextRowEditor, type TextFormat } from './TextRowEditor.js';
 import { parseTextLine } from '../logic/textLine.js';
@@ -592,6 +592,32 @@ export function SheetView(props: Props) {
             ],
           }
         : { kind: 'action', label: t(c, 'picture.more'), run: () => setPictureMenu({ seg, at }) },
+      ...(item.kind === 'chart' ? yRangeItems(seg) : []),
+    ];
+  };
+
+  /** The y axis of a chart: from .. to as asked for (ylim), or following the values again. */
+  const yRangeItems = (seg: Segment): MenuItem[] => {
+    const c = props.uiCatalog;
+    const current = plotYRange(seg.text);
+    const shown = (text: string) => (props.decimalComma ? toDecimalComma(text) : text);
+    return [
+      { kind: 'separator' },
+      {
+        kind: 'action',
+        label: t(c, 'chart.yRange'),
+        checked: current !== undefined,
+        run: () =>
+          void ask(t(c, 'chart.yRangeAsk'), current ? shown(current) : '').then((answer) => {
+            if (answer === undefined) return;
+            // "-20 .. 20", "-20 20" or "-20; 20": two numbers, a unit after either kept as written.
+            const typed = answer.trim();
+            const range = typed === '' ? undefined : typed.includes('..') ? typed : typed.replace(/\s*;\s*|\s+(?=[-−+]?\d)/, ' .. ');
+            const stored = range && props.decimalComma ? fromDecimalComma(range) : range;
+            props.onReplace(seg.start, seg.end, withPlotYRange(seg.text, stored?.replace(/\s*\.\.\s*/, ' .. ')));
+          }),
+      },
+      ...(current !== undefined ? [{ kind: 'action' as const, label: t(c, 'chart.yRangeAuto'), run: () => props.onReplace(seg.start, seg.end, withPlotYRange(seg.text, undefined)) }] : []),
     ];
   };
 

@@ -55,3 +55,12 @@ describe('a quadratic written as a function of the sheet', () => {
     expect((r.values.get('u') as Quantity).si).toBeCloseTo(1.0697, 3);
   });
 });
+
+describe('the y axis of a chart set by hand', () => {
+  it('gives the range in the unit of the curves, smaller first', () => {
+    const r = evaluateSheet('y(x) := 5·x^2 + 4·x - 10\nplot(y(x), x: -3 .. 2, ylim: -15 .. 15)');
+    expect(r.statements.at(-1)!.plot?.yRange).toEqual([-15, 15]);
+    expect(evaluateSheet('plot(x^2, x: 0 .. 1, ylim: 5 .. 1)').diagnostics.map((d) => d.code)).toContain('E-PLOT-YLIM');
+    expect(evaluateSheet('plot(x^2, x: 0 .. 1, ylim: 0 m .. 1 m)').diagnostics.map((d) => d.code)).toContain('E-PLOT-UNITS');
+  });
+});

@@ -606,6 +606,8 @@ export function SheetView(props: Props) {
       { kind: 'separator' },
       // The roots of the curves on the x axis, marked and labelled.
       { kind: 'action', label: t(c, 'chart.roots'), checked: roots, run: () => props.onReplace(seg.start, seg.end, withPlotRoots(seg.text, !roots)) },
+      // The peaks and dips of the curves (where y′ = 0, the vertex of a parabola) with their coordinates.
+      { kind: 'action', label: t(c, 'chart.extremes'), checked: plotFlag(seg.text, 'extremes'), run: () => props.onReplace(seg.start, seg.end, withPlotFlag(seg.text, 'extremes', !plotFlag(seg.text, 'extremes'))) },
       // The axis of symmetry of a symmetric curve (a parabola: x = −b/(2·a)), drawn where the curve has one.
       { kind: 'action', label: t(c, 'chart.symmetry'), checked: plotFlag(seg.text, 'symmetry'), run: () => props.onReplace(seg.start, seg.end, withPlotFlag(seg.text, 'symmetry', !plotFlag(seg.text, 'symmetry'))) },
       {

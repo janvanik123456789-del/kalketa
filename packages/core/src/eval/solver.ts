@@ -33,6 +33,7 @@ import { asQuantity } from './coerce.js';
 import type { EvalContext } from './evaluator.js';
 import { isolate, quadraticOf } from './isolate.js';
 import { substitute } from './derive.js';
+import { differentiate } from './differentiate.js';
 import { toDisplay } from '../units/display.js';
 
 type SolveStatement = Extract<Statement, { kind: 'solve' }>;
@@ -62,6 +63,8 @@ export interface Solved {
    * S ≤ π·d²/4 -> d ≥ … (the value is the bound: the least d).
    */
   readonly relation?: Inequality;
+  /** The equation with the functions of the sheet written out: y′(x) = 0 is 2·a·x + b = 0. */
+  readonly expanded?: { readonly left: Expr; readonly right: Expr };
 }
 
 /** Solves the statement; an inequality for its bound, then the side of the solutions. */
@@ -174,7 +177,9 @@ function solveEquations(statement: SolveStatement, ctx: EvalContext, evaluate: E
 function byFormula(statement: SolveStatement, ctx: EvalContext, evaluate: Evaluate, range: [Quantity, Quantity] | undefined, guess: Quantity | undefined): Solved | undefined {
   const name = statement.unknowns[0]!.name;
   const equation = statement.equations[0]!;
-  const formulas = isolate(inlineCalls(equation.left, ctx), inlineCalls(equation.right, ctx), name);
+  const [inLeft, inRight] = [inlineCalls(equation.left, ctx), inlineCalls(equation.right, ctx)];
+  const expanded = inLeft !== equation.left || inRight !== equation.right ? { left: inLeft, right: inRight } : undefined;
+  const formulas = isolate(inLeft, inRight, name);
   if (!formulas) return undefined;
   const quiet: EvalContext = { ...ctx, warnings: [], tableReads: [] };
   const holds = (value: Quantity): boolean => rootHolds(equation, name, value, ctx, evaluate);
@@ -222,7 +227,7 @@ function byFormula(statement: SolveStatement, ctx: EvalContext, evaluate: Evalua
   // Once more with warnings and table reads recorded; the unit of the interval or guess is kept.
   const value = asQuantity(evaluate(chosen!.formula, ctx), statement.span);
   const hint = range?.[0].hint ?? guess?.hint;
-  return { values: [hint && sameDim(hint.dim, value.dim) ? { ...value, hint } : value], formula: chosen!.formula };
+  return { values: [hint && sameDim(hint.dim, value.dim) ? { ...value, hint } : value], formula: chosen!.formula, ...(expanded ? { expanded } : {}) };
 }
 
 /**
@@ -367,6 +372,20 @@ export function inlineCalls(expr: Expr, ctx: EvalContext, depth = 0): Expr {
         return inlineCalls(substitute(own.body, new Map(own.params.map((p, i) => [p, args[i]!]))), ctx, depth + 1);
       }
       return args.every((a, i) => a === expr.args[i]) ? expr : { ...expr, args };
+    }
+    case 'prime': {
+      // y′(x) of a function of the sheet: its derivative written out by hand (2·a·x + b), when it can be.
+      if (!expr.arg || depth >= 8) return expr;
+      let own: Value | undefined;
+      try {
+        own = ctx.lookup(expr.name, expr.span);
+      } catch (err) {
+        if (!(err instanceof CalcError)) throw err;
+      }
+      if (own?.type !== 'function' || own.native || own.fit || own.derivative || own.params.length !== 1) return expr;
+      let body: Expr | undefined = inlineCalls(own.body, ctx, depth + 1);
+      for (let k = 0; k < expr.order && body; k++) body = differentiate(body, own.params[0]!);
+      return body ? inlineCalls(substitute(body, new Map([[own.params[0]!, again(expr.arg)]])), ctx, depth + 1) : expr;
     }
     case 'unary': {
       const operand = again(expr.operand);

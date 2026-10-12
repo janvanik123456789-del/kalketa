@@ -67,6 +67,8 @@ export interface StatementResult {
   readonly ode?: OdeInfo;
   /** Values found by a solve statement, in the order of its unknowns; the formula of one expressed. */
   readonly solutions?: readonly { readonly name: string; readonly value: Quantity; readonly display: DisplayValue; readonly formula?: Expr; readonly relation?: Inequality }[];
+  /** The equation of a solve line with the functions of the sheet written out (y′(x) = 0 as 2·a·x + b = 0). */
+  readonly expanded?: { readonly left: Expr; readonly right: Expr };
   /** solve x ∈ ℝ, x > 0: every root as on paper, each kept or set aside; the unknown holds the kept ones. */
   readonly roots?: RootsFound;
   /** Names this statement read, in order of first use (including undefined ones). */
@@ -516,7 +518,7 @@ export class SheetSession {
           ...(found.formula ? { formula: found.formula } : {}),
           ...(found.relation ? { relation: found.relation } : {}),
         }));
-        return { status: 'ok', solutions, dependencies, tableReads, diagnostics: ctx.warnings };
+        return { status: 'ok', solutions, ...(found.expanded ? { expanded: found.expanded } : {}), dependencies, tableReads, diagnostics: ctx.warnings };
       }
 
       if (statement.kind === 'definition' && statement.params) {

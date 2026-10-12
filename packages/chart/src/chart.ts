@@ -17,6 +17,8 @@ export interface ChartSeries {
   readonly mark?: 'line' | 'points';
   /** x where the curve meets the x axis, marked and labelled "x = 1,07". */
   readonly roots?: readonly number[];
+  /** Its peaks and dips (the vertex of a parabola): a filled mark with its coordinates [x; y]. */
+  readonly extremes?: readonly { readonly x: number; readonly y: number; readonly peak: boolean }[];
   /** x of the vertical lines the curve is symmetric about, drawn dashed with their value. */
   readonly axes?: readonly number[];
   /** The name the roots are labelled with (the variable of the x axis) and its unit. */
@@ -222,6 +224,7 @@ export function chartSvg(spec: ChartSpec, options: ChartOptions = {}): string {
   );
   parts.push(symmetryLines(spec, layout, formatX));
   parts.push(rootMarks(spec, layout, formatX));
+  parts.push(extremeMarks(spec, layout, formatX, format));
   if (spec.series.length > 1) parts.push(legend(spec, layout));
   if (spec.kind !== 'bar' && spec.series.length > 1 && spec.series.length <= 4) parts.push(endLabels(spec, layout));
 
@@ -343,6 +346,24 @@ function legend(spec: ChartSpec, layout: ChartLayout): string {
 }
 
 /** The name of each curve at its last point, moved apart so names do not overlap. */
+/** The peaks and dips of the curves: a filled diamond, its coordinates [x; y] above a peak or below a dip. */
+function extremeMarks(spec: ChartSpec, layout: ChartLayout, formatX: (value: number) => string, format: (value: number) => string): string {
+  const out: string[] = [];
+  spec.series.forEach((s, i) => {
+    const color = SERIES_COLORS[i % SERIES_COLORS.length]!;
+    for (const e of s.extremes ?? []) {
+      if (e.x < layout.x.min || e.x > layout.x.max || e.y < layout.y.min || e.y > layout.y.max) continue;
+      const [px, py] = [xPosition(layout, e.x), yPosition(layout, e.y)];
+      out.push(`<path class="chart-extreme" d="M${r(px)} ${r(py - 6)}L${r(px + 6)} ${r(py)}L${r(px)} ${r(py + 6)}L${r(px - 6)} ${r(py)}Z" fill="${color}" stroke="#fff" stroke-width="1.5"/>`);
+      const text = `[${formatX(e.x)}; ${format(e.y)}]`;
+      // Inside the plot: below a dip near the top, above a peak near the bottom.
+      const below = e.peak ? py - layout.plot.top < 20 : layout.plot.bottom - py > 20;
+      out.push(`<text class="chart-extreme-label" x="${r(px)}" y="${r(below ? py + 19 : py - 11)}" text-anchor="middle" fill="${INK}" stroke="#fff" stroke-width="3" paint-order="stroke">${esc(text)}</text>`);
+    }
+  });
+  return out.join('');
+}
+
 /** The axes of symmetry of the curves: a dashed vertical line in the colour of the curve, its value at the top. */
 function symmetryLines(spec: ChartSpec, layout: ChartLayout, format: (value: number) => string): string {
   const { plot } = layout;

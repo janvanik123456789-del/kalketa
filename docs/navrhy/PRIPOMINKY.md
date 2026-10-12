@@ -65,3 +65,8 @@ Když něco spadne, ztrácí data nebo nejde dál testovat, napište to hned, ne
 
 16. ~~U symetrického grafu by se hodilo zobrazit osu symetrie.~~
    **Vyřízeno 2026-10-12:** pravé tlačítko na grafu → „Zobrazit osu souměrnosti“. Ukáže se čerchovaná svislá čára s popiskem `x = −0,4`. Program osu hledá ve vrcholech křivky a nakreslí ji jen tam, kde je křivka opravdu souměrná (parabola, kosinus). V zápisu `plot(y(x), x: -3 .. 2, symmetry: true)`.
+
+17. ~~Zobrazit v grafu i vrchol paraboly. První derivace?~~
+   **Vyřízeno 2026-10-12:**
+   - **V grafu:** pravé tlačítko → „Zobrazit vrcholy (maxima a minima)“, kosočtverec se souřadnicemi `[−0,4; −10,8]`. V zápisu `plot(y(x), x: -3 .. 2, extremes: true)`. Vrchol je místo, kde je první derivace nulová; graf ho najde i u jiných křivek než paraboly.
+   - **Výpočtem:** `solve x_v: y′(x_v) == 0` a `y_v := y(x_v)`. Tisk jako na papíře: y′(x_v) = 0, 2·a·x_v + b = 0, x_v = −b/(2·a) = −4/(2·5) = −0,4. Derivaci funkce listu program nově sestaví podle vzorce. Dřív ji počítal jen numericky a `solve` s ní nekonvergovalo.

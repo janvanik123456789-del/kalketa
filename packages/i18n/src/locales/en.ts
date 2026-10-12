@@ -795,6 +795,7 @@ export const en: Catalog = {
     'picture.more': '&More on the picture…',
     'chart.fullWidth': 'Full width',
     'chart.roots': 'Show the roots (where the curves meet the x axis)',
+    'chart.extremes': 'Show the peaks and dips (maxima and minima)',
     'chart.symmetry': 'Show the axis of symmetry',
     'chart.yRange': 'Range of the y axis…',
     'chart.yRangeAsk': 'y axis from .. to (e.g. -20 .. 20; empty = by the values)',

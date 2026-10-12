@@ -281,6 +281,7 @@ export const UI_KEYS = [
   'solve.expressedFrom',
   'chart.fullWidth',
   'chart.roots',
+  'chart.extremes',
   'chart.symmetry',
   'chart.yRange',
   'chart.yRangeAsk',

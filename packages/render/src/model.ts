@@ -460,6 +460,8 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
           const range = row(formulaNode(s.range.low, formulaOptions()), mo('≤'), nameNode(s.ode?.variable ?? s.unknowns[0].name), mo('≤'), formulaNode(s.range.high, formulaOptions()));
           lines.push({ role: 'formula', op: '', rhs: range });
         }
+        // y′(x_v) = 0 written out as on paper: 2·a·x_v + b = 0.
+        if (r.expanded && !r.roots) lines.push({ role: 'formula', op: '', rhs: row(formulaNode(r.expanded.left, formulaOptions()), mo('='), formulaNode(r.expanded.right, formulaOptions())) });
         // Under its conditions (x ∈ ℝ, x > 0) the solution is worked out as on paper.
         if (r.roots && s.unknowns[0]) {
           lines.push(...rootLines(s, r.roots, s.unknowns[0].name, spec, quantityNode));
@@ -1026,6 +1028,7 @@ function chartBlock(
       ...(s.mark ? { mark: s.mark } : {}),
       ...(s.roots ? { roots: s.roots } : {}),
       ...(s.axes ? { axes: s.axes } : {}),
+      ...(s.extremes ? { extremes: s.extremes } : {}),
       ...(s.roots || s.axes ? { rootName: plot.variable || 'x', ...(plot.xUnit ? { rootUnit: plot.xUnit } : {}) } : {}),
     })),
     xTitle: plot.xDates ? plot.variable : `${plot.variable}${unit(plot.xUnit)}`.trim(),

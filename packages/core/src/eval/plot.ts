@@ -32,7 +32,7 @@ export const PLOT_FUNCTION = 'plot';
 export type PlotKind = 'line' | 'points' | 'bar';
 const KINDS: readonly PlotKind[] = ['line', 'points', 'bar'];
 /** Options of plot(...); every other named argument is the variable. */
-export const PLOT_OPTIONS: readonly string[] = ['kind', 'title', 'samples', 'place', 'ylim', 'roots', 'symmetry'];
+export const PLOT_OPTIONS: readonly string[] = ['kind', 'title', 'samples', 'place', 'ylim', 'roots', 'symmetry', 'extremes'];
 /** Curves in one chart: the categorical colours a reader still tells apart. */
 export const MAX_PLOT_SERIES = 8;
 const LINE_SAMPLES = 201;
@@ -53,6 +53,8 @@ export interface PlotSeries {
   readonly roots?: readonly number[];
   /** symmetry: true — the vertical lines the curve is symmetric about (x = −b/(2·a) of a parabola). */
   readonly axes?: readonly number[];
+  /** extremes: true — its peaks and dips (the vertex of a parabola), in the units of the axes. */
+  readonly extremes?: readonly { readonly x: number; readonly y: number; readonly peak: boolean }[];
 }
 
 export interface PlotResult {
@@ -124,6 +126,7 @@ export function plotStatement(call: CallExpr, ctx: EvalContext, evaluate: Evalua
   const yRange = yLimits(call, yDim, y, ctx, evaluate);
   const showRoots = flag(call, 'roots', ctx, evaluate);
   const showAxes = flag(call, 'symmetry', ctx, evaluate);
+  const showExtremes = flag(call, 'extremes', ctx, evaluate);
   let x: { values: number[]; unit: string; dates: boolean };
   if (xs) {
     const first = xs[0]!;
@@ -145,12 +148,14 @@ export function plotStatement(call: CallExpr, ctx: EvalContext, evaluate: Evalua
       const continuous = binder?.value.kind === 'range' && d.at && d.mark !== 'points';
       const roots = showRoots && continuous ? zeros(call.args[i]!, binder!.name, d.at!, d.values, ctx, evaluate) : undefined;
       const axes = showAxes && continuous ? symmetryAxes(call.args[i]!, binder!.name, d.at!, d.values, ctx, evaluate) : undefined;
+      const extremes = showExtremes && continuous ? extremesOf(call.args[i]!, binder!.name, d.at!, d.values, ctx, evaluate) : undefined;
       return {
         xs: d.at && d.at !== xs ? d.at.map((q) => toDisplay(q, ctx.registry, xs![0]!.hint).value) : x.values,
         ys: d.values.map(y),
         ...(d.mark ? { mark: d.mark } : {}),
         ...(roots && roots.length > 0 ? { roots: roots.map((q) => toDisplay(q, ctx.registry, xs![0]!.hint).value) } : {}),
         ...(axes && axes.length > 0 ? { axes: axes.map((q) => toDisplay(q, ctx.registry, xs![0]!.hint).value) } : {}),
+        ...(extremes && extremes.length > 0 ? { extremes: extremes.map((e) => ({ x: toDisplay(e.x, ctx.registry, xs![0]!.hint).value, y: y(e.y), peak: e.peak })) } : {}),
       };
     }),
     ...(place && Object.keys(place).length ? { place } : {}),
@@ -208,56 +213,72 @@ function zeros(body: Expr, name: string, xs: readonly Quantity[], ys: readonly (
   return found;
 }
 
-/**
- * The vertical lines a curve is symmetric about: at each of its peaks and dips
- * (found between the samples, refined), kept only when the curve is the same on
- * both sides of it over a good part of the chart.
- */
-function symmetryAxes(body: Expr, name: string, xs: readonly Quantity[], ys: readonly (Quantity | undefined)[], ctx: EvalContext, evaluate: Evaluate): Quantity[] {
-  const f = (si: number): number | undefined => {
+/** The value of a curve at x (si), or undefined where it has none. */
+function valueAt(body: Expr, name: string, like: Quantity, ctx: EvalContext, evaluate: Evaluate): (si: number) => Quantity | undefined {
+  return (si) => {
     try {
-      const v = evaluateAt(body, name, { ...xs[0]!, si }, ctx, evaluate);
-      return v.type === 'quantity' && !v.im && Number.isFinite(v.si) ? v.si : undefined;
+      const v = evaluateAt(body, name, { ...like, si }, ctx, evaluate);
+      return v.type === 'quantity' && !v.im && Number.isFinite(v.si) ? v : undefined;
     } catch (err) {
       if (err instanceof CalcError) return undefined;
       throw err;
     }
   };
-  const lo = xs[0]!.si;
-  const hi = xs[xs.length - 1]!.si;
+}
+
+/**
+ * The peaks and dips of a curve (where its first derivative is zero, the vertex
+ * of a parabola): found between the samples, made exact by a golden-section search.
+ */
+function extremesOf(body: Expr, name: string, xs: readonly Quantity[], ys: readonly (Quantity | undefined)[], ctx: EvalContext, evaluate: Evaluate): { x: Quantity; y: Quantity; peak: boolean }[] {
+  const f = valueAt(body, name, xs[0]!, ctx, evaluate);
   const values = ys.map((q) => (q && !q.im ? q.si : undefined));
-  const scale = Math.max(...values.map((v) => Math.abs(v ?? 0)), Number.MIN_VALUE);
-  const found: Quantity[] = [];
+  const found: { x: Quantity; y: Quantity; peak: boolean }[] = [];
   for (let j = 1; j + 1 < xs.length; j++) {
     const [a, b, c] = [values[j - 1], values[j], values[j + 1]];
     if (a === undefined || b === undefined || c === undefined) continue;
     const peak = b >= a && b > c;
     const dip = b <= a && b < c;
     if (!peak && !dip) continue;
-    // Golden-section search for the exact top or bottom between the neighbouring samples.
     let [l, r] = [xs[j - 1]!.si, xs[j + 1]!.si];
     const better = (p: number, q: number) => (peak ? p > q : p < q);
     for (let k = 0; k < 80; k++) {
       const m1 = l + (r - l) * 0.382;
       const m2 = l + (r - l) * 0.618;
-      const f1 = f(m1);
-      const f2 = f(m2);
+      const f1 = f(m1)?.si;
+      const f2 = f(m2)?.si;
       if (f1 === undefined || f2 === undefined) break;
       if (better(f1, f2)) r = m2;
       else l = m1;
     }
-    const x0 = (l + r) / 2;
-    // The same on both sides over at least a fifth of the chart: else no axis worth drawing.
-    const reach = Math.min(x0 - lo, hi - x0);
-    if (reach < (hi - lo) * 0.2) continue;
-    const symmetric = [0.2, 0.4, 0.6, 0.8, 1].every((share) => {
-      const left = f(x0 - reach * share);
-      const right = f(x0 + reach * share);
-      return left !== undefined && right !== undefined && Math.abs(left - right) <= 1e-6 * scale;
-    });
-    if (symmetric && !found.some((q) => Math.abs(q.si - x0) <= (hi - lo) * 1e-6)) found.push({ ...xs[0]!, si: x0 });
+    const x = (l + r) / 2;
+    const y = f(x);
+    if (y && !found.some((e) => Math.abs(e.x.si - x) <= Math.abs(xs[xs.length - 1]!.si - xs[0]!.si) * 1e-6)) found.push({ x: { ...xs[0]!, si: x }, y, peak });
   }
   return found;
+}
+
+/**
+ * The vertical lines a curve is symmetric about: at each of its peaks and dips,
+ * kept only when the curve is the same on both sides of it over a good part of the chart.
+ */
+function symmetryAxes(body: Expr, name: string, xs: readonly Quantity[], ys: readonly (Quantity | undefined)[], ctx: EvalContext, evaluate: Evaluate): Quantity[] {
+  const f = valueAt(body, name, xs[0]!, ctx, evaluate);
+  const lo = xs[0]!.si;
+  const hi = xs[xs.length - 1]!.si;
+  const scale = Math.max(...ys.map((q) => Math.abs(q && !q.im ? q.si : 0)), Number.MIN_VALUE);
+  return extremesOf(body, name, xs, ys, ctx, evaluate)
+    .map((e) => e.x)
+    .filter((x0) => {
+      // The same on both sides over at least a fifth of the chart: else no axis worth drawing.
+      const reach = Math.min(x0.si - lo, hi - x0.si);
+      if (reach < (hi - lo) * 0.2) return false;
+      return [0.2, 0.4, 0.6, 0.8, 1].every((share) => {
+        const left = f(x0.si - reach * share)?.si;
+        const right = f(x0.si + reach * share)?.si;
+        return left !== undefined && right !== undefined && Math.abs(left - right) <= 1e-6 * scale;
+      });
+    });
 }
 
 /** ylim: low .. high, in the unit of the curves (or a pure number for pure numbers). */

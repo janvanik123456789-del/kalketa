@@ -1490,9 +1490,14 @@ async function layersWithRealInput(picture: string) {
     await clickMenu('Zobrazit osu souměrnosti');
     await pause(500);
     const chartAxis = (await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .block.chart text.chart-axis-label')].map((t) => t.textContent.replace(/\\s+/g, '')).join(' ')`)) as string;
+    // The vertex of the parabola, where M_t′(x) = 0: [2; 24].
+    await clickOn('.layer-view.active .block.chart svg', [], 'right');
+    await clickMenu('Zobrazit vrcholy');
+    await pause(500);
+    const chartVertex = (await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .block.chart text.chart-extreme-label')].map((t) => t.textContent.replace(/\\s+/g, '')).join(' ')`)) as string;
     await takePicture(picture.replace(/[.]png$/, '-chartroots.png'));
-    chartPlaced = placed && restored && yRanged && yAuto && chartRoots.length > 0 && chartRoots.every((t) => /^x=[−-]?[\d,]+$/.test(t)) && chartAxis === 'x=2';
-    chartSteps = `framed=${chartFramed} placed=${placed} restored=${restored} yRange=${yRanged} yAuto=${yAuto} roots=${chartRoots.join(' ')} axis=${chartAxis}`;
+    chartPlaced = placed && restored && yRanged && yAuto && chartRoots.length > 0 && chartRoots.every((t) => /^x=[−-]?[\d,]+$/.test(t)) && chartAxis === 'x=2' && chartVertex === '[2;24]';
+    chartSteps = `framed=${chartFramed} placed=${placed} restored=${restored} yRange=${yRanged} yAuto=${yAuto} roots=${chartRoots.join(' ')} axis=${chartAxis} vertex=${chartVertex}`;
   }
   const charts = !!chartBox && chartBox.paths > 0 && /^x = [\d,]+ \| Mt\(x\) = /.test(chartTip) && chartPlaced;
 

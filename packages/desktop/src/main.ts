@@ -1485,9 +1485,14 @@ async function layersWithRealInput(picture: string) {
     await clickMenu('Zobrazit kořeny');
     await pause(500);
     const chartRoots = (await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .block.chart text.chart-root')].map((t) => t.textContent.replace(/\\s+/g, ''))`)) as string[];
+    // The axis of symmetry of the parabola M_t(x) = 6·x·(4 − x): x = 2.
+    await clickOn('.layer-view.active .block.chart svg', [], 'right');
+    await clickMenu('Zobrazit osu souměrnosti');
+    await pause(500);
+    const chartAxis = (await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .block.chart text.chart-axis-label')].map((t) => t.textContent.replace(/\\s+/g, '')).join(' ')`)) as string;
     await takePicture(picture.replace(/[.]png$/, '-chartroots.png'));
-    chartPlaced = placed && restored && yRanged && yAuto && chartRoots.length > 0 && chartRoots.every((t) => /^x=[−-]?[\d,]+$/.test(t));
-    chartSteps = `framed=${chartFramed} placed=${placed} restored=${restored} yRange=${yRanged} yAuto=${yAuto} roots=${chartRoots.join(' ')}`;
+    chartPlaced = placed && restored && yRanged && yAuto && chartRoots.length > 0 && chartRoots.every((t) => /^x=[−-]?[\d,]+$/.test(t)) && chartAxis === 'x=2';
+    chartSteps = `framed=${chartFramed} placed=${placed} restored=${restored} yRange=${yRanged} yAuto=${yAuto} roots=${chartRoots.join(' ')} axis=${chartAxis}`;
   }
   const charts = !!chartBox && chartBox.paths > 0 && /^x = [\d,]+ \| Mt\(x\) = /.test(chartTip) && chartPlaced;
 

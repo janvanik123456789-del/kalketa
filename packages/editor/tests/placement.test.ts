@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { placeable, plotShowsRoots, plotYRange, withPlotPlace, withPlotRoots, withPlotYRange } from '../src/logic/placement.js';
+import { placeable, plotFlag, plotShowsRoots, plotYRange, withPlotFlag, withPlotPlace, withPlotRoots, withPlotYRange } from '../src/logic/placement.js';
 
 describe('placement of pictures and charts', () => {
   it('reads and writes the place option of a chart line', () => {
@@ -42,5 +42,16 @@ describe('the roots marked in a chart', () => {
     expect(on).toBe('plot(y(x), x: -3 .. 2, roots: true)');
     expect(plotShowsRoots(on)).toBe(true);
     expect(withPlotRoots(on, false)).toBe(line);
+  });
+});
+
+describe('the axis of symmetry in a chart', () => {
+  it('is switched on and off in its line, beside the other options', () => {
+    const line = 'plot(y(x), x: -3 .. 2, roots: true)';
+    const on = withPlotFlag(line, 'symmetry', true);
+    expect(on).toBe('plot(y(x), x: -3 .. 2, roots: true, symmetry: true)');
+    expect(plotFlag(on, 'symmetry')).toBe(true);
+    expect(plotFlag(on, 'roots')).toBe(true);
+    expect(withPlotFlag(on, 'symmetry', false)).toBe(line);
   });
 });

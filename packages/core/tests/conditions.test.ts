@@ -73,3 +73,12 @@ describe('the roots of a curve in a chart', () => {
     expect(evaluateSheet('plot(x^2 + 1, x: -3 .. 2, roots: true)').statements.at(-1)!.plot!.series[0]!.roots).toBeUndefined();
   });
 });
+
+describe('the axis of symmetry of a curve in a chart', () => {
+  it('stands at the top or bottom of a symmetric curve only', () => {
+    const axes = (source: string) => evaluateSheet(source).statements.at(-1)!.plot!.series[0]!.axes?.map((x) => Number(x.toFixed(5)));
+    expect(axes('y(x) := 5·x^2 + 4·x - 10\nplot(y(x), x: -3 .. 2, symmetry: true)')).toEqual([-0.4]);
+    expect(axes('plot(cos(x), x: -5 .. 5, symmetry: true)')).toEqual([0]);
+    expect(axes('plot(x^3 - x, x: -2 .. 2, symmetry: true)')).toBeUndefined();
+  });
+});

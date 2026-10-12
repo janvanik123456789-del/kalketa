@@ -76,18 +76,22 @@ export function withPlotYRange(text: string, range: string | undefined): string 
   return `${text.slice(0, close)}, ylim: ${range}${text.slice(close)}`;
 }
 
-const ROOTS = /,?\s*roots\s*:\s*(true|false)/;
-
-/** Whether a plot line marks the roots of its curves (roots: true). */
-export function plotShowsRoots(text: string): boolean {
-  return PLOT.test(text) && ROOTS.exec(text)?.[1] === 'true';
+/** A yes/no option of a plot line (roots: true, symmetry: true): whether it is on. */
+export function plotFlag(text: string, name: string): boolean {
+  return PLOT.test(text) && new RegExp(`,?\\s*${name}\\s*:\\s*true\\b`).test(text);
 }
 
-/** The plot line marking the roots of its curves, or not. */
-export function withPlotRoots(text: string, on: boolean): string {
-  const found = ROOTS.exec(text);
+/** The plot line with a yes/no option on (written as name: true) or off (left out). */
+export function withPlotFlag(text: string, name: string, on: boolean): string {
+  const found = new RegExp(`,?\\s*${name}\\s*:\\s*(true|false)\\b`).exec(text);
   const without = found ? text.slice(0, found.index) + text.slice(found.index + found[0].length) : text;
   if (!on) return without;
   const close = closingParen(without, without.indexOf('('));
-  return close < 0 ? text : `${without.slice(0, close)}, roots: true${without.slice(close)}`;
+  return close < 0 ? text : `${without.slice(0, close)}, ${name}: true${without.slice(close)}`;
 }
+
+/** Whether a plot line marks the roots of its curves (roots: true). */
+export const plotShowsRoots = (text: string): boolean => plotFlag(text, 'roots');
+
+/** The plot line marking the roots of its curves, or not. */
+export const withPlotRoots = (text: string, on: boolean): string => withPlotFlag(text, 'roots', on);

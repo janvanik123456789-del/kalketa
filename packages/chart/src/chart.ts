@@ -17,6 +17,8 @@ export interface ChartSeries {
   readonly mark?: 'line' | 'points';
   /** x where the curve meets the x axis, marked and labelled "x = 1,07". */
   readonly roots?: readonly number[];
+  /** x of the vertical lines the curve is symmetric about, drawn dashed with their value. */
+  readonly axes?: readonly number[];
   /** The name the roots are labelled with (the variable of the x axis) and its unit. */
   readonly rootName?: string;
   readonly rootUnit?: string;
@@ -218,6 +220,7 @@ export function chartSvg(spec: ChartSpec, options: ChartOptions = {}): string {
       ? `<svg x="${plot.left}" y="${plot.top}" width="${plot.right - plot.left}" height="${plot.bottom - plot.top}" viewBox="${plot.left} ${plot.top} ${plot.right - plot.left} ${plot.bottom - plot.top}" overflow="hidden">${data}</svg>`
       : data,
   );
+  parts.push(symmetryLines(spec, layout, formatX));
   parts.push(rootMarks(spec, layout, formatX));
   if (spec.series.length > 1) parts.push(legend(spec, layout));
   if (spec.kind !== 'bar' && spec.series.length > 1 && spec.series.length <= 4) parts.push(endLabels(spec, layout));
@@ -340,6 +343,23 @@ function legend(spec: ChartSpec, layout: ChartLayout): string {
 }
 
 /** The name of each curve at its last point, moved apart so names do not overlap. */
+/** The axes of symmetry of the curves: a dashed vertical line in the colour of the curve, its value at the top. */
+function symmetryLines(spec: ChartSpec, layout: ChartLayout, format: (value: number) => string): string {
+  const { plot } = layout;
+  const out: string[] = [];
+  spec.series.forEach((s, i) => {
+    const color = SERIES_COLORS[i % SERIES_COLORS.length]!;
+    for (const x of s.axes ?? []) {
+      if (x < layout.x.min || x > layout.x.max) continue;
+      const px = r(xPosition(layout, x));
+      out.push(`<line class="chart-axis-of-symmetry" x1="${px}" x2="${px}" y1="${plot.top}" y2="${plot.bottom}" stroke="${color}" stroke-width="1.2" stroke-dasharray="8 3 2 3" opacity="0.8"/>`);
+      const text = `${s.rootName ?? 'x'} = ${format(x)}${s.rootUnit ? ` ${s.rootUnit}` : ''}`;
+      out.push(`<text class="chart-axis-label" x="${r(px + 4)}" y="${r(plot.top + 11)}" fill="${INK_2}" stroke="#fff" stroke-width="3" paint-order="stroke">${label(text)}</text>`);
+    }
+  });
+  return out.join('');
+}
+
 /**
  * The roots of the curves on the x axis: a ring in the colour of the curve, its
  * value above it, "x = 1,07" (the label alternates above and below when close).

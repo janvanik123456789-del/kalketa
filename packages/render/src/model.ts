@@ -1024,7 +1024,9 @@ function chartBlock(
       xs: s.xs,
       ys: s.ys,
       ...(s.mark ? { mark: s.mark } : {}),
-      ...(s.roots ? { roots: s.roots, rootName: plot.variable || 'x', ...(plot.xUnit ? { rootUnit: plot.xUnit } : {}) } : {}),
+      ...(s.roots ? { roots: s.roots } : {}),
+      ...(s.axes ? { axes: s.axes } : {}),
+      ...(s.roots || s.axes ? { rootName: plot.variable || 'x', ...(plot.xUnit ? { rootUnit: plot.xUnit } : {}) } : {}),
     })),
     xTitle: plot.xDates ? plot.variable : `${plot.variable}${unit(plot.xUnit)}`.trim(),
     // One curve names the axis; more curves are named in the legend.

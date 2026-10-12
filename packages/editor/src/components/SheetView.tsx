@@ -15,7 +15,7 @@ import { segments, type Segment } from '../logic/segments.js';
 import { lineAttributesOf, lineFormatOf, withLineAttribute, withLineAttributes, withLineFormat, type LineFormatChoice } from '../logic/lineFormat.js';
 import { defineShortcut } from '../logic/shortcuts.js';
 import { pickOf } from '../logic/pick.js';
-import { placeable, plotShowsRoots, plotYRange, withPlotRoots, withPlotYRange } from '../logic/placement.js';
+import { placeable, plotFlag, plotShowsRoots, plotYRange, withPlotFlag, withPlotRoots, withPlotYRange } from '../logic/placement.js';
 import { PickControl } from './PickControl.js';
 import { TextRowEditor, type TextFormat } from './TextRowEditor.js';
 import { parseTextLine } from '../logic/textLine.js';
@@ -606,6 +606,8 @@ export function SheetView(props: Props) {
       { kind: 'separator' },
       // The roots of the curves on the x axis, marked and labelled.
       { kind: 'action', label: t(c, 'chart.roots'), checked: roots, run: () => props.onReplace(seg.start, seg.end, withPlotRoots(seg.text, !roots)) },
+      // The axis of symmetry of a symmetric curve (a parabola: x = −b/(2·a)), drawn where the curve has one.
+      { kind: 'action', label: t(c, 'chart.symmetry'), checked: plotFlag(seg.text, 'symmetry'), run: () => props.onReplace(seg.start, seg.end, withPlotFlag(seg.text, 'symmetry', !plotFlag(seg.text, 'symmetry'))) },
       {
         kind: 'action',
         label: t(c, 'chart.yRange'),

@@ -62,3 +62,6 @@ Když něco spadne, ztrácí data nebo nejde dál testovat, napište to hned, ne
 
 15. ~~Doplnit do grafu možnost zobrazení kořenů.~~
    **Vyřízeno 2026-10-12:** pravé tlačítko na grafu → „Zobrazit kořeny (průsečíky s osou x)“. Na ose x se ukáže kroužek v barvě křivky a hodnota `x = 1,07`. V zápisu `plot(y(x), x: -3 .. 2, roots: true)`.
+
+16. ~~U symetrického grafu by se hodilo zobrazit osu symetrie.~~
+   **Vyřízeno 2026-10-12:** pravé tlačítko na grafu → „Zobrazit osu souměrnosti“. Ukáže se čerchovaná svislá čára s popiskem `x = −0,4`. Program osu hledá ve vrcholech křivky a nakreslí ji jen tam, kde je křivka opravdu souměrná (parabola, kosinus). V zápisu `plot(y(x), x: -3 .. 2, symmetry: true)`.

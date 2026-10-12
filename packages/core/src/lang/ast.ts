@@ -103,6 +103,8 @@ export interface LineFormat {
    * the names defined in it hold until the next position, and after it as Pos1.A.
    */
   readonly pos?: true | string;
+  /** A cell beside the line above it, on one row of the page: "Zatěžující síla" | F = 1600 N. */
+  readonly beside?: boolean;
 }
 
 /** Fonts of text by kind, not by name: each machine and printout has its own of the kind. */

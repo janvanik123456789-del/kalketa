@@ -272,6 +272,8 @@ export const en: Catalog = {
     'print.appendix': 'Appendix {letter}: {name}',
     'print.imported': 'Values taken over',
     'print.figure': 'Fig. {n}',
+    'cells.beside': 'Put beside the line above (a cell)',
+    'cells.alone': 'On a row of its own',
     'pick.hint': 'A click on the name chooses the row; a click on a number takes its value with the unit too (.column).',
     'pick.take': 'Take the value of column {column} with its unit',
     'print.odeSolved': 'numerical solution (Runge–Kutta, {steps} steps)',

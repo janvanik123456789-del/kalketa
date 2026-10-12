@@ -50,6 +50,8 @@ interface Props {
   /** Counts up with each Select all: every row is marked then. */
   readonly selectAll?: number;
   onInsertAfter(line: number): void;
+  /** Tab at the end of a line: a new cell beside it, on its row. */
+  onInsertBeside(line: number): void;
   onDelete(start: number, end: number): void;
   /** Several rows at once (marked ones), in one step to undo. */
   onDeleteRows(rows: readonly { start: number; end: number }[]): void;
@@ -148,7 +150,19 @@ function formatMenuItems(seg: Segment, catalog: Catalog, change: RowChange, show
           if (clean) change((text) => withLineAttribute(withLineAttribute(text, 'noeq', undefined), 'eq', clean));
         }),
     },
+    { kind: 'separator' },
+    cellItem(seg, catalog, change),
   ];
+}
+
+/** A row put beside the one above it as a cell of its row, or back on a row of its own. */
+function cellItem(seg: Segment, catalog: Catalog, change: RowChange): MenuItem {
+  const beside = lineAttributesOf(seg.text).has('beside');
+  return {
+    kind: 'action',
+    label: t(catalog, beside ? 'cells.alone' : 'cells.beside'),
+    run: () => change((text) => withLineAttribute(text, 'beside', beside ? undefined : '')),
+  };
 }
 
 const TEXT_KEYS = ['size', 'font', 'italic', 'bold', 'align', 'color'];
@@ -180,7 +194,7 @@ function textMenuItems(seg: Segment, catalog: Catalog, change: RowChange): MenuI
     // A heading may start a position of the calculation (Pos. 1, 2, …), its names its own.
     ...(/^\s*#/.test(seg.text)
       ? [{ kind: 'separator' } as const, { kind: 'action', label: t(catalog, 'textStyle.position'), checked: current.has('pos'), run: () => set('pos', current.has('pos') ? undefined : '') } as const]
-      : []),
+      : [{ kind: 'separator' } as const, cellItem(seg, catalog, change)]),
   ];
 }
 
@@ -280,16 +294,24 @@ export function SheetView(props: Props) {
   // picture and the lines beside it are one item: two columns kept on one page,
   // unless they are taller than a page; then the picture goes back above the lines.
   const [tooTall, setTooTall] = useState<ReadonlySet<number>>(() => new Set());
-  type Item = { kind: 'summary' } | { kind: 'row'; seg: Segment } | { kind: 'side'; picture: Segment; rows: Segment[]; block: Extract<PrintBlock, { kind: 'picture' }> } | { kind: 'flow'; rows: Segment[] };
+  type Item = { kind: 'summary' } | { kind: 'row'; seg: Segment } | { kind: 'cells'; rows: Segment[] } | { kind: 'side'; picture: Segment; rows: Segment[]; block: Extract<PrintBlock, { kind: 'picture' }> } | { kind: 'flow'; rows: Segment[] };
   const items: Item[] = print.summary?.position === 'top' ? [{ kind: 'summary' }] : [];
   // Compact style: inputs one after another stand side by side, as in print; each stays a row of its own to edit.
   const inputAt = (seg: Segment | undefined) => {
     const block = seg && seg.statement !== undefined && editing?.start !== seg.start ? blockByLine.get(seg.start) : undefined;
     return !!block && isInput(block);
   };
+  // Cells: a line and the ones written beside it ({beside}) stand on one row, each edited on its own.
+  const besideAt = (seg: Segment | undefined) => !!seg && lineAttributesOf(seg.text).has('beside');
   for (let i = 0; i < segs.length; i++) {
     const seg = segs[i]!;
     const block = seg.statement !== undefined ? blockByLine.get(seg.start) : undefined;
+    if (besideAt(segs[i + 1])) {
+      const rows: Segment[] = [seg];
+      while (besideAt(segs[i + 1])) rows.push(segs[++i]!);
+      items.push({ kind: 'cells', rows });
+      continue;
+    }
     if (props.calcStyle === 'compact' && inputAt(seg) && inputAt(segs[i + 1])) {
       const rows: Segment[] = [];
       while (inputAt(segs[i])) rows.push(segs[i++]!);
@@ -714,6 +736,14 @@ export function SheetView(props: Props) {
                   summaryItem()
                 ) : item.kind === 'side' ? (
                   sideItem(item.picture, item.rows, item.block)
+                ) : item.kind === 'cells' ? (
+                  <div key={`cells:${item.rows[0]!.start}`} data-item className="cells-group">
+                    {item.rows.map((seg) => (
+                      <div key={seg.start} className="cell">
+                        {rowItem(seg, false)}
+                      </div>
+                    ))}
+                  </div>
                 ) : item.kind === 'flow' ? (
                   <div key={`flow:${item.rows[0]!.start}`} data-item className="flow-group">
                     {item.rows.map((seg) => rowItem(seg, false))}
@@ -903,6 +933,7 @@ export function SheetView(props: Props) {
               result={result}
               onChange={(text) => props.onReplace(seg.start, seg.end, text)}
               onEnter={() => props.onInsertAfter(seg.end)}
+              onTab={() => props.onInsertBeside(seg.end)}
               onDeleteEmpty={() => {
                 const previous = segs[segs.indexOf(seg) - 1];
                 props.onDelete(seg.start, seg.end);
@@ -1237,12 +1268,14 @@ interface RowEditorProps {
   readonly result: SheetResult;
   onChange(text: string): void;
   onEnter(): void;
+  /** Tab at the end of the line: a new cell beside it. */
+  onTab(): void;
   onDeleteEmpty(): void;
   onMove(direction: -1 | 1): void;
   onDone(): void;
 }
 
-function RowEditor({ seg, initialCursor, decimalComma, result, onChange, onEnter, onDeleteEmpty, onMove, onDone }: RowEditorProps) {
+function RowEditor({ seg, initialCursor, decimalComma, result, onChange, onEnter, onTab, onDeleteEmpty, onMove, onDone }: RowEditorProps) {
   // The line is edited in the user's notation (50,5) and stored in file notation (50.5).
   // What the user types is kept as typed: converting it back on every keystroke
   // would turn a half-typed "55," into "55;" before the next digit arrives.
@@ -1296,7 +1329,12 @@ function RowEditor({ seg, initialCursor, decimalComma, result, onChange, onEnter
       lastStored.current = original;
       onChange(original);
       onDone();
-    } else if (e.key === 'Backspace' && area.value === '') {
+    } else if (e.key === 'Tab' && !e.shiftKey && !area.value.slice(area.selectionEnd).replace(/\{[^{}]*\}\s*$/, '').trim()) {
+      // At the end of the line (its marks after it do not count): a new cell beside it.
+      e.preventDefault();
+      onTab();
+    } else if (e.key === 'Backspace' && area.selectionStart === 0 && area.selectionEnd === 0 && area.value.replace(/\{beside\}\s*$/, '').trim() === '') {
+      // An empty cell (only its mark) goes, as an empty line does.
       e.preventDefault();
       onDeleteEmpty();
     } else if (e.key === 'ArrowUp' && (atStart || !area.value.slice(0, area.selectionStart).includes('\n'))) {

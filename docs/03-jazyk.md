@@ -507,6 +507,19 @@ table Mereni:
   - V tisku je vzorec pod záhlavím sloupce a řádek součtů tučně s čarou nad ním. Jména sloupců se sázejí jako ve vzorcích (g_k s indexem).
 - *Na později (kosmetika):* úprava v mřížce přímo v listu, formáty jako v Excelu (procenta, vědecký zápis, zarovnání, tučně, pozadí) z nabídky pravého tlačítka.
 
+### 8.4a Buňky: řádky vedle sebe (2026-10-12)
+
+Řádek stránky může mít víc buněk: text a vedle něj definici, dva výsledky, krátké výpočty ve sloupcích. Každá buňka je obyčejný řádek zápisu.
+
+```text
+"Zatěžující síla"
+F := 1600 N {beside}
+```
+
+- V editoru: **Tab** na konci otevřeného řádku přidá vpravo novou buňku; pravé tlačítko na řádku → **Dát vedle předchozího řádku** / **Na samostatný řádek**; prázdná buňka zmizí Backspacem.
+- Značku `{beside}` na konci řádku píše program; ručně ji psát není třeba. Řádek se značkou stojí vedle řádku nad sebou, a tak dál, dokud řádky značku mají.
+- V tisku i v editoru stojí buňky vedle sebe na jedné stránce; poslední buňka zabere zbytek šířky.
+
 ### 8.5 Pozice výpočtu (2026-10-11)
 
 Statický výpočet se člení na pozice (německá „Positionsstatik“): Pos. 1 Stropní deska, Pos. 2 Průvlak… Každá pozice počítá se svými jmény, reakce jedné pozice je zatížením další.

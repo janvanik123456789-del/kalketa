@@ -1785,6 +1785,11 @@ export function App() {
             setLayerText(l, insertLineAfter(source, line));
             setEditing({ start: line + 1, end: line + 1 });
           }}
+          onInsertBeside={(line) => {
+            // A new cell: a line marked to stand beside the one above it, the cursor before its mark.
+            setLayerText(l, replaceLines(insertLineAfter(source, line), line + 1, line + 1, '{beside}'));
+            setEditing({ start: line + 1, end: line + 1, cursor: 0 });
+          }}
           onDelete={(start, end) => setLayerText(l, deleteLines(source, start, end))}
           onDeleteRows={(rows) => setLayerText(l, deleteLineRanges(source, rows))}
           onPick={(statement, key, column) => pickIn(l, statement, key, column)}

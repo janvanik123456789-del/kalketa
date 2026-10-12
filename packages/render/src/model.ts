@@ -208,6 +208,8 @@ export interface SummaryRow {
 }
 
 export interface PrintDocument {
+  /** Lines written beside the line above them ({beside}): cells of its row. */
+  readonly beside?: ReadonlySet<number>;
   readonly title: string;
   readonly subtitle?: string;
   readonly language: string;
@@ -250,6 +252,8 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
   const { catalog } = options;
   const mode: Mode = { substitution: true, resultOnly: false, hidden: false, digits: options.digits };
   const blocks: PrintBlock[] = [];
+  // Lines written beside the one above them: cells of its row.
+  const beside = new Set(result.statements.flatMap((r) => (r.statement.format?.beside ? [r.statement.span.line] : [])));
   const decimalComma = formatNumber(1.5, catalog).includes(',');
   const numberFormat = (spec: NumberFormatOptions) => (value: number) => formatNumber(value, catalog, spec);
   // How each name was shown on its own line ({decimals=2}): so it is shown in every substitution below.
@@ -531,6 +535,7 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
     language: catalog.locale,
     ...(position !== 'none' && rows.length > 0 ? { summary: { position, rows, allPassed: rows.every((r) => r.passed) } } : {}),
     blocks: numberEquations(blocks, result, options.equations ?? 'none'),
+    ...(beside.size > 0 ? { beside } : {}),
   };
 }
 

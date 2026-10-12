@@ -58,3 +58,14 @@ describe('pages numbered by sections', () => {
     expect(printHtml(evaluateSheet('L := 5 m'), { catalog: cs, registry: defaultRegistry, title: 'T' })).toContain('counter(pages)');
   });
 });
+
+describe('cells: lines beside each other on one row', () => {
+  it('put a line marked {beside} next to the one above it, a text beside a formula', () => {
+    const result = evaluateSheet('"Zatěžující síla"\nF := 1600 N {beside}\nn := 1.5');
+    expect(result.diagnostics).toEqual([]);
+    const html = printHtml(result, { catalog: cs, registry: defaultRegistry, title: 'T' });
+    expect(html).toMatch(/<div class="cells"><div class="cell"><p class="text">Zatěžující síla<\/p><\/div><div class="cell"><section class="block equation" data-line="2">/);
+    // The line after them stands on a row of its own.
+    expect(html.match(/<div class="cells">/g)).toHaveLength(1);
+  });
+});

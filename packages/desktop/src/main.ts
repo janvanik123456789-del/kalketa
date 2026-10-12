@@ -1190,6 +1190,12 @@ async function layersWithRealInput(picture: string) {
   }
   await pressKey('Enter');
   await typeText('g_z := sum(R_z.g_d)');
+  // Cells: a text, Tab, a definition beside it on one row.
+  await pressKey('Enter');
+  await typeText('"Síla na konci"');
+  await pressKey('Tab');
+  await pause(300);
+  await typeText('F_c := 1600 N');
   // A click on the grey beside the page closes the line (the middle of the view may be a row of the second page).
   const besidePage = (await contents.executeJavaScript(`(() => { const p = document.querySelector('.layer-view.active .page').getBoundingClientRect(); return { x: Math.round(p.left - 30), y: Math.round(p.top + 100) }; })()`)) as { x: number; y: number };
   contents.sendInputEvent({ type: 'mouseDown', ...besidePage, button: 'left', clickCount: 1 });
@@ -1206,7 +1212,8 @@ async function layersWithRealInput(picture: string) {
     // A rounded result of a derivation: set after ≐, the step holds.
     const recap = [...document.querySelectorAll('.layer-view.active .page .datatable tr.total')].some((r) => r.textContent.replace(/\\s+/g, '').includes('Celkem3,975,36')) && [...document.querySelectorAll('.layer-view.active .page .row')].some((r) => r.textContent.replace(/\\s+/g, '').includes('5,36kN/m²'));
     const rounded = [...document.querySelectorAll('.layer-view.active .page .row')].some((r) => r.textContent.replace(/\\s+/g, '').includes('≐5,5mm') && !r.classList.contains('has-error'));
-    return recap && rounded && measured && inequality && rows.some((r) => r.includes('roots') && r.endsWith('=[2;3]')) && rows.some((r) => r.includes('argmax') && r.endsWith('=2'));
+    const cells = [...document.querySelectorAll('.layer-view.active .page .cells-group')].some((g) => g.querySelectorAll(':scope > .cell').length === 2 && g.textContent.includes('Síla na konci') && g.textContent.replace(/\\s+/g, '').includes('1600N'));
+    return cells && recap && rounded && measured && inequality && rows.some((r) => r.includes('roots') && r.endsWith('=[2;3]')) && rows.some((r) => r.includes('argmax') && r.endsWith('=2'));
   })()`)) as boolean;
   // A click on the table in the sheet opens it as a grid; Enter in its last row adds one; Esc closes it.
   await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .page .row')].find((r) => r.querySelector('table.data-table')).id = 'smoke-table-row'`);

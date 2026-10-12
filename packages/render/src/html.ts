@@ -136,7 +136,7 @@ export function renderHtml(doc: PrintDocument, options: HtmlOptions): string {
   const head = options.style === 'columns' ? columnsHead(catalog) : '';
   const paged = options.pageNumbers === 'sections';
   const sections = paged ? sheetSections(doc.blocks) : undefined;
-  const body = head + renderBlocksHtml(doc.blocks, catalog, options.aiLines, options.style, sections);
+  const body = head + renderBlocksHtml(doc.blocks, catalog, options.aiLines, options.style, sections, doc.beside);
   const aiNotice = options.aiLines && options.aiLines.size > 0 ? `<p class="ai-notice">${esc(t(catalog, 'print.aiUnreviewed'))}</p>` : '';
   const content = `<header class="doc-head">
 <h1>${esc(doc.title)}</h1>
@@ -207,7 +207,7 @@ export interface BlockHtmlOptions {
  * Blocks as HTML; a side picture and the blocks beside it go into two
  * columns that stay together on one page.
  */
-export function renderBlocksHtml(blocks: readonly PrintBlock[], catalog: Catalog, aiLines?: ReadonlySet<number>, style: CalcStyle = 'airy', sections?: ReadonlyMap<number, Section>): string {
+export function renderBlocksHtml(blocks: readonly PrintBlock[], catalog: Catalog, aiLines?: ReadonlySet<number>, style: CalcStyle = 'airy', sections?: ReadonlyMap<number, Section>, cellLines?: ReadonlySet<number>): string {
   const out: string[] = [];
   // A block the AI made and nobody reviewed carries a mark in the margin; the heading of a section its label.
   const marked = (block: PrintBlock, html: string) => {
@@ -218,6 +218,14 @@ export function renderBlocksHtml(blocks: readonly PrintBlock[], catalog: Catalog
   const options = { style };
   for (let i = 0; i < blocks.length; i++) {
     const block = blocks[i]!;
+    // Cells: a block and the ones written beside it stand on one row.
+    const besideNext = (b: PrintBlock | undefined) => !!b && 'line' in b && !!cellLines?.has(b.line);
+    if (besideNext(blocks[i + 1])) {
+      const cells: string[] = [marked(block, renderBlockHtml(block, catalog, options))];
+      while (besideNext(blocks[i + 1])) cells.push(marked(blocks[i + 1]!, renderBlockHtml(blocks[++i]!, catalog, options)));
+      out.push(`<div class="cells">${cells.map((c) => `<div class="cell">${c}</div>`).join('')}</div>`);
+      continue;
+    }
     // Compact: inputs one after another stand side by side, as far as the line reaches.
     if (style === 'compact' && isInput(block) && isInput(blocks[i + 1] ?? block) && blocks[i + 1]) {
       const group: string[] = [];
@@ -492,7 +500,11 @@ ${NOTES_CSS}
 }
 
 /** Styles of blocks and the summary; used by print and by the editor. */
-export const BLOCK_CSS = `/* A calculation sheet with columns: the source, the working, the results; lines between them run down the page. */
+export const BLOCK_CSS = `/* Cells of one row: a text and a formula, two results, side by side. */
+.cells { display: flex; align-items: flex-start; gap: 8mm; }
+.cells > .cell { flex: 0 1 auto; min-width: 0; }
+.cells > .cell > * { margin-top: 0; }
+/* A calculation sheet with columns: the source, the working, the results; lines between them run down the page. */
 .cols { display: grid; grid-template-columns: 22mm minmax(0, 1fr) 38mm; column-gap: 0; align-items: stretch; }
 .cols > div { min-width: 0; }
 .cols > .col-ref { border-right: 0.4pt solid #999; padding: 1.2mm 2mm 0 0; font-size: 8pt; color: #444; overflow-wrap: anywhere; }

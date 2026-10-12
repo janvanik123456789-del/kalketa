@@ -23,6 +23,7 @@ contextBridge.exposeInMainWorld('kalketaDesktop', {
   onShowFile: (listener: (path: string) => void): void => {
     ipcRenderer.on('kalketa:show-file', (_event, path: string) => listener(path));
   },
+  systemFonts: (): Promise<string[]> => ipcRenderer.invoke('kalketa:system-fonts'),
   clipboardPictures: (): Promise<{ name: string; type: string; bytes: Uint8Array }[]> => ipcRenderer.invoke('kalketa:clipboard-pictures'),
   aiPolicy: (): Promise<unknown> => ipcRenderer.invoke('kalketa:ai-policy'),
   aiKeyState: (provider: string): Promise<unknown> => ipcRenderer.invoke('kalketa:ai-key-state', provider),

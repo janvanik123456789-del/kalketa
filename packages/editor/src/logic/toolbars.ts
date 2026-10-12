@@ -114,7 +114,7 @@ export function defaultLayout(): ToolbarLayout {
         builtin: true,
         visible: true,
         place: dock('top', 0, 1),
-        items: ['insert.heading', 'insert.text', 'insert.definition', 'insert.check', 'insert.pick', 'insert.pageBreak'],
+        items: ['insert.text', 'insert.definition', 'insert.check', 'insert.pick', 'insert.pageBreak'],
       },
       {
         id: 'view',

@@ -8,7 +8,8 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type DragEvent as ReactDragEvent, type MouseEvent as ReactMouseEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { sceneBody, TEXT_FONTS, type CanvasItem, type CanvasScene, type LiveValues, type TextFont } from '../scene.js';
+import { FontOptions } from './FontOptions.js';
+import { sceneBody, type CanvasItem, type CanvasScene, type LiveValues, type TextFont } from '../scene.js';
 import { addItem, boxOf, drawn, endMoved, endsOf, findItem, isSupportTool, itemAt, itemsIn, moved, newId, placedSupport, removeItem, reordered, replaceItem, resized, snap, turned, type Corner, type Tool } from '../edit.js';
 import { fromFile, isPictureType, picturePath, pixelSize, type CanvasPicture } from './pictures.js';
 import { canvasTexts, type CanvasTextKey } from './texts.js';
@@ -19,6 +20,8 @@ export interface CanvasEditorProps {
   readonly scene: CanvasScene;
   /** Language of the texts, e.g. "cs". */
   readonly language: string;
+  /** The fonts of the system to offer for texts (by family name). */
+  readonly fonts?: readonly string[];
   /** Asks for a line of text in the host's own dialog; undefined when cancelled. */
   ask(label: string, initial?: string): Promise<string | undefined>;
   /** Lets the user choose a picture file. */
@@ -454,11 +457,7 @@ export function CanvasEditor(props: CanvasEditorProps) {
             <input type="checkbox" data-canvas="hatch" checked={hatched} onChange={(e) => restyle({ hatch: e.target.checked })} /> {text('hatch')}
           </label>
           <select value={item?.type === 'text' ? (item.font ?? 'sans') : font} title={text('font')} data-canvas="font" onChange={(e) => restyle({ font: e.target.value as TextFont })}>
-            {TEXT_FONTS.map((f) => (
-              <option key={f} value={f}>
-                {text(`font.${f}`)}
-              </option>
-            ))}
+            <FontOptions fonts={props.fonts ?? []} current={item?.type === 'text' ? (item.font ?? 'sans') : font} text={text} />
           </select>
           <select value={fontSize} title={text('fontSize')} onChange={(e) => restyle({ size: Number(e.target.value) })}>
             {FONT_SIZES.map((s) => (
@@ -508,6 +507,7 @@ export function CanvasEditor(props: CanvasEditorProps) {
       }}
       colours={COLOURS}
       sizes={FONT_SIZES}
+      fonts={props.fonts ?? []}
       text={text}
       onDone={doneWriting}
     />

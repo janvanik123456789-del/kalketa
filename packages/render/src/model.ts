@@ -18,6 +18,7 @@ import {
   type Diagnostic,
   type Expr,
   type LineFormat,
+  type TextFont,
   type PlotResult,
   type Quantity,
   type SheetResult,
@@ -228,7 +229,7 @@ interface Mode {
 /** How a text line looks, {size=12 italic font=serif}: only what the line sets. */
 export interface TextStyle {
   readonly size?: number;
-  readonly font?: 'serif' | 'sans' | 'mono';
+  readonly font?: TextFont;
   readonly italic?: boolean;
   readonly bold?: boolean;
   readonly align?: 'left' | 'center' | 'right' | 'justify';

@@ -57,6 +57,11 @@ const TEXT_NAME = /(\p{L}[\p{L}\p{N}\p{M}]*)(_[\p{L}\p{N}\p{M}_]*[\p{L}\p{N}\p{M
 /** Fonts by kind, as the printout and every machine have some of each. */
 export const TEXT_FONT_FAMILIES = { serif: '"Cambria", "Times New Roman", serif', sans: '"Calibri", "Arial", sans-serif', mono: '"Consolas", "Courier New", monospace' } as const;
 /** Dark enough to read on paper and in black-and-white print. */
+/** The CSS font of a text line: a kind, or a font of the system by name (_ for a space) with a plain fallback. */
+export function textFontCss(font: string): string {
+  if (font in TEXT_FONT_FAMILIES) return TEXT_FONT_FAMILIES[font as keyof typeof TEXT_FONT_FAMILIES];
+  return `"${font.replace(/_/g, ' ').replace(/["\\]/g, '')}", ${TEXT_FONT_FAMILIES.sans}`;
+}
 export const TEXT_COLOR_VALUES = { gray: '#5f6368', blue: '#1a4f9c', red: '#b3261e', green: '#2e7d32' } as const;
 
 /** The style of a text line ({size=12 italic}) as a style attribute; nothing when it sets none. */
@@ -64,7 +69,7 @@ function styleAttribute(style: TextStyle | undefined): string {
   if (!style) return '';
   const rules = [
     style.size !== undefined ? `font-size: ${style.size}pt` : '',
-    style.font ? `font-family: ${TEXT_FONT_FAMILIES[style.font]}` : '',
+    style.font ? `font-family: ${textFontCss(style.font)}` : '',
     style.italic ? 'font-style: italic' : '',
     style.bold ? 'font-weight: bold' : '',
     style.align ? `text-align: ${style.align}` : '',
@@ -502,7 +507,7 @@ ${NOTES_CSS}
 /** Styles of blocks and the summary; used by print and by the editor. */
 export const BLOCK_CSS = `/* Cells of one row: a text and a formula, two results, side by side. */
 /* On one baseline: a text stands on the main line of the formula beside it, as in a sentence. */
-.cells { display: flex; align-items: baseline; gap: 8mm; }
+.cells { display: flex; align-items: baseline; gap: 10mm; }
 .cells > .cell { flex: 0 1 auto; min-width: 0; }
 .cells > .cell > * { margin-top: 0; margin-bottom: 0; }
 /* A calculation sheet with columns: the source, the working, the results; lines between them run down the page. */

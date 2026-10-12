@@ -19,6 +19,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { stat } from 'node:fs/promises';
 import { canSealKeys, registerAiBridge } from './ai.js';
 import { registerTheoryBridge } from './theory.js';
+import { systemFonts } from './fonts.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 // .calc: calculation files from before the program was renamed (it was CalcCanvas).
@@ -403,6 +404,11 @@ function registerBridge(): void {
     editor.files = new Set(paths.filter((p): p is string => typeof p === 'string').map(fileKey));
   });
 
+  ipcMain.handle('kalketa:system-fonts', async (event) => {
+    fromEditor(event);
+    return systemFonts();
+  });
+
   ipcMain.handle('kalketa:clipboard-pictures', async (event) => {
     fromEditor(event);
     const pictures: { name: string; type: string; bytes: Uint8Array }[] = [];
@@ -462,7 +468,7 @@ async function runSmokeTest(pdfPath: string): Promise<void> {
     await writeFile(pdfPath, pdf);
     ok =
       state.bridge && state.sideBySide && state.menus === 8 && state.toolbars > 0 && state.rows > 10 && state.summary > 0 && state.math > 0 && reshapedColumns === 3 && pdf.length > 1000 &&
-      layers.deflection && layers.pickTaken.column.startsWith('→') && /mm|cm/.test(layers.pickTaken.text) && layers.newKeepsExample && layers.samplesOk && layers.derivations && layers.summaryOk && layers.definitionAtCursor && layers.sheetGridOk && layers.tableEnter && layers.solvedByFormula && layers.rootsAndExtremes && layers.wordPrinted && layers.wordText.focused && layers.wordText.pane && layers.wordText.bold === 'dynamiky' && !layers.wordText.shown.includes('"') && layers.wordText.align === 'center' && layers.tableRowAdded && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.notesPicture === 'FIGURE+img BLOCKQUOTE' && layers.notesPlaced === 'narrower centred' && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.charts && layers.functionBar && layers.revisions && layers.roots && layers.toolIcons && layers.aiSettings && layers.aiChat && layers.pdfCleanup && layers.theoryLibrary && layers.study && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
+      layers.deflection && layers.pickTaken.column.startsWith('→') && /mm|cm/.test(layers.pickTaken.text) && layers.newKeepsExample && layers.samplesOk && layers.derivations && layers.summaryOk && layers.definitionAtCursor && layers.sheetGridOk && layers.tableEnter && layers.solvedByFormula && layers.rootsAndExtremes && layers.wordPrinted && layers.wordText.focused && layers.wordText.pane && layers.wordText.bold === 'dynamiky' && !layers.wordText.shown.includes('"') && layers.wordText.align === 'center' && layers.cellMarked === 'Síla na konci' && layers.cellFont.startsWith('Arial') && layers.tableRowAdded && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.notesPicture === 'FIGURE+img BLOCKQUOTE' && layers.notesPlaced === 'narrower centred' && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.charts && layers.functionBar && layers.revisions && layers.roots && layers.toolIcons && layers.aiSettings && layers.aiChat && layers.pdfCleanup && layers.theoryLibrary && layers.study && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
     console.log(JSON.stringify({ ok, ...state, reshapedColumns, layers, pdfBytes: pdf.length }));
   } catch (err) {
     console.log(JSON.stringify({ ok: false, error: (err as Error).message, console: smokeConsole.slice(-5) }));
@@ -1213,6 +1219,28 @@ async function layersWithRealInput(picture: string) {
     const el = document.querySelector('[data-text-editor]');
     return { focused: document.activeElement === el, shown: el?.textContent ?? '', bold: el?.querySelector('b')?.textContent ?? '', font: el?.style.fontFamily ?? '', align: el?.style.textAlign ?? '', pane: !!document.querySelector('[data-text-properties]') };
   })()`)) as { focused: boolean; shown: string; bold: string; font: string; align: string; pane: boolean };
+  // The text of a cell marked by a drag of the mouse from its first letter to just past its last: all of it.
+  await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .page .cells-group .row')].find((r) => r.textContent.includes('Síla na konci')).id = 'smoke-cell-text'`);
+  await clickOn('#smoke-cell-text p.text');
+  await pause(300);
+  const cellWords = (await contents.executeJavaScript(`(() => {
+    const el = document.querySelector('[data-text-editor]');
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const r = range.getBoundingClientRect();
+    return { x0: Math.round(r.left + 1), x1: Math.round(r.right + 2), y: Math.round(r.top + r.height / 2) };
+  })()`)) as { x0: number; x1: number; y: number };
+  contents.sendInputEvent({ type: 'mouseDown', x: cellWords.x0, y: cellWords.y, button: 'left', clickCount: 1 });
+  for (let step = 1; step <= 8; step++) contents.sendInputEvent({ type: 'mouseMove', x: Math.round(cellWords.x0 + ((cellWords.x1 - cellWords.x0) * step) / 8), y: cellWords.y, button: 'left' });
+  contents.sendInputEvent({ type: 'mouseUp', x: cellWords.x1, y: cellWords.y, button: 'left', clickCount: 1 });
+  await pause(200);
+  const cellMarked = (await contents.executeJavaScript(`document.getSelection().toString()`)) as string;
+  // A font of the system by its name, from the Format menu.
+  await clickOn('.menubar-item:nth-child(5) > button');
+  await clickMenu('Písmo');
+  await clickMenu('Arial');
+  await pause(300);
+  const cellFont = (await contents.executeJavaScript(`document.querySelector('[data-text-editor]')?.style.fontFamily ?? ''`)) as string;
   // A click on the grey beside the page closes the line (the middle of the view may be a row of the second page).
   const besidePage = (await contents.executeJavaScript(`(() => { const p = document.querySelector('.layer-view.active .page').getBoundingClientRect(); return { x: Math.round(p.left - 30), y: Math.round(p.top + 100) }; })()`)) as { x: number; y: number };
   contents.sendInputEvent({ type: 'mouseDown', ...besidePage, button: 'left', clickCount: 1 });
@@ -2014,7 +2042,7 @@ async function layersWithRealInput(picture: string) {
     blocksOk = shown.errors === 0 && shown.text.includes('Prosty nosnik 1.2') && shown.text.includes('45');
     await takePicture(picture.replace(/[.]png$/, '-blocks.png'));
   }
-  return { ...state, pickTaken, deflection, derivations, summaryOk, summaryOpens, summaryAtEnd, bookStyle, verdictFuture, verdictBack, pageHead, definitionAtCursor, solveFormatted, sheetGridOk, sheetGrid, tableEnter, tableEnterAt, lastRowEnter, draggedRows, selectedAll, bothFormatted, roundedOn, equationNumber, solvedByFormula, rootsAndExtremes, wordText, wordPrinted, tableRowAdded, chartSteps, samplesOk, sampleTab, newKeepsExample, citations, notesPicture, notesPlaced, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, toolIcons, aiSettings, aiChat, pdfCleanup, theoryLibrary, study, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, placedFree, strictPlaced, canvasOk, besideText, pictures, blocksOk };
+  return { ...state, pickTaken, deflection, derivations, summaryOk, summaryOpens, summaryAtEnd, bookStyle, verdictFuture, verdictBack, pageHead, definitionAtCursor, solveFormatted, sheetGridOk, sheetGrid, tableEnter, tableEnterAt, lastRowEnter, draggedRows, selectedAll, bothFormatted, roundedOn, equationNumber, solvedByFormula, rootsAndExtremes, wordText, wordPrinted, cellMarked, cellFont, tableRowAdded, chartSteps, samplesOk, sampleTab, newKeepsExample, citations, notesPicture, notesPlaced, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, toolIcons, aiSettings, aiChat, pdfCleanup, theoryLibrary, study, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, placedFree, strictPlaced, canvasOk, besideText, pictures, blocksOk };
 }
 
 /** The tidied sources saved as a library (.kalkt) and attached in the chat: the model cites it by its key. */

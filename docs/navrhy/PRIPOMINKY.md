@@ -27,3 +27,12 @@ Když něco spadne, ztrácí data nebo nejde dál testovat, napište to hned, ne
 
 4. ~~Rozbila se editace textu. Text by měl být vkládaný jako formátovaný, vlastnosti skryté a editace jako ve Wordu, ne pravým tlačítkem, ale menu (jako PowerPoint, Word, panel Vlastnosti v LibreOffice).~~
    **Vyřízeno 2026-10-12:** text a nadpisy se na listu upravují rovnou naformátované, bez uvozovek a značek `{…}`; program je zapisuje sám. Tučné a kurzíva se dají na označená slova (Ctrl+B, Ctrl+I). Nové menu **Formát** obsahuje písmo, velikost, barvu, styl odstavce (Normální / Nadpis 1–3) a zarovnání (Ctrl+L, E, R, J). Při úpravě textu je stejné nastavení nahoře v postranním panelu jako „Znak“ a „Odstavec“. Napsané `"` se mění na „ “; uvozovka napsaná ze zvyku na konci se nezdvojí. Zápis se značkami jde otevřít přes „Upravit jako zápis“. Příčina rozbití v `Vypocet_prumeru_nytu.kalk`: na řádku 7 chyběla zavírací uvozovka (`"Koeficient dynamiky namáhání {font=serif italic}`). Nový editor takový řádek opraví při první úpravě textu.
+
+5. ~~Mezi buňkami chybí mezera; při označování textu v buňce se poslední tři písmena neoznačí, kurzor se musí stáhnout mimo sousední buňku.~~
+   **Vyřízeno 2026-10-12:** mezi buňkami je 10 mm (na listu i v tisku). Buňka už se nezužuje pod šířku svého textu, takže sousední buňka nepřekrývá jeho konec. Při úpravě jedné buňky nejde označovat text v sousední. Smoke test označí text buňky tažením myší až za poslední písmeno a ověří, že je označený celý.
+
+6. ~~Proč nejde použít celou paletu písem? Měla by se brát z operačního systému.~~
+   **Vyřízeno 2026-10-12:** písma se načítají z operačního systému (Windows z registru, Linux přes fontconfig). Nabízí je menu Formát → Písmo, panel Vlastnosti i plátno; každé písmo je v seznamu ukázané samo sebou. Druhy (patkové, bezpatkové, strojové) zůstávají na začátku, protože existují na každém počítači. V zápisu je to `font=Times_New_Roman` (`_` místo mezery). Když písmo na jiném počítači chybí, použije se bezpatkové a seznam ho označí „na tomto počítači chybí“.
+
+7. ~~Zrušit vložení nadpisu, nadpis si každý udělá editací textu.~~
+   **Vyřízeno 2026-10-12:** příkaz Nadpis je pryč z menu Vložit i z panelu nástrojů. Nadpis se udělá z textu stylem odstavce (Formát → Styl → Nadpis 1–3, Ctrl+Alt+1–3).

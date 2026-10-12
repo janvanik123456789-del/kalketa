@@ -90,6 +90,13 @@ describe('style of a text line', () => {
     expect(html).toContain('<p class="text">Obyčejný text.</p>');
     expect(evaluateSheet('"Text" {size=100 underline}').diagnostics.map((d) => d.code)).toEqual(['W-FORMAT', 'W-FORMAT']);
   });
+
+  it('prints a font of the system by its name, _ for a space, a plain one standing in', async () => {
+    const { printHtml } = await import('../src/index.js');
+    const html = printHtml(evaluateSheet('"Nadpis tabulky" {font=Times_New_Roman}'), { catalog: catalogFor('cs'), registry: defaultRegistry, title: 'S' });
+    expect(html).toContain('style="font-family: &quot;Times New Roman&quot;, &quot;Calibri&quot;, &quot;Arial&quot;, sans-serif"');
+    expect(evaluateSheet('"Text" {font=Times_New_Roman}').diagnostics).toEqual([]);
+  });
 });
 
 describe('a minus before a fraction', () => {

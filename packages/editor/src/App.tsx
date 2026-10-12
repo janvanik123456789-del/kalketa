@@ -48,6 +48,7 @@ import { RevisionsDialog } from './components/Revisions.js';
 import { Inspector } from './components/Inspector.js';
 import { TextProperties, TEXT_FONT_KINDS, TEXT_SIZES } from './components/TextProperties.js';
 import type { TextFormat } from './components/TextRowEditor.js';
+import { fontValue, useSystemFonts } from './logic/systemFonts.js';
 import { ask, askConfirm, AskHost } from './components/Ask.js';
 import { LAYER_GLYPH, LayersPane, LayerTabs } from './components/LayersPane.js';
 import { NotesView } from './components/NotesView.js';
@@ -178,6 +179,7 @@ export function App() {
   const [selected, setSelected] = useState<number | undefined>();
   // The line of text being edited as in a word processor: what the Format menu and the pane change.
   const [textFormat, setTextFormat] = useState<TextFormat | undefined>();
+  const systemFonts = useSystemFonts();
   // Each Edit > Select all (Ctrl+A) counts up: the active sheet marks all its rows.
   const [selectAll, setSelectAll] = useState(0);
   const [notice, setNotice] = useState<string | undefined>();
@@ -1173,6 +1175,7 @@ export function App() {
     <CanvasEditor
       key={`${mode}:${path}`}
       mode={mode}
+      fonts={systemFonts}
       scene={readScene(doc.files.get(path))}
       language={ui.locale}
       ask={ask}
@@ -1223,7 +1226,7 @@ export function App() {
     return `${base}_${n}`;
   };
 
-  const insert = (kind: 'heading' | 'text' | 'definition' | 'check' | 'pick' | 'pageBreak' | 'clear' | 'chart' | 'sheetTable') => {
+  const insert = (kind: 'text' | 'definition' | 'check' | 'pick' | 'pageBreak' | 'clear' | 'chart' | 'sheetTable') => {
     switch (kind) {
       case 'sheetTable': {
         // A table in the sheet (measured points): opened as a grid to fill in.
@@ -1233,8 +1236,6 @@ export function App() {
         setEditing({ start: after + 1, end: after + lines.length });
         return;
       }
-      case 'heading':
-        return insertLine('## ');
       case 'text':
         return insertLine('""', 1);
       case 'definition':
@@ -1654,7 +1655,7 @@ export function App() {
     },
     {
       label: t(ui, 'menu.insert'),
-      items: [cmd('insert.heading'), cmd('insert.text'), cmd('insert.definition'), cmd('insert.check'), cmd('insert.pick'), cmd('insert.pageBreak'), cmd('insert.clear'), sep, cmd('insert.picture'), cmd('insert.canvas'), cmd('insert.chart'), cmd('insert.sheetTable'), cmd('insert.newTable'), cmd('insert.importTable'), cmd('insert.block'),
+      items: [cmd('insert.text'), cmd('insert.definition'), cmd('insert.check'), cmd('insert.pick'), cmd('insert.pageBreak'), cmd('insert.clear'), sep, cmd('insert.picture'), cmd('insert.canvas'), cmd('insert.chart'), cmd('insert.sheetTable'), cmd('insert.newTable'), cmd('insert.importTable'), cmd('insert.block'),
         ...(doc.blocks.size > 0
           ? [
               {
@@ -1691,7 +1692,7 @@ export function App() {
           { kind: 'action', label: t(ui, 'textStyle.bold'), enabled: on, checked: !!f?.bold, shortcut: 'Ctrl+B', run: () => f?.toggleBold() },
           { kind: 'action', label: t(ui, 'textStyle.italic'), enabled: on, checked: !!f?.italic, shortcut: 'Ctrl+I', run: () => f?.toggleItalic() },
           sep,
-          { kind: 'submenu', label: t(ui, 'textStyle.font'), items: choices('font', TEXT_FONT_KINDS, (v) => t(ui, `textStyle.font.${v}` as UiKey)) },
+          { kind: 'submenu', label: t(ui, 'textStyle.font'), items: [...choices('font', TEXT_FONT_KINDS, (v) => t(ui, `textStyle.font.${v}` as UiKey)), sep, ...systemFonts.map((name) => mark('font', fontValue(name), name))] },
           { kind: 'submenu', label: t(ui, 'textStyle.size'), items: choices('size', TEXT_SIZES, (v) => `${v} pt`) },
           { kind: 'submenu', label: t(ui, 'textStyle.color'), items: choices('color', TEXT_COLORS, (v) => t(ui, `textStyle.color.${v}` as UiKey)) },
           sep,

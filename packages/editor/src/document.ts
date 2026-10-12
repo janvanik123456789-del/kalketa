@@ -94,6 +94,8 @@ export interface DesktopBridge {
   setOpenFiles(paths: string[]): void;
   /** Another window tried to open a file this one has: show its tab. */
   onShowFile(listener: (path: string) => void): void;
+  /** The font families installed in the operating system. */
+  systemFonts?(): Promise<string[]>;
   /** Pictures on the clipboard: picture files copied in a file manager, or a copied picture. */
   clipboardPictures(): Promise<{ name: string; type: string; bytes: Uint8Array }[]>;
   /** Company rules for the AI (read by the application from next to the program). */

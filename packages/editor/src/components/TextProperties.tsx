@@ -8,8 +8,9 @@ import type { ReactNode } from 'react';
 import { TEXT_ALIGNS, TEXT_COLORS } from '@kalketa/core';
 import { t, type Catalog, type UiKey } from '@kalketa/i18n';
 import type { TextFormat } from './TextRowEditor.js';
+import { fontName, fontValue, useSystemFonts } from '../logic/systemFonts.js';
 
-export const TEXT_SIZES = ['9', '10', '11', '12', '14', '16', '20'] as const;
+export const TEXT_SIZES = ['8', '9', '10', '11', '12', '14', '16', '18', '20', '24', '28', '36', '48'] as const;
 export const TEXT_FONT_KINDS = ['serif', 'sans', 'mono'] as const;
 
 /** Lines of a paragraph set to the left, the middle, the right or both edges. */
@@ -23,6 +24,35 @@ function AlignIcon({ align }: { align: string }) {
         return <rect key={i} x={x} y={1.5 + i * 3.2} width={width} height="1.4" rx="0.7" fill="currentColor" />;
       })}
     </svg>
+  );
+}
+
+/**
+ * The font of the line: a kind (each machine has one) or a font of the system, each shown in itself.
+ * A font the line names but this machine lacks stays in the list, marked.
+ */
+export function FontSelect({ value, catalog, onChange }: { value: string; catalog: Catalog; onChange(font: string | undefined): void }) {
+  const fonts = useSystemFonts();
+  const missing = value !== '' && !(TEXT_FONT_KINDS as readonly string[]).includes(value) && fonts.length > 0 && !fonts.includes(fontName(value));
+  return (
+    <select data-text-prop="font" value={value} onChange={(e) => onChange(e.target.value || undefined)}>
+      <option value="">{t(catalog, 'textStyle.defaultValue')}</option>
+      <optgroup label={t(catalog, 'textProps.fontKinds')}>
+        {TEXT_FONT_KINDS.map((f) => (
+          <option key={f} value={f}>
+            {t(catalog, `textStyle.font.${f}` as UiKey)}
+          </option>
+        ))}
+      </optgroup>
+      <optgroup label={t(catalog, 'textProps.systemFonts')}>
+        {missing && <option value={value}>{t(catalog, 'textProps.fontMissing', { font: fontName(value) })}</option>}
+        {fonts.map((name) => (
+          <option key={name} value={fontValue(name)} style={{ fontFamily: `"${name}"` }}>
+            {name}
+          </option>
+        ))}
+      </optgroup>
+    </select>
   );
 }
 
@@ -50,7 +80,10 @@ export function TextProperties({ format, catalog }: { format: TextFormat; catalo
   return (
     <div className="text-properties" data-text-properties="">
       <h3>{t(catalog, 'textProps.character')}</h3>
-      {select('font', t(catalog, 'textStyle.font'), TEXT_FONT_KINDS.map((f) => [f, t(catalog, `textStyle.font.${f}` as UiKey)]))}
+      <label className="text-prop">
+        <span>{t(catalog, 'textStyle.font')}</span>
+        <FontSelect value={value('font')} catalog={catalog} onChange={(font) => format.set('font', font)} />
+      </label>
       {select('size', t(catalog, 'textStyle.size'), TEXT_SIZES.map((s) => [s, `${s} pt`]))}
       <div className="text-prop-row">
         {button({ id: 'bold', title: `${t(catalog, 'textStyle.bold')} (Ctrl+B)`, on: format.bold, run: format.toggleBold, children: <b>B</b> })}

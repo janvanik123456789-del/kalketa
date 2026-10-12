@@ -8,7 +8,8 @@
 
 import { useEffect, useLayoutEffect, useRef, type MouseEvent as ReactMouseEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { FONT_FAMILIES, TEXT_FONTS, textLines, type CanvasItem, type TextAlign, type TextFont } from '../scene.js';
+import { FontOptions } from './FontOptions.js';
+import { fontFamilyOf, textLines, type CanvasItem, type TextAlign, type TextFont } from '../scene.js';
 import { htmlOf, runsOf } from './richText.js';
 import type { CanvasTextKey } from './texts.js';
 
@@ -20,12 +21,13 @@ interface Props {
   stage(): { box: DOMRect; width: number } | undefined;
   readonly colours: readonly string[];
   readonly sizes: readonly number[];
+  readonly fonts: readonly string[];
   text(key: CanvasTextKey): string;
   /** The text as written (its runs), or undefined when nothing is left of it. */
   onDone(item: TextItem | undefined): void;
 }
 
-export function TextEditor({ item: initial, stage, colours, sizes, text, onDone }: Props) {
+export function TextEditor({ item: initial, stage, colours, sizes, fonts, text, onDone }: Props) {
   const field = useRef<HTMLDivElement>(null);
   const bar = useRef<HTMLDivElement>(null);
   // Font, size and alignment belong to the whole text; the field shows them as they change.
@@ -84,7 +86,7 @@ export function TextEditor({ item: initial, stage, colours, sizes, text, onDone 
     item.current = { ...item.current, ...change };
     const element = field.current;
     if (!element) return;
-    if (change.font) element.style.fontFamily = FONT_FAMILIES[change.font];
+    if (change.font) element.style.fontFamily = fontFamilyOf(change.font);
     if (change.size) element.style.fontSize = `${change.size * scale}px`;
     if (change.align) element.style.textAlign = change.align;
     element.focus();
@@ -113,11 +115,7 @@ export function TextEditor({ item: initial, stage, colours, sizes, text, onDone 
         ))}
         <span className="canvas-sep" />
         <select title={text('font')} defaultValue={initial.font ?? 'sans'} onMouseDown={(e) => e.stopPropagation()} onChange={(e) => setWhole({ font: e.target.value as TextFont })}>
-          {TEXT_FONTS.map((f) => (
-            <option key={f} value={f}>
-              {text(`font.${f}`)}
-            </option>
-          ))}
+          <FontOptions fonts={fonts} current={initial.font ?? 'sans'} text={text} />
         </select>
         <select title={text('fontSize')} defaultValue={initial.size} onMouseDown={(e) => e.stopPropagation()} onChange={(e) => setWhole({ size: Number(e.target.value) })}>
           {[...new Set([...sizes, initial.size])].sort((a, b) => a - b).map((s) => (
@@ -143,7 +141,7 @@ export function TextEditor({ item: initial, stage, colours, sizes, text, onDone 
           left,
           top,
           fontSize: `${initial.size * scale}px`,
-          fontFamily: FONT_FAMILIES[initial.font ?? 'sans'],
+          fontFamily: fontFamilyOf(initial.font),
           fontWeight: initial.bold ? 'bold' : undefined,
           color: initial.color,
           textAlign: initial.align ?? 'left',

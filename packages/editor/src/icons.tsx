@@ -89,7 +89,6 @@ const ICONS: Readonly<Record<string, ReactElement>> = {
   ),
   'edit.duplicateLine': <path {...S} d="M3 5h10M3 9h10M7 13h10M7 17h10" />,
   'edit.deleteLine': <path {...S} d="M3 10h14M6 6l8 8M14 6l-8 8" />,
-  'insert.heading': <path {...S} d="M5 4v12M13 4v12M5 10h8" />,
   'insert.text': <path {...S} d="M15 3.5H8.5a3.5 3.5 0 0 0 0 7H11M11 3.5V17M14 3.5V17" />,
   'insert.definition': (
     <text x="10" y="14.5" fontSize="12" textAnchor="middle" fill="currentColor">

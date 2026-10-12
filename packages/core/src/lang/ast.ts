@@ -107,8 +107,11 @@ export interface LineFormat {
   readonly beside?: boolean;
 }
 
-/** Fonts of text by kind, not by name: each machine and printout has its own of the kind. */
-export type TextFont = 'serif' | 'sans' | 'mono';
+/**
+ * A font of text: by kind (each machine has one of the kind), or a font of the system by
+ * its name with _ for a space (font=Times_New_Roman), its kind standing in where it is missing.
+ */
+export type TextFont = 'serif' | 'sans' | 'mono' | (string & {});
 export type TextAlign = 'left' | 'center' | 'right' | 'justify';
 /** Colors by name, few and print-safe: what a calculation needs to mark, not a palette. */
 export type TextColor = 'gray' | 'blue' | 'red' | 'green';

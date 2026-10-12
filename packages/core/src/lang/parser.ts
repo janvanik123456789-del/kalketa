@@ -170,7 +170,7 @@ function withFormat(statement: Statement, format: LineFormat | undefined): State
 
 /**
  * {decimals=2} or {digits=3} (whole numbers 0 to 15, digits from 1); of text {size=12} (6 to 48 pt),
- * {font=serif|sans|mono}, {italic}, {bold}. Anything else is reported.
+ * {font=serif|sans|mono} or a font by name (font=Times_New_Roman), {italic}, {bold}. Anything else is reported.
  */
 function lineFormat(tokens: readonly Token[], diagnostics: Diagnostic[], at: Span): LineFormat {
   const format: { -readonly [K in keyof LineFormat]: LineFormat[K] } = {};
@@ -180,7 +180,7 @@ function lineFormat(tokens: readonly Token[], diagnostics: Diagnostic[], at: Spa
       const n = Number(value);
       if ((key === 'decimals' || key === 'digits') && Number.isInteger(n) && n >= (key === 'digits' ? 1 : 0) && n <= 15) format[key] = n;
       else if (key === 'size' && Number.isFinite(n) && n >= 6 && n <= 48) format.size = n;
-      else if (key === 'font' && (value === 'serif' || value === 'sans' || value === 'mono')) format.font = value;
+      else if (key === 'font' && value !== undefined && /^[\p{L}\p{N}_\-]+$/u.test(value)) format.font = value;
       else if ((key === 'italic' || key === 'bold' || key === 'rounded' || key === 'noeq' || key === 'beside') && value === undefined) format[key] = true;
       // A name for references (eq=hooke), or the number a book gave the formula (eq=32, eq=12a).
       else if (key === 'eq' && (value === undefined || /^[\p{L}\p{N}_]+$/u.test(value))) format.eq = value ?? true;

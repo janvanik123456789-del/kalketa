@@ -63,7 +63,7 @@ export interface CommandContext {
     setPane(pane: 'details' | 'tables' | 'layers' | 'chat' | 'none'): void;
     toggleTableEditor(): void;
     customize(): void;
-    insert(kind: 'heading' | 'text' | 'definition' | 'check' | 'pick' | 'pageBreak' | 'clear' | 'chart' | 'sheetTable'): void;
+    insert(kind: 'text' | 'definition' | 'check' | 'pick' | 'pageBreak' | 'clear' | 'chart' | 'sheetTable'): void;
     newTable(): void;
     importTable(): void;
     insertBlock(): void;
@@ -123,7 +123,6 @@ export function buildCommands(ctx: CommandContext): Map<string, Command> {
   add('view.tableEditor', 'view', a.toggleTableEditor, { checked: ctx.tableEditor });
   add('view.customize', 'view', a.customize);
 
-  add('insert.heading', 'insert', () => a.insert('heading'));
   add('insert.text', 'insert', () => a.insert('text'));
   add('insert.definition', 'insert', () => a.insert('definition'));
   add('insert.check', 'insert', () => a.insert('check'));

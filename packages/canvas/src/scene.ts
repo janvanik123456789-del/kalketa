@@ -82,13 +82,14 @@ export interface TextRun {
   readonly color?: string;
 }
 
-export type TextFont = 'sans' | 'serif' | 'mono' | 'arial' | 'times' | 'calibri' | 'iso';
+/** A font by kind, or a font of the system by its name ("Bahnschrift"), plain sans where it is missing. */
+export type TextFont = 'sans' | 'serif' | 'mono' | 'arial' | 'times' | 'calibri' | 'iso' | (string & {});
 
 /** The fonts offered, in the order the menus list them. */
-export const TEXT_FONTS: readonly TextFont[] = ['sans', 'serif', 'mono', 'arial', 'times', 'calibri', 'iso'];
+export const TEXT_FONTS: readonly TextFont[] = ['sans', 'serif', 'mono', 'iso'];
 export type TextAlign = 'left' | 'center' | 'right';
 
-export const FONT_FAMILIES: Readonly<Record<TextFont, string>> = {
+export const FONT_FAMILIES: Readonly<Record<string, string>> = {
   sans: 'Segoe UI, Helvetica, Arial, sans-serif',
   serif: 'Cambria, Times New Roman, serif',
   mono: 'Consolas, Courier New, monospace',
@@ -98,6 +99,12 @@ export const FONT_FAMILIES: Readonly<Record<TextFont, string>> = {
   // The lettering of technical drawings (ISO 3098), where it is installed; else a plain sans.
   iso: 'ISOCPEUR, osifont, Arial Narrow, Arial, sans-serif',
 };
+
+/** The CSS font of a text: of its kind, or the system font by name with a plain fallback. */
+export function fontFamilyOf(font: TextFont | undefined): string {
+  if (!font) return FONT_FAMILIES['sans']!;
+  return FONT_FAMILIES[font] ?? `'${font.replace(/['"\\]/g, '')}', ${FONT_FAMILIES['sans']}`;
+}
 
 /**
  * The values of the calculation a canvas shows: {L} in a text or a label becomes "5 m"
@@ -363,7 +370,7 @@ export function itemSvg(item: CanvasItem, resolveFile: (path: string) => string 
       };
       // An empty line keeps its height.
       const spans = lines.map((line, i) => `<tspan x="${n(x)}" dy="${i === 0 ? 0 : n(item.size * 1.25)}">${line.map(run).join('') || ' '}</tspan>`).join('');
-      return `<text x="${n(x)}" y="${n(item.y + item.size)}" font-size="${n(item.size)}" font-family="${FONT_FAMILIES[item.font ?? 'sans']}" fill="${esc(item.color)}"${item.bold ? ' font-weight="bold"' : ''}${anchor} xml:space="preserve">${spans}</text>`;
+      return `<text x="${n(x)}" y="${n(item.y + item.size)}" font-size="${n(item.size)}" font-family="${esc(fontFamilyOf(item.font))}" fill="${esc(item.color)}"${item.bold ? ' font-weight="bold"' : ''}${anchor} xml:space="preserve">${spans}</text>`;
     }
     case 'image': {
       const href = resolveFile(item.src);

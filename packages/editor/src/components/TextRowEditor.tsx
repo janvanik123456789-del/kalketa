@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
-import { TEXT_COLOR_VALUES, TEXT_FONT_FAMILIES } from '@kalketa/render';
+import { TEXT_COLOR_VALUES, textFontCss } from '@kalketa/render';
 import { formatTextLine, marksOf, parseTextLine, type TextLine, type TextRun } from '../logic/textLine.js';
 import type { LineAttributes } from '../logic/lineFormat.js';
 
@@ -91,7 +91,7 @@ function styleOf(attributes: LineAttributes): CSSProperties {
   const size = Number(attributes.get('size'));
   if (size > 0) style.fontSize = `${size}pt`;
   const font = attributes.get('font');
-  if (font && font in TEXT_FONT_FAMILIES) style.fontFamily = TEXT_FONT_FAMILIES[font as keyof typeof TEXT_FONT_FAMILIES];
+  if (font) style.fontFamily = textFontCss(font);
   if (attributes.has('italic')) style.fontStyle = 'italic';
   if (attributes.has('bold')) style.fontWeight = 'bold';
   const align = attributes.get('align');

@@ -180,6 +180,12 @@ export function App() {
   // The line of text being edited as in a word processor: what the Format menu and the pane change.
   const [textFormat, setTextFormat] = useState<TextFormat | undefined>();
   const systemFonts = useSystemFonts();
+  // More colours…: the palette of the Properties pane opens (the pane shown if hidden).
+  const [paletteRequest, setPaletteRequest] = useState(0);
+  const morePaletteColors = () => {
+    if (pane === 'none' || pane === 'chat') choosePane('details');
+    setPaletteRequest((n) => n + 1);
+  };
   // Each Edit > Select all (Ctrl+A) counts up: the active sheet marks all its rows.
   const [selectAll, setSelectAll] = useState(0);
   const [notice, setNotice] = useState<string | undefined>();
@@ -1700,7 +1706,11 @@ export function App() {
             // The colour of the marked words, as a word processor gives it (of the whole line when none are marked).
             kind: 'submenu',
             label: t(ui, 'textStyle.color'),
-            items: [undefined, ...TEXT_COLORS].map((c): MenuItem => ({ kind: 'action', label: c ? t(ui, `textStyle.color.${c}` as UiKey) : t(ui, 'textStyle.defaultValue'), enabled: on, checked: f?.color === c, run: () => f?.setColor(c) })),
+            items: [
+              ...[undefined, ...TEXT_COLORS].map((c): MenuItem => ({ kind: 'action', label: c ? t(ui, `textStyle.color.${c}` as UiKey) : t(ui, 'textProps.colorAuto'), enabled: on, checked: f?.color === c, run: () => f?.setColor(c) })),
+              sep,
+              { kind: 'action', label: t(ui, 'textProps.colorMore'), enabled: on, run: morePaletteColors },
+            ],
           },
           sep,
           {
@@ -1845,6 +1855,7 @@ export function App() {
             setEditing({ start: line + 1, end: line + 1 });
           }}
           onTextFormat={setTextFormat}
+          onMoreColors={morePaletteColors}
           onInsertBeside={(line) => {
             // A new cell: a line marked to stand beside the one above it, the cursor before its mark.
             setLayerText(l, replaceLines(insertLineAfter(source, line), line + 1, line + 1, '{beside}'));
@@ -1923,7 +1934,7 @@ export function App() {
                   </button>
                 </nav>
                 <div className="pane-body">
-                  {textFormat && pane !== 'chat' && <TextProperties format={textFormat} catalog={ui} />}
+                  {textFormat && pane !== 'chat' && <TextProperties format={textFormat} catalog={ui} paletteRequest={paletteRequest} />}
                   {pane === 'chat' ? (
                     <ChatPane
                       catalog={ui}

@@ -57,9 +57,9 @@ export function formatTextLine(line: TextLine): string {
   return line.comment ? `${withMarks}${line.comment}` : withMarks;
 }
 
-/** The colours a part of a text may have: {red}words{/}. */
+/** The named colours a part of a text may have ({red}words{/}); any other as {#c00000}words{/}. */
 export const RUN_COLORS = ['gray', 'blue', 'red', 'green'] as const;
-const COLORED = /\{(gray|blue|red|green)\}([\s\S]*?)\{\/\}/g;
+const COLORED = /\{(gray|blue|red|green|#[0-9a-fA-F]{6})\}([\s\S]*?)\{\/\}/g;
 
 /** **bold**, *italic* and {red}coloured{/} words of the language as runs; a lone * (2 * 3) stays a character. */
 export function runsOf(content: string): TextRun[] {

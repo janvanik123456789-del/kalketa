@@ -95,6 +95,9 @@ describe('style of a text line', () => {
     const { printHtml } = await import('../src/index.js');
     const html = printHtml(evaluateSheet('"Mez {red}**kluzu**{/} oceli"'), { catalog: catalogFor('cs'), registry: defaultRegistry, title: 'S' });
     expect(html).toContain('<p class="text">Mez <span style="color: #b3261e"><strong>kluzu</strong></span> oceli</p>');
+    const any = printHtml(evaluateSheet('"Mez {#7030A0}kluzu{/}" {color=#c00000}'), { catalog: catalogFor('cs'), registry: defaultRegistry, title: 'S' });
+    expect(any).toContain('<p class="text" style="color: #c00000">Mez <span style="color: #7030a0">kluzu</span></p>');
+    expect(evaluateSheet('"T" {color=#12345}').diagnostics.map((d) => d.code)).toEqual(['W-FORMAT']);
   });
 
   it('prints a font of the system by its name, _ for a space, a plain one standing in', async () => {

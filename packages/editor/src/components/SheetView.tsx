@@ -72,6 +72,8 @@ interface Props {
   readonly inlineCanvas?: { readonly path: string; render(): ReactNode };
   /** The line of text being edited as in a word processor: its format for the menu and the pane. */
   onTextFormat?(format: TextFormat | undefined): void;
+  /** More colours…: the whole palette, in the Properties pane. */
+  onMoreColors?(): void;
   /** Lets the user choose another file for the picture on lines start..end. */
   onReplacePicture(start: number, end: number): void;
   /** Page size and margins of the printout. */
@@ -720,7 +722,11 @@ export function SheetView(props: Props) {
                 {
                   kind: 'submenu',
                   label: t(ui, 'textStyle.color'),
-                  items: [undefined, ...TEXT_COLORS].map((c): MenuItem => ({ kind: 'action', label: c ? t(ui, `textStyle.color.${c}` as UiKey) : t(ui, 'textStyle.defaultValue'), checked: open.color === c, run: () => open.setColor(c) })),
+                  items: [
+                    ...[undefined, ...TEXT_COLORS].map((c): MenuItem => ({ kind: 'action', label: c ? t(ui, `textStyle.color.${c}` as UiKey) : t(ui, 'textProps.colorAuto'), checked: open.color === c, run: () => open.setColor(c) })),
+                    { kind: 'separator' },
+                    { kind: 'action', label: t(ui, 'textProps.colorMore'), run: () => props.onMoreColors?.() },
+                  ],
                 },
                 ...textMenuItems(seg, ui, change).filter((item) => !('label' in item && own.includes(item.label))),
                 { kind: 'separator' },

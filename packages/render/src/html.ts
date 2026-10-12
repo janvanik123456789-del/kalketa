@@ -62,6 +62,10 @@ export function textFontCss(font: string): string {
   if (font in TEXT_FONT_FAMILIES) return TEXT_FONT_FAMILIES[font as keyof typeof TEXT_FONT_FAMILIES];
   return `"${font.replace(/_/g, ' ').replace(/["\\]/g, '')}", ${TEXT_FONT_FAMILIES.sans}`;
 }
+/** The CSS colour of a text colour: a named one, or #rrggbb as it is. */
+export function textColorCss(color: string): string {
+  return color in TEXT_COLOR_VALUES ? TEXT_COLOR_VALUES[color as keyof typeof TEXT_COLOR_VALUES] : /^#[0-9a-fA-F]{6}$/.test(color) ? color.toLowerCase() : 'inherit';
+}
 export const TEXT_COLOR_VALUES = { gray: '#5f6368', blue: '#1a4f9c', red: '#b3261e', green: '#2e7d32' } as const;
 
 /** The style of a text line ({size=12 italic}) as a style attribute; nothing when it sets none. */
@@ -73,7 +77,7 @@ function styleAttribute(style: TextStyle | undefined): string {
     style.italic ? 'font-style: italic' : '',
     style.bold ? 'font-weight: bold' : '',
     style.align ? `text-align: ${style.align}` : '',
-    style.color ? `color: ${TEXT_COLOR_VALUES[style.color]}` : '',
+    style.color ? `color: ${textColorCss(style.color)}` : '',
   ].filter(Boolean);
   return rules.length > 0 ? ` style="${esc(rules.join('; '))}"` : '';
 }
@@ -89,7 +93,7 @@ export function textHtml(text: string): string {
 
 /** {red}words{/}: a part of the text in a colour of its own (of the colours a text line has). */
 function colored(html: string): string {
-  return html.replace(/\{(gray|blue|red|green)\}([\s\S]*?)\{\/\}/g, (_, color: keyof typeof TEXT_COLOR_VALUES, words: string) => `<span style="color: ${TEXT_COLOR_VALUES[color]}">${words}</span>`);
+  return html.replace(/\{(gray|blue|red|green|#[0-9a-fA-F]{6})\}([\s\S]*?)\{\/\}/g, (_, color: string, words: string) => `<span style="color: ${textColorCss(color)}">${words}</span>`);
 }
 
 /** **bold** and *italic* parts; a lone * (2 * 3) stays as it is. Tags hold no *, so they are safe. */

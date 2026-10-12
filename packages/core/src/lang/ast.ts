@@ -114,7 +114,8 @@ export interface LineFormat {
 export type TextFont = 'serif' | 'sans' | 'mono' | (string & {});
 export type TextAlign = 'left' | 'center' | 'right' | 'justify';
 /** Colors by name, few and print-safe: what a calculation needs to mark, not a palette. */
-export type TextColor = 'gray' | 'blue' | 'red' | 'green';
+/** A colour of text: a named one, dark enough for black-and-white print, or any as #rrggbb. */
+export type TextColor = 'gray' | 'blue' | 'red' | 'green' | (string & {});
 export const TEXT_ALIGNS: readonly TextAlign[] = ['left', 'center', 'right', 'justify'];
 export const TEXT_COLORS: readonly TextColor[] = ['gray', 'blue', 'red', 'green'];
 

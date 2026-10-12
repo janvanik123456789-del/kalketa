@@ -19,6 +19,7 @@ import {
   type Expr,
   type LineFormat,
   type TextFont,
+  type TextColor,
   type PlotResult,
   type Quantity,
   type SheetResult,
@@ -233,7 +234,7 @@ export interface TextStyle {
   readonly italic?: boolean;
   readonly bold?: boolean;
   readonly align?: 'left' | 'center' | 'right' | 'justify';
-  readonly color?: 'gray' | 'blue' | 'red' | 'green';
+  readonly color?: TextColor;
 }
 
 function textStyle(format: LineFormat | undefined): TextStyle | undefined {

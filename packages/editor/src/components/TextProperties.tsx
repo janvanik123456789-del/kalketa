@@ -4,11 +4,12 @@
  * Paragraph (style, alignment). Pressing a button keeps the caret in the text.
  */
 
-import type { ReactNode } from 'react';
-import { TEXT_ALIGNS, TEXT_COLORS } from '@kalketa/core';
+import { useEffect, useState, type ReactNode } from 'react';
+import { TEXT_ALIGNS } from '@kalketa/core';
 import { t, type Catalog, type UiKey } from '@kalketa/i18n';
 import type { TextFormat } from './TextRowEditor.js';
 import { fontName, fontValue, useSystemFonts } from '../logic/systemFonts.js';
+import { ColorButton } from './ColorPalette.js';
 
 export const TEXT_SIZES = ['8', '9', '10', '11', '12', '14', '16', '18', '20', '24', '28', '36', '48'] as const;
 export const TEXT_FONT_KINDS = ['serif', 'sans', 'mono'] as const;
@@ -56,7 +57,12 @@ export function FontSelect({ value, catalog, onChange }: { value: string; catalo
   );
 }
 
-export function TextProperties({ format, catalog }: { format: TextFormat; catalog: Catalog }) {
+export function TextProperties({ format, catalog, paletteRequest }: { format: TextFormat; catalog: Catalog; paletteRequest?: number }) {
+  // The palette of colours: from its button, or asked for by the menus (More colours…).
+  const [palette, setPalette] = useState(false);
+  useEffect(() => {
+    if (paletteRequest) setPalette(true);
+  }, [paletteRequest]);
   const value = (key: string) => format.attributes.get(key) ?? '';
   const keep = (e: { preventDefault(): void }) => e.preventDefault();
   const button = (props: { id: string; title: string; on: boolean; run(): void; children: ReactNode }) => (
@@ -92,14 +98,7 @@ export function TextProperties({ format, catalog }: { format: TextFormat; catalo
       {/* The colour of the marked words (of the line when none are marked). */}
       <label className="text-prop">
         <span>{t(catalog, 'textStyle.color')}</span>
-        <select data-text-prop="color" value={format.color ?? ''} onChange={(e) => format.setColor(e.target.value || undefined)}>
-          <option value="">{t(catalog, 'textStyle.defaultValue')}</option>
-          {TEXT_COLORS.map((c) => (
-            <option key={c} value={c}>
-              {t(catalog, `textStyle.color.${c}` as UiKey)}
-            </option>
-          ))}
-        </select>
+        <ColorButton value={format.color} catalog={catalog} open={palette} onOpen={setPalette} onPick={(color) => format.setColor(color)} />
       </label>
       <h3>{t(catalog, 'textProps.paragraph')}</h3>
       <label className="text-prop">

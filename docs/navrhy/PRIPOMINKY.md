@@ -42,3 +42,6 @@ Když něco spadne, ztrácí data nebo nejde dál testovat, napište to hned, ne
 
 9. ~~Když označím část textu a dám barvu, obarví se celý řádek.~~
    **Vyřízeno 2026-10-12:** barva z menu Formát, z panelu Vlastnosti i z pravého tlačítka teď platí jen pro označená slova, stejně jako tučné a kurzíva. Výběr zůstane označený, takže jde rovnou dát další formát. Bez označení se obarví celý řádek. V zápisu je to `{red}slova{/}`.
+
+10. ~~Barvy doplnit celou paletou.~~
+   **Vyřízeno 2026-10-12:** v panelu Vlastnosti je u barvy tlačítko s paletou jako ve Wordu: Automatická, barvy motivu se světlejšími a tmavšími odstíny, standardní barvy, barvy čitelné i v černobílém tisku, naposledy použité a „Další barvy…“ (systémový výběr libovolné barvy). Menu Formát → Barva i pravé tlačítko mají „Další barvy…“, které paletu otevře. Platí pro označená slova, bez označení pro celý řádek. V zápisu `color=#c00000`, uvnitř textu `{#c00000}slova{/}`.

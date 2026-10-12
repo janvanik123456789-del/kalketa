@@ -187,7 +187,7 @@ function lineFormat(tokens: readonly Token[], diagnostics: Diagnostic[], at: Spa
       // A position: numbered on (pos), or as the calculation numbers it (pos=3, pos=12a).
       else if (key === 'pos' && (value === undefined || /^[\p{L}\p{N}_]+$/u.test(value))) format.pos = value ?? true;
       else if (key === 'align' && (TEXT_ALIGNS as readonly string[]).includes(value ?? '')) format.align = value as TextAlign;
-      else if (key === 'color' && (TEXT_COLORS as readonly string[]).includes(value ?? '')) format.color = value as TextColor;
+      else if (key === 'color' && ((TEXT_COLORS as readonly string[]).includes(value ?? '') || /^#[0-9a-fA-F]{6}$/.test(value ?? ''))) format.color = value as TextColor;
       else diagnostics.push(diagnostic('W-FORMAT', at, { item }));
     }
   }

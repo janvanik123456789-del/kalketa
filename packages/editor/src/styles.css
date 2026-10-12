@@ -273,6 +273,21 @@ code.raw { display: block; padding: 3px 0; color: var(--muted); font: 12px/1.5 C
 .text-prop-button { width: 28px; height: 24px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #ccc; border-radius: 3px; background: #fff; cursor: pointer; font-size: 13px; color: #333; }
 .text-prop-button:hover { background: #eef3fb; }
 .text-prop-button.on { background: #dce7f7; border-color: #7a9ccf; }
+/* The colour of text: a button with the colour in use, its palette under it. */
+.color-button-wrap { position: relative; flex: 1; min-width: 0; }
+.color-button { display: flex; align-items: center; gap: 6px; width: 100%; height: 24px; padding: 0 6px; border: 1px solid #ccc; border-radius: 3px; background: #fff; cursor: pointer; font-size: 12px; }
+.color-button .caret { margin-left: auto; color: #666; }
+.color-button .swatch, .color-auto .swatch { width: 14px; height: 14px; border: 1px solid #999; border-radius: 2px; flex: none; }
+.color-palette { position: absolute; z-index: 50; top: 100%; left: 0; margin-top: 2px; padding: 6px; width: 222px; background: #fff; border: 1px solid #b9bfc8; box-shadow: 2px 3px 10px rgb(0 0 0 / 18%); }
+.color-palette .palette-title { margin: 6px 0 3px; font-size: 11px; color: #555; }
+.color-palette .palette-grid { display: grid; grid-template-columns: repeat(10, 18px); gap: 3px; }
+.color-palette .palette-grid .swatch { width: 18px; height: 18px; padding: 0; border: 1px solid #c8c8c8; border-radius: 2px; cursor: pointer; }
+.color-palette .palette-grid .swatch:hover { outline: 2px solid #f0a030; outline-offset: 0; }
+.color-palette .palette-grid .swatch.on { outline: 2px solid #1a4f9c; }
+.color-auto { display: flex; align-items: center; gap: 6px; width: 100%; padding: 3px 4px; border: 1px solid transparent; background: none; cursor: pointer; font-size: 12px; text-align: left; }
+.color-auto:hover, .color-auto.on { background: #eef3fb; border-color: #c5d5ee; }
+.color-more { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 12px; cursor: pointer; }
+.color-more input { width: 28px; height: 20px; padding: 0; border: 1px solid #ccc; }
 .text-prop-raw { margin-top: 6px; border: none; background: none; padding: 0; color: #1a4f9c; cursor: pointer; font-size: 11px; text-decoration: underline; }
 
 /* Pick drop-down */

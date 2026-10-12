@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
-import { TEXT_COLOR_VALUES, textFontCss } from '@kalketa/render';
+import { textColorCss, textFontCss } from '@kalketa/render';
 import { formatTextLine, marksOf, parseTextLine, type TextLine, type TextRun } from '../logic/textLine.js';
 import type { LineAttributes } from '../logic/lineFormat.js';
 
@@ -53,7 +53,7 @@ function htmlOf(runs: readonly TextRun[]): string {
       let html = escapeHtml(run.text);
       if (run.italic) html = `<i>${html}</i>`;
       if (run.bold) html = `<b>${html}</b>`;
-      if (run.color && run.color in TEXT_COLOR_VALUES) html = `<span data-color="${run.color}" style="color: ${TEXT_COLOR_VALUES[run.color as keyof typeof TEXT_COLOR_VALUES]}">${html}</span>`;
+      if (run.color) html = `<span data-color="${run.color}" style="color: ${textColorCss(run.color)}">${html}</span>`;
       return html;
     })
     .join('');
@@ -104,7 +104,7 @@ function styleOf(attributes: LineAttributes): CSSProperties {
   const align = attributes.get('align');
   if (align) style.textAlign = align as CSSProperties['textAlign'];
   const color = attributes.get('color');
-  if (color && color in TEXT_COLOR_VALUES) style.color = TEXT_COLOR_VALUES[color as keyof typeof TEXT_COLOR_VALUES];
+  if (color) style.color = textColorCss(color);
   return style;
 }
 

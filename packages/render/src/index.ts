@@ -16,7 +16,7 @@ export * from './math.js';
 export { formulaNode, hasSubstitutableParts, type FormulaOptions } from './formula.js';
 export * from './model.js';
 export { pageLabels, sheetSections, type Section } from './paged.js';
-export { renderHtml, renderBlockHtml, renderBlocksHtml, columnsHead, sideGroupHtml, renderSummary, appendixHtml, isInput, textHtml, BLOCK_CSS, type HtmlOptions, type BlockHtmlOptions, type CalcStyle } from './html.js';
+export { renderHtml, renderBlockHtml, renderBlocksHtml, columnsHead, sideGroupHtml, renderSummary, appendixHtml, isInput, textHtml, BLOCK_CSS, TEXT_FONT_FAMILIES, TEXT_COLOR_VALUES, type HtmlOptions, type BlockHtmlOptions, type CalcStyle } from './html.js';
 export { figureDescription, figurePlace, figureStyle, withFigurePlace, type FigurePlace, isAiNote, kalkConfirmed, kalkFormula, kalkLines, notesHtml, notesImages, NOTES_CSS, type KalkLine, type NotesOptions } from './notes.js';
 
 /** A layer printed after the sheet. */

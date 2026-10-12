@@ -7,8 +7,8 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
-import { defaultRegistry, formatPicture, parsePicture, rowLabel, toDecimalComma, type Diagnostic, type Statement } from '@kalketa/core';
-import { catalogFor, CATALOGS, formatDate, formatDiagnostic, formatNumber, t, type Catalog } from '@kalketa/i18n';
+import { defaultRegistry, formatPicture, parsePicture, rowLabel, TEXT_COLORS, toDecimalComma, type Diagnostic, type Statement } from '@kalketa/core';
+import { catalogFor, CATALOGS, formatDate, formatDiagnostic, formatNumber, t, type Catalog, type UiKey } from '@kalketa/i18n';
 import { buildPrintDocument, printHtml, revisionFooter, type PrintAppendix } from '@kalketa/render';
 import { emptyScene, readScene, writeScene, type CanvasScene } from '@kalketa/canvas';
 import { CanvasEditor } from '@kalketa/canvas/editor';
@@ -46,6 +46,8 @@ import { AboutDialog, CustomizeDialog, FunctionsDialog, PropertiesDialog, Settin
 import { DocumentTabs } from './components/DocumentTabs.js';
 import { RevisionsDialog } from './components/Revisions.js';
 import { Inspector } from './components/Inspector.js';
+import { TextProperties, TEXT_FONT_KINDS, TEXT_SIZES } from './components/TextProperties.js';
+import type { TextFormat } from './components/TextRowEditor.js';
 import { ask, askConfirm, AskHost } from './components/Ask.js';
 import { LAYER_GLYPH, LayersPane, LayerTabs } from './components/LayersPane.js';
 import { NotesView } from './components/NotesView.js';
@@ -174,6 +176,8 @@ export function App() {
   const [tableEditor, setTableEditor] = useState(false);
   const [editing, setEditing] = useState<EditRange | undefined>();
   const [selected, setSelected] = useState<number | undefined>();
+  // The line of text being edited as in a word processor: what the Format menu and the pane change.
+  const [textFormat, setTextFormat] = useState<TextFormat | undefined>();
   // Each Edit > Select all (Ctrl+A) counts up: the active sheet marks all its rows.
   const [selectAll, setSelectAll] = useState(0);
   const [notice, setNotice] = useState<string | undefined>();
@@ -1235,7 +1239,7 @@ export function App() {
         return insertLine('""', 1);
       case 'definition':
         // Into the line being edited at the cursor; a new line only when none is edited.
-        if (document.querySelector('textarea.row-editor')) return insertSymbol(':=');
+        if (document.querySelector('textarea.row-editor') && !textFormat) return insertSymbol(':=');
         return insertLine(`${uniqueName('x')} := `);
       case 'check':
         return insertLine('check "": ', 7);
@@ -1263,6 +1267,8 @@ export function App() {
 
   const insertSymbol = (symbol: string) => {
     const area = document.querySelector<HTMLTextAreaElement>('textarea.row-editor');
+    // A line of text edited formatted: the symbol among its words.
+    if (textFormat && symbol !== ':=') return textFormat.insert(symbol);
     if (area && symbol === ':=') {
       // The definition sign at the cursor, spaced; on an empty line a new name before it.
       const before = area.value.slice(0, area.selectionStart);
@@ -1283,6 +1289,7 @@ export function App() {
   const insertTemplate = (template: string, line = false) => {
     const { text: source, cursor } = templateParts(template);
     const area = document.querySelector<HTMLTextAreaElement>('textarea.row-editor');
+    if (textFormat && !line) return textFormat.insert(source);
     if (area && !line) {
       // The line shows decimal-comma notation; commas become semicolons, lengths stay.
       const shown = decimalComma ? toDecimalComma(source) : source;
@@ -1301,11 +1308,11 @@ export function App() {
     if (action === 'paste' && desktop) {
       void desktop.clipboardPictures().then((pictures) => {
         if (pictures.length > 0) void insertPictures(pictures);
-        else void navigator.clipboard.readText().then((text) => document.querySelector('textarea.row-editor') && insertSymbol(text));
+        else void navigator.clipboard.readText().then((text) => (document.querySelector('textarea.row-editor') || textFormat) && insertSymbol(text));
       });
       return;
     }
-    const area = document.querySelector<HTMLTextAreaElement>('textarea.row-editor');
+    const area = document.querySelector<HTMLTextAreaElement>('textarea.row-editor') ?? document.querySelector<HTMLElement>('[data-text-editor]');
     if (!area) return;
     area.focus();
     if (action === 'paste') void navigator.clipboard.readText().then((text) => insertSymbol(text));
@@ -1665,6 +1672,50 @@ export function App() {
         { kind: 'submenu', label: t(ui, 'menu.layer'), items: [cmd('insert.layerCalc'), cmd('insert.layerData'), cmd('insert.layerSources')] },
       ],
     },
+    {
+      // The look of the line of text being edited, as in a word processor.
+      label: t(ui, 'menu.format'),
+      items: (() => {
+        const f = textFormat;
+        const on = f !== undefined;
+        const mark = (key: string, value: string | undefined, label: string, shortcut?: string): MenuItem => ({
+          kind: 'action',
+          label,
+          enabled: on,
+          checked: f ? (value === undefined ? !f.attributes.has(key) : f.attributes.get(key) === value) : false,
+          run: () => f?.set(key, value),
+          ...(shortcut ? { shortcut } : {}),
+        });
+        const choices = (key: string, values: readonly string[], label: (v: string) => string): MenuItem[] => [mark(key, undefined, t(ui, 'textStyle.defaultValue')), ...values.map((v) => mark(key, v, label(v)))];
+        return [
+          { kind: 'action', label: t(ui, 'textStyle.bold'), enabled: on, checked: !!f?.bold, shortcut: 'Ctrl+B', run: () => f?.toggleBold() },
+          { kind: 'action', label: t(ui, 'textStyle.italic'), enabled: on, checked: !!f?.italic, shortcut: 'Ctrl+I', run: () => f?.toggleItalic() },
+          sep,
+          { kind: 'submenu', label: t(ui, 'textStyle.font'), items: choices('font', TEXT_FONT_KINDS, (v) => t(ui, `textStyle.font.${v}` as UiKey)) },
+          { kind: 'submenu', label: t(ui, 'textStyle.size'), items: choices('size', TEXT_SIZES, (v) => `${v} pt`) },
+          { kind: 'submenu', label: t(ui, 'textStyle.color'), items: choices('color', TEXT_COLORS, (v) => t(ui, `textStyle.color.${v}` as UiKey)) },
+          sep,
+          {
+            kind: 'submenu',
+            label: t(ui, 'textProps.style'),
+            items: [0, 1, 2, 3].map((level): MenuItem => ({ kind: 'action', label: t(ui, `textProps.level${level}` as UiKey), enabled: on, checked: f?.level === level, shortcut: `Ctrl+Alt+${level}`, run: () => f?.setLevel(level) })),
+          },
+          {
+            kind: 'submenu',
+            label: t(ui, 'textStyle.align'),
+            items: [
+              mark('align', undefined, t(ui, 'textStyle.align.left'), 'Ctrl+L'),
+              mark('align', 'center', t(ui, 'textStyle.align.center'), 'Ctrl+E'),
+              mark('align', 'right', t(ui, 'textStyle.align.right'), 'Ctrl+R'),
+              mark('align', 'justify', t(ui, 'textStyle.align.justify'), 'Ctrl+J'),
+            ],
+          },
+          sep,
+          { kind: 'action', label: t(ui, 'textProps.raw'), enabled: on, run: () => f?.raw() },
+          ...(on ? [] : [{ kind: 'action' as const, label: t(ui, 'textProps.hint'), enabled: false, run: () => undefined }]),
+        ];
+      })(),
+    },
     { label: t(ui, 'menu.tools'), items: [cmd('tools.ai'), cmd('tools.study'), cmd('tools.settings')] },
     {
       label: t(ui, 'menu.window'),
@@ -1785,6 +1836,7 @@ export function App() {
             setLayerText(l, insertLineAfter(source, line));
             setEditing({ start: line + 1, end: line + 1 });
           }}
+          onTextFormat={setTextFormat}
           onInsertBeside={(line) => {
             // A new cell: a line marked to stand beside the one above it, the cursor before its mark.
             setLayerText(l, replaceLines(insertLineAfter(source, line), line + 1, line + 1, '{beside}'));
@@ -1863,6 +1915,7 @@ export function App() {
                   </button>
                 </nav>
                 <div className="pane-body">
+                  {textFormat && pane !== 'chat' && <TextProperties format={textFormat} catalog={ui} />}
                   {pane === 'chat' ? (
                     <ChatPane
                       catalog={ui}

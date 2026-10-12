@@ -461,8 +461,8 @@ async function runSmokeTest(pdfPath: string): Promise<void> {
     printer.destroy();
     await writeFile(pdfPath, pdf);
     ok =
-      state.bridge && state.sideBySide && state.menus === 7 && state.toolbars > 0 && state.rows > 10 && state.summary > 0 && state.math > 0 && reshapedColumns === 3 && pdf.length > 1000 &&
-      layers.deflection && layers.pickTaken.column.startsWith('→') && /mm|cm/.test(layers.pickTaken.text) && layers.newKeepsExample && layers.samplesOk && layers.derivations && layers.summaryOk && layers.definitionAtCursor && layers.sheetGridOk && layers.tableEnter && layers.solvedByFormula && layers.rootsAndExtremes && layers.tableRowAdded && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.notesPicture === 'FIGURE+img BLOCKQUOTE' && layers.notesPlaced === 'narrower centred' && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.charts && layers.functionBar && layers.revisions && layers.roots && layers.toolIcons && layers.aiSettings && layers.aiChat && layers.pdfCleanup && layers.theoryLibrary && layers.study && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
+      state.bridge && state.sideBySide && state.menus === 8 && state.toolbars > 0 && state.rows > 10 && state.summary > 0 && state.math > 0 && reshapedColumns === 3 && pdf.length > 1000 &&
+      layers.deflection && layers.pickTaken.column.startsWith('→') && /mm|cm/.test(layers.pickTaken.text) && layers.newKeepsExample && layers.samplesOk && layers.derivations && layers.summaryOk && layers.definitionAtCursor && layers.sheetGridOk && layers.tableEnter && layers.solvedByFormula && layers.rootsAndExtremes && layers.wordPrinted && layers.wordText.focused && layers.wordText.pane && layers.wordText.bold === 'dynamiky' && !layers.wordText.shown.includes('"') && layers.wordText.align === 'center' && layers.tableRowAdded && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.notesPicture === 'FIGURE+img BLOCKQUOTE' && layers.notesPlaced === 'narrower centred' && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.charts && layers.functionBar && layers.revisions && layers.roots && layers.toolIcons && layers.aiSettings && layers.aiChat && layers.pdfCleanup && layers.theoryLibrary && layers.study && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
     console.log(JSON.stringify({ ok, ...state, reshapedColumns, layers, pdfBytes: pdf.length }));
   } catch (err) {
     console.log(JSON.stringify({ ok: false, error: (err as Error).message, console: smokeConsole.slice(-5) }));
@@ -757,7 +757,7 @@ async function layersWithRealInput(picture: string) {
   await typeText('q := q_d');
   await clickOn('.sheet-scroll');
   // A row from a table, then a number of it clicked in the drop-down: the value with its unit (.column).
-  await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .page .row[data-line]')].sort((a, b) => Number(a.dataset.line) - Number(b.dataset.line)).at(-1).id = 'smoke-pick-last'`);
+  await contents.executeJavaScript(`document.querySelectorAll('#smoke-last-row').forEach((e) => e.removeAttribute('id')); [...document.querySelectorAll('.layer-view.active .page .row[data-line]')].sort((a, b) => Number(a.dataset.line) - Number(b.dataset.line)).at(-1).id = 'smoke-pick-last'`);
   await clickOn('#smoke-pick-last');
   await pause(300);
   await pressKey('End');
@@ -983,7 +983,7 @@ async function layersWithRealInput(picture: string) {
 
   // Derivations: the a=b button of the Functions toolbar starts a derive line; a right step is marked as checked, a wrong one is an error.
   // The last row by its number: a chart moved to the next page stands after it in the page, not in the sheet.
-  await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .page .row[data-line]')].sort((a, b) => Number(a.dataset.line) - Number(b.dataset.line)).at(-1).id = 'smoke-last-row'`);
+  await contents.executeJavaScript(`document.querySelectorAll('#smoke-last-row').forEach((e) => e.removeAttribute('id')); [...document.querySelectorAll('.layer-view.active .page .row[data-line]')].sort((a, b) => Number(a.dataset.line) - Number(b.dataset.line)).at(-1).id = 'smoke-last-row'`);
   await clickOn('#smoke-last-row');
   await clickOn('.tool-button[title^="Odvození"]');
   await pause(300);
@@ -1007,7 +1007,7 @@ async function layersWithRealInput(picture: string) {
   // Shift+click mark rows, Delete removes them.
   const rowsNow = `document.querySelectorAll('.layer-view.active .page .row').length`;
   const rowsBeforeDefs = (await contents.executeJavaScript(rowsNow)) as number;
-  await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .page .row[data-line]')].sort((a, b) => Number(a.dataset.line) - Number(b.dataset.line)).at(-1).id = 'smoke-last-row'`);
+  await contents.executeJavaScript(`document.querySelectorAll('#smoke-last-row').forEach((e) => e.removeAttribute('id')); [...document.querySelectorAll('.layer-view.active .page .row[data-line]')].sort((a, b) => Number(a.dataset.line) - Number(b.dataset.line)).at(-1).id = 'smoke-last-row'`);
   await clickOn('#smoke-last-row');
   await pressKey('End');
   await pressKey('Enter');
@@ -1140,7 +1140,7 @@ async function layersWithRealInput(picture: string) {
 
   // solve without an interval: the unknown is expressed by a formula, its unit comes from it;
   // the right button puts the formula in as a definition.
-  await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .page .row[data-line]')].sort((a, b) => Number(a.dataset.line) - Number(b.dataset.line)).at(-1).id = 'smoke-last-row'`);
+  await contents.executeJavaScript(`document.querySelectorAll('#smoke-last-row').forEach((e) => e.removeAttribute('id')); [...document.querySelectorAll('.layer-view.active .page .row[data-line]')].sort((a, b) => Number(a.dataset.line) - Number(b.dataset.line)).at(-1).id = 'smoke-last-row'`);
   await clickOn('#smoke-last-row');
   await pressKey('End');
   for (const line of ['r_s := roots(x^2 - 5·x + 6, x)', 'x_m := maximize(6·x·(4 - x), x: 0 .. 4)', 'S_n := 23.53 mm²', 'solve d_n: S_n <= π·d_n²/4', 'M_s := 37.5 kN·m', 'q_s := 12 kN/m', 'solve L_s: M_s == q_s·L_s²/8']) {
@@ -1196,12 +1196,34 @@ async function layersWithRealInput(picture: string) {
   await pressKey('Tab');
   await pause(300);
   await typeText('F_c := 1600 N');
+  // A text written as in a word processor: the quotes and marks out of sight, a bold word by Ctrl+B,
+  // the font from the Format menu, Ctrl+E to the middle; the quote typed at the end by habit is not doubled.
+  await pressKey('Enter');
+  await typeText('"Koeficient ');
+  await pressKey('B', ['control']);
+  await typeText('dynamiky');
+  await pressKey('B', ['control']);
+  await typeText(' namáhání"');
+  await clickOn('.menubar-item:nth-child(5) > button');
+  await clickMenu('Písmo');
+  await clickMenu('patkové');
+  await pressKey('E', ['control']);
+  await pause(400);
+  const wordText = (await contents.executeJavaScript(`(() => {
+    const el = document.querySelector('[data-text-editor]');
+    return { focused: document.activeElement === el, shown: el?.textContent ?? '', bold: el?.querySelector('b')?.textContent ?? '', font: el?.style.fontFamily ?? '', align: el?.style.textAlign ?? '', pane: !!document.querySelector('[data-text-properties]') };
+  })()`)) as { focused: boolean; shown: string; bold: string; font: string; align: string; pane: boolean };
   // A click on the grey beside the page closes the line (the middle of the view may be a row of the second page).
   const besidePage = (await contents.executeJavaScript(`(() => { const p = document.querySelector('.layer-view.active .page').getBoundingClientRect(); return { x: Math.round(p.left - 30), y: Math.round(p.top + 100) }; })()`)) as { x: number; y: number };
   contents.sendInputEvent({ type: 'mouseDown', ...besidePage, button: 'left', clickCount: 1 });
   contents.sendInputEvent({ type: 'mouseUp', ...besidePage, button: 'left', clickCount: 1 });
   await pause(400);
   await takePicture(picture.replace(/[.]png$/, '-roots.png'));
+  // Closed, the text prints as edited: the bold word, the serif font, in the middle, and no error.
+  const wordPrinted = (await contents.executeJavaScript(`(() => {
+    const p = [...document.querySelectorAll('.layer-view.active .page p.text')].find((e) => e.textContent.includes('Koeficient'));
+    return !!p && p.textContent.trim() === 'Koeficient dynamiky namáhání' && /Cambria/.test(p.getAttribute('style') ?? '') && /center/.test(p.getAttribute('style') ?? '') && (p.querySelector('b, strong')?.textContent ?? '') === 'dynamiky' && !p.closest('.row').classList.contains('has-error');
+  })()`)) as boolean;
   // Roots and extremes: r_s = [2; 3], x_m = 2; the bound of an inequality.
   const rootsAndExtremes = (await contents.executeJavaScript(`(() => {
     const rows = [...document.querySelectorAll('.layer-view.active .page .row')].map((r) => r.textContent.replace(/\\s+/g, ''));
@@ -1266,7 +1288,7 @@ async function layersWithRealInput(picture: string) {
     expressed.startsWith('√') && expressed.includes('=5m') && defined.text.startsWith('√') && defined.text.includes('=5m') && !defined.text.includes('solve') && solveFormatted.endsWith('=5,47mm');
 
   // Charts: Insert > Chart plots the last function of the sheet; the pointer over it reads the values.
-  await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .page .row[data-line]')].sort((a, b) => Number(a.dataset.line) - Number(b.dataset.line)).at(-1).id = 'smoke-last-row'`);
+  await contents.executeJavaScript(`document.querySelectorAll('#smoke-last-row').forEach((e) => e.removeAttribute('id')); [...document.querySelectorAll('.layer-view.active .page .row[data-line]')].sort((a, b) => Number(a.dataset.line) - Number(b.dataset.line)).at(-1).id = 'smoke-last-row'`);
   await clickOn('#smoke-last-row');
   await pressKey('End');
   await pressKey('Enter');
@@ -1384,7 +1406,7 @@ async function layersWithRealInput(picture: string) {
   const charts = !!chartBox && chartBox.paths > 0 && /^x = [\d,]+ \| Mt\(x\) = /.test(chartTip) && chartPlaced;
 
   // The Functions toolbar: ∫ writes the integral with the cursor inside, the user types the integrand.
-  await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .page .row[data-line]')].sort((a, b) => Number(a.dataset.line) - Number(b.dataset.line)).at(-1).id = 'smoke-last-row'`);
+  await contents.executeJavaScript(`document.querySelectorAll('#smoke-last-row').forEach((e) => e.removeAttribute('id')); [...document.querySelectorAll('.layer-view.active .page .row[data-line]')].sort((a, b) => Number(a.dataset.line) - Number(b.dataset.line)).at(-1).id = 'smoke-last-row'`);
   // The chart line may still be open (the click beside it landed on the chart): go on from it.
   const chartOpen = (await contents.executeJavaScript(`!!document.querySelector('textarea.row-editor')`)) as boolean;
   await clickOn(chartOpen ? 'textarea.row-editor' : '#smoke-last-row');
@@ -1422,7 +1444,7 @@ async function layersWithRealInput(picture: string) {
   await pressKey('Escape');
   await pause(300);
   const statusAfterFreeze = (await contents.executeJavaScript(`document.querySelector('.status-revision')?.textContent ?? ''`)) as string;
-  await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .page .row[data-line]')].sort((a, b) => Number(a.dataset.line) - Number(b.dataset.line)).at(-1).id = 'smoke-last-row'`);
+  await contents.executeJavaScript(`document.querySelectorAll('#smoke-last-row').forEach((e) => e.removeAttribute('id')); [...document.querySelectorAll('.layer-view.active .page .row[data-line]')].sort((a, b) => Number(a.dataset.line) - Number(b.dataset.line)).at(-1).id = 'smoke-last-row'`);
   const rowOpen = (await contents.executeJavaScript(`!!document.querySelector('textarea.row-editor')`)) as boolean;
   await clickOn(rowOpen ? 'textarea.row-editor' : '#smoke-last-row');
   await pause(300);
@@ -1431,7 +1453,7 @@ async function layersWithRealInput(picture: string) {
   await typeText('z_r := 7 kN');
   await clickOn('.statusbar');
   await pause(1500);
-  await takePicture(picture.replace(/[.]png$/, '-revisions.png'));
+  await takePicture(picture.replace(/[.]png$/, '-revdraft.png'));
   const statusDraft = (await contents.executeJavaScript(`document.querySelector('.status-revision')?.textContent ?? ''`)) as string;
   const footerDraft = (await contents.executeJavaScript(`document.querySelector('.layer-view.active .page-foot-left')?.textContent ?? ''`)) as string;
   await clickOn('.status-revision');
@@ -1444,7 +1466,7 @@ async function layersWithRealInput(picture: string) {
   await pressKey('Escape');
 
   // Roots from the Operators toolbar: ∛ as a prefix, the n-th root as a template with the cursor inside.
-  await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .page .row[data-line]')].sort((a, b) => Number(a.dataset.line) - Number(b.dataset.line)).at(-1).id = 'smoke-last-row'`);
+  await contents.executeJavaScript(`document.querySelectorAll('#smoke-last-row').forEach((e) => e.removeAttribute('id')); [...document.querySelectorAll('.layer-view.active .page .row[data-line]')].sort((a, b) => Number(a.dataset.line) - Number(b.dataset.line)).at(-1).id = 'smoke-last-row'`);
   const lineOpen = (await contents.executeJavaScript(`!!document.querySelector('textarea.row-editor')`)) as boolean;
   await clickOn(lineOpen ? 'textarea.row-editor' : '#smoke-last-row');
   await pause(300);
@@ -1929,7 +1951,7 @@ async function layersWithRealInput(picture: string) {
   const pictures = pasted.img && resized && dropped === 'Obr. 1: Schéma nosníku' && fileCopied && pastedIdle && pictureMenu.menu >= 5 && pictureMenu.full && pictureMenu.caption.includes('Detail kotvení') && besideText;
 
   // Help > About > Third-party licences: the notices of the shipped packages.
-  await clickOn('.menubar-item:nth-child(7) > button');
+  await clickOn('.menubar-item:nth-child(8) > button');
   await clickMenu('O programu');
   await pause(300);
   await clickOn('[data-about="notices"]');
@@ -1992,7 +2014,7 @@ async function layersWithRealInput(picture: string) {
     blocksOk = shown.errors === 0 && shown.text.includes('Prosty nosnik 1.2') && shown.text.includes('45');
     await takePicture(picture.replace(/[.]png$/, '-blocks.png'));
   }
-  return { ...state, pickTaken, deflection, derivations, summaryOk, summaryOpens, summaryAtEnd, bookStyle, verdictFuture, verdictBack, pageHead, definitionAtCursor, solveFormatted, sheetGridOk, sheetGrid, tableEnter, tableEnterAt, lastRowEnter, draggedRows, selectedAll, bothFormatted, roundedOn, equationNumber, solvedByFormula, rootsAndExtremes, tableRowAdded, chartSteps, samplesOk, sampleTab, newKeepsExample, citations, notesPicture, notesPlaced, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, toolIcons, aiSettings, aiChat, pdfCleanup, theoryLibrary, study, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, placedFree, strictPlaced, canvasOk, besideText, pictures, blocksOk };
+  return { ...state, pickTaken, deflection, derivations, summaryOk, summaryOpens, summaryAtEnd, bookStyle, verdictFuture, verdictBack, pageHead, definitionAtCursor, solveFormatted, sheetGridOk, sheetGrid, tableEnter, tableEnterAt, lastRowEnter, draggedRows, selectedAll, bothFormatted, roundedOn, equationNumber, solvedByFormula, rootsAndExtremes, wordText, wordPrinted, tableRowAdded, chartSteps, samplesOk, sampleTab, newKeepsExample, citations, notesPicture, notesPlaced, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, toolIcons, aiSettings, aiChat, pdfCleanup, theoryLibrary, study, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, placedFree, strictPlaced, canvasOk, besideText, pictures, blocksOk };
 }
 
 /** The tidied sources saved as a library (.kalkt) and attached in the chat: the model cites it by its key. */
@@ -2082,7 +2104,7 @@ async function studyWithRealInput(contents: Electron.WebContents, picture: strin
   await mkdir(dir, { recursive: true });
   await writeFile(join(dir, 'Pruznost a pevnost.pdf'), pdf);
 
-  await clickOn('.menubar-item:nth-child(5) > button');
+  await clickOn('.menubar-item:nth-child(6) > button');
   await clickMenu('Studijní podklady');
   for (let i = 0; i < 80 && !(await contents.executeJavaScript(`!!document.querySelector('.study-chapters li')`)); i++) await pause(150);
   const offered = (await contents.executeJavaScript(`({
@@ -2366,7 +2388,7 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
   })`)) as { heading: string; badge: string; focused: string; hasFocus: boolean };
   if (await contents.executeJavaScript(`!!document.querySelector('.layer-tab[data-layer="main"]')`)) await clickOn('.layer-tab[data-layer="main"]');
   // Settings: the provider list from Claude (saved before) down to the other server.
-  await clickOn('.menubar-item:nth-child(5) > button');
+  await clickOn('.menubar-item:nth-child(6) > button');
   await clickMenu('Nastavení');
   await pause(400);
   await clickOn('.ai-settings label.field > span');
@@ -2634,7 +2656,7 @@ async function aiSettingsWithRealInput(contents: Electron.WebContents, picture: 
       };
     })()`) as Promise<{ provider: string; model: string; models: string[]; keyField: boolean; keyValue: string; url: string; keyPlaceholder: string; forget: boolean; status: string; providers: string[] }>;
   const openSettings = async () => {
-    await clickOn('.menubar-item:nth-child(5) > button');
+    await clickOn('.menubar-item:nth-child(6) > button');
     await clickMenu('Nastavení');
     await pause(400);
   };
@@ -2645,7 +2667,7 @@ async function aiSettingsWithRealInput(contents: Electron.WebContents, picture: 
   // The AI is off after the start: nothing went to any server. Tools > Switch the AI on.
   const beforeOn = await fakeRequests();
   const menuOff = (await contents.executeJavaScript(`!!document.querySelector('.side-pane .chat-pane')`)) as boolean;
-  await clickOn('.menubar-item:nth-child(5) > button');
+  await clickOn('.menubar-item:nth-child(6) > button');
   await clickMenu('Zapnout AI');
   await pause(300);
   await openSettings();

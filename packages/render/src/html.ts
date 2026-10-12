@@ -55,20 +55,20 @@ export type CalcStyle = 'compact' | 'airy' | 'book' | 'columns';
 const TEXT_NAME = /(\p{L}[\p{L}\p{N}\p{M}]*)(_[\p{L}\p{N}\p{M}_]*[\p{L}\p{N}\p{M}])?(\^-?[\p{L}\p{N}]+)?/gu;
 
 /** Fonts by kind, as the printout and every machine have some of each. */
-const FONTS = { serif: '"Cambria", "Times New Roman", serif', sans: '"Calibri", "Arial", sans-serif', mono: '"Consolas", "Courier New", monospace' } as const;
+export const TEXT_FONT_FAMILIES = { serif: '"Cambria", "Times New Roman", serif', sans: '"Calibri", "Arial", sans-serif', mono: '"Consolas", "Courier New", monospace' } as const;
 /** Dark enough to read on paper and in black-and-white print. */
-const COLORS = { gray: '#5f6368', blue: '#1a4f9c', red: '#b3261e', green: '#2e7d32' } as const;
+export const TEXT_COLOR_VALUES = { gray: '#5f6368', blue: '#1a4f9c', red: '#b3261e', green: '#2e7d32' } as const;
 
 /** The style of a text line ({size=12 italic}) as a style attribute; nothing when it sets none. */
 function styleAttribute(style: TextStyle | undefined): string {
   if (!style) return '';
   const rules = [
     style.size !== undefined ? `font-size: ${style.size}pt` : '',
-    style.font ? `font-family: ${FONTS[style.font]}` : '',
+    style.font ? `font-family: ${TEXT_FONT_FAMILIES[style.font]}` : '',
     style.italic ? 'font-style: italic' : '',
     style.bold ? 'font-weight: bold' : '',
     style.align ? `text-align: ${style.align}` : '',
-    style.color ? `color: ${COLORS[style.color]}` : '',
+    style.color ? `color: ${TEXT_COLOR_VALUES[style.color]}` : '',
   ].filter(Boolean);
   return rules.length > 0 ? ` style="${esc(rules.join('; '))}"` : '';
 }

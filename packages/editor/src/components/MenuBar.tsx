@@ -12,7 +12,7 @@ export type MenuItem =
   | { readonly kind: 'command'; readonly id: string }
   | { readonly kind: 'separator' }
   | { readonly kind: 'submenu'; readonly label: string; readonly items: readonly MenuItem[] }
-  | { readonly kind: 'action'; readonly label: string; readonly checked?: boolean; readonly enabled?: boolean; run(): void };
+  | { readonly kind: 'action'; readonly label: string; readonly checked?: boolean; readonly enabled?: boolean; readonly shortcut?: string; run(): void };
 
 export interface Menu {
   readonly label: string;
@@ -164,7 +164,7 @@ function rowOf(item: MenuItem, commands: ReadonlyMap<string, Command>): Row | un
     case 'submenu':
       return { label: item.label, enabled: item.items.length > 0, submenu: item.items };
     case 'action':
-      return { label: item.label, enabled: item.enabled ?? true, run: item.run, ...(item.checked !== undefined ? { checked: item.checked } : {}) };
+      return { label: item.label, enabled: item.enabled ?? true, run: item.run, ...(item.checked !== undefined ? { checked: item.checked } : {}), ...(item.shortcut ? { shortcut: item.shortcut } : {}) };
     case 'command': {
       const cmd = commands.get(item.id);
       if (!cmd) return undefined;

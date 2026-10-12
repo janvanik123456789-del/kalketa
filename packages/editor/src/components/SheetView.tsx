@@ -17,6 +17,8 @@ import { defineShortcut } from '../logic/shortcuts.js';
 import { pickOf } from '../logic/pick.js';
 import { placeable } from '../logic/placement.js';
 import { PickControl } from './PickControl.js';
+import { TextRowEditor, type TextFormat } from './TextRowEditor.js';
+import { parseTextLine } from '../logic/textLine.js';
 import { SheetTableGrid } from './SheetTableGrid.js';
 import { parseSheetTable } from '../logic/sheetTableEdit.js';
 import { ContextMenu, type MenuItem } from './MenuBar.js';
@@ -68,6 +70,8 @@ interface Props {
   onEditCanvasWindow(path: string): void;
   /** The canvas being edited right in the sheet, drawn by the caller in place of its picture. */
   readonly inlineCanvas?: { readonly path: string; render(): ReactNode };
+  /** The line of text being edited as in a word processor: its format for the menu and the pane. */
+  onTextFormat?(format: TextFormat | undefined): void;
   /** Lets the user choose another file for the picture on lines start..end. */
   onReplacePicture(start: number, end: number): void;
   /** Page size and margins of the printout. */
@@ -206,6 +210,9 @@ export function SheetView(props: Props) {
   // A table of the sheet opens as a grid (by its first line): only a row that is a table when it
   // opens, so a table being typed stays in the text; "as text" closes the grid.
   const [gridAt, setGridAt] = useState<number | undefined>();
+  // A line of text opens formatted, as in a word processor; asked for, it opens as written in the language.
+  const [rawAt, setRawAt] = useState<number | undefined>();
+  if (rawAt !== undefined && editing?.start !== rawAt) setRawAt(undefined);
   // A solve line expressed by a formula also offers that formula as a definition of its own.
   const [summaryMenu, setSummaryMenu] = useState<{ x: number; y: number } | undefined>();
   const [formatMenu, setFormatMenu] = useState<{ seg: Segment; at: { x: number; y: number }; text?: boolean; solveLine?: string } | undefined>();
@@ -685,7 +692,12 @@ export function SheetView(props: Props) {
               if (rows.length === 1) props.onReplace(rows[0]!.start, rows[0]!.end, f(rows[0]!.text));
               else props.onReplaceRows(rows.map((s) => ({ start: s.start, end: s.end, text: f(s.text) })));
             };
-            if (formatMenu.text) return textMenuItems(formatMenu.seg, props.uiCatalog, change);
+            if (formatMenu.text) {
+              const seg = formatMenu.seg;
+              // The marks of the line by hand: it opens as written in the language.
+              const raw: MenuItem = { kind: 'action', label: t(props.uiCatalog, 'textProps.raw'), run: () => { setRawAt(seg.start); props.onEdit({ start: seg.start, end: seg.end }); } };
+              return [...textMenuItems(seg, props.uiCatalog, change), { kind: 'separator' }, raw];
+            }
             // The result of the row as each choice would show it: "5,47 mm" (of a solve line, its first unknown).
             const row = formatMenu.seg.statement !== undefined ? result.statements[formatMenu.seg.statement] : undefined;
             const display = row?.display ?? row?.solutions?.[0]?.display;
@@ -812,6 +824,7 @@ export function SheetView(props: Props) {
     const statement = seg.statement !== undefined ? result.statements[seg.statement] : undefined;
     const isEditing = editing?.start === seg.start;
     const block = statement ? blockByLine.get(seg.start) : undefined;
+    const textLine = isEditing && seg.start === seg.end && rawAt !== seg.start && !gridOf(seg, statement?.statement) ? parseTextLine(seg.text) : undefined;
     const selected = seg.statement !== undefined && seg.statement === props.selected;
     // @clear ends the flow around a wrapped picture: this row and all below start under it.
     const clear = /^\s*@clear\b/.test(seg.text);
@@ -925,6 +938,22 @@ export function SheetView(props: Props) {
               onDone={() => props.onEdit(undefined)}
               onText={() => setGridAt(undefined)}
             />
+          ) : textLine ? (
+            <TextRowEditor
+              text={seg.text}
+              onChange={(text) => props.onReplace(seg.start, seg.end, text)}
+              onEnter={() => props.onInsertAfter(seg.end)}
+              onTab={() => props.onInsertBeside(seg.end)}
+              onDeleteEmpty={() => {
+                const previous = segs[segs.indexOf(seg) - 1];
+                props.onDelete(seg.start, seg.end);
+                props.onEdit(previous ? { start: previous.start, end: previous.end } : undefined);
+              }}
+              onMove={(d) => move(seg, d)}
+              onDone={() => props.onEdit(undefined)}
+              onRaw={() => setRawAt(seg.start)}
+              {...(props.onTextFormat ? { onFormat: props.onTextFormat } : {})}
+            />
           ) : isEditing ? (
             <RowEditor
               seg={seg}
@@ -969,7 +998,7 @@ export function SheetView(props: Props) {
                 if (item) props.onReplace(seg.start, seg.end, item.write({ ...item.place, width, ...(ratio !== undefined ? { ratio } : {}) }));
               }}
             />
-          ) : block && !(isEditing && gridOf(seg, statement?.statement)) ? (
+          ) : block && !textLine && !(isEditing && gridOf(seg, statement?.statement)) ? (
             <Block block={block} catalog={props.printCatalog} {...(props.calcStyle ? { style: props.calcStyle } : {})} />
           ) : (
             !isEditing && <PlainLine text={props.decimalComma ? toDecimalComma(seg.text) : seg.text} />

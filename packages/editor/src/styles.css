@@ -253,6 +253,21 @@ kbd { font: 12px Consolas, monospace; background: #fff; border: 1px solid #c4cad
 code.raw { display: block; padding: 3px 0; color: var(--muted); font: 12px/1.5 Consolas, "Courier New", monospace; white-space: pre-wrap; }
 .row-editor { width: 100%; resize: none; overflow: hidden; border: 1px solid #e0c060; border-radius: 3px; padding: 4px 6px; background: #fff; font: 13px/1.5 Consolas, "Courier New", monospace; outline: none; }
 .row.editing .block-view { opacity: 0.85; }
+/* A line of text edited as in a word processor: as it prints, the caret in it. */
+.row.editing .block-view.text-editing { opacity: 1; }
+.text-edit { outline: none; white-space: pre-wrap; min-height: 1.4em; cursor: text; border-bottom: 1px dashed #e0c060; }
+.text-edit:empty::before { content: 'b'; }
+/* The properties of the text being edited, at the top of the side pane. */
+.text-properties { flex: none; padding: 8px 10px 10px; border-bottom: 1px solid #ddd; background: #fafafa; font-size: 12px; }
+.text-properties h3 { margin: 6px 0 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: #555; }
+.text-prop { display: flex; align-items: center; gap: 8px; margin: 3px 0; }
+.text-prop > span { width: 92px; color: #444; }
+.text-prop > select { flex: 1; min-width: 0; }
+.text-prop-row { display: flex; gap: 3px; margin: 4px 0; }
+.text-prop-button { width: 28px; height: 24px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #ccc; border-radius: 3px; background: #fff; cursor: pointer; font-size: 13px; color: #333; }
+.text-prop-button:hover { background: #eef3fb; }
+.text-prop-button.on { background: #dce7f7; border-color: #7a9ccf; }
+.text-prop-raw { margin-top: 6px; border: none; background: none; padding: 0; color: #1a4f9c; cursor: pointer; font-size: 11px; text-decoration: underline; }
 
 /* Pick drop-down */
 .pick-control { position: relative; align-self: flex-start; margin: 0 0 4px 36px; }

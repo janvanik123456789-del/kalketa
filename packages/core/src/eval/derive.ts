@@ -251,7 +251,7 @@ function dimensionsOfParams(params: readonly string[], members: readonly Expr[],
 const MAX_INLINE = 8;
 
 /** The body of a function with its parameters replaced by the arguments of the call. */
-function substitute(expr: Expr, args: ReadonlyMap<string, Expr>): Expr {
+export function substitute(expr: Expr, args: ReadonlyMap<string, Expr>): Expr {
   const s = (e: Expr) => substitute(e, args);
   switch (expr.kind) {
     case 'variable':

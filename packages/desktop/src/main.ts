@@ -1559,18 +1559,21 @@ async function layersWithRealInput(picture: string) {
   await pause(300);
   await pressKey('End');
   await pressKey('Enter');
+  // The general equation as a function of the sheet, solved by its name.
+  await typeText('y_q(x) := 5·x^2 + 4·x - 10');
+  await pressKey('Enter');
   await typeText('solve x_q ');
   await clickOn('.tool-button[title="Vložit ∈"]');
   await typeText(' ');
   await clickOn('.tool-button[title="Vložit ℝ"]');
-  await typeText('; x_q > 0: 5·x_q^2 + 4·x_q - 10 == 0');
+  await typeText('; x_q > 0: y_q(x_q) == 0');
   await clickOn('.statusbar');
   await pause(500);
   await takePicture(picture.replace(/[.]png$/, '-paper.png'));
   const paperRoots = (await contents.executeJavaScript(`(() => {
     const row = [...document.querySelectorAll('.layer-view.active .page .row')].find((r) => r.textContent.includes('nevyhovuje'));
     const text = row ? row.textContent.replace(/\\s+/g, '') : '';
-    return !!row && !row.classList.contains('has-error') && text.includes('∈ℝ') && text.includes('D=') && text.includes('=216') && text.includes('±') && text.includes('=1,07');
+    return !!row && !row.classList.contains('has-error') && text.includes('∈ℝ') && text.includes('−10=0') && text.includes('D=') && text.includes('=216') && text.includes('±') && text.includes('=1,07');
   })()`)) as boolean;
   // Operators and functions show drawn icons; the condition and solve stay as text.
   const toolIcons = (await contents.executeJavaScript(`(() => {

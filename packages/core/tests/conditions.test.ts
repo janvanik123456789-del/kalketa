@@ -44,3 +44,14 @@ describe('the conditions of a solution, as on paper', () => {
     expect(evaluateSheet('solve (x, y) ∈ ℝ: x + y == 1, x - y == 0').diagnostics.map((d) => d.code)).toContain('E-SOLVE-CONDITIONS');
   });
 });
+
+describe('a quadratic written as a function of the sheet', () => {
+  it('is written out into the equation and solved as one: y(x) := a·x² + b·x + c, solve x ∈ ℝ: y(x) == 0', () => {
+    const found = roots(`${coefficients(-10)}y(x) := a·x^2 + b·x + c\nsolve x ∈ ℝ, x > 0: y(x) == 0`);
+    expect(found.discriminant).toBe(216);
+    expect(found.roots.map((r) => r.kept)).toEqual([true, false]);
+    // Without conditions too: the one positive root.
+    const r = evaluateSheet(`${coefficients(-10)}y(x) := a·x^2 + b·x + c\nsolve u: y(u) == 0`);
+    expect((r.values.get('u') as Quantity).si).toBeCloseTo(1.0697, 3);
+  });
+});

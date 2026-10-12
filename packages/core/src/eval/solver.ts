@@ -32,6 +32,7 @@ import { quantity, type Quantity, type Value } from '../values/value.js';
 import { asQuantity } from './coerce.js';
 import type { EvalContext } from './evaluator.js';
 import { isolate, quadraticOf } from './isolate.js';
+import { substitute } from './derive.js';
 import { toDisplay } from '../units/display.js';
 
 type SolveStatement = Extract<Statement, { kind: 'solve' }>;
@@ -173,7 +174,7 @@ function solveEquations(statement: SolveStatement, ctx: EvalContext, evaluate: E
 function byFormula(statement: SolveStatement, ctx: EvalContext, evaluate: Evaluate, range: [Quantity, Quantity] | undefined, guess: Quantity | undefined): Solved | undefined {
   const name = statement.unknowns[0]!.name;
   const equation = statement.equations[0]!;
-  const formulas = isolate(equation.left, equation.right, name);
+  const formulas = isolate(inlineCalls(equation.left, ctx), inlineCalls(equation.right, ctx), name);
   if (!formulas) return undefined;
   const quiet: EvalContext = { ...ctx, warnings: [], tableReads: [] };
   const holds = (value: Quantity): boolean => rootHolds(equation, name, value, ctx, evaluate);
@@ -258,6 +259,8 @@ export interface RootsFound {
   readonly roots: readonly Root[];
   /** Of a quadratic, a·x² + b·x + c = 0: its coefficients as written and the discriminant b² − 4·a·c. */
   readonly quadratic?: { readonly a: Expr; readonly b: Expr; readonly c: Expr; readonly discriminant: Quantity };
+  /** The equation with the functions of the sheet written out: y(x) = 0 is a·x² + b·x + c = 0. */
+  readonly expanded?: { readonly left: Expr; readonly right: Expr };
 }
 
 /**
@@ -277,7 +280,11 @@ export function allRoots(statement: SolveStatement, ctx: EvalContext, evaluate: 
 
   let found: Quantity[] = [];
   let quadratic: RootsFound['quadratic'];
-  const q = quadraticOf(equation.left, equation.right, name);
+  // y(x) == 0 with y(x) := a·x² + b·x + c: the function written out, so the equation is seen for what it is.
+  const left = inlineCalls(equation.left, ctx);
+  const right = inlineCalls(equation.right, ctx);
+  const expanded = left !== equation.left || right !== equation.right ? { left, right } : undefined;
+  const q = quadraticOf(left, right, name);
   const a = q ? value(q.a) : undefined;
   if (q && a && (a.si !== 0 || a.im)) {
     const bb = bin('^', q.b, num(2));
@@ -297,7 +304,7 @@ export function allRoots(statement: SolveStatement, ctx: EvalContext, evaluate: 
       found = [quantity(re.si, re.dim, { im: im.si, ...(re.hint ? { hint: re.hint } : {}) }), quantity(re.si, re.dim, { im: -im.si, ...(re.hint ? { hint: re.hint } : {}) })];
     }
   } else {
-    const formulas = isolate(equation.left, equation.right, name);
+    const formulas = isolate(left, right, name);
     const quiet: EvalContext = { ...ctx, warnings: [], tableReads: [] };
     for (const formula of formulas ?? []) {
       let v: Value;
@@ -338,7 +345,41 @@ export function allRoots(statement: SolveStatement, ctx: EvalContext, evaluate: 
     });
     return failing >= 0 ? { value: root, rejected: failing } : { value: root };
   });
-  return { roots, ...(quadratic ? { quadratic } : {}) };
+  return { roots, ...(quadratic ? { quadratic } : {}), ...(expanded ? { expanded } : {}) };
+}
+
+/**
+ * Calls of functions of the sheet written out into their formulas (y(x) becomes
+ * a·x² + b·x + c), a few levels deep; the same expression when there is none.
+ */
+export function inlineCalls(expr: Expr, ctx: EvalContext, depth = 0): Expr {
+  const again = (e: Expr) => inlineCalls(e, ctx, depth);
+  switch (expr.kind) {
+    case 'call': {
+      const args = expr.args.map(again);
+      let own: Value | undefined;
+      try {
+        own = depth < 8 ? ctx.lookup(expr.name, expr.span) : undefined;
+      } catch (err) {
+        if (!(err instanceof CalcError)) throw err;
+      }
+      if (own?.type === 'function' && !own.native && !own.fit && own.params.length === args.length && expr.named.length === 0) {
+        return inlineCalls(substitute(own.body, new Map(own.params.map((p, i) => [p, args[i]!]))), ctx, depth + 1);
+      }
+      return args.every((a, i) => a === expr.args[i]) ? expr : { ...expr, args };
+    }
+    case 'unary': {
+      const operand = again(expr.operand);
+      return operand === expr.operand ? expr : { ...expr, operand };
+    }
+    case 'binary': {
+      const l = again(expr.left);
+      const r = again(expr.right);
+      return l === expr.left && r === expr.right ? expr : { ...expr, left: l, right: r };
+    }
+    default:
+      return expr;
+  }
 }
 
 /**

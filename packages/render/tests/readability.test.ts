@@ -232,5 +232,8 @@ describe('a quadratic solved under conditions', () => {
     expect(kept).toContain('D = b 2 − 4 · a · c = 4 2 − 4 · 5 · ( −10 ) = 216');
     expect(kept).toContain('x 2 = −1,87 — nevyhovuje podmínce x &gt; 0 ⇒ x = 1,07');
     expect(text('a := 5\nb := 4\nc := 10\nsolve x ∈ ℝ: a·x^2 + b·x + c == 0')).toContain('D &lt; 0: rovnice nemá v ℝ řešení');
+    // A general function of the sheet, written out and then with the numbers put in.
+    const general = text('a := 5\nb := 4\nc := -10\ny(x) := a·x^2 + b·x + c\nsolve x ∈ ℝ, x > 0: y(x) == 0');
+    expect(general).toContain('y ( x ) = 0 x ∈ ℝ , x &gt; 0 a · x 2 + b · x + c = 0 5 · x 2 + 4 · x − 10 = 0 D =');
   });
 });

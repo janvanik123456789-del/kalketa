@@ -548,6 +548,35 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
       const sub = substitution(result, quantityNode, o);
       return formulaNode(expr, formulaOptions((e) => extra?.(e) ?? sub(e)));
     };
+    // y(x) = 0 written out: a·x² + b·x + c = 0, then with the numbers: 5·x² + 4·x − 10 = 0 (the unknown stays).
+    if (found.expanded) {
+      const keepUnknown = (e: Expr): Substituted | undefined => (e.kind === 'variable' && e.name === name ? { node: nameNode(name), negative: false, hasUnit: false } : undefined);
+      const general = row(formulaNode(found.expanded.left, o), mo('='), formulaNode(found.expanded.right, o));
+      out.push({ role: 'formula', op: '', rhs: general });
+      // Plain numbers put in as numbers, so the signs fold as on paper: + (−10) is − 10.
+      const numbersOf = (e: Expr): Expr => {
+        switch (e.kind) {
+          case 'variable': {
+            const v = e.name === name ? undefined : result.values.get(e.name);
+            return v?.type === 'quantity' && !v.im && !v.hint && Object.keys(v.dim).length === 0 ? { kind: 'number', value: v.si, span: e.span } : e;
+          }
+          case 'unary':
+            return { ...e, operand: numbersOf(e.operand) };
+          case 'binary': {
+            const l = numbersOf(e.left);
+            const r = numbersOf(e.right);
+            if ((e.operator === '+' || e.operator === '-') && r.kind === 'number' && r.value < 0) return { ...e, operator: e.operator === '+' ? '-' : '+', left: l, right: { ...r, value: -r.value } };
+            return { ...e, left: l, right: r };
+          }
+          case 'call':
+            return { ...e, args: e.args.map(numbersOf) };
+          default:
+            return e;
+        }
+      };
+      const numbers = row(substituted(numbersOf(found.expanded.left), keepUnknown), mo('='), substituted(numbersOf(found.expanded.right), keepUnknown));
+      if (mode.substitution && toText(numbers) !== toText(general)) out.push({ role: 'formula', op: '', rhs: numbers });
+    }
     const q = found.quadratic;
     if (q) {
       const at = s.span;

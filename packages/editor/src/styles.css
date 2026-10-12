@@ -155,8 +155,11 @@ table.shortcuts td { padding: 2px 16px 2px 0; }
 .picture-handle.se { right: 0; bottom: 0; margin: 0 calc(var(--size) / -2) calc(var(--size) / -2) 0; cursor: nwse-resize; }
 .row.selected .picture-handle, .row.editing .picture-handle { display: block; }
 /* Cells of one row: each a row of its own to edit, side by side. */
-.cells-group { display: flex; align-items: flex-start; gap: 6mm; }
+/* On one baseline, as in print: a text stands on the main line of the formula beside it. */
+.cells-group { display: flex; align-items: baseline; gap: 6mm; }
 .cells-group > .cell { flex: 0 1 auto; min-width: 0; }
+.cells-group .row { align-items: baseline; }
+.cells-group .block-view > * { margin-top: 0; margin-bottom: 0; }
 .cells-group > .cell:last-child { flex-grow: 1; }
 /* The edges of a chart or a canvas: the width or the height alone. */
 .picture-handle.edge { --size: calc(10px / var(--zoom, 1)); border-radius: 2px; }

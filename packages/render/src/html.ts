@@ -501,9 +501,10 @@ ${NOTES_CSS}
 
 /** Styles of blocks and the summary; used by print and by the editor. */
 export const BLOCK_CSS = `/* Cells of one row: a text and a formula, two results, side by side. */
-.cells { display: flex; align-items: flex-start; gap: 8mm; }
+/* On one baseline: a text stands on the main line of the formula beside it, as in a sentence. */
+.cells { display: flex; align-items: baseline; gap: 8mm; }
 .cells > .cell { flex: 0 1 auto; min-width: 0; }
-.cells > .cell > * { margin-top: 0; }
+.cells > .cell > * { margin-top: 0; margin-bottom: 0; }
 /* A calculation sheet with columns: the source, the working, the results; lines between them run down the page. */
 .cols { display: grid; grid-template-columns: 22mm minmax(0, 1fr) 38mm; column-gap: 0; align-items: stretch; }
 .cols > div { min-width: 0; }

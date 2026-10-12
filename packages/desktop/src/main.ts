@@ -1213,7 +1213,19 @@ async function layersWithRealInput(picture: string) {
     const recap = [...document.querySelectorAll('.layer-view.active .page .datatable tr.total')].some((r) => r.textContent.replace(/\\s+/g, '').includes('Celkem3,975,36')) && [...document.querySelectorAll('.layer-view.active .page .row')].some((r) => r.textContent.replace(/\\s+/g, '').includes('5,36kN/m²'));
     const rounded = [...document.querySelectorAll('.layer-view.active .page .row')].some((r) => r.textContent.replace(/\\s+/g, '').includes('≐5,5mm') && !r.classList.contains('has-error'));
     const cells = [...document.querySelectorAll('.layer-view.active .page .cells-group')].some((g) => g.querySelectorAll(':scope > .cell').length === 2 && g.textContent.includes('Síla na konci') && g.textContent.replace(/\\s+/g, '').includes('1600N'));
-    return cells && recap && rounded && measured && inequality && rows.some((r) => r.includes('roots') && r.endsWith('=[2;3]')) && rows.some((r) => r.includes('argmax') && r.endsWith('=2'));
+    // The text and the formula on one baseline: the bottoms of their letters level (no step).
+    const level = (() => {
+      const group = [...document.querySelectorAll('.layer-view.active .page .cells-group')].find((g) => g.textContent.includes('Síla na konci'));
+      const text = group?.querySelector('p.text');
+      const letter = group?.querySelector('math mi');
+      if (!text || !letter) return false;
+      const range = document.createRange();
+      range.selectNodeContents(text);
+      const t = range.getBoundingClientRect();
+      const m = letter.getBoundingClientRect();
+      return Math.abs(t.bottom - m.bottom) < Math.max(3, t.height * 0.3);
+    })();
+    return level && cells && recap && rounded && measured && inequality && rows.some((r) => r.includes('roots') && r.endsWith('=[2;3]')) && rows.some((r) => r.includes('argmax') && r.endsWith('=2'));
   })()`)) as boolean;
   // A click on the table in the sheet opens it as a grid; Enter in its last row adds one; Esc closes it.
   await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .page .row')].find((r) => r.querySelector('table.data-table')).id = 'smoke-table-row'`);

@@ -8,7 +8,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type DragEvent as ReactDragEvent, type MouseEvent as ReactMouseEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { sceneBody, type CanvasItem, type CanvasScene, type LiveValues } from '../scene.js';
+import { sceneBody, TEXT_FONTS, type CanvasItem, type CanvasScene, type LiveValues, type TextFont } from '../scene.js';
 import { addItem, boxOf, drawn, endMoved, endsOf, findItem, isSupportTool, itemAt, itemsIn, moved, newId, placedSupport, removeItem, reordered, replaceItem, resized, snap, turned, type Corner, type Tool } from '../edit.js';
 import { fromFile, isPictureType, picturePath, pixelSize, type CanvasPicture } from './pictures.js';
 import { canvasTexts, type CanvasTextKey } from './texts.js';
@@ -89,6 +89,7 @@ export function CanvasEditor(props: CanvasEditorProps) {
   const [filled, setFilled] = useState(false);
   const [hatched, setHatched] = useState(false);
   const [fontSize, setFontSize] = useState(3.5);
+  const [font, setFont] = useState<TextFont>('sans');
   const [files, setFiles] = useState<ReadonlyMap<string, Uint8Array>>(new Map());
   const [draft, setDraft] = useState<CanvasItem | undefined>();
   const drag = useRef<Drag | undefined>(undefined);
@@ -253,7 +254,7 @@ export function CanvasEditor(props: CanvasEditorProps) {
   const startWriting = (at: { x: number; y: number }) => {
     setSelected(undefined);
     setTool('select');
-    setWriting({ id: newId(scene), type: 'text', x: at.x, y: at.y, text: '', size: fontSize, color: colour });
+    setWriting({ id: newId(scene), type: 'text', x: at.x, y: at.y, text: '', size: fontSize, color: colour, ...(font !== 'sans' ? { font } : {}) });
   };
   /** The text written: put in, changed, or gone when nothing is left of it. */
   const doneWriting = (written: Extract<CanvasItem, { type: 'text' }> | undefined) => {
@@ -304,7 +305,8 @@ export function CanvasEditor(props: CanvasEditorProps) {
   };
 
   /** Colour, line width, fill and font size apply to the selected item too. */
-  const restyle = (change: { colour?: string; width?: number; fill?: boolean; hatch?: boolean; size?: number }) => {
+  const restyle = (change: { colour?: string; width?: number; fill?: boolean; hatch?: boolean; size?: number; font?: TextFont }) => {
+    if (change.font !== undefined) setFont(change.font);
     if (change.colour !== undefined) setColour(change.colour);
     if (change.width !== undefined) setLineWidth(change.width);
     if (change.fill !== undefined) setFilled(change.fill);
@@ -314,7 +316,7 @@ export function CanvasEditor(props: CanvasEditorProps) {
     // Only what was changed goes to the chosen items: a colour chosen for several keeps their widths.
     const restyled = (target: CanvasItem): CanvasItem => {
       const strokeOf = (s: { color: string; width: number }) => ({ color: change.colour ?? s.color, width: change.width ?? s.width });
-      if (target.type === 'text') return { ...target, color: change.colour ?? target.color, size: change.size ?? target.size };
+      if (target.type === 'text') return { ...target, color: change.colour ?? target.color, size: change.size ?? target.size, ...(change.font ? { font: change.font } : {}) };
       if (target.type === 'line' || target.type === 'arc' || target.type === 'support') return { ...target, stroke: strokeOf(target.stroke) };
       if (target.type === 'arrow') return { ...target, stroke: strokeOf(target.stroke), ...(target.text !== undefined && change.size !== undefined ? { size: change.size } : {}) };
       if (target.type === 'dimension' || target.type === 'load') return { ...target, stroke: strokeOf(target.stroke), size: change.size ?? target.size };
@@ -451,6 +453,13 @@ export function CanvasEditor(props: CanvasEditorProps) {
           <label title={text('hatch')}>
             <input type="checkbox" data-canvas="hatch" checked={hatched} onChange={(e) => restyle({ hatch: e.target.checked })} /> {text('hatch')}
           </label>
+          <select value={item?.type === 'text' ? (item.font ?? 'sans') : font} title={text('font')} data-canvas="font" onChange={(e) => restyle({ font: e.target.value as TextFont })}>
+            {TEXT_FONTS.map((f) => (
+              <option key={f} value={f}>
+                {text(`font.${f}`)}
+              </option>
+            ))}
+          </select>
           <select value={fontSize} title={text('fontSize')} onChange={(e) => restyle({ size: Number(e.target.value) })}>
             {FONT_SIZES.map((s) => (
               <option key={s} value={s}>

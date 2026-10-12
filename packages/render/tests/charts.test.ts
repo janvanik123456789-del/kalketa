@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defaultRegistry, evaluateSheet } from '@kalketa/core';
+import { defaultRegistry, evaluateSheet, formatPlacement, parsePlacement } from '@kalketa/core';
 import { catalogFor } from '@kalketa/i18n';
 import { buildPrintDocument, renderBlockHtml, type PrintBlock } from '../src/index.js';
 
@@ -62,5 +62,17 @@ describe('a series of dates in print', () => {
     expect(html).toContain('style="width:40%;margin-right:6%;clear:right"');
     const bad = evaluateSheet(`${BEAM}plot(M(x), x: 0 m .. L, place: "side=right")`);
     expect(bad.diagnostics.map((d) => d.code)).toContain('E-PLOT-POSITION');
+  });
+});
+
+describe('the height of a chart to its width', () => {
+  it('follows ratio=… of its place, set by dragging its edge', () => {
+    const block = (place: string) => buildPrintDocument(evaluateSheet(`plot(x^2, x: 0 .. 4${place})`), { catalog: catalogFor('cs'), registry: defaultRegistry, title: 'T', digits: 4 }).blocks.find((b) => b.kind === 'chart')!;
+    const usual = block('');
+    const tall = block(', place: "width=60% ratio=0.8"');
+    expect(usual.kind === 'chart' && usual.layout.height).toBe(300);
+    expect(tall.kind === 'chart' && tall.layout.height).toBe(512);
+    expect(parsePlacement('width=60% ratio=0.8')).toEqual({ ratio: 0.8, width: 60 });
+    expect(formatPlacement({ width: 60, ratio: 0.8 })).toBe('width=60% ratio=0.8');
   });
 });

@@ -462,7 +462,7 @@ async function runSmokeTest(pdfPath: string): Promise<void> {
     await writeFile(pdfPath, pdf);
     ok =
       state.bridge && state.sideBySide && state.menus === 7 && state.toolbars > 0 && state.rows > 10 && state.summary > 0 && state.math > 0 && reshapedColumns === 3 && pdf.length > 1000 &&
-      layers.deflection && layers.newKeepsExample && layers.samplesOk && layers.derivations && layers.summaryOk && layers.definitionAtCursor && layers.sheetGridOk && layers.tableEnter && layers.solvedByFormula && layers.rootsAndExtremes && layers.tableRowAdded && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.notesPicture === 'FIGURE+img BLOCKQUOTE' && layers.notesPlaced === 'narrower centred' && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.charts && layers.functionBar && layers.revisions && layers.roots && layers.toolIcons && layers.aiSettings && layers.aiChat && layers.pdfCleanup && layers.theoryLibrary && layers.study && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
+      layers.deflection && layers.pickTaken.column.startsWith('→') && /mm|cm/.test(layers.pickTaken.text) && layers.newKeepsExample && layers.samplesOk && layers.derivations && layers.summaryOk && layers.definitionAtCursor && layers.sheetGridOk && layers.tableEnter && layers.solvedByFormula && layers.rootsAndExtremes && layers.tableRowAdded && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.notesPicture === 'FIGURE+img BLOCKQUOTE' && layers.notesPlaced === 'narrower centred' && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.charts && layers.functionBar && layers.revisions && layers.roots && layers.toolIcons && layers.aiSettings && layers.aiChat && layers.pdfCleanup && layers.theoryLibrary && layers.study && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
     console.log(JSON.stringify({ ok, ...state, reshapedColumns, layers, pdfBytes: pdf.length }));
   } catch (err) {
     console.log(JSON.stringify({ ok: false, error: (err as Error).message, console: smokeConsole.slice(-5) }));
@@ -756,6 +756,31 @@ async function layersWithRealInput(picture: string) {
   await pressKey('A', ['control']);
   await typeText('q := q_d');
   await clickOn('.sheet-scroll');
+  // A row from a table, then a number of it clicked in the drop-down: the value with its unit (.column).
+  await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .page .row[data-line]')].sort((a, b) => Number(a.dataset.line) - Number(b.dataset.line)).at(-1).id = 'smoke-pick-last'`);
+  await clickOn('#smoke-pick-last');
+  await pause(300);
+  await pressKey('End');
+  await pressKey('Enter');
+  await typeText('p_t := pick(Profily_IPE, "IPE 200")');
+  // Closed by a click on the grey beside the page (in the middle of the sheet a row would open).
+  const besideSheet = (await contents.executeJavaScript(`(() => { const p = document.querySelector('.layer-view.active .page').getBoundingClientRect(); return { x: Math.round(p.left - 30), y: Math.round(p.top + 100) }; })()`)) as { x: number; y: number };
+  contents.sendInputEvent({ type: 'mouseDown', ...besideSheet, button: 'left', clickCount: 1 });
+  contents.sendInputEvent({ type: 'mouseUp', ...besideSheet, button: 'left', clickCount: 1 });
+  await pause(500);
+  // The new line: the last one by its number (not the profile chosen above).
+  await contents.executeJavaScript(`(() => { const row = [...document.querySelectorAll('.layer-view.active .row[data-line]')].sort((a, b) => Number(a.dataset.line) - Number(b.dataset.line)).at(-1); row?.setAttribute('id', 'smoke-pick-row'); row?.querySelector('.pick-button')?.setAttribute('data-smoke-pick', ''); })()`);
+  await clickOn('[data-smoke-pick]');
+  await pause(300);
+  await contents.executeJavaScript(`document.querySelector('.pick-list tr.current td.take')?.setAttribute('data-smoke-take', '')`);
+  await clickOn('[data-smoke-take]');
+  await pause(600);
+  const pickTaken = (await contents.executeJavaScript(`(() => {
+    // Drawn anew with its new text: found again as the last line by its number.
+    const row = [...document.querySelectorAll('.layer-view.active .row[data-line]')].sort((a, b) => Number(a.dataset.line) - Number(b.dataset.line)).at(-1);
+    const button = row?.querySelector('.pick-button');
+    return { column: button?.querySelector('.pick-column')?.textContent ?? '', text: row?.textContent.replace(/\s+/g, '') ?? '' };
+  })()`)) as { column: string; text: string };
 
   await clickOn('.layer-tab.add');
   await clickMenu('❝'); // sources
@@ -1276,6 +1301,29 @@ async function layersWithRealInput(picture: string) {
     await takePicture(picture.replace(/[.]png$/, '-chartresize.png'));
     contents.sendInputEvent({ type: 'mouseUp', x: corner.tx, y: corner.y, button: 'left', clickCount: 1 });
     await pause(600);
+    // The bottom edge: the height alone, the width stays (the chart keeps its ratio=… on its line).
+    const bottom = (await contents.executeJavaScript(`(() => {
+      const h = document.querySelector('.layer-view.active .row.selected .chart-view .picture-handle.edge.s');
+      const svg = document.querySelector('.layer-view.active .block.chart svg').getBoundingClientRect();
+      if (!h) return undefined;
+      const r = h.getBoundingClientRect();
+      return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2), ratio: svg.height / svg.width, width: svg.width };
+    })()`)) as { x: number; y: number; ratio: number; width: number } | undefined;
+    let chartTaller = false;
+    if (bottom) {
+      contents.sendInputEvent({ type: 'mouseMove', x: bottom.x, y: bottom.y });
+      await pause(100);
+      contents.sendInputEvent({ type: 'mouseDown', x: bottom.x, y: bottom.y, button: 'left', clickCount: 1 });
+      for (let step = 1; step <= 6; step++) {
+        contents.sendInputEvent({ type: 'mouseMove', x: bottom.x, y: bottom.y + step * 12, button: 'left' } as Electron.MouseInputEvent);
+        await pause(40);
+      }
+      await takePicture(picture.replace(/[.]png$/, '-chartheight.png'));
+      contents.sendInputEvent({ type: 'mouseUp', x: bottom.x, y: bottom.y + 72, button: 'left', clickCount: 1 });
+      await pause(700);
+      const after = (await contents.executeJavaScript(`(() => { const svg = document.querySelector('.layer-view.active .block.chart svg').getBoundingClientRect(); return { ratio: svg.height / svg.width, width: svg.width }; })()`)) as { ratio: number; width: number };
+      chartTaller = after.ratio > bottom.ratio + 0.05 && Math.abs(after.width - bottom.width) < 3;
+    }
     const drag = (await contents.executeJavaScript(`(() => {
       const chart = document.querySelector('.layer-view.active .block.chart svg');
       const svg = chart.getBoundingClientRect();
@@ -1296,7 +1344,7 @@ async function layersWithRealInput(picture: string) {
       const b = (row ?? document).querySelector('svg')?.closest('.page-body')?.getBoundingClientRect() ?? document.querySelector('.layer-view.active .page-body').getBoundingClientRect();
       const r = row?.getBoundingClientRect();
       return !!row?.querySelector('.block.chart svg') && !!r && r.left - b.left > b.width * 0.05 && r.width < b.width * 0.6 && !!document.querySelector('.layer-view.active .wrap-stop');
-    })()`)) as boolean && chartFramed;
+    })()`)) as boolean && chartFramed && chartTaller;
     await clickOn('.layer-view.active .block.chart svg', [], 'right');
     await clickMenu('Obtékání podle umístění');
     await pause(400);
@@ -1814,6 +1862,15 @@ async function layersWithRealInput(picture: string) {
     const framed = (await contents.executeJavaScript(`document.querySelectorAll('.canvas-window .canvas-svg > rect.canvas-frame').length`)) as number;
     await pressKey('Escape');
     await pause(200);
+    // The text chosen, its font from the bar of the canvas: serif (Cambria) one arrow down.
+    await contents.executeJavaScript(`document.querySelectorAll('.canvas-window .canvas-svg g text').forEach((t) => { if (t.textContent.includes('L = 5 m')) t.setAttribute('data-smoke-text', ''); })`);
+    const textAgain = (await contents.executeJavaScript(`(() => { const r = document.querySelector('[data-smoke-text]').getBoundingClientRect(); return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) }; })()`)) as { x: number; y: number };
+    contents.sendInputEvent({ type: 'mouseDown', ...textAgain, button: 'left', clickCount: 1 });
+    contents.sendInputEvent({ type: 'mouseUp', ...textAgain, button: 'left', clickCount: 1 });
+    await pause(200);
+    await contents.executeJavaScript(`document.querySelector('.canvas-window [data-canvas="font"]').focus()`);
+    await pressKey('Down');
+    await pause(300);
     await clickOn('.canvas-window [data-canvas="done"]');
     await pause(500);
     const mechanics = (await contents.executeJavaScript(`(() => {
@@ -1821,9 +1878,32 @@ async function layersWithRealInput(picture: string) {
       const svg = img ? decodeURIComponent(img.src.slice(img.src.indexOf(',') + 1)) : '';
       return svg.includes('class="cc-dimension"') && svg.includes('>l</text>') && /<path d="M[^"]*A/.test(svg) && svg.includes('fill="url(#cc-hatch-') &&
         svg.includes('cc-support cc-pin') && svg.includes('cc-support cc-roller') && svg.includes('rotate(90)"><line x1="0"') && svg.includes('class="cc-load"') && svg.includes(' kN/m</text></g>') && !svg.includes('{q}') &&
-        svg.includes('<tspan font-weight="bold">L = 5 m</tspan>') && svg.includes('>nosník</tspan>');
+        svg.includes('<tspan font-weight="bold">L = 5 m</tspan>') && svg.includes('>nosník</tspan>') && svg.includes('font-family="Cambria');
     })()`)) as boolean;
-    canvasOk = mechanics && writingOpen && framed === 2 &&
+    // In the sheet: the right edge of the canvas makes its area narrower, the drawing as drawn (its height stays).
+    const sizeOf = `(() => { const img = [...document.querySelectorAll('.layer-view.active figure img')].find((i) => i.src.startsWith('data:image/svg+xml')); const svg = img ? decodeURIComponent(img.src.slice(img.src.indexOf(',') + 1)) : ''; const m = /width="([\\d.]+)mm" height="([\\d.]+)mm"/.exec(svg); return m ? { w: Number(m[1]), h: Number(m[2]) } : undefined; })()`;
+    const areaBefore = (await contents.executeJavaScript(sizeOf)) as { w: number; h: number } | undefined;
+    await clickOn('[data-canvas-figure] img');
+    await pause(300);
+    await pressKey('Escape');
+    await pause(200);
+    const edge = (await contents.executeJavaScript(`(() => { const h = document.querySelector('.layer-view.active .row.selected .picture-handle.edge.e'); if (!h) return undefined; const r = h.getBoundingClientRect(); return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) }; })()`)) as { x: number; y: number } | undefined;
+    let canvasNarrower = false;
+    if (edge && areaBefore) {
+      contents.sendInputEvent({ type: 'mouseMove', ...edge });
+      await pause(100);
+      contents.sendInputEvent({ type: 'mouseDown', ...edge, button: 'left', clickCount: 1 });
+      for (let step = 1; step <= 6; step++) {
+        contents.sendInputEvent({ type: 'mouseMove', x: edge.x - step * 10, y: edge.y, button: 'left' } as Electron.MouseInputEvent);
+        await pause(40);
+      }
+      contents.sendInputEvent({ type: 'mouseUp', x: edge.x - 60, y: edge.y, button: 'left', clickCount: 1 });
+      await pause(700);
+      const areaAfter = (await contents.executeJavaScript(sizeOf)) as { w: number; h: number } | undefined;
+      canvasNarrower = !!areaAfter && areaAfter.w < areaBefore.w - 2 && Math.abs(areaAfter.h - areaBefore.h) < 0.5;
+      await takePicture(picture.replace(/[.]png$/, '-canvas-edge.png'));
+    }
+    canvasOk = mechanics && canvasNarrower && writingOpen && framed === 2 &&
       /<rect x="[\d.]+" y="[\d.]+" width="[\d.]+"/.test(items) && shown.includes('<rect') && shown.includes('marker-end') && shown.includes('L = 5 m') && reopened === 3 && inlineEditing && windowEditing && !(await contents.executeJavaScript(`!!document.querySelector('.canvas-window, .canvas-inline')`));
   }
   const besideText = sideGroup.rows === '3,4' && sideGroup.picture && sideGroup.side !== '' && widened > parseFloat(sideGroup.side) && movedPicture && wrapped && cleared && unwrapped && placedFree && strictPlaced && canvasOk;
@@ -1893,7 +1973,7 @@ async function layersWithRealInput(picture: string) {
     blocksOk = shown.errors === 0 && shown.text.includes('Prosty nosnik 1.2') && shown.text.includes('45');
     await takePicture(picture.replace(/[.]png$/, '-blocks.png'));
   }
-  return { ...state, deflection, derivations, summaryOk, summaryOpens, summaryAtEnd, bookStyle, verdictFuture, verdictBack, pageHead, definitionAtCursor, solveFormatted, sheetGridOk, sheetGrid, tableEnter, tableEnterAt, lastRowEnter, draggedRows, selectedAll, bothFormatted, roundedOn, equationNumber, solvedByFormula, rootsAndExtremes, tableRowAdded, chartSteps, samplesOk, sampleTab, newKeepsExample, citations, notesPicture, notesPlaced, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, toolIcons, aiSettings, aiChat, pdfCleanup, theoryLibrary, study, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, placedFree, strictPlaced, canvasOk, besideText, pictures, blocksOk };
+  return { ...state, pickTaken, deflection, derivations, summaryOk, summaryOpens, summaryAtEnd, bookStyle, verdictFuture, verdictBack, pageHead, definitionAtCursor, solveFormatted, sheetGridOk, sheetGrid, tableEnter, tableEnterAt, lastRowEnter, draggedRows, selectedAll, bothFormatted, roundedOn, equationNumber, solvedByFormula, rootsAndExtremes, tableRowAdded, chartSteps, samplesOk, sampleTab, newKeepsExample, citations, notesPicture, notesPlaced, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, toolIcons, aiSettings, aiChat, pdfCleanup, theoryLibrary, study, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, placedFree, strictPlaced, canvasOk, besideText, pictures, blocksOk };
 }
 
 /** The tidied sources saved as a library (.kalkt) and attached in the chat: the model cites it by its key. */

@@ -341,6 +341,8 @@ plot(CF, kind: "bar", title: "Peněžní toky")        ' řada proti pořadí 1,
 - **Umístění** jako u obrázku (11.1): `plot(M(x), x: 0 m .. L, place: "width=40% wrap=right dx=6% dy=8mm")`. Bez `place` má graf celou šířku. V editoru pravé tlačítko na grafu otevře menu obtékání a šířky, zúžený graf jde chytit myší a položit kamkoli na stránce (zápis `place` doplní program); klik bez tažení otevře řádek. `side=` je jen pro obrázky.
 - Chyby: zápis (`E-PLOT-FORM`), druh (`E-PLOT-KIND`), rozsah pozpátku (`E-PLOT-RANGE`), počet bodů (`E-PLOT-SAMPLES`), řady různé délky (`E-PLOT-LENGTH`), umístění (`E-PLOT-POSITION`).
 
+- **Výška grafu (2026-10-12):** `place: "width=60% ratio=0.6"` dává poměr výšky k šířce (0,1–3). V editoru ho nastaví tažení za horní nebo dolní hranu vybraného grafu; boční hrany mění jen šířku, rohy obojí v poměru.
+
 ### 7.1f Proložení naměřených bodů (2026-10-06)
 
 ```text

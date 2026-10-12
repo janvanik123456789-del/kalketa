@@ -8,7 +8,7 @@
 
 import { useEffect, useLayoutEffect, useRef, type MouseEvent as ReactMouseEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { FONT_FAMILIES, textLines, type CanvasItem, type TextAlign, type TextFont } from '../scene.js';
+import { FONT_FAMILIES, TEXT_FONTS, textLines, type CanvasItem, type TextAlign, type TextFont } from '../scene.js';
 import { htmlOf, runsOf } from './richText.js';
 import type { CanvasTextKey } from './texts.js';
 
@@ -113,7 +113,7 @@ export function TextEditor({ item: initial, stage, colours, sizes, text, onDone 
         ))}
         <span className="canvas-sep" />
         <select title={text('font')} defaultValue={initial.font ?? 'sans'} onMouseDown={(e) => e.stopPropagation()} onChange={(e) => setWhole({ font: e.target.value as TextFont })}>
-          {(['sans', 'serif', 'mono'] as const).map((f) => (
+          {TEXT_FONTS.map((f) => (
             <option key={f} value={f}>
               {text(`font.${f}`)}
             </option>

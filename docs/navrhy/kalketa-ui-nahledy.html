@@ -1,0 +1,579 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kalketa – náhledy rozhraní</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400&amp;family=STIX+Two+Text:ital,wght@0,400;0,600;1,400&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#2A2F38;font-family:'IBM Plex Sans',system-ui,sans-serif}
+nav{position:sticky;top:0;z-index:10;display:flex;flex-wrap:wrap;gap:6px;padding:10px 12px;background:#1B1F27}
+nav button{border:1px solid #434B59;background:#20252E;color:#E4E7EC;border-radius:6px;padding:7px 12px;font:inherit;font-size:13px;cursor:pointer}
+nav button.on{background:#2F5EC4;border-color:#2F5EC4;color:#fff}
+nav span{color:#A8B0BD;font-size:12px;align-self:center;margin-left:auto}
+.frame{width:100%;overflow:hidden}
+.scaled{width:1440px;height:900px;transform-origin:0 0}
+</style>
+</head>
+<body>
+<nav><button type="button" data-i="0" class="on">1 · Doporučeno</button><button type="button" data-i="1">2 · Pás karet</button><button type="button" data-i="2">3 · Paleta příkazů</button><button type="button" data-i="3">4 · Navigace, tmavý vzhled</button><button type="button" data-i="4">5 · Úvodní obrazovka</button><button type="button" data-i="5">6 · Vlastnosti výpočtu</button><span>Klávesy ← → přepínají obrazovky</span></nav>
+<section class="screen" id="s0"><div class="frame"><div class="scaled">
+<div style="width: 1440px; height: 900px; display: flex; flex-direction: column; background: #F4F5F7; color: #1D2330; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 13px; overflow: hidden;">
+
+  <!-- Title bar: the documents as tabs, the command search in the middle -->
+  <div style="height: 40px; display: flex; align-items: center; gap: 12px; padding: 0 0 0 12px; background: #FFFFFF; border-bottom: 1px solid #DDE1E7;">
+    <div style="width: 22px; height: 22px; border-radius: 5px; background: #2F5EC4; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 13px;">K</div>
+    <div style="display: flex; align-items: flex-end; gap: 2px; height: 40px;">
+      <div style="height: 32px; padding: 0 14px; display: flex; align-items: center; gap: 8px; background: #F4F5F7; border: 1px solid #DDE1E7; border-bottom: none; border-radius: 6px 6px 0 0; font-weight: 500;">Posouzení průvlaku P2 <span style="color: #2F5EC4;">●</span></div>
+      <div style="height: 32px; padding: 0 14px; display: flex; align-items: center; color: #5B6474;">Výpočet nýtu</div>
+      <button type="button" aria-label="Nový dokument" style="height: 28px; width: 28px; margin-bottom: 2px; border: none; background: none; color: #5B6474; font-size: 16px;">+</button>
+    </div>
+    <div style="flex-grow: 1; display: flex; justify-content: center;">
+      <div style="width: 360px; height: 28px; border: 1px solid #DDE1E7; border-radius: 6px; background: #F4F5F7; display: flex; align-items: center; gap: 8px; padding: 0 10px; color: #5B6474;">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#5B6474" stroke-width="1.6" aria-hidden="true"><circle cx="7" cy="7" r="5"></circle><path d="M11 11l3.5 3.5"></path></svg>
+        <span style="flex-grow: 1;">Hledat příkaz nebo veličinu…</span>
+        <span style="font-size: 11px; border: 1px solid #C9CED6; border-radius: 4px; padding: 0 5px;">Ctrl K</span>
+      </div>
+    </div>
+    <div style="display: flex; height: 40px;">
+      <div style="width: 46px; display: flex; align-items: center; justify-content: center; color: #5B6474;">—</div>
+      <div style="width: 46px; display: flex; align-items: center; justify-content: center; color: #5B6474;">▢</div>
+      <div style="width: 46px; display: flex; align-items: center; justify-content: center; color: #5B6474;">✕</div>
+    </div>
+  </div>
+
+  <!-- One compact toolbar: the ten most used actions, icons drawn alike -->
+  <div style="height: 44px; display: flex; align-items: center; gap: 4px; padding: 0 12px; background: #FFFFFF; border-bottom: 1px solid #DDE1E7;">
+    <div style="display: flex; gap: 2px;">
+      <button type="button" aria-label="Uložit" style="width: 32px; height: 32px; border: none; background: none; border-radius: 6px; display: flex; align-items: center; justify-content: center;"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#1D2330" stroke-width="1.5" aria-hidden="true"><path d="M4 3h10l3 3v11H4z"></path><path d="M7 3v4h6V3"></path><path d="M7 17v-5h7v5"></path></svg></button>
+      <button type="button" aria-label="Zpět" style="width: 32px; height: 32px; border: none; background: none; border-radius: 6px; display: flex; align-items: center; justify-content: center;"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#1D2330" stroke-width="1.5" aria-hidden="true"><path d="M7 5L3 9l4 4"></path><path d="M3 9h9a5 5 0 010 10H9"></path></svg></button>
+      <button type="button" aria-label="Znovu" style="width: 32px; height: 32px; border: none; background: none; border-radius: 6px; display: flex; align-items: center; justify-content: center;"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#9AA2AE" stroke-width="1.5" aria-hidden="true"><path d="M13 5l4 4-4 4"></path><path d="M17 9H8a5 5 0 000 10h3"></path></svg></button>
+    </div>
+    <div style="width: 1px; height: 22px; background: #DDE1E7; margin: 0 6px;"></div>
+    <div style="display: flex; gap: 2px;">
+      <button type="button" style="height: 32px; padding: 0 10px; border: none; background: none; border-radius: 6px; display: flex; align-items: center; gap: 6px; font: inherit; color: #1D2330;"><span style="font-family: 'STIX Two Text', serif; font-size: 16px;">≔</span>Definice</button>
+      <button type="button" style="height: 32px; padding: 0 10px; border: none; background: none; border-radius: 6px; display: flex; align-items: center; gap: 6px; font: inherit; color: #1D2330;"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="#1D2330" stroke-width="1.5" aria-hidden="true"><path d="M3 10h4l2-6 3 12 2-6h3"></path></svg>Řešit</button>
+      <button type="button" style="height: 32px; padding: 0 10px; border: none; background: none; border-radius: 6px; display: flex; align-items: center; gap: 6px; font: inherit; color: #1D2330;"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="#1E7A46" stroke-width="1.7" aria-hidden="true"><path d="M4 10l4 4 8-9"></path></svg>Posudek</button>
+      <button type="button" style="height: 32px; padding: 0 10px; border: none; background: none; border-radius: 6px; display: flex; align-items: center; gap: 6px; font: inherit; color: #1D2330;"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="#1D2330" stroke-width="1.5" aria-hidden="true"><rect x="3" y="4" width="14" height="12" rx="1"></rect><path d="M3 8h14M8 4v12"></path></svg>Tabulka</button>
+      <button type="button" style="height: 32px; padding: 0 10px; border: none; background: none; border-radius: 6px; display: flex; align-items: center; gap: 6px; font: inherit; color: #1D2330;"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="#1D2330" stroke-width="1.5" aria-hidden="true"><path d="M3 16h14M4 15l4-6 3 3 5-8"></path></svg>Graf</button>
+      <button type="button" style="height: 32px; padding: 0 10px; border: none; background: none; border-radius: 6px; display: flex; align-items: center; gap: 6px; font: inherit; color: #1D2330;"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="#1D2330" stroke-width="1.5" aria-hidden="true"><path d="M3 14h14"></path><path d="M6 14l-2 3h4z"></path><path d="M14 14l-2 3h4z"></path><path d="M5 8v5M9 8v5M13 8v5"></path></svg>Plátno</button>
+    </div>
+    <div style="width: 1px; height: 22px; background: #DDE1E7; margin: 0 6px;"></div>
+    <button type="button" style="height: 30px; padding: 0 10px; border: 1px solid #DDE1E7; background: #FFFFFF; border-radius: 6px; font: inherit; color: #1D2330; display: flex; align-items: center; gap: 6px;">Styl: Úsporný <span style="color: #5B6474;">▾</span></button>
+    <div style="flex-grow: 1;"></div>
+    <button type="button" style="height: 30px; padding: 0 12px; border: 1px solid #DDE1E7; background: #FFFFFF; border-radius: 6px; font: inherit; color: #1D2330;">Tisk</button>
+    <button type="button" style="height: 30px; padding: 0 12px; border: none; background: #2F5EC4; border-radius: 6px; font: inherit; color: #FFFFFF; font-weight: 500;">Export PDF</button>
+  </div>
+
+  <div style="flex-grow: 1; display: flex; min-height: 0;">
+
+    <!-- The sheet -->
+    <div style="flex-grow: 1; display: flex; flex-direction: column; background: #E6E9EE; min-width: 0;">
+      <div style="height: 40px; display: flex; align-items: center; gap: 4px; padding: 0 16px;">
+        <div style="display: flex; background: #D8DCE3; border-radius: 7px; padding: 2px; gap: 2px;">
+          <div style="padding: 4px 12px; background: #FFFFFF; border-radius: 5px; font-weight: 500;">List</div>
+          <div style="padding: 4px 12px; color: #3B4352;">Data</div>
+          <div style="padding: 4px 12px; color: #3B4352;">Zatížení</div>
+          <div style="padding: 4px 12px; color: #3B4352;">Podklady</div>
+          <div style="padding: 4px 10px; color: #3B4352;">+</div>
+        </div>
+      </div>
+      <div style="flex-grow: 1; display: flex; justify-content: center; padding: 8px 0 0; min-height: 0;">
+        <div style="width: 620px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(20, 30, 50, 0.12), 0 6px 18px rgba(20, 30, 50, 0.08); padding: 40px 48px 0 64px; box-sizing: border-box; position: relative; font-family: 'STIX Two Text', serif; font-size: 15px;">
+          <div style="display: flex; justify-content: space-between; font-family: 'IBM Plex Sans', sans-serif; font-size: 10px; color: #5B6474; margin-bottom: 18px;"><span>Posouzení průvlaku P2 · Pos. 2 Průvlak</span><span>Ing. J. Novák · 11. 10. 2026</span></div>
+          <div style="display: flex; align-items: baseline; gap: 14px; border-bottom: 1px solid #9AA2AE; padding-bottom: 4px; margin-bottom: 14px;">
+            <span style="font-family: 'IBM Plex Sans', sans-serif; font-weight: 600; font-size: 14px;">Pos. 2</span>
+            <span style="font-family: 'IBM Plex Sans', sans-serif; font-weight: 600; font-size: 14px;">Průvlak</span>
+          </div>
+          <div style="display: flex; gap: 40px; margin-bottom: 14px;">
+            <div><i>L</i> = 6 m</div>
+            <div><i>q</i> = 12 kN/m</div>
+            <div><i>W</i><sub>y</sub> = 324 cm³</div>
+          </div>
+
+          <!-- The row with the cursor: its mini toolbar floats above it -->
+          <div style="position: relative; margin: 34px -12px 14px; padding: 6px 12px; background: #FFFBE6; border-radius: 5px;">
+            <div style="position: absolute; top: -40px; left: 8px; display: flex; align-items: center; gap: 2px; padding: 3px; background: #FFFFFF; border: 1px solid #DDE1E7; border-radius: 8px; box-shadow: 0 4px 14px rgba(20, 30, 50, 0.14); font-family: 'IBM Plex Sans', sans-serif; font-size: 12px;">
+              <button type="button" style="height: 26px; padding: 0 8px; border: none; background: #EEF2FB; border-radius: 5px; font: inherit; color: #1D2330;">2 des. místa ▾</button>
+              <button type="button" style="height: 26px; padding: 0 8px; border: none; background: none; border-radius: 5px; font: inherit; color: #1D2330;">kN·m ▾</button>
+              <button type="button" style="height: 26px; padding: 0 8px; border: none; background: none; border-radius: 5px; font: inherit; color: #1D2330;">(1) Číslo rovnice</button>
+              <button type="button" style="height: 26px; padding: 0 8px; border: none; background: none; border-radius: 5px; font: inherit; color: #1D2330;">Zdroj…</button>
+              <div style="width: 1px; height: 18px; background: #DDE1E7;"></div>
+              <button type="button" aria-label="Další volby" style="height: 26px; width: 26px; border: none; background: none; border-radius: 5px; font: inherit; color: #5B6474;">⋯</button>
+            </div>
+            <div style="position: absolute; left: -44px; top: 8px; display: flex; gap: 2px; font-family: 'IBM Plex Sans', sans-serif; color: #9AA2AE; font-size: 12px;"><span>⋮⋮</span><span style="color: #2F5EC4;">+</span></div>
+            <div><i>M</i><sub>Ed</sub> = <span style="display: inline-flex; flex-direction: column; vertical-align: middle; text-align: center;"><span><i>q</i>·<i>L</i>²</span><span style="border-top: 1px solid #1D2330;">8</span></span> = <span style="display: inline-flex; flex-direction: column; vertical-align: middle; text-align: center;"><span>12 kN/m·(6 m)²</span><span style="border-top: 1px solid #1D2330;">8</span></span> = <b>54,00 kN·m</b> <span style="float: right; color: #5B6474;">(1)</span></div>
+            <div style="font-family: 'IBM Plex Sans', sans-serif; font-size: 10px; color: #5B6474; margin-top: 2px;">EN 1990, 6.10</div>
+          </div>
+
+          <div style="margin-bottom: 14px;"><i>σ</i> = <span style="display: inline-flex; flex-direction: column; vertical-align: middle; text-align: center;"><span><i>M</i><sub>Ed</sub></span><span style="border-top: 1px solid #1D2330;"><i>W</i><sub>y</sub></span></span> = <span style="display: inline-flex; flex-direction: column; vertical-align: middle; text-align: center;"><span>54 kN·m</span><span style="border-top: 1px solid #1D2330;">324 cm³</span></span> = <b>166,7 MPa</b></div>
+
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; margin: 0 -12px 14px; background: #F2F8F4; border-radius: 5px;">
+            <div><span style="font-family: 'IBM Plex Sans', sans-serif; font-weight: 600; font-size: 12px; margin-right: 10px;">Ohyb</span><i>σ</i> ≤ <i>f</i><sub>y</sub> → 166,7 MPa ≤ 235 MPa</div>
+            <div style="font-family: 'IBM Plex Sans', sans-serif; font-size: 12px;"><span style="color: #5B6474; margin-right: 10px;">70,9 %</span><span style="color: #1E7A46; font-weight: 600;">✓ VYHOVUJE</span></div>
+          </div>
+
+          <!-- An empty row with "/": what can be put in, each with a preview -->
+          <div style="position: relative; margin: 0 -12px; padding: 6px 12px; background: #FFFBE6; border-radius: 5px; font-family: 'IBM Plex Sans', sans-serif; font-size: 13px;">/<span style="display: inline-block; width: 1px; height: 15px; background: #1D2330; vertical-align: middle; margin-left: 1px;"></span>
+            <div style="position: absolute; top: 36px; left: 0; width: 360px; background: #FFFFFF; border: 1px solid #DDE1E7; border-radius: 10px; box-shadow: 0 10px 30px rgba(20, 30, 50, 0.18); padding: 6px; z-index: 2;">
+              <div style="font-size: 11px; color: #5B6474; padding: 4px 8px 6px;">Vložit</div>
+              <div style="display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 6px; background: #EEF2FB;">
+                <span style="width: 26px; height: 26px; border-radius: 6px; background: #FFFFFF; border: 1px solid #DDE1E7; display: flex; align-items: center; justify-content: center; font-family: 'STIX Two Text', serif;">≔</span>
+                <span style="flex-grow: 1;"><b style="font-weight: 600;">Definice</b><br><span style="color: #5B6474; font-size: 11px;">M_Ed := q·L²/8</span></span><span style="color: #5B6474; font-size: 11px;">Enter</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 6px;">
+                <span style="width: 26px; height: 26px; border-radius: 6px; background: #FFFFFF; border: 1px solid #DDE1E7; display: flex; align-items: center; justify-content: center; color: #1E7A46;">✓</span>
+                <span style="flex-grow: 1;"><b style="font-weight: 600;">Posudek</b><br><span style="color: #5B6474; font-size: 11px;">check "Ohyb": σ ≤ f_y</span></span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 6px;">
+                <span style="width: 26px; height: 26px; border-radius: 6px; background: #FFFFFF; border: 1px solid #DDE1E7; display: flex; align-items: center; justify-content: center; font-size: 11px;">x=?</span>
+                <span style="flex-grow: 1;"><b style="font-weight: 600;">Řešení rovnice</b><br><span style="color: #5B6474; font-size: 11px;">solve L: M_Ed == q·L²/8</span></span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 6px;">
+                <span style="width: 26px; height: 26px; border-radius: 6px; background: #FFFFFF; border: 1px solid #DDE1E7; display: flex; align-items: center; justify-content: center;">▦</span>
+                <span style="flex-grow: 1;"><b style="font-weight: 600;">Tabulka v listu</b><br><span style="color: #5B6474; font-size: 11px;">rekapitulace zatížení, naměřené body</span></span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 6px;">
+                <span style="width: 26px; height: 26px; border-radius: 6px; background: #FFFFFF; border: 1px solid #DDE1E7; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600;">Pos</span>
+                <span style="flex-grow: 1;"><b style="font-weight: 600;">Nová pozice</b><br><span style="color: #5B6474; font-size: 11px;">## Sloup {pos} – vlastní jména</span></span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 6px;">
+                <span style="width: 26px; height: 26px; border-radius: 6px; background: #FFFFFF; border: 1px solid #DDE1E7; display: flex; align-items: center; justify-content: center; font-family: 'STIX Two Text', serif; font-style: italic;">w″</span>
+                <span style="flex-grow: 1;"><b style="font-weight: 600;">Ohybová čára</b><br><span style="color: #5B6474; font-size: 11px;">solve w(x): E·I·w″ == −M(x)</span></span>
+              </div>
+              <div style="font-size: 11px; color: #5B6474; padding: 6px 8px 2px; border-top: 1px solid #EEF0F3; margin-top: 4px;">Graf · Plátno · Obrázek · Text · Nadpis · Odvození…</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Properties of the row, on the right: what the right button does today, visible -->
+    <div style="width: 300px; background: #FFFFFF; border-left: 1px solid #DDE1E7; display: flex; flex-direction: column;">
+      <div style="padding: 14px 16px 10px; border-bottom: 1px solid #EEF0F3;">
+        <div style="font-size: 11px; color: #5B6474; text-transform: uppercase; letter-spacing: 0.04em;">Řádek 11 · definice</div>
+        <div style="font-size: 15px; font-weight: 600; margin-top: 4px; font-family: 'STIX Two Text', serif;"><i>M</i><sub>Ed</sub> = 54,00 kN·m</div>
+      </div>
+      <div style="padding: 12px 16px; display: flex; flex-direction: column; gap: 12px; border-bottom: 1px solid #EEF0F3;">
+        <div style="font-weight: 600;">Zobrazení</div>
+        <label style="display: flex; justify-content: space-between; align-items: center;">Desetinná místa <select style="width: 120px; height: 28px; border: 1px solid #DDE1E7; border-radius: 5px; font: inherit;"><option>2 (54,00)</option></select></label>
+        <label style="display: flex; justify-content: space-between; align-items: center;">Jednotka <select style="width: 120px; height: 28px; border: 1px solid #DDE1E7; border-radius: 5px; font: inherit;"><option>kN·m</option></select></label>
+        <label style="display: flex; justify-content: space-between; align-items: center;">Číslo rovnice <input type="checkbox" checked style="width: 16px; height: 16px;"></label>
+        <label style="display: flex; flex-direction: column; gap: 4px;">Zdroj <input type="text" value="EN 1990, 6.10" style="height: 28px; border: 1px solid #DDE1E7; border-radius: 5px; padding: 0 8px; font: inherit;"></label>
+      </div>
+      <div style="padding: 12px 16px; display: flex; flex-direction: column; gap: 6px;">
+        <div style="font-weight: 600; margin-bottom: 4px;">Původ hodnoty</div>
+        <div><span style="font-family: 'STIX Two Text', serif;"><i>M</i><sub>Ed</sub></span> ← <i style="font-family: 'STIX Two Text', serif;">q·L²/8</i></div>
+        <div style="padding-left: 14px; color: #3B4352;"><i style="font-family: 'STIX Two Text', serif;">q</i> = 12 kN/m <span style="color: #5B6474;">řádek 6</span></div>
+        <div style="padding-left: 14px; color: #3B4352;"><i style="font-family: 'STIX Two Text', serif;">L</i> = 6 m <span style="color: #5B6474;">řádek 5</span></div>
+        <div style="margin-top: 8px; font-size: 12px; color: #5B6474;">Použito v: σ (řádek 12), Ohyb (řádek 13)</div>
+      </div>
+    </div>
+
+    <!-- The rail of panels: a click opens one, another closes it -->
+    <div style="width: 48px; background: #FFFFFF; border-left: 1px solid #DDE1E7; display: flex; flex-direction: column; align-items: center; padding-top: 8px; gap: 6px;">
+      <button type="button" aria-label="Vlastnosti řádku" style="width: 36px; height: 36px; border: none; border-radius: 8px; background: #EEF2FB; display: flex; align-items: center; justify-content: center;"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#2F5EC4" stroke-width="1.6" aria-hidden="true"><path d="M4 5h12M4 10h12M4 15h12"></path><circle cx="8" cy="5" r="1.6" fill="#FFFFFF"></circle><circle cx="13" cy="10" r="1.6" fill="#FFFFFF"></circle><circle cx="7" cy="15" r="1.6" fill="#FFFFFF"></circle></svg></button>
+      <button type="button" aria-label="Navigace" style="width: 36px; height: 36px; border: none; border-radius: 8px; background: none; display: flex; align-items: center; justify-content: center;"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#5B6474" stroke-width="1.6" aria-hidden="true"><path d="M4 5h12M7 10h9M7 15h9"></path></svg></button>
+      <button type="button" aria-label="Tabulky" style="width: 36px; height: 36px; border: none; border-radius: 8px; background: none; display: flex; align-items: center; justify-content: center;"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#5B6474" stroke-width="1.6" aria-hidden="true"><rect x="3" y="4" width="14" height="12" rx="1"></rect><path d="M3 8h14M8 4v12"></path></svg></button>
+      <button type="button" aria-label="Vrstvy" style="width: 36px; height: 36px; border: none; border-radius: 8px; background: none; display: flex; align-items: center; justify-content: center;"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#5B6474" stroke-width="1.6" aria-hidden="true"><path d="M10 3l7 4-7 4-7-4z"></path><path d="M3 11l7 4 7-4"></path></svg></button>
+      <button type="button" aria-label="AI" style="width: 36px; height: 36px; border: none; border-radius: 8px; background: none; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: #5B6474;">AI</button>
+    </div>
+  </div>
+
+  <!-- Status bar: checks, problems, revision; the page and the zoom -->
+  <div style="height: 28px; display: flex; align-items: center; gap: 18px; padding: 0 14px; background: #FFFFFF; border-top: 1px solid #DDE1E7; font-size: 12px;">
+    <span style="display: flex; align-items: center; gap: 6px; color: #1E7A46; font-weight: 500;">✓ Posudky 3 ze 3</span>
+    <span style="color: #3B4352;">Problémy 0</span>
+    <span style="color: #3B4352;">Revize A + změny</span>
+    <div style="flex-grow: 1;"></div>
+    <span style="color: #3B4352;">Strana 2.1 (3 z 7)</span>
+    <span style="color: #3B4352;">75 %</span>
+  </div>
+</div>
+</div></div></section><section class="screen" id="s1" hidden><div class="frame"><div class="scaled">
+<div style="width: 1440px; height: 900px; display: flex; flex-direction: column; background: #F4F5F7; color: #1D2330; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 13px; overflow: hidden;">
+
+  <!-- Title bar with the quick access buttons -->
+  <div style="height: 34px; display: flex; align-items: center; gap: 10px; padding: 0 12px; background: #2F5EC4; color: #FFFFFF;">
+    <div style="width: 20px; height: 20px; border-radius: 4px; background: #FFFFFF; color: #2F5EC4; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 12px;">K</div>
+    <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="#FFFFFF" stroke-width="1.5" aria-hidden="true"><path d="M4 3h10l3 3v11H4z"></path><path d="M7 3v4h6V3"></path><path d="M7 17v-5h7v5"></path></svg>
+    <span style="flex-grow: 1; text-align: center; font-weight: 500;">Posouzení průvlaku P2 – Kalketa</span>
+    <span>—</span><span>▢</span><span>✕</span>
+  </div>
+
+  <!-- The tabs of the ribbon; Tabulka is a context tab, shown while a table is chosen -->
+  <div style="height: 34px; display: flex; align-items: flex-end; gap: 2px; padding: 0 12px; background: #2F5EC4;">
+    <div style="padding: 7px 14px; color: #FFFFFF; background: #234A9C; border-radius: 6px 6px 0 0;">Soubor</div>
+    <div style="padding: 7px 14px; color: #1D2330; background: #FFFFFF; border-radius: 6px 6px 0 0; font-weight: 500;">Výpočet</div>
+    <div style="padding: 7px 14px; color: #FFFFFF;">Vložit</div>
+    <div style="padding: 7px 14px; color: #FFFFFF;">Formát</div>
+    <div style="padding: 7px 14px; color: #FFFFFF;">Stránka</div>
+    <div style="padding: 7px 14px; color: #FFFFFF;">Podklady</div>
+    <div style="padding: 7px 14px; color: #FFFFFF;">AI</div>
+    <div style="width: 1px; height: 18px; background: rgba(255, 255, 255, 0.4); margin: 0 6px 8px;"></div>
+    <div style="padding: 7px 14px; color: #1D2330; background: #FFE8A3; border-radius: 6px 6px 0 0; font-weight: 500;">Tabulka</div>
+  </div>
+
+  <!-- The ribbon itself: groups of large and small buttons, their name below -->
+  <div style="height: 98px; display: flex; align-items: stretch; background: #FFFFFF; border-bottom: 1px solid #DDE1E7; padding: 6px 8px 0;">
+    <div style="display: flex; flex-direction: column; padding: 0 10px; border-right: 1px solid #EEF0F3;">
+      <div style="flex-grow: 1; display: flex; gap: 6px; align-items: flex-start;">
+        <button type="button" style="width: 62px; height: 64px; border: none; background: #EEF2FB; border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font: inherit; font-size: 12px; color: #1D2330;"><span style="font-family: 'STIX Two Text', serif; font-size: 22px;">≔</span>Definice</button>
+        <button type="button" style="width: 62px; height: 64px; border: none; background: none; border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font: inherit; font-size: 12px; color: #1D2330;"><svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="#1D2330" stroke-width="1.4" aria-hidden="true"><path d="M3 10h4l2-6 3 12 2-6h3"></path></svg>Řešit</button>
+        <div style="display: flex; flex-direction: column; gap: 2px; font-size: 12px;">
+          <div style="padding: 3px 6px;">= Výsledek</div>
+          <div style="padding: 3px 6px;">≡ Odvození</div>
+          <div style="padding: 3px 6px;"><i style="font-family: 'STIX Two Text', serif;">w″</i> Ohybová čára</div>
+        </div>
+      </div>
+      <div style="text-align: center; color: #5B6474; font-size: 11px; padding: 2px 0 4px;">Výpočet</div>
+    </div>
+    <div style="display: flex; flex-direction: column; padding: 0 10px; border-right: 1px solid #EEF0F3;">
+      <div style="flex-grow: 1; display: flex; gap: 6px; align-items: flex-start;">
+        <button type="button" style="width: 62px; height: 64px; border: none; background: none; border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font: inherit; font-size: 12px; color: #1D2330;"><svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="#1E7A46" stroke-width="1.7" aria-hidden="true"><path d="M4 10l4 4 8-9"></path></svg>Posudek</button>
+        <div style="display: flex; flex-direction: column; gap: 2px; font-size: 12px;">
+          <div style="padding: 3px 6px;">Souhrn nahoře ▾</div>
+          <div style="padding: 3px 6px;">VYHOVUJE ▾</div>
+        </div>
+      </div>
+      <div style="text-align: center; color: #5B6474; font-size: 11px; padding: 2px 0 4px;">Posouzení</div>
+    </div>
+    <div style="display: flex; flex-direction: column; padding: 0 10px; border-right: 1px solid #EEF0F3;">
+      <div style="flex-grow: 1; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 2px; font-family: 'STIX Two Text', serif; font-size: 15px; align-content: start;">
+        <div style="padding: 3px 7px; text-align: center;">·</div><div style="padding: 3px 7px; text-align: center;">÷</div><div style="padding: 3px 7px; text-align: center;">≤</div><div style="padding: 3px 7px; text-align: center;">≥</div><div style="padding: 3px 7px; text-align: center;">≠</div><div style="padding: 3px 7px; text-align: center;">≐</div>
+        <div style="padding: 3px 7px; text-align: center;">√</div><div style="padding: 3px 7px; text-align: center;">x²</div><div style="padding: 3px 7px; text-align: center;">x<sub>i</sub></div><div style="padding: 3px 7px; text-align: center;">′</div><div style="padding: 3px 7px; text-align: center;">″</div><div style="padding: 3px 7px; text-align: center;">α</div>
+      </div>
+      <div style="text-align: center; color: #5B6474; font-size: 11px; padding: 2px 0 4px;">Operátory</div>
+    </div>
+    <div style="display: flex; flex-direction: column; padding: 0 10px; border-right: 1px solid #EEF0F3; background: #FFFAEB;">
+      <div style="flex-grow: 1; display: flex; gap: 6px; align-items: flex-start;">
+        <button type="button" style="width: 62px; height: 64px; border: none; background: none; border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font: inherit; font-size: 12px; color: #1D2330;"><span style="font-size: 20px; font-weight: 600;">Σ</span>Součet</button>
+        <button type="button" style="width: 62px; height: 64px; border: none; background: none; border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font: inherit; font-size: 12px; color: #1D2330;"><span style="font-size: 16px;">f(x)</span>Počítaný</button>
+        <div style="display: flex; flex-direction: column; gap: 2px; font-size: 12px;">
+          <div style="padding: 3px 6px;">+ Řádek</div>
+          <div style="padding: 3px 6px;">+ Sloupec</div>
+          <div style="padding: 3px 6px;">Mřížka / text</div>
+        </div>
+      </div>
+      <div style="text-align: center; color: #8A6A00; font-size: 11px; padding: 2px 0 4px;">Tabulka (kontextová)</div>
+    </div>
+    <div style="flex-grow: 1;"></div>
+    <div style="display: flex; flex-direction: column; justify-content: flex-end; padding: 0 6px 6px;">
+      <button type="button" aria-label="Sbalit pás karet" style="border: none; background: none; color: #5B6474; font: inherit; font-size: 12px;">⌃ Sbalit</button>
+    </div>
+  </div>
+
+  <div style="flex-grow: 1; display: flex; min-height: 0;">
+    <div style="flex-grow: 1; background: #E6E9EE; display: flex; justify-content: center; padding-top: 22px;">
+      <div style="width: 620px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(20, 30, 50, 0.12), 0 6px 18px rgba(20, 30, 50, 0.08); padding: 40px 48px 0 64px; box-sizing: border-box; font-family: 'STIX Two Text', serif; font-size: 15px;">
+        <div style="display: flex; justify-content: space-between; font-family: 'IBM Plex Sans', sans-serif; font-size: 10px; color: #5B6474; margin-bottom: 18px;"><span>Posouzení průvlaku P2</span><span>Ing. J. Novák · 11. 10. 2026</span></div>
+        <div style="font-family: 'IBM Plex Sans', sans-serif; font-weight: 600; font-size: 14px; border-bottom: 1px solid #9AA2AE; padding-bottom: 4px; margin-bottom: 12px;">Rekapitulace zatížení</div>
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px; outline: 2px solid #E8B800; outline-offset: 6px;">
+          <caption style="text-align: left; font-family: 'IBM Plex Sans', sans-serif; font-weight: 600; font-size: 12px; padding-bottom: 6px;">Stálé</caption>
+          <thead><tr style="border-bottom: 1px solid #1D2330;"><th style="text-align: left; padding: 4px;">položka</th><th style="text-align: right; padding: 4px;"><i>h</i> [mm]</th><th style="text-align: right; padding: 4px;"><i>ρ</i> [kN/m³]</th><th style="text-align: right; padding: 4px;"><i>g</i><sub>k</sub> [kN/m²]<div style="font-weight: 400; font-size: 11px; color: #5B6474;">= <i>h</i>·<i>ρ</i></div></th><th style="text-align: right; padding: 4px;"><i>g</i><sub>d</sub> [kN/m²]<div style="font-weight: 400; font-size: 11px; color: #5B6474;">= <i>g</i><sub>k</sub>·<i>γ</i><sub>G</sub></div></th></tr></thead>
+          <tbody>
+            <tr><td style="padding: 4px;">dlažba</td><td style="text-align: right; padding: 4px;">10</td><td style="text-align: right; padding: 4px;">22</td><td style="text-align: right; padding: 4px;">0,22</td><td style="text-align: right; padding: 4px;">0,297</td></tr>
+            <tr><td style="padding: 4px;">beton</td><td style="text-align: right; padding: 4px;">150</td><td style="text-align: right; padding: 4px;">25</td><td style="text-align: right; padding: 4px;">3,75</td><td style="text-align: right; padding: 4px;">5,063</td></tr>
+            <tr style="border-top: 1px solid #1D2330; font-weight: 600;"><td style="padding: 4px;">Celkem</td><td></td><td></td><td style="text-align: right; padding: 4px;">3,97</td><td style="text-align: right; padding: 4px;">5,36</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div style="height: 28px; display: flex; align-items: center; gap: 18px; padding: 0 14px; background: #FFFFFF; border-top: 1px solid #DDE1E7; font-size: 12px;">
+    <span style="color: #1E7A46; font-weight: 500;">✓ Posudky 3 ze 3</span>
+    <span style="color: #3B4352;">Problémy 0</span>
+    <div style="flex-grow: 1;"></div>
+    <span style="color: #3B4352;">Pás karet zabere 132 px výšky; sbalený jen řádek karet.</span>
+  </div>
+</div>
+</div></div></section><section class="screen" id="s2" hidden><div class="frame"><div class="scaled">
+<div style="width: 1440px; height: 900px; position: relative; background: #E6E9EE; color: #1D2330; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 13px; overflow: hidden;">
+
+  <!-- The sheet behind, dimmed while the palette is open -->
+  <div style="position: absolute; inset: 0; display: flex; flex-direction: column;">
+    <div style="height: 40px; background: #FFFFFF; border-bottom: 1px solid #DDE1E7;"></div>
+    <div style="height: 44px; background: #FFFFFF; border-bottom: 1px solid #DDE1E7;"></div>
+    <div style="flex-grow: 1; display: flex; justify-content: center; padding-top: 40px;">
+      <div style="width: 620px; height: 760px; background: #FFFFFF; box-shadow: 0 6px 18px rgba(20, 30, 50, 0.08); padding: 60px 48px 0 64px; box-sizing: border-box; font-family: 'STIX Two Text', serif; font-size: 15px;">
+        <div style="margin-bottom: 16px;"><i>L</i> = 6 m &#160;&#160;&#160; <i>q</i> = 12 kN/m &#160;&#160;&#160; <i>W</i><sub>y</sub> = 324 cm³</div>
+        <div style="margin-bottom: 16px;"><i>M</i><sub>Ed</sub> = 54,00 kN·m</div>
+
+        <!-- Typing: the names defined above and the functions, with their values and signatures -->
+        <div style="position: relative; margin: 0 -12px; padding: 6px 12px; background: #FFFBE6; border-radius: 5px; font-family: 'IBM Plex Mono', monospace; font-size: 13px; z-index: 0;">
+          σ := M_E<span style="display: inline-block; width: 1px; height: 15px; background: #1D2330; vertical-align: middle;"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div style="position: absolute; inset: 0; background: rgba(29, 35, 48, 0.32);"></div>
+
+  <!-- The suggestions under the line being typed, shown in front for this picture -->
+  <div style="position: absolute; left: 474px; top: 254px; width: 380px; background: #FFFFFF; border: 1px solid #DDE1E7; border-radius: 10px; box-shadow: 0 10px 30px rgba(20, 30, 50, 0.2); padding: 6px;">
+    <div style="font-size: 11px; color: #5B6474; padding: 4px 8px;">Našeptávač při psaní · Tab doplní</div>
+    <div style="display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 6px; background: #EEF2FB;">
+      <span style="width: 22px; text-align: center; color: #2F5EC4; font-size: 11px; font-weight: 600;">x</span>
+      <span style="flex-grow: 1; font-family: 'STIX Two Text', serif; font-size: 15px;"><i>M</i><sub>Ed</sub></span>
+      <span style="color: #3B4352;">54,00 kN·m</span><span style="color: #5B6474; font-size: 11px;">ř. 11</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 6px;">
+      <span style="width: 22px; text-align: center; color: #2F5EC4; font-size: 11px; font-weight: 600;">x</span>
+      <span style="flex-grow: 1; font-family: 'STIX Two Text', serif; font-size: 15px;"><i>M</i><sub>Ek</sub></span>
+      <span style="color: #3B4352;">38,25 kN·m</span><span style="color: #5B6474; font-size: 11px;">ř. 9</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 6px;">
+      <span style="width: 22px; text-align: center; color: #8A4FC4; font-size: 11px; font-weight: 600;">f</span>
+      <span style="flex-grow: 1; font-family: 'IBM Plex Mono', monospace; font-size: 12px;">max(a; b; …)</span>
+      <span style="color: #5B6474; font-size: 11px;">největší z hodnot</span>
+    </div>
+    <div style="padding: 8px; margin-top: 4px; border-top: 1px solid #EEF0F3; font-size: 12px; color: #3B4352;">Automatické opravy: <span style="font-family: 'IBM Plex Mono', monospace;">alpha</span> → α · <span style="font-family: 'IBM Plex Mono', monospace;">&lt;=</span> → ≤ · <span style="font-family: 'IBM Plex Mono', monospace;">*</span> → · · <span style="font-family: 'IBM Plex Mono', monospace;">''</span> → ″</div>
+  </div>
+
+  <!-- The command palette, Ctrl+K: every command by plain words, its shortcut beside it -->
+  <div style="position: absolute; left: 420px; top: 86px; width: 600px; background: #FFFFFF; border-radius: 12px; box-shadow: 0 20px 60px rgba(20, 30, 50, 0.3); overflow: hidden;">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid #EEF0F3;">
+      <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="#5B6474" stroke-width="1.6" aria-hidden="true"><circle cx="7" cy="7" r="5"></circle><path d="M11 11l3.5 3.5"></path></svg>
+      <label style="flex-grow: 1; display: flex;"><span style="position: absolute; left: -9999px;">Hledat příkaz</span><input type="text" value="čísl" style="flex-grow: 1; border: none; outline: none; font: inherit; font-size: 16px; color: #1D2330;"></label>
+      <span style="font-size: 11px; border: 1px solid #C9CED6; border-radius: 4px; padding: 0 5px; color: #5B6474;">Esc</span>
+    </div>
+    <div style="padding: 6px;">
+      <div style="font-size: 11px; color: #5B6474; padding: 6px 10px;">Příkazy</div>
+      <div style="display: flex; align-items: center; gap: 12px; padding: 9px 10px; border-radius: 7px; background: #EEF2FB;">
+        <span style="flex-grow: 1;"><b style="font-weight: 600;">Čísl</b>ování stran: po oddílech</span><span style="color: #5B6474; font-size: 12px;">Vlastnosti výpočtu</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px; padding: 9px 10px; border-radius: 7px;">
+        <span style="flex-grow: 1;"><b style="font-weight: 600;">Čísl</b>o rovnice vpravo u tohoto řádku</span><span style="color: #5B6474; font-size: 12px;">Řádek</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px; padding: 9px 10px; border-radius: 7px;">
+        <span style="flex-grow: 1;"><b style="font-weight: 600;">Čísl</b>a rovnic: u vzorců</span><span style="color: #5B6474; font-size: 12px;">Vlastnosti výpočtu</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px; padding: 9px 10px; border-radius: 7px;">
+        <span style="flex-grow: 1;">Desetinná místa výsledku (<b style="font-weight: 600;">čísl</b>a)</span><span style="color: #5B6474; font-size: 12px;">Ctrl+Shift+D</span>
+      </div>
+      <div style="font-size: 11px; color: #5B6474; padding: 10px 10px 6px;">Veličiny v listu</div>
+      <div style="display: flex; align-items: center; gap: 12px; padding: 9px 10px; border-radius: 7px;">
+        <span style="flex-grow: 1; font-family: 'STIX Two Text', serif; font-size: 15px;"><i>n</i><sub>čísl</sub> = 4</span><span style="color: #5B6474; font-size: 12px;">řádek 23 · skočit</span>
+      </div>
+    </div>
+    <div style="display: flex; gap: 16px; padding: 10px 16px; border-top: 1px solid #EEF0F3; font-size: 12px; color: #5B6474;">
+      <span>↑↓ vybrat</span><span>Enter provést</span><span>Ctrl+K kdykoli</span>
+    </div>
+  </div>
+</div>
+</div></div></section><section class="screen" id="s3" hidden><div class="frame"><div class="scaled">
+<div style="width: 1440px; height: 900px; display: flex; flex-direction: column; background: #1B1F27; color: #E4E7EC; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 13px; overflow: hidden;">
+
+  <div style="height: 40px; display: flex; align-items: center; gap: 12px; padding: 0 12px; background: #20252E; border-bottom: 1px solid #2E3440;">
+    <div style="width: 22px; height: 22px; border-radius: 5px; background: #4C7BE0; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 600;">K</div>
+    <div style="height: 32px; margin-top: 8px; padding: 0 14px; display: flex; align-items: center; background: #1B1F27; border: 1px solid #2E3440; border-bottom: none; border-radius: 6px 6px 0 0; font-weight: 500;">Statický výpočet – Rodinný dům</div>
+    <div style="flex-grow: 1; display: flex; justify-content: center;">
+      <div style="width: 360px; height: 28px; border: 1px solid #343B48; border-radius: 6px; background: #1B1F27; display: flex; align-items: center; padding: 0 10px; color: #A8B0BD;">Hledat příkaz nebo veličinu… <span style="margin-left: auto; font-size: 11px; border: 1px solid #434B59; border-radius: 4px; padding: 0 5px;">Ctrl K</span></div>
+    </div>
+  </div>
+
+  <div style="flex-grow: 1; display: flex; min-height: 0;">
+    <!-- Navigation: the outline by positions, the checks with their verdicts, the problems -->
+    <div style="width: 300px; background: #20252E; border-right: 1px solid #2E3440; display: flex; flex-direction: column; min-height: 0;">
+      <div style="padding: 14px 16px 8px; font-size: 11px; color: #A8B0BD; text-transform: uppercase; letter-spacing: 0.04em;">Osnova</div>
+      <div style="padding: 0 8px; display: flex; flex-direction: column; gap: 1px;">
+        <div style="padding: 6px 8px; border-radius: 6px;">Zadání a materiály</div>
+        <div style="padding: 6px 8px; border-radius: 6px; display: flex; gap: 8px;"><span style="color: #A8B0BD; width: 44px;">Pos. 1</span>Stropní deska <span style="margin-left: auto; color: #6FCF97;">✓</span></div>
+        <div style="padding: 6px 8px; border-radius: 6px; background: #2C3446; display: flex; gap: 8px;"><span style="color: #A8B0BD; width: 44px;">Pos. 2</span>Průvlak <span style="margin-left: auto; color: #F28B82;">✗</span></div>
+        <div style="padding: 4px 8px 4px 60px; color: #C4CAD4;">Zatížení</div>
+        <div style="padding: 4px 8px 4px 60px; color: #C4CAD4;">Ohyb a smyk</div>
+        <div style="padding: 4px 8px 4px 60px; color: #C4CAD4;">Průhyb</div>
+        <div style="padding: 6px 8px; border-radius: 6px; display: flex; gap: 8px;"><span style="color: #A8B0BD; width: 44px;">Pos. 3</span>Sloup <span style="margin-left: auto; color: #6FCF97;">✓</span></div>
+        <div style="padding: 6px 8px; border-radius: 6px; display: flex; gap: 8px;"><span style="color: #A8B0BD; width: 44px;">Pos. 4</span>Základová patka <span style="margin-left: auto; color: #A8B0BD;">–</span></div>
+        <div style="padding: 6px 8px; border-radius: 6px; display: flex; gap: 8px;"><span style="color: #A8B0BD; width: 44px;">A</span>Příloha: rekapitulace zatížení</div>
+      </div>
+      <div style="padding: 18px 16px 8px; font-size: 11px; color: #A8B0BD; text-transform: uppercase; letter-spacing: 0.04em;">Posudky · 7 z 8 vyhovuje</div>
+      <div style="padding: 0 8px; display: flex; flex-direction: column; gap: 1px;">
+        <div style="padding: 6px 8px; display: flex; gap: 8px;"><span style="color: #6FCF97;">✓</span>Ohyb desky<span style="margin-left: auto; color: #A8B0BD;">64 %</span></div>
+        <div style="padding: 6px 8px; display: flex; gap: 8px; background: #3A2A2C; border-radius: 6px;"><span style="color: #F28B82;">✗</span>Průhyb průvlaku<span style="margin-left: auto; color: #F28B82;">112 %</span></div>
+        <div style="padding: 6px 8px; display: flex; gap: 8px;"><span style="color: #6FCF97;">✓</span>Vzpěr sloupu<span style="margin-left: auto; color: #A8B0BD;">81 %</span></div>
+      </div>
+      <div style="padding: 18px 16px 8px; font-size: 11px; color: #A8B0BD; text-transform: uppercase; letter-spacing: 0.04em;">Problémy</div>
+      <div style="padding: 0 8px; display: flex; flex-direction: column; gap: 1px;">
+        <div style="padding: 6px 8px; display: flex; gap: 8px;"><span style="color: #F2C46D;">⚠</span><span>ř. 48: řádky tabulky přeskočeny (prázdná buňka)</span></div>
+      </div>
+    </div>
+
+    <!-- The sheet stays white like paper; only the frame is dark -->
+    <div style="flex-grow: 1; background: #12151B; display: flex; justify-content: center; padding-top: 28px; min-width: 0;">
+      <div style="width: 620px; background: #FFFFFF; color: #1D2330; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5); padding: 40px 48px 0 64px; box-sizing: border-box; font-family: 'STIX Two Text', serif; font-size: 15px;">
+        <div style="display: flex; justify-content: space-between; font-family: 'IBM Plex Sans', sans-serif; font-size: 10px; color: #5B6474; margin-bottom: 18px;"><span>Rodinný dům · Pos. 2 Průvlak</span><span>Strana 2.3 (9 z 21)</span></div>
+        <div style="font-family: 'IBM Plex Sans', sans-serif; font-weight: 600; font-size: 14px; border-bottom: 1px solid #9AA2AE; padding-bottom: 4px; margin-bottom: 14px;">Průhyb</div>
+        <div style="margin-bottom: 12px;">solve <i>w</i>(<i>x</i>): <i>E</i>·<i>I</i>·<i>w</i>″ = −<i>M</i>(<i>x</i>) &#160; 0 ≤ <i>x</i> ≤ <i>L</i></div>
+        <div style="margin-bottom: 12px; padding-left: 24px;"><i>w</i>(0 m) = 0 m &#160;&#160; <i>w</i>(<i>L</i>) = 0 m</div>
+        <div style="margin-bottom: 16px;"><i>w</i><sub>max</sub> = <i>w</i>(<i>L</i>/2) = <b>22,4 mm</b></div>
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; margin: 0 -12px; background: #FCEEEE; border-radius: 5px; outline: 2px solid #B3261E; outline-offset: 2px;">
+          <div><span style="font-family: 'IBM Plex Sans', sans-serif; font-weight: 600; font-size: 12px; margin-right: 10px;">Průhyb průvlaku</span><i>w</i><sub>max</sub> ≤ <i>L</i>/250 → 22,4 mm ≤ 20 mm</div>
+          <div style="font-family: 'IBM Plex Sans', sans-serif; font-size: 12px;"><span style="color: #5B6474; margin-right: 10px;">112 %</span><span style="color: #B3261E; font-weight: 600;">✗ NEVYHOVUJE</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="height: 28px; display: flex; align-items: center; gap: 18px; padding: 0 14px; background: #20252E; border-top: 1px solid #2E3440; font-size: 12px; color: #C4CAD4;">
+    <span style="color: #F28B82; font-weight: 500;">✗ Posudky 7 z 8</span>
+    <span>Problémy 1</span>
+    <span>Revize B</span>
+    <div style="flex-grow: 1;"></div>
+    <span>Klik na posudek nebo problém skočí na jeho řádek</span>
+  </div>
+</div>
+</div></div></section><section class="screen" id="s4" hidden><div class="frame"><div class="scaled">
+<div style="width: 1440px; height: 900px; display: flex; background: #F4F5F7; color: #1D2330; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 13px; overflow: hidden;">
+
+  <!-- Left: the actions of a start -->
+  <div style="width: 280px; background: #FFFFFF; border-right: 1px solid #DDE1E7; padding: 28px 20px; box-sizing: border-box; display: flex; flex-direction: column; gap: 6px;">
+    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 26px;">
+      <div style="width: 34px; height: 34px; border-radius: 8px; background: #2F5EC4; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 18px;">K</div>
+      <div><div style="font-weight: 600; font-size: 18px;">Kalketa</div><div style="color: #5B6474; font-size: 12px;">výpočty, které jdou zkontrolovat</div></div>
+    </div>
+    <button type="button" style="height: 40px; border: none; border-radius: 8px; background: #2F5EC4; color: #FFFFFF; font: inherit; font-weight: 500; text-align: left; padding: 0 14px;">+ Nový prázdný výpočet</button>
+    <button type="button" style="height: 40px; border: 1px solid #DDE1E7; border-radius: 8px; background: #FFFFFF; color: #1D2330; font: inherit; text-align: left; padding: 0 14px;">Otevřít soubor…</button>
+    <button type="button" style="height: 40px; border: 1px solid #DDE1E7; border-radius: 8px; background: #FFFFFF; color: #1D2330; font: inherit; text-align: left; padding: 0 14px;">Napsat zadání pro AI…</button>
+    <div style="flex-grow: 1;"></div>
+    <a href="#napoveda" style="padding: 8px 4px;">Nápověda a jazyk výpočtu</a>
+    <a href="#novinky" style="padding: 8px 4px;">Co je nového ve verzi 0.1</a>
+  </div>
+
+  <div style="flex-grow: 1; padding: 36px 48px; box-sizing: border-box; display: flex; flex-direction: column; gap: 30px; min-width: 0;">
+    <div>
+      <h1 style="margin: 0 0 4px; font-size: 22px; font-weight: 600;">Začít ze vzoru</h1>
+      <div style="color: #5B6474;">Hotový výpočet s komentáři; přepíšete zadání a výsledky se přepočítají.</div>
+    </div>
+
+    <!-- Templates: a small picture of the first page, a name, what it shows -->
+    <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px;">
+      <div style="background: #FFFFFF; border: 1px solid #DDE1E7; border-radius: 10px; overflow: hidden;">
+        <div style="height: 150px; background: #EEF1F5; display: flex; align-items: center; justify-content: center;">
+          <svg width="170" height="90" viewBox="0 0 170 90" fill="none" stroke="#3B4352" stroke-width="1.6" role="img" aria-label="Prostý nosník se spojitým zatížením"><path d="M15 50h140"></path><path d="M15 50l-8 12h16z"></path><path d="M155 50l-8 12h16z"></path><path d="M20 22v24M40 22v24M60 22v24M80 22v24M100 22v24M120 22v24M140 22v24" stroke-width="1.2"></path><path d="M20 22h120"></path><path d="M15 76q70 18 140 0" stroke="#2F5EC4" stroke-dasharray="3 3"></path></svg>
+        </div>
+        <div style="padding: 12px 14px;"><div style="font-weight: 600;">Prostý nosník</div><div style="color: #5B6474; font-size: 12px; margin-top: 2px;">profil z tabulky IPE, ohyb, průhyb, ohybová čára</div></div>
+      </div>
+      <div style="background: #FFFFFF; border: 1px solid #DDE1E7; border-radius: 10px; overflow: hidden;">
+        <div style="height: 150px; background: #EEF1F5; display: flex; align-items: center; justify-content: center;">
+          <svg width="90" height="120" viewBox="0 0 90 120" fill="none" stroke="#3B4352" stroke-width="1.6" role="img" aria-label="Sloup se vzpěrem"><rect x="38" y="14" width="14" height="90"></rect><path d="M45 4v10M40 9l5 5 5-5"></path><path d="M20 108h50"></path><path d="M24 108l-6 8M34 108l-6 8M44 108l-6 8M54 108l-6 8M64 108l-6 8" stroke-width="1.1"></path></svg>
+        </div>
+        <div style="padding: 12px 14px;"><div style="font-weight: 600;">Sloup</div><div style="color: #5B6474; font-size: 12px; margin-top: 2px;">vzpěr podle EN 1993-1-1, křivka vzpěrnosti</div></div>
+      </div>
+      <div style="background: #FFFFFF; border: 1px solid #DDE1E7; border-radius: 10px; overflow: hidden;">
+        <div style="height: 150px; background: #EEF1F5; display: flex; align-items: center; justify-content: center;">
+          <svg width="160" height="90" viewBox="0 0 160 90" fill="none" stroke="#3B4352" stroke-width="1.6" role="img" aria-label="Tabulka rekapitulace zatížení"><rect x="10" y="10" width="140" height="70" rx="2"></rect><path d="M10 26h140M10 66h140M60 10v70M95 10v70M125 10v70"></path></svg>
+        </div>
+        <div style="padding: 12px 14px;"><div style="font-weight: 600;">Rekapitulace zatížení</div><div style="color: #5B6474; font-size: 12px; margin-top: 2px;">skladby, součinitele, součty Σ, návrhové hodnoty</div></div>
+      </div>
+      <div style="background: #FFFFFF; border: 1px solid #DDE1E7; border-radius: 10px; overflow: hidden;">
+        <div style="height: 150px; background: #EEF1F5; display: flex; align-items: center; justify-content: center;">
+          <svg width="120" height="90" viewBox="0 0 120 90" fill="none" stroke="#3B4352" stroke-width="1.6" role="img" aria-label="Nýtový spoj"><path d="M10 35h100M10 55h100"></path><rect x="52" y="25" width="16" height="40" rx="3"></rect><path d="M20 45h-12M100 45h12"></path><path d="M12 41l-4 4 4 4M108 41l4 4-4 4"></path></svg>
+        </div>
+        <div style="padding: 12px 14px;"><div style="font-weight: 600;">Nýtový spoj</div><div style="color: #5B6474; font-size: 12px; margin-top: 2px;">smyk, nerovnice pro průměr, volba z tabulky</div></div>
+      </div>
+    </div>
+
+    <div>
+      <h2 style="margin: 0 0 10px; font-size: 16px; font-weight: 600;">Naposledy otevřené</h2>
+      <div style="background: #FFFFFF; border: 1px solid #DDE1E7; border-radius: 10px;">
+        <div style="display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-bottom: 1px solid #EEF0F3;">
+          <span style="font-weight: 500; width: 340px;">Posouzení průvlaku P2.kalk</span>
+          <span style="color: #5B6474; flex-grow: 1;">E:\Projekty\RD Novák\statika</span>
+          <span style="color: #1E7A46;">✓ 3/3</span>
+          <span style="color: #5B6474; width: 110px; text-align: right;">dnes 14:32</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-bottom: 1px solid #EEF0F3;">
+          <span style="font-weight: 500; width: 340px;">Statický výpočet – Rodinný dům.kalk</span>
+          <span style="color: #5B6474; flex-grow: 1;">E:\Projekty\RD Novák\statika</span>
+          <span style="color: #B3261E;">✗ 7/8</span>
+          <span style="color: #5B6474; width: 110px; text-align: right;">včera</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 14px; padding: 12px 16px;">
+          <span style="font-weight: 500; width: 340px;">Výpočet průměru nýtu.kalk</span>
+          <span style="color: #5B6474; flex-grow: 1;">E:\AI\Testovaci_priklady</span>
+          <span style="color: #1E7A46;">✓ 1/1</span>
+          <span style="color: #5B6474; width: 110px; text-align: right;">10. 10. 2026</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div></div></section><section class="screen" id="s5" hidden><div class="frame"><div class="scaled">
+<div style="width: 1440px; height: 900px; display: flex; flex-direction: column; background: #F4F5F7; color: #1D2330; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 13px; overflow: hidden;">
+  <div style="height: 40px; background: #FFFFFF; border-bottom: 1px solid #DDE1E7; display: flex; align-items: center; padding: 0 12px; gap: 12px;">
+    <div style="width: 22px; height: 22px; border-radius: 5px; background: #2F5EC4; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 600;">K</div>
+    <span style="font-weight: 500;">Posouzení průvlaku P2</span>
+  </div>
+
+  <div style="flex-grow: 1; display: flex; min-height: 0;">
+    <!-- The page as it will print, changing with every choice on the right -->
+    <div style="flex-grow: 1; background: #E6E9EE; display: flex; flex-direction: column; align-items: center; padding-top: 22px; gap: 10px; min-width: 0;">
+      <div style="font-size: 12px; color: #3B4352;">Náhled první strany · mění se hned s volbou</div>
+      <div style="width: 520px; height: 735px; background: #FFFFFF; box-shadow: 0 6px 18px rgba(20, 30, 50, 0.1); box-sizing: border-box; padding: 34px 30px 0 44px; font-family: 'STIX Two Text', serif; font-size: 13px; position: relative;">
+        <div style="display: flex; justify-content: space-between; font-family: 'IBM Plex Sans', sans-serif; font-size: 9px; color: #5B6474;"><span>Posouzení průvlaku P2 · Pos. 2 Průvlak</span><span>Ing. J. Novák · 11. 10. 2026</span></div>
+        <div style="display: grid; grid-template-columns: 78px minmax(0, 1fr) 120px; border-bottom: 1px solid #1D2330; margin-top: 18px; font-family: 'IBM Plex Sans', sans-serif; font-size: 10px; font-weight: 600; padding-bottom: 3px;"><span>Odkaz</span><span style="padding-left: 8px;">Výpočet</span><span style="padding-left: 8px;">Výsledek</span></div>
+        <div style="display: grid; grid-template-columns: 78px minmax(0, 1fr) 120px; min-height: 52px;">
+          <div style="border-right: 1px solid #9AA2AE; font-family: 'IBM Plex Sans', sans-serif; font-size: 9px; color: #3B4352; padding-top: 8px;">EN 1990, 6.10</div>
+          <div style="padding: 8px;"><i>M</i><sub>Ed</sub> = <i>q</i>·<i>L</i>²/8 = 12·6²/8</div>
+          <div style="border-left: 1px solid #9AA2AE; padding: 8px; font-weight: 600;"><i>M</i><sub>Ed</sub> = 54,00 kN·m</div>
+        </div>
+        <div style="display: grid; grid-template-columns: 78px minmax(0, 1fr) 120px; min-height: 52px;">
+          <div style="border-right: 1px solid #9AA2AE;"></div>
+          <div style="padding: 8px;"><i>σ</i> = <i>M</i><sub>Ed</sub>/<i>W</i><sub>y</sub> = 54/324</div>
+          <div style="border-left: 1px solid #9AA2AE; padding: 8px; font-weight: 600;"><i>σ</i> = 166,7 MPa</div>
+        </div>
+        <div style="display: grid; grid-template-columns: 78px minmax(0, 1fr) 120px; min-height: 52px;">
+          <div style="border-right: 1px solid #9AA2AE; font-family: 'IBM Plex Sans', sans-serif; font-size: 9px; color: #3B4352; padding-top: 8px;">EN 1993-1-1, 6.2.5</div>
+          <div style="padding: 8px;"><span style="font-family: 'IBM Plex Sans', sans-serif; font-weight: 600; font-size: 11px;">Ohyb</span> <i>σ</i> ≤ <i>f</i><sub>y</sub></div>
+          <div style="border-left: 1px solid #9AA2AE; padding: 8px; font-family: 'IBM Plex Sans', sans-serif; font-size: 11px;"><div style="color: #5B6474;">70,9 %</div><div style="color: #1E7A46; font-weight: 600;">✓ VYHOVUJE</div></div>
+        </div>
+        <div style="position: absolute; bottom: 18px; right: 30px; font-family: 'IBM Plex Sans', sans-serif; font-size: 9px; color: #5B6474;">Strana 2.1 (3 z 7)</div>
+      </div>
+    </div>
+
+    <!-- Properties as a side panel in sections: nothing covers the sheet -->
+    <div style="width: 380px; background: #FFFFFF; border-left: 1px solid #DDE1E7; display: flex; flex-direction: column;">
+      <div style="padding: 16px 20px; border-bottom: 1px solid #EEF0F3; display: flex; align-items: center;">
+        <h1 style="margin: 0; font-size: 16px; font-weight: 600; flex-grow: 1;">Vlastnosti výpočtu</h1>
+        <button type="button" aria-label="Zavřít" style="border: none; background: none; font-size: 16px; color: #5B6474;">✕</button>
+      </div>
+      <div style="display: flex; gap: 4px; padding: 10px 20px 0; border-bottom: 1px solid #EEF0F3;">
+        <div style="padding: 6px 10px; border-bottom: 2px solid #2F5EC4; font-weight: 500;">Vzhled</div>
+        <div style="padding: 6px 10px; color: #5B6474;">Stránka</div>
+        <div style="padding: 6px 10px; color: #5B6474;">Čísla</div>
+        <div style="padding: 6px 10px; color: #5B6474;">Posudky</div>
+        <div style="padding: 6px 10px; color: #5B6474;">Autor</div>
+      </div>
+      <div style="padding: 16px 20px; display: flex; flex-direction: column; gap: 16px;">
+        <div>
+          <div style="font-weight: 600; margin-bottom: 8px;">Styl výpočtu</div>
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;">
+            <div style="border: 1px solid #DDE1E7; border-radius: 8px; padding: 10px;"><div style="font-weight: 500;">Úsporný</div><div style="color: #5B6474; font-size: 11px; margin-top: 2px;">vzorec = dosazení = výsledek na řádku</div></div>
+            <div style="border: 1px solid #DDE1E7; border-radius: 8px; padding: 10px;"><div style="font-weight: 500;">Vzdušný</div><div style="color: #5B6474; font-size: 11px; margin-top: 2px;">každý krok na svém řádku</div></div>
+            <div style="border: 1px solid #DDE1E7; border-radius: 8px; padding: 10px;"><div style="font-weight: 500;">Knižní</div><div style="color: #5B6474; font-size: 11px; margin-top: 2px;">vzorce na střed s čísly</div></div>
+            <div style="border: 2px solid #2F5EC4; border-radius: 8px; padding: 9px; background: #EEF2FB;"><div style="font-weight: 500;">Se sloupci</div><div style="color: #3B4352; font-size: 11px; margin-top: 2px;">odkaz · výpočet · výsledek</div></div>
+          </div>
+        </div>
+        <label style="display: flex; justify-content: space-between; align-items: center;">Číslování stran <select style="width: 170px; height: 30px; border: 1px solid #DDE1E7; border-radius: 6px; font: inherit;"><option>Po oddílech (2.1)</option></select></label>
+        <label style="display: flex; justify-content: space-between; align-items: center;">Výsledek posudku <select style="width: 170px; height: 30px; border: 1px solid #DDE1E7; border-radius: 6px; font: inherit;"><option>✓ VYHOVUJE</option></select></label>
+        <label style="display: flex; justify-content: space-between; align-items: center;">Souhrn posudků <select style="width: 170px; height: 30px; border: 1px solid #DDE1E7; border-radius: 6px; font: inherit;"><option>Nahoře</option></select></label>
+        <label style="display: flex; justify-content: space-between; align-items: center;">Platné číslice <input type="number" value="4" style="width: 70px; height: 28px; border: 1px solid #DDE1E7; border-radius: 6px; font: inherit; padding: 0 6px;"></label>
+        <div style="color: #5B6474; font-size: 12px; line-height: 1.5;">Změny se ukazují hned v náhledu i v listu. Zpět je vrátí jako jakoukoli úpravu.</div>
+      </div>
+    </div>
+  </div>
+</div>
+</div></div></section>
+<script>
+const screens=[...document.querySelectorAll('.screen')];
+const buttons=[...document.querySelectorAll('nav button')];
+let current=0;
+function fit(){const w=document.body.clientWidth;document.querySelectorAll('.scaled').forEach(s=>{const k=w/1440;s.style.transform='scale('+k+')';s.parentElement.style.height=(900*k)+'px';});}
+function show(i){current=(i+screens.length)%screens.length;screens.forEach((s,j)=>s.hidden=j!==current);buttons.forEach((b,j)=>b.classList.toggle('on',j===current));window.scrollTo(0,0);}
+buttons.forEach(b=>b.addEventListener('click',()=>show(Number(b.dataset.i))));
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight')show(current+1);if(e.key==='ArrowLeft')show(current-1);});
+window.addEventListener('resize',fit);fit();
+</script>
+</body>
+</html>

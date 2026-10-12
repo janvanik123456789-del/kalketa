@@ -909,7 +909,9 @@ function chartBlock(
     // One curve names the axis; more curves are named in the legend.
     yTitle: (names.length === 1 ? `${names[0]}${unit(plot.yUnit)}` : unit(plot.yUnit)).trim(),
   };
-  const options = { ...CHART_SIZE, format, ...(plot.xDates ? { formatX: date } : {}), ...(plot.title ? { title: plot.title } : {}) };
+  // Its height to its width as dragged in the sheet (ratio=0.6), else the usual one.
+  const size = plot.place?.ratio ? { width: CHART_SIZE.width, height: Math.round(CHART_SIZE.width * plot.place.ratio) } : CHART_SIZE;
+  const options = { ...size, format, ...(plot.xDates ? { formatX: date } : {}), ...(plot.title ? { title: plot.title } : {}) };
   return {
     kind: 'chart',
     line,

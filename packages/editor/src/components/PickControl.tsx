@@ -12,12 +12,18 @@ interface Props {
   readonly resolveFile: (path: string) => string | undefined;
   /** Number format of the sheet's language (1 943 / 1,5). */
   readonly format: (value: number) => string;
-  onChoose(key: string): void;
+  /** The column the line takes from the row (pick(…).d), if any. */
+  readonly column?: string;
+  /** A row chosen; with a column when one of its numbers was clicked: that value is taken, with its unit. */
+  onChoose(key: string, column?: string): void;
+  /** Its words: the hint under the list, the title of a number. */
+  readonly hint?: string;
+  readonly takeTitle?: (column: string) => string;
 }
 
 const SHOWN_COLUMNS = 4;
 
-export function PickControl({ table, current, resolveFile, format, onChoose }: Props) {
+export function PickControl({ table, current, resolveFile, format, column, onChoose, hint, takeTitle }: Props) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -38,6 +44,7 @@ export function PickControl({ table, current, resolveFile, format, onChoose }: P
       <button type="button" className="pick-button" onClick={() => setOpen(!open)} title={table.name}>
         <Thumb table={table} row={currentRow} resolveFile={resolveFile} />
         <span>{current}</span>
+        {column && <span className="pick-column">→ {column}</span>}
         <span className="caret">▾</span>
       </button>
       {open && (
@@ -48,7 +55,7 @@ export function PickControl({ table, current, resolveFile, format, onChoose }: P
                 <th />
                 <th>{table.key}</th>
                 {numeric.map(({ c }) => (
-                  <th key={c.name}>
+                  <th key={c.name} className={c.name === column ? 'taken' : ''}>
                     {c.name}
                     {c.unit ? ` [${c.unit}]` : ''}
                   </th>
@@ -76,8 +83,19 @@ export function PickControl({ table, current, resolveFile, format, onChoose }: P
                     {numeric.map(({ c, i }) => {
                       const cell = cells[i];
                       const shown = cell?.type === 'quantity' ? toDisplay(cell, defaultRegistry, c.resolvedUnit) : undefined;
+                      // A number clicked takes the row and this column: a value with its unit.
                       return (
-                        <td key={c.name} className="num">
+                        <td
+                          key={c.name}
+                          className={`num take${c.name === column ? ' taken' : ''}`}
+                          {...(takeTitle ? { title: takeTitle(c.name) } : {})}
+                          onClick={(e) => {
+                            if (!shown) return;
+                            e.stopPropagation();
+                            setOpen(false);
+                            if (label !== current || c.name !== column) onChoose(label, c.name);
+                          }}
+                        >
                           {shown ? format(shown.value) : ''}
                         </td>
                       );
@@ -87,6 +105,7 @@ export function PickControl({ table, current, resolveFile, format, onChoose }: P
               })}
             </tbody>
           </table>
+          {hint && <div className="pick-hint">{hint}</div>}
         </div>
       )}
     </div>

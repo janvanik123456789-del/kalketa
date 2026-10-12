@@ -53,13 +53,15 @@ interface Props {
   onDelete(start: number, end: number): void;
   /** Several rows at once (marked ones), in one step to undo. */
   onDeleteRows(rows: readonly { start: number; end: number }[]): void;
-  onPick(statement: Statement, key: string): void;
+  onPick(statement: Statement, key: string, column?: string): void;
   /** Moves lines start..end after line `after` (a picture dragged elsewhere). */
   onMoveLines(start: number, end: number, after: number): void;
   /** A picture placed freely: its line becomes `text` and goes after line `after`, as one step. */
   onPlace?(start: number, end: number, after: number, text: string): void;
   /** Starts editing a canvas shown in the sheet (in the sheet or in the window, as set). */
   onEditCanvas(path: string): void;
+  /** A canvas made larger or smaller by an edge in the sheet: its own size times these factors, the drawing as it is. */
+  onCanvasArea(path: string, factorWidth: number, factorHeight: number, line?: { start: number; end: number; text: string }): void;
   /** Opens a canvas in the large window. */
   onEditCanvasWindow(path: string): void;
   /** The canvas being edited right in the sheet, drawn by the caller in place of its picture. */
@@ -920,14 +922,20 @@ export function SheetView(props: Props) {
                 const picture = parsePicture(seg.text);
                 if (picture) props.onReplace(seg.start, seg.end, formatPicture({ ...picture, width }));
               }}
+              onArea={(width, factorWidth, factorHeight) => {
+                // One change of the document: the canvas's size and the width of its line together.
+                const picture = parsePicture(seg.text);
+                const line = picture && width !== picture.width ? { start: seg.start, end: seg.end, text: formatPicture({ ...picture, width }) } : undefined;
+                props.onCanvasArea(block.path, factorWidth, factorHeight, line);
+              }}
             />
           ) : block?.kind === 'chart' ? (
             <ChartBlock
               block={block}
               catalog={props.printCatalog}
-              onResize={(width) => {
+              onResize={(width, ratio) => {
                 const item = placeable(seg.text);
-                if (item) props.onReplace(seg.start, seg.end, item.write({ ...item.place, width }));
+                if (item) props.onReplace(seg.start, seg.end, item.write({ ...item.place, width, ...(ratio !== undefined ? { ratio } : {}) }));
               }}
             />
           ) : block && !(isEditing && gridOf(seg, statement?.statement)) ? (
@@ -958,7 +966,7 @@ function Block({ block, catalog, style }: { block: PrintBlock; catalog: Catalog;
  * A chart as printed; the pointer over it reads the values: a vertical line
  * at the nearest point and the value of every curve there.
  */
-function ChartBlock({ block, catalog, onResize }: { block: Extract<PrintBlock, { kind: 'chart' }>; catalog: Catalog; onResize(width: number): void }) {
+function ChartBlock({ block, catalog, onResize }: { block: Extract<PrintBlock, { kind: 'chart' }>; catalog: Catalog; onResize(width: number, ratio?: number): void }) {
   const [hover, setHover] = useState<{ left: number; top: number; height: number; lines: string[] } | undefined>();
   const [dragged, setDragged] = useState<number | undefined>();
   const view = useRef<HTMLDivElement>(null);
@@ -1008,6 +1016,21 @@ function ChartBlock({ block, catalog, onResize }: { block: Extract<PrintBlock, {
           onMouseDown={(e) => view.current && startResize(e, view.current, block, block.width, setDragged, (w) => (setDragged(undefined), w !== block.width && onResize(w)))}
         />
       ))}
+      {/* The edges: the width alone (the height stays) or the height alone. */}
+      {(['n', 's', 'e', 'w'] as const).map((edge) => (
+        <span
+          key={edge}
+          className={`picture-handle edge ${edge}`}
+          title={t(catalog, edge === 'n' || edge === 's' ? 'editor.resizeHeight' : 'editor.resizeWidth')}
+          onMouseDown={(e) =>
+            view.current &&
+            startEdgeResize(e, view.current, block, edge, setDragged, (size) => {
+              setDragged(undefined);
+              onResize(size.width, Math.round((size.heightPx / size.widthPx) * 100) / 100);
+            })
+          }
+        />
+      ))}
       {dragged !== undefined && <span className="picture-size">{dragged} %</span>}
       {hover && (
         <>
@@ -1035,6 +1058,7 @@ function PictureBlock({
   catalog,
   onLoad,
   onResize,
+  onArea,
 }: {
   block: Extract<PrintBlock, { kind: 'picture' }>;
   /** A canvas being edited takes the place of its picture. */
@@ -1042,6 +1066,8 @@ function PictureBlock({
   catalog: Catalog;
   onLoad(): void;
   onResize(width: number): void;
+  /** A canvas made larger by an edge: its width in percent, and its own size times these factors. */
+  onArea?(width: number, factorWidth: number, factorHeight: number): void;
 }) {
   const [dragged, setDragged] = useState<number | undefined>();
   const figure = useRef<HTMLElement>(null);
@@ -1063,10 +1089,80 @@ function PictureBlock({
         {!editing && (['nw', 'ne', 'sw', 'se'] as const).map((corner) => (
           <span key={corner} className={`picture-handle ${corner}`} title={t(catalog, 'editor.pictureResize')} onMouseDown={resize} />
         ))}
+        {/* A canvas has its edges too: more room for the drawing (or less), nothing stretched. */}
+        {!editing && onArea && isCanvasPath(block.path) &&
+          (['n', 's', 'e', 'w'] as const).map((edge) => (
+            <span
+              key={edge}
+              className={`picture-handle edge ${edge}`}
+              title={t(catalog, edge === 'n' || edge === 's' ? 'editor.canvasHeight' : 'editor.canvasWidth')}
+              onMouseDown={(e) =>
+                figure.current &&
+                startEdgeResize(e, figure.current, block, edge, setDragged, (size, before) => {
+                  setDragged(undefined);
+                  onArea(size.width, size.widthPx / before.widthPx, size.heightPx / before.heightPx);
+                })
+              }
+            />
+          ))}
         {dragged !== undefined && <span className="picture-size">{dragged} %</span>}
       </figure>
     </div>
   );
+}
+
+/**
+ * An edge of a chart or a canvas dragged: the side ones change the width alone (the height
+ * stays as it is), the top and bottom ones the height alone. A centred one grows on both
+ * sides, one at an edge from that edge. Shown while dragging as the box it will have.
+ */
+function startEdgeResize(
+  e: ReactMouseEvent,
+  element: HTMLElement,
+  place: { readonly side?: 'left' | 'right'; readonly wrap?: 'left' | 'right'; readonly align?: 'left' | 'right' },
+  edge: 'n' | 's' | 'e' | 'w',
+  live: (width: number) => void,
+  done: (size: { width: number; widthPx: number; heightPx: number }, before: { widthPx: number; heightPx: number }) => void,
+): void {
+  e.preventDefault();
+  e.stopPropagation();
+  const body = element.closest('.page-body');
+  if (!body) return;
+  const rect = element.getBoundingClientRect();
+  const bodyBox = body.getBoundingClientRect();
+  const at = place.side ?? place.wrap ?? place.align;
+  const before = { widthPx: rect.width, heightPx: rect.height };
+  let size = { width: Math.round((rect.width / bodyBox.width) * 100), widthPx: rect.width, heightPx: rect.height };
+  const outline = document.createElement('div');
+  outline.className = 'resize-outline';
+  document.body.appendChild(outline);
+  const show = () => {
+    const left = at === 'right' ? rect.right - size.widthPx : at === 'left' ? rect.left : rect.left + rect.width / 2 - size.widthPx / 2;
+    const top = edge === 'n' ? rect.bottom - size.heightPx : rect.top;
+    Object.assign(outline.style, { left: `${left}px`, top: `${top}px`, width: `${size.widthPx}px`, height: `${size.heightPx}px` });
+  };
+  show();
+  const move = (event: MouseEvent) => {
+    if (edge === 'e' || edge === 'w') {
+      const centre = rect.left + rect.width / 2;
+      const span = at === 'right' ? rect.right - event.clientX : at === 'left' ? event.clientX - rect.left : 2 * Math.abs(event.clientX - centre);
+      const width = Math.max(10, Math.min(100, Math.round((span / bodyBox.width) * 100)));
+      size = { width, widthPx: (width / 100) * bodyBox.width, heightPx: rect.height };
+      live(width);
+    } else {
+      const heightPx = Math.max(20, edge === 's' ? event.clientY - rect.top : rect.bottom - event.clientY);
+      size = { ...size, heightPx };
+    }
+    show();
+  };
+  const up = () => {
+    window.removeEventListener('mousemove', move);
+    window.removeEventListener('mouseup', up);
+    outline.remove();
+    done(size, before);
+  };
+  window.addEventListener('mousemove', move);
+  window.addEventListener('mouseup', up);
 }
 
 /**
@@ -1120,7 +1216,18 @@ function PickFor(props: { statement: Statement; result: SheetResult; catalog: Ca
   const pick = pickOf(props.statement);
   const table = pick ? props.result.tables.get(pick.table) : undefined;
   if (!pick || !table) return null;
-  return <PickControl table={table} current={pick.key} resolveFile={props.resolveFile} format={(value) => formatNumber(value, props.catalog, { digits: 6 })} onChoose={(key) => props.onPick(props.statement, key)} />;
+  return (
+    <PickControl
+      table={table}
+      current={pick.key}
+      {...(pick.column ? { column: pick.column } : {})}
+      resolveFile={props.resolveFile}
+      format={(value) => formatNumber(value, props.catalog, { digits: 6 })}
+      hint={t(props.catalog, 'pick.hint')}
+      takeTitle={(column) => t(props.catalog, 'pick.take', { column })}
+      onChoose={(key, column) => props.onPick(props.statement, key, column)}
+    />
+  );
 }
 
 interface RowEditorProps {

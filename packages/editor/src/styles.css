@@ -154,6 +154,13 @@ table.shortcuts td { padding: 2px 16px 2px 0; }
 .picture-handle.sw { left: 0; bottom: 0; margin-top: 0; margin-bottom: calc(var(--size) / -2); cursor: nesw-resize; }
 .picture-handle.se { right: 0; bottom: 0; margin: 0 calc(var(--size) / -2) calc(var(--size) / -2) 0; cursor: nwse-resize; }
 .row.selected .picture-handle, .row.editing .picture-handle { display: block; }
+/* The edges of a chart or a canvas: the width or the height alone. */
+.picture-handle.edge { --size: calc(10px / var(--zoom, 1)); border-radius: 2px; }
+.picture-handle.edge.n { top: 0; left: 50%; cursor: ns-resize; }
+.picture-handle.edge.s { bottom: 0; left: 50%; margin-bottom: calc(var(--size) / -2); margin-top: 0; cursor: ns-resize; }
+.picture-handle.edge.e { right: 0; top: 50%; margin-right: calc(var(--size) / -2); margin-left: 0; cursor: ew-resize; }
+.picture-handle.edge.w { left: 0; top: 50%; cursor: ew-resize; }
+.resize-outline { position: fixed; z-index: 500; border: 1px dashed var(--accent, #2f5ec4); background: rgb(47 94 196 / 6%); pointer-events: none; }
 .row .picture img { cursor: pointer; }
 .row:hover .picture img { outline: calc(1px / var(--zoom, 1)) dashed var(--accent); }
 .row.selected .picture img { outline: calc(2px / var(--zoom, 1)) solid var(--accent); }
@@ -246,6 +253,11 @@ code.raw { display: block; padding: 3px 0; color: var(--muted); font: 12px/1.5 C
 .pick-button:hover { border-color: var(--accent); }
 .pick-button .caret { color: var(--muted); }
 .pick-list { position: absolute; z-index: 20; top: 100%; left: 0; max-height: 320px; overflow: auto; background: #fff; border: 1px solid var(--line); box-shadow: 0 6px 20px rgb(0 0 0 / 15%); border-radius: 4px; }
+.pick-list td.take { cursor: pointer; }
+.pick-list td.take:hover { background: var(--accent-soft); outline: 1px solid var(--accent); }
+.pick-list .taken { font-weight: 600; color: var(--accent); }
+.pick-hint { position: sticky; bottom: 0; padding: 4px 8px; background: #f7f8fa; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; }
+.pick-button .pick-column { color: var(--accent); }
 .pick-list table { border-collapse: collapse; font-size: 12px; }
 .pick-list th { position: sticky; top: 0; background: #f4f6f9; text-align: left; padding: 4px 8px; font-weight: 600; white-space: nowrap; }
 .pick-list td { padding: 3px 8px; border-top: 1px solid #eef0f3; white-space: nowrap; cursor: pointer; }

@@ -82,13 +82,21 @@ export interface TextRun {
   readonly color?: string;
 }
 
-export type TextFont = 'sans' | 'serif' | 'mono';
+export type TextFont = 'sans' | 'serif' | 'mono' | 'arial' | 'times' | 'calibri' | 'iso';
+
+/** The fonts offered, in the order the menus list them. */
+export const TEXT_FONTS: readonly TextFont[] = ['sans', 'serif', 'mono', 'arial', 'times', 'calibri', 'iso'];
 export type TextAlign = 'left' | 'center' | 'right';
 
 export const FONT_FAMILIES: Readonly<Record<TextFont, string>> = {
   sans: 'Segoe UI, Helvetica, Arial, sans-serif',
   serif: 'Cambria, Times New Roman, serif',
   mono: 'Consolas, Courier New, monospace',
+  arial: 'Arial, Helvetica, sans-serif',
+  times: 'Times New Roman, Times, serif',
+  calibri: 'Calibri, Carlito, sans-serif',
+  // The lettering of technical drawings (ISO 3098), where it is installed; else a plain sans.
+  iso: 'ISOCPEUR, osifont, Arial Narrow, Arial, sans-serif',
 };
 
 /**

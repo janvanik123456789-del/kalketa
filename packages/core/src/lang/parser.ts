@@ -1096,6 +1096,8 @@ export interface Placement {
   readonly dy?: number;
   /** Never flowed around ("wrap=none"): alone on its lines, dragging only moves it between them. */
   readonly noWrap?: boolean;
+  /** A chart's height to its width (ratio=0.6): set by dragging its edge, the width staying. */
+  readonly ratio?: number;
 }
 
 export interface PictureLine extends Placement {
@@ -1147,7 +1149,13 @@ export function parsePlacement(text: string): Placement | undefined {
   let dx: number | undefined;
   let dy: number | undefined;
   let noWrap = false;
+  let ratio: number | undefined;
   for (const option of text.split(/[\s,;]+/).filter(Boolean)) {
+    const ratioOption = /^ratio=(\d+(?:\.\d+)?)$/.exec(option);
+    if (ratioOption && ratio === undefined) {
+      ratio = Number(ratioOption[1]);
+      continue;
+    }
     const widthOption = /^width=(\d+(?:\.\d+)?)%$/.exec(option);
     const placeOption = /^(side|wrap|align)=(left|right)$/.exec(option);
     const dxOption = /^dx=(\d+(?:\.\d+)?)%$/.exec(option);
@@ -1168,7 +1176,8 @@ export function parsePlacement(text: string): Placement | undefined {
   if ((dx !== undefined || dy !== undefined) && !wrap) return undefined;
   if (dx !== undefined && dx > 100) return undefined;
   if (noWrap && (side || wrap)) return undefined;
-  return { ...(width !== undefined ? { width } : {}), ...(side ? { side } : {}), ...(wrap ? { wrap } : {}), ...(align ? { align } : {}), ...(dx ? { dx } : {}), ...(dy ? { dy } : {}), ...(noWrap ? { noWrap } : {}) };
+  if (ratio !== undefined && !(ratio >= 0.1 && ratio <= 3)) return undefined;
+  return { ...(ratio !== undefined ? { ratio } : {}), ...(width !== undefined ? { width } : {}), ...(side ? { side } : {}), ...(wrap ? { wrap } : {}), ...(align ? { align } : {}), ...(dx ? { dx } : {}), ...(dy ? { dy } : {}), ...(noWrap ? { noWrap } : {}) };
 }
 
 /** The options of a placement, as parsePlacement reads them; empty for the default. */
@@ -1181,6 +1190,7 @@ export function formatPlacement(placement: Placement): string {
     placement.noWrap && !placement.wrap && !placement.side ? 'wrap=none' : '',
     placement.wrap && placement.dx ? `dx=${Math.round(placement.dx)}%` : '',
     placement.wrap && placement.dy ? `dy=${Math.round(placement.dy)}mm` : '',
+    placement.ratio === undefined ? '' : `ratio=${Math.round(placement.ratio * 100) / 100}`,
   ]
     .filter(Boolean)
     .join(' ');

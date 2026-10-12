@@ -598,9 +598,9 @@ export function App() {
     if (target.id === layer.id && editing?.start === start) setEditing({ start, end: start + lines.split('\n').length - 1 });
   };
 
-  const pickIn = (l: Layer, statement: Statement, key: string) => {
+  const pickIn = (l: Layer, statement: Statement, key: string, column?: string) => {
     const info = pickOf(statement);
-    const next = info ? replacePickKey(textOf(l), info, key) : undefined;
+    const next = info ? replacePickKey(textOf(l), info, key, column) : undefined;
     if (next !== undefined) setLayerText(l, next);
   };
 
@@ -1787,9 +1787,17 @@ export function App() {
           }}
           onDelete={(start, end) => setLayerText(l, deleteLines(source, start, end))}
           onDeleteRows={(rows) => setLayerText(l, deleteLineRanges(source, rows))}
-          onPick={(statement, key) => pickIn(l, statement, key)}
+          onPick={(statement, key, column) => pickIn(l, statement, key, column)}
           onReplacePicture={(start, end) => void replacePictureFile(l, start, end)}
           onEditCanvas={(path) => openCanvas(path)}
+          onCanvasArea={(path, factorWidth, factorHeight, line) => {
+            // The canvas's own size grows with its frame; what is drawn keeps its size and place.
+            const scene = readScene(doc.files.get(path));
+            const next = { ...scene, width: Math.max(20, Math.round(scene.width * factorWidth)), height: Math.max(10, Math.round(scene.height * factorHeight)) };
+            const files = new Map([[path, writeScene(next)]]);
+            if (line) setLayerText(l, replaceLines(textOf(l), line.start, line.end, line.text), undefined, files);
+            else change({ ...doc, files: new Map([...doc.files, ...files]) });
+          }}
           onEditCanvasWindow={(path) => openCanvas(path, 'window')}
           {...(canvasEdit?.mode === 'inline' ? { inlineCanvas: { path: canvasEdit.path, render: () => canvasEditor(canvasEdit.path, 'inline') } } : {})}
           onPlace={(start, end, after, line) => {

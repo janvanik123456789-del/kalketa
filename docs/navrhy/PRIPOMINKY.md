@@ -45,3 +45,8 @@ Když něco spadne, ztrácí data nebo nejde dál testovat, napište to hned, ne
 
 10. ~~Barvy doplnit celou paletou.~~
    **Vyřízeno 2026-10-12:** v panelu Vlastnosti je u barvy tlačítko s paletou jako ve Wordu: Automatická, barvy motivu se světlejšími a tmavšími odstíny, standardní barvy, barvy čitelné i v černobílém tisku, naposledy použité a „Další barvy…“ (systémový výběr libovolné barvy). Menu Formát → Barva i pravé tlačítko mají „Další barvy…“, které paletu otevře. Platí pro označená slova, bez označení pro celý řádek. V zápisu `color=#c00000`, uvnitř textu `{#c00000}slova{/}`.
+
+11. Při ukončení programu nabídnout uložení
+   - **Kde:** zavření okna / Soubor → Konec
+   - **Co se stalo:** když jsou v listu neuložené změny, program se zeptá jen „Zahodit / Zrušit“. Možnost uložit chybí.
+   - **Co jsem čekal:** jako ve Wordu „Uložit / Neukládat / Zrušit“. Uložit uloží všechny neuložené dokumenty (u nového se zeptá na název) a pak program zavře.

@@ -64,3 +64,12 @@ describe('the y axis of a chart set by hand', () => {
     expect(evaluateSheet('plot(x^2, x: 0 .. 1, ylim: 0 m .. 1 m)').diagnostics.map((d) => d.code)).toContain('E-PLOT-UNITS');
   });
 });
+
+describe('the roots of a curve in a chart', () => {
+  it('are found where it crosses the x axis, refined to the exact value', () => {
+    const r = evaluateSheet('y(x) := 5·x^2 + 4·x - 10\nplot(y(x), x: -3 .. 2, roots: true)');
+    const roots = r.statements.at(-1)!.plot!.series[0]!.roots!;
+    expect(roots.map((x) => Number(x.toFixed(6)))).toEqual([-1.869694, 1.069694]);
+    expect(evaluateSheet('plot(x^2 + 1, x: -3 .. 2, roots: true)').statements.at(-1)!.plot!.series[0]!.roots).toBeUndefined();
+  });
+});

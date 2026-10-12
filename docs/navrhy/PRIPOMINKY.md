@@ -59,3 +59,6 @@ Když něco spadne, ztrácí data nebo nejde dál testovat, napište to hned, ne
 
 14. ~~Nastavení rozsahu osy y v grafu: teď plyne z rozsahu x a velké hodnoty y dělají graf nečitelný v průsečíku s osou x.~~
    **Vyřízeno 2026-10-12:** pravé tlačítko na grafu → „Rozsah osy y…“ (např. `-20; 20`), zpět „Osa y podle hodnot“. V zápisu `plot(y(x), x: -3 .. 2, ylim: -20 .. 20)`. Co leží mimo rozsah, graf ořízne.
+
+15. ~~Doplnit do grafu možnost zobrazení kořenů.~~
+   **Vyřízeno 2026-10-12:** pravé tlačítko na grafu → „Zobrazit kořeny (průsečíky s osou x)“. Na ose x se ukáže kroužek v barvě křivky a hodnota `x = 1,07`. V zápisu `plot(y(x), x: -3 .. 2, roots: true)`.

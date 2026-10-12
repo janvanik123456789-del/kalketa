@@ -280,6 +280,7 @@ export const UI_KEYS = [
   'solve.toDefinition',
   'solve.expressedFrom',
   'chart.fullWidth',
+  'chart.roots',
   'chart.yRange',
   'chart.yRangeAsk',
   'chart.yRangeAuto',

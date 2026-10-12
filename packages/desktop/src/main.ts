@@ -1480,8 +1480,14 @@ async function layersWithRealInput(picture: string) {
     await clickMenu('Osa y podle hodnot');
     await pause(400);
     const yAuto = !(await contents.executeJavaScript(`!!document.querySelector('.layer-view.active .block.chart svg svg[overflow="hidden"]')`));
-    chartPlaced = placed && restored && yRanged && yAuto;
-    chartSteps = `framed=${chartFramed} placed=${placed} restored=${restored} yRange=${yRanged} yAuto=${yAuto}`;
+    // The roots of the curve marked on the x axis, from the chart's menu.
+    await clickOn('.layer-view.active .block.chart svg', [], 'right');
+    await clickMenu('Zobrazit kořeny');
+    await pause(500);
+    const chartRoots = (await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .block.chart text.chart-root')].map((t) => t.textContent.replace(/\\s+/g, ''))`)) as string[];
+    await takePicture(picture.replace(/[.]png$/, '-chartroots.png'));
+    chartPlaced = placed && restored && yRanged && yAuto && chartRoots.length > 0 && chartRoots.every((t) => /^x=[−-]?[\d,]+$/.test(t));
+    chartSteps = `framed=${chartFramed} placed=${placed} restored=${restored} yRange=${yRanged} yAuto=${yAuto} roots=${chartRoots.join(' ')}`;
   }
   const charts = !!chartBox && chartBox.paths > 0 && /^x = [\d,]+ \| Mt\(x\) = /.test(chartTip) && chartPlaced;
 

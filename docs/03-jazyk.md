@@ -329,6 +329,7 @@ plot(v, x: t, kind: "points")                       ' naměřená data: y pro ka
 plot(Vyroba.E, x: Vyroba.datum, kind: "bar")        ' sloupce tabulky, osa x s daty
 plot(CF, kind: "bar", title: "Peněžní toky")        ' řada proti pořadí 1, 2, 3, …
 plot(y(x), x: -3 .. 2, ylim: -20 .. 20)             ' osa y od .. do, co je mimo, se ořízne
+plot(y(x), x: -3 .. 2, roots: true)                 ' kořeny křivky vyznačené na ose x
 ```
 
 - **Graf je samostatný řádek** `plot(…)` (jako v Mathcadu a SMath oblast grafu, zápisem blíž Calcpadu `$Plot`). Přepočítá se s výpočtem; do proměnné ani do výrazu ho přiřadit nejde (`E-PLOT-PLACE`).
@@ -340,6 +341,7 @@ plot(y(x), x: -3 .. 2, ylim: -20 .. 20)             ' osa y od .. do, co je mimo
 - **Vzhled:** barvy v pevném pořadí ověřené pro barvoslepé, k tomu čárkování a tvary bodů, aby se křivky rozlišily i v černobílém tisku; legenda od dvou křivek, do čtyř křivek i jména na konci křivek. Osy s kulatými hodnotami (1, 2, 2,5, 5 × 10ⁿ), čísla podle jazyka tisku. Graf se kreslí jako SVG, ostrý v PDF i při zoomu.
 - **V editoru** ukáže najetí myší svislou čáru a hodnoty všech křivek v nejbližším bodě. **Vložit → Graf** vloží graf poslední funkce jedné proměnné v listu (jinak ukázku `plot(sin(x), x: 0 .. 2·π)`).
 - **Rozsah osy y (2026-10-12):** `ylim: -20 .. 20` (s jednotkou křivek, např. `ylim: 0 kN·m .. 50 kN·m`) nastaví osu y od .. do; bez něj osa sleduje hodnoty. Hodí se, když velké hodnoty na krajích zmenší důležitou část (průsečík s osou x). Co leží mimo, graf ořízne. V editoru pravé tlačítko na grafu → **Rozsah osy y…** (napsat `-20 .. 20` nebo `-20; 20`; prázdné = podle hodnot) a **Osa y podle hodnot**.
+- **Kořeny v grafu (2026-10-12):** `roots: true` vyznačí, kde křivka protne osu x: kroužek v barvě křivky a nad ním hodnota `x = 1,07` (bez indexu, protože pořadí na ose nemusí odpovídat x₁, x₂ z výpočtu). Kořen se najde mezi body grafu se změnou znaménka a zpřesní se výpočtem funkce. Dotyk osy bez změny znaménka (dvojnásobný kořen) se vyznačí jen tehdy, když na něj padne bod grafu. V editoru pravé tlačítko na grafu → **Zobrazit kořeny**.
 - **Umístění** jako u obrázku (11.1): `plot(M(x), x: 0 m .. L, place: "width=40% wrap=right dx=6% dy=8mm")`. Bez `place` má graf celou šířku. V editoru pravé tlačítko na grafu otevře menu obtékání a šířky, zúžený graf jde chytit myší a položit kamkoli na stránce (zápis `place` doplní program); klik bez tažení otevře řádek. `side=` je jen pro obrázky.
 - Chyby: zápis (`E-PLOT-FORM`), druh (`E-PLOT-KIND`), rozsah pozpátku (`E-PLOT-RANGE`), počet bodů (`E-PLOT-SAMPLES`), řady různé délky (`E-PLOT-LENGTH`), umístění (`E-PLOT-POSITION`).
 

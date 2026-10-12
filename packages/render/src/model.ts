@@ -1019,7 +1019,13 @@ function chartBlock(
   const unit = (u: string) => (u ? ` [${u}]` : '');
   const spec: ChartSpec = {
     kind: plot.kind,
-    series: plot.series.map((s, i) => ({ label: names[i] ?? '', xs: s.xs, ys: s.ys, ...(s.mark ? { mark: s.mark } : {}) })),
+    series: plot.series.map((s, i) => ({
+      label: names[i] ?? '',
+      xs: s.xs,
+      ys: s.ys,
+      ...(s.mark ? { mark: s.mark } : {}),
+      ...(s.roots ? { roots: s.roots, rootName: plot.variable || 'x', ...(plot.xUnit ? { rootUnit: plot.xUnit } : {}) } : {}),
+    })),
     xTitle: plot.xDates ? plot.variable : `${plot.variable}${unit(plot.xUnit)}`.trim(),
     // One curve names the axis; more curves are named in the legend.
     yTitle: (names.length === 1 ? `${names[0]}${unit(plot.yUnit)}` : unit(plot.yUnit)).trim(),

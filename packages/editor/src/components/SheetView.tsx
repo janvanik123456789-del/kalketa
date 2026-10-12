@@ -15,7 +15,7 @@ import { segments, type Segment } from '../logic/segments.js';
 import { lineAttributesOf, lineFormatOf, withLineAttribute, withLineAttributes, withLineFormat, type LineFormatChoice } from '../logic/lineFormat.js';
 import { defineShortcut } from '../logic/shortcuts.js';
 import { pickOf } from '../logic/pick.js';
-import { placeable, plotYRange, withPlotYRange } from '../logic/placement.js';
+import { placeable, plotShowsRoots, plotYRange, withPlotRoots, withPlotYRange } from '../logic/placement.js';
 import { PickControl } from './PickControl.js';
 import { TextRowEditor, type TextFormat } from './TextRowEditor.js';
 import { parseTextLine } from '../logic/textLine.js';
@@ -601,8 +601,11 @@ export function SheetView(props: Props) {
     const c = props.uiCatalog;
     const current = plotYRange(seg.text);
     const shown = (text: string) => (props.decimalComma ? toDecimalComma(text) : text);
+    const roots = plotShowsRoots(seg.text);
     return [
       { kind: 'separator' },
+      // The roots of the curves on the x axis, marked and labelled.
+      { kind: 'action', label: t(c, 'chart.roots'), checked: roots, run: () => props.onReplace(seg.start, seg.end, withPlotRoots(seg.text, !roots)) },
       {
         kind: 'action',
         label: t(c, 'chart.yRange'),

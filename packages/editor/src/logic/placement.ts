@@ -75,3 +75,19 @@ export function withPlotYRange(text: string, range: string | undefined): string 
   if (close < 0) return text;
   return `${text.slice(0, close)}, ylim: ${range}${text.slice(close)}`;
 }
+
+const ROOTS = /,?\s*roots\s*:\s*(true|false)/;
+
+/** Whether a plot line marks the roots of its curves (roots: true). */
+export function plotShowsRoots(text: string): boolean {
+  return PLOT.test(text) && ROOTS.exec(text)?.[1] === 'true';
+}
+
+/** The plot line marking the roots of its curves, or not. */
+export function withPlotRoots(text: string, on: boolean): string {
+  const found = ROOTS.exec(text);
+  const without = found ? text.slice(0, found.index) + text.slice(found.index + found[0].length) : text;
+  if (!on) return without;
+  const close = closingParen(without, without.indexOf('('));
+  return close < 0 ? text : `${without.slice(0, close)}, roots: true${without.slice(close)}`;
+}

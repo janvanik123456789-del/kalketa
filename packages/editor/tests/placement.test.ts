@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { placeable, plotYRange, withPlotPlace, withPlotYRange } from '../src/logic/placement.js';
+import { placeable, plotShowsRoots, plotYRange, withPlotPlace, withPlotRoots, withPlotYRange } from '../src/logic/placement.js';
 
 describe('placement of pictures and charts', () => {
   it('reads and writes the place option of a chart line', () => {
@@ -31,5 +31,16 @@ describe('the range of the y axis of a chart', () => {
     expect(plotYRange(set)).toBe('-15 .. 15');
     expect(withPlotYRange(set, '0 kN·m .. 50 kN·m')).toBe('plot(y(x), x: -3 .. 2, place: "width=40%", ylim: 0 kN·m .. 50 kN·m)');
     expect(withPlotYRange(set, undefined)).toBe(line);
+  });
+});
+
+describe('the roots marked in a chart', () => {
+  it('are switched on and off in its line', () => {
+    const line = 'plot(y(x), x: -3 .. 2)';
+    expect(plotShowsRoots(line)).toBe(false);
+    const on = withPlotRoots(line, true);
+    expect(on).toBe('plot(y(x), x: -3 .. 2, roots: true)');
+    expect(plotShowsRoots(on)).toBe(true);
+    expect(withPlotRoots(on, false)).toBe(line);
   });
 });

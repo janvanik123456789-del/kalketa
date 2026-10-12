@@ -15,6 +15,11 @@ export interface ChartSeries {
   readonly ys: readonly number[];
   /** Drawn otherwise than the chart's kind: measured points among lines, a fitted line among points. */
   readonly mark?: 'line' | 'points';
+  /** x where the curve meets the x axis, marked and labelled "x = 1,07". */
+  readonly roots?: readonly number[];
+  /** The name the roots are labelled with (the variable of the x axis) and its unit. */
+  readonly rootName?: string;
+  readonly rootUnit?: string;
 }
 
 export interface ChartSpec {
@@ -213,6 +218,7 @@ export function chartSvg(spec: ChartSpec, options: ChartOptions = {}): string {
       ? `<svg x="${plot.left}" y="${plot.top}" width="${plot.right - plot.left}" height="${plot.bottom - plot.top}" viewBox="${plot.left} ${plot.top} ${plot.right - plot.left} ${plot.bottom - plot.top}" overflow="hidden">${data}</svg>`
       : data,
   );
+  parts.push(rootMarks(spec, layout, formatX));
   if (spec.series.length > 1) parts.push(legend(spec, layout));
   if (spec.kind !== 'bar' && spec.series.length > 1 && spec.series.length <= 4) parts.push(endLabels(spec, layout));
 
@@ -334,6 +340,33 @@ function legend(spec: ChartSpec, layout: ChartLayout): string {
 }
 
 /** The name of each curve at its last point, moved apart so names do not overlap. */
+/**
+ * The roots of the curves on the x axis: a ring in the colour of the curve, its
+ * value above it, "x = 1,07" (the label alternates above and below when close).
+ */
+function rootMarks(spec: ChartSpec, layout: ChartLayout, format: (value: number) => string): string {
+  const out: string[] = [];
+  if (!(layout.y.min <= 0 && layout.y.max >= 0)) return '';
+  const y0 = yPosition(layout, 0);
+  let lastX = -Infinity;
+  let up = true;
+  spec.series.forEach((s, i) => {
+    const color = SERIES_COLORS[i % SERIES_COLORS.length]!;
+    (s.roots ?? []).forEach((x) => {
+      if (x < layout.x.min || x > layout.x.max) return;
+      const px = xPosition(layout, x);
+      out.push(`<circle cx="${r(px)}" cy="${r(y0)}" r="4.5" fill="#fff" stroke="${color}" stroke-width="2"/>`);
+      // No index: the order of the solution (x₁ from +√D) need not be the order on the axis.
+      const text = `${s.rootName ?? 'x'} = ${format(x)}${s.rootUnit ? ` ${s.rootUnit}` : ''}`;
+      up = px - lastX < labelWidth(text) + 8 ? !up : true;
+      lastX = px;
+      const ty = up ? y0 - 9 : y0 + 17;
+      out.push(`<text class="chart-root" x="${r(px)}" y="${r(ty)}" text-anchor="middle" fill="${INK}" stroke="#fff" stroke-width="3" paint-order="stroke">${label(text)}</text>`);
+    });
+  });
+  return out.join('');
+}
+
 function endLabels(spec: ChartSpec, layout: ChartLayout): string {
   const ends = spec.series
     .map((s, i) => {

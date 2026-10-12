@@ -794,6 +794,7 @@ export const cs: Catalog = {
     'picture.toEdge': 'Ke kraji (bez odsazení)',
     'picture.more': '&Další úpravy obrázku…',
     'chart.fullWidth': 'Celá šířka',
+    'chart.roots': 'Zobrazit kořeny (průsečíky s osou x)',
     'chart.yRange': 'Rozsah osy y…',
     'chart.yRangeAsk': 'Osa y od .. do (např. -20 .. 20; prázdné = podle hodnot)',
     'chart.yRangeAuto': 'Osa y podle hodnot',

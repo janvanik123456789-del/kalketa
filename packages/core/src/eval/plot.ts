@@ -32,7 +32,7 @@ export const PLOT_FUNCTION = 'plot';
 export type PlotKind = 'line' | 'points' | 'bar';
 const KINDS: readonly PlotKind[] = ['line', 'points', 'bar'];
 /** Options of plot(...); every other named argument is the variable. */
-export const PLOT_OPTIONS: readonly string[] = ['kind', 'title', 'samples', 'place', 'ylim'];
+export const PLOT_OPTIONS: readonly string[] = ['kind', 'title', 'samples', 'place', 'ylim', 'roots'];
 /** Curves in one chart: the categorical colours a reader still tells apart. */
 export const MAX_PLOT_SERIES = 8;
 const LINE_SAMPLES = 201;
@@ -49,6 +49,8 @@ export interface PlotSeries {
   readonly xs: readonly number[];
   /** y of every point in the unit of the y axis; NaN where the expression has no value (a gap). */
   readonly ys: readonly number[];
+  /** roots: true — where the curve meets the x axis (y = 0), in the unit of the x axis. */
+  readonly roots?: readonly number[];
 }
 
 export interface PlotResult {
@@ -118,6 +120,7 @@ export function plotStatement(call: CallExpr, ctx: EvalContext, evaluate: Evalua
   const yUnitSymbol = toDisplay(ys, ctx.registry, yUnit).unit;
   const n = columns[0]!.length;
   const yRange = yLimits(call, yDim, y, ctx, evaluate);
+  const showRoots = flag(call, 'roots', ctx, evaluate);
   let x: { values: number[]; unit: string; dates: boolean };
   if (xs) {
     const first = xs[0]!;
@@ -134,14 +137,69 @@ export function plotStatement(call: CallExpr, ctx: EvalContext, evaluate: Evalua
     xUnit: x.unit,
     yUnit: yUnitSymbol,
     ...(x.dates ? { xDates: true } : {}),
-    series: drawn.map((d) => ({
-      xs: d.at && d.at !== xs ? d.at.map((q) => toDisplay(q, ctx.registry, xs![0]!.hint).value) : x.values,
-      ys: d.values.map(y),
-      ...(d.mark ? { mark: d.mark } : {}),
-    })),
+    series: drawn.map((d, i) => {
+      // The roots of a curve over an interval: found between the points where it changes sign, then refined.
+      const roots = showRoots && binder?.value.kind === 'range' && d.at && d.mark !== 'points' ? zeros(call.args[i]!, binder.name, d.at, d.values, ctx, evaluate) : undefined;
+      return {
+        xs: d.at && d.at !== xs ? d.at.map((q) => toDisplay(q, ctx.registry, xs![0]!.hint).value) : x.values,
+        ys: d.values.map(y),
+        ...(d.mark ? { mark: d.mark } : {}),
+        ...(roots && roots.length > 0 ? { roots: roots.map((q) => toDisplay(q, ctx.registry, xs![0]!.hint).value) } : {}),
+      };
+    }),
     ...(place && Object.keys(place).length ? { place } : {}),
     ...(yRange ? { yRange } : {}),
   };
+}
+
+/** A yes/no option (roots: true). */
+function flag(call: CallExpr, name: string, ctx: EvalContext, evaluate: Evaluate): boolean {
+  const arg = call.named.find((n) => n.name === name);
+  if (!arg) return false;
+  const value = evaluate(arg.value, ctx);
+  if (value.type !== 'boolean') return fail('E-TYPE', arg.value.span, { expected: 'boolean', found: value.type });
+  return value.value;
+}
+
+/**
+ * Where a curve is zero: between two samples of opposite signs (or at a sample
+ * that is zero), refined by halving the step with the expression itself.
+ */
+function zeros(body: Expr, name: string, xs: readonly Quantity[], ys: readonly (Quantity | undefined)[], ctx: EvalContext, evaluate: Evaluate): Quantity[] {
+  const at = (x: Quantity): number | undefined => {
+    try {
+      const v = evaluateAt(body, name, x, ctx, evaluate);
+      return v.type === 'quantity' && !v.im && Number.isFinite(v.si) ? v.si : undefined;
+    } catch (err) {
+      if (err instanceof CalcError) return undefined;
+      throw err;
+    }
+  };
+  const found: Quantity[] = [];
+  const add = (x: Quantity) => {
+    if (!found.some((f) => Math.abs(f.si - x.si) <= Math.abs(xs[xs.length - 1]!.si - xs[0]!.si) * 1e-9)) found.push(x);
+  };
+  for (let j = 0; j < xs.length; j++) {
+    const a = ys[j]?.si;
+    if (a === undefined || ys[j]?.im) continue;
+    if (a === 0) {
+      add(xs[j]!);
+      continue;
+    }
+    const b = ys[j + 1]?.si;
+    if (b === undefined || j + 1 >= xs.length || Math.sign(a) === Math.sign(b) || b === 0) continue;
+    let [lo, hi, flo] = [xs[j]!.si, xs[j + 1]!.si, a];
+    for (let k = 0; k < 60; k++) {
+      const mid = (lo + hi) / 2;
+      const fm = at({ ...xs[j]!, si: mid });
+      if (fm === undefined) break;
+      if (fm === 0 || Math.sign(fm) === Math.sign(flo)) [lo, flo] = [mid, fm];
+      else hi = mid;
+      if (fm === 0) hi = mid;
+    }
+    add({ ...xs[j]!, si: (lo + hi) / 2 });
+  }
+  return found;
 }
 
 /** ylim: low .. high, in the unit of the curves (or a pure number for pure numbers). */

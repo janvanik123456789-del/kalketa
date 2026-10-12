@@ -665,6 +665,14 @@ export function SheetView(props: Props) {
     ];
   };
 
+  // A cell of a row (a line beside another, or one with a line beside it) can go from its menu.
+  const withCellDelete = (seg: Segment, items: MenuItem[]): MenuItem[] => {
+    const at = segs.indexOf(seg);
+    const cell = lineAttributesOf(seg.text).has('beside') || lineAttributesOf(segs[at + 1]?.text ?? '').has('beside');
+    if (!cell) return items;
+    return [...items, { kind: 'separator' }, { kind: 'action', label: t(props.uiCatalog, 'cells.delete'), run: () => { props.onDelete(seg.start, seg.end); props.onEdit(undefined); } }];
+  };
+
   return (
     <>
       {/* Outside the zoomed pages, so the menu has its normal size and sits at the pointer. */}
@@ -685,7 +693,7 @@ export function SheetView(props: Props) {
       )}
       {formatMenu && (
         <ContextMenu
-          items={(() => {
+          items={withCellDelete(formatMenu.seg, (() => {
             // On a marked row: every marked row at once, one step to undo.
             const change: RowChange = (f) => {
               const rows = marked.has(formatMenu.seg.start) && marked.size > 1 ? segs.filter((s) => marked.has(s.start)) : [formatMenu.seg];
@@ -708,7 +716,7 @@ export function SheetView(props: Props) {
             return solveLine
               ? [{ kind: 'action' as const, label: t(props.uiCatalog, 'solve.toDefinition'), run: () => props.onReplace(formatMenu.seg.start, formatMenu.seg.end, solveLine) }, { kind: 'separator' as const }, ...items]
               : items;
-          })()}
+          })())}
           commands={NO_COMMANDS}
           at={formatMenu.at}
           onClose={() => setFormatMenu(undefined)}

@@ -274,6 +274,7 @@ export const en: Catalog = {
     'print.figure': 'Fig. {n}',
     'cells.beside': 'Put beside the line above (a cell)',
     'cells.alone': 'On a row of its own',
+    'cells.delete': 'Delete the cell (Ctrl+Shift+K)',
     'pick.hint': 'A click on the name chooses the row; a click on a number takes its value with the unit too (.column).',
     'pick.take': 'Take the value of column {column} with its unit',
     'print.odeSolved': 'numerical solution (Runge–Kutta, {steps} steps)',

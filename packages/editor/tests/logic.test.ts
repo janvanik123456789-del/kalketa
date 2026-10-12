@@ -52,6 +52,9 @@ describe('segments', () => {
     expect(insertLineAfter('a', 0)).toBe('\na');
     expect(deleteLines('a\nb\nc', 1, 2)).toBe('c');
     expect(deleteLineRanges('a\nb\nc\nd\ne', [{ start: 1, end: 1 }, { start: 3, end: 4 }])).toBe('b\ne');
+    // The first cell of a row gone: the one beside it starts the row, it does not move up beside the row above.
+    expect(deleteLines('x := 1\n"Síla" {size=12}\nF := 2 N {beside}', 2, 2)).toBe('x := 1\nF := 2 N');
+    expect(deleteLines('"Síla"\nF := 2 N {beside}\ng := 3 {beside}', 2, 2)).toBe('"Síla"\ng := 3 {beside}');
     expect(moveLines('a\nP\nb\nc', 2, 2, 3)).toBe('a\nb\nP\nc');
     expect(moveLines('a\nb\nc\nP', 4, 4, 0)).toBe('P\na\nb\nc');
     expect(moveLines('a\nP\nQ\nb', 2, 3, 4)).toBe('a\nb\nP\nQ');

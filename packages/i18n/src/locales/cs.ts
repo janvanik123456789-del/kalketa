@@ -274,6 +274,7 @@ export const cs: Catalog = {
     'print.figure': 'Obr. {n}',
     'cells.beside': 'Dát vedle předchozího řádku (buňka)',
     'cells.alone': 'Na samostatný řádek',
+    'cells.delete': 'Smazat buňku (Ctrl+Shift+K)',
     'pick.hint': 'Klik na název vybere řádek; klik na číslo převezme i jeho hodnotu s jednotkou (.sloupec).',
     'pick.take': 'Převzít hodnotu sloupce {column} s jednotkou',
     'print.odeSolved': 'numerické řešení (Runge–Kutta, {steps} kroků)',

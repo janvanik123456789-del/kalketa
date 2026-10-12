@@ -6,6 +6,7 @@
  */
 
 import type { Statement } from '@kalketa/core';
+import { lineAttributesOf, withLineAttribute } from './lineFormat.js';
 
 export interface Segment {
   /** First and last source line, 1-based, inclusive. */
@@ -82,12 +83,25 @@ export function moveLines(source: string, start: number, end: number, after: num
 /** Several line ranges at once, the lowest last so the numbers of the others hold. */
 export function deleteLineRanges(source: string, ranges: readonly { start: number; end: number }[]): string {
   const lines = splitLines(source);
-  for (const r of [...ranges].sort((a, b) => b.start - a.start)) lines.splice(r.start - 1, r.end - r.start + 1);
+  for (const r of [...ranges].sort((a, b) => b.start - a.start)) removeLines(lines, r.start, r.end);
   return lines.join('\n');
 }
 
 export function deleteLines(source: string, start: number, end: number): string {
   const lines = splitLines(source);
-  lines.splice(start - 1, end - start + 1);
+  removeLines(lines, start, end);
   return lines.join('\n');
+}
+
+/**
+ * Lines start..end taken out. The first cell of a row gone, the cell beside it starts the row
+ * (its {beside} goes), so it never moves up beside the row above.
+ */
+function removeLines(lines: string[], start: number, end: number): void {
+  const first = lines[start - 1] ?? '';
+  const next = lines[end];
+  lines.splice(start - 1, end - start + 1);
+  if (next !== undefined && !lineAttributesOf(first).has('beside') && lineAttributesOf(next).has('beside')) {
+    lines[start - 1] = withLineAttribute(next, 'beside', undefined);
+  }
 }

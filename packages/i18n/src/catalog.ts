@@ -54,6 +54,7 @@ export const UI_KEYS = [
   'print.figure',
   'cells.beside',
   'cells.alone',
+  'cells.delete',
   'pick.hint',
   'pick.take',
   'print.odeSolved',

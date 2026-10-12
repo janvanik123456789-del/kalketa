@@ -36,3 +36,6 @@ Když něco spadne, ztrácí data nebo nejde dál testovat, napište to hned, ne
 
 7. ~~Zrušit vložení nadpisu, nadpis si každý udělá editací textu.~~
    **Vyřízeno 2026-10-12:** příkaz Nadpis je pryč z menu Vložit i z panelu nástrojů. Nadpis se udělá z textu stylem odstavce (Formát → Styl → Nadpis 1–3, Ctrl+Alt+1–3).
+
+8. ~~Snadnější mazání buněk: v textu nefunguje zkratka na mazání, buňka zmizí, až když se vymaže celý text.~~
+   **Vyřízeno 2026-10-12:** Ctrl+Shift+K (Úpravy → Smazat řádek) smaže buňku i z formátovaného textu, Ctrl+D ji zdvojí. Kontextová nabídka buňky má „Smazat buňku“. Smazáním první buňky řádku se sousední buňka stane začátkem řádku a neposkočí k řádku nad ní.

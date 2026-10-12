@@ -1544,7 +1544,9 @@ export function App() {
       // The word-processor editor of the sources is an editable element, not a textarea: its own
       // clipboard, undo and editing keys (Ctrl+Enter, Ctrl+D…) stay with it.
       const inRich = !!target.closest?.('[contenteditable="true"]');
-      if (inRich && !['Ctrl+N', 'Ctrl+O', 'Ctrl+S', 'Ctrl+Shift+S', 'Ctrl+P', 'Ctrl+W', 'Ctrl+Shift+N', 'Ctrl+Tab', 'Ctrl+Shift+Tab', 'Ctrl++', 'Ctrl+=', 'Ctrl+-', 'Ctrl+0', 'F1'].includes(key)) return;
+      // A line of text of the sheet edited formatted is still a row: deleting or doubling it works there too.
+      const inSheetText = !!target.closest?.('[data-text-editor]');
+      if (inRich && !(inSheetText && ['Ctrl+Shift+K', 'Ctrl+D'].includes(key)) && !['Ctrl+N', 'Ctrl+O', 'Ctrl+S', 'Ctrl+Shift+S', 'Ctrl+P', 'Ctrl+W', 'Ctrl+Shift+N', 'Ctrl+Tab', 'Ctrl+Shift+Tab', 'Ctrl++', 'Ctrl+=', 'Ctrl+-', 'Ctrl+0', 'F1'].includes(key)) return;
       const inField = !inRow && target.matches?.('input, select, textarea');
       // Outside text fields Ctrl+V takes pictures from the clipboard directly (no paste event there to rely on).
       if (key === 'Ctrl+V' && !inRow && !inField && desktop) {

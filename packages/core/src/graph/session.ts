@@ -13,7 +13,7 @@ import { asBoolean, asComplex } from '../eval/coerce.js';
 import { compare, evaluate, type EvalContext } from '../eval/evaluator.js';
 import { BUILTIN_CONSTANTS } from '../eval/functions.js';
 import { defineFunction, isBuiltinFunction } from '../eval/userFunctions.js';
-import { solveStatement } from '../eval/solver.js';
+import { allRoots, solveStatement, type RootsFound } from '../eval/solver.js';
 import { solveOde, type OdeInfo } from '../eval/ode.js';
 import { isPlotCall, plotStatement, type PlotResult } from '../eval/plot.js';
 import { checkDerivation, type DerivationStep } from '../eval/derive.js';
@@ -67,6 +67,8 @@ export interface StatementResult {
   readonly ode?: OdeInfo;
   /** Values found by a solve statement, in the order of its unknowns; the formula of one expressed. */
   readonly solutions?: readonly { readonly name: string; readonly value: Quantity; readonly display: DisplayValue; readonly formula?: Expr; readonly relation?: Inequality }[];
+  /** solve x ∈ ℝ, x > 0: every root as on paper, each kept or set aside; the unknown holds the kept ones. */
+  readonly roots?: RootsFound;
   /** Names this statement read, in order of first use (including undefined ones). */
   readonly dependencies: readonly string[];
   /** Table data this statement read directly. */
@@ -312,6 +314,11 @@ export class SheetSession {
         statement.unknowns.forEach((u, i) => {
           // The solution of a differential equation is a function, its value.
           if (statement.ode) return env.set(u.name, result.status === 'ok' && result.value ? { ok: true, value: result.value } : { ok: false });
+          // Under conditions: the roots kept, one as a value, more as a vector (x[1], x[2]); none, no value.
+          if (result.roots) {
+            const kept = result.roots.roots.filter((r) => r.rejected === undefined).map((r) => r.value);
+            return env.set(u.name, kept.length === 1 ? { ok: true, value: kept[0]! } : kept.length > 1 ? { ok: true, value: { type: 'vector', items: kept } } : { ok: false });
+          }
           const found = result.solutions?.[i];
           env.set(u.name, found ? { ok: true, value: found.value } : { ok: false });
         });
@@ -490,6 +497,13 @@ export class SheetSession {
       if (statement.kind === 'solve' && statement.ode) {
         const { fn, info } = solveOde(statement, ctx, evaluate);
         return { status: 'ok', value: fn, ode: info, dependencies, tableReads, diagnostics: ctx.warnings };
+      }
+      if (statement.kind === 'solve' && (statement.domain || statement.conditions)) {
+        const roots = allRoots(statement, ctx, evaluate);
+        const kept = roots.roots.filter((r) => r.rejected === undefined);
+        const only = kept.length === 1 ? kept[0]!.value : undefined;
+        const solutions = only ? [{ name: statement.unknowns[0]!.name, value: only, display: toDisplay(only, context.registry) }] : undefined;
+        return { status: 'ok', roots, ...(solutions ? { solutions } : {}), dependencies, tableReads, diagnostics: ctx.warnings };
       }
       if (statement.kind === 'solve') {
         const found = solveStatement(statement, ctx, evaluate);

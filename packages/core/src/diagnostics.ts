@@ -89,6 +89,8 @@ export const DIAGNOSTIC_SEVERITY = {
   'W-FORMAT': 'warning',
   'E-NO-BOUNDS': 'error',
   'E-SOLVE-ROOTS': 'error',
+  'E-SOLVE-CONDITIONS': 'error',
+  'E-PLUS-MINUS': 'error',
   'E-ROOTS-POLYNOMIAL': 'error',
   'E-SOLVE-INEQUALITY': 'error',
   'E-SOLVE-SIDE': 'error',

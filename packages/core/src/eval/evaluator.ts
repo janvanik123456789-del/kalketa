@@ -85,9 +85,13 @@ function evaluateRaw(expr: Expr, ctx: EvalContext): Value {
       const operand = evaluate(expr.operand, ctx);
       if (expr.operator === 'not') return { type: 'boolean', value: !asBoolean(operand, expr.operand.span) };
       const negate = (q: Quantity): Quantity => ({ ...q, si: -q.si, ...(q.im ? { im: -q.im } : {}) });
+      if (operand.type === 'vector' || operand.type === 'matrix') {
+        if (expr.operator === '±') fail('E-PLUS-MINUS', expr.span);
+      }
       if (operand.type === 'vector') return expr.operator === '-' ? { type: 'vector', items: operand.items.map(negate) } : operand;
       if (operand.type === 'matrix') return expr.operator === '-' ? { ...operand, items: operand.items.map(negate) } : operand;
       const q = asComplex(operand, expr.operand.span);
+      if (expr.operator === '±') return { type: 'vector', items: [q, negate(q)] };
       return expr.operator === '-' ? negate(q) : q;
     }
     case 'binary':
@@ -178,6 +182,11 @@ function callBlock(call: Extract<Expr, { kind: 'call' }>, ctx: EvalContext): Val
 }
 
 function evaluateBinary(op: BinaryOperator, leftExpr: Expr, rightExpr: Expr, span: Span, ctx: EvalContext): Value {
+  // a ± b: both values, a + b first, as the two roots of a quadratic.
+  if (op === '±') {
+    const both = [evaluateBinary('+', leftExpr, rightExpr, span, ctx), evaluateBinary('-', leftExpr, rightExpr, span, ctx)];
+    return { type: 'vector', items: both.map((v) => (v.type === 'quantity' ? v : fail('E-PLUS-MINUS', span))) };
+  }
   if (op === 'and' || op === 'or') {
     // Short-circuit like most languages.
     const left = asBoolean(evaluate(leftExpr, ctx), leftExpr.span);

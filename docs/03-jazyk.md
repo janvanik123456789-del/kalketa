@@ -175,10 +175,10 @@ Od nejvyšší priority (**převzato z Calcpadu, standardní školní matematika
 |---|---|---|
 | 1 | `( )`, volání funkce, `.` (přístup ke sloupci/členu), indexace `[ ]` | — |
 | 2 | `^` (mocnina) | **zprava** (`2^3^2 = 2^9`) |
-| 3 | unární `-`, `+` | — |
+| 3 | unární `-`, `+`, `±` | — |
 | 4 | implicitní násobení číslo·jednotka (`5 m`) | — |
 | 5 | `*`, `·`, `/`, `÷` | zleva |
-| 6 | `+`, `-` | zleva |
+| 6 | `+`, `-`, `±` (obě hodnoty: `a ± b` = `[a + b; a − b]`, 2026-10-12) | zleva |
 | 7 | `<`, `≤`, `>`, `≥`, `==`, `≠` | — |
 | 8 | `not` | — |
 | 9 | `and`, `or` | zleva |
@@ -569,6 +569,7 @@ solve (I_1, I_2):
 - **Vyjádření vzorcem (2026-10-05):** jednu neznámou program nejdřív vyjádří vzorcem: `solve L: M_Ed == q·L²/8` dá `L = √(8·M_Ed/q)`, `solve d: τ_dov == 16·M_k/(π·d³)` dá `d = ∛(16·M_k/(τ_dov·π))`. Umí to s `+ − · /`, mocninou s pevným exponentem, `√ ∛`, `exp`, `ln`, `log10`, `sin`, `cos`, `tan`, `abs`, a s neznámou zapsanou víckrát, když je rovnice lineární nebo kvadratická. Neznámá dostane jednotku ze vzorce, interval ani odhad nejsou potřeba. Kde vzorec najít nejde (`x·exp(x) == 3`, soustavy), řeší se numericky jako dřív.
 - **Víc kořenů:** každý se dosadí zpět do rovnice. Vybere interval (kořen nejblíž dolní mezi), jinak odhad `guess` (nejbližší), jinak jediný kladný. Dva kladné bez intervalu jsou chyba `E-SOLVE-ROOTS`, která oba vypíše.
 - **V tisku** je pod rovnicí vyjádřený vzorec, dosazení a výsledek (vzorec ze samých čísel se vynechá). V editoru pravé tlačítko na řádku `solve` nabídne **Vložit vzorec jako definici**: řádek se nahradí definicí `L := sqrt(8·M_Ed/q)` s komentářem, z jaké rovnice vznikla.
+- **Podmínky řešení (2026-10-12):** `solve x ∈ ℝ, x > 0: a·x² + b·x + c == 0` řeší jako na papíře. Obor `∈ ℝ` (jen reálné kořeny) nebo `∈ ℂ` (i komplexní), za ním čárkou (česky středníkem) podmínky, které kořen musí splnit (`x > 0`, `x ≠ 1`, `x ≤ 10 m`); interval `in a .. b` platí jako další podmínka. Program najde všechny kořeny a každý ponechá nebo vyřadí. Kvadratickou rovnici tiskne s diskriminantem: `D = b² − 4·a·c = 4² − 4·5·(−10) = 216`, `x₁,₂ = (−b ± √D)/(2·a) = (−4 ± √216)/(2·5)`, `x₁ = 1,07`, `x₂ = −1,87 — nevyhovuje podmínce x > 0`, `⇒ x = 1,07`. Při `D < 0` a oboru ℝ napíše „D < 0: rovnice nemá v ℝ řešení“ a neznámá nemá hodnotu (není to chyba listu); v ℂ dá `x₁,₂ = −0,4 ± 1,356j`. Ponechaný kořen je hodnota neznámé, ponechané kořeny jsou řada (`x[1]`, `x[2]`). Jen jedna neznámá a jedna rovnice (`E-SOLVE-CONDITIONS`). Znaky `±`, `∈`, `ℝ`, `ℂ` jsou na liště Operátory; místo `ℝ`, `ℂ` jde psát `R`, `C`. Bez podmínek zůstává `solve x:` jako dřív (jeden kořen: z intervalu, odhadu nebo jediný kladný).
 - **Nerovnice (2026-10-06):** `solve d: S_min ≤ π·d²/4` (také `<`, `>`, `≥`, `<=`, `>=`) najde hranici neznámé jako u rovnice a zkouškou těsně nad ní a pod ní určí, na které straně leží řešení; znaménko se tak otočí samo i při dělení záporným číslem (`-2·x ≤ 4` dá `x ≥ −2`). V tisku jako ve sbírce: `S_min ≤ π·d²/4 ⇒ d ≥ √(4·S_min/π) = … = 5,473 mm`. Neznámá dostane hodnotu hranice (nejmenší, či největší přípustnou). Jen jedna neznámá a jedna nerovnice (`E-SOLVE-INEQUALITY`); kde nerovnice platí na obou stranách hranice nebo na žádné (`x² ≥ 0`), chyba `E-SOLVE-SIDE`.
 
 ### 9.0a Diferenciální rovnice s okrajovými podmínkami (2026-10-11)

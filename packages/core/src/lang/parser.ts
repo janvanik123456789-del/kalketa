@@ -537,9 +537,23 @@ class LineParser {
         ode = { variable: variable.text, span: variable.span };
       }
     }
-    this.expect(':', ':');
     // The unknowns are names from here on, even where they spell a unit (t, s); so is the variable of a function.
     unknowns.forEach((u) => this.defined.add(u.name));
+    // Conditions of the solution, as on paper: x ∈ ℝ, x > 0.
+    let domain: 'real' | 'complex' | undefined;
+    const conditions: Expr[] = [];
+    if (this.peek().type === '∈') {
+      this.next();
+      const set = this.expect('ident', 'ℝ');
+      if (set.text === 'ℝ' || set.text === 'R') domain = 'real';
+      else if (set.text === 'ℂ' || set.text === 'C') domain = 'complex';
+      else fail('E-SYNTAX', set.span, { expected: 'ℝ', found: set.text });
+    }
+    while (!ode && this.peek().type === ',') {
+      this.next();
+      conditions.push(this.parseComparison());
+    }
+    this.expect(':', ':');
     // The variable is a name inside the statement only; one defined above stays so.
     const ownVariable = ode !== undefined && !this.defined.has(ode.variable);
     if (ode) this.defined.add(ode.variable);
@@ -585,7 +599,8 @@ class LineParser {
     const inequality = equations.find((e) => e.relation);
     if (inequality && (unknowns.length !== 1 || equations.length !== 1)) fail('E-SOLVE-INEQUALITY', inequality.span);
     if (ode && ownVariable) this.defined.delete(ode.variable);
-    return { kind: 'solve', unknowns, equations, ...(range ? { range } : {}), guesses, ...(ode ? { ode } : {}), span: lineSpan };
+    if ((domain || conditions.length > 0) && unknowns.length !== 1) fail('E-SOLVE-CONDITIONS', unknowns[1]?.span ?? lineSpan);
+    return { kind: 'solve', unknowns, equations, ...(range ? { range } : {}), guesses, ...(ode ? { ode } : {}), ...(domain ? { domain } : {}), ...(conditions.length > 0 ? { conditions } : {}), span: lineSpan };
   }
 
   /** unit CZK: Mena · unit ks: dimensionless · unit EUR := 25 CZK */
@@ -690,8 +705,8 @@ class LineParser {
 
   parseAdditive(): Expr {
     let left = this.parseMultiplicative();
-    while (this.peek().type === '+' || this.peek().type === '-') {
-      const op = this.next().type as '+' | '-';
+    while (this.peek().type === '+' || this.peek().type === '-' || this.peek().type === '±') {
+      const op = this.next().type as '+' | '-' | '±';
       left = this.binary(op, left, this.parseMultiplicative());
     }
     return left;
@@ -715,7 +730,7 @@ class LineParser {
 
   private parseUnary(): Expr {
     const type = this.peek().type;
-    if (type === '-' || type === '+') {
+    if (type === '-' || type === '+' || type === '±') {
       const op = this.next();
       const operand = this.parseUnary();
       return { kind: 'unary', operator: type, operand, span: spanOf(op, operand) };

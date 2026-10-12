@@ -36,6 +36,17 @@ export function isolate(left: Expr, right: Expr, unknown: string): Expr[] | unde
   return [divide(plus(negate(c1, at), root, at), twoA, at), divide(minus(negate(c1, at), root, at), twoA, at)];
 }
 
+/**
+ * An equation of the second degree in the unknown as a·x² + b·x + c = 0: its
+ * coefficients as written (a, b, c, or 5, −4, 10); undefined when it is none.
+ */
+export function quadraticOf(left: Expr, right: Expr, unknown: string): { a: Expr; b: Expr; c: Expr } | undefined {
+  const at = left.span;
+  const p = polynomial(minus(left, right, at), unknown, at, 2);
+  if (!p || !p[2]) return undefined;
+  return { a: p[2], b: p[1] ?? number(0, at), c: p[0] ?? number(0, at) };
+}
+
 /** Undoes the operations around the unknown one by one: the side with it equals the other side. */
 function undo(side: Expr, other: Expr, x: string, at: Span): Expr[] | undefined {
   if (side.kind === 'variable' && side.name === x) return [other];

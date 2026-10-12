@@ -18,6 +18,7 @@ const PRIORITY: Readonly<Record<string, number>> = {
   '>=': 4,
   '+': 5,
   '-': 5,
+  '±': 5,
   '*': 6,
   '/': 6,
   unary: 7,
@@ -64,7 +65,7 @@ function written(expr: Expr): { text: string; priority: number } {
       const leftText = left.priority < own || (expr.operator === '^' && left.priority === own) ? `(${left.text})` : left.text;
       const rightText = right.priority < own || (right.priority === own && expr.operator !== '^' && expr.operator !== '+' && expr.operator !== '*') ? `(${right.text})` : right.text;
       const sign = SIGN[expr.operator] ?? expr.operator;
-      const spaced = ['+', '-', 'and', 'or', '==', '!=', '<', '<=', '>', '>='].includes(expr.operator);
+      const spaced = ['+', '-', '±', 'and', 'or', '==', '!=', '<', '<=', '>', '>='].includes(expr.operator);
       return { text: spaced ? `${leftText} ${sign} ${rightText}` : `${leftText}${sign}${rightText}`, priority: own };
     }
     case 'call': {

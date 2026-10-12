@@ -31,7 +31,7 @@ import type { ResolvedUnit } from '../units/unitExpr.js';
 import { quantity, type Quantity, type Value } from '../values/value.js';
 import { asQuantity } from './coerce.js';
 import type { EvalContext } from './evaluator.js';
-import { isolate } from './isolate.js';
+import { isolate, quadraticOf } from './isolate.js';
 import { toDisplay } from '../units/display.js';
 
 type SolveStatement = Extract<Statement, { kind: 'solve' }>;
@@ -176,13 +176,7 @@ function byFormula(statement: SolveStatement, ctx: EvalContext, evaluate: Evalua
   const formulas = isolate(equation.left, equation.right, name);
   if (!formulas) return undefined;
   const quiet: EvalContext = { ...ctx, warnings: [], tableReads: [] };
-  const holds = (value: Quantity): boolean => {
-    const at: EvalContext = { ...quiet, lookup: (n, span) => (n === name ? value : ctx.lookup(n, span)) };
-    const left = asQuantity(evaluate(equation.left, at), equation.left.span);
-    const right = asQuantity(evaluate(equation.right, at), equation.right.span);
-    if (!sameDim(left.dim, right.dim)) fail('E-UNIT-MISMATCH', equation.span, { operator: '==', left: baseUnitSymbol(left.dim), right: baseUnitSymbol(right.dim) });
-    return Math.abs(left.si - right.si) <= 1e-9 * Math.max(Math.abs(left.si), Math.abs(right.si), Number.MIN_VALUE);
-  };
+  const holds = (value: Quantity): boolean => rootHolds(equation, name, value, ctx, evaluate);
   const roots: { value: Quantity; formula: Expr }[] = [];
   for (const formula of formulas) {
     let value: Value;
@@ -228,6 +222,123 @@ function byFormula(statement: SolveStatement, ctx: EvalContext, evaluate: Evalua
   const value = asQuantity(evaluate(chosen!.formula, ctx), statement.span);
   const hint = range?.[0].hint ?? guess?.hint;
   return { values: [hint && sameDim(hint.dim, value.dim) ? { ...value, hint } : value], formula: chosen!.formula };
+}
+
+/**
+ * A value is a root when the two sides are equal but for rounding: compared with
+ * the sides themselves, or (where a side is 0, as in a·x² + b·x + c = 0) with how
+ * much the difference changes when the value does.
+ */
+function rootHolds(equation: SolveStatement['equations'][number], name: string, value: Quantity, ctx: EvalContext, evaluate: Evaluate): boolean {
+  const quiet: EvalContext = { ...ctx, warnings: [], tableReads: [] };
+  const sides = (v: Quantity) => {
+    const at: EvalContext = { ...quiet, lookup: (n, span) => (n === name ? v : ctx.lookup(n, span)) };
+    const left = asQuantity(evaluate(equation.left, at), equation.left.span);
+    const right = asQuantity(evaluate(equation.right, at), equation.right.span);
+    if (!sameDim(left.dim, right.dim)) fail('E-UNIT-MISMATCH', equation.span, { operator: '==', left: baseUnitSymbol(left.dim), right: baseUnitSymbol(right.dim) });
+    return { d: Math.hypot(left.si - right.si, (left.im ?? 0) - (right.im ?? 0)), scale: Math.max(Math.hypot(left.si, left.im ?? 0), Math.hypot(right.si, right.im ?? 0)) };
+  };
+  const here = sides(value);
+  if (here.d <= 1e-9 * Math.max(here.scale, Number.MIN_VALUE)) return true;
+  const size = Math.hypot(value.si, value.im ?? 0);
+  const h = size * 1e-6 || 1e-9;
+  const slope = Math.abs(sides({ ...value, si: value.si + h }).d - here.d) / h;
+  return slope > 0 && here.d / slope <= 1e-7 * Math.max(size, 1e-12);
+}
+
+/** A root found under the conditions of the statement, or why it was set aside. */
+export interface Root {
+  readonly value: Quantity;
+  /** Not a solution after all: complex where only real ones count, or failing a condition (its index; the interval after them). */
+  readonly rejected?: 'complex' | number;
+}
+
+/** solve x ∈ ℝ, x > 0: … — every root, each kept or set aside, as on paper. */
+export interface RootsFound {
+  readonly roots: readonly Root[];
+  /** Of a quadratic, a·x² + b·x + c = 0: its coefficients as written and the discriminant b² − 4·a·c. */
+  readonly quadratic?: { readonly a: Expr; readonly b: Expr; readonly c: Expr; readonly discriminant: Quantity };
+}
+
+/**
+ * Every root of one equation in one unknown, then sorted out by the domain and
+ * the conditions: a quadratic by its discriminant (complex roots too), other
+ * equations by their formulas, else the one root a numeric method finds.
+ */
+export function allRoots(statement: SolveStatement, ctx: EvalContext, evaluate: Evaluate): RootsFound {
+  const name = statement.unknowns[0]!.name;
+  const equation = statement.equations[0]!;
+  if (statement.equations.length !== 1 || equation.relation) fail('E-SOLVE-CONDITIONS', equation.span);
+  const at = equation.span;
+  const num = (v: number): Expr => ({ kind: 'number', value: v, span: at });
+  const bin = (operator: '+' | '-' | '*' | '/' | '^', left: Expr, right: Expr): Expr => ({ kind: 'binary', operator, left, right, span: at });
+  const sqrt = (arg: Expr): Expr => ({ kind: 'call', name: 'sqrt', args: [arg], named: [], span: at });
+  const value = (expr: Expr) => asQuantity(evaluate(expr, ctx), expr.span);
+
+  let found: Quantity[] = [];
+  let quadratic: RootsFound['quadratic'];
+  const q = quadraticOf(equation.left, equation.right, name);
+  const a = q ? value(q.a) : undefined;
+  if (q && a && (a.si !== 0 || a.im)) {
+    const bb = bin('^', q.b, num(2));
+    const fourAC = bin('*', bin('*', num(4), q.a), q.c);
+    const discriminant = value(bin('-', bb, fourAC));
+    quadratic = { ...q, discriminant };
+    const twoA = bin('*', num(2), q.a);
+    const minusB: Expr = { kind: 'unary', operator: '-', operand: q.b, span: at };
+    if (!discriminant.im && discriminant.si >= 0) {
+      // x₁,₂ = (−b ± √D)/(2·a); a double root once.
+      const root = (sign: '+' | '-') => value(bin('/', bin(sign, minusB, sqrt(bin('-', bb, fourAC))), twoA));
+      found = discriminant.si === 0 ? [value(bin('/', minusB, twoA))] : [root('+'), root('-')];
+    } else if (!discriminant.im) {
+      // D < 0: x₁,₂ = −b/(2·a) ± j·√(−D)/(2·a).
+      const re = value(bin('/', minusB, twoA));
+      const im = value(bin('/', sqrt(bin('-', fourAC, bb)), twoA));
+      found = [quantity(re.si, re.dim, { im: im.si, ...(re.hint ? { hint: re.hint } : {}) }), quantity(re.si, re.dim, { im: -im.si, ...(re.hint ? { hint: re.hint } : {}) })];
+    }
+  } else {
+    const formulas = isolate(equation.left, equation.right, name);
+    const quiet: EvalContext = { ...ctx, warnings: [], tableReads: [] };
+    for (const formula of formulas ?? []) {
+      let v: Value;
+      try {
+        v = evaluate(formula, quiet);
+      } catch (err) {
+        if (err instanceof CalcError) continue;
+        throw err;
+      }
+      if (v.type !== 'quantity' || !Number.isFinite(v.si)) continue;
+      const same = (r: Quantity) => Math.abs(r.si - v.si) <= 1e-12 * Math.max(Math.abs(v.si), 1e-300) && (r.im ?? 0) === ((v as Quantity).im ?? 0);
+      if (found.some(same)) continue;
+      if (rootHolds(equation, name, v, ctx, evaluate)) found.push(v);
+    }
+    // Not to be expressed by a formula: the root a numeric method finds (in the interval, from the guess).
+    if (!formulas) {
+      const { domain: _domain, conditions: _conditions, ...plain } = statement;
+      found = solveEquations(plain, ctx, evaluate).values;
+    }
+  }
+
+  // The interval is a condition too: low ≤ x ≤ high.
+  const range = statement.range ? [value(statement.range.low), value(statement.range.high)].sort((p, r) => p.si - r.si) : undefined;
+  const conditions = statement.conditions ?? [];
+  const roots = found.map((root): Root => {
+    if (root.im && statement.domain !== 'complex') return { value: root, rejected: 'complex' };
+    if (range && (root.im || root.si < range[0]!.si || root.si > range[1]!.si)) return { value: root, rejected: conditions.length };
+    const there: EvalContext = { ...ctx, warnings: [], tableReads: [], lookup: (n, span) => (n === name ? root : ctx.lookup(n, span)) };
+    const failing = conditions.findIndex((condition) => {
+      try {
+        const v = evaluate(condition, there);
+        return v.type !== 'boolean' || !v.value;
+      } catch (err) {
+        // A complex root cannot be compared (x > 0): it does not meet the condition.
+        if (err instanceof CalcError) return true;
+        throw err;
+      }
+    });
+    return failing >= 0 ? { value: root, rejected: failing } : { value: root };
+  });
+  return { roots, ...(quadratic ? { quadratic } : {}) };
 }
 
 /**

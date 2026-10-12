@@ -22,6 +22,8 @@ import {
   type TextColor,
   type PlotResult,
   type Quantity,
+  type RootsFound,
+  type Statement,
   type SheetResult,
   type StatementResult,
   type UnitRegistry,
@@ -458,6 +460,12 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
           const range = row(formulaNode(s.range.low, formulaOptions()), mo('≤'), nameNode(s.ode?.variable ?? s.unknowns[0].name), mo('≤'), formulaNode(s.range.high, formulaOptions()));
           lines.push({ role: 'formula', op: '', rhs: range });
         }
+        // Under its conditions (x ∈ ℝ, x > 0) the solution is worked out as on paper.
+        if (r.roots && s.unknowns[0]) {
+          lines.push(...rootLines(s, r.roots, s.unknowns[0].name, spec, quantityNode));
+          blocks.push({ kind: 'equation', line: s.span.line, lines, ...(s.comment ? { comment: s.comment } : {}), messages });
+          break;
+        }
         // Its solution is a function: said how it was found, read below as w(x), w′(x).
         if (s.ode && r.ode && s.unknowns[0]) {
           const head = row(nameNode(s.unknowns[0].name), paren(nameNode(s.ode.variable)));
@@ -515,6 +523,77 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
       default:
         break;
     }
+  }
+
+  /**
+   * A solution under conditions, as on paper: the conditions, of a quadratic its
+   * discriminant and the formula of the roots with the numbers put in, then each
+   * root, kept or set aside (and why), and what the unknown is.
+   */
+  function rootLines(s: Extract<Statement, { kind: 'solve' }>, found: RootsFound, name: string, spec: NumberFormatOptions, quantityNode: (q: Quantity, name?: string) => MathNode): EquationLine[] {
+    const out: EquationLine[] = [];
+    const o = formulaOptions();
+    const conditions = s.conditions ?? [];
+    const comma = () => mtext(', ');
+    // x ∈ ℝ, x > 0
+    const said: MathNode[] = [];
+    if (s.domain) said.push(nameNode(name), mo('∈'), mi(s.domain === 'real' ? 'ℝ' : 'ℂ', true));
+    conditions.forEach((c) => said.push(...(said.length > 0 ? [comma()] : []), formulaNode(c, o)));
+    if (said.length > 0) out.push({ role: 'formula', op: '', rhs: row(...said) });
+    const value = (q: Quantity) => {
+      const d = toDisplay(q, options.registry);
+      return valueNode(d.value, d.unit, numberFormat(spec), d.im, dateFormat);
+    };
+    const substituted = (expr: Expr, extra?: (e: Expr) => Substituted | undefined) => {
+      const sub = substitution(result, quantityNode, o);
+      return formulaNode(expr, formulaOptions((e) => extra?.(e) ?? sub(e)));
+    };
+    const q = found.quadratic;
+    if (q) {
+      const at = s.span;
+      const bin = (operator: '-' | '*' | '/' | '^' | '±', left: Expr, right: Expr): Expr => ({ kind: 'binary', operator, left, right, span: at });
+      const num = (v: number): Expr => ({ kind: 'number', value: v, span: at });
+      // D = b² − 4·a·c = 4² − 4·5·10 = −184
+      const dExpr = bin('-', bin('^', q.b, num(2)), bin('*', bin('*', num(4), q.a), q.c));
+      out.push({ role: 'formula', lhs: mi('D'), op: '=', rhs: formulaNode(dExpr, o) });
+      const dIn = substituted(dExpr);
+      if (mode.substitution && toText(dIn) !== toText(formulaNode(dExpr, o))) out.push({ role: 'substitution', rhs: dIn });
+      out.push({ role: 'result', rhs: value(q.discriminant) });
+      const complex = found.roots.length > 0 && found.roots.every((r) => r.rejected === 'complex');
+      if (complex || (found.roots.length === 0 && !q.discriminant.im)) {
+        out.push({ role: 'result', lead: '⇒', op: '', rhs: mtext(t(catalog, 'print.noRealRoot')) });
+        return out;
+      }
+      // x₁,₂ = (−b ± √D)/(2·a) = (−4 ± √216)/(2·5)
+      const d: Expr = { kind: 'variable', name: 'D', span: at };
+      const minusB: Expr = { kind: 'unary', operator: '-', operand: q.b, span: at };
+      const twoA = bin('*', num(2), q.a);
+      const formula = bin('/', bin('±', minusB, { kind: 'call', name: 'sqrt', args: [d], named: [], span: at }), twoA);
+      const pair = found.roots.length === 1 ? nameNode(name) : nameNode(`${name}_1_2`);
+      out.push({ role: 'formula', lhs: pair, op: '=', rhs: formulaNode(formula, o) });
+      const dValue: Substituted = { node: value(q.discriminant), negative: q.discriminant.si < 0, hasUnit: false };
+      const filled = substituted(formula, (e) => (e === d ? dValue : undefined));
+      if (mode.substitution) out.push({ role: 'substitution', rhs: filled });
+    }
+    // x₁ = 1,07   x₂ = −1,87 — nevyhovuje podmínce x > 0
+    const many = found.roots.length > 1;
+    found.roots.forEach((root, i) => {
+      const lhs = many ? nameNode(`${name}_${i + 1}`) : nameNode(name);
+      const why =
+        root.rejected === undefined
+          ? []
+          : root.rejected === 'complex'
+            ? [mtext(`  ${t(catalog, 'print.rootComplex')}`)]
+            : [mtext(`  ${t(catalog, 'print.rootRejected')} `), root.rejected < conditions.length ? formulaNode(conditions[root.rejected]!, o) : row(formulaNode(s.range!.low, o), mo('≤'), nameNode(name), mo('≤'), formulaNode(s.range!.high, o))];
+      out.push({ role: 'result', lhs, op: '=', rhs: row(value(root.value), ...why) });
+    });
+    // What the unknown is: the root kept, the roots kept, or none.
+    const kept = found.roots.filter((r) => r.rejected === undefined);
+    if (kept.length < found.roots.length || found.roots.length === 0) {
+      if (kept.length === 0) out.push({ role: 'result', lead: '⇒', op: '', rhs: mtext(t(catalog, 'print.noRootKept')) });
+      else out.push({ role: 'result', lead: '⇒', lhs: nameNode(name), op: '=', rhs: kept.length === 1 ? value(kept[0]!.value) : row(mo('['), ...kept.flatMap((r, i) => [...(i > 0 ? [mo(o.argumentSeparator)] : []), value(r.value)]), mo(']')) });
+    }
+    return out;
   }
 
   const position = options.summary ?? 'top';

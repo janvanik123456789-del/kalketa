@@ -53,15 +53,17 @@ const ADDED_ITEMS: readonly { readonly since: number; readonly toolbar: string; 
   { since: 7, toolbar: 'operators', after: 'sym:≠', ids: ['sym:≐'] },
   // Derivatives of a differential equation: w′, w″.
   { since: 8, toolbar: 'operators', after: 'sym:⃗', ids: ['sym:′', 'sym:″'] },
+  // The conditions of a solution as on paper (solve x ∈ ℝ: …) and the two roots (−b ± √D)/(2·a).
+  { since: 9, toolbar: 'operators', after: 'sym:≐', ids: ['sym:±', 'sym:∈', 'sym:ℝ', 'sym:ℂ'] },
 ];
-export const ITEMS_VERSION = 8;
+export const ITEMS_VERSION = 9;
 
 export const SEPARATOR = '|';
 
 const dock = (d: Dock, band: number, order: number): ToolbarPlace => ({ kind: 'dock', dock: d, band, order });
 
 export const GREEK_SYMBOLS = ['α', 'β', 'γ', 'δ', 'ε', 'η', 'θ', 'λ', 'μ', 'ν', 'π', 'ρ', 'σ', 'τ', 'φ', 'ψ', 'ω', 'Δ', 'Σ', 'Φ', 'Ω'];
-export const OPERATOR_SYMBOLS = [':=', '·', '÷', '≤', '≥', '≠', '≐', '√', '∛', '²', '³', '^', '⁻¹', '°', 'Δ°C', '_', '⃗', '′', '″', '|'];
+export const OPERATOR_SYMBOLS = [':=', '·', '÷', '≤', '≥', '≠', '≐', '±', '∈', 'ℝ', 'ℂ', '√', '∛', '²', '³', '^', '⁻¹', '°', 'Δ°C', '_', '⃗', '′', '″', '|'];
 /** Symbols shown otherwise than inserted: ^ is a general power. */
 export const SYMBOL_GLYPHS: Readonly<Record<string, string>> = { '^': 'xⁿ', ':=': '≔', '⃗': 'a⃗' };
 

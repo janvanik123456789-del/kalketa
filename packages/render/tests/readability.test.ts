@@ -219,3 +219,18 @@ describe('a rounded result', () => {
     expect(kalkLines(['derive d := √(4·S_min/π) == 5.47 ≐ 5.5 mm'])[0]!.html).toContain('<mo>≐</mo>');
   });
 });
+
+describe('a quadratic solved under conditions', () => {
+  it('is worked out as on paper: the discriminant, the roots with the numbers put in, the one set aside', async () => {
+    const { printHtml } = await import('../src/index.js');
+    const text = (source: string) =>
+      printHtml(evaluateSheet(source), { catalog: catalogFor('cs'), registry: defaultRegistry, title: 'S' })
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/[\s ]+/g, ' ');
+    const kept = text('a := 5\nb := 4\nc := -10\nsolve x ∈ ℝ, x > 0: a·x^2 + b·x + c == 0');
+    expect(kept).toContain('x ∈ ℝ , x &gt; 0');
+    expect(kept).toContain('D = b 2 − 4 · a · c = 4 2 − 4 · 5 · ( −10 ) = 216');
+    expect(kept).toContain('x 2 = −1,87 — nevyhovuje podmínce x &gt; 0 ⇒ x = 1,07');
+    expect(text('a := 5\nb := 4\nc := 10\nsolve x ∈ ℝ: a·x^2 + b·x + c == 0')).toContain('D &lt; 0: rovnice nemá v ℝ řešení');
+  });
+});

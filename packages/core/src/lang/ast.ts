@@ -20,6 +20,8 @@ export type UnitExpr =
 
 export type BinaryOperator =
   | '+' | '-' | '*' | '/' | '^'
+  /** Both a + b and a − b, as the two roots of a quadratic: (−b ± √D)/(2·a). */
+  | '±'
   | '==' | '!=' | '<' | '<=' | '>' | '>='
   | 'and' | 'or';
 
@@ -33,7 +35,7 @@ export type Expr =
   | { readonly kind: 'boolean'; readonly value: boolean; readonly span: Span }
   | { readonly kind: 'variable'; readonly name: string; readonly span: Span }
   | { readonly kind: 'unit'; readonly unit: UnitExpr; readonly span: Span }
-  | { readonly kind: 'unary'; readonly operator: '-' | '+' | 'not'; readonly operand: Expr; readonly span: Span }
+  | { readonly kind: 'unary'; readonly operator: '-' | '+' | '±' | 'not'; readonly operand: Expr; readonly span: Span }
   | { readonly kind: 'binary'; readonly operator: BinaryOperator; readonly left: Expr; readonly right: Expr; readonly span: Span }
   | { readonly kind: 'call'; readonly name: string; readonly args: readonly Expr[]; readonly named: readonly NamedArg[]; readonly span: Span }
   | { readonly kind: 'member'; readonly object: Expr; readonly name: string; readonly span: Span }
@@ -185,6 +187,10 @@ export type Statement =
       readonly equations: readonly Equation[];
       /** "in 0 .. 10": interval of a single unknown. */
       readonly range?: { readonly low: Expr; readonly high: Expr };
+      /** "solve x ∈ ℝ:" real roots only, "∈ ℂ" complex ones too; every root is given then, not one picked. */
+      readonly domain?: 'real' | 'complex';
+      /** "solve x ∈ ℝ, x > 0:" conditions a root must meet; one that does not is shown as rejected. */
+      readonly conditions?: readonly Expr[];
       /** "guess I_1 = 1 A": first guesses, which also give the unknowns their units. */
       readonly guesses: readonly NamedArg[];
     })

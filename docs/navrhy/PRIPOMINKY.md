@@ -50,3 +50,6 @@ Když něco spadne, ztrácí data nebo nejde dál testovat, napište to hned, ne
    - **Kde:** zavření okna / Soubor → Konec
    - **Co se stalo:** když jsou v listu neuložené změny, program se zeptá jen „Zahodit / Zrušit“. Možnost uložit chybí.
    - **Co jsem čekal:** jako ve Wordu „Uložit / Neukládat / Zrušit“. Uložit uloží všechny neuložené dokumenty (u nového se zeptá na název) a pak program zavře.
+
+12. ~~Kvadratická rovnice jako na papíře, ne `roots` jako v Matlabu; pamatovat na podmínky řešení (např. x jen v reálných číslech).~~
+   **Vyřízeno 2026-10-12:** `solve x ∈ ℝ, x > 0: a·x^2 + b·x + c == 0`. Tisk ukáže podmínky, diskriminant s dosazením, `x₁,₂ = (−b ± √D)/(2·a)` s dosazením, oba kořeny a u vyřazeného důvod („nevyhovuje podmínce x > 0“), nakonec `⇒ x = …`. Při D < 0 v ℝ: „rovnice nemá v ℝ řešení“; v ℂ komplexní kořeny. Nový znak `±` (`(-b ± √D)/(2·a)` dá obě hodnoty) a tlačítka `± ∈ ℝ ℂ` na liště Operátory. Opravena chyba, kdy `solve x: 5·x^2 + 4·x - 10 == 0` hlásilo „Řešení se nenašlo“: kořen rovnice s nulou na pravé straně se špatně ověřoval.

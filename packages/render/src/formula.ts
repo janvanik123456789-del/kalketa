@@ -46,10 +46,10 @@ interface Rendered {
 
 const ATOM = 10;
 const OPERATOR_TEXT: Readonly<Record<string, string>> = {
-  '+': '+', '-': '−', '*': '·', '==': '=', '!=': '≠', '<': '<', '<=': '≤', '>': '>', '>=': '≥', and: '∧', or: '∨',
+  '+': '+', '-': '−', '±': '±', '*': '·', '==': '=', '!=': '≠', '<': '<', '<=': '≤', '>': '>', '>=': '≥', and: '∧', or: '∨',
 };
 const PRECEDENCE: Readonly<Record<BinaryOperator, number>> = {
-  or: 1, and: 2, '==': 3, '!=': 3, '<': 3, '<=': 3, '>': 3, '>=': 3, '+': 4, '-': 4, '*': 5, '/': ATOM, '^': 7,
+  or: 1, and: 2, '==': 3, '!=': 3, '<': 3, '<=': 3, '>': 3, '>=': 3, '+': 4, '-': 4, '±': 4, '*': 5, '/': ATOM, '^': 7,
 };
 
 /** Thin space between a number and its unit. */
@@ -128,6 +128,11 @@ function render(expr: Expr, o: FormulaOptions): Rendered {
 
   switch (expr.kind) {
     case 'number': {
+      // A negative number (a coefficient the solver wrote, −10) as a minus before it: 4·5·(−10).
+      if (expr.value < 0) {
+        const operand = render({ ...expr, value: -expr.value }, o);
+        return { node: row(mo('−'), operand.node), prec: 6, negative: true };
+      }
       const n = expr.imaginary ? row(mn(o.literal(expr.value)), mi('j')) : mn(o.literal(expr.value));
       return { node: expr.unit ? row(n, THIN_SPACE, mu(formatUnit(expr.unit))) : n, prec: expr.unit ? 6 : ATOM };
     }
@@ -160,7 +165,7 @@ function render(expr: Expr, o: FormulaOptions): Rendered {
     case 'unary': {
       const operand = render(expr.operand, o);
       if (expr.operator === '+') return operand;
-      const symbol = expr.operator === 'not' ? '¬' : '−';
+      const symbol = expr.operator === 'not' ? '¬' : expr.operator === '±' ? '±' : '−';
       return { node: row(mo(symbol), wrap(operand, operand.prec <= 5)), prec: 6, negative: true };
     }
     case 'binary':
@@ -220,7 +225,8 @@ function renderBinary(op: BinaryOperator, left: Rendered, right: Rendered): Rend
       return { node: row(wrap(left, left.prec < prec), mo('·'), wrap(right, right.prec < prec || !!right.negative)), prec };
     case '+':
     case '-':
-      return { node: row(wrap(left, left.prec < prec), mo(OPERATOR_TEXT[op]!), wrap(right, right.prec < prec || (op === '-' && right.prec === prec) || !!right.negative)), prec };
+    case '±':
+      return { node: row(wrap(left, left.prec < prec), mo(OPERATOR_TEXT[op]!), wrap(right, right.prec < prec || (op !== '+' && right.prec === prec) || !!right.negative)), prec };
     default:
       return { node: row(wrap(left, left.prec <= prec), mo(OPERATOR_TEXT[op]!), wrap(right, right.prec <= prec)), prec };
   }

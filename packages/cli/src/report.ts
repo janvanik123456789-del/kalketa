@@ -66,6 +66,18 @@ function formatStatement(r: StatementResult, result: SheetResult, options: Repor
       return `${head}   ${formatCheckValues(r.check, options)}`;
     }
     case 'solve':
+      // Under conditions: every root, the ones set aside marked; none, said so.
+      if (r.roots && s.unknowns[0]) {
+        const name = s.unknowns[0].name;
+        if (r.roots.roots.length === 0 || r.roots.roots.every((root) => root.rejected === 'complex')) return `${name}: ${t(options.catalog, 'print.noRealRoot')}`;
+        return r.roots.roots
+          .map((root, i) => {
+            const d = toDisplay(root.value, defaultRegistry);
+            const shown = `${r.roots!.roots.length > 1 ? `${name}_${i + 1}` : name} = ${formatDisplay(d.value, d.unit, options, d.im)}`;
+            return root.rejected === undefined ? shown : `(${shown} ${t(options.catalog, root.rejected === 'complex' ? 'print.rootComplex' : 'print.rootRejected')})`;
+          })
+          .join('   ');
+      }
       return r.solutions ? r.solutions.map((found) => `${found.name} = ${formatDisplay(found.display.value, found.display.unit, options, found.display.im)}`).join('   ') : '?';
     case 'invalid':
       return '?';

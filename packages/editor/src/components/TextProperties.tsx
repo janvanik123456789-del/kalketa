@@ -89,7 +89,18 @@ export function TextProperties({ format, catalog }: { format: TextFormat; catalo
         {button({ id: 'bold', title: `${t(catalog, 'textStyle.bold')} (Ctrl+B)`, on: format.bold, run: format.toggleBold, children: <b>B</b> })}
         {button({ id: 'italic', title: `${t(catalog, 'textStyle.italic')} (Ctrl+I)`, on: format.italic, run: format.toggleItalic, children: <i>I</i> })}
       </div>
-      {select('color', t(catalog, 'textStyle.color'), TEXT_COLORS.map((c) => [c, t(catalog, `textStyle.color.${c}` as UiKey)]))}
+      {/* The colour of the marked words (of the line when none are marked). */}
+      <label className="text-prop">
+        <span>{t(catalog, 'textStyle.color')}</span>
+        <select data-text-prop="color" value={format.color ?? ''} onChange={(e) => format.setColor(e.target.value || undefined)}>
+          <option value="">{t(catalog, 'textStyle.defaultValue')}</option>
+          {TEXT_COLORS.map((c) => (
+            <option key={c} value={c}>
+              {t(catalog, `textStyle.color.${c}` as UiKey)}
+            </option>
+          ))}
+        </select>
+      </label>
       <h3>{t(catalog, 'textProps.paragraph')}</h3>
       <label className="text-prop">
         <span>{t(catalog, 'textProps.style')}</span>

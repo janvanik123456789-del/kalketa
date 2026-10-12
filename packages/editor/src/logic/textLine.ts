@@ -15,6 +15,8 @@ export interface TextRun {
   readonly text: string;
   readonly bold?: boolean;
   readonly italic?: boolean;
+  /** One of RUN_COLORS; the colour of the line when absent. */
+  readonly color?: string;
 }
 
 export interface TextLine {
@@ -55,41 +57,63 @@ export function formatTextLine(line: TextLine): string {
   return line.comment ? `${withMarks}${line.comment}` : withMarks;
 }
 
-/** **bold** and *italic* words of the language as runs; a lone * (2 * 3) stays a character. */
+/** The colours a part of a text may have: {red}words{/}. */
+export const RUN_COLORS = ['gray', 'blue', 'red', 'green'] as const;
+const COLORED = /\{(gray|blue|red|green)\}([\s\S]*?)\{\/\}/g;
+
+/** **bold**, *italic* and {red}coloured{/} words of the language as runs; a lone * (2 * 3) stays a character. */
 export function runsOf(content: string): TextRun[] {
   const runs: TextRun[] = [];
+  const same = (a: TextRun, b: Omit<TextRun, 'text'>) => !!a.bold === !!b.bold && !!a.italic === !!b.italic && a.color === b.color;
   const push = (text: string, format: Omit<TextRun, 'text'> = {}) => {
     if (!text) return;
     const last = runs[runs.length - 1];
-    if (last && !!last.bold === !!format.bold && !!last.italic === !!format.italic) runs[runs.length - 1] = { ...last, text: last.text + text };
+    if (last && same(last, format)) runs[runs.length - 1] = { ...last, text: last.text + text };
     else runs.push({ text, ...format });
   };
-  const pattern = /\*\*\*([^*\s](?:.*?[^*\s])?)\*\*\*|\*\*([^*\s](?:.*?[^*\s])?)\*\*|(^|[^*])\*([^*\s](?:[^*]*?[^*\s])?)\*(?!\*)/g;
+  const emphasis = (part: string, color: string | undefined) => {
+    const tint = color ? { color } : {};
+    const pattern = /\*\*\*([^*\s](?:.*?[^*\s])?)\*\*\*|\*\*([^*\s](?:.*?[^*\s])?)\*\*|(^|[^*])\*([^*\s](?:[^*]*?[^*\s])?)\*(?!\*)/g;
+    let at = 0;
+    for (const m of part.matchAll(pattern)) {
+      push(part.slice(at, m.index! + (m[3]?.length ?? 0)), tint);
+      if (m[1] !== undefined) push(m[1], { bold: true, italic: true, ...tint });
+      else if (m[2] !== undefined) push(m[2], { bold: true, ...tint });
+      else push(m[4]!, { italic: true, ...tint });
+      at = m.index! + m[0].length;
+    }
+    push(part.slice(at), tint);
+  };
   let at = 0;
-  for (const m of content.matchAll(pattern)) {
-    push(content.slice(at, m.index! + (m[3]?.length ?? 0)));
-    if (m[1] !== undefined) push(m[1], { bold: true, italic: true });
-    else if (m[2] !== undefined) push(m[2], { bold: true });
-    else push(m[4]!, { italic: true });
+  for (const m of content.matchAll(COLORED)) {
+    emphasis(content.slice(at, m.index), undefined);
+    emphasis(m[2]!, m[1]);
     at = m.index! + m[0].length;
   }
-  push(content.slice(at));
+  emphasis(content.slice(at), undefined);
   return runs;
 }
 
 /** Runs written with the marks of the language; the spaces at the edge of a run stay outside its marks. */
 export function marksOf(runs: readonly TextRun[]): string {
-  return runs
-    .map((run) => {
-      if (!run.bold && !run.italic) return run.text;
-      const lead = /^\s*/.exec(run.text)![0];
-      const tail = /\s*$/.exec(run.text)![0];
-      const core = run.text.slice(lead.length, run.text.length - tail.length);
-      if (!core) return run.text;
-      const mark = run.bold && run.italic ? '***' : run.bold ? '**' : '*';
-      return `${lead}${mark}${core}${mark}${tail}`;
-    })
-    .join('');
+  const emphasis = (run: TextRun) => {
+    if (!run.bold && !run.italic) return run.text;
+    const lead = /^\s*/.exec(run.text)![0];
+    const tail = /\s*$/.exec(run.text)![0];
+    const core = run.text.slice(lead.length, run.text.length - tail.length);
+    if (!core) return run.text;
+    const mark = run.bold && run.italic ? '***' : run.bold ? '**' : '*';
+    return `${lead}${mark}${core}${mark}${tail}`;
+  };
+  // Runs of one colour one after another stand in one {colour}…{/}.
+  let out = '';
+  for (let i = 0; i < runs.length; ) {
+    const color = runs[i]!.color;
+    let group = '';
+    for (; i < runs.length && runs[i]!.color === color; i++) group += emphasis(runs[i]!);
+    out += color && group.trim() ? `{${color}}${group}{/}` : group;
+  }
+  return out;
 }
 
 /** The words of a line as plain text (what search and an empty check read). */

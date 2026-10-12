@@ -1696,7 +1696,12 @@ export function App() {
           sep,
           { kind: 'submenu', label: t(ui, 'textStyle.font'), items: [...choices('font', TEXT_FONT_KINDS, (v) => t(ui, `textStyle.font.${v}` as UiKey)), sep, ...systemFonts.map((name) => mark('font', fontValue(name), name))] },
           { kind: 'submenu', label: t(ui, 'textStyle.size'), items: choices('size', TEXT_SIZES, (v) => `${v} pt`) },
-          { kind: 'submenu', label: t(ui, 'textStyle.color'), items: choices('color', TEXT_COLORS, (v) => t(ui, `textStyle.color.${v}` as UiKey)) },
+          {
+            // The colour of the marked words, as a word processor gives it (of the whole line when none are marked).
+            kind: 'submenu',
+            label: t(ui, 'textStyle.color'),
+            items: [undefined, ...TEXT_COLORS].map((c): MenuItem => ({ kind: 'action', label: c ? t(ui, `textStyle.color.${c}` as UiKey) : t(ui, 'textStyle.defaultValue'), enabled: on, checked: f?.color === c, run: () => f?.setColor(c) })),
+          },
           sep,
           {
             kind: 'submenu',

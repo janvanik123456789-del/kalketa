@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { formatTextLine, parseTextLine, runsOf } from '../src/logic/textLine.js';
+import { formatTextLine, marksOf, parseTextLine, runsOf } from '../src/logic/textLine.js';
+import { recolor } from '../src/components/TextRowEditor.js';
 
 describe('a line of text edited as in a word processor', () => {
   it('reads the words with their bold and italic parts, the marks of the line apart, and writes them back', () => {
@@ -18,5 +19,13 @@ describe('a line of text edited as in a word processor', () => {
     expect(parseTextLine('F := 1600 N')).toBeUndefined();
     expect(runsOf('2 * 3 = 6')).toEqual([{ text: '2 * 3 = 6' }]);
     expect(runsOf('***obojí***')).toEqual([{ text: 'obojí', bold: true, italic: true }]);
+  });
+
+  it('gives a colour to the marked words only, written {red}…{/}', () => {
+    const runs = runsOf('Koeficient **dynamiky** namáhání');
+    const red = recolor(runs, 11, 28, 'red');
+    expect(marksOf(red)).toBe('Koeficient {red}**dynamiky** namáhání{/}');
+    expect(runsOf(marksOf(red))).toEqual(red);
+    expect(marksOf(recolor(red, 19, 28, undefined))).toBe('Koeficient {red}**dynamiky**{/} namáhání');
   });
 });

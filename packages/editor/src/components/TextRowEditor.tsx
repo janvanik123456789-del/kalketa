@@ -18,11 +18,15 @@ export interface TextFormat {
   /** The words at the caret or the marked ones are bold / italic. */
   readonly bold: boolean;
   readonly italic: boolean;
+  /** The colour of the words at the caret: their own, else the line's. */
+  readonly color: string | undefined;
   toggleBold(): void;
   toggleItalic(): void;
   /** Sets (or with undefined removes) a mark of the whole line: size, font, color, align. */
   set(key: string, value: string | undefined): void;
   setLevel(level: number): void;
+  /** A colour (undefined: the default) for the marked words, or for the whole line when none are marked. */
+  setColor(color: string | undefined): void;
   /** The line as written in the language, to edit its marks by hand. */
   raw(): void;
   /** Words put at the caret (a symbol of a toolbar, the clipboard). */
@@ -49,6 +53,7 @@ function htmlOf(runs: readonly TextRun[]): string {
       let html = escapeHtml(run.text);
       if (run.italic) html = `<i>${html}</i>`;
       if (run.bold) html = `<b>${html}</b>`;
+      if (run.color && run.color in TEXT_COLOR_VALUES) html = `<span data-color="${run.color}" style="color: ${TEXT_COLOR_VALUES[run.color as keyof typeof TEXT_COLOR_VALUES]}">${html}</span>`;
       return html;
     })
     .join('');
@@ -60,8 +65,10 @@ function runsIn(root: HTMLElement): TextRun[] {
   const formatOf = (node: Node) => {
     let bold: boolean | undefined;
     let italic: boolean | undefined;
+    let color: string | undefined;
     for (let el = node.parentElement; el && el !== root; el = el.parentElement) {
       const tag = el.tagName;
+      color ??= el.dataset['color'];
       if (bold === undefined) {
         if (tag === 'B' || tag === 'STRONG' || /^(bold|[6-9]00)$/.test(el.style.fontWeight)) bold = true;
         else if (/^(normal|[1-5]00)$/.test(el.style.fontWeight)) bold = false;
@@ -71,16 +78,16 @@ function runsIn(root: HTMLElement): TextRun[] {
         else if (el.style.fontStyle === 'normal') italic = false;
       }
     }
-    return { bold: !!bold, italic: !!italic };
+    return { bold: !!bold, italic: !!italic, color };
   };
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   for (let node = walker.nextNode(); node; node = walker.nextNode()) {
     const text = (node.textContent ?? '').replace(/ /g, ' ').replace(/[\r\n]+/g, ' ');
     if (!text) continue;
-    const { bold, italic } = formatOf(node);
+    const { bold, italic, color } = formatOf(node);
     const last = runs[runs.length - 1];
-    if (last && !!last.bold === bold && !!last.italic === italic) runs[runs.length - 1] = { ...last, text: last.text + text };
-    else runs.push({ text, ...(bold ? { bold } : {}), ...(italic ? { italic } : {}) });
+    if (last && !!last.bold === bold && !!last.italic === italic && last.color === color) runs[runs.length - 1] = { ...last, text: last.text + text };
+    else runs.push({ text, ...(bold ? { bold } : {}), ...(italic ? { italic } : {}), ...(color ? { color } : {}) });
   }
   return runs;
 }
@@ -110,7 +117,9 @@ export function TextRowEditor({ text, onChange, onEnter, onTab, onDeleteEmpty, o
   latest.current = line;
   const [original] = useState(text);
   const range = useRef<Range | undefined>(undefined);
-  const [state, setState] = useState({ bold: false, italic: false });
+  const [state, setState] = useState<{ bold: boolean; italic: boolean; color: string | undefined }>({ bold: false, italic: false, color: undefined });
+  // The marked words to mark again after the words are drawn anew (a colour given to them).
+  const reselect = useRef<{ start: number; end: number } | undefined>(undefined);
 
   const write = (next: TextLine) => onChange(formatTextLine(next));
   const emit = () => {
@@ -122,7 +131,10 @@ export function TextRowEditor({ text, onChange, onEnter, onTab, onDeleteEmpty, o
     const el = ref.current;
     if (!el || marksOf(runsIn(el)) === marksOf(line.runs)) return;
     el.innerHTML = htmlOf(line.runs);
-    if (document.activeElement === el) caretToEnd(el);
+    if (document.activeElement !== el) return;
+    if (reselect.current) selectOffsets(el, reselect.current.start, reselect.current.end);
+    else caretToEnd(el);
+    reselect.current = undefined;
   });
 
   // Open: the caret at the end of the words. A new paragraph style is a new element, which gets the focus back.
@@ -140,8 +152,9 @@ export function TextRowEditor({ text, onChange, onEnter, onTab, onDeleteEmpty, o
       const selection = document.getSelection();
       if (!el || !selection || selection.rangeCount === 0 || !el.contains(selection.anchorNode)) return;
       range.current = selection.getRangeAt(0).cloneRange();
-      const next = { bold: document.queryCommandState('bold'), italic: document.queryCommandState('italic') };
-      setState((s) => (s.bold === next.bold && s.italic === next.italic ? s : next));
+      const { start } = offsetsIn(el);
+      const next = { bold: document.queryCommandState('bold'), italic: document.queryCommandState('italic'), color: runAt(runsIn(el), start)?.color };
+      setState((s) => (s.bold === next.bold && s.italic === next.italic && s.color === next.color ? s : next));
     };
     document.addEventListener('selectionchange', onSelection);
     return () => document.removeEventListener('selectionchange', onSelection);
@@ -184,6 +197,16 @@ export function TextRowEditor({ text, onChange, onEnter, onTab, onDeleteEmpty, o
         setMark(key, value);
       },
       setLevel: (level) => write({ ...latest.current, level }),
+      color: state.color ?? line.attributes.get('color'),
+      setColor: (color) => {
+        focusBack();
+        const el = ref.current;
+        const { start, end } = el ? offsetsIn(el) : { start: 0, end: 0 };
+        if (!el || start === end) return setMark('color', color);
+        // The marked words only: they get the colour as a part of the text ({red}…{/}), the rest stays.
+        reselect.current = { start, end };
+        write({ ...latest.current, runs: recolor(runsIn(el), start, end, color === latest.current.attributes.get('color') ? undefined : color) });
+      },
       raw: onRaw,
       insert: (words) => {
         focusBack();
@@ -303,4 +326,72 @@ function caretAt(el: HTMLElement): { atEnd: boolean; firstLine: boolean; lastLin
   const box = el.getBoundingClientRect();
   if (!rect) return { atEnd, firstLine: true, lastLine: true };
   return { atEnd, firstLine: rect.top - box.top < rect.height, lastLine: box.bottom - rect.bottom < rect.height };
+}
+
+/** Where the marked words start and end, counted in characters of the words. */
+function offsetsIn(el: HTMLElement): { start: number; end: number } {
+  const selection = document.getSelection();
+  if (!selection || selection.rangeCount === 0 || !el.contains(selection.anchorNode)) return { start: 0, end: 0 };
+  const range = selection.getRangeAt(0);
+  const before = document.createRange();
+  before.selectNodeContents(el);
+  before.setEnd(range.startContainer, range.startOffset);
+  const start = before.toString().length;
+  return { start, end: start + range.toString().length };
+}
+
+/** Marks the words from start to end (characters of the words). */
+function selectOffsets(el: HTMLElement, start: number, end: number) {
+  const range = document.createRange();
+  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+  let at = 0;
+  let started = false;
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    const length = node.textContent?.length ?? 0;
+    if (!started && start <= at + length) {
+      range.setStart(node, start - at);
+      started = true;
+    }
+    if (started && end <= at + length) {
+      range.setEnd(node, end - at);
+      const selection = document.getSelection();
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+      return;
+    }
+    at += length;
+  }
+}
+
+/** The run with the character at a place in the words (at their end, the last one). */
+function runAt(runs: readonly TextRun[], offset: number): TextRun | undefined {
+  let at = 0;
+  for (const run of runs) {
+    if (offset < at + run.text.length) return run;
+    at += run.text.length;
+  }
+  return runs[runs.length - 1];
+}
+
+/** The words from start to end in a colour of their own (undefined: that of the line). */
+export function recolor(runs: readonly TextRun[], start: number, end: number, color: string | undefined): TextRun[] {
+  const out: TextRun[] = [];
+  let at = 0;
+  const put = (run: TextRun, text: string, inside: boolean) => {
+    if (!text) return;
+    const { color: own, ...rest } = run;
+    const next: TextRun = { ...rest, text, ...(inside ? (color ? { color } : {}) : own ? { color: own } : {}) };
+    const last = out[out.length - 1];
+    if (last && !!last.bold === !!next.bold && !!last.italic === !!next.italic && last.color === next.color) out[out.length - 1] = { ...last, text: last.text + text };
+    else out.push(next);
+  };
+  for (const run of runs) {
+    const from = Math.max(0, Math.min(run.text.length, start - at));
+    const to = Math.max(0, Math.min(run.text.length, end - at));
+    put(run, run.text.slice(0, from), false);
+    put(run, run.text.slice(from, to), true);
+    put(run, run.text.slice(to), false);
+    at += run.text.length;
+  }
+  return out;
 }

@@ -84,7 +84,12 @@ function styleAttribute(style: TextStyle | undefined): string {
  * in Markdown; everything else is plain text.
  */
 export function textHtml(text: string): string {
-  return emphasis(namesInText(text));
+  return colored(emphasis(namesInText(text)));
+}
+
+/** {red}words{/}: a part of the text in a colour of its own (of the colours a text line has). */
+function colored(html: string): string {
+  return html.replace(/\{(gray|blue|red|green)\}([\s\S]*?)\{\/\}/g, (_, color: keyof typeof TEXT_COLOR_VALUES, words: string) => `<span style="color: ${TEXT_COLOR_VALUES[color]}">${words}</span>`);
 }
 
 /** **bold** and *italic* parts; a lone * (2 * 3) stays as it is. Tags hold no *, so they are safe. */

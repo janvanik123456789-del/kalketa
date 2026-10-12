@@ -91,6 +91,12 @@ describe('style of a text line', () => {
     expect(evaluateSheet('"Text" {size=100 underline}').diagnostics.map((d) => d.code)).toEqual(['W-FORMAT', 'W-FORMAT']);
   });
 
+  it('prints a part of a text in a colour of its own', async () => {
+    const { printHtml } = await import('../src/index.js');
+    const html = printHtml(evaluateSheet('"Mez {red}**kluzu**{/} oceli"'), { catalog: catalogFor('cs'), registry: defaultRegistry, title: 'S' });
+    expect(html).toContain('<p class="text">Mez <span style="color: #b3261e"><strong>kluzu</strong></span> oceli</p>');
+  });
+
   it('prints a font of the system by its name, _ for a space, a plain one standing in', async () => {
     const { printHtml } = await import('../src/index.js');
     const html = printHtml(evaluateSheet('"Nadpis tabulky" {font=Times_New_Roman}'), { catalog: catalogFor('cs'), registry: defaultRegistry, title: 'S' });

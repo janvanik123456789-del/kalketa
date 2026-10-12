@@ -212,6 +212,12 @@ export function SheetView(props: Props) {
   const [gridAt, setGridAt] = useState<number | undefined>();
   // A line of text opens formatted, as in a word processor; asked for, it opens as written in the language.
   const [rawAt, setRawAt] = useState<number | undefined>();
+  // The line of text open as in a word processor: its menu works on the marked words, as the Format menu does.
+  const textFormat = useRef<TextFormat | undefined>(undefined);
+  const onTextFormat = (format: TextFormat | undefined) => {
+    textFormat.current = format;
+    props.onTextFormat?.(format);
+  };
   if (rawAt !== undefined && editing?.start !== rawAt) setRawAt(undefined);
   // A solve line expressed by a formula also offers that formula as a definition of its own.
   const [summaryMenu, setSummaryMenu] = useState<{ x: number; y: number } | undefined>();
@@ -704,7 +710,22 @@ export function SheetView(props: Props) {
               const seg = formatMenu.seg;
               // The marks of the line by hand: it opens as written in the language.
               const raw: MenuItem = { kind: 'action', label: t(props.uiCatalog, 'textProps.raw'), run: () => { setRawAt(seg.start); props.onEdit({ start: seg.start, end: seg.end }); } };
-              return [...textMenuItems(seg, props.uiCatalog, change), { kind: 'separator' }, raw];
+              const open = editing?.start === seg.start ? textFormat.current : undefined;
+              if (!open) return [...textMenuItems(seg, props.uiCatalog, change), { kind: 'separator' }, raw];
+              const ui = props.uiCatalog;
+              const own = [t(ui, 'textStyle.bold'), t(ui, 'textStyle.italic'), t(ui, 'textStyle.color')];
+              return [
+                { kind: 'action', label: t(ui, 'textStyle.bold'), checked: open.bold, shortcut: 'Ctrl+B', run: open.toggleBold },
+                { kind: 'action', label: t(ui, 'textStyle.italic'), checked: open.italic, shortcut: 'Ctrl+I', run: open.toggleItalic },
+                {
+                  kind: 'submenu',
+                  label: t(ui, 'textStyle.color'),
+                  items: [undefined, ...TEXT_COLORS].map((c): MenuItem => ({ kind: 'action', label: c ? t(ui, `textStyle.color.${c}` as UiKey) : t(ui, 'textStyle.defaultValue'), checked: open.color === c, run: () => open.setColor(c) })),
+                },
+                ...textMenuItems(seg, ui, change).filter((item) => !('label' in item && own.includes(item.label))),
+                { kind: 'separator' },
+                raw,
+              ];
             }
             // The result of the row as each choice would show it: "5,47 mm" (of a solve line, its first unknown).
             const row = formatMenu.seg.statement !== undefined ? result.statements[formatMenu.seg.statement] : undefined;
@@ -960,7 +981,7 @@ export function SheetView(props: Props) {
               onMove={(d) => move(seg, d)}
               onDone={() => props.onEdit(undefined)}
               onRaw={() => setRawAt(seg.start)}
-              {...(props.onTextFormat ? { onFormat: props.onTextFormat } : {})}
+              onFormat={onTextFormat}
             />
           ) : isEditing ? (
             <RowEditor

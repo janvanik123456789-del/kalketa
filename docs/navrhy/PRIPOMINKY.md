@@ -39,3 +39,6 @@ Když něco spadne, ztrácí data nebo nejde dál testovat, napište to hned, ne
 
 8. ~~Snadnější mazání buněk: v textu nefunguje zkratka na mazání, buňka zmizí, až když se vymaže celý text.~~
    **Vyřízeno 2026-10-12:** Ctrl+Shift+K (Úpravy → Smazat řádek) smaže buňku i z formátovaného textu, Ctrl+D ji zdvojí. Kontextová nabídka buňky má „Smazat buňku“. Smazáním první buňky řádku se sousední buňka stane začátkem řádku a neposkočí k řádku nad ní.
+
+9. ~~Když označím část textu a dám barvu, obarví se celý řádek.~~
+   **Vyřízeno 2026-10-12:** barva z menu Formát, z panelu Vlastnosti i z pravého tlačítka teď platí jen pro označená slova, stejně jako tučné a kurzíva. Výběr zůstane označený, takže jde rovnou dát další formát. Bez označení se obarví celý řádek. V zápisu je to `{red}slova{/}`.

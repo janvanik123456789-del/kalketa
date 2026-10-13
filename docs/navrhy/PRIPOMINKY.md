@@ -70,3 +70,6 @@ Když něco spadne, ztrácí data nebo nejde dál testovat, napište to hned, ne
    **Vyřízeno 2026-10-12:**
    - **V grafu:** pravé tlačítko → „Zobrazit vrcholy (maxima a minima)“, kosočtverec se souřadnicemi `[−0,4; −10,8]`. V zápisu `plot(y(x), x: -3 .. 2, extremes: true)`. Vrchol je místo, kde je první derivace nulová; graf ho najde i u jiných křivek než paraboly.
    - **Výpočtem:** `solve x_v: y′(x_v) == 0` a `y_v := y(x_v)`. Tisk jako na papíře: y′(x_v) = 0, 2·a·x_v + b = 0, x_v = −b/(2·a) = −4/(2·5) = −0,4. Derivaci funkce listu program nově sestaví podle vzorce. Dřív ji počítal jen numericky a `solve` s ní nekonvergovalo.
+
+18. ~~Integrál mezi kořeny kvadratické rovnice: kořeny jsou v tisku x₁ a x₂, ale pro další výpočet tak definované nejsou.~~
+   **Vyřízeno 2026-10-13:** `solve x ∈ ℝ, …` teď kořeny definuje i jako `x_1`, `x_2`, tedy stejně, jak je tisk čísluje, a to i kořen vyřazený podmínkou. `integral(y(x), x: x_2 .. x_1)` tak funguje. Plocha je `abs(…)`, protože pod osou x vychází integrál záporný. Opraveno i „−0“ (dnes 0) a v grafu „x = 2,107E−8“ místo 0: body nalezené hledáním se zaokrouhlí na přesnost grafu.

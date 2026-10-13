@@ -82,3 +82,22 @@ describe('the axis of symmetry of a curve in a chart', () => {
     expect(axes('plot(x^3 - x, x: -2 .. 2, symmetry: true)')).toBeUndefined();
   });
 });
+
+describe('the roots as printed are names for what follows', () => {
+  it('gives x_1 and x_2 for an integral between them, the one set aside by a condition too', () => {
+    const r = evaluateSheet('y(x) := x^2 - 5\nsolve x ∈ ℝ, x > 0: y(x) == 0\nS := integral(y(x), x: x_2 .. x_1)');
+    expect(r.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+    expect((r.values.get('x_1') as Quantity).si).toBeCloseTo(Math.sqrt(5), 12);
+    expect((r.values.get('x_2') as Quantity).si).toBeCloseTo(-Math.sqrt(5), 12);
+    expect((r.values.get('S') as Quantity).si).toBeCloseTo((-20 * Math.sqrt(5)) / 3, 6);
+    // No real root: no names; a name the sheet has itself stays its own.
+    expect(evaluateSheet('solve x ∈ ℝ: x^2 + 1 == 0').values.has('x_1')).toBe(false);
+    expect((evaluateSheet('x_1 := 7\nsolve x ∈ ℝ: x^2 - 4 == 0').values.get('x_1') as Quantity).si).toBe(7);
+  });
+
+  it('marks the chart points at the precision of the chart: the vertex of x² − 5 at 0, not 2·10⁻⁸', () => {
+    const s = evaluateSheet('plot(x^2 - 5, x: -10 .. 10, symmetry: true, extremes: true)').statements.at(-1)!.plot!.series[0]!;
+    expect(s.axes).toEqual([0]);
+    expect(s.extremes).toEqual([{ x: 0, y: -5, peak: false }]);
+  });
+});

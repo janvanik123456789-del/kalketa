@@ -136,6 +136,9 @@ export function plotStatement(call: CallExpr, ctx: EvalContext, evaluate: Evalua
     if (columns.some((c) => c.length !== n)) fail('E-PLOT-LENGTH', call.span, {});
     x = { values: Array.from({ length: n }, (_, i) => i + 1), unit: '', dates: false };
   }
+  // A point found by searching is exact to some 8 digits: shown at the precision the chart has (2,1·10⁻⁸ is 0).
+  const xSpan = x.values.length > 1 ? Math.abs(x.values[x.values.length - 1]! - x.values[0]!) : 1;
+  const ySpan = Math.max(...columns.flat().map((q) => (q ? Math.abs(y(q)) : 0))) || 1;
   return {
     kind: plotKind,
     ...(title !== undefined ? { title } : {}),
@@ -153,14 +156,23 @@ export function plotStatement(call: CallExpr, ctx: EvalContext, evaluate: Evalua
         xs: d.at && d.at !== xs ? d.at.map((q) => toDisplay(q, ctx.registry, xs![0]!.hint).value) : x.values,
         ys: d.values.map(y),
         ...(d.mark ? { mark: d.mark } : {}),
-        ...(roots && roots.length > 0 ? { roots: roots.map((q) => toDisplay(q, ctx.registry, xs![0]!.hint).value) } : {}),
-        ...(axes && axes.length > 0 ? { axes: axes.map((q) => toDisplay(q, ctx.registry, xs![0]!.hint).value) } : {}),
-        ...(extremes && extremes.length > 0 ? { extremes: extremes.map((e) => ({ x: toDisplay(e.x, ctx.registry, xs![0]!.hint).value, y: y(e.y), peak: e.peak })) } : {}),
+        ...(roots && roots.length > 0 ? { roots: roots.map((q) => tidy(toDisplay(q, ctx.registry, xs![0]!.hint).value, xSpan)) } : {}),
+        ...(axes && axes.length > 0 ? { axes: axes.map((q) => tidy(toDisplay(q, ctx.registry, xs![0]!.hint).value, xSpan)) } : {}),
+        ...(extremes && extremes.length > 0 ? { extremes: extremes.map((e) => ({ x: tidy(toDisplay(e.x, ctx.registry, xs![0]!.hint).value, xSpan), y: tidy(y(e.y), ySpan), peak: e.peak })) } : {}),
       };
     }),
     ...(place && Object.keys(place).length ? { place } : {}),
     ...(yRange ? { yRange } : {}),
   };
+}
+
+/** A value rounded to a ten-millionth of the span of its axis. */
+function tidy(value: number, span: number): number {
+  const step = span * 1e-7;
+  if (!(step > 0)) return value;
+  const rounded = Math.round(value / step) * step;
+  // Round in the decimal digits too, so −0,39999999 prints as −0,4 and 2·10⁻⁸ as 0.
+  return Number((rounded === 0 ? 0 : rounded).toPrecision(Math.max(1, Math.ceil(Math.log10(Math.abs(value) / step + 1)))));
 }
 
 /** A yes/no option (roots: true). */

@@ -52,3 +52,11 @@ describe('function help', () => {
     }
   });
 });
+
+describe('a zero', () => {
+  it('is never negative: −0 prints as 0', () => {
+    const cs = catalogFor('cs');
+    expect(formatNumber(-0, cs)).toBe('0');
+    expect(formatNumber(-0.4, cs)).toBe('-0,4');
+  });
+});

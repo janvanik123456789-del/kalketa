@@ -318,6 +318,15 @@ export class SheetSession {
           if (statement.ode) return env.set(u.name, result.status === 'ok' && result.value ? { ok: true, value: result.value } : { ok: false });
           // Under conditions: the roots kept, one as a value, more as a vector (x[1], x[2]); none, no value.
           if (result.roots) {
+            // The roots as printed, x₁ and x₂, are names too (x_1, x_2) for what follows: an integral
+            // between them. Complex ones only where they count (∈ ℂ); a name the sheet defines itself stays its own.
+            const real = result.roots.roots.filter((r) => r.rejected !== 'complex');
+            if (result.roots.roots.length > 1) {
+              result.roots.roots.forEach((r, k) => {
+                const own = `${u.name}_${k + 1}`;
+                if (r.rejected !== 'complex' && real.length > 0 && !definedAt.has(own)) env.set(own, { ok: true, value: r.value });
+              });
+            }
             const kept = result.roots.roots.filter((r) => r.rejected === undefined).map((r) => r.value);
             return env.set(u.name, kept.length === 1 ? { ok: true, value: kept[0]! } : kept.length > 1 ? { ok: true, value: { type: 'vector', items: kept } } : { ok: false });
           }

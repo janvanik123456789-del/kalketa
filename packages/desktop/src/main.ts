@@ -1599,12 +1599,17 @@ async function layersWithRealInput(picture: string) {
   await typeText(' ');
   await clickOn('.tool-button[title="Vložit ℝ"]');
   await typeText('; x_q > 0: y_q(x_q) == 0');
+  // The roots as printed are names: the area under the curve between them.
+  await pressKey('Enter');
+  await typeText('S_q := integral(y_q(x); x: x_q_2 .. x_q_1)');
   await clickOn('.statusbar');
   await pause(500);
   await takePicture(picture.replace(/[.]png$/, '-paper.png'));
   const paperRoots = (await contents.executeJavaScript(`(() => {
     const row = [...document.querySelectorAll('.layer-view.active .page .row')].find((r) => r.textContent.includes('nevyhovuje'));
     const text = row ? row.textContent.replace(/\\s+/g, '') : '';
+    const area = [...document.querySelectorAll('.layer-view.active .page .row')].find((r) => r.textContent.includes('S') && r.textContent.includes('∫'));
+    if (!area || area.classList.contains('has-error') || !area.textContent.replace(/\\s+/g, '').endsWith('=−21,16')) return false;
     return !!row && !row.classList.contains('has-error') && text.includes('∈ℝ') && text.includes('−10=0') && text.includes('D=') && text.includes('=216') && text.includes('±') && text.includes('=1,07');
   })()`)) as boolean;
   // Operators and functions show drawn icons; the condition and solve stay as text.

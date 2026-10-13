@@ -76,6 +76,12 @@ export function complexText(re: number, im: number, format: (x: number) => strin
 }
 
 export function formatNumber(value: number, catalog: Catalog, options: NumberFormatOptions = {}): string {
+  // −0 (as −b/(2·a) with b = 0 gives) and a negative number rounded to nothing are plain 0.
+  const shown = formatSigned(value === 0 ? 0 : value, catalog, options);
+  return /^[-−]0(?:[.,]0+)?$/.test(shown) ? shown.slice(1) : shown;
+}
+
+function formatSigned(value: number, catalog: Catalog, options: NumberFormatOptions): string {
   const digits = options.digits ?? 4;
   const abs = Math.abs(value);
   const scientific = abs !== 0 && (abs >= 1e9 || abs < 1e-4);

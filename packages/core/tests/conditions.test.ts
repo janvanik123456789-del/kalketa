@@ -172,3 +172,33 @@ describe('a chart above what it draws', () => {
     expect(p.points).toEqual([{ x: 0.5, y: 10.5 }]);
   });
 });
+
+describe('a chart outside the domain of its parts', () => {
+  it('goes on drawing its curve without the parts that cannot be calculated, and says so', () => {
+    // a = 5: D < 0, no real roots, so no area S between them; the parabola, its vertex and the tangent stay.
+    const r = evaluateSheet('a := 5\nb := 2\nc := 10\ny(x) := a·x^2 + b·x + c\nsolve x ∈ ℝ: y(x) == 0\nS := abs(integral(y(x), x: x_1 .. x_2))\nV := [-b/(2·a), c - b^2/(4·a)]\nplot(y(x), x: -4 .. 5, roots: true, area: S, points: V, tangent: -1)');
+    const chart = r.statements.at(-1)!;
+    expect(chart.status).toBe('ok');
+    expect(chart.plot!.area).toBeUndefined();
+    expect(chart.plot!.points).toHaveLength(1);
+    expect(chart.plot!.tangent).toBeDefined();
+    expect(chart.diagnostics.map((d) => d.code)).toEqual(['W-PLOT-NO-AREA']);
+    // Written wrong stays an error.
+    expect(evaluateSheet('plot(x^2, x: 0 .. 1, area: 1)').diagnostics.map((d) => d.code)).toContain('E-PLOT-AREA');
+  });
+});
+
+describe('the sheet outside the domain of the roots', () => {
+  it('leaves the lines reading x_1, x_2 out as not to be calculated, not as errors', () => {
+    const r = evaluateSheet('solve x ∈ ℝ: 5·x^2 + 2·x + 10 == 0\nS := x_1 + x_2');
+    expect(r.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+    expect(r.statements[1]!.status).toBe('blocked');
+  });
+
+  it('lets the y axis follow the values while the range given would hide the curve', () => {
+    const hidden = evaluateSheet('plot(5·x^2 + 2·x + 25, x: -4 .. 5, ylim: -30 .. 20)').statements[0]!;
+    expect(hidden.plot!.yRange).toBeUndefined();
+    expect(hidden.diagnostics.map((d) => d.code)).toEqual(['W-PLOT-YLIM-HIDES']);
+    expect(evaluateSheet('plot(-2·x^2 + 2·x + 10, x: -4 .. 5, ylim: -30 .. 20)').statements[0]!.plot!.yRange).toEqual([-30, 20]);
+  });
+});

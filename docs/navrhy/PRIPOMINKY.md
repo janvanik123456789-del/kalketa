@@ -112,3 +112,9 @@ Když něco spadne, ztrácí data nebo nejde dál testovat, napište to hned, ne
    - **Posuvníky pod grafem:** pod grafem jsou v editoru posuvníky všech vstupů, na kterých graf závisí, i přes funkce a mezivýsledky. U kvadratické rovnice jsou to a, b, c. Při tažení se mění parabola, kořeny, vrchol, plocha i tečna. V tisku se neukážou.
    - **Proč přesunutí selhalo:** list se počítá shora dolů. Graf přesunutý nad `y(x)` ještě neznal funkci a `area: S` a `points: V` se tam četly jako jednotky siemens a volt.
    - **Oprava:** graf smí stát kdekoli. Když stojí nad tím, co kreslí, nakreslí se, až je spočtený celý list, a S a V jsou jména listu.
+
+24. ~~Graf se nemá zhroutit, když se posuvníkem dostaneme mimo definiční obor jednotlivých výpočtů; má se jen překonfigurovat zobrazení.~~
+   **Vyřízeno 2026-10-13:**
+   - **Graf dál kreslí:** šrafování, body, tečna a rozsah osy y jsou nepovinné části grafu. Co nejde spočítat (při D < 0 neexistuje plocha mezi kořeny), graf vynechá a pod ním napíše proč. Parabola, vrchol a tečna zůstanou. Jakmile se posuvník vrátí, část se ukáže zase.
+   - **Rozsah osy y:** pokud by zadaný rozsah křivku skryl, osa dočasně sleduje hodnoty.
+   - **Řádky s kořeny:** při D < 0 se už nehlásí jako chyby („x_1 není definováno“), jen se nespočítají. Stavový řádek ukazuje „chyba: 0“.

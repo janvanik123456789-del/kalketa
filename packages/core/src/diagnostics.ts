@@ -87,6 +87,11 @@ export const DIAGNOSTIC_SEVERITY = {
   'E-DERIVE-UNITS': 'error',
   'W-DERIVE-UNVERIFIED': 'warning',
   'W-FORMAT': 'warning',
+  'W-PLOT-NO-AREA': 'warning',
+  'W-PLOT-NO-POINTS': 'warning',
+  'W-PLOT-NO-TANGENT': 'warning',
+  'W-PLOT-NO-YLIM': 'warning',
+  'W-PLOT-YLIM-HIDES': 'warning',
   'E-NO-BOUNDS': 'error',
   'E-SOLVE-ROOTS': 'error',
   'E-SOLVE-CONDITIONS': 'error',
@@ -159,4 +164,11 @@ export class CalcError extends Error {
 
 export function fail(code: DiagnosticCode, span: Span, params: DiagnosticParams = {}): never {
   throw new CalcError(diagnostic(code, span, params));
+}
+
+/** A name the line reads has no value, as its own line failed: the line is blocked, not wrong itself. */
+export class DependencyFailed extends Error {
+  constructor(readonly variable: string) {
+    super(variable);
+  }
 }

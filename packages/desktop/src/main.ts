@@ -2303,6 +2303,24 @@ async function layersWithRealInput(picture: string) {
     await pause(800);
   }
   const sampleAfter = (await contents.executeJavaScript(sampleState)) as { a: string; roots: string; errors: number };
+  // On to the right end of the slider (a = 5, D < 0): no real roots and no area between them, yet the parabola
+  // stays drawn, only the parts that cannot be calculated are left out (with a warning).
+  const farThumb = (await contents.executeJavaScript(`(() => { const first = document.querySelector('.layer-view.active .chart-sliders .input-slider'); const r = first?.querySelector('.slider-thumb')?.getBoundingClientRect(); const t = first?.querySelector('.slider-track')?.getBoundingClientRect(); return r && t ? { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2), end: Math.round(t.right + 10) } : undefined; })()`)) as { x: number; y: number; end: number } | undefined;
+  if (farThumb) {
+    contents.sendInputEvent({ type: 'mouseDown', x: farThumb.x, y: farThumb.y, button: 'left', clickCount: 1 });
+    for (let step = 1; step <= 8; step++) {
+      contents.sendInputEvent({ type: 'mouseMove', x: Math.round(farThumb.x + ((farThumb.end - farThumb.x) * step) / 8), y: farThumb.y, button: 'left', modifiers: ['leftbuttondown'] } as Electron.MouseInputEvent);
+      await pause(150);
+    }
+    contents.sendInputEvent({ type: 'mouseUp', x: farThumb.end, y: farThumb.y, button: 'left', clickCount: 1 });
+    await pause(800);
+  }
+  const outOfDomain = (await contents.executeJavaScript(`(() => {
+    const chart = document.querySelector('.layer-view.active .block.chart svg.chart-svg');
+    const row = chart?.closest('.row');
+    return { drawn: !!chart?.querySelector('.chart-data path'), area: !!chart?.querySelector('path.chart-area'), roots: chart?.querySelectorAll('text.chart-root').length ?? -1, error: !!row?.classList.contains('has-error'), warned: (row?.textContent ?? '').includes('Plocha pod křivkou se teď nezobrazí') };
+  })()`)) as { drawn: boolean; area: boolean; roots: number; error: boolean; warned: boolean };
+  await takePicture(picture.replace(/[.]png$/, '-quadratic-nodomain.png'));
   await takePicture(picture.replace(/[.]png$/, '-quadratic.png'));
   // The same sample in English: printed in English.
   await clickOn('.menubar-item:nth-child(1) > button');
@@ -2313,8 +2331,9 @@ async function layersWithRealInput(picture: string) {
   const quadraticSample = {
     before: sampleBefore,
     after: sampleAfter,
+    outOfDomain,
     english,
-    ok: !!thumb && sampleBefore.errors === 0 && sampleAfter.errors === 0 && sampleBefore.a !== '' && sampleAfter.a !== sampleBefore.a && sampleAfter.roots !== sampleBefore.roots && english.head === 'Quadratic equation' && english.verdicts.length === 5 && english.verdicts.every((v) => v.endsWith('OK')) && english.errors === 0,
+    ok: !!thumb && sampleBefore.errors === 0 && sampleAfter.errors === 0 && sampleBefore.a !== '' && sampleAfter.a !== sampleBefore.a && sampleAfter.roots !== sampleBefore.roots && outOfDomain.drawn && !outOfDomain.area && outOfDomain.roots === 0 && !outOfDomain.error && outOfDomain.warned && english.head === 'Quadratic equation' && english.verdicts.length === 5 && english.verdicts.every((v) => v.endsWith('OK')) && english.errors === 0,
   };
   const userChart = { namedArea, quadOk, quadTarget, quadEnd, quadEditing, ok: namedArea === 'Integral1=27' && quadOk && quadTarget > 0 && Math.abs(quadEnd - quadTarget) < 12 };
   return { ...state, pickTaken, deflection, derivations, summaryOk, summaryOpens, summaryAtEnd, bookStyle, verdictFuture, verdictBack, pageHead, definitionAtCursor, solveFormatted, sheetGridOk, sheetGrid, tableEnter, tableEnterAt, lastRowEnter, draggedRows, selectedAll, bothFormatted, roundedOn, equationNumber, solvedByFormula, rootsAndExtremes, wordText, wordColored, paletteColored, wordPrinted, cellMarked, cellFont, cellDeleted, paperRoots, tableRowAdded, chartSteps, samplesOk, sampleTab, newKeepsExample, citations, notesPicture, notesPlaced, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, toolIcons, aiSettings, aiChat, pdfCleanup, theoryLibrary, study, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, placedFree, strictPlaced, canvasOk, besideText, pictures, blocksOk, userChart, quadraticSample };

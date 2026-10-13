@@ -8,7 +8,7 @@
  * changed.
  */
 
-import { CalcError, diagnostic, type Diagnostic, type Span } from '../diagnostics.js';
+import { CalcError, DependencyFailed, diagnostic, type Diagnostic, type Span } from '../diagnostics.js';
 import { asBoolean, asComplex } from '../eval/coerce.js';
 import { compare, evaluate, type EvalContext } from '../eval/evaluator.js';
 import { BUILTIN_CONSTANTS } from '../eval/functions.js';
@@ -136,7 +136,6 @@ interface CacheEntry {
 
 const CHECK_OPERATORS: ReadonlySet<string> = new Set(['<', '<=', '>', '>=']);
 
-class DependencyFailed extends Error {}
 
 export class SheetSession {
   private readonly registry: UnitRegistry;
@@ -342,10 +341,13 @@ export class SheetSession {
             // The roots as printed, x₁ and x₂, are names too (x_1, x_2) for what follows: an integral
             // between them. Complex ones only where they count (∈ ℂ); a name the sheet defines itself stays its own.
             const real = result.roots.roots.filter((r) => r.rejected !== 'complex');
+            // Roots not real (D < 0 in ℝ): the names are there, without a value, so the lines that read them
+            // are left out as not to be calculated, not reported as wrong.
             if (result.roots.roots.length > 1) {
               result.roots.roots.forEach((r, k) => {
                 const own = `${u.name}_${k + 1}`;
-                if (r.rejected !== 'complex' && real.length > 0 && !definedAt.has(own)) env.set(own, { ok: true, value: r.value });
+                if (definedAt.has(own)) return;
+                env.set(own, r.rejected !== 'complex' && real.length > 0 ? { ok: true, value: r.value } : { ok: false });
               });
             }
             const kept = result.roots.roots.filter((r) => r.rejected === undefined).map((r) => r.value);

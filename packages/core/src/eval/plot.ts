@@ -12,7 +12,7 @@
  * (two charts, never a second axis).
  */
 
-import { CalcError, diagnostic, fail, type Span } from '../diagnostics.js';
+import { CalcError, DependencyFailed, diagnostic, fail, type DiagnosticCode, type Span } from '../diagnostics.js';
 import type { Expr, NamedArg } from '../lang/ast.js';
 import { parsePlacement, type Placement } from '../lang/parser.js';
 import { multiplyDims, sameDim, type Dimension } from '../units/dimension.js';
@@ -158,7 +158,32 @@ export function plotStatement(given: CallExpr, ctx: EvalContext, evaluate: Evalu
   const y = (q: Quantity | undefined) => (q ? toDisplay(q, ctx.registry, yUnit).value : NaN);
   const yUnitSymbol = toDisplay(ys, ctx.registry, yUnit).unit;
   const n = columns[0]!.length;
-  const yRange = yLimits(call, yDim, y, ctx, evaluate);
+  // The parts of a chart beyond its curves (an area, points, a tangent, the y axis by hand) are drawn where they can
+  // be calculated: outside the domain of a part (no real roots with D < 0, so no area between them) the chart
+  // goes on without it, and says so.
+  const optional = <T>(name: string, code: DiagnosticCode, part: () => T): T | undefined => {
+    if (!call.named.some((n) => n.name === name)) return undefined;
+    try {
+      return part();
+    } catch (err) {
+      if (!(err instanceof CalcError) && !(err instanceof DependencyFailed)) throw err;
+      // A part written wrong stays an error to mend; one that cannot be calculated now is left out.
+      if (err instanceof CalcError && WRITTEN_WRONG.has(err.diagnostic.code)) throw err;
+      const at = call.named.find((n) => n.name === name)!.value.span;
+      const reason = err instanceof DependencyFailed ? err.variable : '';
+      ctx.warnings.push(diagnostic(code, at, { name: reason || source(call, name) }));
+      return undefined;
+    }
+  };
+  const asked = optional('ylim', 'W-PLOT-NO-YLIM', () => yLimits(call, yDim, y, ctx, evaluate));
+  // The y axis set by hand would hide the curves (other coefficients moved them out of it): the axis follows
+  // the values instead, until the curves come back into the range.
+  const inRange = (range: readonly [number, number]) => {
+    const all = columns.flat().filter((q): q is Quantity => !!q && !q.im).map((q) => y(q));
+    return all.length > 0 && all.filter((v) => v >= range[0] && v <= range[1]).length / all.length >= 0.05;
+  };
+  const yRange = asked && !inRange(asked) ? undefined : asked;
+  if (asked && !yRange) ctx.warnings.push(diagnostic('W-PLOT-YLIM-HIDES', call.named.find((n) => n.name === 'ylim')!.value.span, {}));
   const showRoots = flag(call, 'roots', ctx, evaluate);
   const showAxes = flag(call, 'symmetry', ctx, evaluate);
   const showExtremes = flag(call, 'extremes', ctx, evaluate);
@@ -175,9 +200,9 @@ export function plotStatement(given: CallExpr, ctx: EvalContext, evaluate: Evalu
   // Of the first curve over an interval: the area under it, its tangent at a point.
   const first = binder?.value.kind === 'range' && xs ? { body: call.args[0]!, name: binder.name, like: xs[0]! } : undefined;
   const xIn = (q: Quantity) => toDisplay(q, ctx.registry, xs?.[0]?.hint).value;
-  const area = first ? areaOf(call, first, yDim, ctx, evaluate, xIn, y, formulaOf) : undefined;
-  const tangent = first ? tangentOf(call, first, ctx, evaluate, xIn, y) : undefined;
-  const points = first ? pointsOf(call, first.like.dim, yDim, ctx, evaluate, xIn, y) : undefined;
+  const area = first ? optional('area', 'W-PLOT-NO-AREA', () => areaOf(call, first, yDim, ctx, evaluate, xIn, y, formulaOf)) : undefined;
+  const tangent = first ? optional('tangent', 'W-PLOT-NO-TANGENT', () => tangentOf(call, first, ctx, evaluate, xIn, y)) : undefined;
+  const points = first ? optional('points', 'W-PLOT-NO-POINTS', () => pointsOf(call, first.like.dim, yDim, ctx, evaluate, xIn, y)) : undefined;
   const labelText = option(call, 'labels', ctx, evaluate);
   const labelOffsets = labelText ? parseLabelOffsets(labelText) : undefined;
   // A point found by searching is exact to some 8 digits: shown at the precision the chart has (2,1·10⁻⁸ is 0).
@@ -299,7 +324,8 @@ function areaOf(call: CallExpr, curve: Curve, yDim: Dimension, ctx: EvalContext,
     for (let k = 0; k <= n; k++) {
       const x = { ...lo, si: lo.si + ((hi.si - lo.si) * k) / n };
       const v = evaluateAt(linked.args[0]!, binder.name, x, ctx, evaluate);
-      if (v.type !== 'quantity' || v.im || !sameDim(v.dim, yDim)) return fail('E-PLOT-AREA', arg.value.span, {});
+      if (v.type !== 'quantity' || !sameDim(v.dim, yDim)) return fail('E-PLOT-AREA', arg.value.span, {});
+      if (v.im || !Number.isFinite(v.si)) return fail('E-NOT-FINITE', arg.value.span);
       xs.push(xIn(x));
       ys.push(y(v));
     }
@@ -318,7 +344,8 @@ function areaOf(call: CallExpr, curve: Curve, yDim: Dimension, ctx: EvalContext,
   let sum = 0;
   for (let k = 0; k <= n; k++) {
     const v = evaluateAt(curve.body, curve.name, { ...curve.like, si: lo.si + k * h }, ctx, evaluate);
-    if (v.type !== 'quantity' || v.im) return fail('E-PLOT-AREA', r.span, {});
+    if (v.type !== 'quantity') return fail('E-PLOT-AREA', r.span, {});
+    if (v.im || !Number.isFinite(v.si)) return fail('E-NOT-FINITE', r.span);
     sum += v.si * (k === 0 || k === n ? 1 : k % 2 === 1 ? 4 : 2);
   }
   const integral = quantity((sum * h) / 3, multiplyDims(yDim, curve.like.dim));
@@ -329,7 +356,8 @@ function areaOf(call: CallExpr, curve: Curve, yDim: Dimension, ctx: EvalContext,
   for (let k = 0; k <= 800; k++) {
     const x = { ...curve.like, si: lo.si + ((hi.si - lo.si) * k) / 800 };
     const v = evaluateAt(curve.body, curve.name, x, ctx, evaluate);
-    if (v.type !== 'quantity' || v.im) return fail('E-PLOT-AREA', r.span, {});
+    if (v.type !== 'quantity') return fail('E-PLOT-AREA', r.span, {});
+    if (v.im || !Number.isFinite(v.si)) return fail('E-NOT-FINITE', r.span);
     xs.push(xIn(x));
     ys.push(y(v));
   }
@@ -402,6 +430,15 @@ function tidy(value: number, span: number): number {
   const decimals = Math.max(0, Math.min(15, -Math.floor(Math.log10(span * 1e-7))));
   const rounded = Number(value.toFixed(decimals));
   return rounded === 0 ? 0 : rounded;
+}
+
+/** Errors of how a part of a chart is written (not of its values): they stay errors. */
+const WRITTEN_WRONG: ReadonlySet<string> = new Set(['E-PLOT-YLIM', 'E-PLOT-POINTS', 'E-PLOT-AREA', 'E-PLOT-UNITS', 'E-UNIT-MISMATCH', 'E-TYPE']);
+
+/** An option of the call as written (area: x_2 .. x_1 gives "x_2 .. x_1"), short. */
+function source(call: CallExpr, name: string): string {
+  const v = call.named.find((n) => n.name === name)?.value;
+  return v?.kind === 'variable' ? v.name : v?.kind === 'range' && v.low.kind === 'variable' ? v.low.name : '';
 }
 
 /** A yes/no option (roots: true). */

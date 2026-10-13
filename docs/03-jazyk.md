@@ -338,6 +338,7 @@ plot(y(x), x: -4 .. 4, tangent: 3)                  ' tečna v x = 3: k = y′(3
 plot(y(x), x: -4 .. 4, labels: "s=10,-20")          ' popisky posunuté myší (zapisuje program)
 ```
 
+- **Graf mimo definiční obor svých částí (2026-10-13):** šrafování, body, tečna a rozsah osy y jsou nepovinné části grafu. Když některou nejde spočítat (posuvníkem do D < 0: kořeny nejsou reálné, plocha S mezi nimi neexistuje), graf ji vynechá s varováním (`W-PLOT-NO-AREA` …) a kreslí dál křivku, vrchol i tečnu; jakmile to jde, ukáže ji zase. Rozsah osy y, který by křivku skryl (méně než 5 % bodů v něm), se dočasně nepoužije (`W-PLOT-YLIM-HIDES`). Chybou zůstává jen špatně zapsaná část (`area: 1`). Kořeny x_1, x_2, které nejsou reálné, existují bez hodnoty: řádky s nimi se nespočítají, ale nejsou chybou.
 - **Graf smí stát kdekoli (2026-10-13):** i nad tím, co kreslí (třeba hned pod vstupy s posuvníky); takový graf se nakreslí, až je spočtený celý list. `area: S` a `points: V` tam znamenají jména listu, i když zní jako jednotka (siemens, volt).
 - **Graf je samostatný řádek** `plot(…)` (jako v Mathcadu a SMath oblast grafu, zápisem blíž Calcpadu `$Plot`). Přepočítá se s výpočtem; do proměnné ani do výrazu ho přiřadit nejde (`E-PLOT-PLACE`).
 - **Proměnná je vlastní** jako u integrálu: `x` v `plot(M(x), x: 0 m .. L)` nečte `x` listu, a jméno se pozná, i když zní jako jednotka (`t`).

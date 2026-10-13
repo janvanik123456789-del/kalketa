@@ -164,6 +164,8 @@ function createWindow(options: { blank?: boolean } = {}): BrowserWindow {
       sandbox: true,
       nodeIntegration: false,
       spellcheck: false,
+      // The smoke test drives a hidden window: it is to take its input as a shown one does, move by move.
+      ...(smokeTest ? { backgroundThrottling: false } : {}),
     },
   });
   const contentsId = win.webContents.id;
@@ -468,7 +470,7 @@ async function runSmokeTest(pdfPath: string): Promise<void> {
     await writeFile(pdfPath, pdf);
     ok =
       state.bridge && state.sideBySide && state.menus === 8 && state.toolbars > 0 && state.rows > 10 && state.summary > 0 && state.math > 0 && reshapedColumns === 3 && pdf.length > 1000 &&
-      layers.deflection && layers.pickTaken.column.startsWith('→') && /mm|cm/.test(layers.pickTaken.text) && layers.newKeepsExample && layers.samplesOk && layers.derivations && layers.summaryOk && layers.definitionAtCursor && layers.sheetGridOk && layers.tableEnter && layers.solvedByFormula && layers.rootsAndExtremes && layers.wordPrinted && layers.wordColored && layers.paletteColored && layers.wordText.focused && layers.wordText.pane && layers.wordText.bold === 'dynamiky' && !layers.wordText.shown.includes('"') && layers.wordText.align === 'center' && layers.cellMarked === 'Síla na konci' && layers.cellFont.startsWith('Arial') && layers.cellDeleted && layers.paperRoots && layers.tableRowAdded && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.notesPicture === 'FIGURE+img BLOCKQUOTE' && layers.notesPlaced === 'narrower centred' && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.charts && layers.functionBar && layers.revisions && layers.roots && layers.toolIcons && layers.aiSettings && layers.aiChat && layers.pdfCleanup && layers.theoryLibrary && layers.study && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
+      layers.deflection && layers.pickTaken.column.startsWith('→') && /mm|cm/.test(layers.pickTaken.text) && layers.newKeepsExample && layers.samplesOk && layers.derivations && layers.summaryOk && layers.definitionAtCursor && layers.sheetGridOk && layers.tableEnter && layers.solvedByFormula && layers.rootsAndExtremes && layers.userChart.ok && layers.wordPrinted && layers.wordColored && layers.paletteColored && layers.wordText.focused && layers.wordText.pane && layers.wordText.bold === 'dynamiky' && !layers.wordText.shown.includes('"') && layers.wordText.align === 'center' && layers.cellMarked === 'Síla na konci' && layers.cellFont.startsWith('Arial') && layers.cellDeleted && layers.paperRoots && layers.tableRowAdded && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.notesPicture === 'FIGURE+img BLOCKQUOTE' && layers.notesPlaced === 'narrower centred' && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.charts && layers.functionBar && layers.revisions && layers.roots && layers.toolIcons && layers.aiSettings && layers.aiChat && layers.pdfCleanup && layers.theoryLibrary && layers.study && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
     console.log(JSON.stringify({ ok, ...state, reshapedColumns, layers, pdfBytes: pdf.length }));
   } catch (err) {
     console.log(JSON.stringify({ ok: false, error: (err as Error).message, console: smokeConsole.slice(-5) }));
@@ -1513,17 +1515,36 @@ async function layersWithRealInput(picture: string) {
     const tangentText = `(document.querySelector('.layer-view.active .block.chart text[data-label="t"]')?.textContent ?? '').replace(/\\s+/g, '')`;
     const tangentBefore = (await contents.executeJavaScript(tangentText)) as string;
     const handle = (await contents.executeJavaScript(`(() => { const r = document.querySelector('.layer-view.active .block.chart .chart-tangent-handle')?.getBoundingClientRect(); return r ? { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) } : undefined; })()`)) as { x: number; y: number } | undefined;
+    let dragTarget = -1;
     if (handle) {
       contents.sendInputEvent({ type: 'mouseDown', x: handle.x, y: handle.y, button: 'left', clickCount: 1 });
       // Off the curve on purpose, down and to the left: the point stays on the curve, inside the chart.
-      for (let step = 1; step <= 8; step++) {
-        contents.sendInputEvent({ type: 'mouseMove', x: handle.x - step * 12, y: handle.y + step * 25, button: 'left' } as Electron.MouseInputEvent);
-        await pause(60);
+      // Along the curve to a place of it 90 px to the left, the pointer a little below the curve (as a hand
+      // never quite holds the line), at a person's pace: the chart is drawn anew between the moves.
+      const target = (await contents.executeJavaScript(`(() => {
+        const curve = document.querySelector('.layer-view.active .block.chart svg.chart-svg .chart-data path');
+        const m = curve.getScreenCTM();
+        const len = curve.getTotalLength();
+        let best;
+        for (let i = 0; i <= 600; i++) {
+          const p = curve.getPointAtLength((len * i) / 600);
+          const x = m.a * p.x + m.c * p.y + m.e, y = m.b * p.x + m.d * p.y + m.f;
+          if (!best || Math.abs(x - (${handle.x} - 90)) < Math.abs(best.x - (${handle.x} - 90))) best = { x, y };
+        }
+        return { x: Math.round(best.x), y: Math.round(best.y) };
+      })()`)) as { x: number; y: number };
+      for (let step = 1; step <= 12; step++) {
+        contents.sendInputEvent({ type: 'mouseMove', x: Math.round(handle.x + ((target.x - handle.x) * step) / 12), y: Math.round(handle.y + ((target.y + 12 - handle.y) * step) / 12), button: 'left', modifiers: ['leftbuttondown'] } as Electron.MouseInputEvent);
+        await pause(180);
       }
-      contents.sendInputEvent({ type: 'mouseUp', x: handle.x - 96, y: handle.y + 200, button: 'left', clickCount: 1 });
+      contents.sendInputEvent({ type: 'mouseUp', x: target.x, y: target.y + 12, button: 'left', clickCount: 1 });
+      dragTarget = target.x;
       await pause(600);
     }
     const tangentAfter = (await contents.executeJavaScript(tangentText)) as string;
+    // Where the point ended: near the pointer (along the curve), not run off to an end of the curve.
+    const handleEnd = (await contents.executeJavaScript(`(() => { const r = document.querySelector('.layer-view.active .block.chart .chart-tangent-handle')?.getBoundingClientRect(); return r ? Math.round(r.left + r.width / 2) : -1; })()`)) as number;
+    const nearPointer = dragTarget > 0 && handleEnd > 0 && Math.abs(handleEnd - dragTarget) < 12;
     // The point after the drag: inside the plot and on the curve (no farther from the curve than a few pixels).
     const tangentOnCurve = (await contents.executeJavaScript(`(() => {
       const svg = document.querySelector('.layer-view.active .block.chart svg.chart-svg');
@@ -1535,7 +1556,7 @@ async function layersWithRealInput(picture: string) {
       let d = Infinity;
       for (let i = 0; i <= 400; i++) { const p = curve.getPointAtLength((len * i) / 400); d = Math.min(d, Math.hypot(p.x - cx, p.y - cy)); }
       const box = svg.viewBox.baseVal;
-      return d < 3 && cx > 0 && cx < box.width && cy > 0 && cy < box.height;
+      return d < 3 && cx > 0 && cx < box.width && cy > 0 && cy < box.height && !svg.closest('.row').classList.contains('has-error');
     })()`)) as boolean;
     // A label moved off the curve by the mouse stays where it was put (written into the line).
     const areaLabel = `(() => { const r = document.querySelector('.layer-view.active .block.chart text[data-label="s"]')?.getBoundingClientRect(); return r ? { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) } : undefined; })()`;
@@ -1551,10 +1572,10 @@ async function layersWithRealInput(picture: string) {
     }
     const labelNow = (await contents.executeJavaScript(areaLabel)) as { x: number; y: number } | undefined;
     const labelMoved = !!labelAt && !!labelNow && labelNow.y - labelAt.y > 15 && !!(await contents.executeJavaScript(`!!document.querySelector('.layer-view.active .block.chart .chart-label-lead')`));
-    const chartTools = chartArea === 'S=64' && /^k=/.test(tangentBefore) && tangentAfter !== tangentBefore && /α=/.test(tangentAfter) && tangentOnCurve && labelMoved;
+    const chartTools = chartArea === 'S=64' && /^k=/.test(tangentBefore) && tangentAfter !== tangentBefore && /α=/.test(tangentAfter) && tangentOnCurve && nearPointer && labelMoved;
     await takePicture(picture.replace(/[.]png$/, '-chartroots.png'));
     chartPlaced = placed && restored && yRanged && yAuto && chartRoots.length > 0 && chartRoots.every((t) => /^x=[−-]?[\d,]+$/.test(t)) && chartAxis === 'x=2' && chartVertex === '[2;24]' && chartTools;
-    chartSteps = `framed=${chartFramed} placed=${placed} restored=${restored} yRange=${yRanged} yAuto=${yAuto} roots=${chartRoots.join(' ')} axis=${chartAxis} vertex=${chartVertex} area=${chartArea} tangent=${tangentBefore}->${tangentAfter} onCurve=${tangentOnCurve} labelMoved=${labelMoved}`;
+    chartSteps = `framed=${chartFramed} placed=${placed} restored=${restored} yRange=${yRanged} yAuto=${yAuto} roots=${chartRoots.join(' ')} axis=${chartAxis} vertex=${chartVertex} area=${chartArea} tangent=${tangentBefore}->${tangentAfter} onCurve=${tangentOnCurve} near=${nearPointer} end=${handleEnd} target=${dragTarget} start=${handle?.x} labelMoved=${labelMoved}`;
   }
   const charts = !!chartBox && chartBox.paths > 0 && /^x = [\d,]+ \| Mt\(x\) = /.test(chartTip) && chartPlaced;
 
@@ -2195,7 +2216,71 @@ async function layersWithRealInput(picture: string) {
     blocksOk = shown.errors === 0 && shown.text.includes('Prosty nosnik 1.2') && shown.text.includes('45');
     await takePicture(picture.replace(/[.]png$/, '-blocks.png'));
   }
-  return { ...state, pickTaken, deflection, derivations, summaryOk, summaryOpens, summaryAtEnd, bookStyle, verdictFuture, verdictBack, pageHead, definitionAtCursor, solveFormatted, sheetGridOk, sheetGrid, tableEnter, tableEnterAt, lastRowEnter, draggedRows, selectedAll, bothFormatted, roundedOn, equationNumber, solvedByFormula, rootsAndExtremes, wordText, wordColored, paletteColored, wordPrinted, cellMarked, cellFont, cellDeleted, paperRoots, tableRowAdded, chartSteps, samplesOk, sampleTab, newKeepsExample, citations, notesPicture, notesPlaced, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, toolIcons, aiSettings, aiChat, pdfCleanup, theoryLibrary, study, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, placedFree, strictPlaced, canvasOk, besideText, pictures, blocksOk };
+  // A sheet as a person built it: a parabola with its y axis set, labels moved, the integral named below the
+  // chart. Opened as a file; the hatch follows the named integral, the tangent is dragged along the curve.
+  const quadraticPath = join(tmpdir(), `kalketa-smoke-quadratic-${process.pid}.cc`);
+  await writeFile(quadraticPath, [
+    '# Kvadratická rovnice',
+    'a := -2',
+    'b := 2',
+    'c := 10',
+    'y(x) := a·x^2 + b·x + c',
+    '',
+    'solve x ∈ ℝ, x > 0: a·x^2 + b·x + c == 0',
+    'plot(y(x), x: -10 .. 10, place: "width=100% ratio=0.58", roots: true, ylim: -50 .. 20, symmetry: true, extremes: true, labels: "r0.1=34,2 r0.0=-35,2 e0.0=16,0", area: Integral1)',
+    '',
+    'solve x_v: y′(x_v) == 0',
+    'y_v := y(x_v)',
+    '"Plocha omezená křivkou a osou x"',
+    'integral(y(x), x: -1 .. 2) {eq=Integral1}',
+  ].join('\n'));
+  await sendOpen(quadraticPath);
+  await pause(1500);
+  const quadChart = '.layer-view.active .block.chart svg.chart-svg';
+  const namedArea = (await contents.executeJavaScript(`(document.querySelector('${quadChart} text[data-label="s"]')?.textContent ?? '').replace(/\\s+/g, '')`)) as string;
+  await clickOn(quadChart, [], 'right');
+  await clickMenu('Tečna s úhlem');
+  await pause(600);
+  // The chart's line closed, as after a click beside the page: its row is then drawn anew with each change.
+  const besideQuad = (await contents.executeJavaScript(`(() => { const p = document.querySelector('${quadChart}').closest('.page').getBoundingClientRect(); return { x: Math.round(p.left - 30), y: Math.round(p.top + 100) }; })()`)) as { x: number; y: number };
+  contents.sendInputEvent({ type: 'mouseDown', ...besideQuad, button: 'left', clickCount: 1 });
+  contents.sendInputEvent({ type: 'mouseUp', ...besideQuad, button: 'left', clickCount: 1 });
+  await pause(500);
+  const quadEditing = (await contents.executeJavaScript(`!!document.querySelector('${quadChart}').closest('.row.editing')`)) as boolean;
+  const quadHandle = (await contents.executeJavaScript(`(() => { const r = document.querySelector('${quadChart} .chart-tangent-handle')?.getBoundingClientRect(); return r ? { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) } : undefined; })()`)) as { x: number; y: number } | undefined;
+  let quadTarget = -1;
+  if (quadHandle) {
+    const target = (await contents.executeJavaScript(`(() => {
+      const curve = document.querySelector('${quadChart} .chart-data path');
+      const m = curve.getScreenCTM();
+      const len = curve.getTotalLength();
+      const plot = document.querySelector('${quadChart}').getBoundingClientRect();
+      let best;
+      for (let i = 0; i <= 800; i++) {
+        const p = curve.getPointAtLength((len * i) / 800);
+        const x = m.a * p.x + m.c * p.y + m.e, y = m.b * p.x + m.d * p.y + m.f;
+        // A visible place of the curve some 150 px left of the point.
+        if (y < plot.top + 20 || y > plot.bottom - 40) continue;
+        if (!best || Math.abs(x - (${quadHandle.x} - 150)) < Math.abs(best.x - (${quadHandle.x} - 150))) best = { x, y };
+      }
+      return best ? { x: Math.round(best.x), y: Math.round(best.y) } : undefined;
+    })()`)) as { x: number; y: number } | undefined;
+    if (target) {
+      contents.sendInputEvent({ type: 'mouseDown', x: quadHandle.x, y: quadHandle.y, button: 'left', clickCount: 1 });
+      for (let step = 1; step <= 15; step++) {
+        // With the button held, as a hand drags: every move comes through, the chart drawn anew in between.
+        contents.sendInputEvent({ type: 'mouseMove', x: Math.round(quadHandle.x + ((target.x - quadHandle.x) * step) / 15), y: Math.round(quadHandle.y + ((target.y + 10 - quadHandle.y) * step) / 15), button: 'left', modifiers: ['leftbuttondown'] } as Electron.MouseInputEvent);
+        await pause(200);
+      }
+      contents.sendInputEvent({ type: 'mouseUp', x: target.x, y: target.y + 10, button: 'left', clickCount: 1 });
+      await pause(700);
+      quadTarget = target.x;
+    }
+  }
+  const quadEnd = (await contents.executeJavaScript(`(() => { const r = document.querySelector('${quadChart} .chart-tangent-handle')?.getBoundingClientRect(); return r ? Math.round(r.left + r.width / 2) : -1; })()`)) as number;
+  const quadOk = (await contents.executeJavaScript(`!!document.querySelector('${quadChart}') && !document.querySelector('${quadChart}').closest('.row').classList.contains('has-error')`)) as boolean;
+  const userChart = { namedArea, quadOk, quadTarget, quadEnd, quadEditing, ok: namedArea === 'Integral1=27' && quadOk && quadTarget > 0 && Math.abs(quadEnd - quadTarget) < 12 };
+  return { ...state, pickTaken, deflection, derivations, summaryOk, summaryOpens, summaryAtEnd, bookStyle, verdictFuture, verdictBack, pageHead, definitionAtCursor, solveFormatted, sheetGridOk, sheetGrid, tableEnter, tableEnterAt, lastRowEnter, draggedRows, selectedAll, bothFormatted, roundedOn, equationNumber, solvedByFormula, rootsAndExtremes, wordText, wordColored, paletteColored, wordPrinted, cellMarked, cellFont, cellDeleted, paperRoots, tableRowAdded, chartSteps, samplesOk, sampleTab, newKeepsExample, citations, notesPicture, notesPlaced, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, toolIcons, aiSettings, aiChat, pdfCleanup, theoryLibrary, study, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, placedFree, strictPlaced, canvasOk, besideText, pictures, blocksOk, userChart };
 }
 
 /** The tidied sources saved as a library (.kalkt) and attached in the chat: the model cites it by its key. */

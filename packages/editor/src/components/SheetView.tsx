@@ -4,7 +4,7 @@
  * every keystroke.
  */
 
-import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { formatExpr, formatPicture, fromDecimalComma, parsePicture, TEXT_ALIGNS, TEXT_COLORS, toDecimalComma, type SheetResult, type Statement } from '@kalketa/core';
 import { formatDate, formatNumber, t, type Catalog, type UiKey } from '@kalketa/i18n';
 import { labelParts, xPosition, xValueAt, yPosition } from '@kalketa/chart';
@@ -15,6 +15,7 @@ import { segments, type Segment } from '../logic/segments.js';
 import { lineAttributesOf, lineFormatOf, withLineAttribute, withLineAttributes, withLineFormat, type LineFormatChoice } from '../logic/lineFormat.js';
 import { defineShortcut } from '../logic/shortcuts.js';
 import { pickOf } from '../logic/pick.js';
+import { nearestOnCurve } from '../logic/chartPoint.js';
 import { placeable, plotFlag, plotOption, plotShowsRoots, plotYRange, withPlotFlag, withPlotOption, withPlotRoots, withPlotYRange } from '../logic/placement.js';
 import { PickControl } from './PickControl.js';
 import { TextRowEditor, type TextFormat } from './TextRowEditor.js';
@@ -290,8 +291,8 @@ export function SheetView(props: Props) {
       window.removeEventListener('mousemove', move);
       window.removeEventListener('mouseup', up);
     };
-    window.addEventListener('mousemove', move);
-    window.addEventListener('mouseup', up);
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
   };
   const blockByLine = new Map<number, PrintBlock>();
   for (const block of print.blocks) if ('line' in block) blockByLine.set(block.line, block);
@@ -644,12 +645,15 @@ export function SheetView(props: Props) {
     const roots = chart?.spec.series[0]?.roots;
     const suggested = area ?? (roots && roots.length >= 2 ? `${writtenNumber(roots[0]!)} .. ${writtenNumber(roots[roots.length - 1]!)}` : '');
     const shown = (text: string) => (props.decimalComma ? toDecimalComma(text) : text);
-    // The integrals of the sheet (S := integral(…), also abs(integral(…))): the hatch takes their bounds, name and value.
+    // The integrals of the sheet (S := integral(…), abs(integral(…)), a formula named {eq=Integral1}), above the chart
+    // or below it: the hatch takes their bounds, name and value.
     const integrals = result.statements.flatMap((r) => {
       const st = r.statement;
-      if (st.kind !== 'definition' || st.params || st.span.line > seg.start) return [];
-      const text = result.source.slice(st.span.offset, st.span.offset + st.span.length);
-      return /\bintegral\s*\(/.test(text) ? [{ name: st.name, text: text.replace(/\s+/g, ' ').trim() }] : [];
+      const eq = typeof st.format?.eq === 'string' ? st.format.eq : undefined;
+      const name = st.kind === 'definition' && !st.params ? st.name : st.kind === 'display' ? eq : undefined;
+      if (!name) return [];
+      const text = result.source.slice(st.span.offset, st.span.offset + st.span.length).replace(/\s*\{[^{}]*\}\s*$/, '');
+      return /\bintegral\s*\(/.test(text) ? [{ name, text: (st.kind === 'display' ? `${name}: ${text}` : text).replace(/\s+/g, ' ').trim() }] : [];
     });
     const askBounds = () =>
       void ask(t(c, 'chart.areaAsk'), shown(area && area.includes('..') ? area : suggested)).then((answer) => {
@@ -1166,29 +1170,6 @@ function chartX(chart: Extract<PrintBlock, { kind: 'chart' }>, x: number): strin
   return chart.xUnit ? `${n} ${chart.xUnit}` : n;
 }
 
-/**
- * The x of the place of the first curve nearest a point of the chart (in its units), over the
- * part of the curve inside the plot: the point of the tangent follows the curve, not the pointer.
- */
-function nearestOnCurve(chart: Extract<PrintBlock, { kind: 'chart' }>, px: number, py: number): number | undefined {
-  const s = chart.spec.series[0];
-  if (!s) return undefined;
-  const { layout } = chart;
-  const inside = (y: number) => Number.isFinite(y) && y >= layout.y.min && y <= layout.y.max;
-  let best: { x: number; d: number } | undefined;
-  for (let j = 0; j + 1 < s.xs.length; j++) {
-    const [y1, y2] = [s.ys[j]!, s.ys[j + 1]!];
-    if (!inside(y1) || !inside(y2)) continue;
-    const [ax, ay, bx, by] = [xPosition(layout, s.xs[j]!), yPosition(layout, y1), xPosition(layout, s.xs[j + 1]!), yPosition(layout, y2)];
-    // The pointer projected onto this piece of the curve.
-    const len = (bx - ax) ** 2 + (by - ay) ** 2;
-    const t = len > 0 ? Math.min(1, Math.max(0, ((px - ax) * (bx - ax) + (py - ay) * (by - ay)) / len)) : 0;
-    const d = Math.hypot(ax + t * (bx - ax) - px, ay + t * (by - ay) - py);
-    if (!best || d < best.d) best = { x: s.xs[j]! + t * (s.xs[j + 1]! - s.xs[j]!), d };
-  }
-  return best?.x;
-}
-
 function ChartBlock({ block, catalog, onResize, onOption }: { block: Extract<PrintBlock, { kind: 'chart' }>; catalog: Catalog; onResize(width: number, ratio?: number): void; onOption(name: string, value: string | undefined): void }) {
   const [hover, setHover] = useState<{ left: number; top: number; height: number; lines: string[] } | undefined>();
   const [dragged, setDragged] = useState<number | undefined>();
@@ -1223,16 +1204,39 @@ function ChartBlock({ block, catalog, onResize, onOption }: { block: Extract<Pri
     });
   };
   // The point of the tangent dragged along the curve; a label dragged off it. Both written into the line.
-  const startDrag = (e: ReactMouseEvent<HTMLDivElement>) => {
+  const startDrag = (e: ReactPointerEvent<HTMLDivElement>) => {
     const target = e.target as Element;
     const handle = target.closest?.('[data-chart-drag="tangent"]');
     const labelEl = target.closest?.('[data-label]');
     if (!handle && !labelEl) return;
+    // No mousedown follows (the row would take the chart to move it), and the pointer is held by the page:
+    // the chart is drawn anew as the point moves, and the element pressed is gone, yet the moves still come.
     e.preventDefault();
     e.stopPropagation();
-    const svg = e.currentTarget.querySelector('svg.chart-svg');
-    if (!svg) return;
-    const unit = () => svg.getBoundingClientRect().width / block.layout.width;
+    const pointer = e.pointerId;
+    const holder = document.documentElement;
+    try {
+      holder.setPointerCapture(pointer);
+    } catch {
+      // Without capture the moves come to the window as long as the element stays.
+    }
+    const release = () => {
+      try {
+        holder.releasePointerCapture(pointer);
+      } catch {
+        // Released already.
+      }
+    };
+    // The chart is drawn anew as the line changes: its picture is looked up at every move, never kept
+    // (an old one, taken out of the page, measures 0 × 0 and every position on it is wrong).
+    // Found by its line in the page as it is now: the chart may move to another page and be made anew.
+    // The same chart while it stays in the page; made anew (on another page), found again by its line in the same layer.
+    const view = e.currentTarget;
+    const layer = view.closest('.layer-view');
+    const chartSvg = () =>
+      view.isConnected ? view.querySelector('svg.chart-svg') : (layer?.isConnected ? layer : document).querySelector(`.row[data-line="${block.line}"] svg.chart-svg`);
+    if (!chartSvg()) return;
+    const unit = () => (chartSvg()?.getBoundingClientRect().width ?? 0) / block.layout.width;
     if (handle) {
       // Written as it moves, a few times a second (each write recalculates the chart), and where it stops.
       let timer: ReturnType<typeof setTimeout> | undefined;
@@ -1243,10 +1247,12 @@ function ChartBlock({ block, catalog, onResize, onOption }: { block: Extract<Pri
         if (pending !== undefined) onOption('tangent', pending);
         pending = undefined;
       };
-      const move = (ev: MouseEvent) => {
-        const box = svg.getBoundingClientRect();
-        const x = nearestOnCurve(block, (ev.clientX - box.left) / unit(), (ev.clientY - box.top) / unit());
-        if (x === undefined) return;
+      const move = (ev: PointerEvent) => {
+        const box = chartSvg()?.getBoundingClientRect();
+        const u = unit();
+        if (!box || !(u > 0)) return;
+        const x = nearestOnCurve(block, (ev.clientX - box.left) / u, (ev.clientY - box.top) / u);
+        if (x === undefined || !Number.isFinite(x)) return;
         const value = chartX(block, x);
         if (value === last) return;
         last = value;
@@ -1254,26 +1260,30 @@ function ChartBlock({ block, catalog, onResize, onOption }: { block: Extract<Pri
         timer ??= setTimeout(flush, 60);
       };
       const up = () => {
-        window.removeEventListener('mousemove', move);
-        window.removeEventListener('mouseup', up);
+        window.removeEventListener('pointermove', move);
+        window.removeEventListener('pointerup', up);
+        release();
         if (timer) clearTimeout(timer);
         flush();
       };
-      window.addEventListener('mousemove', move);
-      window.addEventListener('mouseup', up);
+      window.addEventListener('pointermove', move);
+      window.addEventListener('pointerup', up);
       return;
     }
     const key = labelEl!.getAttribute('data-label')!;
     const [ox, oy] = block.spec.labelOffsets?.[key] ?? [0, 0];
     const start = { x: e.clientX, y: e.clientY };
     let delta = [0, 0];
-    const move = (ev: MouseEvent) => {
-      delta = [(ev.clientX - start.x) / unit(), (ev.clientY - start.y) / unit()];
+    const move = (ev: PointerEvent) => {
+      const u = unit();
+      if (!(u > 0)) return;
+      delta = [(ev.clientX - start.x) / u, (ev.clientY - start.y) / u];
       labelEl!.setAttribute('transform', `translate(${delta[0]} ${delta[1]})`);
     };
     const up = () => {
-      window.removeEventListener('mousemove', move);
-      window.removeEventListener('mouseup', up);
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      release();
       if (Math.hypot(delta[0]!, delta[1]!) < 2) return;
       const offsets = { ...(block.spec.labelOffsets ?? {}), [key]: [Math.round(ox + delta[0]!), Math.round(oy + delta[1]!)] as const };
       const text = Object.entries(offsets)
@@ -1282,15 +1292,15 @@ function ChartBlock({ block, catalog, onResize, onOption }: { block: Extract<Pri
         .join(' ');
       onOption('labels', text ? `"${text}"` : undefined);
     };
-    window.addEventListener('mousemove', move);
-    window.addEventListener('mouseup', up);
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
   };
   return (
     <div
       ref={view}
       className={`chart-view${block.align && !block.wrap ? ` align-${block.align}` : ''}`}
       style={width !== undefined ? { width: `${width}%` } : undefined}
-      onMouseDownCapture={startDrag}
+      onPointerDownCapture={startDrag}
       onMouseMove={read}
       onMouseLeave={() => setHover(undefined)}
     >

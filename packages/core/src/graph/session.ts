@@ -176,6 +176,15 @@ export class SheetSession {
       for (const name of names) if (!definedAt.has(name)) definedAt.set(name, i);
     });
 
+    // The formulas a chart may hatch by their name (area: P, area: Integral1), wherever they stand in the
+    // sheet: a chart above its integral still finds it. Their text is part of what such a chart means.
+    const namedFormulas = new Map<string, { expr: Expr; text: string }>();
+    for (const s of statements) {
+      const text = source.slice(s.span.offset, s.span.offset + s.span.length);
+      if (s.kind === 'definition' && !s.params && !s.input) namedFormulas.set(s.name, { expr: s.expr, text });
+      if (typeof s.format?.eq === 'string' && (s.kind === 'display' || s.kind === 'definition')) namedFormulas.set(`#${s.format.eq}`, { expr: s.expr, text });
+    }
+    context.namedFormulas = namedFormulas;
     const env = context.env;
     const results: StatementResult[] = [];
     const nextCache = new Map<string, CacheEntry>();
@@ -290,7 +299,11 @@ export class SheetSession {
         source.slice(statement.span.offset, statement.span.offset + statement.span.length) +
         (given ? `\u0000${fingerprint(given)}` : '') +
         (unitsKey ? `\u0000${unitsKey}` : '') +
-        (statement.format?.rounded ? `\u0000${JSON.stringify(statement.format)}` : '');
+        (statement.format?.rounded ? `\u0000${JSON.stringify(statement.format)}` : '') +
+        // A chart hatching a formula by its name: that formula's text too (it may stand below the chart).
+        (statement.kind === 'display' && /\barea\s*:\s*[\p{L}_]/u.test(source.slice(statement.span.offset, statement.span.offset + statement.span.length))
+          ? `\u0000${[...namedFormulas.values()].map((f) => f.text).join('\u0001')}`
+          : '');
       const cached = this.cache.get(key);
       let result: PartialResult;
       // Results with diagnostics are not reused: their spans point into the old source.
@@ -307,6 +320,13 @@ export class SheetSession {
         result,
       });
 
+      // A line named for references ({eq=Integral1}) is reachable by that name too, as #Integral1:
+      // its formula and value (a chart hatches the area of the integral so named).
+      const eqName = typeof statement.format?.eq === 'string' ? statement.format.eq : undefined;
+      if (eqName && (statement.kind === 'display' || statement.kind === 'definition')) {
+        env.set(`#${eqName}`, result.status === 'ok' && result.value ? { ok: true, value: result.value } : { ok: false });
+        context.formulas.set(`#${eqName}`, statement.expr);
+      }
       if (statement.kind === 'definition') {
         env.set(statement.name, result.status === 'ok' && result.value ? { ok: true, value: result.value } : { ok: false });
         // A derivation ending in numbers (M := q·L²/8 == … == 37.5 kN·m) stands for its general formula, the first member.
@@ -537,7 +557,7 @@ export class SheetSession {
 
       if (statement.kind === 'display' && isPlotCall(statement.expr)) {
         const target = statement.target ? resolveUnit(statement.target, context.registry) : undefined;
-        const plot = plotStatement(statement.expr, ctx, evaluate, target, (name) => context.formulas.get(name));
+        const plot = plotStatement(statement.expr, ctx, evaluate, target, (name) => context.formulas.get(name) ?? context.namedFormulas?.get(name)?.expr);
         return { status: 'ok', plot, dependencies, tableReads, diagnostics: ctx.warnings };
       }
 
@@ -766,6 +786,8 @@ interface StatementContext {
   readonly dimensions: Set<string>;
   /** Formulas of the names calculated so far, for checking derivations. */
   readonly formulas: Map<string, Expr>;
+  /** Every formula of the sheet by its name (P, #Integral1 for {eq=Integral1}), wherever it stands. */
+  namedFormulas?: ReadonlyMap<string, { readonly expr: Expr; readonly text: string }>;
 }
 
 /** Base dimensions of SI: a sheet's own dimension cannot take their names. */

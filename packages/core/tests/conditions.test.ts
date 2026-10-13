@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { evaluateSheet, type Quantity } from '../src/index.js';
+import { evaluateSheet, SheetSession, type Quantity } from '../src/index.js';
 
 const coefficients = (c: number) => `a := 5\nb := 4\nc := ${c}\n`;
 
@@ -128,5 +128,17 @@ describe('the hatch linked to an integral of the sheet', () => {
     expect(a.ys![60]).toBeCloseTo(-5, 9);
     // A name that is no integral: said so.
     expect(evaluateSheet('q := 3\nplot(x^2, x: 0 .. 1, area: q)').diagnostics.map((d) => d.code)).toContain('E-PLOT-AREA');
+  });
+});
+
+describe('the hatch linked to a formula by its name', () => {
+  it('finds an integral named {eq=Integral1} below the chart, and follows a change of it', () => {
+    const sheet = (bounds: string) => `y(x) := -2·x^2 + 2·x + 10\nplot(y(x), x: -10 .. 10, ylim: -50 .. 20, area: Integral1)\nintegral(y(x), x: ${bounds}) {eq=Integral1}`;
+    const session = new SheetSession();
+    const first = session.update(sheet('-1 .. 2'));
+    expect(first.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+    expect(first.statements[1]!.plot!.area).toMatchObject({ name: 'Integral1', value: 27, from: -1, to: 2 });
+    // The integral changed below the chart: the chart is calculated anew, not taken from before.
+    expect(session.update(sheet('0 .. 2')).statements[1]!.plot!.area).toMatchObject({ from: 0, to: 2 });
   });
 });

@@ -86,3 +86,12 @@ Když něco spadne, ztrácí data nebo nejde dál testovat, napište to hned, ne
    **Vyřízeno 2026-10-13:**
    - **Šrafování podle integrálu:** pravé tlačítko na grafu → „Vyšrafovat plochu pod křivkou“ → „podle P := abs(integral(…))“. Nabídka ukáže integrály listu nad grafem. Šrafování převezme jejich meze i funkci pod integrálem a napíše jméno a hodnotu z listu (`P = 14,91`). Když se integrál změní, změní se i šrafování. V zápisu `area: P`.
    - **Tečna:** bod jde vždy na místo křivky nejbližší ukazateli, i když myš z křivky sjede, a zůstává ve viditelné části grafu (i s `ylim`). Tečna se zapne rovnou na viditelné části křivky.
+
+21. ~~Šrafování propojit podle pojmenování vzorce. Tečna při manipulaci ujíždí a graf spadne s neznámou chybou (soubor `Kvadraticke_rovnice.kalk`).~~
+   **Vyřízeno 2026-10-13:**
+   - **Podle jména vzorce:** `integral(y(x), x: -1 .. 2) {eq=Integral1}` a v grafu `area: Integral1`. Nabídka šrafování vzorec nabídne jako „podle Integral1: integral(…)“. Integrál může stát i pod grafem, šrafování převezme jeho meze a hodnotu (`Integral1 = 27`).
+   - **Příčina pádu:** při tažení se graf po každém zápisu znovu vykreslí. Prohlížeč pak posílal další pohyby myši zmizelému prvku, takže bod přestal sledovat myš. Program navíc měřil zmizelý obrázek grafu s rozměry 0 × 0 a zapsal `tangent: NaN`, na kterém graf spadl.
+   - **Oprava:** tah drží ukazatel na celé stránce, graf se pro každý pohyb hledá znovu a neplatné číslo se nikdy nezapíše.
+   - **Tečna:** bod stojí na křivce ve stejném x jako myš, takže nepřeskakuje mezi větvemi úzké paraboly. Kde je křivka mimo rozsah osy y, zůstane na nejbližším viditelném místě.
+   - **Smoke test:** dřív posílal pohyby myši tak, že dorazil jen poslední, a proto chybu nezachytil. Teď táhne krok za krokem a na starém kódu chybu ukáže.
+   - **Ve vašem souboru** zůstalo na řádku grafu `tangent: NaN`: smažte ho, nebo zapněte tečnu znovu z nabídky.

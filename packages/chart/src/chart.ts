@@ -440,7 +440,9 @@ function areaMarks(spec: ChartSpec, layout: ChartLayout, format: (value: number)
 /** The tangent of the first curve at its point: a line across the plot, the point to drag, k = y′ and α from the x axis. */
 function tangentMarks(spec: ChartSpec, layout: ChartLayout, format: (value: number) => string): string {
   const t = spec.tangent;
-  if (!t || t.x < layout.x.min || t.x > layout.x.max) return '';
+  if (!t || !Number.isFinite(t.x) || !Number.isFinite(t.y) || t.x < layout.x.min || t.x > layout.x.max) return '';
+  // Its point beyond the y axis set by hand: the line only, cut off at the plot (no point to drag outside the chart).
+  const shown = t.y >= layout.y.min && t.y <= layout.y.max;
   const { plot } = layout;
   const ends = [layout.x.min, layout.x.max].map((x) => [xPosition(layout, x), yPosition(layout, t.y + t.slope * (x - t.x))] as const);
   const [px, py] = [xPosition(layout, t.x), yPosition(layout, t.y)];
@@ -450,6 +452,7 @@ function tangentMarks(spec: ChartSpec, layout: ChartLayout, format: (value: numb
   const handle = `<circle class="chart-tangent-handle" data-chart-drag="tangent" cx="${r(px)}" cy="${r(py)}" r="6" fill="${SERIES_COLORS[0]}" stroke="#fff" stroke-width="2" style="cursor:ew-resize"/>`;
   const angle = (Math.atan(t.slope) * 180) / Math.PI;
   const text = `k = ${format(t.slope)}; α = ${format(Math.round(angle * 10) / 10)}°`;
+  if (!shown) return clipped;
   return clipped + handle + placed(spec, 't', [px, py], [px + 10, py + (t.slope > 0 ? 18 : -12)], esc(text), `class="chart-label chart-tangent-label" fill="${INK}"`);
 }
 

@@ -223,14 +223,24 @@ function areaOf(call: CallExpr, curve: Curve, yDim: Dimension, ctx: EvalContext,
   if (!arg) return undefined;
   // area: S, S := integral(y(x), x: x_2 .. x_1) (or abs(integral(…))): its bounds, its integrand, its name and value.
   if (arg.value.kind === 'variable') {
-    const linked = integralIn(formulaOf?.(arg.value.name));
+    // A name of the sheet (P := integral(…)) or the name of a formula ({eq=Integral1}).
+    const own = formulaOf?.(arg.value.name);
+    const key = own ? arg.value.name : `#${arg.value.name}`;
+    const linked = integralIn(own ?? formulaOf?.(key));
     if (!linked) return fail('E-PLOT-AREA', arg.value.span, {});
     const binder = linked.named[0]!;
     const range = binder.value as Extract<Expr, { kind: 'range' }>;
     const a = asQuantity(evaluate(range.low, ctx), range.low.span);
     const b = asQuantity(evaluate(range.high, ctx), range.high.span);
     const [lo, hi] = a.si <= b.si ? [a, b] : [b, a];
-    const value = asQuantity(ctx.lookup(arg.value.name, arg.value.span), arg.value.span);
+    // Its value as the sheet has it; a formula below the chart is not calculated yet: calculated here, the same way.
+    let value: Quantity;
+    try {
+      value = asQuantity(ctx.lookup(key, arg.value.span), arg.value.span);
+    } catch (err) {
+      if (!(err instanceof CalcError) || !['E-DEFINED-LATER', 'E-UNDEFINED'].includes(err.diagnostic.code)) throw err;
+      value = asQuantity(evaluate(own ?? formulaOf!(key)!, ctx), arg.value.span);
+    }
     const shown = toDisplay(value, ctx.registry);
     const n = 120;
     const xs: number[] = [];

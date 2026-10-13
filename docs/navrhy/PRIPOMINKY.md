@@ -106,3 +106,9 @@ Když něco spadne, ztrácí data nebo nejde dál testovat, napište to hned, ne
      - plocha přes osu x se šrafuje zvlášť nad a pod osou a popisek ukáže obě části;
      - posuvníky `{slider=-5..5}` („Posuvník pro hodnotu…“ v nabídce řádku).
    - **Ověření:** výsledky obou vzorů jsou nezávisle spočtené a hlídá je referenční test (R7, R8).
+
+23. ~~Posuvníky nejsou u grafu, takže není vidět, jak se mění. Přesunutí grafu selhalo.~~
+   **Vyřízeno 2026-10-13:**
+   - **Posuvníky pod grafem:** pod grafem jsou v editoru posuvníky všech vstupů, na kterých graf závisí, i přes funkce a mezivýsledky. U kvadratické rovnice jsou to a, b, c. Při tažení se mění parabola, kořeny, vrchol, plocha i tečna. V tisku se neukážou.
+   - **Proč přesunutí selhalo:** list se počítá shora dolů. Graf přesunutý nad `y(x)` ještě neznal funkci a `area: S` a `points: V` se tam četly jako jednotky siemens a volt.
+   - **Oprava:** graf smí stát kdekoli. Když stojí nad tím, co kreslí, nakreslí se, až je spočtený celý list, a S a V jsou jména listu.

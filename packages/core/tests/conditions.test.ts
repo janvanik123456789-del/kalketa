@@ -161,3 +161,14 @@ describe('the quadratic sheet: vertex, points of the sheet, area over the axis, 
     expect(evaluateSheet('plot(x^2, x: 0 .. 1, points: 3)').diagnostics.map((d) => d.code)).toContain('E-PLOT-POINTS');
   });
 });
+
+describe('a chart above what it draws', () => {
+  it('is drawn once the sheet is calculated, its S and V the names below (not siemens and volt)', () => {
+    const r = evaluateSheet('a := -2\nplot(y(x), x: -4 .. 5, roots: true, area: S, points: V)\ny(x) := a·x^2 + 2·x + 10\nsolve x ∈ ℝ: y(x) == 0\nS := abs(integral(y(x), x: x_1 .. x_2))\nV := [0.5, 10.5]');
+    expect(r.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+    const p = r.statements[1]!.plot!;
+    expect(p.area).toMatchObject({ name: 'S' });
+    expect(p.area!.value).toBeCloseTo(32.078029864690876, 8);
+    expect(p.points).toEqual([{ x: 0.5, y: 10.5 }]);
+  });
+});

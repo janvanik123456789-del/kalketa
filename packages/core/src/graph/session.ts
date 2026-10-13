@@ -187,6 +187,7 @@ export class SheetSession {
     context.namedFormulas = namedFormulas;
     const env = context.env;
     const results: StatementResult[] = [];
+    const drawnLater: { at: number; statement: Extract<Statement, { kind: 'display' }>; parseDiagnostics: Diagnostic[] }[] = [];
     const nextCache = new Map<string, CacheEntry>();
     let evaluated = 0;
     let reused = 0;
@@ -355,9 +356,18 @@ export class SheetSession {
         });
       }
       definedHere(statement);
+      // A chart is a view of the sheet: standing above what it draws (a chart moved up to the inputs), it is
+      // drawn once the whole sheet is calculated, as if it stood at the end.
+      if (statement.kind === 'display' && isPlotCall(statement.expr) && result.status === 'error' && result.dependencies.some((d) => (definedAt.get(d) ?? -1) > index)) {
+        drawnLater.push({ at: results.length, statement, parseDiagnostics });
+      }
       results.push({ statement, ...result, diagnostics: [...parseDiagnostics, ...result.diagnostics] });
     });
     closePosition(true);
+    for (const later of drawnLater) {
+      const result = this.evaluateStatement(later.statement, context, definedAt, statements.length);
+      results[later.at] = { statement: later.statement, ...result, diagnostics: [...later.parseDiagnostics, ...result.diagnostics] };
+    }
 
     this.cache = nextCache;
     const values = new Map<string, Value>();

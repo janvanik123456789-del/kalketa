@@ -110,7 +110,11 @@ export function isPlotCall(expr: Expr): expr is CallExpr {
 }
 
 /** A display line plot(...) | unit: samples every curve. */
-export function plotStatement(call: CallExpr, ctx: EvalContext, evaluate: Evaluate, target: ResolvedUnit | undefined, formulaOf?: (name: string) => Expr | undefined): PlotResult {
+export function plotStatement(given: CallExpr, ctx: EvalContext, evaluate: Evaluate, target: ResolvedUnit | undefined, formulaOf?: (name: string) => Expr | undefined): PlotResult {
+  // area: S and points: V of a chart above their definitions: read there as units (siemens, volt), they are
+  // the names the sheet defines below.
+  const named = (e: Expr): Expr => (e.kind === 'unit' && e.unit.kind === 'unit-name' && (formulaOf?.(e.unit.name) ?? formulaOf?.(`#${e.unit.name}`)) ? { kind: 'variable', name: e.unit.name, span: e.span } : e);
+  const call: CallExpr = { ...given, named: given.named.map((n) => (n.name === 'area' || n.name === 'points' ? { ...n, value: named(n.value) } : n)) };
   const binders = call.named.filter((n) => !PLOT_OPTIONS.includes(n.name));
   if (binders.length > 1) fail('E-NAMED-ARG', binders[1]!.nameSpan, { function: call.name, argument: binders[1]!.name, problem: 'unknown' });
   if (call.args.length === 0) fail('E-PLOT-FORM', call.span, {});

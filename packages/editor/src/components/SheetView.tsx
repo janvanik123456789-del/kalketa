@@ -5,7 +5,7 @@
  */
 
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
-import { formatExpr, formatPicture, fromDecimalComma, parsePicture, TEXT_ALIGNS, TEXT_COLORS, toDecimalComma, type SheetResult, type Statement } from '@kalketa/core';
+import { formatExpr, formatPicture, fromDecimalComma, parsePicture, TEXT_ALIGNS, TEXT_COLORS, toDecimalComma, type SheetResult, type Statement, type StatementResult } from '@kalketa/core';
 import { formatDate, formatNumber, t, type Catalog, type UiKey } from '@kalketa/i18n';
 import { labelParts, xPosition, xValueAt, yPosition } from '@kalketa/chart';
 import { columnsHead, isInput, pageLabels, renderBlockHtml, renderSummary, sheetSections, type CalcStyle, type PrintBlock, type PrintDocument, type Section } from '@kalketa/render';
@@ -598,6 +598,46 @@ export function SheetView(props: Props) {
     ];
   };
 
+  /**
+   * The sliders of the inputs a chart depends on, over its formulas (y(x) on a, b, c; S on x_1, x_2):
+   * shown under the chart, so the curve is seen to follow as one is dragged.
+   */
+  const chartSliders = (seg: Segment): ReactNode => {
+    const own = seg.statement !== undefined ? result.statements[seg.statement] : undefined;
+    if (!own) return null;
+    // Who defines a name: a line of it, or a solve line (its roots x_1, x_2 too).
+    const definer = (name: string) =>
+      result.statements.find((r) => (r.statement.kind === 'definition' && r.statement.name === name) || (r.statement.kind === 'solve' && r.statement.unknowns.some((u) => u.name === name || new RegExp(`^${u.name}_\\d+$`).test(name))));
+    const seen = new Set<string>();
+    const queue = [...own.dependencies];
+    const inputs: StatementResult[] = [];
+    while (queue.length > 0) {
+      const name = queue.shift()!;
+      if (seen.has(name)) continue;
+      seen.add(name);
+      const r = definer(name);
+      if (!r) continue;
+      if (r.statement.format?.slider && !inputs.includes(r)) inputs.push(r);
+      queue.push(...r.dependencies);
+    }
+    const rows = inputs
+      .map((r) => ({ r, seg: segs.find((s) => s.start === r.statement.span.line) }))
+      .filter((x): x is { r: StatementResult; seg: Segment } => !!x.seg && !!inputNumber(x.seg.text))
+      .sort((p, q) => p.seg.start - q.seg.start);
+    if (rows.length === 0) return null;
+    return (
+      <div className="chart-sliders" data-chart-sliders="">
+        {rows.map(({ r, seg: input }) => (
+          <div key={input.start} className="chart-slider">
+            <span className="chart-slider-name">{labelParts(r.statement.kind === 'definition' ? r.statement.name : '').map((p, j) => (p.sub ? <sub key={j}>{p.text}</sub> : p.text))}</span>
+            <span className="chart-slider-value">{formatNumber(inputNumber(input.text)!.value, props.printCatalog, { digits: 6 }).replace('-', '−')}</span>
+            <InputSlider line={input.start} place={`chart${seg.start}`} slider={r.statement.format!.slider!} value={inputNumber(input.text)!.value} catalog={props.printCatalog} onValue={(v) => props.onReplace(input.start, input.end, withInputNumber(input.text, v))} />
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   /** An input of a plain number gets a slider (a := -2 {slider=-5..5}): dragged, the number of the line changes. */
   const sliderItems = (seg: Segment): MenuItem[] => {
     const at = inputNumber(seg.text);
@@ -1165,6 +1205,7 @@ export function SheetView(props: Props) {
             <ChartBlock
               block={block}
               catalog={props.printCatalog}
+              sliders={chartSliders(seg)}
               onOption={(name, value) => props.onReplace(seg.start, seg.end, withPlotOption(seg.text, name, value))}
               onResize={(width, ratio) => {
                 const item = placeable(seg.text);
@@ -1206,7 +1247,9 @@ function Block({ block, catalog, style }: { block: PrintBlock; catalog: Catalog;
  * The slider of an input: a track with its thumb at the value, the value beside it. Dragged (the page
  * holds the pointer, as the row is drawn anew with each value) or moved by the arrow keys, step by step.
  */
-function InputSlider({ line, slider, value, catalog, onValue }: { line: number; slider: { low: number; high: number; step?: number }; value: number; catalog: Catalog; onValue(value: number): void }) {
+function InputSlider({ line, place, slider, value, catalog, onValue }: { line: number; place?: string; slider: { low: number; high: number; step?: number }; value: number; catalog: Catalog; onValue(value: number): void }) {
+  // The same input has a slider at its line and one under each chart it changes: each is found by its own key.
+  const sliderKey = place ? `${line}@${place}` : String(line);
   const share = Math.min(1, Math.max(0, (value - slider.low) / (slider.high - slider.low)));
   const step = sliderStep(slider);
   const number = (v: number) => formatNumber(v, catalog, { digits: 6 }).replace('-', '−');
@@ -1222,7 +1265,7 @@ function InputSlider({ line, slider, value, catalog, onValue }: { line: number; 
     const pointer = e.pointerId;
     // The track is found anew at every move: the row is drawn anew with each value.
     const layer = e.currentTarget.closest('.layer-view');
-    const track = () => (layer?.isConnected ? layer : document).querySelector<HTMLElement>(`[data-slider-line="${line}"] .slider-track`);
+    const track = () => (layer?.isConnected ? layer : document).querySelector<HTMLElement>(`[data-slider-key="${sliderKey}"] .slider-track`);
     let last = value;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let pending: number | undefined;
@@ -1264,7 +1307,7 @@ function InputSlider({ line, slider, value, catalog, onValue }: { line: number; 
     onValue(sliderValue(slider, (value + by - slider.low) / (slider.high - slider.low)));
   };
   return (
-    <div className="input-slider" data-slider-line={line} onMouseDown={(e) => e.stopPropagation()}>
+    <div className="input-slider" data-slider-line={line} data-slider-key={sliderKey} onMouseDown={(e) => e.stopPropagation()}>
       <span className="slider-end">{number(slider.low)}</span>
       <div className="slider-track" role="slider" tabIndex={0} aria-valuemin={slider.low} aria-valuemax={slider.high} aria-valuenow={value} onPointerDown={press} onKeyDown={key}>
         <div className="slider-fill" style={{ width: `${share * 100}%` }} />
@@ -1288,7 +1331,7 @@ function chartX(chart: Extract<PrintBlock, { kind: 'chart' }>, x: number): strin
   return chart.xUnit ? `${n} ${chart.xUnit}` : n;
 }
 
-function ChartBlock({ block, catalog, onResize, onOption }: { block: Extract<PrintBlock, { kind: 'chart' }>; catalog: Catalog; onResize(width: number, ratio?: number): void; onOption(name: string, value: string | undefined): void }) {
+function ChartBlock({ block, catalog, onResize, onOption, sliders }: { block: Extract<PrintBlock, { kind: 'chart' }>; catalog: Catalog; onResize(width: number, ratio?: number): void; onOption(name: string, value: string | undefined): void; sliders?: ReactNode }) {
   const [hover, setHover] = useState<{ left: number; top: number; height: number; lines: string[] } | undefined>();
   const [dragged, setDragged] = useState<number | undefined>();
   const view = useRef<HTMLDivElement>(null);
@@ -1446,6 +1489,7 @@ function ChartBlock({ block, catalog, onResize, onOption }: { block: Extract<Pri
           }
         />
       ))}
+      {sliders}
       {dragged !== undefined && <span className="picture-size">{dragged} %</span>}
       {hover && (
         <>

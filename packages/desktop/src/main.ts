@@ -2291,7 +2291,8 @@ async function layersWithRealInput(picture: string) {
   })()`;
   const sampleBefore = (await contents.executeJavaScript(sampleState)) as { a: string; roots: string; errors: number };
   // A tenth of the track to the right: a from −2 to about −1 (the roots stay real).
-  const thumb = (await contents.executeJavaScript(`(() => { const row = [...document.querySelectorAll('.layer-view.active .page .row')].find((r) => r.querySelector('.input-slider')); const r = row?.querySelector('.slider-thumb')?.getBoundingClientRect(); const t = row?.querySelector('.slider-track')?.getBoundingClientRect(); return r && t ? { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2), by: t.width / 10 } : undefined; })()`)) as { x: number; y: number; by: number } | undefined;
+  // The slider of a under the chart (the chart's own sliders, by the inputs it depends on).
+  const thumb = (await contents.executeJavaScript(`(() => { const panel = document.querySelector('.layer-view.active .chart-sliders'); const first = panel?.querySelector('.input-slider'); first?.scrollIntoView({ block: 'center' }); const r = first?.querySelector('.slider-thumb')?.getBoundingClientRect(); const t = first?.querySelector('.slider-track')?.getBoundingClientRect(); return r && t && panel.querySelectorAll('.input-slider').length === 3 ? { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2), by: t.width / 10 } : undefined; })()`)) as { x: number; y: number; by: number } | undefined;
   if (thumb) {
     contents.sendInputEvent({ type: 'mouseDown', x: thumb.x, y: thumb.y, button: 'left', clickCount: 1 });
     for (let step = 1; step <= 10; step++) {

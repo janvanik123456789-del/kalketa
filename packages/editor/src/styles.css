@@ -262,6 +262,13 @@ kbd { font: 12px Consolas, monospace; background: #fff; border: 1px solid #c4cad
 .input-slider .slider-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: #7a9ccf; }
 .input-slider .slider-thumb { position: absolute; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: #2a78d6; border: 2px solid #fff; box-shadow: 0 1px 3px rgb(0 0 0 / 35%); }
 @media print { .input-slider { display: none; } }
+/* The sliders under a chart: of the inputs it depends on, so the curve is seen to follow. */
+.chart-sliders { display: flex; flex-wrap: wrap; gap: 1mm 6mm; margin: 1.5mm 0 0; padding: 1.5mm 2mm; border: 1px dashed #c5d2e6; border-radius: 3px; background: #f7f9fc; }
+.chart-slider { display: flex; align-items: center; gap: 2mm; font: 10px system-ui, sans-serif; color: #333; }
+.chart-slider-name { font-style: italic; font-family: "Cambria Math", Cambria, serif; font-size: 12px; min-width: 4mm; }
+.chart-slider-value { min-width: 9mm; text-align: right; font-variant-numeric: tabular-nums; }
+.chart-slider .input-slider { margin: 0; width: 42mm; }
+@media print { .chart-sliders { display: none; } }
 .chart-crosshair { position: absolute; width: 0; border-left: 1px solid #898781; pointer-events: none; }
 .chart-tooltip { position: absolute; transform: translate(10px, 0); padding: 4px 8px; background: #ffffff; color: #0b0b0b; border: 1px solid rgba(11, 11, 11, 0.15); border-radius: 4px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12); font: 11px system-ui, sans-serif; white-space: nowrap; pointer-events: none; z-index: 5; }
 .chart-tooltip.left { transform: translate(calc(-100% - 10px), 0); }

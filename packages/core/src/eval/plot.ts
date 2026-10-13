@@ -66,6 +66,10 @@ export interface PlotArea {
   /** ∫ y dx from a to b (negative where the curve is below the axis) and its unit. */
   readonly value: number;
   readonly unit: string;
+  /** area: S with S := integral(…) in the sheet: its name and value, its integrand drawn at these points. */
+  readonly name?: string;
+  readonly xs?: readonly number[];
+  readonly ys?: readonly number[];
 }
 
 /** tangent: x₀ — the tangent of the first curve at x₀: its point and slope y′(x₀) in the units of the axes. */
@@ -101,7 +105,7 @@ export function isPlotCall(expr: Expr): expr is CallExpr {
 }
 
 /** A display line plot(...) | unit: samples every curve. */
-export function plotStatement(call: CallExpr, ctx: EvalContext, evaluate: Evaluate, target: ResolvedUnit | undefined): PlotResult {
+export function plotStatement(call: CallExpr, ctx: EvalContext, evaluate: Evaluate, target: ResolvedUnit | undefined, formulaOf?: (name: string) => Expr | undefined): PlotResult {
   const binders = call.named.filter((n) => !PLOT_OPTIONS.includes(n.name));
   if (binders.length > 1) fail('E-NAMED-ARG', binders[1]!.nameSpan, { function: call.name, argument: binders[1]!.name, problem: 'unknown' });
   if (call.args.length === 0) fail('E-PLOT-FORM', call.span, {});
@@ -162,7 +166,7 @@ export function plotStatement(call: CallExpr, ctx: EvalContext, evaluate: Evalua
   // Of the first curve over an interval: the area under it, its tangent at a point.
   const first = binder?.value.kind === 'range' && xs ? { body: call.args[0]!, name: binder.name, like: xs[0]! } : undefined;
   const xIn = (q: Quantity) => toDisplay(q, ctx.registry, xs?.[0]?.hint).value;
-  const area = first ? areaOf(call, first, yDim, ctx, evaluate, xIn) : undefined;
+  const area = first ? areaOf(call, first, yDim, ctx, evaluate, xIn, y, formulaOf) : undefined;
   const tangent = first ? tangentOf(call, first, ctx, evaluate, xIn, y) : undefined;
   const labelText = option(call, 'labels', ctx, evaluate);
   const labelOffsets = labelText ? parseLabelOffsets(labelText) : undefined;
@@ -203,10 +207,43 @@ export function plotStatement(call: CallExpr, ctx: EvalContext, evaluate: Evalua
 
 type Curve = { readonly body: Expr; readonly name: string; readonly like: Quantity };
 
+/** The integral in a formula of the sheet (S := integral(y(x), x: a .. b), also inside abs(…) or a product). */
+function integralIn(expr: Expr | undefined): CallExpr | undefined {
+  if (!expr) return undefined;
+  if (expr.kind === 'call' && expr.name === 'integral' && expr.args.length === 1 && expr.named[0]?.value.kind === 'range') return expr;
+  if (expr.kind === 'call') return expr.args.map(integralIn).find(Boolean);
+  if (expr.kind === 'unary') return integralIn(expr.operand);
+  if (expr.kind === 'binary') return integralIn(expr.left) ?? integralIn(expr.right);
+  return undefined;
+}
+
 /** area: a .. b — the bounds in the unit of x, and ∫ y dx between them (Simpson's rule on 400 strips). */
-function areaOf(call: CallExpr, curve: Curve, yDim: Dimension, ctx: EvalContext, evaluate: Evaluate, xIn: (q: Quantity) => number): PlotArea | undefined {
+function areaOf(call: CallExpr, curve: Curve, yDim: Dimension, ctx: EvalContext, evaluate: Evaluate, xIn: (q: Quantity) => number, y: (q: Quantity) => number, formulaOf?: (name: string) => Expr | undefined): PlotArea | undefined {
   const arg = call.named.find((n) => n.name === 'area');
   if (!arg) return undefined;
+  // area: S, S := integral(y(x), x: x_2 .. x_1) (or abs(integral(…))): its bounds, its integrand, its name and value.
+  if (arg.value.kind === 'variable') {
+    const linked = integralIn(formulaOf?.(arg.value.name));
+    if (!linked) return fail('E-PLOT-AREA', arg.value.span, {});
+    const binder = linked.named[0]!;
+    const range = binder.value as Extract<Expr, { kind: 'range' }>;
+    const a = asQuantity(evaluate(range.low, ctx), range.low.span);
+    const b = asQuantity(evaluate(range.high, ctx), range.high.span);
+    const [lo, hi] = a.si <= b.si ? [a, b] : [b, a];
+    const value = asQuantity(ctx.lookup(arg.value.name, arg.value.span), arg.value.span);
+    const shown = toDisplay(value, ctx.registry);
+    const n = 120;
+    const xs: number[] = [];
+    const ys: number[] = [];
+    for (let k = 0; k <= n; k++) {
+      const x = { ...lo, si: lo.si + ((hi.si - lo.si) * k) / n };
+      const v = evaluateAt(linked.args[0]!, binder.name, x, ctx, evaluate);
+      if (v.type !== 'quantity' || v.im || !sameDim(v.dim, yDim)) return fail('E-PLOT-AREA', arg.value.span, {});
+      xs.push(xIn(x));
+      ys.push(y(v));
+    }
+    return { from: xIn(lo), to: xIn(hi), value: shown.value, unit: shown.unit, name: arg.value.name, xs, ys };
+  }
   const r = arg.value;
   if (r.kind !== 'range') return fail('E-PLOT-AREA', r.span, {});
   const a = asQuantity(evaluate(r.low, ctx), r.low.span);

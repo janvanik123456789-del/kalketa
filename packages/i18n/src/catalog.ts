@@ -285,6 +285,8 @@ export const UI_KEYS = [
   'chart.area',
   'chart.areaAsk',
   'chart.areaOff',
+  'chart.areaOf',
+  'chart.areaBounds',
   'chart.tangent',
   'chart.labelsReset',
   'chart.extremes',

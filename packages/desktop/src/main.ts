@@ -1498,6 +1498,7 @@ async function layersWithRealInput(picture: string) {
     // The area under the curve between its roots, hatched with its integral: ∫₀⁴ 6·x·(4 − x) dx = 64.
     await clickOn('.layer-view.active .block.chart svg', [], 'right');
     await clickMenu('Vyšrafovat plochu');
+    await clickMenu('Zadat meze');
     await pause(300);
     await pressKey('Enter');
     await pause(500);
@@ -1514,14 +1515,28 @@ async function layersWithRealInput(picture: string) {
     const handle = (await contents.executeJavaScript(`(() => { const r = document.querySelector('.layer-view.active .block.chart .chart-tangent-handle')?.getBoundingClientRect(); return r ? { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) } : undefined; })()`)) as { x: number; y: number } | undefined;
     if (handle) {
       contents.sendInputEvent({ type: 'mouseDown', x: handle.x, y: handle.y, button: 'left', clickCount: 1 });
+      // Off the curve on purpose, down and to the left: the point stays on the curve, inside the chart.
       for (let step = 1; step <= 8; step++) {
-        contents.sendInputEvent({ type: 'mouseMove', x: handle.x - step * 12, y: handle.y, button: 'left' } as Electron.MouseInputEvent);
+        contents.sendInputEvent({ type: 'mouseMove', x: handle.x - step * 12, y: handle.y + step * 25, button: 'left' } as Electron.MouseInputEvent);
         await pause(60);
       }
-      contents.sendInputEvent({ type: 'mouseUp', x: handle.x - 96, y: handle.y, button: 'left', clickCount: 1 });
+      contents.sendInputEvent({ type: 'mouseUp', x: handle.x - 96, y: handle.y + 200, button: 'left', clickCount: 1 });
       await pause(600);
     }
     const tangentAfter = (await contents.executeJavaScript(tangentText)) as string;
+    // The point after the drag: inside the plot and on the curve (no farther from the curve than a few pixels).
+    const tangentOnCurve = (await contents.executeJavaScript(`(() => {
+      const svg = document.querySelector('.layer-view.active .block.chart svg.chart-svg');
+      const h = svg?.querySelector('.chart-tangent-handle');
+      const curve = svg?.querySelector('.chart-data path');
+      if (!h || !curve) return false;
+      const [cx, cy] = [Number(h.getAttribute('cx')), Number(h.getAttribute('cy'))];
+      const len = curve.getTotalLength();
+      let d = Infinity;
+      for (let i = 0; i <= 400; i++) { const p = curve.getPointAtLength((len * i) / 400); d = Math.min(d, Math.hypot(p.x - cx, p.y - cy)); }
+      const box = svg.viewBox.baseVal;
+      return d < 3 && cx > 0 && cx < box.width && cy > 0 && cy < box.height;
+    })()`)) as boolean;
     // A label moved off the curve by the mouse stays where it was put (written into the line).
     const areaLabel = `(() => { const r = document.querySelector('.layer-view.active .block.chart text[data-label="s"]')?.getBoundingClientRect(); return r ? { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) } : undefined; })()`;
     const labelAt = (await contents.executeJavaScript(areaLabel)) as { x: number; y: number } | undefined;
@@ -1536,10 +1551,10 @@ async function layersWithRealInput(picture: string) {
     }
     const labelNow = (await contents.executeJavaScript(areaLabel)) as { x: number; y: number } | undefined;
     const labelMoved = !!labelAt && !!labelNow && labelNow.y - labelAt.y > 15 && !!(await contents.executeJavaScript(`!!document.querySelector('.layer-view.active .block.chart .chart-label-lead')`));
-    const chartTools = chartArea === 'S=64' && /^k=/.test(tangentBefore) && tangentAfter !== tangentBefore && /α=/.test(tangentAfter) && labelMoved;
+    const chartTools = chartArea === 'S=64' && /^k=/.test(tangentBefore) && tangentAfter !== tangentBefore && /α=/.test(tangentAfter) && tangentOnCurve && labelMoved;
     await takePicture(picture.replace(/[.]png$/, '-chartroots.png'));
     chartPlaced = placed && restored && yRanged && yAuto && chartRoots.length > 0 && chartRoots.every((t) => /^x=[−-]?[\d,]+$/.test(t)) && chartAxis === 'x=2' && chartVertex === '[2;24]' && chartTools;
-    chartSteps = `framed=${chartFramed} placed=${placed} restored=${restored} yRange=${yRanged} yAuto=${yAuto} roots=${chartRoots.join(' ')} axis=${chartAxis} vertex=${chartVertex} area=${chartArea} tangent=${tangentBefore}->${tangentAfter} labelMoved=${labelMoved}`;
+    chartSteps = `framed=${chartFramed} placed=${placed} restored=${restored} yRange=${yRanged} yAuto=${yAuto} roots=${chartRoots.join(' ')} axis=${chartAxis} vertex=${chartVertex} area=${chartArea} tangent=${tangentBefore}->${tangentAfter} onCurve=${tangentOnCurve} labelMoved=${labelMoved}`;
   }
   const charts = !!chartBox && chartBox.paths > 0 && /^x = [\d,]+ \| Mt\(x\) = /.test(chartTip) && chartPlaced;
 

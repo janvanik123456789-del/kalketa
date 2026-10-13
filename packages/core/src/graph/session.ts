@@ -537,7 +537,7 @@ export class SheetSession {
 
       if (statement.kind === 'display' && isPlotCall(statement.expr)) {
         const target = statement.target ? resolveUnit(statement.target, context.registry) : undefined;
-        const plot = plotStatement(statement.expr, ctx, evaluate, target);
+        const plot = plotStatement(statement.expr, ctx, evaluate, target, (name) => context.formulas.get(name));
         return { status: 'ok', plot, dependencies, tableReads, diagnostics: ctx.warnings };
       }
 

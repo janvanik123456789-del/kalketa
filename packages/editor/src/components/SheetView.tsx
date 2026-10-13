@@ -7,7 +7,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 import { formatExpr, formatPicture, fromDecimalComma, parsePicture, TEXT_ALIGNS, TEXT_COLORS, toDecimalComma, type SheetResult, type Statement } from '@kalketa/core';
 import { formatDate, formatNumber, t, type Catalog, type UiKey } from '@kalketa/i18n';
-import { labelParts, xPosition, xValueAt } from '@kalketa/chart';
+import { labelParts, xPosition, xValueAt, yPosition } from '@kalketa/chart';
 import { columnsHead, isInput, pageLabels, renderBlockHtml, renderSummary, sheetSections, type CalcStyle, type PrintBlock, type PrintDocument, type Section } from '@kalketa/render';
 import { isCanvasPath } from '@kalketa/canvas';
 import { paginate, type PageGeometry } from '../logic/pages.js';
@@ -644,26 +644,43 @@ export function SheetView(props: Props) {
     const roots = chart?.spec.series[0]?.roots;
     const suggested = area ?? (roots && roots.length >= 2 ? `${writtenNumber(roots[0]!)} .. ${writtenNumber(roots[roots.length - 1]!)}` : '');
     const shown = (text: string) => (props.decimalComma ? toDecimalComma(text) : text);
+    // The integrals of the sheet (S := integral(…), also abs(integral(…))): the hatch takes their bounds, name and value.
+    const integrals = result.statements.flatMap((r) => {
+      const st = r.statement;
+      if (st.kind !== 'definition' || st.params || st.span.line > seg.start) return [];
+      const text = result.source.slice(st.span.offset, st.span.offset + st.span.length);
+      return /\bintegral\s*\(/.test(text) ? [{ name: st.name, text: text.replace(/\s+/g, ' ').trim() }] : [];
+    });
+    const askBounds = () =>
+      void ask(t(c, 'chart.areaAsk'), shown(area && area.includes('..') ? area : suggested)).then((answer) => {
+        if (answer === undefined) return;
+        const typed = answer.trim();
+        const range = typed === '' ? undefined : typed.includes('..') ? typed : typed.replace(/\s*;\s*|\s+(?=[-−+]?[\d\p{L}])/u, ' .. ');
+        set('area', range && props.decimalComma ? fromDecimalComma(range) : range);
+      });
     return [
       {
-        kind: 'action',
+        kind: 'submenu',
         label: t(c, 'chart.area'),
-        checked: area !== undefined,
-        run: () =>
-          void ask(t(c, 'chart.areaAsk'), shown(suggested)).then((answer) => {
-            if (answer === undefined) return;
-            const typed = answer.trim();
-            const range = typed === '' ? undefined : typed.includes('..') ? typed : typed.replace(/\s*;\s*|\s+(?=[-−+]?[\d\p{L}])/u, ' .. ');
-            set('area', range && props.decimalComma ? fromDecimalComma(range) : range);
-          }),
+        items: [
+          ...integrals.map((i): MenuItem => ({ kind: 'action', label: t(c, 'chart.areaOf', { integral: i.text.length > 60 ? `${i.text.slice(0, 57)}…` : i.text }), checked: area === i.name, run: () => set('area', i.name) })),
+          ...(integrals.length > 0 ? [{ kind: 'separator' as const }] : []),
+          { kind: 'action', label: t(c, 'chart.areaBounds'), checked: area !== undefined && area.includes('..'), run: askBounds },
+          ...(area !== undefined ? [{ kind: 'action' as const, label: t(c, 'chart.areaOff'), run: () => set('area', undefined) }] : []),
+        ],
       },
-      ...(area !== undefined ? [{ kind: 'action' as const, label: t(c, 'chart.areaOff'), run: () => set('area', undefined) }] : []),
       {
         kind: 'action',
         label: t(c, 'chart.tangent'),
         checked: tangent !== undefined,
         // Switched on at three quarters of the x axis; dragged along the curve from there.
-        run: () => set('tangent', tangent !== undefined || !chart ? undefined : chartX(chart, chart.layout.x.min + (chart.layout.x.max - chart.layout.x.min) * 0.75)),
+        run: () => {
+          if (tangent !== undefined || !chart) return set('tangent', undefined);
+          // On the visible part of the curve, near three quarters of the x axis.
+          const { layout } = chart;
+          const x = nearestOnCurve(chart, xPosition(layout, layout.x.min + (layout.x.max - layout.x.min) * 0.75), (layout.plot.top + layout.plot.bottom) / 2);
+          set('tangent', chartX(chart, x ?? layout.x.min + (layout.x.max - layout.x.min) * 0.75));
+        },
       },
       ...(plotOption(seg.text, 'labels') !== undefined ? [{ kind: 'action' as const, label: t(c, 'chart.labelsReset'), run: () => set('labels', undefined) }] : []),
     ];
@@ -1149,6 +1166,29 @@ function chartX(chart: Extract<PrintBlock, { kind: 'chart' }>, x: number): strin
   return chart.xUnit ? `${n} ${chart.xUnit}` : n;
 }
 
+/**
+ * The x of the place of the first curve nearest a point of the chart (in its units), over the
+ * part of the curve inside the plot: the point of the tangent follows the curve, not the pointer.
+ */
+function nearestOnCurve(chart: Extract<PrintBlock, { kind: 'chart' }>, px: number, py: number): number | undefined {
+  const s = chart.spec.series[0];
+  if (!s) return undefined;
+  const { layout } = chart;
+  const inside = (y: number) => Number.isFinite(y) && y >= layout.y.min && y <= layout.y.max;
+  let best: { x: number; d: number } | undefined;
+  for (let j = 0; j + 1 < s.xs.length; j++) {
+    const [y1, y2] = [s.ys[j]!, s.ys[j + 1]!];
+    if (!inside(y1) || !inside(y2)) continue;
+    const [ax, ay, bx, by] = [xPosition(layout, s.xs[j]!), yPosition(layout, y1), xPosition(layout, s.xs[j + 1]!), yPosition(layout, y2)];
+    // The pointer projected onto this piece of the curve.
+    const len = (bx - ax) ** 2 + (by - ay) ** 2;
+    const t = len > 0 ? Math.min(1, Math.max(0, ((px - ax) * (bx - ax) + (py - ay) * (by - ay)) / len)) : 0;
+    const d = Math.hypot(ax + t * (bx - ax) - px, ay + t * (by - ay) - py);
+    if (!best || d < best.d) best = { x: s.xs[j]! + t * (s.xs[j + 1]! - s.xs[j]!), d };
+  }
+  return best?.x;
+}
+
 function ChartBlock({ block, catalog, onResize, onOption }: { block: Extract<PrintBlock, { kind: 'chart' }>; catalog: Catalog; onResize(width: number, ratio?: number): void; onOption(name: string, value: string | undefined): void }) {
   const [hover, setHover] = useState<{ left: number; top: number; height: number; lines: string[] } | undefined>();
   const [dragged, setDragged] = useState<number | undefined>();
@@ -1205,8 +1245,9 @@ function ChartBlock({ block, catalog, onResize, onOption }: { block: Extract<Pri
       };
       const move = (ev: MouseEvent) => {
         const box = svg.getBoundingClientRect();
-        const px = Math.min(block.layout.plot.right, Math.max(block.layout.plot.left, (ev.clientX - box.left) / unit()));
-        const value = chartX(block, xValueAt(block.layout, px));
+        const x = nearestOnCurve(block, (ev.clientX - box.left) / unit(), (ev.clientY - box.top) / unit());
+        if (x === undefined) return;
+        const value = chartX(block, x);
         if (value === last) return;
         last = value;
         pending = value;

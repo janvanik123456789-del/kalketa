@@ -116,3 +116,17 @@ describe('the tools of a chart: area, tangent, inflections, labels moved by hand
     expect(evaluateSheet('plot(x^2, x: 0 .. 1, area: 1)').diagnostics.map((d) => d.code)).toContain('E-PLOT-AREA');
   });
 });
+
+describe('the hatch linked to an integral of the sheet', () => {
+  it('takes its bounds, its integrand, its name and its value', () => {
+    const r = evaluateSheet('y(x) := x^2 - 5\nsolve x ∈ ℝ: y(x) == 0\nP := abs(integral(y(x), x: x_2 .. x_1))\nplot(y(x), x: -4 .. 4, area: P)');
+    expect(r.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+    const a = r.statements.at(-1)!.plot!.area!;
+    expect(a.name).toBe('P');
+    expect(a.value).toBeCloseTo((20 * Math.sqrt(5)) / 3, 8);
+    expect([a.from, a.to].map((x) => Number(x.toFixed(6)))).toEqual([-2.236068, 2.236068]);
+    expect(a.ys![60]).toBeCloseTo(-5, 9);
+    // A name that is no integral: said so.
+    expect(evaluateSheet('q := 3\nplot(x^2, x: 0 .. 1, area: q)').diagnostics.map((d) => d.code)).toContain('E-PLOT-AREA');
+  });
+});

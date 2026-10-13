@@ -38,7 +38,7 @@ export interface ChartSpec {
   /** The y axis from and to as set (ylim); the curves beyond it are cut off. Else it follows the values. */
   readonly yRange?: readonly [number, number];
   /** The area between the first curve and the x axis from .. to, hatched, with ∫ y dx in it. */
-  readonly area?: { readonly from: number; readonly to: number; readonly value: number; readonly unit: string };
+  readonly area?: { readonly from: number; readonly to: number; readonly value: number; readonly unit: string; readonly name?: string; readonly xs?: readonly number[]; readonly ys?: readonly number[] };
   /** The tangent of the first curve at a point: its slope y′ and its angle from the x axis. */
   readonly tangent?: { readonly x: number; readonly y: number; readonly slope: number };
   /** Labels moved by hand, by their key (r0.1, e0.0, a0.0, i0.0, t, s), in units of the chart. */
@@ -412,8 +412,10 @@ function areaMarks(spec: ChartSpec, layout: ChartLayout, format: (value: number)
   if (!a || !s) return '';
   const color = SERIES_COLORS[0]!;
   const zero = yPosition(layout, Math.min(Math.max(0, layout.y.min), layout.y.max));
-  const inside = s.xs.map((x, j) => [x, s.ys[j]!] as const).filter(([x, y]) => x > a.from && x < a.to && Number.isFinite(y));
-  const ends = [a.from, a.to].map((x) => {
+  // Of an integral of the sheet its own integrand at its own points; else the first curve between the bounds.
+  const own = a.xs && a.ys ? a.xs.map((x, j) => [x, a.ys![j]!] as const) : undefined;
+  const inside = (own ?? s.xs.map((x, j) => [x, s.ys[j]!] as const)).filter(([x, y]) => x > a.from && x < a.to && Number.isFinite(y));
+  const ends = own ? [own[0]!, own[own.length - 1]!] : [a.from, a.to].map((x) => {
     // The curve at the bounds, between the samples around them.
     const j = s.xs.findIndex((v) => v >= x);
     if (j <= 0) return [x, s.ys[Math.max(j, 0)]!] as const;
@@ -430,8 +432,9 @@ function areaMarks(spec: ChartSpec, layout: ChartLayout, format: (value: number)
   const mid = (a.from + a.to) / 2;
   const near = points.reduce((best, p) => (Math.abs(p[0] - mid) < Math.abs(best[0] - mid) ? p : best), points[0]!);
   const [px, py] = [xPosition(layout, mid), (zero + yPosition(layout, near[1])) / 2];
-  const text = `S = ${format(Math.abs(a.value))}${a.unit ? ` ${a.unit}` : ''}`;
-  return pattern + fill + placed(spec, 's', [px, py], [px, py + 4], esc(text), `class="chart-label chart-area-label" text-anchor="middle" fill="${INK}" font-weight="600"`);
+  // Linked to an integral of the sheet: its name and its value as the sheet has it; else S = |∫ y dx|.
+  const text = `${a.name ?? 'S'} = ${format(a.name ? a.value : Math.abs(a.value))}${a.unit ? ` ${a.unit}` : ''}`;
+  return pattern + fill + placed(spec, 's', [px, py], [px, py + 4], label(text), `class="chart-label chart-area-label" text-anchor="middle" fill="${INK}" font-weight="600"`);
 }
 
 /** The tangent of the first curve at its point: a line across the plot, the point to drag, k = y′ and α from the x axis. */

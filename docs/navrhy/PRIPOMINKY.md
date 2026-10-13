@@ -81,3 +81,8 @@ Když něco spadne, ztrácí data nebo nejde dál testovat, napište to hned, ne
    - **Inflexní body:** „Zobrazit inflexní body“ ukáže místa, kde druhá derivace mění znaménko (u paraboly žádné nejsou).
    - **Popisky:** jdou chytit myší a přesunout. Posun se uloží do grafu a platí i v tisku, „Popisky na původní místo“ je vrátí. Popisky se teď kreslí nad všemi značkami.
    - **Zápis:** `area: x_2 .. x_1`, `tangent: 3`, `inflections: true`, `labels: "…"`.
+
+20. ~~Šrafování propojit s integrálem. Tečna při tažení uteče z grafu; bod se má táhnout po křivce, ne jen vodorovně.~~
+   **Vyřízeno 2026-10-13:**
+   - **Šrafování podle integrálu:** pravé tlačítko na grafu → „Vyšrafovat plochu pod křivkou“ → „podle P := abs(integral(…))“. Nabídka ukáže integrály listu nad grafem. Šrafování převezme jejich meze i funkci pod integrálem a napíše jméno a hodnotu z listu (`P = 14,91`). Když se integrál změní, změní se i šrafování. V zápisu `area: P`.
+   - **Tečna:** bod jde vždy na místo křivky nejbližší ukazateli, i když myš z křivky sjede, a zůstává ve viditelné části grafu (i s `ylim`). Tečna se zapne rovnou na viditelné části křivky.

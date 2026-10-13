@@ -92,6 +92,7 @@ export const DIAGNOSTIC_SEVERITY = {
   'E-SOLVE-CONDITIONS': 'error',
   'E-PLUS-MINUS': 'error',
   'E-PLOT-YLIM': 'error',
+  'E-PLOT-AREA': 'error',
   'E-ROOTS-POLYNOMIAL': 'error',
   'E-SOLVE-INEQUALITY': 'error',
   'E-SOLVE-SIDE': 'error',

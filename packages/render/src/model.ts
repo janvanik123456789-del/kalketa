@@ -1029,12 +1029,16 @@ function chartBlock(
       ...(s.roots ? { roots: s.roots } : {}),
       ...(s.axes ? { axes: s.axes } : {}),
       ...(s.extremes ? { extremes: s.extremes } : {}),
+      ...(s.inflections ? { inflections: s.inflections } : {}),
       ...(s.roots || s.axes ? { rootName: plot.variable || 'x', ...(plot.xUnit ? { rootUnit: plot.xUnit } : {}) } : {}),
     })),
     xTitle: plot.xDates ? plot.variable : `${plot.variable}${unit(plot.xUnit)}`.trim(),
     // One curve names the axis; more curves are named in the legend.
     yTitle: (names.length === 1 ? `${names[0]}${unit(plot.yUnit)}` : unit(plot.yUnit)).trim(),
     ...(plot.yRange ? { yRange: plot.yRange } : {}),
+    ...(plot.area ? { area: plot.area } : {}),
+    ...(plot.tangent ? { tangent: plot.tangent } : {}),
+    ...(plot.labelOffsets ? { labelOffsets: plot.labelOffsets } : {}),
   };
   // Its height to its width as dragged in the sheet (ratio=0.6), else the usual one.
   const size = plot.place?.ratio ? { width: CHART_SIZE.width, height: Math.round(CHART_SIZE.width * plot.place.ratio) } : CHART_SIZE;

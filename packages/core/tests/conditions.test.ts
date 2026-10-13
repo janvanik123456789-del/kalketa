@@ -101,3 +101,18 @@ describe('the roots as printed are names for what follows', () => {
     expect(s.extremes).toEqual([{ x: 0, y: -5, peak: false }]);
   });
 });
+
+describe('the tools of a chart: area, tangent, inflections, labels moved by hand', () => {
+  it('gives the integral of the hatched area, the slope at the tangent point and the turns of the bend', () => {
+    const r = evaluateSheet('y(x) := x^2 - 5\nsolve x ∈ ℝ: y(x) == 0\nplot(y(x), x: -4 .. 4, area: x_2 .. x_1, tangent: 3, labels: "s=10,-20 r0.1=0,15")\nplot(x^3 - 3·x, x: -2.5 .. 2.5, inflections: true)');
+    expect(r.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+    const p = r.statements[2]!.plot!;
+    expect(p.area!.value).toBeCloseTo((-20 * Math.sqrt(5)) / 3, 8);
+    expect([p.area!.from, p.area!.to].map((x) => Number(x.toFixed(6)))).toEqual([-2.236068, 2.236068]);
+    expect(p.tangent!.y).toBeCloseTo(4, 9);
+    expect(p.tangent!.slope).toBeCloseTo(6, 6);
+    expect(p.labelOffsets).toEqual({ s: [10, -20], 'r0.1': [0, 15] });
+    expect(r.statements[3]!.plot!.series[0]!.inflections).toEqual([{ x: 0, y: 0 }]);
+    expect(evaluateSheet('plot(x^2, x: 0 .. 1, area: 1)').diagnostics.map((d) => d.code)).toContain('E-PLOT-AREA');
+  });
+});

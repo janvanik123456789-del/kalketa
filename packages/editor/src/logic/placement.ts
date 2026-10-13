@@ -95,3 +95,44 @@ export const plotShowsRoots = (text: string): boolean => plotFlag(text, 'roots')
 
 /** The plot line marking the roots of its curves, or not. */
 export const withPlotRoots = (text: string, on: boolean): string => withPlotFlag(text, 'roots', on);
+
+/** Where the named option of the plot call stands: from its comma to its end, past brackets and texts. */
+function optionSpan(text: string, name: string): { start: number; end: number; value: string } | undefined {
+  const open = text.indexOf('(');
+  const close = closingParen(text, open);
+  if (open < 0 || close < 0) return undefined;
+  let depth = 0;
+  let itemStart = open + 1;
+  for (let i = open + 1; i <= close; i++) {
+    const c = text[i];
+    if (c === '"') {
+      const end = text.indexOf('"', i + 1);
+      if (end < 0) return undefined;
+      i = end;
+      continue;
+    }
+    if (c === '(' || c === '[') depth++;
+    else if ((c === ')' || c === ']') && depth > 0) depth--;
+    else if ((c === ',' && depth === 0) || i === close) {
+      const item = text.slice(itemStart, i);
+      const m = new RegExp(`^\\s*${name}\\s*:\\s*`).exec(item);
+      if (m) return { start: itemStart - 1, end: i, value: item.slice(m[0].length).trim() };
+      itemStart = i + 1;
+    }
+  }
+  return undefined;
+}
+
+/** The value of a named option of a plot line as written (area: x_2 .. x_1 gives "x_2 .. x_1"). */
+export function plotOption(text: string, name: string): string | undefined {
+  return PLOT.test(text) ? optionSpan(text, name)?.value : undefined;
+}
+
+/** The plot line with a named option set to `value` as written, or left out (undefined). */
+export function withPlotOption(text: string, name: string, value: string | undefined): string {
+  const found = optionSpan(text, name);
+  const without = found ? text.slice(0, found.start) + text.slice(found.end) : text;
+  if (value === undefined) return without;
+  const close = closingParen(without, without.indexOf('('));
+  return close < 0 ? text : `${without.slice(0, close)}, ${name}: ${value}${without.slice(close)}`;
+}

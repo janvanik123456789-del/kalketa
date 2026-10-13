@@ -1495,9 +1495,51 @@ async function layersWithRealInput(picture: string) {
     await clickMenu('Zobrazit vrcholy');
     await pause(500);
     const chartVertex = (await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .block.chart text.chart-extreme-label')].map((t) => t.textContent.replace(/\\s+/g, '')).join(' ')`)) as string;
+    // The area under the curve between its roots, hatched with its integral: ∫₀⁴ 6·x·(4 − x) dx = 64.
+    await clickOn('.layer-view.active .block.chart svg', [], 'right');
+    await clickMenu('Vyšrafovat plochu');
+    await pause(300);
+    await pressKey('Enter');
+    await pause(500);
+    const chartArea = (await contents.executeJavaScript(`(() => {
+      const label = document.querySelector('.layer-view.active .block.chart text[data-label="s"]');
+      return !!document.querySelector('.layer-view.active .block.chart path.chart-area') && (label?.textContent ?? '').replace(/\\s+/g, '');
+    })()`)) as string | false;
+    // The tangent, its point dragged along the curve by the mouse: the slope changes with it.
+    await clickOn('.layer-view.active .block.chart svg', [], 'right');
+    await clickMenu('Tečna s úhlem');
+    await pause(500);
+    const tangentText = `(document.querySelector('.layer-view.active .block.chart text[data-label="t"]')?.textContent ?? '').replace(/\\s+/g, '')`;
+    const tangentBefore = (await contents.executeJavaScript(tangentText)) as string;
+    const handle = (await contents.executeJavaScript(`(() => { const r = document.querySelector('.layer-view.active .block.chart .chart-tangent-handle')?.getBoundingClientRect(); return r ? { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) } : undefined; })()`)) as { x: number; y: number } | undefined;
+    if (handle) {
+      contents.sendInputEvent({ type: 'mouseDown', x: handle.x, y: handle.y, button: 'left', clickCount: 1 });
+      for (let step = 1; step <= 8; step++) {
+        contents.sendInputEvent({ type: 'mouseMove', x: handle.x - step * 12, y: handle.y, button: 'left' } as Electron.MouseInputEvent);
+        await pause(60);
+      }
+      contents.sendInputEvent({ type: 'mouseUp', x: handle.x - 96, y: handle.y, button: 'left', clickCount: 1 });
+      await pause(600);
+    }
+    const tangentAfter = (await contents.executeJavaScript(tangentText)) as string;
+    // A label moved off the curve by the mouse stays where it was put (written into the line).
+    const areaLabel = `(() => { const r = document.querySelector('.layer-view.active .block.chart text[data-label="s"]')?.getBoundingClientRect(); return r ? { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) } : undefined; })()`;
+    const labelAt = (await contents.executeJavaScript(areaLabel)) as { x: number; y: number } | undefined;
+    if (labelAt) {
+      contents.sendInputEvent({ type: 'mouseDown', x: labelAt.x, y: labelAt.y, button: 'left', clickCount: 1 });
+      for (let step = 1; step <= 6; step++) {
+        contents.sendInputEvent({ type: 'mouseMove', x: labelAt.x + step * 5, y: labelAt.y + step * 6, button: 'left' } as Electron.MouseInputEvent);
+        await pause(40);
+      }
+      contents.sendInputEvent({ type: 'mouseUp', x: labelAt.x + 30, y: labelAt.y + 36, button: 'left', clickCount: 1 });
+      await pause(600);
+    }
+    const labelNow = (await contents.executeJavaScript(areaLabel)) as { x: number; y: number } | undefined;
+    const labelMoved = !!labelAt && !!labelNow && labelNow.y - labelAt.y > 15 && !!(await contents.executeJavaScript(`!!document.querySelector('.layer-view.active .block.chart .chart-label-lead')`));
+    const chartTools = chartArea === 'S=64' && /^k=/.test(tangentBefore) && tangentAfter !== tangentBefore && /α=/.test(tangentAfter) && labelMoved;
     await takePicture(picture.replace(/[.]png$/, '-chartroots.png'));
-    chartPlaced = placed && restored && yRanged && yAuto && chartRoots.length > 0 && chartRoots.every((t) => /^x=[−-]?[\d,]+$/.test(t)) && chartAxis === 'x=2' && chartVertex === '[2;24]';
-    chartSteps = `framed=${chartFramed} placed=${placed} restored=${restored} yRange=${yRanged} yAuto=${yAuto} roots=${chartRoots.join(' ')} axis=${chartAxis} vertex=${chartVertex}`;
+    chartPlaced = placed && restored && yRanged && yAuto && chartRoots.length > 0 && chartRoots.every((t) => /^x=[−-]?[\d,]+$/.test(t)) && chartAxis === 'x=2' && chartVertex === '[2;24]' && chartTools;
+    chartSteps = `framed=${chartFramed} placed=${placed} restored=${restored} yRange=${yRanged} yAuto=${yAuto} roots=${chartRoots.join(' ')} axis=${chartAxis} vertex=${chartVertex} area=${chartArea} tangent=${tangentBefore}->${tangentAfter} labelMoved=${labelMoved}`;
   }
   const charts = !!chartBox && chartBox.paths > 0 && /^x = [\d,]+ \| Mt\(x\) = /.test(chartTip) && chartPlaced;
 

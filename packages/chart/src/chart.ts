@@ -19,6 +19,8 @@ export interface ChartSeries {
   readonly roots?: readonly number[];
   /** Its peaks and dips (the vertex of a parabola): a filled mark with its coordinates [x; y]. */
   readonly extremes?: readonly { readonly x: number; readonly y: number; readonly peak: boolean }[];
+  /** Where it turns from bending one way to the other (y″ = 0): a cross with [x; y]. */
+  readonly inflections?: readonly { readonly x: number; readonly y: number }[];
   /** x of the vertical lines the curve is symmetric about, drawn dashed with their value. */
   readonly axes?: readonly number[];
   /** The name the roots are labelled with (the variable of the x axis) and its unit. */
@@ -35,6 +37,12 @@ export interface ChartSpec {
   readonly yTitle: string;
   /** The y axis from and to as set (ylim); the curves beyond it are cut off. Else it follows the values. */
   readonly yRange?: readonly [number, number];
+  /** The area between the first curve and the x axis from .. to, hatched, with ∫ y dx in it. */
+  readonly area?: { readonly from: number; readonly to: number; readonly value: number; readonly unit: string };
+  /** The tangent of the first curve at a point: its slope y′ and its angle from the x axis. */
+  readonly tangent?: { readonly x: number; readonly y: number; readonly slope: number };
+  /** Labels moved by hand, by their key (r0.1, e0.0, a0.0, i0.0, t, s), in units of the chart. */
+  readonly labelOffsets?: Readonly<Record<string, readonly [number, number]>>;
 }
 
 export interface ChartOptions {
@@ -222,9 +230,10 @@ export function chartSvg(spec: ChartSpec, options: ChartOptions = {}): string {
       ? `<svg x="${plot.left}" y="${plot.top}" width="${plot.right - plot.left}" height="${plot.bottom - plot.top}" viewBox="${plot.left} ${plot.top} ${plot.right - plot.left} ${plot.bottom - plot.top}" overflow="hidden">${data}</svg>`
       : data,
   );
-  parts.push(symmetryLines(spec, layout, formatX));
-  parts.push(rootMarks(spec, layout, formatX));
-  parts.push(extremeMarks(spec, layout, formatX, format));
+  // The marks of points first, their labels over all of them: a label is never hidden under a mark, and can be taken.
+  const marks = [areaMarks(spec, layout, format), symmetryLines(spec, layout, formatX), rootMarks(spec, layout, formatX), extremeMarks(spec, layout, formatX, format), inflectionMarks(spec, layout, formatX, format), tangentMarks(spec, layout, format)].join('');
+  const LABEL = /(?:<line class="chart-label-lead"[^>]*\/>)?<text data-label="[^"]*"[^>]*>.*?<\/text>/g;
+  parts.push(marks.replace(LABEL, ''), ...(marks.match(LABEL) ?? []));
   if (spec.series.length > 1) parts.push(legend(spec, layout));
   if (spec.kind !== 'bar' && spec.series.length > 1 && spec.series.length <= 4) parts.push(endLabels(spec, layout));
 
@@ -345,23 +354,100 @@ function legend(spec: ChartSpec, layout: ChartLayout): string {
     .join('');
 }
 
-/** The name of each curve at its last point, moved apart so names do not overlap. */
+/** A point inside the plot area, give or take a hair (a vertex exactly on the edge of the axis is inside). */
+function inPlot(layout: ChartLayout, x: number, y: number): boolean {
+  const ex = (layout.x.max - layout.x.min) * 1e-9;
+  const ey = (layout.y.max - layout.y.min) * 1e-9;
+  return x >= layout.x.min - ex && x <= layout.x.max + ex && y >= layout.y.min - ey && y <= layout.y.max + ey;
+}
+
+/**
+ * A label of a point of the chart: by its key (r0.1 the second root of the first curve…)
+ * a person may move it off the curve; moved, a thin line leads back to its point.
+ */
+function placed(spec: ChartSpec, key: string, point: readonly [number, number], at: readonly [number, number], content: string, attrs: string): string {
+  const [dx, dy] = spec.labelOffsets?.[key] ?? [0, 0];
+  const [x, y] = [at[0] + dx, at[1] + dy];
+  const lead = dx || dy ? `<line class="chart-label-lead" x1="${r(point[0])}" y1="${r(point[1])}" x2="${r(x)}" y2="${r(y - 4)}" stroke="${MUTED}" stroke-width="0.8"/>` : '';
+  return `${lead}<text data-label="${key}" x="${r(x)}" y="${r(y)}" ${attrs} stroke="#fff" stroke-width="3" paint-order="stroke">${content}</text>`;
+}
+
 /** The peaks and dips of the curves: a filled diamond, its coordinates [x; y] above a peak or below a dip. */
 function extremeMarks(spec: ChartSpec, layout: ChartLayout, formatX: (value: number) => string, format: (value: number) => string): string {
   const out: string[] = [];
   spec.series.forEach((s, i) => {
     const color = SERIES_COLORS[i % SERIES_COLORS.length]!;
-    for (const e of s.extremes ?? []) {
-      if (e.x < layout.x.min || e.x > layout.x.max || e.y < layout.y.min || e.y > layout.y.max) continue;
+    (s.extremes ?? []).forEach((e, k) => {
+      if (!inPlot(layout, e.x, e.y)) return;
       const [px, py] = [xPosition(layout, e.x), yPosition(layout, e.y)];
       out.push(`<path class="chart-extreme" d="M${r(px)} ${r(py - 6)}L${r(px + 6)} ${r(py)}L${r(px)} ${r(py + 6)}L${r(px - 6)} ${r(py)}Z" fill="${color}" stroke="#fff" stroke-width="1.5"/>`);
       const text = `[${formatX(e.x)}; ${format(e.y)}]`;
       // Inside the plot: below a dip near the top, above a peak near the bottom.
       const below = e.peak ? py - layout.plot.top < 20 : layout.plot.bottom - py > 20;
-      out.push(`<text class="chart-extreme-label" x="${r(px)}" y="${r(below ? py + 19 : py - 11)}" text-anchor="middle" fill="${INK}" stroke="#fff" stroke-width="3" paint-order="stroke">${esc(text)}</text>`);
-    }
+      out.push(placed(spec, `e${i}.${k}`, [px, py], [px, below ? py + 19 : py - 11], esc(text), `class="chart-label chart-extreme-label" text-anchor="middle" fill="${INK}"`));
+    });
   });
   return out.join('');
+}
+
+/** Where the curves turn from bending one way to the other: a cross in the colour of the curve, [x; y] beside it. */
+function inflectionMarks(spec: ChartSpec, layout: ChartLayout, formatX: (value: number) => string, format: (value: number) => string): string {
+  const out: string[] = [];
+  spec.series.forEach((s, i) => {
+    const color = SERIES_COLORS[i % SERIES_COLORS.length]!;
+    (s.inflections ?? []).forEach((e, k) => {
+      if (!inPlot(layout, e.x, e.y)) return;
+      const [px, py] = [xPosition(layout, e.x), yPosition(layout, e.y)];
+      out.push(`<circle class="chart-inflection" cx="${r(px)}" cy="${r(py)}" r="5" fill="#fff" stroke="${color}" stroke-width="2"/><path d="M${r(px - 3)} ${r(py - 3)}L${r(px + 3)} ${r(py + 3)}M${r(px + 3)} ${r(py - 3)}L${r(px - 3)} ${r(py + 3)}" stroke="${color}" stroke-width="1.6"/>`);
+      out.push(placed(spec, `i${i}.${k}`, [px, py], [px + 8, py - 8], esc(`[${formatX(e.x)}; ${format(e.y)}]`), `class="chart-label chart-inflection-label" fill="${INK}"`));
+    });
+  });
+  return out.join('');
+}
+
+/** The area between the first curve and the x axis from .. to: hatched in its colour, the value of the integral in it. */
+function areaMarks(spec: ChartSpec, layout: ChartLayout, format: (value: number) => string): string {
+  const a = spec.area;
+  const s = spec.series[0];
+  if (!a || !s) return '';
+  const color = SERIES_COLORS[0]!;
+  const zero = yPosition(layout, Math.min(Math.max(0, layout.y.min), layout.y.max));
+  const inside = s.xs.map((x, j) => [x, s.ys[j]!] as const).filter(([x, y]) => x > a.from && x < a.to && Number.isFinite(y));
+  const ends = [a.from, a.to].map((x) => {
+    // The curve at the bounds, between the samples around them.
+    const j = s.xs.findIndex((v) => v >= x);
+    if (j <= 0) return [x, s.ys[Math.max(j, 0)]!] as const;
+    const t = (x - s.xs[j - 1]!) / (s.xs[j]! - s.xs[j - 1]!);
+    return [x, s.ys[j - 1]! + t * (s.ys[j]! - s.ys[j - 1]!)] as const;
+  });
+  const points = [ends[0]!, ...inside, ends[1]!].filter(([, y]) => Number.isFinite(y));
+  if (points.length < 2) return '';
+  const path = points.map(([x, y], k) => `${k === 0 ? 'M' : 'L'}${r(xPosition(layout, x))} ${r(yPosition(layout, y))}`).join('') + `L${r(xPosition(layout, a.to))} ${r(zero)}L${r(xPosition(layout, a.from))} ${r(zero)}Z`;
+  // The hatch: lines at 45° in the colour of the curve over a light wash (the same pattern in every chart, so one id serves).
+  const pattern = `<defs><pattern id="kalketa-hatch" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="7" stroke="${color}" stroke-width="1.3" stroke-opacity="0.75"/></pattern></defs>`;
+  const fill = `<path class="chart-area" d="${path}" fill="${color}" fill-opacity="0.08"/><path d="${path}" fill="url(#kalketa-hatch)" stroke="${color}" stroke-width="0.8" stroke-opacity="0.6"/>`;
+  // Its value in the middle of the area, half way between the axis and the curve.
+  const mid = (a.from + a.to) / 2;
+  const near = points.reduce((best, p) => (Math.abs(p[0] - mid) < Math.abs(best[0] - mid) ? p : best), points[0]!);
+  const [px, py] = [xPosition(layout, mid), (zero + yPosition(layout, near[1])) / 2];
+  const text = `S = ${format(Math.abs(a.value))}${a.unit ? ` ${a.unit}` : ''}`;
+  return pattern + fill + placed(spec, 's', [px, py], [px, py + 4], esc(text), `class="chart-label chart-area-label" text-anchor="middle" fill="${INK}" font-weight="600"`);
+}
+
+/** The tangent of the first curve at its point: a line across the plot, the point to drag, k = y′ and α from the x axis. */
+function tangentMarks(spec: ChartSpec, layout: ChartLayout, format: (value: number) => string): string {
+  const t = spec.tangent;
+  if (!t || t.x < layout.x.min || t.x > layout.x.max) return '';
+  const { plot } = layout;
+  const ends = [layout.x.min, layout.x.max].map((x) => [xPosition(layout, x), yPosition(layout, t.y + t.slope * (x - t.x))] as const);
+  const [px, py] = [xPosition(layout, t.x), yPosition(layout, t.y)];
+  const line = `<line class="chart-tangent" x1="${r(ends[0]![0])}" y1="${r(ends[0]![1])}" x2="${r(ends[1]![0])}" y2="${r(ends[1]![1])}" stroke="${INK_2}" stroke-width="1.4" stroke-dasharray="6 3"/>`;
+  // Cut off at the plot area: the line is long, the chart is not.
+  const clipped = `<svg x="${plot.left}" y="${plot.top}" width="${plot.right - plot.left}" height="${plot.bottom - plot.top}" viewBox="${plot.left} ${plot.top} ${plot.right - plot.left} ${plot.bottom - plot.top}" overflow="hidden">${line}</svg>`;
+  const handle = `<circle class="chart-tangent-handle" data-chart-drag="tangent" cx="${r(px)}" cy="${r(py)}" r="6" fill="${SERIES_COLORS[0]}" stroke="#fff" stroke-width="2" style="cursor:ew-resize"/>`;
+  const angle = (Math.atan(t.slope) * 180) / Math.PI;
+  const text = `k = ${format(t.slope)}; α = ${format(Math.round(angle * 10) / 10)}°`;
+  return clipped + handle + placed(spec, 't', [px, py], [px + 10, py + (t.slope > 0 ? 18 : -12)], esc(text), `class="chart-label chart-tangent-label" fill="${INK}"`);
 }
 
 /** The axes of symmetry of the curves: a dashed vertical line in the colour of the curve, its value at the top. */
@@ -370,13 +456,13 @@ function symmetryLines(spec: ChartSpec, layout: ChartLayout, format: (value: num
   const out: string[] = [];
   spec.series.forEach((s, i) => {
     const color = SERIES_COLORS[i % SERIES_COLORS.length]!;
-    for (const x of s.axes ?? []) {
-      if (x < layout.x.min || x > layout.x.max) continue;
+    (s.axes ?? []).forEach((x, k) => {
+      if (x < layout.x.min || x > layout.x.max) return;
       const px = r(xPosition(layout, x));
       out.push(`<line class="chart-axis-of-symmetry" x1="${px}" x2="${px}" y1="${plot.top}" y2="${plot.bottom}" stroke="${color}" stroke-width="1.2" stroke-dasharray="8 3 2 3" opacity="0.8"/>`);
       const text = `${s.rootName ?? 'x'} = ${format(x)}${s.rootUnit ? ` ${s.rootUnit}` : ''}`;
-      out.push(`<text class="chart-axis-label" x="${r(px + 4)}" y="${r(plot.top + 11)}" fill="${INK_2}" stroke="#fff" stroke-width="3" paint-order="stroke">${label(text)}</text>`);
-    }
+      out.push(placed(spec, `a${i}.${k}`, [px, plot.top + 8], [px + 4, plot.top + 11], label(text), `class="chart-label chart-axis-label" fill="${INK_2}"`));
+    });
   });
   return out.join('');
 }
@@ -393,7 +479,7 @@ function rootMarks(spec: ChartSpec, layout: ChartLayout, format: (value: number)
   let up = true;
   spec.series.forEach((s, i) => {
     const color = SERIES_COLORS[i % SERIES_COLORS.length]!;
-    (s.roots ?? []).forEach((x) => {
+    (s.roots ?? []).forEach((x, k) => {
       if (x < layout.x.min || x > layout.x.max) return;
       const px = xPosition(layout, x);
       out.push(`<circle cx="${r(px)}" cy="${r(y0)}" r="4.5" fill="#fff" stroke="${color}" stroke-width="2"/>`);
@@ -402,12 +488,13 @@ function rootMarks(spec: ChartSpec, layout: ChartLayout, format: (value: number)
       up = px - lastX < labelWidth(text) + 8 ? !up : true;
       lastX = px;
       const ty = up ? y0 - 9 : y0 + 17;
-      out.push(`<text class="chart-root" x="${r(px)}" y="${r(ty)}" text-anchor="middle" fill="${INK}" stroke="#fff" stroke-width="3" paint-order="stroke">${label(text)}</text>`);
+      out.push(placed(spec, `r${i}.${k}`, [px, y0], [px, ty], label(text), `class="chart-label chart-root" text-anchor="middle" fill="${INK}"`));
     });
   });
   return out.join('');
 }
 
+/** The name of each curve at its last point, moved apart so names do not overlap. */
 function endLabels(spec: ChartSpec, layout: ChartLayout): string {
   const ends = spec.series
     .map((s, i) => {

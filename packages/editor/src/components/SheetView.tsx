@@ -15,7 +15,7 @@ import { segments, type Segment } from '../logic/segments.js';
 import { lineAttributesOf, lineFormatOf, withLineAttribute, withLineAttributes, withLineFormat, type LineFormatChoice } from '../logic/lineFormat.js';
 import { defineShortcut } from '../logic/shortcuts.js';
 import { pickOf } from '../logic/pick.js';
-import { placeable, plotFlag, plotShowsRoots, plotYRange, withPlotFlag, withPlotRoots, withPlotYRange } from '../logic/placement.js';
+import { placeable, plotFlag, plotOption, plotShowsRoots, plotYRange, withPlotFlag, withPlotOption, withPlotRoots, withPlotYRange } from '../logic/placement.js';
 import { PickControl } from './PickControl.js';
 import { TextRowEditor, type TextFormat } from './TextRowEditor.js';
 import { parseTextLine } from '../logic/textLine.js';
@@ -608,6 +608,8 @@ export function SheetView(props: Props) {
       { kind: 'action', label: t(c, 'chart.roots'), checked: roots, run: () => props.onReplace(seg.start, seg.end, withPlotRoots(seg.text, !roots)) },
       // The peaks and dips of the curves (where y′ = 0, the vertex of a parabola) with their coordinates.
       { kind: 'action', label: t(c, 'chart.extremes'), checked: plotFlag(seg.text, 'extremes'), run: () => props.onReplace(seg.start, seg.end, withPlotFlag(seg.text, 'extremes', !plotFlag(seg.text, 'extremes'))) },
+      // Where the curves turn from bending one way to the other: y″ changes its sign.
+      { kind: 'action', label: t(c, 'chart.inflections'), checked: plotFlag(seg.text, 'inflections'), run: () => props.onReplace(seg.start, seg.end, withPlotFlag(seg.text, 'inflections', !plotFlag(seg.text, 'inflections'))) },
       // The axis of symmetry of a symmetric curve (a parabola: x = −b/(2·a)), drawn where the curve has one.
       { kind: 'action', label: t(c, 'chart.symmetry'), checked: plotFlag(seg.text, 'symmetry'), run: () => props.onReplace(seg.start, seg.end, withPlotFlag(seg.text, 'symmetry', !plotFlag(seg.text, 'symmetry'))) },
       {
@@ -625,6 +627,45 @@ export function SheetView(props: Props) {
           }),
       },
       ...(current !== undefined ? [{ kind: 'action' as const, label: t(c, 'chart.yRangeAuto'), run: () => props.onReplace(seg.start, seg.end, withPlotYRange(seg.text, undefined)) }] : []),
+      { kind: 'separator' },
+      ...chartToolItems(seg),
+    ];
+  };
+
+  /** The area under the curve (hatched, its integral in it), the tangent to drag along it, the labels back in place. */
+  const chartToolItems = (seg: Segment): MenuItem[] => {
+    const c = props.uiCatalog;
+    const block = blockByLine.get(seg.start);
+    const chart = block?.kind === 'chart' ? block : undefined;
+    const set = (name: string, value: string | undefined) => props.onReplace(seg.start, seg.end, withPlotOption(seg.text, name, value));
+    const area = plotOption(seg.text, 'area');
+    const tangent = plotOption(seg.text, 'tangent');
+    // Between the roots of the curve where the chart shows them, else empty to be written.
+    const roots = chart?.spec.series[0]?.roots;
+    const suggested = area ?? (roots && roots.length >= 2 ? `${writtenNumber(roots[0]!)} .. ${writtenNumber(roots[roots.length - 1]!)}` : '');
+    const shown = (text: string) => (props.decimalComma ? toDecimalComma(text) : text);
+    return [
+      {
+        kind: 'action',
+        label: t(c, 'chart.area'),
+        checked: area !== undefined,
+        run: () =>
+          void ask(t(c, 'chart.areaAsk'), shown(suggested)).then((answer) => {
+            if (answer === undefined) return;
+            const typed = answer.trim();
+            const range = typed === '' ? undefined : typed.includes('..') ? typed : typed.replace(/\s*;\s*|\s+(?=[-−+]?[\d\p{L}])/u, ' .. ');
+            set('area', range && props.decimalComma ? fromDecimalComma(range) : range);
+          }),
+      },
+      ...(area !== undefined ? [{ kind: 'action' as const, label: t(c, 'chart.areaOff'), run: () => set('area', undefined) }] : []),
+      {
+        kind: 'action',
+        label: t(c, 'chart.tangent'),
+        checked: tangent !== undefined,
+        // Switched on at three quarters of the x axis; dragged along the curve from there.
+        run: () => set('tangent', tangent !== undefined || !chart ? undefined : chartX(chart, chart.layout.x.min + (chart.layout.x.max - chart.layout.x.min) * 0.75)),
+      },
+      ...(plotOption(seg.text, 'labels') !== undefined ? [{ kind: 'action' as const, label: t(c, 'chart.labelsReset'), run: () => set('labels', undefined) }] : []),
     ];
   };
 
@@ -1061,6 +1102,7 @@ export function SheetView(props: Props) {
             <ChartBlock
               block={block}
               catalog={props.printCatalog}
+              onOption={(name, value) => props.onReplace(seg.start, seg.end, withPlotOption(seg.text, name, value))}
               onResize={(width, ratio) => {
                 const item = placeable(seg.text);
                 if (item) props.onReplace(seg.start, seg.end, item.write({ ...item.place, width, ...(ratio !== undefined ? { ratio } : {}) }));
@@ -1094,7 +1136,20 @@ function Block({ block, catalog, style }: { block: PrintBlock; catalog: Catalog;
  * A chart as printed; the pointer over it reads the values: a vertical line
  * at the nearest point and the value of every curve there.
  */
-function ChartBlock({ block, catalog, onResize }: { block: Extract<PrintBlock, { kind: 'chart' }>; catalog: Catalog; onResize(width: number, ratio?: number): void }) {
+/** A number as the file writes it, rounded to what a person reads: 2.236, not 2.2360679775. */
+function writtenNumber(value: number, step?: number): string {
+  const digits = step ? Math.max(0, -Math.floor(Math.log10(step))) : 4;
+  return String(Number(value.toFixed(Math.min(12, digits))));
+}
+
+/** A value of the x axis of a chart as written in its line: rounded to a two-hundredth of the axis, with its unit. */
+function chartX(chart: Extract<PrintBlock, { kind: 'chart' }>, x: number): string {
+  const step = 10 ** Math.floor(Math.log10((chart.layout.x.max - chart.layout.x.min) / 200));
+  const n = writtenNumber(Math.round(x / step) * step, step);
+  return chart.xUnit ? `${n} ${chart.xUnit}` : n;
+}
+
+function ChartBlock({ block, catalog, onResize, onOption }: { block: Extract<PrintBlock, { kind: 'chart' }>; catalog: Catalog; onResize(width: number, ratio?: number): void; onOption(name: string, value: string | undefined): void }) {
   const [hover, setHover] = useState<{ left: number; top: number; height: number; lines: string[] } | undefined>();
   const [dragged, setDragged] = useState<number | undefined>();
   const view = useRef<HTMLDivElement>(null);
@@ -1127,11 +1182,74 @@ function ChartBlock({ block, catalog, onResize }: { block: Extract<PrintBlock, {
       lines,
     });
   };
+  // The point of the tangent dragged along the curve; a label dragged off it. Both written into the line.
+  const startDrag = (e: ReactMouseEvent<HTMLDivElement>) => {
+    const target = e.target as Element;
+    const handle = target.closest?.('[data-chart-drag="tangent"]');
+    const labelEl = target.closest?.('[data-label]');
+    if (!handle && !labelEl) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const svg = e.currentTarget.querySelector('svg.chart-svg');
+    if (!svg) return;
+    const unit = () => svg.getBoundingClientRect().width / block.layout.width;
+    if (handle) {
+      // Written as it moves, a few times a second (each write recalculates the chart), and where it stops.
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      let last: string | undefined;
+      let pending: string | undefined;
+      const flush = () => {
+        timer = undefined;
+        if (pending !== undefined) onOption('tangent', pending);
+        pending = undefined;
+      };
+      const move = (ev: MouseEvent) => {
+        const box = svg.getBoundingClientRect();
+        const px = Math.min(block.layout.plot.right, Math.max(block.layout.plot.left, (ev.clientX - box.left) / unit()));
+        const value = chartX(block, xValueAt(block.layout, px));
+        if (value === last) return;
+        last = value;
+        pending = value;
+        timer ??= setTimeout(flush, 60);
+      };
+      const up = () => {
+        window.removeEventListener('mousemove', move);
+        window.removeEventListener('mouseup', up);
+        if (timer) clearTimeout(timer);
+        flush();
+      };
+      window.addEventListener('mousemove', move);
+      window.addEventListener('mouseup', up);
+      return;
+    }
+    const key = labelEl!.getAttribute('data-label')!;
+    const [ox, oy] = block.spec.labelOffsets?.[key] ?? [0, 0];
+    const start = { x: e.clientX, y: e.clientY };
+    let delta = [0, 0];
+    const move = (ev: MouseEvent) => {
+      delta = [(ev.clientX - start.x) / unit(), (ev.clientY - start.y) / unit()];
+      labelEl!.setAttribute('transform', `translate(${delta[0]} ${delta[1]})`);
+    };
+    const up = () => {
+      window.removeEventListener('mousemove', move);
+      window.removeEventListener('mouseup', up);
+      if (Math.hypot(delta[0]!, delta[1]!) < 2) return;
+      const offsets = { ...(block.spec.labelOffsets ?? {}), [key]: [Math.round(ox + delta[0]!), Math.round(oy + delta[1]!)] as const };
+      const text = Object.entries(offsets)
+        .filter(([, [x, y]]) => x || y)
+        .map(([k, [x, y]]) => `${k}=${x},${y}`)
+        .join(' ');
+      onOption('labels', text ? `"${text}"` : undefined);
+    };
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+  };
   return (
     <div
       ref={view}
       className={`chart-view${block.align && !block.wrap ? ` align-${block.align}` : ''}`}
       style={width !== undefined ? { width: `${width}%` } : undefined}
+      onMouseDownCapture={startDrag}
       onMouseMove={read}
       onMouseLeave={() => setHover(undefined)}
     >

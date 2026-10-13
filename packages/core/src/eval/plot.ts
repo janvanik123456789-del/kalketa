@@ -15,7 +15,7 @@
 import { CalcError, diagnostic, fail, type Span } from '../diagnostics.js';
 import type { Expr, NamedArg } from '../lang/ast.js';
 import { parsePlacement, type Placement } from '../lang/parser.js';
-import { sameDim, type Dimension } from '../units/dimension.js';
+import { multiplyDims, sameDim, type Dimension } from '../units/dimension.js';
 import { baseUnitSymbol, toDisplay } from '../units/display.js';
 import type { UnitRegistry } from '../units/registry.js';
 import type { ResolvedUnit } from '../units/unitExpr.js';
@@ -32,7 +32,7 @@ export const PLOT_FUNCTION = 'plot';
 export type PlotKind = 'line' | 'points' | 'bar';
 const KINDS: readonly PlotKind[] = ['line', 'points', 'bar'];
 /** Options of plot(...); every other named argument is the variable. */
-export const PLOT_OPTIONS: readonly string[] = ['kind', 'title', 'samples', 'place', 'ylim', 'roots', 'symmetry', 'extremes'];
+export const PLOT_OPTIONS: readonly string[] = ['kind', 'title', 'samples', 'place', 'ylim', 'roots', 'symmetry', 'extremes', 'inflections', 'area', 'tangent', 'labels'];
 /** Curves in one chart: the categorical colours a reader still tells apart. */
 export const MAX_PLOT_SERIES = 8;
 const LINE_SAMPLES = 201;
@@ -55,6 +55,24 @@ export interface PlotSeries {
   readonly axes?: readonly number[];
   /** extremes: true — its peaks and dips (the vertex of a parabola), in the units of the axes. */
   readonly extremes?: readonly { readonly x: number; readonly y: number; readonly peak: boolean }[];
+  /** inflections: true — where it turns from bending one way to the other (y″ changes its sign). */
+  readonly inflections?: readonly { readonly x: number; readonly y: number }[];
+}
+
+/** area: a .. b — the area between the first curve and the x axis, hatched, with the value of its integral. */
+export interface PlotArea {
+  readonly from: number;
+  readonly to: number;
+  /** ∫ y dx from a to b (negative where the curve is below the axis) and its unit. */
+  readonly value: number;
+  readonly unit: string;
+}
+
+/** tangent: x₀ — the tangent of the first curve at x₀: its point and slope y′(x₀) in the units of the axes. */
+export interface PlotTangent {
+  readonly x: number;
+  readonly y: number;
+  readonly slope: number;
 }
 
 export interface PlotResult {
@@ -72,6 +90,10 @@ export interface PlotResult {
   readonly place?: Placement;
   /** ylim: -20 .. 20: the y axis from and to, in the unit of the y axis; what lies beyond is cut off. */
   readonly yRange?: readonly [number, number];
+  readonly area?: PlotArea;
+  readonly tangent?: PlotTangent;
+  /** labels: "e0.0=0,18 r0.1=-20,-5" — the labels moved by hand, by their key, in units of the chart. */
+  readonly labelOffsets?: Readonly<Record<string, readonly [number, number]>>;
 }
 
 export function isPlotCall(expr: Expr): expr is CallExpr {
@@ -127,6 +149,7 @@ export function plotStatement(call: CallExpr, ctx: EvalContext, evaluate: Evalua
   const showRoots = flag(call, 'roots', ctx, evaluate);
   const showAxes = flag(call, 'symmetry', ctx, evaluate);
   const showExtremes = flag(call, 'extremes', ctx, evaluate);
+  const showInflections = flag(call, 'inflections', ctx, evaluate);
   let x: { values: number[]; unit: string; dates: boolean };
   if (xs) {
     const first = xs[0]!;
@@ -136,6 +159,13 @@ export function plotStatement(call: CallExpr, ctx: EvalContext, evaluate: Evalua
     if (columns.some((c) => c.length !== n)) fail('E-PLOT-LENGTH', call.span, {});
     x = { values: Array.from({ length: n }, (_, i) => i + 1), unit: '', dates: false };
   }
+  // Of the first curve over an interval: the area under it, its tangent at a point.
+  const first = binder?.value.kind === 'range' && xs ? { body: call.args[0]!, name: binder.name, like: xs[0]! } : undefined;
+  const xIn = (q: Quantity) => toDisplay(q, ctx.registry, xs?.[0]?.hint).value;
+  const area = first ? areaOf(call, first, yDim, ctx, evaluate, xIn) : undefined;
+  const tangent = first ? tangentOf(call, first, ctx, evaluate, xIn, y) : undefined;
+  const labelText = option(call, 'labels', ctx, evaluate);
+  const labelOffsets = labelText ? parseLabelOffsets(labelText) : undefined;
   // A point found by searching is exact to some 8 digits: shown at the precision the chart has (2,1·10⁻⁸ is 0).
   const xSpan = x.values.length > 1 ? Math.abs(x.values[x.values.length - 1]! - x.values[0]!) : 1;
   const ySpan = Math.max(...columns.flat().map((q) => (q ? Math.abs(y(q)) : 0))) || 1;
@@ -152,6 +182,7 @@ export function plotStatement(call: CallExpr, ctx: EvalContext, evaluate: Evalua
       const roots = showRoots && continuous ? zeros(call.args[i]!, binder!.name, d.at!, d.values, ctx, evaluate) : undefined;
       const axes = showAxes && continuous ? symmetryAxes(call.args[i]!, binder!.name, d.at!, d.values, ctx, evaluate) : undefined;
       const extremes = showExtremes && continuous ? extremesOf(call.args[i]!, binder!.name, d.at!, d.values, ctx, evaluate) : undefined;
+      const bends = showInflections && continuous ? inflectionsOf(call.args[i]!, binder!.name, d.at!, ctx, evaluate) : undefined;
       return {
         xs: d.at && d.at !== xs ? d.at.map((q) => toDisplay(q, ctx.registry, xs![0]!.hint).value) : x.values,
         ys: d.values.map(y),
@@ -159,20 +190,110 @@ export function plotStatement(call: CallExpr, ctx: EvalContext, evaluate: Evalua
         ...(roots && roots.length > 0 ? { roots: roots.map((q) => tidy(toDisplay(q, ctx.registry, xs![0]!.hint).value, xSpan)) } : {}),
         ...(axes && axes.length > 0 ? { axes: axes.map((q) => tidy(toDisplay(q, ctx.registry, xs![0]!.hint).value, xSpan)) } : {}),
         ...(extremes && extremes.length > 0 ? { extremes: extremes.map((e) => ({ x: tidy(toDisplay(e.x, ctx.registry, xs![0]!.hint).value, xSpan), y: tidy(y(e.y), ySpan), peak: e.peak })) } : {}),
+        ...(bends && bends.length > 0 ? { inflections: bends.map((e) => ({ x: tidy(toDisplay(e.x, ctx.registry, xs![0]!.hint).value, xSpan), y: tidy(y(e.y), ySpan) })) } : {}),
       };
     }),
     ...(place && Object.keys(place).length ? { place } : {}),
     ...(yRange ? { yRange } : {}),
+    ...(area ? { area } : {}),
+    ...(tangent ? { tangent } : {}),
+    ...(labelOffsets ? { labelOffsets } : {}),
   };
+}
+
+type Curve = { readonly body: Expr; readonly name: string; readonly like: Quantity };
+
+/** area: a .. b — the bounds in the unit of x, and ∫ y dx between them (Simpson's rule on 400 strips). */
+function areaOf(call: CallExpr, curve: Curve, yDim: Dimension, ctx: EvalContext, evaluate: Evaluate, xIn: (q: Quantity) => number): PlotArea | undefined {
+  const arg = call.named.find((n) => n.name === 'area');
+  if (!arg) return undefined;
+  const r = arg.value;
+  if (r.kind !== 'range') return fail('E-PLOT-AREA', r.span, {});
+  const a = asQuantity(evaluate(r.low, ctx), r.low.span);
+  const b = asQuantity(evaluate(r.high, ctx), r.high.span);
+  for (const [q, at] of [[a, r.low], [b, r.high]] as const) {
+    if (!sameDim(q.dim, curve.like.dim)) fail('E-UNIT-MISMATCH', at.span, { operator: '..', left: baseUnitSymbol(curve.like.dim), right: baseUnitSymbol(q.dim) });
+  }
+  const [lo, hi] = a.si <= b.si ? [a, b] : [b, a];
+  const n = 400;
+  const h = (hi.si - lo.si) / n;
+  let sum = 0;
+  for (let k = 0; k <= n; k++) {
+    const v = evaluateAt(curve.body, curve.name, { ...curve.like, si: lo.si + k * h }, ctx, evaluate);
+    if (v.type !== 'quantity' || v.im) return fail('E-PLOT-AREA', r.span, {});
+    sum += v.si * (k === 0 || k === n ? 1 : k % 2 === 1 ? 4 : 2);
+  }
+  const integral = quantity((sum * h) / 3, multiplyDims(yDim, curve.like.dim));
+  const shown = toDisplay(integral, ctx.registry);
+  return { from: xIn(lo), to: xIn(hi), value: shown.value, unit: shown.unit };
+}
+
+/** tangent: x₀ — the point of the first curve and its slope there (a central difference, in the units of the axes). */
+function tangentOf(call: CallExpr, curve: Curve, ctx: EvalContext, evaluate: Evaluate, xIn: (q: Quantity) => number, y: (q: Quantity) => number): PlotTangent | undefined {
+  const arg = call.named.find((n) => n.name === 'tangent');
+  if (!arg) return undefined;
+  const x0 = asQuantity(evaluate(arg.value, ctx), arg.value.span);
+  if (!sameDim(x0.dim, curve.like.dim)) fail('E-UNIT-MISMATCH', arg.value.span, { operator: 'tangent', left: baseUnitSymbol(curve.like.dim), right: baseUnitSymbol(x0.dim) });
+  const at = (si: number) => {
+    const v = evaluateAt(curve.body, curve.name, { ...curve.like, si }, ctx, evaluate);
+    return v.type === 'quantity' && !v.im ? v : fail('E-PLOT-FORM', arg.value.span, {});
+  };
+  const h = Math.max(Math.abs(x0.si), 1) * 1e-5;
+  const [left, here, right] = [at(x0.si - h), at(x0.si), at(x0.si + h)];
+  const dx = xIn({ ...x0, si: x0.si + h }) - xIn({ ...x0, si: x0.si - h });
+  return { x: xIn(x0), y: y(here), slope: (y(right) - y(left)) / dx };
+}
+
+/**
+ * Where a curve turns from bending one way to the other: the second differences of
+ * its samples change sign there; refined by halving with the second derivative.
+ */
+function inflectionsOf(body: Expr, name: string, xs: readonly Quantity[], ctx: EvalContext, evaluate: Evaluate): { x: Quantity; y: Quantity }[] {
+  const f = valueAt(body, name, xs[0]!, ctx, evaluate);
+  const span = Math.abs(xs[xs.length - 1]!.si - xs[0]!.si);
+  const h = span * 1e-3;
+  const second = (si: number): number | undefined => {
+    const [a, b, c] = [f(si - h)?.si, f(si)?.si, f(si + h)?.si];
+    return a === undefined || b === undefined || c === undefined ? undefined : (a - 2 * b + c) / (h * h);
+  };
+  const scale = Math.max(...xs.map((q) => Math.abs(second(q.si) ?? 0)), Number.MIN_VALUE);
+  const found: { x: Quantity; y: Quantity }[] = [];
+  for (let j = 0; j + 1 < xs.length; j++) {
+    const [s1, s2] = [second(xs[j]!.si), second(xs[j + 1]!.si)];
+    // A real change of the bend, not noise around a straight piece.
+    if (s1 === undefined || s2 === undefined || Math.sign(s1) === Math.sign(s2) || Math.max(Math.abs(s1), Math.abs(s2)) < scale * 1e-6) continue;
+    let [lo, hi, slo] = [xs[j]!.si, xs[j + 1]!.si, s1];
+    for (let k = 0; k < 50; k++) {
+      const mid = (lo + hi) / 2;
+      const sm = second(mid);
+      if (sm === undefined) break;
+      if (Math.sign(sm) === Math.sign(slo)) [lo, slo] = [mid, sm];
+      else hi = mid;
+    }
+    const x = (lo + hi) / 2;
+    const yv = f(x);
+    if (yv && !found.some((e) => Math.abs(e.x.si - x) <= span * 1e-6)) found.push({ x: { ...xs[0]!, si: x }, y: yv });
+  }
+  return found;
+}
+
+/** "e0.0=0,18 r0.1=-20,-5": the labels moved by hand. */
+function parseLabelOffsets(text: string): Record<string, readonly [number, number]> {
+  const out: Record<string, readonly [number, number]> = {};
+  for (const item of text.split(/\s+/).filter(Boolean)) {
+    const m = /^([a-z]+\d*(?:\.\d+)?)=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)$/.exec(item);
+    if (m) out[m[1]!] = [Number(m[2]), Number(m[3])];
+  }
+  return out;
 }
 
 /** A value rounded to a ten-millionth of the span of its axis. */
 function tidy(value: number, span: number): number {
-  const step = span * 1e-7;
-  if (!(step > 0)) return value;
-  const rounded = Math.round(value / step) * step;
-  // Round in the decimal digits too, so −0,39999999 prints as −0,4 and 2·10⁻⁸ as 0.
-  return Number((rounded === 0 ? 0 : rounded).toPrecision(Math.max(1, Math.ceil(Math.log10(Math.abs(value) / step + 1)))));
+  if (!(span > 0) || !Number.isFinite(value)) return value;
+  // A decimal step: −0,39999999 is −0,4, 2·10⁻⁸ is 0, −5,0000000001 is −5.
+  const decimals = Math.max(0, Math.min(15, -Math.floor(Math.log10(span * 1e-7))));
+  const rounded = Number(value.toFixed(decimals));
+  return rounded === 0 ? 0 : rounded;
 }
 
 /** A yes/no option (roots: true). */

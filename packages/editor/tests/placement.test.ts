@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { placeable, plotFlag, plotShowsRoots, plotYRange, withPlotFlag, withPlotPlace, withPlotRoots, withPlotYRange } from '../src/logic/placement.js';
+import { placeable, plotFlag, plotOption, plotShowsRoots, plotYRange, withPlotFlag, withPlotOption, withPlotPlace, withPlotRoots, withPlotYRange } from '../src/logic/placement.js';
 
 describe('placement of pictures and charts', () => {
   it('reads and writes the place option of a chart line', () => {
@@ -53,5 +53,18 @@ describe('the axis of symmetry in a chart', () => {
     expect(plotFlag(on, 'symmetry')).toBe(true);
     expect(plotFlag(on, 'roots')).toBe(true);
     expect(withPlotFlag(on, 'symmetry', false)).toBe(line);
+  });
+});
+
+describe('any option of a plot line', () => {
+  it('is read, set, replaced and left out, past brackets and texts', () => {
+    const line = 'plot(y(x), x: -3 .. 2, title: "a, b", roots: true)';
+    expect(plotOption(line, 'title')).toBe('"a, b"');
+    const area = withPlotOption(line, 'area', 'x_2 .. x_1');
+    expect(area).toBe('plot(y(x), x: -3 .. 2, title: "a, b", roots: true, area: x_2 .. x_1)');
+    expect(withPlotOption(area, 'tangent', '1.5')).toBe('plot(y(x), x: -3 .. 2, title: "a, b", roots: true, area: x_2 .. x_1, tangent: 1.5)');
+    expect(withPlotOption(withPlotOption(area, 'tangent', '1.5'), 'tangent', '2')).toBe('plot(y(x), x: -3 .. 2, title: "a, b", roots: true, area: x_2 .. x_1, tangent: 2)');
+    expect(withPlotOption(area, 'area', undefined)).toBe(line);
+    expect(withPlotOption(line, 'title', undefined)).toBe('plot(y(x), x: -3 .. 2, roots: true)');
   });
 });

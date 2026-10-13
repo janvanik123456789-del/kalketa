@@ -332,6 +332,10 @@ plot(y(x), x: -3 .. 2, ylim: -20 .. 20)             ' osa y od .. do, co je mimo
 plot(y(x), x: -3 .. 2, roots: true)                 ' kořeny křivky vyznačené na ose x
 plot(y(x), x: -3 .. 2, symmetry: true)              ' osa souměrnosti (u paraboly x = −b/(2·a))
 plot(y(x), x: -3 .. 2, extremes: true)              ' vrcholy (maxima, minima) se souřadnicemi [x; y]
+plot(y(x), x: -3 .. 2, inflections: true)           ' inflexní body (y″ mění znaménko)
+plot(y(x), x: -4 .. 4, area: x_2 .. x_1)            ' vyšrafovaná plocha pod křivkou a S = ∫ y dx
+plot(y(x), x: -4 .. 4, tangent: 3)                  ' tečna v x = 3: k = y′(3), úhel α od osy x
+plot(y(x), x: -4 .. 4, labels: "s=10,-20")          ' popisky posunuté myší (zapisuje program)
 ```
 
 - **Graf je samostatný řádek** `plot(…)` (jako v Mathcadu a SMath oblast grafu, zápisem blíž Calcpadu `$Plot`). Přepočítá se s výpočtem; do proměnné ani do výrazu ho přiřadit nejde (`E-PLOT-PLACE`).
@@ -346,6 +350,12 @@ plot(y(x), x: -3 .. 2, extremes: true)              ' vrcholy (maxima, minima) s
 - **Kořeny v grafu (2026-10-12):** `roots: true` vyznačí, kde křivka protne osu x: kroužek v barvě křivky a nad ním hodnota `x = 1,07` (bez indexu, protože pořadí na ose nemusí odpovídat x₁, x₂ z výpočtu). Kořen se najde mezi body grafu se změnou znaménka a zpřesní se výpočtem funkce. Dotyk osy bez změny znaménka (dvojnásobný kořen) se vyznačí jen tehdy, když na něj padne bod grafu. V editoru pravé tlačítko na grafu → **Zobrazit kořeny**.
 - **Osa souměrnosti (2026-10-12):** `symmetry: true` nakreslí čerchovaně svislou osu, podle které je křivka souměrná, s popiskem `x = −0,4`. Program ji hledá ve vrcholech křivky (u paraboly x = −b/(2·a)) a nakreslí ji jen tam, kde výpočet potvrdí, že křivka je na obou stranách stejná aspoň na pětině šířky grafu; u nesouměrné křivky (x³ − x) se neukáže nic. V editoru pravé tlačítko na grafu → **Zobrazit osu souměrnosti**.
 - **Vrcholy v grafu (2026-10-12):** `extremes: true` vyznačí maxima a minima křivky (místa, kde je první derivace nulová, u paraboly její vrchol) kosočtvercem v barvě křivky se souřadnicemi `[−0,4; −10,8]`. Najdou se mezi body grafu a zpřesní výpočtem funkce. V editoru pravé tlačítko na grafu → **Zobrazit vrcholy (maxima a minima)**.
+- **Plocha, tečna, inflexní body, popisky (2026-10-13):**
+  - `area: a .. b` vyšrafuje plochu mezi první křivkou a osou x a napíše do ní `S = …` (absolutní hodnota integrálu; meze jako výraz, např. kořeny `x_2 .. x_1`).
+  - `tangent: x₀` nakreslí tečnu první křivky v bodě x₀ a napíše `k = y′(x₀)` a úhel `α = arctg k` od osy x (v jednotkách os grafu). V editoru se bod tečny táhne myší po křivce a `tangent:` se přepisuje.
+  - `inflections: true` vyznačí inflexní body, kde se mění prohnutí křivky (druhá derivace mění znaménko), kroužkem s křížkem a `[x; y]`.
+  - Popisky bodů (kořeny, vrcholy, osa, inflexe, plocha, tečna) jdou v editoru přetáhnout myší jinam, aby neprotínaly křivku; posun se zapíše do `labels: "…"` (klíče `r0.1` druhý kořen první křivky, `e`, `a`, `i`, `s` plocha, `t` tečna) a platí i v tisku. Posunutý popisek vede tenká čára k jeho bodu. Popisky leží nad všemi značkami.
+  - V editoru pravé tlačítko na grafu: **Vyšrafovat plochu pod křivkou…** (nabídne meze mezi kořeny), **Bez vyšrafované plochy**, **Tečna s úhlem od osy x**, **Zobrazit inflexní body**, **Popisky na původní místo**.
 - **Umístění** jako u obrázku (11.1): `plot(M(x), x: 0 m .. L, place: "width=40% wrap=right dx=6% dy=8mm")`. Bez `place` má graf celou šířku. V editoru pravé tlačítko na grafu otevře menu obtékání a šířky, zúžený graf jde chytit myší a položit kamkoli na stránce (zápis `place` doplní program); klik bez tažení otevře řádek. `side=` je jen pro obrázky.
 - Chyby: zápis (`E-PLOT-FORM`), druh (`E-PLOT-KIND`), rozsah pozpátku (`E-PLOT-RANGE`), počet bodů (`E-PLOT-SAMPLES`), řady různé délky (`E-PLOT-LENGTH`), umístění (`E-PLOT-POSITION`).
 

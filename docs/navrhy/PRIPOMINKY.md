@@ -73,3 +73,11 @@ Když něco spadne, ztrácí data nebo nejde dál testovat, napište to hned, ne
 
 18. ~~Integrál mezi kořeny kvadratické rovnice: kořeny jsou v tisku x₁ a x₂, ale pro další výpočet tak definované nejsou.~~
    **Vyřízeno 2026-10-13:** `solve x ∈ ℝ, …` teď kořeny definuje i jako `x_1`, `x_2`, tedy stejně, jak je tisk čísluje, a to i kořen vyřazený podmínkou. `integral(y(x), x: x_2 .. x_1)` tak funguje. Plocha je `abs(…)`, protože pod osou x vychází integrál záporný. Opraveno i „−0“ (dnes 0) a v grafu „x = 2,107E−8“ místo 0: body nalezené hledáním se zaokrouhlí na přesnost grafu.
+
+19. ~~V menu grafu vyšrafovat plochu omezenou integrálem; táhnout bod po křivce s tečnou a úhlem od osy x (první derivace); inflexní body (druhá derivace); popisky polohově editovatelné, aby neprotínaly křivku.~~
+   **Vyřízeno 2026-10-13:** vše je v nabídce grafu (pravé tlačítko).
+   - **Plocha:** „Vyšrafovat plochu pod křivkou…“ nabídne meze mezi kořeny a do šrafování napíše `S = …`.
+   - **Tečna:** „Tečna s úhlem od osy x“ ukáže bod, který jde myší táhnout po křivce, a u tečny `k = y′(x₀)` a `α` od osy x.
+   - **Inflexní body:** „Zobrazit inflexní body“ ukáže místa, kde druhá derivace mění znaménko (u paraboly žádné nejsou).
+   - **Popisky:** jdou chytit myší a přesunout. Posun se uloží do grafu a platí i v tisku, „Popisky na původní místo“ je vrátí. Popisky se teď kreslí nad všemi značkami.
+   - **Zápis:** `area: x_2 .. x_1`, `tangent: 3`, `inflections: true`, `labels: "…"`.

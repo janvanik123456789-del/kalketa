@@ -142,3 +142,22 @@ describe('the hatch linked to a formula by its name', () => {
     expect(session.update(sheet('0 .. 2')).statements[1]!.plot!.area).toMatchObject({ from: 0, to: 2 });
   });
 });
+
+describe('the quadratic sheet: vertex, points of the sheet, area over the axis, sliders', () => {
+  it('gives the vertex with the roots, splits the area above and below the axis, marks points of the sheet', () => {
+    const r = evaluateSheet('a := -2 {slider=-5..5}\nb := 2\nc := 10\ny(x) := a·x^2 + b·x + c\nsolve x ∈ ℝ: y(x) == 0\nplot(y(x), x: -3 .. 4, area: -1 .. 3, points: [x_1, 0 | 0.5, 10.5])');
+    expect(r.diagnostics).toEqual([]);
+    expect(r.statements[0]!.statement.format?.slider).toEqual({ low: -5, high: 5 });
+    const v = r.statements[4]!.roots!.quadratic!.vertex;
+    expect([v.x.si, v.y.si]).toEqual([0.5, 10.5]);
+    const p = r.statements[5]!.plot!;
+    // ∫₋₁³ y dx = 29,33; below the axis from x₂ = 2,791 to 3.
+    expect(p.area!.value).toBeCloseTo(88 / 3, 9);
+    expect(p.area!.above! - p.area!.below!).toBeCloseTo(88 / 3, 9);
+    expect(p.area!.below).toBeCloseTo(0.20568, 4);
+    expect(p.points!.map((q) => q.y)).toEqual([0, 10.5]);
+    expect(p.points![0]!.x).toBeCloseTo((-2 + Math.sqrt(84)) / -4, 12);
+    expect(evaluateSheet('a := 1 {slider=5..1}').diagnostics.map((d) => d.code)).toContain('W-FORMAT');
+    expect(evaluateSheet('plot(x^2, x: 0 .. 1, points: 3)').diagnostics.map((d) => d.code)).toContain('E-PLOT-POINTS');
+  });
+});

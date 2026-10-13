@@ -187,11 +187,21 @@ function lineFormat(tokens: readonly Token[], diagnostics: Diagnostic[], at: Spa
       // A position: numbered on (pos), or as the calculation numbers it (pos=3, pos=12a).
       else if (key === 'pos' && (value === undefined || /^[\p{L}\p{N}_]+$/u.test(value))) format.pos = value ?? true;
       else if (key === 'align' && (TEXT_ALIGNS as readonly string[]).includes(value ?? '')) format.align = value as TextAlign;
+      else if (key === 'slider' && /^-?\d+(\.\d+)?\.\.-?\d+(\.\d+)?(\.\.\d+(\.\d+)?)?$/.test(value ?? '') && sliderOf(value!)) format.slider = sliderOf(value!)!;
       else if (key === 'color' && ((TEXT_COLORS as readonly string[]).includes(value ?? '') || /^#[0-9a-fA-F]{6}$/.test(value ?? ''))) format.color = value as TextColor;
       else diagnostics.push(diagnostic('W-FORMAT', at, { item }));
     }
   }
   return format;
+}
+
+/** "-5..5" or "-5..5..0.5": from, to (greater) and the step (positive); undefined otherwise. */
+function sliderOf(value: string): { low: number; high: number; step?: number } | undefined {
+  const m = /^(-?\d+(?:\.\d+)?)\.\.(-?\d+(?:\.\d+)?)(?:\.\.(\d+(?:\.\d+)?))?$/.exec(value);
+  if (!m) return undefined;
+  const [low, high, step] = [Number(m[1]), Number(m[2]), m[3] !== undefined ? Number(m[3]) : undefined];
+  if (!(high > low) || (step !== undefined && !(step > 0))) return undefined;
+  return step !== undefined ? { low, high, step } : { low, high };
 }
 
 function withComment(statement: Statement, comment: string | undefined): Statement {

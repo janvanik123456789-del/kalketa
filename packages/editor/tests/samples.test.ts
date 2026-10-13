@@ -4,8 +4,14 @@ import { exampleDocument, samples, savedSampleTitle } from '../src/samples.js';
 describe('sample calculations shipped with the program', () => {
   it('are the reference cases, named after their first heading', () => {
     const list = samples();
-    expect(list.map((s) => s.id)).toEqual(['R1-nosnik', 'R2-vymenik-hridel', 'R3-roztok', 'R4-kabel', 'R5-fotovoltaika', 'R6-fve']);
+    expect(list.map((s) => s.id)).toEqual(['R1-nosnik', 'R2-vymenik-hridel', 'R3-roztok', 'R4-kabel', 'R5-fotovoltaika', 'R6-fve', 'R7-kvadraticka-rovnice', 'R8-quadratic-equation']);
     expect(list[0]!.title).toBe('Posouzení nosníku N1');
+  });
+
+  it('print in the language of their sheet: a sheet named *.en.cc in English', () => {
+    expect(samples().find((s) => s.id === 'R8-quadratic-equation')).toMatchObject({ title: 'Quadratic equation', language: 'en' });
+    expect(exampleDocument('R8-quadratic-equation').manifest.language).toBe('en');
+    expect(exampleDocument('R7-kvadraticka-rovnice').manifest).toMatchObject({ language: 'cs', title: 'Vzor – Kvadratická rovnice' });
   });
 
   it('open as a new document with their tables and a title that says it is a sample', () => {

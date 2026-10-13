@@ -16,6 +16,7 @@ import { lineAttributesOf, lineFormatOf, withLineAttribute, withLineAttributes, 
 import { defineShortcut } from '../logic/shortcuts.js';
 import { pickOf } from '../logic/pick.js';
 import { nearestOnCurve } from '../logic/chartPoint.js';
+import { inputNumber, sliderStep, sliderValue, withInputNumber } from '../logic/slider.js';
 import { placeable, plotFlag, plotOption, plotShowsRoots, plotYRange, withPlotFlag, withPlotOption, withPlotRoots, withPlotYRange } from '../logic/placement.js';
 import { PickControl } from './PickControl.js';
 import { TextRowEditor, type TextFormat } from './TextRowEditor.js';
@@ -597,6 +598,35 @@ export function SheetView(props: Props) {
     ];
   };
 
+  /** An input of a plain number gets a slider (a := -2 {slider=-5..5}): dragged, the number of the line changes. */
+  const sliderItems = (seg: Segment): MenuItem[] => {
+    const at = inputNumber(seg.text);
+    if (!at) return [];
+    const c = props.uiCatalog;
+    const current = lineAttributesOf(seg.text).get('slider');
+    const shown = (text: string) => (props.decimalComma ? text.replace(/(\d)\.(\d)/g, '$1,$2') : text);
+    const span = Math.max(Math.abs(at.value), 1) * 2;
+    const suggested = current ? shown(current.replace(/\.\./g, ' .. ')) : shown(`${-span} .. ${span}`);
+    return [
+      { kind: 'separator' },
+      {
+        kind: 'action',
+        label: t(c, 'slider.set'),
+        checked: current !== undefined,
+        run: () =>
+          void ask(t(c, 'slider.ask'), suggested).then((answer) => {
+            if (answer === undefined) return;
+            const typed = (props.decimalComma ? answer.replace(/(\d),(\d)/g, '$1.$2') : answer).replace(/\s+/g, '').replace(/−/g, '-');
+            if (typed === '') return props.onReplace(seg.start, seg.end, withLineAttribute(seg.text, 'slider', undefined));
+            const parts = typed.split(/\.\.|;/).filter(Boolean);
+            if (parts.length < 2 || parts.some((p) => !/^-?\d+(\.\d+)?$/.test(p))) return;
+            props.onReplace(seg.start, seg.end, withLineAttribute(seg.text, 'slider', parts.join('..')));
+          }),
+      },
+      ...(current !== undefined ? [{ kind: 'action' as const, label: t(c, 'slider.off'), run: () => props.onReplace(seg.start, seg.end, withLineAttribute(seg.text, 'slider', undefined)) }] : []),
+    ];
+  };
+
   /** The y axis of a chart: from .. to as asked for (ylim), or following the values again. */
   const yRangeItems = (seg: Segment): MenuItem[] => {
     const c = props.uiCatalog;
@@ -685,6 +715,18 @@ export function SheetView(props: Props) {
           const x = nearestOnCurve(chart, xPosition(layout, layout.x.min + (layout.x.max - layout.x.min) * 0.75), (layout.plot.top + layout.plot.bottom) / 2);
           set('tangent', chartX(chart, x ?? layout.x.min + (layout.x.max - layout.x.min) * 0.75));
         },
+      },
+      {
+        // A point of the sheet marked in the chart: the vertex [x_v; y_v], or rows of points.
+        kind: 'action',
+        label: t(c, 'chart.points'),
+        checked: plotOption(seg.text, 'points') !== undefined,
+        run: () =>
+          void ask(t(c, 'chart.pointsAsk'), shown(plotOption(seg.text, 'points') ?? '[x_v, y_v]')).then((answer) => {
+            if (answer === undefined) return;
+            const typed = answer.trim();
+            set('points', typed === '' ? undefined : props.decimalComma ? fromDecimalComma(typed) : typed);
+          }),
       },
       ...(plotOption(seg.text, 'labels') !== undefined ? [{ kind: 'action' as const, label: t(c, 'chart.labelsReset'), run: () => set('labels', undefined) }] : []),
     ];
@@ -833,7 +875,7 @@ export function SheetView(props: Props) {
             const display = row?.display ?? row?.solutions?.[0]?.display;
             const shown = display && !display.im && Number.isFinite(display.value) ? (n: number) => `${formatNumber(display.value, props.printCatalog, { decimals: n }).replace('-', '−')}${display.unit ? ` ${display.unit}` : ''}` : undefined;
             const own = blockByLine.get(formatMenu.seg.start);
-            const items = formatMenuItems(formatMenu.seg, props.uiCatalog, change, shown, own?.kind === 'equation' && own.number !== undefined);
+            const items = [...formatMenuItems(formatMenu.seg, props.uiCatalog, change, shown, own?.kind === 'equation' && own.number !== undefined), ...sliderItems(formatMenu.seg)];
             const solveLine = formatMenu.solveLine;
             return solveLine
               ? [{ kind: 'action' as const, label: t(props.uiCatalog, 'solve.toDefinition'), run: () => props.onReplace(formatMenu.seg.start, formatMenu.seg.end, solveLine) }, { kind: 'separator' as const }, ...items]
@@ -1135,6 +1177,9 @@ export function SheetView(props: Props) {
             !isEditing && <PlainLine text={props.decimalComma ? toDecimalComma(seg.text) : seg.text} />
           )}
           {!isEditing && statement && <PickFor statement={statement.statement} result={result} catalog={props.printCatalog} resolveFile={props.resolveFile} onPick={props.onPick} />}
+          {!isEditing && statement?.statement.format?.slider && inputNumber(seg.text) && (
+            <InputSlider line={seg.start} slider={statement.statement.format.slider} value={inputNumber(seg.text)!.value} catalog={props.printCatalog} onValue={(v) => props.onReplace(seg.start, seg.end, withInputNumber(seg.text, v))} />
+          )}
         </div>
       </div>
     );
@@ -1157,6 +1202,79 @@ function Block({ block, catalog, style }: { block: PrintBlock; catalog: Catalog;
  * A chart as printed; the pointer over it reads the values: a vertical line
  * at the nearest point and the value of every curve there.
  */
+/**
+ * The slider of an input: a track with its thumb at the value, the value beside it. Dragged (the page
+ * holds the pointer, as the row is drawn anew with each value) or moved by the arrow keys, step by step.
+ */
+function InputSlider({ line, slider, value, catalog, onValue }: { line: number; slider: { low: number; high: number; step?: number }; value: number; catalog: Catalog; onValue(value: number): void }) {
+  const share = Math.min(1, Math.max(0, (value - slider.low) / (slider.high - slider.low)));
+  const step = sliderStep(slider);
+  const number = (v: number) => formatNumber(v, catalog, { digits: 6 }).replace('-', '−');
+  const press = (e: ReactPointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const holder = document.documentElement;
+    try {
+      holder.setPointerCapture(e.pointerId);
+    } catch {
+      // The moves come to the window anyway while the track stays.
+    }
+    const pointer = e.pointerId;
+    // The track is found anew at every move: the row is drawn anew with each value.
+    const layer = e.currentTarget.closest('.layer-view');
+    const track = () => (layer?.isConnected ? layer : document).querySelector<HTMLElement>(`[data-slider-line="${line}"] .slider-track`);
+    let last = value;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let pending: number | undefined;
+    const flush = () => {
+      timer = undefined;
+      if (pending !== undefined) onValue(pending);
+      pending = undefined;
+    };
+    const at = (clientX: number) => {
+      const box = track()?.getBoundingClientRect();
+      if (!box || !(box.width > 0)) return;
+      const v = sliderValue(slider, (clientX - box.left) / box.width);
+      if (v === last) return;
+      last = v;
+      pending = v;
+      timer ??= setTimeout(flush, 50);
+    };
+    at(e.clientX);
+    const move = (ev: PointerEvent) => at(ev.clientX);
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      try {
+        holder.releasePointerCapture(pointer);
+      } catch {
+        // Released already.
+      }
+      if (timer) clearTimeout(timer);
+      flush();
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+  const key = (e: KeyboardEvent<HTMLDivElement>) => {
+    const by = e.key === 'ArrowRight' || e.key === 'ArrowUp' ? step : e.key === 'ArrowLeft' || e.key === 'ArrowDown' ? -step : 0;
+    if (!by) return;
+    e.preventDefault();
+    e.stopPropagation();
+    onValue(sliderValue(slider, (value + by - slider.low) / (slider.high - slider.low)));
+  };
+  return (
+    <div className="input-slider" data-slider-line={line} onMouseDown={(e) => e.stopPropagation()}>
+      <span className="slider-end">{number(slider.low)}</span>
+      <div className="slider-track" role="slider" tabIndex={0} aria-valuemin={slider.low} aria-valuemax={slider.high} aria-valuenow={value} onPointerDown={press} onKeyDown={key}>
+        <div className="slider-fill" style={{ width: `${share * 100}%` }} />
+        <div className="slider-thumb" style={{ left: `${share * 100}%` }} />
+      </div>
+      <span className="slider-end">{number(slider.high)}</span>
+    </div>
+  );
+}
+
 /** A number as the file writes it, rounded to what a person reads: 2.236, not 2.2360679775. */
 function writtenNumber(value: number, step?: number): string {
   const digits = step ? Math.max(0, -Math.floor(Math.log10(step))) : 4;

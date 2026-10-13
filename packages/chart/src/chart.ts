@@ -38,7 +38,9 @@ export interface ChartSpec {
   /** The y axis from and to as set (ylim); the curves beyond it are cut off. Else it follows the values. */
   readonly yRange?: readonly [number, number];
   /** The area between the first curve and the x axis from .. to, hatched, with ∫ y dx in it. */
-  readonly area?: { readonly from: number; readonly to: number; readonly value: number; readonly unit: string; readonly name?: string; readonly xs?: readonly number[]; readonly ys?: readonly number[] };
+  readonly area?: { readonly from: number; readonly to: number; readonly value: number; readonly unit: string; readonly name?: string; readonly xs?: readonly number[]; readonly ys?: readonly number[]; readonly above?: number; readonly below?: number };
+  /** Points of the sheet (the vertex [x_v; y_v]…): a dark dot with its coordinates. */
+  readonly points?: readonly { readonly x: number; readonly y: number }[];
   /** The tangent of the first curve at a point: its slope y′ and its angle from the x axis. */
   readonly tangent?: { readonly x: number; readonly y: number; readonly slope: number };
   /** Labels moved by hand, by their key (r0.1, e0.0, a0.0, i0.0, t, s), in units of the chart. */
@@ -231,7 +233,7 @@ export function chartSvg(spec: ChartSpec, options: ChartOptions = {}): string {
       : data,
   );
   // The marks of points first, their labels over all of them: a label is never hidden under a mark, and can be taken.
-  const marks = [areaMarks(spec, layout, format), symmetryLines(spec, layout, formatX), rootMarks(spec, layout, formatX), extremeMarks(spec, layout, formatX, format), inflectionMarks(spec, layout, formatX, format), tangentMarks(spec, layout, format)].join('');
+  const marks = [areaMarks(spec, layout, format), symmetryLines(spec, layout, formatX), rootMarks(spec, layout, formatX), extremeMarks(spec, layout, formatX, format), inflectionMarks(spec, layout, formatX, format), pointMarks(spec, layout, formatX, format), tangentMarks(spec, layout, format)].join('');
   const LABEL = /(?:<line class="chart-label-lead"[^>]*\/>)?<text data-label="[^"]*"[^>]*>.*?<\/text>/g;
   parts.push(marks.replace(LABEL, ''), ...(marks.match(LABEL) ?? []));
   if (spec.series.length > 1) parts.push(legend(spec, layout));
@@ -390,6 +392,17 @@ function extremeMarks(spec: ChartSpec, layout: ChartLayout, formatX: (value: num
   return out.join('');
 }
 
+/** Points of the sheet: a dark dot, its coordinates [x; y] above it. */
+function pointMarks(spec: ChartSpec, layout: ChartLayout, formatX: (value: number) => string, format: (value: number) => string): string {
+  return (spec.points ?? [])
+    .map((p, k) => {
+      if (!inPlot(layout, p.x, p.y)) return '';
+      const [px, py] = [xPosition(layout, p.x), yPosition(layout, p.y)];
+      return `<circle class="chart-point" cx="${r(px)}" cy="${r(py)}" r="4.5" fill="${INK}" stroke="#fff" stroke-width="1.5"/>` + placed(spec, `p0.${k}`, [px, py], [px + 8, py - 9], esc(`[${formatX(p.x)}; ${format(p.y)}]`), `class="chart-label chart-point-label" fill="${INK}"`);
+    })
+    .join('');
+}
+
 /** Where the curves turn from bending one way to the other: a cross in the colour of the curve, [x; y] beside it. */
 function inflectionMarks(spec: ChartSpec, layout: ChartLayout, formatX: (value: number) => string, format: (value: number) => string): string {
   const out: string[] = [];
@@ -424,16 +437,32 @@ function areaMarks(spec: ChartSpec, layout: ChartLayout, format: (value: number)
   });
   const points = [ends[0]!, ...inside, ends[1]!].filter(([, y]) => Number.isFinite(y));
   if (points.length < 2) return '';
-  const path = points.map(([x, y], k) => `${k === 0 ? 'M' : 'L'}${r(xPosition(layout, x))} ${r(yPosition(layout, y))}`).join('') + `L${r(xPosition(layout, a.to))} ${r(zero)}L${r(xPosition(layout, a.from))} ${r(zero)}Z`;
-  // The hatch: lines at 45° in the colour of the curve over a light wash (the same pattern in every chart, so one id serves).
-  const pattern = `<defs><pattern id="kalketa-hatch" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="7" stroke="${color}" stroke-width="1.3" stroke-opacity="0.75"/></pattern></defs>`;
-  const fill = `<path class="chart-area" d="${path}" fill="${color}" fill-opacity="0.08"/><path d="${path}" fill="url(#kalketa-hatch)" stroke="${color}" stroke-width="0.8" stroke-opacity="0.6"/>`;
+  // Where the curve crosses the axis between two points, a point on the axis: the parts above and below meet there.
+  const crossed: (readonly [number, number])[] = [];
+  points.forEach((p, k) => {
+    const q = points[k - 1];
+    if (q && Math.sign(q[1]) * Math.sign(p[1]) < 0) crossed.push([q[0] + ((p[0] - q[0]) * q[1]) / (q[1] - p[1]), 0]);
+    crossed.push(p);
+  });
+  const outline = (clamp: (y: number) => number) =>
+    crossed.map(([x, y], k) => `${k === 0 ? 'M' : 'L'}${r(xPosition(layout, x))} ${r(yPosition(layout, clamp(y)))}`).join('') + `L${r(xPosition(layout, a.to))} ${r(zero)}L${r(xPosition(layout, a.from))} ${r(zero)}Z`;
+  // The hatch: lines at 45° in the colour of the curve over a light wash; below the axis the other way, in red
+  // (the same patterns in every chart, so one id each serves).
+  const below = '#e34948';
+  const pattern = `<defs><pattern id="kalketa-hatch" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="7" stroke="${color}" stroke-width="1.3" stroke-opacity="0.75"/></pattern><pattern id="kalketa-hatch-below" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-45)"><line x1="0" y1="0" x2="0" y2="7" stroke="${below}" stroke-width="1.3" stroke-opacity="0.75"/></pattern></defs>`;
+  const split = a.above !== undefined && a.below !== undefined;
+  const one = (d: string, tint: string, hatch: string, cls: string) => `<path class="${cls}" d="${d}" fill="${tint}" fill-opacity="0.08"/><path d="${d}" fill="url(#${hatch})" stroke="${tint}" stroke-width="0.8" stroke-opacity="0.6"/>`;
+  const fill = split
+    ? one(outline((y) => Math.max(y, 0)), color, 'kalketa-hatch', 'chart-area chart-area-above') + one(outline((y) => Math.min(y, 0)), below, 'kalketa-hatch-below', 'chart-area chart-area-below')
+    : one(outline((y) => y), color, 'kalketa-hatch', 'chart-area');
   // Its value in the middle of the area, half way between the axis and the curve.
   const mid = (a.from + a.to) / 2;
   const near = points.reduce((best, p) => (Math.abs(p[0] - mid) < Math.abs(best[0] - mid) ? p : best), points[0]!);
   const [px, py] = [xPosition(layout, mid), (zero + yPosition(layout, near[1])) / 2];
   // Linked to an integral of the sheet: its name and its value as the sheet has it; else S = |∫ y dx|.
-  const text = `${a.name ?? 'S'} = ${format(a.name ? a.value : Math.abs(a.value))}${a.unit ? ` ${a.unit}` : ''}`;
+  // Over both sides of the axis the integral counts one part against the other: both parts are said too.
+  const unit = a.unit ? ` ${a.unit}` : '';
+  const text = `${a.name ?? 'S'} = ${format(a.name || split ? a.value : Math.abs(a.value))}${unit}${split ? ` (+${format(a.above!)} / −${format(a.below!)})` : ''}`;
   return pattern + fill + placed(spec, 's', [px, py], [px, py + 4], label(text), `class="chart-label chart-area-label" text-anchor="middle" fill="${INK}" font-weight="600"`);
 }
 

@@ -95,3 +95,14 @@ Když něco spadne, ztrácí data nebo nejde dál testovat, napište to hned, ne
    - **Tečna:** bod stojí na křivce ve stejném x jako myš, takže nepřeskakuje mezi větvemi úzké paraboly. Kde je křivka mimo rozsah osy y, zůstane na nejbližším viditelném místě.
    - **Smoke test:** dřív posílal pohyby myši tak, že dorazil jen poslední, a proto chybu nezachytil. Teď táhne krok za krokem a na starém kódu chybu ukáže.
    - **Ve vašem souboru** zůstalo na řádku grafu `tangent: NaN`: smažte ho, nebo zapněte tečnu znovu z nabídky.
+
+22. ~~Vylepšit list o kvadratické rovnici (všechny navržené body), doplnit vysvětlující texty a uložit i anglickou verzi do vzorových příkladů.~~
+   **Vyřízeno 2026-10-13:**
+   - **Vzorové příklady:** Soubor → Vzorové příklady → „7 Kvadratická rovnice“ a „8 Quadratic equation“ (tiskne se anglicky). Česká verze je uložená i vedle vašeho souboru jako `Testovaci_priklady/Kvadraticke_rovnice_vzor.kalk`, váš soubor zůstal beze změny.
+   - **Obsah listu:** vysvětlující texty, kontrola D ≥ 0, Vietovy vzorce, rozklad na kořenové činitele (ověřený v bodě, protože `derive` ověřuje pro libovolné hodnoty, kdežto rozklad platí jen pro tyto kořeny), vrchol přes derivaci s kontrolou vzorcem, tečna s úhlem, plocha jako `abs(integral…)` mezi kořeny, graf s body, šrafováním a tečnou.
+   - **Nové v programu:**
+     - vrchol `V = [−b/(2·a); −D/(4·a)]` v řešení kvadratické rovnice;
+     - `points: [x_v, y_v]` v grafu („Vyznačit bod z listu…“);
+     - plocha přes osu x se šrafuje zvlášť nad a pod osou a popisek ukáže obě části;
+     - posuvníky `{slider=-5..5}` („Posuvník pro hodnotu…“ v nabídce řádku).
+   - **Ověření:** výsledky obou vzorů jsou nezávisle spočtené a hlídá je referenční test (R7, R8).

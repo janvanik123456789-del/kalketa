@@ -7,7 +7,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { defaultRegistry, evaluateSheet, type Table } from '@kalketa/core';
+import { defaultRegistry, evaluateSheet, toDisplay, type Table } from '@kalketa/core';
 import { loadTable } from '@kalketa/sheet';
 
 type ExpectedValue = { value: number; unit: string } | { boolean: boolean } | { row: string };
@@ -66,9 +66,12 @@ describe.each(cases)('$name', ({ dir, file }) => {
   it.each(Object.entries(expected.values))('%s', (variable, want) => {
     // A value is defined by ":=", or found by a solve line.
     const solved = result.statements.flatMap((s) => s.solutions ?? []).find((s) => s.name === variable);
+    // The roots of a solve under conditions are names as printed (x_1, x_2): values of the sheet.
+    const named = result.values.get(variable);
     const statement = solved
       ? { value: solved.value, display: solved.display }
-      : result.statements.find((s) => s.statement.kind === 'definition' && s.statement.name === variable);
+      : (result.statements.find((s) => s.statement.kind === 'definition' && s.statement.name === variable) ??
+        (named?.type === 'quantity' ? { value: named, display: toDisplay(named, defaultRegistry) } : undefined));
     expect(statement, `missing ${variable}`).toBeDefined();
     if ('boolean' in want) {
       expect(statement!.value).toEqual({ type: 'boolean', value: want.boolean });

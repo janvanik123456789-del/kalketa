@@ -32,7 +32,7 @@ export const PLOT_FUNCTION = 'plot';
 export type PlotKind = 'line' | 'points' | 'bar';
 const KINDS: readonly PlotKind[] = ['line', 'points', 'bar'];
 /** Options of plot(...); every other named argument is the variable. */
-export const PLOT_OPTIONS: readonly string[] = ['kind', 'title', 'samples', 'place', 'ylim', 'roots', 'symmetry', 'extremes', 'inflections', 'area', 'tangent', 'labels'];
+export const PLOT_OPTIONS: readonly string[] = ['kind', 'title', 'samples', 'place', 'ylim', 'roots', 'symmetry', 'extremes', 'inflections', 'area', 'tangent', 'labels', 'points'];
 /** Curves in one chart: the categorical colours a reader still tells apart. */
 export const MAX_PLOT_SERIES = 8;
 const LINE_SAMPLES = 201;
@@ -66,6 +66,9 @@ export interface PlotArea {
   /** ∫ y dx from a to b (negative where the curve is below the axis) and its unit. */
   readonly value: number;
   readonly unit: string;
+  /** The parts of the area above and below the x axis, each positive: ∫ y dx counts the one against the other. */
+  readonly above?: number;
+  readonly below?: number;
   /** area: S with S := integral(…) in the sheet: its name and value, its integrand drawn at these points. */
   readonly name?: string;
   readonly xs?: readonly number[];
@@ -96,6 +99,8 @@ export interface PlotResult {
   readonly yRange?: readonly [number, number];
   readonly area?: PlotArea;
   readonly tangent?: PlotTangent;
+  /** points: [x_v; y_v] or [x₁, y₁ | x₂, y₂] — points of the sheet, in the units of the axes. */
+  readonly points?: readonly { readonly x: number; readonly y: number }[];
   /** labels: "e0.0=0,18 r0.1=-20,-5" — the labels moved by hand, by their key, in units of the chart. */
   readonly labelOffsets?: Readonly<Record<string, readonly [number, number]>>;
 }
@@ -168,6 +173,7 @@ export function plotStatement(call: CallExpr, ctx: EvalContext, evaluate: Evalua
   const xIn = (q: Quantity) => toDisplay(q, ctx.registry, xs?.[0]?.hint).value;
   const area = first ? areaOf(call, first, yDim, ctx, evaluate, xIn, y, formulaOf) : undefined;
   const tangent = first ? tangentOf(call, first, ctx, evaluate, xIn, y) : undefined;
+  const points = first ? pointsOf(call, first.like.dim, yDim, ctx, evaluate, xIn, y) : undefined;
   const labelText = option(call, 'labels', ctx, evaluate);
   const labelOffsets = labelText ? parseLabelOffsets(labelText) : undefined;
   // A point found by searching is exact to some 8 digits: shown at the precision the chart has (2,1·10⁻⁸ is 0).
@@ -202,10 +208,51 @@ export function plotStatement(call: CallExpr, ctx: EvalContext, evaluate: Evalua
     ...(area ? { area } : {}),
     ...(tangent ? { tangent } : {}),
     ...(labelOffsets ? { labelOffsets } : {}),
+    ...(points && points.length > 0 ? { points } : {}),
   };
 }
 
 type Curve = { readonly body: Expr; readonly name: string; readonly like: Quantity };
+
+/**
+ * The parts of an area above and below the x axis, each positive: the trapezoids of the
+ * samples, cut where the curve crosses the axis. Scaled so that their difference is the
+ * integral as calculated (in its unit); none when the curve stays on one side.
+ */
+function parts(xs: readonly number[], ys: readonly number[], integral: number): { above?: number; below?: number } {
+  let above = 0;
+  let below = 0;
+  for (let k = 0; k + 1 < xs.length; k++) {
+    const [x1, x2, y1, y2] = [xs[k]!, xs[k + 1]!, ys[k]!, ys[k + 1]!];
+    if (y1 >= 0 && y2 >= 0) above += ((y1 + y2) / 2) * (x2 - x1);
+    else if (y1 <= 0 && y2 <= 0) below -= ((y1 + y2) / 2) * (x2 - x1);
+    else {
+      // The crossing between them: a triangle on each side.
+      const xc = x1 + ((x2 - x1) * y1) / (y1 - y2);
+      const [a, b] = y1 > 0 ? [(y1 * (xc - x1)) / 2, (-y2 * (x2 - xc)) / 2] : [(y2 * (x2 - xc)) / 2, (-y1 * (xc - x1)) / 2];
+      above += a;
+      below += b;
+    }
+  }
+  const total = above - below;
+  if (above <= Math.abs(total) * 1e-9 || below <= Math.abs(total) * 1e-9 || !(Math.abs(total) > 0)) return {};
+  // In the unit of the integral: the chart reads the axes in theirs.
+  const scale = integral / total;
+  return { above: Math.abs(above * scale), below: Math.abs(below * scale) };
+}
+
+/** points: a vector [x; y] or a matrix of rows [x₁, y₁ | x₂, y₂] — points of the sheet to mark. */
+function pointsOf(call: CallExpr, xDim: Dimension, yDim: Dimension, ctx: EvalContext, evaluate: Evaluate, xIn: (q: Quantity) => number, y: (q: Quantity) => number): { x: number; y: number }[] | undefined {
+  const arg = call.named.find((n) => n.name === 'points');
+  if (!arg) return undefined;
+  const v = evaluate(arg.value, ctx);
+  const pairs = v.type === 'vector' && v.items.length === 2 ? [[v.items[0]!, v.items[1]!]] : v.type === 'matrix' && v.cols === 2 ? Array.from({ length: v.rows }, (_, i) => [v.items[2 * i]!, v.items[2 * i + 1]!]) : undefined;
+  if (!pairs) return fail('E-PLOT-POINTS', arg.value.span, {});
+  return pairs.map(([px, py]) => {
+    if (!sameDim(px!.dim, xDim) || !sameDim(py!.dim, yDim) || px!.im || py!.im) fail('E-PLOT-POINTS', arg.value.span, {});
+    return { x: xIn(px!), y: y(py!) };
+  });
+}
 
 /** The integral in a formula of the sheet (S := integral(y(x), x: a .. b), also inside abs(…) or a product). */
 function integralIn(expr: Expr | undefined): CallExpr | undefined {
@@ -252,7 +299,7 @@ function areaOf(call: CallExpr, curve: Curve, yDim: Dimension, ctx: EvalContext,
       xs.push(xIn(x));
       ys.push(y(v));
     }
-    return { from: xIn(lo), to: xIn(hi), value: shown.value, unit: shown.unit, name: arg.value.name, xs, ys };
+    return { from: xIn(lo), to: xIn(hi), value: shown.value, unit: shown.unit, name: arg.value.name, xs, ys, ...parts(xs, ys, shown.value) };
   }
   const r = arg.value;
   if (r.kind !== 'range') return fail('E-PLOT-AREA', r.span, {});
@@ -272,7 +319,17 @@ function areaOf(call: CallExpr, curve: Curve, yDim: Dimension, ctx: EvalContext,
   }
   const integral = quantity((sum * h) / 3, multiplyDims(yDim, curve.like.dim));
   const shown = toDisplay(integral, ctx.registry);
-  return { from: xIn(lo), to: xIn(hi), value: shown.value, unit: shown.unit };
+  // The parts above and below the axis, from the curve at fine steps.
+  const xs: number[] = [];
+  const ys: number[] = [];
+  for (let k = 0; k <= 800; k++) {
+    const x = { ...curve.like, si: lo.si + ((hi.si - lo.si) * k) / 800 };
+    const v = evaluateAt(curve.body, curve.name, x, ctx, evaluate);
+    if (v.type !== 'quantity' || v.im) return fail('E-PLOT-AREA', r.span, {});
+    xs.push(xIn(x));
+    ys.push(y(v));
+  }
+  return { from: xIn(lo), to: xIn(hi), value: shown.value, unit: shown.unit, ...parts(xs, ys, shown.value) };
 }
 
 /** tangent: x₀ — the point of the first curve and its slope there (a central difference, in the units of the axes). */

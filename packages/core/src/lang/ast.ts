@@ -107,6 +107,8 @@ export interface LineFormat {
   readonly pos?: true | string;
   /** A cell beside the line above it, on one row of the page: "Zatěžující síla" | F = 1600 N. */
   readonly beside?: boolean;
+  /** {slider=-5..5} or {slider=-5..5..0.5} on an input (a := -2): a slider in the editor from, to, by. */
+  readonly slider?: { readonly low: number; readonly high: number; readonly step?: number };
 }
 
 /**

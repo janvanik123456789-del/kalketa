@@ -1,0 +1,61 @@
+{
+  "sheet": "quadratic-equation.en.cc",
+  "verifiedBy": "By hand and plain arithmetic outside Kalketa: D = b² − 4ac = 84, x₁,₂ = (−b ± √D)/(2a), the vertex x_v = −b/(2a) = 0.5 and y_v = c − b²/(4a) = 10.5, the slope of the tangent y′(−1) = 2a·(−1) + b = 6, α = arctan 6, the area from the antiderivative a·x³/3 + b·x²/2 + c·x between the roots.",
+  "relativeTolerance": 1e-09,
+  "values": {
+    "D": {
+      "value": 84,
+      "unit": ""
+    },
+    "x_1": {
+      "value": -1.79128784747792,
+      "unit": ""
+    },
+    "x_2": {
+      "value": 2.79128784747792,
+      "unit": ""
+    },
+    "x_v": {
+      "value": 0.5,
+      "unit": ""
+    },
+    "y_v": {
+      "value": 10.5,
+      "unit": ""
+    },
+    "k": {
+      "value": 6,
+      "unit": ""
+    },
+    "α": {
+      "value": 80.53767779197439,
+      "unit": "°"
+    },
+    "S": {
+      "value": 32.078029864690876,
+      "unit": ""
+    }
+  },
+  "checks": [
+    {
+      "label": "the equation has real roots",
+      "passed": true
+    },
+    {
+      "label": "sum of the roots",
+      "passed": true
+    },
+    {
+      "label": "product of the roots",
+      "passed": true
+    },
+    {
+      "label": "factored form",
+      "passed": true
+    },
+    {
+      "label": "vertex by its formula",
+      "passed": true
+    }
+  ]
+}

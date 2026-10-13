@@ -624,6 +624,20 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
       if (kept.length === 0) out.push({ role: 'result', lead: '⇒', op: '', rhs: mtext(t(catalog, 'print.noRootKept')) });
       else out.push({ role: 'result', lead: '⇒', lhs: nameNode(name), op: '=', rhs: kept.length === 1 ? value(kept[0]!.value) : row(mo('['), ...kept.flatMap((r, i) => [...(i > 0 ? [mo(o.argumentSeparator)] : []), value(r.value)]), mo(']')) });
     }
+    // The vertex of the parabola: V = [−b/(2·a); −D/(4·a)] = [−2/(2·(−2)); −84/(4·(−2))] = [0,5; 10,5].
+    if (q) {
+      const at = s.span;
+      const num = (v: number): Expr => ({ kind: 'number', value: v, span: at });
+      const d: Expr = { kind: 'variable', name: 'D', span: at };
+      const minusB: Expr = { kind: 'unary', operator: '-', operand: q.b, span: at };
+      const vx: Expr = { kind: 'binary', operator: '/', left: minusB, right: { kind: 'binary', operator: '*', left: num(2), right: q.a, span: at }, span: at };
+      const vy: Expr = { kind: 'binary', operator: '/', left: { kind: 'unary', operator: '-', operand: d, span: at }, right: { kind: 'binary', operator: '*', left: num(4), right: q.a, span: at }, span: at };
+      const pair = (x: MathNode, y: MathNode) => row(mo('['), x, mo(o.argumentSeparator), y, mo(']'));
+      const dValue: Substituted = { node: value(q.discriminant), negative: q.discriminant.si < 0, hasUnit: false };
+      out.push({ role: 'formula', lhs: mi('V'), op: '=', rhs: pair(formulaNode(vx, o), formulaNode(vy, o)) });
+      if (mode.substitution) out.push({ role: 'substitution', rhs: pair(substituted(vx), substituted(vy, (e) => (e.kind === 'variable' && e.name === 'D' ? dValue : undefined))) });
+      out.push({ role: 'result', rhs: pair(value(q.vertex.x), value(q.vertex.y)) });
+    }
     return out;
   }
 
@@ -1039,6 +1053,7 @@ function chartBlock(
     ...(plot.area ? { area: plot.area } : {}),
     ...(plot.tangent ? { tangent: plot.tangent } : {}),
     ...(plot.labelOffsets ? { labelOffsets: plot.labelOffsets } : {}),
+    ...(plot.points ? { points: plot.points } : {}),
   };
   // Its height to its width as dragged in the sheet (ratio=0.6), else the usual one.
   const size = plot.place?.ratio ? { width: CHART_SIZE.width, height: Math.round(CHART_SIZE.width * plot.place.ratio) } : CHART_SIZE;

@@ -1,0 +1,61 @@
+{
+  "sheet": "kvadraticka-rovnice.cc",
+  "verifiedBy": "Ručně a čistou aritmetikou mimo Kalketa: D = b² − 4ac = 84, x₁,₂ = (−b ± √D)/(2a), vrchol x_v = −b/(2a) = 0,5 a y_v = c − b²/(4a) = 10,5, směrnice tečny y′(−1) = 2a·(−1) + b = 6, α = arctg 6, plocha z primitivní funkce a·x³/3 + b·x²/2 + c·x mezi kořeny.",
+  "relativeTolerance": 1e-09,
+  "values": {
+    "D": {
+      "value": 84,
+      "unit": ""
+    },
+    "x_1": {
+      "value": -1.79128784747792,
+      "unit": ""
+    },
+    "x_2": {
+      "value": 2.79128784747792,
+      "unit": ""
+    },
+    "x_v": {
+      "value": 0.5,
+      "unit": ""
+    },
+    "y_v": {
+      "value": 10.5,
+      "unit": ""
+    },
+    "k": {
+      "value": 6,
+      "unit": ""
+    },
+    "α": {
+      "value": 80.53767779197439,
+      "unit": "°"
+    },
+    "S": {
+      "value": 32.078029864690876,
+      "unit": ""
+    }
+  },
+  "checks": [
+    {
+      "label": "rovnice má reálné kořeny",
+      "passed": true
+    },
+    {
+      "label": "součet kořenů",
+      "passed": true
+    },
+    {
+      "label": "součin kořenů",
+      "passed": true
+    },
+    {
+      "label": "rozklad na kořenové činitele",
+      "passed": true
+    },
+    {
+      "label": "vrchol podle vzorce",
+      "passed": true
+    }
+  ]
+}

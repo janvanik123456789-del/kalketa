@@ -255,6 +255,13 @@ kbd { font: 12px Consolas, monospace; background: #fff; border: 1px solid #c4cad
 /* The labels of points in a chart are taken by the mouse anywhere in their box, not only on their letters. */
 .chart-view .chart-label { pointer-events: bounding-box; cursor: move; }
 .chart-view .chart-tangent-handle { cursor: ew-resize; }
+/* The slider of an input (a := -2 {slider=-5..5}): only in the editor, never printed. */
+.input-slider { display: flex; align-items: center; gap: 6px; margin: 1mm 0 1mm 4mm; width: 50mm; max-width: 100%; font: 10px system-ui, sans-serif; color: #666; user-select: none; }
+.input-slider .slider-track { position: relative; flex: 1; min-width: 30mm; height: 6px; border-radius: 3px; background: #dfe3ea; cursor: pointer; outline: none; }
+.input-slider .slider-track:focus-visible { box-shadow: 0 0 0 2px #9db8e8; }
+.input-slider .slider-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: #7a9ccf; }
+.input-slider .slider-thumb { position: absolute; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: #2a78d6; border: 2px solid #fff; box-shadow: 0 1px 3px rgb(0 0 0 / 35%); }
+@media print { .input-slider { display: none; } }
 .chart-crosshair { position: absolute; width: 0; border-left: 1px solid #898781; pointer-events: none; }
 .chart-tooltip { position: absolute; transform: translate(10px, 0); padding: 4px 8px; background: #ffffff; color: #0b0b0b; border: 1px solid rgba(11, 11, 11, 0.15); border-radius: 4px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12); font: 11px system-ui, sans-serif; white-space: nowrap; pointer-events: none; z-index: 5; }
 .chart-tooltip.left { transform: translate(calc(-100% - 10px), 0); }

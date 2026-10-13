@@ -18,6 +18,8 @@ export interface Sample {
   readonly id: string;
   /** Its first heading ("Posouzení nosníku N1"). */
   readonly title: string;
+  /** The language of its printout: a sheet named *.en.cc is in English, the others in Czech. */
+  readonly language: string;
 }
 
 /** The sample calculations, in the order of their folders. */
@@ -26,7 +28,7 @@ export function samples(): Sample[] {
     .flatMap(([path, source]) => {
       const [, id, file] = /\/reference\/([^/]+)\/([^/]+)\.cc$/.exec(path) ?? [];
       if (!id || !file || TEST_VARIANTS.has(file)) return [];
-      return [{ id, title: /^#\s+(.+)$/m.exec(source)?.[1]?.trim() ?? id }];
+      return [{ id, title: /^#\s+(.+)$/m.exec(source)?.[1]?.trim() ?? id, language: languageOf(file) }];
     })
     .sort((a, b) => a.id.localeCompare(b.id, 'en', { numeric: true }));
 }
@@ -47,7 +49,13 @@ export function exampleDocument(id = DEFAULT_SAMPLE, prefix = 'Vzor'): SheetDocu
     const table = tables.get(name) ?? { schemaJson: '', dataCsv: '' };
     tables.set(name, file === 'schema.json' ? { ...table, schemaJson: text } : { ...table, dataCsv: text });
   }
-  return { ...base, manifest: { ...base.manifest, language: 'cs' }, tables };
+  const file = /([^/]+)\.cc$/.exec(entry?.[0] ?? '')?.[1] ?? '';
+  return { ...base, manifest: { ...base.manifest, language: languageOf(file) }, tables };
+}
+
+/** quadratic-equation.en → en; a sheet without a language in its name is Czech. */
+function languageOf(file: string): string {
+  return /\.([a-z]{2})$/.exec(file)?.[1] ?? 'cs';
 }
 
 /**

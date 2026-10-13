@@ -470,7 +470,7 @@ async function runSmokeTest(pdfPath: string): Promise<void> {
     await writeFile(pdfPath, pdf);
     ok =
       state.bridge && state.sideBySide && state.menus === 8 && state.toolbars > 0 && state.rows > 10 && state.summary > 0 && state.math > 0 && reshapedColumns === 3 && pdf.length > 1000 &&
-      layers.deflection && layers.pickTaken.column.startsWith('→') && /mm|cm/.test(layers.pickTaken.text) && layers.newKeepsExample && layers.samplesOk && layers.derivations && layers.summaryOk && layers.definitionAtCursor && layers.sheetGridOk && layers.tableEnter && layers.solvedByFormula && layers.rootsAndExtremes && layers.userChart.ok && layers.wordPrinted && layers.wordColored && layers.paletteColored && layers.wordText.focused && layers.wordText.pane && layers.wordText.bold === 'dynamiky' && !layers.wordText.shown.includes('"') && layers.wordText.align === 'center' && layers.cellMarked === 'Síla na konci' && layers.cellFont.startsWith('Arial') && layers.cellDeleted && layers.paperRoots && layers.tableRowAdded && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.notesPicture === 'FIGURE+img BLOCKQUOTE' && layers.notesPlaced === 'narrower centred' && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.charts && layers.functionBar && layers.revisions && layers.roots && layers.toolIcons && layers.aiSettings && layers.aiChat && layers.pdfCleanup && layers.theoryLibrary && layers.study && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
+      layers.deflection && layers.pickTaken.column.startsWith('→') && /mm|cm/.test(layers.pickTaken.text) && layers.newKeepsExample && layers.samplesOk && layers.derivations && layers.summaryOk && layers.definitionAtCursor && layers.sheetGridOk && layers.tableEnter && layers.solvedByFormula && layers.rootsAndExtremes && layers.userChart.ok && layers.quadraticSample.ok && layers.wordPrinted && layers.wordColored && layers.paletteColored && layers.wordText.focused && layers.wordText.pane && layers.wordText.bold === 'dynamiky' && !layers.wordText.shown.includes('"') && layers.wordText.align === 'center' && layers.cellMarked === 'Síla na konci' && layers.cellFont.startsWith('Arial') && layers.cellDeleted && layers.paperRoots && layers.tableRowAdded && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.notesPicture === 'FIGURE+img BLOCKQUOTE' && layers.notesPlaced === 'narrower centred' && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.charts && layers.functionBar && layers.revisions && layers.roots && layers.toolIcons && layers.aiSettings && layers.aiChat && layers.pdfCleanup && layers.theoryLibrary && layers.study && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
     console.log(JSON.stringify({ ok, ...state, reshapedColumns, layers, pdfBytes: pdf.length }));
   } catch (err) {
     console.log(JSON.stringify({ ok: false, error: (err as Error).message, console: smokeConsole.slice(-5) }));
@@ -2279,8 +2279,44 @@ async function layersWithRealInput(picture: string) {
   }
   const quadEnd = (await contents.executeJavaScript(`(() => { const r = document.querySelector('${quadChart} .chart-tangent-handle')?.getBoundingClientRect(); return r ? Math.round(r.left + r.width / 2) : -1; })()`)) as number;
   const quadOk = (await contents.executeJavaScript(`!!document.querySelector('${quadChart}') && !document.querySelector('${quadChart}').closest('.row').classList.contains('has-error')`)) as boolean;
+  // The sample of a quadratic equation: its slider of a dragged by the mouse, the parabola following.
+  await clickOn('.menubar-item:nth-child(1) > button');
+  await clickMenu('Vzorové příklady');
+  await clickMenu('7 Kvadratická rovnice');
+  await pause(1500);
+  const sampleState = `(() => {
+    const row = [...document.querySelectorAll('.layer-view.active .page .row')].find((r) => r.querySelector('.input-slider') && r.textContent.replace(/\\s+/g, '').startsWith('8a'));
+    const chart = document.querySelector('.layer-view.active .block.chart svg.chart-svg');
+    return { a: row ? row.textContent.replace(/\\s+/g, '').replace(/^8/, '').split('−5')[0] : '', roots: [...(chart?.querySelectorAll('text.chart-root') ?? [])].map((t) => t.textContent.replace(/\\s+/g, '')).join(' '), errors: document.querySelectorAll('.layer-view.active .page .row.has-error').length };
+  })()`;
+  const sampleBefore = (await contents.executeJavaScript(sampleState)) as { a: string; roots: string; errors: number };
+  // A tenth of the track to the right: a from −2 to about −1 (the roots stay real).
+  const thumb = (await contents.executeJavaScript(`(() => { const row = [...document.querySelectorAll('.layer-view.active .page .row')].find((r) => r.querySelector('.input-slider')); const r = row?.querySelector('.slider-thumb')?.getBoundingClientRect(); const t = row?.querySelector('.slider-track')?.getBoundingClientRect(); return r && t ? { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2), by: t.width / 10 } : undefined; })()`)) as { x: number; y: number; by: number } | undefined;
+  if (thumb) {
+    contents.sendInputEvent({ type: 'mouseDown', x: thumb.x, y: thumb.y, button: 'left', clickCount: 1 });
+    for (let step = 1; step <= 10; step++) {
+      contents.sendInputEvent({ type: 'mouseMove', x: Math.round(thumb.x + (thumb.by * step) / 10), y: thumb.y, button: 'left', modifiers: ['leftbuttondown'] } as Electron.MouseInputEvent);
+      await pause(150);
+    }
+    contents.sendInputEvent({ type: 'mouseUp', x: Math.round(thumb.x + thumb.by), y: thumb.y, button: 'left', clickCount: 1 });
+    await pause(800);
+  }
+  const sampleAfter = (await contents.executeJavaScript(sampleState)) as { a: string; roots: string; errors: number };
+  await takePicture(picture.replace(/[.]png$/, '-quadratic.png'));
+  // The same sample in English: printed in English.
+  await clickOn('.menubar-item:nth-child(1) > button');
+  await clickMenu('Vzorové příklady');
+  await clickMenu('8 Quadratic equation');
+  await pause(1500);
+  const english = (await contents.executeJavaScript(`(() => ({ head: [...document.querySelectorAll('.layer-view.active .page h1, .layer-view.active .page h2')].map((h) => h.textContent.trim()).find((t) => t === 'Quadratic equation') ?? '', verdicts: [...document.querySelectorAll('.layer-view.active .page .check .status')].map((s) => s.textContent.trim()), errors: document.querySelectorAll('.layer-view.active .page .row.has-error').length }))()`)) as { head: string; verdicts: string[]; errors: number };
+  const quadraticSample = {
+    before: sampleBefore,
+    after: sampleAfter,
+    english,
+    ok: !!thumb && sampleBefore.errors === 0 && sampleAfter.errors === 0 && sampleBefore.a !== '' && sampleAfter.a !== sampleBefore.a && sampleAfter.roots !== sampleBefore.roots && english.head === 'Quadratic equation' && english.verdicts.length === 5 && english.verdicts.every((v) => v.endsWith('OK')) && english.errors === 0,
+  };
   const userChart = { namedArea, quadOk, quadTarget, quadEnd, quadEditing, ok: namedArea === 'Integral1=27' && quadOk && quadTarget > 0 && Math.abs(quadEnd - quadTarget) < 12 };
-  return { ...state, pickTaken, deflection, derivations, summaryOk, summaryOpens, summaryAtEnd, bookStyle, verdictFuture, verdictBack, pageHead, definitionAtCursor, solveFormatted, sheetGridOk, sheetGrid, tableEnter, tableEnterAt, lastRowEnter, draggedRows, selectedAll, bothFormatted, roundedOn, equationNumber, solvedByFormula, rootsAndExtremes, wordText, wordColored, paletteColored, wordPrinted, cellMarked, cellFont, cellDeleted, paperRoots, tableRowAdded, chartSteps, samplesOk, sampleTab, newKeepsExample, citations, notesPicture, notesPlaced, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, toolIcons, aiSettings, aiChat, pdfCleanup, theoryLibrary, study, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, placedFree, strictPlaced, canvasOk, besideText, pictures, blocksOk, userChart };
+  return { ...state, pickTaken, deflection, derivations, summaryOk, summaryOpens, summaryAtEnd, bookStyle, verdictFuture, verdictBack, pageHead, definitionAtCursor, solveFormatted, sheetGridOk, sheetGrid, tableEnter, tableEnterAt, lastRowEnter, draggedRows, selectedAll, bothFormatted, roundedOn, equationNumber, solvedByFormula, rootsAndExtremes, wordText, wordColored, paletteColored, wordPrinted, cellMarked, cellFont, cellDeleted, paperRoots, tableRowAdded, chartSteps, samplesOk, sampleTab, newKeepsExample, citations, notesPicture, notesPlaced, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, toolIcons, aiSettings, aiChat, pdfCleanup, theoryLibrary, study, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, placedFree, strictPlaced, canvasOk, besideText, pictures, blocksOk, userChart, quadraticSample };
 }
 
 /** The tidied sources saved as a library (.kalkt) and attached in the chat: the model cites it by its key. */

@@ -231,6 +231,11 @@ describe('a quadratic solved under conditions', () => {
     expect(kept).toContain('x ∈ ℝ , x &gt; 0');
     expect(kept).toContain('D = b 2 − 4 · a · c = 4 2 − 4 · 5 · ( −10 ) = 216');
     expect(kept).toContain('x 2 = −1,87 — nevyhovuje podmínce x &gt; 0 ⇒ x = 1,07');
+    // The vertex of the parabola after the roots, with the numbers put in.
+    expect(kept).toContain('V = [ − b 2 · a ; − D 4 · a ] = [ − 4 2 · 5 ; − 216 4 · 5 ] = [ −0,4 ; −10,8 ]');
+    // An area over both sides of the axis: the integral and both parts.
+    const split = printHtml(evaluateSheet('y(x) := -2·x^2 + 2·x + 10\nplot(y(x), x: -3 .. 4, area: -1 .. 3)'), { catalog: catalogFor('cs'), registry: defaultRegistry, title: 'S' });
+    expect(split.replace(/<[^>]+>/g, '')).toContain('S = 29,33 (+29,54 / −0,2057)');
     expect(text('a := 5\nb := 4\nc := 10\nsolve x ∈ ℝ: a·x^2 + b·x + c == 0')).toContain('D &lt; 0: rovnice nemá v ℝ řešení');
     // A general function of the sheet, written out and then with the numbers put in.
     const general = text('a := 5\nb := 4\nc := -10\ny(x) := a·x^2 + b·x + c\nsolve x ∈ ℝ, x > 0: y(x) == 0');

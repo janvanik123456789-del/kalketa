@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { exampleDocument, samples, savedSampleTitle } from '../src/samples.js';
+import { exampleDocument, samples, savedSampleTitle, subfieldName } from '../src/samples.js';
 
 describe('sample calculations shipped with the program', () => {
   it('are the reference cases, named after their first heading', () => {
@@ -7,8 +7,8 @@ describe('sample calculations shipped with the program', () => {
     expect(list.map((s) => `${s.field} ${s.id}`)).toEqual([
       '01 R7-kvadraticka-rovnice',
       '01 R8-quadratic-equation',
-      '03 R2-vymenik-hridel',
       '03 R9-klikovy-mechanismus',
+      '03 R2-vymenik-hridel',
       '04 R1-nosnik',
       '05 R4-kabel',
       '06 R6-fve',
@@ -16,6 +16,11 @@ describe('sample calculations shipped with the program', () => {
       '16 R5-fotovoltaika',
     ]);
     expect(list.find((s) => s.id === 'R1-nosnik')!.title).toBe('Posouzení nosníku N1');
+    // A field split into parts: the part with its names (cs, en); a case right in its field has none.
+    const crank = list.find((s) => s.id === 'R9-klikovy-mechanismus')!;
+    expect(crank.subfield).toMatchObject({ folder: '01_Kinematika_a_dynamika', names: { cs: 'Kinematika a dynamika', en: 'Kinematics and dynamics' } });
+    expect(subfieldName(crank.subfield!, 'en')).toBe('Kinematics and dynamics');
+    expect(list.find((s) => s.id === 'R1-nosnik')!.subfield).toBeUndefined();
   });
 
   it('print in the language of their sheet: a sheet named *.en.cc in English', () => {

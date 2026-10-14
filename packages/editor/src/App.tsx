@@ -31,7 +31,7 @@ import { proposalEffect, type ProposalEffect } from './logic/proposalEffect.js';
 import type { NewSheetView, ProposalView } from './components/ProposalCard.js';
 import type { AnswerProposals } from './components/ChatPane.js';
 import { languageGuide, sheetContext } from './logic/aiContext.js';
-import { exampleDocument, SAMPLE_FIELDS, samples, savedSampleTitle } from './samples.js';
+import { exampleDocument, SAMPLE_FIELDS, samples, savedSampleTitle, subfieldName, type Sample } from './samples.js';
 import { chooseFile, desktop, emptyDocument, fileName, fileUri, largestParts, openBytes, pickAndOpen, saveDocument, tableCache, type FileRef, type OpenedFile } from './document.js';
 import { record, redo, undo, type History } from './logic/history.js';
 import { closeTab, cycleTab, fileNameOf, isDirty, newTab, openTab, type DocTab, type Tabs } from './logic/documents.js';
@@ -1647,19 +1647,19 @@ export function App() {
           // By field, only the fields that have samples yet.
           items: SAMPLE_FIELDS.flatMap((field) => {
             const own = samples().filter((sample) => sample.field === field);
-            return own.length === 0
-              ? []
-              : [
-                  {
-                    kind: 'submenu' as const,
-                    label: t(ui, `samples.field.${field}`),
-                    items: own.map((sample, i) => ({
-                      kind: 'action' as const,
-                      label: `&${i + 1} ${sample.title}`,
-                      run: () => openDocument(exampleDocument(sample.id, t(ui, 'samples.prefix')), undefined),
-                    })),
-                  },
-                ];
+            const open = (list: readonly Sample[]): MenuItem[] =>
+              list.map((sample, i) => ({
+                kind: 'action' as const,
+                label: `&${i + 1} ${sample.title}`,
+                run: () => openDocument(exampleDocument(sample.id, t(ui, 'samples.prefix')), undefined),
+              }));
+            // A field split into parts: a submenu for each part that has samples.
+            const parts = [...new Map(own.flatMap((s) => (s.subfield ? [[s.subfield.folder, s.subfield] as const] : []))).values()];
+            const items: MenuItem[] = [
+              ...open(own.filter((s) => !s.subfield)),
+              ...parts.map((part) => ({ kind: 'submenu' as const, label: subfieldName(part, ui.locale), items: open(own.filter((s) => s.subfield?.folder === part.folder)) })),
+            ];
+            return own.length === 0 ? [] : [{ kind: 'submenu' as const, label: t(ui, `samples.field.${field}`), items }];
           }),
         },
         ...(desktop ? [sep, cmd('file.exit')] : []),

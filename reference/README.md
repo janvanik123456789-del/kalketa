@@ -20,6 +20,13 @@ jen obory, které už nějaký výpočet mají. Nový obor = nová složka s č�
 `14_Environment_a_hydrologie`, `15_Biomedicina_a_bioinzenyrstvi`,
 `16_Finance_a_statistika`, `17_Obecne_inzenyrske_vypocty`, `99_Pokrocile_a_specialni_metody`.
 
+Obor jde rozdělit na podobory: `reference/<obor>/<podobor>/<výpočet>/`, např.
+`03_Strojirenstvi_a_mechanika/01_Kinematika_a_dynamika/R9-klikovy-mechanismus/`. Složka podoboru
+nese své jméno v souboru `nazev.json` (`{"cs": "Kinematika a dynamika", "en": "Kinematics and dynamics"}`),
+program ho ukáže jako další podmenu oboru (jen když má výpočty). Výpočet může ležet i přímo v oboru.
+Strojírenství má podobory `01_Kinematika_a_dynamika`, `02_Pevnost_a_pruznost`, `03_Vibrace_a_kmitani`,
+`04_Technicke_tekutiny`, `05_Tepelne_vypocty`, `06_Strojni_prvky`.
+
 Příklady ze zdrojů (články, učebnice) se převádějí do jednotek SI; obrázky jsou vlastní.
 
 Jádro je hotové, až projdou všechny bez kódu specifického pro jeden obor.
@@ -27,11 +34,11 @@ Jádro je hotové, až projdou všechny bez kódu specifického pro jeden obor.
 | Složka | Obor | Co ověřuje |
 |---|---|---|
 | 04_…/R1-nosnik | stavař | výběr profilu z tabulky, posudky, nejlehčí vyhovující profil |
-| 03_…/R2-vymenik-hridel | strojař | °C a rozdíly teplot, logaritmický teplotní spád, vlastní funkce, řešič pro nejmenší průměr, materiál z tabulky |
+| 03_…/05_Tepelne_vypocty/R2-vymenik-hridel | strojař | °C a rozdíly teplot, logaritmický teplotní spád, vlastní funkce, řešič pro nejmenší průměr, materiál z tabulky |
 | 07_…/R3-roztok | chemik | tabulka látek (molární hmotnost), ředění, disociační rovnováha řešičem, pH |
 | 05_…/R4-kabel | elektrikář | 2D interpolace korekčních součinitelů, nejmenší vyhovující průřez, komplexní impedance a úbytek napětí |
 | 16_…/R5-fotovoltaika | ekonom | vlastní měna, kurz k datu z tabulky, řady peněžních toků, NPV, IRR, doba a datum návratnosti |
 | 01_…/R7-kvadraticka-rovnice | výuka | kvadratická rovnice jako na papíře: podmínka řešitelnosti, kořeny s dosazením, Vietovy vzorce, rozklad, vrchol přes derivaci, tečna s úhlem, plocha mezi kořeny, graf s body a šrafováním, posuvníky koeficientů |
 | 01_…/R8-quadratic-equation | výuka | totéž v angličtině (soubor `*.en.cc` se tiskne anglicky) |
-| 03_…/R9-klikovy-mechanismus | strojař | reálný příklad z článku (Transformační technologie, kap. 31): klikový mechanismus parního motoru, síly a moment jako funkce pootočení, střední moment integrálem, otáčky soustrojí s asynchronním generátorem, průsečíky momentu se středním, přebytek práce a moment setrvačnosti setrvačníku |
+| 03_…/01_Kinematika_a_dynamika/R9-klikovy-mechanismus | strojař | reálný příklad z článku (Transformační technologie, kap. 31): klikový mechanismus parního motoru, síly a moment jako funkce pootočení, střední moment integrálem, otáčky soustrojí s asynchronním generátorem, průsečíky momentu se středním, přebytek práce a moment setrvačnosti setrvačníku |
 | 06_…/R6-fve | energetik | FVE elektricky i ekonomicky v jednom listu: šest tabulek, výběr střídače a kabelu podle více podmínek, 2D korekce, výroba ze sloupce tabulky, měna s kurzem k datu, NPV, IRR, doba a datum návratnosti |

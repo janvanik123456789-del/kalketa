@@ -1721,7 +1721,7 @@ async function layersWithRealInput(picture: string) {
   const toolIcons = (await contents.executeJavaScript(`(() => {
     const button = (title) => document.querySelector('.tool-button[title^=' + JSON.stringify(title) + ']');
     const drawn = (title) => !!button(title)?.querySelector('svg.icon');
-    return ['Vložit √', 'Vložit ∛', 'n-tá odmocnina', 'Vložit ²', 'Obecná mocnina', 'Vložit ÷', 'Integrál'].every(drawn) &&
+    return ['Vložit √', 'Vložit ∛', 'n-tá odmocnina', 'Vložit ²', 'Obecná mocnina', 'Vložit ÷', 'Integrál', 'Vektor', 'Derivace ′', 'Druhá derivace', 'Odvození'].every(drawn) &&
       !drawn('Podmíněná hodnota') && button('Podmíněná hodnota')?.textContent === 'if' && !drawn('Řešení rovnice');
   })()`)) as boolean;
 

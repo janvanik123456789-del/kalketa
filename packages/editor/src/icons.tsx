@@ -288,6 +288,35 @@ const ICONS: Readonly<Record<string, ReactElement>> = {
       {box(12, 6.5, 5.5, 7)}
     </>
   ),
+  // A vector: the box under an arrow.
+  'sym:⃗': (
+    <>
+      <path {...S} d="M4 3.5h11.5M13 1.5l2.5 2-2.5 2" />
+      {box(5, 8, 9, 9.5)}
+    </>
+  ),
+  // Primes after a name: a first and a second derivative.
+  'sym:′': (
+    <>
+      {box(2.5, 7, 8, 10)}
+      <path {...S} d="M15 3l-1.5 5" />
+    </>
+  ),
+  'sym:″': (
+    <>
+      {box(1.5, 7, 8, 10)}
+      <path {...S} d="M14 3l-1.5 5M17.5 3L16 8" />
+    </>
+  ),
+  // A derivation: a = b, then the steps below it, each starting with "=".
+  'fn:derive': (
+    <>
+      {box(1.5, 2, 5, 5)}
+      <path {...S} d="M8.5 3.7h3M8.5 5.6h3" />
+      {box(13.5, 2, 5, 5)}
+      <path {...S} d="M8.5 10.7h3M8.5 12.6h3M13.5 11.7h5M8.5 16.2h3M8.5 18.1h3M13.5 17.2h3.5" />
+    </>
+  ),
   'fn:matrix': (
     <>
       <path {...S} d="M4.5 2.5h-2v15h2M15.5 2.5h2v15h-2" />

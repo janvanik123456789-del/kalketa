@@ -11,6 +11,14 @@ describe('integral', () => {
     expectValue('integral(x, x: 2 .. 0)', -2, '', 12);
   });
 
+  it('settles a result near zero by the size of the values (a work over a turn), without a warning', () => {
+    // Parts that cancel: the result is zero up to rounding, no digits of it to chase.
+    expect(codes('integral(sin(x), x: 0 .. 2·π)')).toEqual([]);
+    // A kink and parts that cancel exactly: ∫|x − 0,3| dx = 0,29 on 0 .. 1.
+    expect(codes('integral(abs(x - 0.3) - 0.29, x: 0 .. 1)')).toEqual([]);
+    expect(Math.abs(last('integral(sin(x) - 0.25, x: 0 .. 2·π) + π/2').value)).toBeLessThan(1e-9);
+  });
+
   it('gives the unit of the integrand times the variable', () => {
     // A uniform load over the span: kN/m · m = kN.
     expectValue('q := 12 kN/m\nL := 5 m\nintegral(q, x: 0 m .. L)', 60, 'kN');

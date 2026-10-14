@@ -112,24 +112,30 @@ function integral(call: CallExpr, ctx: EvalContext, evaluate: Evaluate): Value {
     sample ??= value;
     return value.si;
   };
-  const rule = (a: number, b: number): { kronrod: number; error: number } => {
+  const rule = (a: number, b: number): { kronrod: number; error: number; size: number } => {
     const centre = (a + b) / 2;
     const half = (b - a) / 2;
     const fc = g(centre);
     let kronrod = WGK[7]! * fc;
     let gauss = WG[3]! * fc;
+    // ∫|f|: how big the values are, whatever their sum (a work over a turn is nearly zero).
+    let size = WGK[7]! * Math.abs(fc);
     for (let j = 0; j < 7; j++) {
       const dx = half * XGK[j]!;
-      const sumPair = g(centre - dx) + g(centre + dx);
+      const [left, right] = [g(centre - dx), g(centre + dx)];
+      const sumPair = left + right;
       kronrod += WGK[j]! * sumPair;
+      size += WGK[j]! * (Math.abs(left) + Math.abs(right));
       if (j % 2 === 1) gauss += WG[(j - 1) / 2]! * sumPair;
     }
-    return { kronrod: kronrod * half, error: Math.abs((kronrod - gauss) * half) };
+    return { kronrod: kronrod * half, error: Math.abs((kronrod - gauss) * half), size: Math.abs(size * half) };
   };
   let accurate = true;
   const whole = rule(low.si, high.si);
-  const tolerance = Math.max(INTEGRAL_TOLERANCE * Math.abs(whole.kronrod), 1e-300);
-  const adapt = (a: number, b: number, estimate: { kronrod: number; error: number }, depth: number): number => {
+  // Relative to the result, or to ∫|f| where the parts cancel out (QUADPACK): a result near zero needs no
+  // more digits than the values it is made of have.
+  const tolerance = Math.max(INTEGRAL_TOLERANCE * Math.max(Math.abs(whole.kronrod), whole.size), 1e-300);
+  const adapt = (a: number, b: number, estimate: { kronrod: number; error: number; size: number }, depth: number): number => {
     if (estimate.error <= tolerance * Math.abs((b - a) / (high.si - low.si)) || estimate.error === 0) return estimate.kronrod;
     // Too deep or too many points: the estimate stands, with a warning.
     if (depth >= MAX_DEPTH || evaluations > MAX_EVALUATIONS) {

@@ -1,6 +1,6 @@
 # Referenční výpočty
 
-Každý referenční výpočet (R1–R8, viz docs/01-filozofie.md, kap. 10) má vlastní složku
+Každý referenční výpočet (R1–R9, viz docs/01-filozofie.md, kap. 10) má vlastní složku
 s listem a nezávisle ověřenými očekávanými výsledky (s tolerancí a zdrojem ověření).
 
 Jádro je hotové, až projdou všechny bez kódu specifického pro jeden obor.
@@ -14,4 +14,5 @@ Jádro je hotové, až projdou všechny bez kódu specifického pro jeden obor.
 | R5-fotovoltaika | ekonom | vlastní měna, kurz k datu z tabulky, řady peněžních toků, NPV, IRR, doba a datum návratnosti |
 | R7-kvadraticka-rovnice | výuka | kvadratická rovnice jako na papíře: podmínka řešitelnosti, kořeny s dosazením, Vietovy vzorce, rozklad, vrchol přes derivaci, tečna s úhlem, plocha mezi kořeny, graf s body a šrafováním, posuvníky koeficientů |
 | R8-quadratic-equation | výuka | totéž v angličtině (soubor `*.en.cc` se tiskne anglicky) |
+| R9-klikovy-mechanismus | strojař | reálný příklad z článku (Transformační technologie, kap. 31): klikový mechanismus parního motoru, síly a moment jako funkce pootočení, střední moment integrálem, otáčky soustrojí s asynchronním generátorem, průsečíky momentu se středním, přebytek práce a moment setrvačnosti setrvačníku |
 | R6-fve | průřezový | FVE elektricky i ekonomicky v jednom listu: šest tabulek, výběr střídače a kabelu podle více podmínek, 2D korekce, výroba ze sloupce tabulky, měna s kurzem k datu, NPV, IRR, doba a datum návratnosti |

@@ -4,7 +4,7 @@ import { exampleDocument, samples, savedSampleTitle } from '../src/samples.js';
 describe('sample calculations shipped with the program', () => {
   it('are the reference cases, named after their first heading', () => {
     const list = samples();
-    expect(list.map((s) => s.id)).toEqual(['R1-nosnik', 'R2-vymenik-hridel', 'R3-roztok', 'R4-kabel', 'R5-fotovoltaika', 'R6-fve', 'R7-kvadraticka-rovnice', 'R8-quadratic-equation']);
+    expect(list.map((s) => s.id)).toEqual(['R1-nosnik', 'R2-vymenik-hridel', 'R3-roztok', 'R4-kabel', 'R5-fotovoltaika', 'R6-fve', 'R7-kvadraticka-rovnice', 'R8-quadratic-equation', 'R9-klikovy-mechanismus']);
     expect(list[0]!.title).toBe('Posouzení nosníku N1');
   });
 

@@ -2355,12 +2355,20 @@ async function layersWithRealInput(picture: string) {
   await clickMenu('8 Quadratic equation');
   await pause(1500);
   const english = (await contents.executeJavaScript(`(() => ({ head: [...document.querySelectorAll('.layer-view.active .page h1, .layer-view.active .page h2')].map((h) => h.textContent.trim()).find((t) => t === 'Quadratic equation') ?? '', verdicts: [...document.querySelectorAll('.layer-view.active .page .check .status')].map((s) => s.textContent.trim()), errors: document.querySelectorAll('.layer-view.active .page .row.has-error').length }))()`)) as { head: string; verdicts: string[]; errors: number };
+  // A real example from an article: the crank mechanism of a steam engine, opened from the menu, calculated whole.
+  await clickOn('.menubar-item:nth-child(1) > button');
+  await clickMenu('Vzorové příklady');
+  await clickMenu('9 Klikový mechanismus');
+  await pause(3000);
+  const crank = (await contents.executeJavaScript(`({ charts: document.querySelectorAll('.layer-view.active .block.chart svg.chart-svg .chart-data path').length > 0 ? document.querySelectorAll('.layer-view.active .block.chart').length : 0, errors: document.querySelectorAll('.layer-view.active .page .row.has-error').length, verdict: [...document.querySelectorAll('.layer-view.active .page .check .status')].map((s) => s.textContent.trim()).join(' ') })`)) as { charts: number; errors: number; verdict: string };
+  await takePicture(picture.replace(/[.]png$/, '-crank.png'));
   const quadraticSample = {
+    crank,
     before: sampleBefore,
     after: sampleAfter,
     outOfDomain,
     english,
-    ok: !!thumb && sampleBefore.errors === 0 && sampleAfter.errors === 0 && sampleBefore.a !== '' && sampleAfter.a !== sampleBefore.a && sampleAfter.roots !== sampleBefore.roots && outOfDomain.drawn && !outOfDomain.area && outOfDomain.roots === 0 && !outOfDomain.error && outOfDomain.warned && english.head === 'Quadratic equation' && english.verdicts.length === 5 && english.verdicts.every((v) => v.endsWith('OK')) && english.errors === 0,
+    ok: !!thumb && sampleBefore.errors === 0 && sampleAfter.errors === 0 && sampleBefore.a !== '' && sampleAfter.a !== sampleBefore.a && sampleAfter.roots !== sampleBefore.roots && outOfDomain.drawn && !outOfDomain.area && outOfDomain.roots === 0 && !outOfDomain.error && outOfDomain.warned && english.head === 'Quadratic equation' && english.verdicts.length === 5 && english.verdicts.every((v) => v.endsWith('OK')) && english.errors === 0 && crank.charts === 3 && crank.errors === 0 && crank.verdict.endsWith('VYHOVUJE'),
   };
   const userChart = { namedArea, quadOk, quadTarget, quadEnd, quadEditing, ok: namedArea === 'Integral1=27' && quadOk && quadTarget > 0 && Math.abs(quadEnd - quadTarget) < 12 };
   // Relations: a circle solved by its name, a derivation following from a relation of theory, and the circle

@@ -1,0 +1,93 @@
+{
+  "sheet": "klikovy-mechanismus.cc",
+  "verifiedBy": "Samostatný skript v Pythonu (čistá aritmetika mimo Kalketa): stejné vzorce článku J. Škorpíka (Transformační technologie, kap. 31), Simpsonovo pravidlo na 200 000 dílcích, maximum zlatým řezem, průsečíky půlením intervalu; J = ΔA/(N·ω²) a šířka kotouče z J = π·ρ·b·D⁴/32.",
+  "relativeTolerance": 1e-05,
+  "values": {
+    "φ_ε": {
+      "value": 61.45963451512444,
+      "unit": "°"
+    },
+    "A_i": {
+      "value": 665.6174642945508,
+      "unit": "J"
+    },
+    "M_i": {
+      "value": 105.93630965077091,
+      "unit": "N·m"
+    },
+    "M_Z": {
+      "value": 10.593630965077088,
+      "unit": "N·m"
+    },
+    "ω_s": {
+      "value": 161.44409416778944,
+      "unit": "rad/s"
+    },
+    "n_s": {
+      "value": 1541.6775371878273,
+      "unit": "min⁻¹"
+    },
+    "P_m": {
+      "value": 15.392512395942445,
+      "unit": "kW"
+    },
+    "M_s": {
+      "value": 95.34267868569383,
+      "unit": "N·m"
+    },
+    "φ_a": {
+      "value": 110.4147885774812,
+      "unit": "°"
+    },
+    "φ_b": {
+      "value": 317.503496298319,
+      "unit": "°"
+    },
+    "φ_1": {
+      "value": 59.00201040411085,
+      "unit": "°"
+    },
+    "φ_2": {
+      "value": 158.84994963371628,
+      "unit": "°"
+    },
+    "φ_3": {
+      "value": 274.04222851323846,
+      "unit": "°"
+    },
+    "φ_4": {
+      "value": 349.6937245976981,
+      "unit": "°"
+    },
+    "A_1": {
+      "value": 161.0873082051099,
+      "unit": "J"
+    },
+    "A_2": {
+      "value": -166.2336349406432,
+      "unit": "J"
+    },
+    "A_3": {
+      "value": 139.52920358829078,
+      "unit": "J"
+    },
+    "ΔA": {
+      "value": 166.2336349406432,
+      "unit": "J"
+    },
+    "J": {
+      "value": 1.9133562132192512,
+      "unit": "kg·m²"
+    },
+    "b_s": {
+      "value": 39.723386192476525,
+      "unit": "mm"
+    }
+  },
+  "checks": [
+    {
+      "label": "otáčky v pracovním rozsahu generátoru",
+      "passed": true
+    }
+  ]
+}

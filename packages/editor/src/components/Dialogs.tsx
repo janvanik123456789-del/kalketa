@@ -34,9 +34,11 @@ interface DialogProps {
   onClose(): void;
   /** OK button; without it the dialog only has Close. */
   onOk?(): void;
+  /** Buttons of its own in place of OK and Cancel (Save, Don't save, Cancel); Enter presses the default one. */
+  readonly buttons?: readonly { readonly label: string; run(): void; readonly isDefault?: boolean }[];
 }
 
-export function Dialog({ title, catalog, children, wide, size, onClose, onOk }: DialogProps) {
+export function Dialog({ title, catalog, children, wide, size, onClose, onOk, buttons }: DialogProps) {
   const own = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -66,7 +68,13 @@ export function Dialog({ title, catalog, children, wide, size, onClose, onOk }: 
         </div>
         <div className="dialog-body">{children}</div>
         <div className="dialog-buttons">
-          {onOk ? (
+          {buttons ? (
+            buttons.map((b, i) => (
+              <button key={i} type="button" className={b.isDefault ? 'default' : undefined} data-choice={i} onClick={b.run}>
+                {b.label}
+              </button>
+            ))
+          ) : onOk ? (
             <>
               <button type="button" className="default" onClick={onOk}>
                 {t(catalog, 'dlg.ok')}

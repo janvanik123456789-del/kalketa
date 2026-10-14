@@ -80,6 +80,7 @@ interface OpenedFile {
 interface CloseGuard {
   dirty: boolean;
   message: string;
+  save: string;
   discard: string;
   cancel: string;
 }
@@ -110,6 +111,9 @@ let smokeWindow: BrowserWindow | undefined;
 const smokeTest = process.env['KALKETA_SMOKE_TEST'];
 /** The smoke test's export to PDF: where it goes, and the page numbers the printout laid out. */
 const smokePdf: { path?: string | undefined; pages?: string[] | undefined } = {};
+/** The smoke test saves a new file where it says, without the dialog, and answers the question on closing a window. */
+const smokeSave: { path?: string | undefined } = {};
+const smokeClose: { choice?: number | undefined } = {};
 
 /**
  * How long the start takes, by phase, in seconds since the process began: one line per start
@@ -169,7 +173,7 @@ function createWindow(options: { blank?: boolean } = {}): BrowserWindow {
     },
   });
   const contentsId = win.webContents.id;
-  const guard: CloseGuard = { dirty: false, message: '', discard: 'Discard', cancel: 'Cancel' };
+  const guard: CloseGuard = { dirty: false, message: '', save: 'Save', discard: "Don't save", cancel: 'Cancel' };
   editors.set(contentsId, { window: win, guard, files: new Set() });
   lastFocused = win;
   win.on('focus', () => (lastFocused = win));
@@ -185,18 +189,23 @@ function createWindow(options: { blank?: boolean } = {}): BrowserWindow {
   });
   win.webContents.on('will-navigate', (event) => event.preventDefault());
 
+  // Unsaved documents: Save (the page saves them, then closes the window), Don't save, or Cancel.
   win.on('close', (event) => {
     if (!guard.dirty) return;
-    const choice = dialog.showMessageBoxSync(win, {
-      type: 'warning',
-      title: 'Kalketa',
-      message: guard.message,
-      buttons: [guard.discard, guard.cancel],
-      defaultId: 1,
-      cancelId: 1,
-      noLink: true,
-    });
-    if (choice !== 0) event.preventDefault();
+    const choice =
+      smokeClose.choice ??
+      dialog.showMessageBoxSync(win, {
+        type: 'warning',
+        title: 'Kalketa',
+        message: guard.message,
+        buttons: [guard.save, guard.discard, guard.cancel],
+        defaultId: 0,
+        cancelId: 2,
+        noLink: true,
+      });
+    if (choice === 1) return;
+    event.preventDefault();
+    if (choice === 0) win.webContents.send('kalketa:save-and-close');
   });
 
   if (smokeTest && !smokeWindow) {
@@ -336,10 +345,12 @@ function registerBridge(): void {
     // A file from before the rename (.calc) is saved where it is; new files get .kalk.
     let path = typeof request.path === 'string' && ['.kalk', '.calc'].includes(extname(request.path).toLowerCase()) ? request.path : undefined;
     if (!path) {
-      const result = await dialog.showSaveDialog(owner, {
-        defaultPath: `${request.suggestedName}.kalk`,
-        filters: [{ name: 'Kalketa', extensions: ['kalk'] }],
-      });
+      const result = smokeSave.path
+        ? { canceled: false, filePath: smokeSave.path }
+        : await dialog.showSaveDialog(owner, {
+            defaultPath: `${request.suggestedName}.kalk`,
+            filters: [{ name: 'Kalketa', extensions: ['kalk'] }],
+          });
       if (result.canceled || !result.filePath) return undefined;
       path = result.filePath;
     }
@@ -390,12 +401,21 @@ function registerBridge(): void {
     return result.filePath;
   });
 
+  // The documents of the window saved after Save on closing: it closes now, asking no more.
+  ipcMain.on('kalketa:close-window', (event) => {
+    const editor = editors.get(event.sender.id);
+    if (!editor) return;
+    editor.guard.dirty = false;
+    editor.window.close();
+  });
+
   ipcMain.on('kalketa:close-guard', (event, guard: CloseGuard) => {
     const editor = editors.get(event.sender.id);
     if (!editor) return;
     editor.guard.dirty = Boolean(guard?.dirty);
     editor.guard.message = String(guard?.message ?? '');
-    editor.guard.discard = String(guard?.discard ?? 'Discard');
+    editor.guard.save = String(guard?.save ?? 'Save');
+    editor.guard.discard = String(guard?.discard ?? "Don't save");
     editor.guard.cancel = String(guard?.cancel ?? 'Cancel');
   });
 
@@ -470,7 +490,7 @@ async function runSmokeTest(pdfPath: string): Promise<void> {
     await writeFile(pdfPath, pdf);
     ok =
       state.bridge && state.sideBySide && state.menus === 8 && state.toolbars > 0 && state.rows > 10 && state.summary > 0 && state.math > 0 && reshapedColumns === 3 && pdf.length > 1000 &&
-      layers.deflection && layers.pickTaken.column.startsWith('→') && /mm|cm/.test(layers.pickTaken.text) && layers.newKeepsExample && layers.samplesOk && layers.derivations && layers.summaryOk && layers.definitionAtCursor && layers.sheetGridOk && layers.tableEnter && layers.solvedByFormula && layers.rootsAndExtremes && layers.userChart.ok && layers.quadraticSample.ok && layers.wordPrinted && layers.wordColored && layers.paletteColored && layers.wordText.focused && layers.wordText.pane && layers.wordText.bold === 'dynamiky' && !layers.wordText.shown.includes('"') && layers.wordText.align === 'center' && layers.cellMarked === 'Síla na konci' && layers.cellFont.startsWith('Arial') && layers.cellDeleted && layers.paperRoots && layers.tableRowAdded && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.notesPicture === 'FIGURE+img BLOCKQUOTE' && layers.notesPlaced === 'narrower centred' && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.charts && layers.functionBar && layers.revisions && layers.roots && layers.toolIcons && layers.aiSettings && layers.aiChat && layers.pdfCleanup && layers.theoryLibrary && layers.study && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
+      layers.deflection && layers.pickTaken.column.startsWith('→') && /mm|cm/.test(layers.pickTaken.text) && layers.newKeepsExample && layers.samplesOk && layers.derivations && layers.summaryOk && layers.definitionAtCursor && layers.sheetGridOk && layers.tableEnter && layers.solvedByFormula && layers.rootsAndExtremes && layers.userChart.ok && layers.quadraticSample.ok && layers.saveOnClose.ok && layers.wordPrinted && layers.wordColored && layers.paletteColored && layers.wordText.focused && layers.wordText.pane && layers.wordText.bold === 'dynamiky' && !layers.wordText.shown.includes('"') && layers.wordText.align === 'center' && layers.cellMarked === 'Síla na konci' && layers.cellFont.startsWith('Arial') && layers.cellDeleted && layers.paperRoots && layers.tableRowAdded && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.notesPicture === 'FIGURE+img BLOCKQUOTE' && layers.notesPlaced === 'narrower centred' && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.charts && layers.functionBar && layers.revisions && layers.roots && layers.toolIcons && layers.aiSettings && layers.aiChat && layers.pdfCleanup && layers.theoryLibrary && layers.study && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && !layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
     console.log(JSON.stringify({ ok, ...state, reshapedColumns, layers, pdfBytes: pdf.length }));
   } catch (err) {
     console.log(JSON.stringify({ ok: false, error: (err as Error).message, console: smokeConsole.slice(-5) }));
@@ -2336,7 +2356,62 @@ async function layersWithRealInput(picture: string) {
     ok: !!thumb && sampleBefore.errors === 0 && sampleAfter.errors === 0 && sampleBefore.a !== '' && sampleAfter.a !== sampleBefore.a && sampleAfter.roots !== sampleBefore.roots && outOfDomain.drawn && !outOfDomain.area && outOfDomain.roots === 0 && !outOfDomain.error && outOfDomain.warned && english.head === 'Quadratic equation' && english.verdicts.length === 5 && english.verdicts.every((v) => v.endsWith('OK')) && english.errors === 0,
   };
   const userChart = { namedArea, quadOk, quadTarget, quadEnd, quadEditing, ok: namedArea === 'Integral1=27' && quadOk && quadTarget > 0 && Math.abs(quadEnd - quadTarget) < 12 };
-  return { ...state, pickTaken, deflection, derivations, summaryOk, summaryOpens, summaryAtEnd, bookStyle, verdictFuture, verdictBack, pageHead, definitionAtCursor, solveFormatted, sheetGridOk, sheetGrid, tableEnter, tableEnterAt, lastRowEnter, draggedRows, selectedAll, bothFormatted, roundedOn, equationNumber, solvedByFormula, rootsAndExtremes, wordText, wordColored, paletteColored, wordPrinted, cellMarked, cellFont, cellDeleted, paperRoots, tableRowAdded, chartSteps, samplesOk, sampleTab, newKeepsExample, citations, notesPicture, notesPlaced, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, toolIcons, aiSettings, aiChat, pdfCleanup, theoryLibrary, study, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, placedFree, strictPlaced, canvasOk, besideText, pictures, blocksOk, userChart, quadraticSample };
+  // Closing with unsaved changes asks Save, Don't save, Cancel: a tab (the program's own question, real clicks)
+  // and a window (its question answered by the test), Save saving first, then closing.
+  await clickOn('.doc-tab-new');
+  await pause(400);
+  await clickOn('.menubar-item:nth-child(4) > button');
+  await clickMenu('Definice');
+  await typeText('7');
+  await clickOn('.statusbar');
+  await pause(300);
+  const tabsBefore = (await contents.executeJavaScript(`document.querySelectorAll('.doc-tab').length`)) as number;
+  await pressKey('W', ['control']);
+  await pause(300);
+  const closeButtons = (await contents.executeJavaScript(`[...document.querySelectorAll('.dialog-buttons button')].map((b) => b.textContent.trim())`)) as string[];
+  await clickOn('.dialog-buttons button[data-choice="2"]');
+  await pause(300);
+  const keptOnCancel = (await contents.executeJavaScript(`document.querySelectorAll('.doc-tab').length`)) === tabsBefore;
+  const tabFile = join(tmpdir(), `kalketa-smoke-saved-${process.pid}.kalk`);
+  smokeSave.path = tabFile;
+  await pressKey('W', ['control']);
+  await pause(300);
+  await clickOn('.dialog-buttons button[data-choice="0"]');
+  for (let i = 0; i < 30 && !existsSync(tabFile); i++) await pause(100);
+  await pause(400);
+  const savedOnClose = existsSync(tabFile) && (await contents.executeJavaScript(`document.querySelectorAll('.doc-tab').length`)) === tabsBefore - 1;
+  // A window: a calculation typed in it, the window closed, Save chosen: saved, then the window is gone.
+  await pressKey('N', ['control', 'shift']);
+  let closing: BrowserWindow | undefined;
+  for (let i = 0; i < 50 && !closing; i++) {
+    await pause(100);
+    closing = [...editors.values()].map((e) => e.window).find((w) => w !== smokeWindow && w !== other && !w.isDestroyed() && !w.webContents.isLoading());
+  }
+  const windowFile = join(tmpdir(), `kalketa-smoke-window-${process.pid}.kalk`);
+  let windowSaved = false;
+  if (closing) {
+    await pause(800);
+    const wc = closing.webContents;
+    wc.focus();
+    const button = (await wc.executeJavaScript(`(() => { const r = document.querySelector('.tool-button[title^="Definice"]')?.getBoundingClientRect(); return r ? { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) } : undefined; })()`)) as { x: number; y: number } | undefined;
+    if (button) {
+      wc.sendInputEvent({ type: 'mouseDown', ...button, button: 'left', clickCount: 1 });
+      wc.sendInputEvent({ type: 'mouseUp', ...button, button: 'left', clickCount: 1 });
+      await pause(300);
+      for (const ch of '8') wc.sendInputEvent({ type: 'char', keyCode: ch });
+      await pause(800);
+    }
+    const dirtyNow = (await wc.executeJavaScript(`document.title.includes('•')`)) as boolean;
+    smokeSave.path = windowFile;
+    smokeClose.choice = 0;
+    closing.close();
+    for (let i = 0; i < 50 && !closing.isDestroyed(); i++) await pause(100);
+    windowSaved = dirtyNow && closing.isDestroyed() && existsSync(windowFile);
+  }
+  smokeSave.path = undefined;
+  smokeClose.choice = undefined;
+  const saveOnClose = { closeButtons, keptOnCancel, savedOnClose, windowSaved, ok: closeButtons.join('|') === 'Uložit|Neukládat|Zrušit' && keptOnCancel && savedOnClose && windowSaved };
+  return { ...state, pickTaken, deflection, derivations, summaryOk, summaryOpens, summaryAtEnd, bookStyle, verdictFuture, verdictBack, pageHead, definitionAtCursor, solveFormatted, sheetGridOk, sheetGrid, tableEnter, tableEnterAt, lastRowEnter, draggedRows, selectedAll, bothFormatted, roundedOn, equationNumber, solvedByFormula, rootsAndExtremes, wordText, wordColored, paletteColored, wordPrinted, cellMarked, cellFont, cellDeleted, paperRoots, tableRowAdded, chartSteps, samplesOk, sampleTab, newKeepsExample, citations, notesPicture, notesPlaced, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, toolIcons, aiSettings, aiChat, pdfCleanup, theoryLibrary, study, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, placedFree, strictPlaced, canvasOk, besideText, pictures, blocksOk, userChart, quadraticSample, saveOnClose };
 }
 
 /** The tidied sources saved as a library (.kalkt) and attached in the chat: the model cites it by its key. */

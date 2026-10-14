@@ -111,6 +111,7 @@ export const UI_KEYS = [
   'editor.unsavedFile',
   'editor.unsavedNew',
   'editor.discard',
+  'editor.dontSave',
   'editor.cancel',
   'editor.sheetFiles',
   'editor.zoom',

@@ -88,7 +88,11 @@ export interface DesktopBridge {
   exportPdf(request: { html: string; suggestedName: string }): Promise<string | undefined>;
   /** Opens another editor window with an empty calculation. */
   newWindow(): Promise<void>;
-  setCloseGuard(guard: { dirty: boolean; message: string; discard: string; cancel: string }): void;
+  setCloseGuard(guard: { dirty: boolean; message: string; save?: string; discard: string; cancel: string }): void;
+  /** The window is to close and the person chose Save: the page saves its documents, then calls closeWindow. */
+  onSaveAndClose?(listener: () => void): void;
+  /** Closes the window now, its documents saved (no question any more). */
+  closeWindow?(): void;
   onOpenFile(listener: (file: DesktopFile) => void): void;
   /** Files this window has open; the application keeps each file in one window only. */
   setOpenFiles(paths: string[]): void;

@@ -10,7 +10,8 @@ import { Dialog } from './Dialogs.js';
 
 type Request =
   | { readonly kind: 'text'; readonly label: string; readonly initial: string; resolve(value: string | undefined): void }
-  | { readonly kind: 'confirm'; readonly label: string; resolve(value: boolean): void };
+  | { readonly kind: 'confirm'; readonly label: string; resolve(value: boolean): void }
+  | { readonly kind: 'choice'; readonly label: string; readonly choices: readonly string[]; resolve(index: number | undefined): void };
 
 let open: ((request: Request) => void) | undefined;
 
@@ -22,6 +23,11 @@ export function ask(label: string, initial = ''): Promise<string | undefined> {
 /** Asks a yes/no question. */
 export function askConfirm(label: string): Promise<boolean> {
   return new Promise((resolve) => (open ? open({ kind: 'confirm', label, resolve }) : resolve(false)));
+}
+
+/** Asks to choose one of a few answers (Save, Don't save, Cancel): its index, undefined when closed. The first is the default. */
+export function askChoice(label: string, choices: readonly string[]): Promise<number | undefined> {
+  return new Promise((resolve) => (open ? open({ kind: 'choice', label, choices, resolve }) : resolve(undefined)));
 }
 
 /** Shows the questions; placed once in the application. */
@@ -43,8 +49,20 @@ export function AskHost({ catalog, title }: { catalog: Catalog; title: string })
   const finish = (ok: boolean) => {
     setRequest(undefined);
     if (request.kind === 'text') request.resolve(ok ? value : undefined);
+    else if (request.kind === 'choice') request.resolve(ok ? 0 : undefined);
     else request.resolve(ok);
   };
+  if (request.kind === 'choice') {
+    const choose = (i: number) => {
+      setRequest(undefined);
+      request.resolve(i);
+    };
+    return (
+      <Dialog title={title} catalog={catalog} onClose={() => finish(false)} onOk={() => choose(0)} buttons={request.choices.map((label, i) => ({ label, run: () => choose(i), ...(i === 0 ? { isDefault: true } : {}) }))}>
+        <p className="ask">{request.label}</p>
+      </Dialog>
+    );
+  }
   return (
     <Dialog title={title} catalog={catalog} onClose={() => finish(false)} onOk={() => finish(true)}>
       {request.kind === 'text' ? (

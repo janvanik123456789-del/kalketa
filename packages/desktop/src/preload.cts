@@ -18,7 +18,11 @@ contextBridge.exposeInMainWorld('kalketaDesktop', {
   print: (html: string): Promise<boolean> => ipcRenderer.invoke('kalketa:print', html),
   exportPdf: (request: { html: string; suggestedName: string }): Promise<string | undefined> => ipcRenderer.invoke('kalketa:export-pdf', request),
   newWindow: (): Promise<void> => ipcRenderer.invoke('kalketa:new-window'),
-  setCloseGuard: (guard: { dirty: boolean; message: string; discard: string; cancel: string }): void => ipcRenderer.send('kalketa:close-guard', guard),
+  setCloseGuard: (guard: { dirty: boolean; message: string; save?: string; discard: string; cancel: string }): void => ipcRenderer.send('kalketa:close-guard', guard),
+  onSaveAndClose: (listener: () => void): void => {
+    ipcRenderer.on('kalketa:save-and-close', () => listener());
+  },
+  closeWindow: (): void => ipcRenderer.send('kalketa:close-window'),
   setOpenFiles: (paths: string[]): void => ipcRenderer.send('kalketa:open-files', paths),
   onShowFile: (listener: (path: string) => void): void => {
     ipcRenderer.on('kalketa:show-file', (_event, path: string) => listener(path));

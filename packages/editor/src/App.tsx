@@ -49,7 +49,7 @@ import { Inspector } from './components/Inspector.js';
 import { TextProperties, TEXT_FONT_KINDS, TEXT_SIZES } from './components/TextProperties.js';
 import type { TextFormat } from './components/TextRowEditor.js';
 import { fontValue, useSystemFonts } from './logic/systemFonts.js';
-import { ask, askConfirm, AskHost } from './components/Ask.js';
+import { ask, askChoice, askConfirm, AskHost } from './components/Ask.js';
 import { LAYER_GLYPH, LayersPane, LayerTabs } from './components/LayersPane.js';
 import { NotesView } from './components/NotesView.js';
 import { MenuBar, type Menu, type MenuItem } from './components/MenuBar.js';
@@ -304,7 +304,7 @@ export function App() {
       .filter(isDirty)
       .map((d) => t(ui, d.fileRef === undefined ? 'editor.unsavedNew' : 'editor.unsavedFile', { name: docLabel(d) }))
       .join(', ');
-    desktop?.setCloseGuard({ dirty: anyDirty, message: t(ui, 'editor.closeUnsaved', { names }), discard: t(ui, 'editor.discard'), cancel: t(ui, 'editor.cancel') });
+    desktop?.setCloseGuard({ dirty: anyDirty, message: t(ui, 'editor.closeUnsaved', { names }), save: t(ui, 'editor.save'), discard: t(ui, 'editor.dontSave'), cancel: t(ui, 'editor.cancel') });
     if (!anyDirty || desktop) return;
     const warn = (e: BeforeUnloadEvent) => e.preventDefault();
     window.addEventListener('beforeunload', warn);
@@ -636,7 +636,12 @@ export function App() {
   const closeDocument = async (id: number) => {
     const target = docs.tabs.find((d) => d.id === id);
     if (!target) return;
-    if (isDirty(target) && !(await askConfirm(t(ui, 'docs.closeUnsaved', { name: docLabel(target) })))) return;
+    // Unsaved: Save (then close), Don't save, or Cancel, as a word processor asks.
+    if (isDirty(target)) {
+      const choice = await askChoice(t(ui, 'docs.closeUnsaved', { name: docLabel(target) }), [t(ui, 'editor.save'), t(ui, 'editor.dontSave'), t(ui, 'editor.cancel')]);
+      if (choice === 0 && !(await saveTab(target))) return;
+      if (choice !== 0 && choice !== 1) return;
+    }
     setDocs((s) => closeTab(s, id, () => newTab<SheetDocument, FileRef>(emptyDocument(t(ui, 'editor.untitled'), language), MAIN_LAYER, undefined, true)));
     leaveEditing();
   };
@@ -707,11 +712,23 @@ export function App() {
     })();
   }, []);
 
-  const save = async (as = false) => {
+  const save = async (as = false) => void (await saveTab(tab, as));
+
+  /**
+   * Saves one document (its tab need not be the one shown): to its file, or as a new one when it has none.
+   * True when it is saved; false when the person cancelled choosing a file.
+   */
+  const saveTab = async (which: Tab, as = false): Promise<boolean> => {
+    const doc = which.history.present;
+    const fileRef = which.fileRef;
+    const updateTab = (f: (d: Tab) => Tab) => setDocs((s) => ({ ...s, tabs: s.tabs.map((d) => (d.id === which.id ? f(d) : d)) }));
+    const setFileRef = (ref: FileRef) => updateTab((d) => ({ ...d, fileRef: ref, ...(ref.kind === 'path' ? { path: ref.path } : {}) }));
+    const setSavedDoc = (saved: SheetDocument) => updateTab((d) => ({ ...d, savedDoc: saved }));
+    const setHistory = (f: (h: History<SheetDocument>) => History<SheetDocument>) => updateTab((d) => ({ ...d, history: f(d.history) }));
     let size = 0;
     const target = await saveDocument(doc, as ? undefined : fileRef, (bytes) => (size = bytes.length), {
       openElsewhere: t(ui, 'docs.openElsewhere'),
-      ...(tab.path !== undefined ? { current: tab.path } : {}),
+      ...(which.path !== undefined ? { current: which.path } : {}),
     });
     if (size > sizeLimit * 1024 * 1024) {
       const mb = (bytes: number) => formatNumber(Math.round(bytes / 104857.6) / 10, ui);
@@ -730,11 +747,27 @@ export function App() {
       await saveDocument(renamed, target, () => undefined, { openElsewhere: t(ui, 'docs.openElsewhere'), current: target.path });
       setHistory((h) => ({ ...h, present: renamed }));
       setSavedDoc(renamed);
-      return;
+      return true;
     }
     // In a browser without file handles the file is downloaded; it counts as saved.
     if (target || !desktop) setSavedDoc(doc);
+    return !!target || !desktop;
   };
+
+  /** Saves every unsaved document, each shown while it is saved (a new one asks for its file); false when one is not. */
+  const saveAll = async (): Promise<boolean> => {
+    for (const d of docs.tabs.filter(isDirty)) {
+      switchDocument(d.id);
+      if (!(await saveTab(d))) return false;
+    }
+    return true;
+  };
+  const saveAllRef = useRef(saveAll);
+  saveAllRef.current = saveAll;
+  // The window asked to close with unsaved documents and the person chose Save: all saved, then closed.
+  useEffect(() => {
+    desktop?.onSaveAndClose?.(() => void saveAllRef.current().then((saved) => saved && desktop?.closeWindow?.()));
+  }, []);
 
   // Where the content stands among its revisions; its fingerprint goes into the footer of the printout.
   const [revState, setRevState] = useState<RevisionState | undefined>();

@@ -2,7 +2,7 @@
 from math import cos, sin, sqrt, radians, degrees, asin, atan2
 import os
 
-OUT = r'E:\AI\Projekt_vypoctare\Kalketa\reference\R9-klikovy-mechanismus\images'
+OUT = os.path.dirname(os.path.abspath(__file__))
 
 INK = '#1f2328'
 DIM = '#5b6470'

@@ -2393,8 +2393,12 @@ async function layersWithRealInput(picture: string) {
     return { x: Math.round(b.left + b.width * 0.75), y: Math.round(b.top + b.height * 0.3), width: Math.round(b.width), height: Math.round(b.height) };
   })()`)) as { x: number; y: number; width: number; height: number } | undefined;
   if (circleAt) {
-    contents.sendInputEvent({ type: 'mouseMove', x: circleAt.x, y: circleAt.y });
-    await pause(400);
+    // Into the chart and on over it, as a hand moves: the first move only enters it.
+    for (const step of [-20, -10, 0]) {
+      contents.sendInputEvent({ type: 'mouseMove', x: circleAt.x + step, y: circleAt.y });
+      await pause(150);
+    }
+    await pause(300);
   }
   const relations = (await contents.executeJavaScript(`(() => {
     const rows = [...document.querySelectorAll('.layer-view.active .page .row')];

@@ -10,6 +10,10 @@ here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$here/linux-env.sh"
 source_dir="$(dirname "$here")"
 work="$HOME/kalketa"
+# The smoke results (screenshots, result.json) where they stay: /tmp of WSL is emptied between its starts.
+export TMPDIR="$HOME/kalketa-smoke"
+mkdir -p "$TMPDIR"
+find "$TMPDIR" -maxdepth 1 -name "kalketa-smoke-run-*" -mtime +2 -exec rm -rf {} + 2>/dev/null || true
 
 mkdir -p "$work"
 rsync -a --delete --exclude node_modules --exclude dist --exclude release --exclude '*.tsbuildinfo' --exclude .git "$source_dir/" "$work/"

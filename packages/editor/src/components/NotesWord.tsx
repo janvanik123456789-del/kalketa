@@ -140,7 +140,9 @@ function PictureView({ node, selected, updateAttributes, extension, editor, getP
       width = Math.max(5, Math.min(100, Math.round(((start + sign * factor * (m.clientX - x0)) / full) * 100)));
       setDragged(width);
     };
-    const up = () => {
+    // Where the button is let go counts too: the moves before it may have come together.
+    const up = (m: MouseEvent) => {
+      move(m);
       window.removeEventListener('mousemove', move);
       window.removeEventListener('mouseup', up);
       setDragged(undefined);

@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatTextLine, marksOf, parseTextLine, runsOf } from '../src/logic/textLine.js';
-import { recolor } from '../src/components/TextRowEditor.js';
+import { formatTextLine, marksOf, parseTextLine, recolor, runsOf } from '../src/logic/textLine.js';
 
 describe('a line of text edited as in a word processor', () => {
   it('reads the words with their bold and italic parts, the marks of the line apart, and writes them back', () => {

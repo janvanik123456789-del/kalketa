@@ -7,7 +7,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
 import { textColorCss, textFontCss } from '@kalketa/render';
-import { formatTextLine, marksOf, parseTextLine, type TextLine, type TextRun } from '../logic/textLine.js';
+import { formatTextLine, marksOf, parseTextLine, recolor, type TextLine, type TextRun } from '../logic/textLine.js';
 import type { LineAttributes } from '../logic/lineFormat.js';
 
 /** What the Format menu and the Properties pane read and change of the line being edited. */
@@ -371,27 +371,4 @@ function runAt(runs: readonly TextRun[], offset: number): TextRun | undefined {
     at += run.text.length;
   }
   return runs[runs.length - 1];
-}
-
-/** The words from start to end in a colour of their own (undefined: that of the line). */
-export function recolor(runs: readonly TextRun[], start: number, end: number, color: string | undefined): TextRun[] {
-  const out: TextRun[] = [];
-  let at = 0;
-  const put = (run: TextRun, text: string, inside: boolean) => {
-    if (!text) return;
-    const { color: own, ...rest } = run;
-    const next: TextRun = { ...rest, text, ...(inside ? (color ? { color } : {}) : own ? { color: own } : {}) };
-    const last = out[out.length - 1];
-    if (last && !!last.bold === !!next.bold && !!last.italic === !!next.italic && last.color === next.color) out[out.length - 1] = { ...last, text: last.text + text };
-    else out.push(next);
-  };
-  for (const run of runs) {
-    const from = Math.max(0, Math.min(run.text.length, start - at));
-    const to = Math.max(0, Math.min(run.text.length, end - at));
-    put(run, run.text.slice(0, from), false);
-    put(run, run.text.slice(from, to), true);
-    put(run, run.text.slice(to), false);
-    at += run.text.length;
-  }
-  return out;
 }

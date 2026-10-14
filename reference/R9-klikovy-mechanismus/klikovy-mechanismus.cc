@@ -93,7 +93,19 @@ A_e := [0 J, A_1, A_1 + A_2, A_1 + A_2 + A_3]
 ΔA := max(A_e) - min(A_e) | J
 "Moment setrvačnosti soustrojí pro nerovnoměrnost N = (ω_max − ω_min)/ω_s (Obrázek 783), ΔA = J·ω_s²·N:"
 J := ΔA/(N·ω_s^2) | kg·m^2
-"Setrvačník jako plný kotouč z oceli průměru D_s:"
+"Co to znamená: otáčky během jedné otáčky kolísají jen o"
+Δn := N·n_s | s^-1
+n_max := n_s + Δn/2 | s^-1
+n_min := n_s - Δn/2 | s^-1
+"Kinetická energie soustrojí; rozkmit práce ΔA je z ní jen nepatrná část (2·N), proto otáčky skoro nekolísají:"
+E_k := J·ω_s^2/2 | kJ
+"Takový moment setrvačnosti má plný ocelový kotouč průměru D_s, šířky b_s a hmotnosti m_s:"
+![Setrvačník jako plný ocelový kotouč: průměr D_s, šířka b_s, obvodová rychlost v_s](images/setrvacnik.svg){width=70%}
 D_s := 0.5 m
 ρ_s := 7850 kg/m^3
-b_s := 32·J/(π·ρ_s·D_s^4) | mm     ' šířka kotouče z J = π·ρ·b·D⁴/32
+b_s := 32·J/(π·ρ_s·D_s^4) | mm     ' z J = π·ρ·b·D⁴/32
+m_s := ρ_s·π·D_s^2/4·b_s | kg
+"Obvodová rychlost kotouče; mez je předpoklad pro plný ocelový kotouč, u litiny se bere asi poloviční:"
+v_s := ω_s·D_s/2 | m/s
+v_dov := 60 [m/s]
+check "obvodová rychlost setrvačníku": v_s ≤ v_dov

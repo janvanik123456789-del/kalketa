@@ -210,7 +210,40 @@ def drawing_pressure():
     return svg(w, h, ''.join(b))
 
 
-for name, text in [('mechanismus.svg', drawing_mechanism()), ('sily.svg', drawing_forces()), ('tlak-pary.svg', drawing_pressure())]:
+def drawing_flywheel():
+    # A plain steel disc on the shaft: seen along the shaft and cut through it, D_s and b_s as in the sheet (b/D = 0.08).
+    w, h = 640, 280
+    cx, cy, rad = 170, 135, 90
+    b = [f'<circle cx="{cx}" cy="{cy}" r="{rad}" fill="#cfd5dc" stroke="{INK}" stroke-width="1.6"/>',
+         f'<circle cx="{cx}" cy="{cy}" r="14" fill="#ffffff" stroke="{INK}" stroke-width="1.4"/>',
+         line(cx - rad - 20, cy, cx + rad + 20, cy, DIM, 0.8, '10 3 2 3'), line(cx, cy - rad - 20, cx, cy + rad + 20, DIM, 0.8, '10 3 2 3')]
+    # The turning and the speed at the rim.
+    q, a0, a1 = rad + 14, radians(55), radians(15)
+    b.append(f'<path d="M{cx + q * cos(a0):.1f} {cy - q * sin(a0):.1f} A{q} {q} 0 0 1 {cx + q * cos(a1):.1f} {cy - q * sin(a1):.1f}" fill="none" stroke="{BLUE}" stroke-width="1.6"/>')
+    b.append(arrow_head(cx + q * cos(a1), cy - q * sin(a1), radians(90 + 15), BLUE, 8))
+    b.append(arrow(cx + 4, cy - rad, cx + 70, cy - rad, BLUE, 2))
+    b.append(var(cx + 76, cy - rad - 4, 'v', 's', color=BLUE, anchor='start'))
+    b.append(var(cx + q * cos(radians(35)) + 8, cy - q * sin(radians(35)) - 2, 'ω', 's', color=BLUE, anchor='start'))
+    # Cut along the shaft: width b_s, diameter D_s.
+    sx, bw = 440, 0.08 * 2 * rad
+    b.append(f'<rect x="{sx - bw / 2:.1f}" y="{cy - rad:.1f}" width="{bw:.1f}" height="{2 * rad}" fill="#cfd5dc" stroke="{INK}" stroke-width="1.6"/>')
+    step = 8
+    for k in range(-int(rad), int(rad), step):
+        b.append(line(sx - bw / 2, cy + k + step, sx + bw / 2, cy + k + step - bw * 0.6, DIM, 0.7))
+    b.append(f'<rect x="{sx - 60:.1f}" y="{cy - 9:.1f}" width="120" height="18" fill="#ffffff" stroke="{INK}" stroke-width="1.4"/>')
+    b.append(line(sx - 80, cy, sx + 80, cy, DIM, 0.8, '10 3 2 3'))
+    b.append(line(sx + 70, cy - rad, sx + 70, cy + rad, DIM, 1) + arrow_head(sx + 70, cy - rad, -1.5708, DIM, 6) + arrow_head(sx + 70, cy + rad, 1.5708, DIM, 6))
+    b.append(line(sx + bw / 2, cy - rad, sx + 76, cy - rad, DIM, 0.6) + line(sx + bw / 2, cy + rad, sx + 76, cy + rad, DIM, 0.6))
+    b.append(var(sx + 80, cy + 5, 'D', 's', anchor='start'))
+    b.append(line(sx - bw / 2, cy + rad + 22, sx + bw / 2, cy + rad + 22, DIM, 1) + arrow_head(sx - bw / 2, cy + rad + 22, 3.14159, DIM, 5) + arrow_head(sx + bw / 2, cy + rad + 22, 0, DIM, 5))
+    b.append(line(sx - bw / 2, cy + rad, sx - bw / 2, cy + rad + 26, DIM, 0.6) + line(sx + bw / 2, cy + rad, sx + bw / 2, cy + rad + 26, DIM, 0.6))
+    b.append(var(sx + bw / 2 + 8, cy + rad + 27, 'b', 's', anchor='start'))
+    b.append(note(sx, cy - rad - 14, 'řez kotoučem'))
+    b.append(note(cx, cy - rad - 24, 'pohled ve směru hřídele'))
+    return svg(w, h, ''.join(b))
+
+
+for name, text in [('mechanismus.svg', drawing_mechanism()), ('sily.svg', drawing_forces()), ('tlak-pary.svg', drawing_pressure()), ('setrvacnik.svg', drawing_flywheel())]:
     with open(os.path.join(OUT, name), 'w', encoding='utf8', newline='\n') as f:
         f.write(text)
     print(name, len(text))

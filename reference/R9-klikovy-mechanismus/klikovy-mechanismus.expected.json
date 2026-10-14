@@ -82,12 +82,41 @@
     "b_s": {
       "value": 39.723386192476525,
       "unit": "mm"
+    },
+    "Δn": {
+      "value": 0.08564875206599042,
+      "unit": "s⁻¹"
+    },
+    "n_max": {
+      "value": 25.73744999583012,
+      "unit": "s⁻¹"
+    },
+    "n_min": {
+      "value": 25.651801243764126,
+      "unit": "s⁻¹"
+    },
+    "E_k": {
+      "value": 24.935045241096482,
+      "unit": "kJ"
+    },
+    "m_s": {
+      "value": 61.22739882301604,
+      "unit": "kg"
+    },
+    "v_s": {
+      "value": 40.36102354194736,
+      "unit": "m/s"
     }
   },
   "checks": [
     {
       "label": "otáčky v pracovním rozsahu generátoru",
       "passed": true
+    },
+    {
+      "label": "obvodová rychlost setrvačníku",
+      "passed": true,
+      "utilization": 0.6726837256991227
     }
   ]
 }

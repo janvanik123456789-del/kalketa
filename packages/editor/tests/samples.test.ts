@@ -11,6 +11,11 @@ describe('sample calculations shipped with the program', () => {
   it('print in the language of their sheet: a sheet named *.en.cc in English', () => {
     expect(samples().find((s) => s.id === 'R8-quadratic-equation')).toMatchObject({ title: 'Quadratic equation', language: 'en' });
     expect(exampleDocument('R8-quadratic-equation').manifest.language).toBe('en');
+    // A sample brings its own pictures, at the paths its sheet gives.
+    const crank = exampleDocument('R9-klikovy-mechanismus');
+    const pictures = [...crank.source.matchAll(/\]\(([^)]+)\)/g)].map((m) => m[1]!);
+    expect(pictures).toHaveLength(3);
+    for (const path of pictures) expect(new TextDecoder().decode(crank.files.get(path))).toContain('<svg');
     expect(exampleDocument('R7-kvadraticka-rovnice').manifest).toMatchObject({ language: 'cs', title: 'Vzor – Kvadratická rovnice' });
   });
 

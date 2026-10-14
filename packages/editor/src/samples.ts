@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 /**
  * The sample calculations shipped with the program (File > Sample calculations):
- * the reference cases with their tables, each opened as a new document.
+ * the reference cases with their tables and pictures, each opened as a new document.
  */
 
 import { newDocument, type SheetDocument, type StoredTable } from '@kalketa/sheet';
@@ -9,6 +9,8 @@ import { newDocument, type SheetDocument, type StoredTable } from '@kalketa/shee
 // The sample calculations shipped with the program: the reference cases with their tables.
 const SAMPLE_SHEETS = import.meta.glob<string>('../../../reference/*/*.cc', { query: '?raw', import: 'default', eager: true });
 const SAMPLE_TABLES = import.meta.glob<string>('../../../reference/*/tables/*/{schema.json,data.csv}', { query: '?raw', import: 'default', eager: true });
+// Its pictures, drawings of its own (images/mechanismus.svg in the sheet).
+const SAMPLE_IMAGES = import.meta.glob<string>('../../../reference/*/images/*.svg', { query: '?raw', import: 'default', eager: true });
 /** Variants of a case kept for the tests only. */
 const TEST_VARIANTS = new Set(['bez-tabulek']);
 export const DEFAULT_SAMPLE = 'R1-nosnik';
@@ -49,8 +51,13 @@ export function exampleDocument(id = DEFAULT_SAMPLE, prefix = 'Vzor'): SheetDocu
     const table = tables.get(name) ?? { schemaJson: '', dataCsv: '' };
     tables.set(name, file === 'schema.json' ? { ...table, schemaJson: text } : { ...table, dataCsv: text });
   }
+  const files = new Map(base.files);
+  for (const [path, text] of Object.entries(SAMPLE_IMAGES)) {
+    const [, folder, name] = /\/reference\/([^/]+)\/images\/([^/]+)$/.exec(path) ?? [];
+    if (folder === id && name) files.set(`images/${name}`, new TextEncoder().encode(text));
+  }
   const file = /([^/]+)\.cc$/.exec(entry?.[0] ?? '')?.[1] ?? '';
-  return { ...base, manifest: { ...base.manifest, language: languageOf(file) }, tables };
+  return { ...base, manifest: { ...base.manifest, language: languageOf(file) }, tables, files };
 }
 
 /** quadratic-equation.en → en; a sheet without a language in its name is Czech. */

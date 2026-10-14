@@ -1,8 +1,9 @@
 # Klikový mechanismus parního motoru
-"Podle článku J. Škorpík: Základní rovnice klikového mechanismu parního motoru, Transformační technologie, kap. 31 (www.transformacni-technologie.cz/31.html). Rozměry motoru a průběh tlaku páry článek neuvádí (jsou v placených přílohách); hodnoty níže jsou předpoklad pro ukázku, nahraďte je svými."
+"Podle článku J. Škorpík: Základní rovnice klikového mechanismu parního motoru, Transformační technologie, kap. 31 (www.transformacni-technologie.cz/31.html). Rozměry motoru a průběh tlaku páry článek neuvádí (jsou v placených přílohách); hodnoty níže jsou předpoklad pro ukázku, nahraďte je svými. Obrázky jsou vlastní, kreslené podle vzorců článku."
 
 ## Zadání
-"Klikový mechanismus (Obrázek 558):"
+![Klikový mechanismus: poloha pístu x od horní úvratě, ojnice o, klika r, pootočení hřídele φ, úhel ojnice γ](images/mechanismus.svg){width=90%}
+"Klikový mechanismus (Obrázek 558 článku):"
 r := 0.05 m             ' rameno kliky
 o := 0.25 m             ' délka ojnice
 s := 2·r                ' zdvih pístu
@@ -13,6 +14,7 @@ x_0 := 0.01 m           ' škodný prostor jako délka válce
 m_p := 6 kg             ' posuvné hmoty: píst, pístní tyč, smykadlo, 1/3 ojnice
 η_m := 0.9              ' mechanická účinnost (Úloha 776)
 "Pára (zjednodušený p-V diagram: plnění do ε zdvihu, pak expanze p·V = konst., výfuk):"
+![Předpokládaný průběh tlaku páry v komoře nad pístem během zdvihu](images/tlak-pary.svg){width=75%}
 p_1 := 0.8 MPa {slider=0.5..2..0.05}    ' tlak admisní páry
 p_2 := 0.12 MPa         ' tlak ve výfuku
 p_at := 0.1 MPa         ' tlak ve skříni hřídele
@@ -43,6 +45,7 @@ F_D(φ) := π/4·((d^2 - d_T^2)·p_D(φ) + d_T^2·p_at)
 k(φ) := ω_n^2·r·(cos(φ) + r/o·cos(2·φ))
 F_s(φ) := -k(φ)·m_p
 F_p(φ) := F_H(φ) - F_D(φ) + F_s(φ)
+![Síly v klikovém mechanismu: síla na píst F_p, síla v ojnici F_l, síla na vedení F_k, otáčivá složka F_M a moment M_p](images/sily.svg){width=90%}
 "Síla v ojnici a síla na vedení pístní tyče (Rovnice 764; síla v ojnici je F_p / cos γ, takže F_k = F_p·tg γ):"
 F_l(φ) := F_p(φ)/cos(γ(φ))
 F_k(φ) := F_l(φ)·sin(γ(φ))

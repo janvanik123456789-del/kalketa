@@ -26,6 +26,8 @@ export interface ChartSeries {
   /** The name the roots are labelled with (the variable of the x axis) and its unit. */
   readonly rootName?: string;
   readonly rootUnit?: string;
+  /** An implicit curve (x² + y² = 25): pieces between NaN, x not growing along it; no value under the pointer. */
+  readonly implicit?: boolean;
 }
 
 export interface ChartSpec {
@@ -37,6 +39,8 @@ export interface ChartSpec {
   readonly yTitle: string;
   /** The y axis from and to as set (ylim); the curves beyond it are cut off. Else it follows the values. */
   readonly yRange?: readonly [number, number];
+  /** The x axis from and to (an implicit curve over x: a .. b); else it ends at the data. */
+  readonly xRange?: readonly [number, number];
   /** The area between the first curve and the x axis from .. to, hatched, with ∫ y dx in it. */
   readonly area?: { readonly from: number; readonly to: number; readonly value: number; readonly unit: string; readonly name?: string; readonly xs?: readonly number[]; readonly ys?: readonly number[]; readonly above?: number; readonly below?: number };
   /** Points of the sheet (the vertex [x_v; y_v]…): a dark dot with its coordinates. */
@@ -124,7 +128,9 @@ export function chartLayout(spec: ChartSpec, options: ChartOptions = {}): ChartL
   const y = spec.yRange ? fixedScale(spec.yRange[0], spec.yRange[1]) : niceScale(Math.min(...ys), Math.max(...ys), 6, bar);
   const x = categories
     ? { min: 0, max: categories.length, ticks: categories }
-    : { ...niceScale(Math.min(...xs), Math.max(...xs), 8), ...tight(xs) };
+    : spec.xRange
+      ? fixedScale(spec.xRange[0], spec.xRange[1])
+      : { ...niceScale(Math.min(...xs), Math.max(...xs), 8), ...tight(xs) };
   // Room for the longest tick label on the left, the labels at the ends of the curves on the right.
   const ticksWidth = Math.max(...y.ticks.map((v) => format(v).length)) * 6.6;
   const ends = !bar && spec.series.length > 1 && spec.series.length <= 4 ? Math.max(...spec.series.map((s) => labelWidth(s.label))) + 12 : 12;

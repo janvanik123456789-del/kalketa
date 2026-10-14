@@ -30,7 +30,7 @@ export interface ParseResult {
   readonly diagnostics: Diagnostic[];
 }
 
-const KEYWORDS = new Set(['and', 'or', 'not', 'true', 'false', 'check', 'source', 'solve', 'in', 'guess', 'dimension', 'unit', 'input', 'derive']);
+const KEYWORDS = new Set(['and', 'or', 'not', 'true', 'false', 'check', 'source', 'solve', 'in', 'guess', 'dimension', 'unit', 'input', 'derive', 'relation']);
 const UNSUPPORTED_STATEMENTS: Readonly<Record<string, string>> = {};
 /** "unit ks: dimensionless" (also "unit ks: 1"). */
 export const DIMENSIONLESS_NAME = 'dimensionless';
@@ -315,6 +315,9 @@ class LineParser {
     if (first.type === 'ident' && first.text === 'derive' && this.peek(1).type !== ':=') {
       return this.parseDerive(lineSpan);
     }
+    if (first.type === 'ident' && first.text === 'relation' && this.peek(1).type !== ':=') {
+      return this.parseRelation(lineSpan);
+    }
     if (first.type === 'ident' && first.text === 'dimension' && this.peek(1).type === 'ident') {
       this.next();
       const name = this.next();
@@ -363,6 +366,19 @@ class LineParser {
     return this.tokens
       .slice(from)
       .some((t) => t.type === 'string' || ['<', '<=', '>', '>=', '!='].includes(t.type) || (t.type === 'ident' && ['true', 'false', 'and', 'or', 'not'].includes(t.text)));
+  }
+
+  /** relation x^2 + y^2 == r^2: an equation that holds; its names are symbols where the sheet has no value for them. */
+  private parseRelation(lineSpan: Span): Statement {
+    this.next(); // relation
+    this.freeNames = true;
+    const left = this.parseAdditive();
+    const eq = this.peek();
+    if (eq.type !== '==' && eq.type !== '=') fail('E-SYNTAX', eq.span, { expected: '==', found: eq.text || 'end-of-line' });
+    this.next();
+    const right = this.parseAdditive();
+    this.expectEnd();
+    return { kind: 'derive', members: [left, right], relation: true, span: lineSpan };
   }
 
   /** derive a == b == c · derive y := a == b · derive M_mp := l^3·F/3 (a symbol of theory) */
@@ -593,6 +609,13 @@ class LineParser {
       }
       const left = this.parseAdditive();
       const eq = this.peek();
+      // solve y: Kruh — a relation of the sheet by its name.
+      const ends = eq.type === ',' || eq.type === 'newline' || eq.type === 'eof' || this.isKeyword('in') || this.isKeyword('guess');
+      const name = left.kind === 'variable' ? left.name : left.kind === 'unit' && left.unit.kind === 'unit-name' ? left.unit.name : undefined;
+      if (ends && name !== undefined && !ode) {
+        equations.push({ left, right: left, named: name, span: left.span });
+        continue;
+      }
       const relation = eq.type === '<' || eq.type === '<=' || eq.type === '>' || eq.type === '>=' ? eq.type : undefined;
       if (eq.type !== '==' && eq.type !== '=' && !relation) fail('E-SYNTAX', eq.span, { expected: '==', found: eq.text || 'end-of-line' });
       this.next();

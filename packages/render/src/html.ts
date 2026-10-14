@@ -351,7 +351,7 @@ export function renderBlockHtml(block: PrintBlock, catalog: Catalog, options: Bl
     }
     case 'equation':
       return `<section class="block equation${options.style === 'compact' ? ' compact' : options.style === 'book' ? ' book' : ''}${block.number !== undefined ? ' numbered' : ''}" data-line="${block.line}">
-${numbered(options.style === 'compact' ? equationFlow(block.lines, block.comment, options.defineOperator ?? '=', block.source) : equationTable(block.lines, block.comment, options.defineOperator ?? '=', block.source), block.number)}${block.table ? dataTableHtml(block.table) : ''}${block.derived ? `<div class="derived">✓ ${esc(t(catalog, 'print.derived'))}</div>` : ''}${imported(block.imported, catalog)}${blockCalc(block.blockCalc, catalog)}${messages(block.messages)}
+${numbered(options.style === 'compact' ? equationFlow(block.lines, block.comment, options.defineOperator ?? '=', block.source) : equationTable(block.lines, block.comment, options.defineOperator ?? '=', block.source), block.number)}${block.table ? dataTableHtml(block.table) : ''}${block.derived ? `<div class="derived">✓ ${esc(derivedText(block.follows, catalog))}</div>` : ''}${imported(block.imported, catalog)}${blockCalc(block.blockCalc, catalog)}${messages(block.messages)}
 </section>`;
     case 'selection': {
       const condition = block.condition
@@ -633,3 +633,10 @@ ul.messages .info { color: #555; }
 .summary .some-failed { font-weight: 700; color: #b71c1c; }
 .page-break { break-after: page; }
 .imported { font-size: 9pt; color: #1f4f8f; margin: 0.3mm 0 0 18mm; }`;
+
+/** "odvození ověřeno", or where it follows from relations: "odvození ověřeno ze vztahu (3)". */
+function derivedText(follows: readonly string[] | undefined, catalog: Catalog): string {
+  if (!follows) return t(catalog, 'print.derived');
+  const named = follows.filter(Boolean);
+  return named.length > 0 ? t(catalog, 'print.derivedFrom', { relations: named.join(', ') }) : t(catalog, 'print.derivedFromAbove');
+}

@@ -128,6 +128,11 @@ export type PrintBlock =
       readonly blockCalc?: string;
       /** A derivation whose every step was checked and holds. */
       readonly derived?: boolean;
+      /**
+       * Steps that hold where a relation above does (relation …), not in general: the relations, each
+       * as its number "(3)" when numbered, else its name ({eq=Kruh}), else "" (a relation without a name).
+       */
+      readonly follows?: readonly string[];
       /** Where the formula comes from (source "EN 1990, 6.10"). */
       readonly source?: string;
       /** The rows of a table it works out (filter), printed under it. */
@@ -419,6 +424,7 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
             ]
           : valueLines;
         const derived = !!r.derivation && r.derivation.every((step) => step.ok);
+        const follows = followsFrom(r);
         if (r.status === 'error' && lines.length <= 1 && s.kind === 'display') {
           blocks.push({ kind: 'error', line: s.span.line, source: sourceText(result, s.span), messages });
           break;
@@ -433,6 +439,7 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
           ...(imported.length ? { imported } : {}),
           ...(blockCalc ? { blockCalc } : {}),
           ...(derived ? { derived } : {}),
+          ...(derived && follows ? { follows } : {}),
           ...(s.kind === 'definition' && s.source ? { source: s.source } : {}),
           // A table worked out (filter(T, where: …)): its rows printed below, so the choice can be checked.
           ...(s.kind === 'definition' && r.value?.type === 'table' ? { table: tableRows(r.value.table, numberFormat({ digits: 4 })) } : {}),
@@ -446,14 +453,20 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
         const op = (i: number) => (s.approx?.includes(i) ? '≐' : '=');
         const lines: EquationLine[] = rest.map((rhs, i) => (i === 0 ? { role: 'formula', lhs: first!, op: op(0), rhs } : { role: 'formula', rhs, op: op(i) }));
         const derived = !!r.derivation && r.derivation.every((step) => step.ok);
-        blocks.push({ kind: 'equation', line: s.span.line, lines, ...(s.comment ? { comment: s.comment } : {}), ...(derived ? { derived } : {}), messages });
+        const follows = followsFrom(r);
+        blocks.push({ kind: 'equation', line: s.span.line, lines, ...(s.comment ? { comment: s.comment } : {}), ...(derived ? { derived } : {}), ...(derived && follows ? { follows } : {}), messages });
         break;
       }
       case 'solve': {
         // The equations as written, then the values found.
         // An inequality keeps its sign; the unknown follows from it: S ≤ π·d²/4 ⇒ d ≥ √(4·S/π).
         const sign = (r: string | undefined) => (r ? ({ '<': '<', '<=': '≤', '>': '>', '>=': '≥' } as Record<string, string>)[r]! : '=');
-        const lines: EquationLine[] = s.equations.map((eq) => ({ role: 'formula', lhs: formulaNode(eq.left, formulaOptions()), op: sign(eq.relation), rhs: formulaNode(eq.right, formulaOptions()) }));
+        // solve y: Kruh — the equation of the relation so named, as written there.
+        const named = (eq: (typeof s.equations)[number]) => {
+          const own = eq.named === undefined ? undefined : result.sheet.statements.find((o) => o.kind === 'derive' && o.relation && o.format?.eq === eq.named);
+          return own?.kind === 'derive' ? { ...eq, left: own.members[0]!, right: own.members[1]! } : eq;
+        };
+        const lines: EquationLine[] = s.equations.map(named).map((eq) => ({ role: 'formula', lhs: formulaNode(eq.left, formulaOptions()), op: sign(eq.relation), rhs: formulaNode(eq.right, formulaOptions()) }));
         // The interval decides which root is found: "0 ≤ x ≤ 10".
         if (s.range && s.unknowns[0]) {
           // Of a differential equation the interval is its variable's: 0 ≤ x ≤ L.
@@ -580,7 +593,19 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
       if (mode.substitution && toText(numbers) !== toText(general)) out.push({ role: 'formula', op: '', rhs: numbers });
     }
     const q = found.quadratic;
-    if (q) {
+    // x² + y² = r² for y: y₁,₂ = ±√(r² − x²) = ±√(5² − 3²), no discriminant and no vertex of a parabola.
+    if (q?.pure) {
+      const complex = found.roots.length > 0 && found.roots.every((r) => r.rejected === 'complex');
+      if (complex || found.roots.length === 0) {
+        out.push({ role: 'result', lead: '⇒', op: '', rhs: mtext(t(catalog, 'print.noRealRootSquare')) });
+        return out;
+      }
+      const both: Expr = { kind: 'unary', operator: '±', operand: q.pure, span: s.span };
+      const pair = found.roots.length === 1 ? nameNode(name) : nameNode(`${name}_1_2`);
+      out.push({ role: 'formula', lhs: pair, op: '=', rhs: formulaNode(both, o) });
+      const filled = substituted(both);
+      if (mode.substitution && toText(filled) !== toText(formulaNode(both, o))) out.push({ role: 'substitution', rhs: filled });
+    } else if (q) {
       const at = s.span;
       const bin = (operator: '-' | '*' | '/' | '^' | '±', left: Expr, right: Expr): Expr => ({ kind: 'binary', operator, left, right, span: at });
       const num = (v: number): Expr => ({ kind: 'number', value: v, span: at });
@@ -625,7 +650,7 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
       else out.push({ role: 'result', lead: '⇒', lhs: nameNode(name), op: '=', rhs: kept.length === 1 ? value(kept[0]!.value) : row(mo('['), ...kept.flatMap((r, i) => [...(i > 0 ? [mo(o.argumentSeparator)] : []), value(r.value)]), mo(']')) });
     }
     // The vertex of the parabola: V = [−b/(2·a); −D/(4·a)] = [−2/(2·(−2)); −84/(4·(−2))] = [0,5; 10,5].
-    if (q) {
+    if (q && !q.pure) {
       const at = s.span;
       const num = (v: number): Expr => ({ kind: 'number', value: v, span: at });
       const d: Expr = { kind: 'variable', name: 'D', span: at };
@@ -697,10 +722,18 @@ function numberEquations(blocks: PrintBlock[], result: SheetResult, mode: Equati
     if (typeof format?.eq === 'string') names.set(format.eq, number);
     return { ...block, number };
   });
-  if (names.size === 0) return numbered;
+  // A derivation following from a numbered relation names it by its number: (3).
+  const withRelations = numbered.map((block) => (block.kind === 'equation' && block.follows ? { ...block, follows: block.follows.map((name) => (names.has(name) ? `(${names.get(name)})` : name)) } : block));
+  if (names.size === 0) return withRelations;
   // (#hooke) in text and headings: the number of the equation so named; an unknown name stays visible.
   const refer = (text: string) => text.replace(/\(#([\p{L}_][\p{L}\p{N}_]*)\)/gu, (whole, name: string) => (names.has(name) ? `(${names.get(name)})` : whole));
-  return numbered.map((block) => (block.kind === 'paragraph' || block.kind === 'heading' ? { ...block, text: refer(block.text) } : block));
+  return withRelations.map((block) => (block.kind === 'paragraph' || block.kind === 'heading' ? { ...block, text: refer(block.text) } : block));
+}
+
+/** The relations the steps of a derivation follow from, by name ("" for one without), each once; none when they hold in general. */
+function followsFrom(r: StatementResult): string[] | undefined {
+  const names = [...new Set((r.derivation ?? []).flatMap((step) => (step.relation ? [step.relation.label ?? ''] : [])))];
+  return names.length > 0 ? names : undefined;
 }
 
 /**
@@ -1019,6 +1052,17 @@ function sourceText(result: SheetResult, span: { offset: number; length: number 
 /** Size of a chart in the SVG user space: about the text width of A4 at 96 dpi, so text in it reads like 8 pt. */
 export const CHART_SIZE = { width: 640, height: 300 } as const;
 
+/** The size of a chart whose axes share one scale (a circle round): its plot area as high as its ranges ask. */
+function equalScaleSize(spec: ChartSpec): { width: number; height: number } {
+  const plain = chartLayout(spec, CHART_SIZE);
+  const xSpan = plain.x.max - plain.x.min;
+  const ySpan = plain.y.max - plain.y.min;
+  if (!(xSpan > 0) || !(ySpan > 0)) return CHART_SIZE;
+  const frame = CHART_SIZE.height - (plain.plot.bottom - plain.plot.top);
+  const height = Math.round((plain.plot.right - plain.plot.left) * (ySpan / xSpan) + frame);
+  return { width: CHART_SIZE.width, height: Math.max(160, Math.min(900, height)) };
+}
+
 /** A chart line: the curves named after their expressions, the axes after the variable and the units. */
 function chartBlock(
   plot: PlotResult,
@@ -1045,18 +1089,20 @@ function chartBlock(
       ...(s.extremes ? { extremes: s.extremes } : {}),
       ...(s.inflections ? { inflections: s.inflections } : {}),
       ...(s.roots || s.axes ? { rootName: plot.variable || 'x', ...(plot.xUnit ? { rootUnit: plot.xUnit } : {}) } : {}),
+      ...(s.implicit ? { implicit: true } : {}),
     })),
     xTitle: plot.xDates ? plot.variable : `${plot.variable}${unit(plot.xUnit)}`.trim(),
-    // One curve names the axis; more curves are named in the legend.
-    yTitle: (names.length === 1 ? `${names[0]}${unit(plot.yUnit)}` : unit(plot.yUnit)).trim(),
+    // One curve names the axis; more curves are named in the legend. Over x and y (an implicit curve) y names it.
+    yTitle: (plot.yVariable ? `${plot.yVariable}${unit(plot.yUnit)}` : names.length === 1 ? `${names[0]}${unit(plot.yUnit)}` : unit(plot.yUnit)).trim(),
     ...(plot.yRange ? { yRange: plot.yRange } : {}),
+    ...(plot.xRange ? { xRange: plot.xRange } : {}),
     ...(plot.area ? { area: plot.area } : {}),
     ...(plot.tangent ? { tangent: plot.tangent } : {}),
     ...(plot.labelOffsets ? { labelOffsets: plot.labelOffsets } : {}),
     ...(plot.points ? { points: plot.points } : {}),
   };
   // Its height to its width as dragged in the sheet (ratio=0.6), else the usual one.
-  const size = plot.place?.ratio ? { width: CHART_SIZE.width, height: Math.round(CHART_SIZE.width * plot.place.ratio) } : CHART_SIZE;
+  const size = plot.place?.ratio ? { width: CHART_SIZE.width, height: Math.round(CHART_SIZE.width * plot.place.ratio) } : plot.equalScale ? equalScaleSize(spec) : CHART_SIZE;
   const options = { ...size, format, ...(plot.xDates ? { formatX: date } : {}), ...(plot.title ? { title: plot.title } : {}) };
   return {
     kind: 'chart',

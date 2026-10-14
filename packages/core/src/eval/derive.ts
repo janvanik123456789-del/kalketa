@@ -13,6 +13,10 @@
  *
  * What has no value to try (Σ and ∫ without bounds, functions nobody defined)
  * is one opaque part: the same part on both sides gets the same value.
+ *
+ * Below a relation (relation dV − dV_0 == (2·ε_xx + ε_zz)·dV_0) a step that is
+ * no identity may follow from it: it is tried again at points where the
+ * relation holds, one of its names calculated from the others there.
  */
 
 import { diagnostic, type Diagnostic, type Span } from '../diagnostics.js';
@@ -32,6 +36,15 @@ export type StepProblem = 'differs' | 'units' | 'unverified';
 export interface DerivationStep {
   readonly ok: boolean;
   readonly problem?: StepProblem;
+  /** The step holds where the relation does, not in general: its name ({eq=3}) or its line. */
+  readonly relation?: { readonly label?: string; readonly line: number };
+}
+
+/** A relation of the sheet above a derivation: an equation that holds (left == right). */
+export interface SheetRelation {
+  readonly expr: Expr;
+  readonly label?: string;
+  readonly line: number;
 }
 
 /** Points at which the members are compared. */
@@ -42,6 +55,8 @@ const ROUNDED = 0.01;
 const SMALL = 1e-3;
 /** Relative difference still taken as equal (rounding of different but equal forms). */
 const TOLERANCE = 1e-9;
+/** The same where a name was calculated from a relation first (to some 12 digits). */
+const RELATED = 1e-7;
 /** Name of an opaque part in the rewritten members. */
 const ATOM = '\u0000part:';
 
@@ -63,6 +78,7 @@ export function checkDerivation(
   formulaOf: (name: string) => Expr | undefined = () => undefined,
   params: readonly string[] = [],
   approx: readonly number[] = [],
+  relations: readonly SheetRelation[] = [],
 ): { steps: DerivationStep[]; diagnostics: Diagnostic[] } {
   const atoms: Expr[] = [];
   const keys = new Map<string, number>();
@@ -78,17 +94,27 @@ export function checkDerivation(
     return formulas.get(name);
   };
 
-  let paramDims: readonly Dimension[] = params.map(() => DIMENSIONLESS);
   // The symbols of theory met (no value in the sheet): a ≐ step may hold when they, or one of them, get small.
   const symbols = new Set<string>();
-  // small: how small a symbol of theory or a parameter is taken (1 = as usual).
-  const sample = (point: number, small: (name: string) => number = () => 1): (Quantity | undefined)[] => {
+  // The relations as the members are: their sides with the same opaque parts.
+  const holding = relations.flatMap((r) =>
+    r.expr.kind === 'binary' ? [{ relation: r, left: opaqueParts(r.expr.left, own, evaluate, atoms, keys), right: opaqueParts(r.expr.right, own, evaluate, atoms, keys), names: namesIn(r.expr) }] : [],
+  );
+  type Holding = (typeof holding)[number];
+  // Symbols of a relation vary like parameters, in the dimension the relation gives them (x, y of x² + y² = r² with r in m: lengths).
+  const loose = [...new Set(holding.flatMap((h) => [...h.names]))].filter((n) => !params.includes(n) && !formula(n) && !tryValue(() => ctx.lookup(n, members[0]!.span)));
+  const varying = [...params, ...loose];
+  let paramDims: readonly Dimension[] = varying.map(() => DIMENSIONLESS);
+  // small: how small a symbol of theory or a parameter is taken (1 = as usual). under: relations made to hold at the point.
+  // sides: the sides of the relations after the members (are they of one dimension?).
+  const sample = (point: number, small: (name: string) => number = () => 1, under: readonly Holding[] = [], prefer: ReadonlySet<string> = new Set(), sides = false): (Quantity | undefined)[] => {
     const known = new Map<string, Value>();
+    const calculated = new Set<string>();
     const lookup = (name: string, span: Span): Value => {
       const done = known.get(name);
       if (done) return done;
       let value: Value;
-      const param = params.indexOf(name);
+      const param = varying.indexOf(name);
       if (param >= 0) {
         symbols.add(name);
         value = quantity(randomFactor(name, point) * small(name), paramDims[param]);
@@ -97,24 +123,59 @@ export function checkDerivation(
         value = scaled(tryValue(() => evaluate(atoms[index]!, ctx)), name, point);
       } else {
         const own = formula(name);
-        const calculated = own ? tryValue(() => evaluate(own, at)) : undefined;
-        const real = calculated ? undefined : tryValue(() => ctx.lookup(name, span));
-        if (!calculated && !real) symbols.add(name);
-        value = calculated ?? scaled(real, name, point, small(name));
+        const fromFormula = own ? tryValue(() => evaluate(own, at)) : undefined;
+        const real = fromFormula ? undefined : tryValue(() => ctx.lookup(name, span));
+        if (!fromFormula && !real) symbols.add(name);
+        if (fromFormula) calculated.add(name);
+        value = fromFormula ?? scaled(real, name, point, small(name));
       }
       known.set(name, value);
       return value;
     };
     const at: EvalContext = { ...ctx, warnings: [], lookup };
-    return rewritten.map((m) => {
+    // Each relation made to hold: one of its names (one of the step first) calculated from the others.
+    const adjusted = new Set<string>();
+    for (const h of under) {
+      const candidates = [...h.names].filter((n) => !adjusted.has(n) && !formula(n)).sort((a, b) => Number(prefer.has(b)) - Number(prefer.has(a)));
+      const done = candidates.find((name) => {
+        const start = tryValue(() => lookup(name, h.relation.expr.span));
+        if (start?.type !== 'quantity' || start.im) return false;
+        const gap = (si: number): number | undefined => {
+          known.set(name, { ...start, si });
+          for (const c of calculated) known.delete(c);
+          calculated.clear();
+          const [l, r] = [tryValue(() => evaluate(h.left, at)), tryValue(() => evaluate(h.right, at))];
+          if (l?.type !== 'quantity' || r?.type !== 'quantity' || l.im || r.im || !sameDim(l.dim, r.dim)) return undefined;
+          const scale = Math.max(Math.abs(l.si), Math.abs(r.si), Number.MIN_VALUE);
+          return (l.si - r.si) / scale;
+        };
+        const root = secant(gap, start.si);
+        if (root === undefined) {
+          known.set(name, start);
+          return false;
+        }
+        gap(root);
+        return true;
+      });
+      if (done === undefined) return rewritten.map(() => undefined);
+      adjusted.add(done);
+    }
+    return (sides ? [...rewritten, ...holding.flatMap((h) => [h.left, h.right])] : rewritten).map((m) => {
       const value = tryValue(() => evaluate(m, at));
       return value?.type === 'quantity' ? value : undefined;
     });
   };
-  if (params.length > 0) paramDims = dimensionsOfParams(params, members, ctx, (dims) => {
-    paramDims = dims;
-    return sample(0).every(Boolean);
-  });
+  if (varying.length > 0) {
+    paramDims = dimensionsOfParams(varying, [...members, ...holding.map((h) => h.relation.expr)], ctx, (dims) => {
+      paramDims = dims;
+      const values = sample(0, () => 1, [], new Set(), true);
+      const relationsAgree = holding.every((_, k) => {
+        const [l, r] = [values[members.length + 2 * k], values[members.length + 2 * k + 1]];
+        return !!l && !!r && sameDim(l.dim, r.dim);
+      });
+      return relationsAgree && (params.length === 0 || values.slice(0, members.length).every(Boolean));
+    });
+  }
   const points = Array.from({ length: SAMPLES }, (_, i) => sample(i));
   // All the symbols small (γ ≐ tg γ), or one of them (Δl ≪ l in atan(Δl/l) ≐ Δl/l).
   let smallPoints: (Quantity | undefined)[][][] | undefined;
@@ -127,6 +188,24 @@ export function checkDerivation(
     const value = tryValue(() => evaluate(m, { ...ctx, warnings: [] }));
     return value?.type === 'quantity' ? value : undefined;
   });
+
+  // A step that is no identity, tried where the relations above hold that share names with it.
+  const followsFrom = (i: number): DerivationStep['relation'] | undefined => {
+    const names = new Set([...namesIn(members[i]!), ...namesIn(members[i + 1]!)]);
+    const under = holding.filter((h) => [...h.names].some((n) => names.has(n)));
+    if (under.length === 0) return undefined;
+    let compared = 0;
+    for (let point = 0; point < SAMPLES; point++) {
+      const values = sample(point, () => 1, under, names);
+      const [a, b] = [values[i], values[i + 1]];
+      if (!a || !b) continue;
+      compared++;
+      if (!sameDim(a.dim, b.dim) || !equal(a, b, approx.includes(i) ? ROUNDED : RELATED)) return undefined;
+    }
+    if (compared < 3) return undefined;
+    const last = under[under.length - 1]!.relation;
+    return { ...(last.label !== undefined ? { label: last.label } : {}), line: last.line };
+  };
 
   const steps: DerivationStep[] = [];
   const diagnostics: Diagnostic[] = [];
@@ -151,9 +230,16 @@ export function checkDerivation(
           if (smallPoints.some((variant) => variant.every((v) => !v[i] || !v[i + 1] || equal(v[i]!, v[i + 1]!, ROUNDED)))) break;
         }
         problem = 'differs';
-        diagnostics.push(diagnostic('E-DERIVE-STEP', span, { step: i + 1 }));
         break;
       }
+    }
+    if (problem === 'differs') {
+      const relation = numbers ? undefined : followsFrom(i);
+      if (relation) {
+        steps.push({ ok: true, relation });
+        continue;
+      }
+      diagnostics.push(diagnostic('E-DERIVE-STEP', span, { step: i + 1 }));
     }
     if (!problem && compared === 0) {
       problem = 'unverified';
@@ -342,4 +428,54 @@ function equal(a: Quantity, b: Quantity, tolerance = TOLERANCE): boolean {
 
 function between(a: Span, b: Span): Span {
   return { offset: a.offset, length: b.offset + b.length - a.offset, line: a.line, column: a.column };
+}
+
+/** The names an expression reads (not the variables of its own integrals or sums, which it binds). */
+function namesIn(expr: Expr): Set<string> {
+  const out = new Set<string>();
+  const walk = (e: Expr, bound: ReadonlySet<string>) => {
+    switch (e.kind) {
+      case 'variable':
+        if (!bound.has(e.name)) out.add(e.name);
+        return;
+      case 'unary':
+        return walk(e.operand, bound);
+      case 'binary':
+        walk(e.left, bound);
+        return walk(e.right, bound);
+      case 'call': {
+        const inner = new Set([...bound, ...e.named.filter((n) => n.value.kind === 'range').map((n) => n.name)]);
+        e.args.forEach((a) => walk(a, inner));
+        e.named.forEach((n) => walk(n.value, bound));
+        return;
+      }
+      default:
+        for (const value of Object.values(e)) {
+          if (value && typeof value === 'object' && 'kind' in value && 'span' in value) walk(value as Expr, bound);
+          if (Array.isArray(value)) for (const item of value) if (item && typeof item === 'object' && 'kind' in item && 'span' in item) walk(item as Expr, bound);
+        }
+    }
+  };
+  walk(expr, new Set());
+  return out;
+}
+
+/** Where f is zero near x0: the secant method, from x0 and a point beside it; undefined when it does not settle. */
+function secant(f: (x: number) => number | undefined, x0: number): number | undefined {
+  for (const start of [x0, -x0, 2 * x0 + 1, 0.5 * x0 - 1]) {
+    let a = start;
+    let b = start === 0 ? 1e-3 : start * (1 + 1e-3);
+    let fa = f(a);
+    let fb = f(b);
+    for (let k = 0; k < 60 && fa !== undefined && fb !== undefined; k++) {
+      if (Math.abs(fb) <= 1e-13) return b;
+      if (fb === fa) break;
+      const next = b - (fb * (b - a)) / (fb - fa);
+      if (!Number.isFinite(next)) break;
+      [a, fa] = [b, fb];
+      b = next;
+      fb = f(b);
+    }
+  }
+  return undefined;
 }

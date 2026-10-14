@@ -16,7 +16,7 @@ import { defineFunction, isBuiltinFunction } from '../eval/userFunctions.js';
 import { allRoots, solveStatement, type RootsFound } from '../eval/solver.js';
 import { solveOde, type OdeInfo } from '../eval/ode.js';
 import { isPlotCall, plotStatement, type PlotResult } from '../eval/plot.js';
-import { checkDerivation, type DerivationStep } from '../eval/derive.js';
+import { checkDerivation, type DerivationStep, type SheetRelation } from '../eval/derive.js';
 import { DIMENSIONLESS_NAME } from '../lang/parser.js';
 import { DIMENSIONLESS, dim, type Dimension } from '../units/dimension.js';
 import type { BlockCaller, BlockSource } from '../eval/blocks.js';
@@ -165,6 +165,7 @@ export class SheetSession {
       registry: ownUnits.length > 0 ? registry.extend() : registry,
       dimensions: new Set(),
       formulas: new Map(),
+      relations: [],
     };
     // Every result depends on the sheet's own units: changing one recalculates all.
     const unitsKey = ownUnits.map((s) => source.slice(s.span.offset, s.span.offset + s.span.length)).join('\n');
@@ -182,8 +183,17 @@ export class SheetSession {
       const text = source.slice(s.span.offset, s.span.offset + s.span.length);
       if (s.kind === 'definition' && !s.params && !s.input) namedFormulas.set(s.name, { expr: s.expr, text });
       if (typeof s.format?.eq === 'string' && (s.kind === 'display' || s.kind === 'definition')) namedFormulas.set(`#${s.format.eq}`, { expr: s.expr, text });
+      // A relation by its name (relation x^2 + y^2 == r^2 {eq=Kruh}): its equation, drawn or solved by that name.
+      if (typeof s.format?.eq === 'string' && s.kind === 'derive' && s.relation) namedFormulas.set(`#${s.format.eq}`, { expr: relationExpr(s), text });
     }
     context.namedFormulas = namedFormulas;
+    // What a line using relations means depends on their text too: a derivation below them, a chart or a solve by their name.
+    const relations = statements.filter((s): s is Extract<Statement, { kind: 'derive' }> => s.kind === 'derive' && !!s.relation);
+    const relationNames = relations.flatMap((s) => (typeof s.format?.eq === 'string' ? [s.format.eq] : []));
+    const relationsKey = relations.map((s) => `${source.slice(s.span.offset, s.span.offset + s.span.length)} ${String(s.format?.eq ?? '')}`).join('\u0001');
+    const usesRelations = (statement: Statement, text: string) =>
+      relations.length > 0 &&
+      ((statement.kind === 'derive' && !statement.relation) || (statement.kind === 'definition' && !!statement.derivation) || relationNames.some((name) => wordIn(text, name)));
     const env = context.env;
     const results: StatementResult[] = [];
     const drawnLater: { at: number; statement: Extract<Statement, { kind: 'display' }>; parseDiagnostics: Diagnostic[] }[] = [];
@@ -303,7 +313,8 @@ export class SheetSession {
         // A chart hatching a formula by its name: that formula's text too (it may stand below the chart).
         (statement.kind === 'display' && /\barea\s*:\s*[\p{L}_]/u.test(source.slice(statement.span.offset, statement.span.offset + statement.span.length))
           ? `\u0000${[...namedFormulas.values()].map((f) => f.text).join('\u0001')}`
-          : '');
+          : '') +
+        (usesRelations(statement, source.slice(statement.span.offset, statement.span.offset + statement.span.length)) ? `\u0000${relationsKey}` : '');
       const cached = this.cache.get(key);
       let result: PartialResult;
       // Results with diagnostics are not reused: their spans point into the old source.
@@ -327,6 +338,7 @@ export class SheetSession {
         env.set(`#${eqName}`, result.status === 'ok' && result.value ? { ok: true, value: result.value } : { ok: false });
         context.formulas.set(`#${eqName}`, statement.expr);
       }
+      if (statement.kind === 'derive' && statement.relation) context.relations.push({ expr: relationExpr(statement), ...(typeof statement.format?.eq === 'string' ? { label: statement.format.eq } : {}), line: statement.span.line });
       if (statement.kind === 'definition') {
         env.set(statement.name, result.status === 'ok' && result.value ? { ok: true, value: result.value } : { ok: false });
         // A derivation ending in numbers (M := q·L²/8 == … == 37.5 kN·m) stands for its general formula, the first member.
@@ -502,7 +514,9 @@ export class SheetSession {
     const members = statement.kind === 'derive' ? statement.members : statement.kind === 'definition' ? statement.derivation : undefined;
     const params = statement.kind === 'definition' ? statement.params?.map((p) => p.name) : undefined;
     const approx = statement.kind === 'definition' || statement.kind === 'derive' ? statement.approx : undefined;
-    const derived = members ? checkDerivation(members, ctx, evaluate, (name) => context.formulas.get(name), params, approx) : undefined;
+    // A relation holds by the theory or the task: nothing to check in it.
+    if (statement.kind === 'derive' && statement.relation) return { status: 'ok', dependencies, tableReads, diagnostics: ctx.warnings };
+    const derived = members ? checkDerivation(members, ctx, evaluate, (name) => context.formulas.get(name), params, approx, context.relations) : undefined;
     if (statement.kind === 'derive') {
       return { status: 'ok', derivation: derived!.steps, dependencies, tableReads, diagnostics: [...ctx.warnings, ...derived!.diagnostics] };
     }
@@ -537,6 +551,16 @@ export class SheetSession {
         };
       }
 
+      // solve y: Kruh — the equation of the relation of that name.
+      if (statement.kind === 'solve' && statement.equations.some((e) => e.named !== undefined)) {
+        const equations = statement.equations.map((e) => {
+          if (e.named === undefined) return e;
+          const own = context.namedFormulas?.get(`#${e.named}`)?.expr;
+          if (own?.kind !== 'binary' || own.operator !== '==') throw new CalcError(diagnostic('E-SOLVE-RELATION', e.span, { name: e.named }));
+          return { left: own.left, right: own.right, span: e.span };
+        });
+        return this.evaluateValue({ ...statement, equations }, context, ctx, dependencies, tableReads);
+      }
       if (statement.kind === 'solve' && statement.ode) {
         const { fn, info } = solveOde(statement, ctx, evaluate);
         return { status: 'ok', value: fn, ode: info, dependencies, tableReads, diagnostics: ctx.warnings };
@@ -798,6 +822,8 @@ interface StatementContext {
   readonly dimensions: Set<string>;
   /** Formulas of the names calculated so far, for checking derivations. */
   readonly formulas: Map<string, Expr>;
+  /** The relations of the sheet read so far (relation x^2 + y^2 == r^2): the derivations below may follow from them. */
+  readonly relations: SheetRelation[];
   /** Every formula of the sheet by its name (P, #Integral1 for {eq=Integral1}), wherever it stands. */
   namedFormulas?: ReadonlyMap<string, { readonly expr: Expr; readonly text: string }>;
 }
@@ -825,4 +851,21 @@ function currentFingerprint(context: StatementContext, name: string): string {
 
 function within(inner: Span, outer: Span): boolean {
   return inner.offset >= outer.offset && inner.offset <= outer.offset + outer.length;
+}
+
+/** The equation of a relation as one expression: left == right. */
+function relationExpr(statement: Extract<Statement, { kind: 'derive' }>): Expr {
+  const [left, right] = statement.members;
+  return { kind: 'binary', operator: '==', left: left!, right: right!, span: statement.span };
+}
+
+/** Whether a name stands in a text as a word of its own (Kruh in "solve y: Kruh", not in "Kruhy"). */
+function wordIn(text: string, name: string): boolean {
+  let at = text.indexOf(name);
+  const part = /[\p{L}\p{N}_]/u;
+  while (at >= 0) {
+    if (!part.test(text[at - 1] ?? ' ') && !part.test(text[at + name.length] ?? ' ')) return true;
+    at = text.indexOf(name, at + 1);
+  }
+  return false;
 }

@@ -54,6 +54,8 @@ export interface Equation {
   readonly right: Expr;
   /** An inequality (one unknown only): solved for its bound, then on which side the solutions lie. */
   readonly relation?: Inequality;
+  /** solve y: Kruh — the relation of that name ({eq=Kruh}) is the equation; left and right are its name until then. */
+  readonly named?: string;
   readonly span: Span;
 }
 
@@ -160,8 +162,12 @@ export type Statement =
    *       | 0     | 20.1         |
    */
   | (StatementBase & { readonly kind: 'table'; readonly name: string; readonly nameSpan: Span; readonly columns: readonly SheetColumn[]; readonly rows: readonly (readonly string[])[] })
-  /** A derivation on its own (theory): derive a == b == c; every step is checked to hold. */
-  | (StatementBase & { readonly kind: 'derive'; readonly members: readonly Expr[]; readonly approx?: readonly number[] })
+  /**
+   * A derivation on its own (theory): derive a == b == c; every step is checked to hold.
+   * relation: relation a == b — an equation that holds by the theory or the task (x² + y² = r²), not
+   * an identity: it is not checked, the derivations below it may follow from it.
+   */
+  | (StatementBase & { readonly kind: 'derive'; readonly members: readonly Expr[]; readonly approx?: readonly number[]; readonly relation?: boolean })
   | (StatementBase & { readonly kind: 'display'; readonly expr: Expr; readonly target?: UnitExpr })
   | (StatementBase & {
       readonly kind: 'check';

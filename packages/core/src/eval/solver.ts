@@ -263,7 +263,18 @@ export interface Root {
 export interface RootsFound {
   readonly roots: readonly Root[];
   /** Of a quadratic, a·x² + b·x + c = 0: its coefficients as written and the discriminant b² − 4·a·c. */
-  readonly quadratic?: { readonly a: Expr; readonly b: Expr; readonly c: Expr; readonly discriminant: Quantity; readonly vertex: { readonly x: Quantity; readonly y: Quantity } };
+  readonly quadratic?: {
+    readonly a: Expr;
+    readonly b: Expr;
+    readonly c: Expr;
+    readonly discriminant: Quantity;
+    readonly vertex: { readonly x: Quantity; readonly y: Quantity };
+    /**
+     * Without the term in x (a·x² + c = 0, x² + y² = r² for y): solved as on paper without the
+     * discriminant, x = ±√(…); this is the root with +, as the equation gives it (√(r² − x²)).
+     */
+    readonly pure?: Expr;
+  };
   /** The equation with the functions of the sheet written out: y(x) = 0 is a·x² + b·x + c = 0. */
   readonly expanded?: { readonly left: Expr; readonly right: Expr };
 }
@@ -297,7 +308,9 @@ export function allRoots(statement: SolveStatement, ctx: EvalContext, evaluate: 
     const discriminant = value(bin('-', bb, fourAC));
     // The vertex of the parabola: V = [−b/(2·a); −D/(4·a)].
     const vertex = { x: value(bin('/', { kind: 'unary', operator: '-', operand: q.b, span: at }, bin('*', num(2), q.a))), y: value(bin('-', q.c, bin('/', bb, bin('*', num(4), q.a)))) };
-    quadratic = { ...q, discriminant, vertex };
+    // No term in x: x² = S, x = ±√S, the root as the equation gives it.
+    const pure = q.b.kind === 'number' && q.b.value === 0 && !q.b.unit ? isolate(left, right, name)?.[0] : undefined;
+    quadratic = { ...q, discriminant, vertex, ...(pure ? { pure } : {}) };
     const twoA = bin('*', num(2), q.a);
     const minusB: Expr = { kind: 'unary', operator: '-', operand: q.b, span: at };
     if (!discriminant.im && discriminant.si >= 0) {

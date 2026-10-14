@@ -1350,10 +1350,23 @@ function ChartBlock({ block, catalog, onResize, onOption, sliders }: { block: Ex
     const { plot } = block.layout;
     if (px < plot.left - 4 || px > plot.right + 4) return setHover(undefined);
     const x = xValueAt(block.layout, px);
-    const near = block.spec.series[0]!.xs.reduce((best, v, i, xs) => (Math.abs(v - x) < Math.abs(xs[best]! - x) ? i : best), 0);
-    const at = block.spec.series[0]!.xs[near]!;
     const number = (v: number) => formatNumber(v, catalog, { digits: 4 }).replace('-', '−');
     const withUnit = (v: number, u: string) => (Number.isFinite(v) ? `${number(v)}${u ? ` ${u}` : ''}` : '–');
+    // Over an implicit curve (x² + y² = 25) the pointer reads where it is: x and y.
+    if (block.spec.series.some((s) => s.implicit)) {
+      const py = (e.clientY - box.top) / unit;
+      if (py < plot.top || py > plot.bottom) return setHover(undefined);
+      const y = block.layout.y.min + ((plot.bottom - py) / (plot.bottom - plot.top)) * (block.layout.y.max - block.layout.y.min);
+      const name = (title: string, fallback: string) => title.split(' [')[0] || fallback;
+      return setHover({
+        left: (box.left - own.left + xPosition(block.layout, x) * unit) * toBlock,
+        top: (box.top - own.top + plot.top * unit) * toBlock,
+        height: (plot.bottom - plot.top) * unit * toBlock,
+        lines: [`${name(block.spec.xTitle, 'x')} = ${withUnit(x, block.xUnit)}`, `${name(block.spec.yTitle, 'y')} = ${withUnit(y, block.yUnit)}`],
+      });
+    }
+    const near = block.spec.series[0]!.xs.reduce((best, v, i, xs) => (Math.abs(v - x) < Math.abs(xs[best]! - x) ? i : best), 0);
+    const at = block.spec.series[0]!.xs[near]!;
     const xText = block.xDates ? formatDate(at, catalog) : withUnit(at, block.xUnit);
     const head = block.spec.xTitle.split(' [')[0] || '#';
     const lines = [`${head} = ${xText}`, ...block.spec.series.map((s) => `${s.label} = ${withUnit(s.ys[s.xs.indexOf(at)] ?? NaN, block.yUnit)}`)];

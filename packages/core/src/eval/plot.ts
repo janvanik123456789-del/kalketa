@@ -7,6 +7,7 @@
  *   plot(M(x), V(x)·1 m, x: 0 m .. L)       more curves, one y axis
  *   plot(Vyroba.E, x: Vyroba.mesic)         data: y for every x of a series
  *   plot(CF, kind: "bar")                   a series against its order
+ *   plot(x^2 + y^2 == 25, x: -6 .. 6, y: -6 .. 6)   an implicit curve (also a relation by its name)
  *
  * One chart has one y axis: curves of different dimensions are an error
  * (two charts, never a second axis).
@@ -57,6 +58,8 @@ export interface PlotSeries {
   readonly extremes?: readonly { readonly x: number; readonly y: number; readonly peak: boolean }[];
   /** inflections: true — where it turns from bending one way to the other (y″ changes its sign). */
   readonly inflections?: readonly { readonly x: number; readonly y: number }[];
+  /** An implicit curve (x² + y² = 25): its pieces one after another, NaN between them; x does not grow along it. */
+  readonly implicit?: boolean;
 }
 
 /** area: a .. b — the area between the first curve and the x axis, hatched, with the value of its integral. */
@@ -97,6 +100,11 @@ export interface PlotResult {
   readonly place?: Placement;
   /** ylim: -20 .. 20: the y axis from and to, in the unit of the y axis; what lies beyond is cut off. */
   readonly yRange?: readonly [number, number];
+  /** With an implicit curve: the x axis over the whole range x: a .. b, and the name of the y axis (y: c .. d). */
+  readonly xRange?: readonly [number, number];
+  readonly yVariable?: string;
+  /** Both axes at one scale (a circle round): they share a unit. The print layer sets the height of the chart so. */
+  readonly equalScale?: boolean;
   readonly area?: PlotArea;
   readonly tangent?: PlotTangent;
   /** points: [x_v; y_v] or [x₁, y₁ | x₂, y₂] — points of the sheet, in the units of the axes. */
@@ -116,8 +124,14 @@ export function plotStatement(given: CallExpr, ctx: EvalContext, evaluate: Evalu
   const named = (e: Expr): Expr => (e.kind === 'unit' && e.unit.kind === 'unit-name' && (formulaOf?.(e.unit.name) ?? formulaOf?.(`#${e.unit.name}`)) ? { kind: 'variable', name: e.unit.name, span: e.span } : e);
   const call: CallExpr = { ...given, named: given.named.map((n) => (n.name === 'area' || n.name === 'points' ? { ...n, value: named(n.value) } : n)) };
   const binders = call.named.filter((n) => !PLOT_OPTIONS.includes(n.name));
-  if (binders.length > 1) fail('E-NAMED-ARG', binders[1]!.nameSpan, { function: call.name, argument: binders[1]!.name, problem: 'unknown' });
+  // An equation among the curves (x^2 + y^2 == 25, or a relation by its name) is an implicit curve over x and y.
+  const implicit = call.args.map((arg) => equationOf(arg, formulaOf));
+  const anyImplicit = implicit.some(Boolean);
+  const extra = binders[anyImplicit ? 2 : 1];
+  if (extra) fail('E-NAMED-ARG', extra.nameSpan, { function: call.name, argument: extra.name, problem: 'unknown' });
   if (call.args.length === 0) fail('E-PLOT-FORM', call.span, {});
+  const yBinder = anyImplicit ? binders[1] : undefined;
+  if (anyImplicit && (binders[0]?.value.kind !== 'range' || yBinder?.value.kind !== 'range')) fail('E-PLOT-IMPLICIT', call.span, {});
   if (call.args.length > MAX_PLOT_SERIES) fail('E-PLOT-SERIES', call.args[MAX_PLOT_SERIES]!.span, { max: MAX_PLOT_SERIES });
   const kind = option(call, 'kind', ctx, evaluate);
   const plotKind = (kind ?? 'line') as PlotKind;
@@ -134,13 +148,16 @@ export function plotStatement(given: CallExpr, ctx: EvalContext, evaluate: Evalu
   // function of x (a fitted curve) as a line through their whole range.
   const dense = xs && binder && binder.value.kind !== 'range' && plotKind === 'line' && xs.length > 1 && !isDate(xs[0]!) ? across(xs) : undefined;
   // y of every curve at every point; a point without a value is a gap, not a failed chart.
-  const drawn = call.args.map((arg) => {
+  const yBounds = yBinder ? rangeOf(yBinder, ctx, evaluate) : undefined;
+  const contours = implicit.map((eq, i) => (eq ? contourOf(eq, binder!.name, yBinder!.name, xs![0]!, xs![xs!.length - 1]!, yBounds![0], yBounds![1], ctx, evaluate, call.args[i]!.span) : undefined));
+  const drawn = call.args.map((arg, i) => {
+    if (implicit[i]) return { at: undefined, values: [] as (Quantity | undefined)[], mark: undefined };
     if (!xs) return { at: undefined, values: series(arg, ctx, evaluate), mark: undefined };
     if (dense && freeNames(arg, new Set()).has(binder!.name)) return { at: dense, values: curve(arg, binder!.name, dense, ctx, evaluate), mark: 'line' as const };
     return { at: xs, values: curve(arg, binder!.name, xs, ctx, evaluate), mark: dense ? ('points' as const) : undefined };
   });
   const columns = drawn.map((d) => d.values);
-  const ys = columns.flat().find((q): q is Quantity => q !== undefined);
+  const ys = columns.flat().find((q): q is Quantity => q !== undefined) ?? yBounds?.[0];
   if (!ys) {
     // Not one value: report why, from the first point.
     const firstArg = call.args[0]!;
@@ -180,7 +197,8 @@ export function plotStatement(given: CallExpr, ctx: EvalContext, evaluate: Evalu
   // the values instead, until the curves come back into the range.
   const inRange = (range: readonly [number, number]) => {
     const all = columns.flat().filter((q): q is Quantity => !!q && !q.im).map((q) => y(q));
-    return all.length > 0 && all.filter((v) => v >= range[0] && v <= range[1]).length / all.length >= 0.05;
+    if (all.length === 0) return anyImplicit;
+    return all.filter((v) => v >= range[0] && v <= range[1]).length / all.length >= 0.05;
   };
   const yRange = asked && !inRange(asked) ? undefined : asked;
   if (asked && !yRange) ctx.warnings.push(diagnostic('W-PLOT-YLIM-HIDES', call.named.find((n) => n.name === 'ylim')!.value.span, {}));
@@ -198,7 +216,7 @@ export function plotStatement(given: CallExpr, ctx: EvalContext, evaluate: Evalu
     x = { values: Array.from({ length: n }, (_, i) => i + 1), unit: '', dates: false };
   }
   // Of the first curve over an interval: the area under it, its tangent at a point.
-  const first = binder?.value.kind === 'range' && xs ? { body: call.args[0]!, name: binder.name, like: xs[0]! } : undefined;
+  const first = binder?.value.kind === 'range' && xs && !implicit[0] ? { body: call.args[0]!, name: binder.name, like: xs[0]! } : undefined;
   const xIn = (q: Quantity) => toDisplay(q, ctx.registry, xs?.[0]?.hint).value;
   const area = first ? optional('area', 'W-PLOT-NO-AREA', () => areaOf(call, first, yDim, ctx, evaluate, xIn, y, formulaOf)) : undefined;
   const tangent = first ? optional('tangent', 'W-PLOT-NO-TANGENT', () => tangentOf(call, first, ctx, evaluate, xIn, y)) : undefined;
@@ -216,6 +234,12 @@ export function plotStatement(given: CallExpr, ctx: EvalContext, evaluate: Evalu
     yUnit: yUnitSymbol,
     ...(x.dates ? { xDates: true } : {}),
     series: drawn.map((d, i) => {
+      const pieces = contours[i];
+      if (pieces) {
+        const xOf = (si: number) => (Number.isNaN(si) ? NaN : xIn({ ...xs![0]!, si }));
+        const yOf = (si: number) => (Number.isNaN(si) ? NaN : y({ ...yBounds![0], si }));
+        return { xs: pieces.xs.map(xOf), ys: pieces.ys.map(yOf), implicit: true };
+      }
       // The roots of a curve over an interval: found between the points where it changes sign, then refined.
       const continuous = binder?.value.kind === 'range' && d.at && d.mark !== 'points';
       const roots = showRoots && continuous ? zeros(call.args[i]!, binder!.name, d.at!, d.values, ctx, evaluate) : undefined;
@@ -234,6 +258,10 @@ export function plotStatement(given: CallExpr, ctx: EvalContext, evaluate: Evalu
     }),
     ...(place && Object.keys(place).length ? { place } : {}),
     ...(yRange ? { yRange } : {}),
+    // An implicit curve over the whole x: a .. b, y: c .. d as written; the axes at one scale where they share a unit.
+    ...(anyImplicit && !yRange && !asked ? { yRange: [y(yBounds![0]), y(yBounds![1])] as const } : {}),
+    ...(anyImplicit ? { xRange: [x.values[0]!, x.values[x.values.length - 1]!] as const, yVariable: yBinder!.name } : {}),
+    ...(anyImplicit && x.unit === yUnitSymbol ? { equalScale: true } : {}),
     ...(area ? { area } : {}),
     ...(tangent ? { tangent } : {}),
     ...(labelOffsets ? { labelOffsets } : {}),
@@ -641,6 +669,142 @@ function curve(body: Expr, name: string, xs: readonly Quantity[], ctx: EvalConte
       throw err;
     }
   });
+}
+
+/** An equation as a curve: x^2 + y^2 == 25, or the name of a relation of the sheet (relation … {eq=Kruh}). */
+function equationOf(arg: Expr, formulaOf?: (name: string) => Expr | undefined): { left: Expr; right: Expr } | undefined {
+  if (arg.kind === 'binary' && arg.operator === '==') return arg;
+  const name = arg.kind === 'variable' ? arg.name : arg.kind === 'unit' && arg.unit.kind === 'unit-name' ? arg.unit.name : undefined;
+  const own = name === undefined ? undefined : formulaOf?.(`#${name}`);
+  return own?.kind === 'binary' && own.operator === '==' ? own : undefined;
+}
+
+/** low .. high of a range given to a chart. */
+function rangeOf(binder: NamedArg, ctx: EvalContext, evaluate: Evaluate): [Quantity, Quantity] {
+  const r = binder.value as Extract<Expr, { kind: 'range' }>;
+  const low = asQuantity(evaluate(r.low, ctx), r.low.span);
+  const high = asQuantity(evaluate(r.high, ctx), r.high.span);
+  if (!sameDim(low.dim, high.dim)) fail('E-UNIT-MISMATCH', r.span, { operator: '..', left: baseUnitSymbol(low.dim), right: baseUnitSymbol(high.dim) });
+  if (!(high.si > low.si)) fail('E-PLOT-RANGE', r.span, {});
+  return [low, high];
+}
+
+/** Squares of the grid an implicit curve is looked for in, along each axis. */
+const CONTOUR_CELLS = 100;
+
+/**
+ * Where left == right over the rectangle x0 .. x1, y0 .. y1 (SI): the sign of left − right on a grid,
+ * the curve through the squares where it changes (marching squares), its pieces joined into lines.
+ * A change of sign across a pole (y = 1/x at x = 0) is no curve: left out.
+ */
+function contourOf(eq: { left: Expr; right: Expr }, xName: string, yName: string, x0: Quantity, x1: Quantity, y0: Quantity, y1: Quantity, ctx: EvalContext, evaluate: Evaluate, span: Span): { xs: number[]; ys: number[] } {
+  const n = CONTOUR_CELLS;
+  let checked = false;
+  const f = (x: number, y: number): number | undefined => {
+    const inner: EvalContext = { ...ctx, lookup: (name, at) => (name === xName ? { ...x0, si: x } : name === yName ? { ...y0, si: y } : ctx.lookup(name, at)) };
+    try {
+      const l = evaluate(eq.left, inner);
+      const r = evaluate(eq.right, inner);
+      if (l.type !== 'quantity' || r.type !== 'quantity') return fail('E-PLOT-IMPLICIT', span, {});
+      if (!checked) {
+        if (!sameDim(l.dim, r.dim)) fail('E-PLOT-IMPLICIT', span, {});
+        checked = true;
+      }
+      const v = l.si - r.si;
+      return l.im || r.im || !Number.isFinite(v) ? undefined : v;
+    } catch (err) {
+      if (err instanceof CalcError && GAP_CODES.has(err.diagnostic.code)) return undefined;
+      throw err;
+    }
+  };
+  const xAt = (i: number) => x0.si + ((x1.si - x0.si) * i) / n;
+  const yAt = (j: number) => y0.si + ((y1.si - y0.si) * j) / n;
+  const grid: (number | undefined)[][] = Array.from({ length: n + 1 }, (_, i) => Array.from({ length: n + 1 }, (_, j) => f(xAt(i), yAt(j))));
+  if (!checked) return fail('E-PLOT-FORM', span, {});
+  // A point on an edge where the sign changes, by name of the edge: h i,j from (i, j) to (i+1, j); v i,j from (i, j) to (i, j+1).
+  const points = new Map<string, [number, number]>();
+  const links = new Map<string, string[]>();
+  const crossing = (key: string, xa: number, ya: number, va: number, xb: number, yb: number, vb: number): boolean => {
+    if (points.has(key)) return true;
+    const t = va / (va - vb);
+    const [px, py] = [xa + (xb - xa) * t, ya + (yb - ya) * t];
+    // Across a pole the value there is not small: no curve passes.
+    const here = f(px, py);
+    if (here === undefined || Math.abs(here) > 0.25 * (Math.abs(va) + Math.abs(vb))) return false;
+    points.set(key, [px, py]);
+    return true;
+  };
+  const link = (a: string, b: string) => {
+    links.set(a, [...(links.get(a) ?? []), b]);
+    links.set(b, [...(links.get(b) ?? []), a]);
+  };
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < n; j++) {
+      const [a, b, c, d] = [grid[i]![j], grid[i + 1]![j], grid[i + 1]![j + 1], grid[i]![j + 1]];
+      if (a === undefined || b === undefined || c === undefined || d === undefined) continue;
+      const up = (v: number) => v >= 0;
+      const edges: string[] = [];
+      const bottom = `h${i},${j}`;
+      const right = `v${i + 1},${j}`;
+      const top = `h${i},${j + 1}`;
+      const left = `v${i},${j}`;
+      // The edges where the sign changes, each with its point; a cell crossed by a pole is left out.
+      const sides: [string, number, number, number, number, number, number][] = [
+        [bottom, xAt(i), yAt(j), a, xAt(i + 1), yAt(j), b],
+        [right, xAt(i + 1), yAt(j), b, xAt(i + 1), yAt(j + 1), c],
+        [top, xAt(i), yAt(j + 1), d, xAt(i + 1), yAt(j + 1), c],
+        [left, xAt(i), yAt(j), a, xAt(i), yAt(j + 1), d],
+      ];
+      let fine = true;
+      for (const [key, xa, ya, va, xb, yb, vb] of sides) {
+        if (up(va) === up(vb)) continue;
+        if (!crossing(key, xa, ya, va, xb, yb, vb)) fine = false;
+        edges.push(key);
+      }
+      if (!fine) continue;
+      if (edges.length === 2) link(edges[0]!, edges[1]!);
+      else if (edges.length === 4) {
+        // A saddle: the middle decides which corners the curve keeps together.
+        const middle = (a + b + c + d) / 4;
+        if (up(middle) === up(a)) {
+          link(bottom, right);
+          link(top, left);
+        } else {
+          link(bottom, left);
+          link(right, top);
+        }
+      }
+    }
+  }
+  // The pieces as lines: from an open end first, then the closed ones (a circle).
+  const xs: number[] = [];
+  const ys: number[] = [];
+  const used = new Set<string>();
+  const walk = (start: string) => {
+    if (xs.length > 0) {
+      xs.push(NaN);
+      ys.push(NaN);
+    }
+    let at: string | undefined = start;
+    let from: string | undefined;
+    while (at && !used.has(at)) {
+      used.add(at);
+      const [px, py] = points.get(at)!;
+      xs.push(px);
+      ys.push(py);
+      const next: string | undefined = (links.get(at) ?? []).find((k) => k !== from && !used.has(k));
+      [from, at] = [at, next];
+    }
+    // A closed piece ends where it began.
+    if (at === undefined && from && (links.get(from) ?? []).includes(start) && (links.get(start)?.length ?? 0) > 1) {
+      const [px, py] = points.get(start)!;
+      xs.push(px);
+      ys.push(py);
+    }
+  };
+  for (const [key, near] of links) if (near.length === 1 && !used.has(key) && points.has(key)) walk(key);
+  for (const key of links.keys()) if (!used.has(key) && points.has(key)) walk(key);
+  return { xs, ys };
 }
 
 /** Errors that leave a gap in a curve instead of failing it. */

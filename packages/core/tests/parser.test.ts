@@ -192,6 +192,13 @@ describe('parser: statements', () => {
     expect(result.sheet.statements.map((s) => s.kind)).toEqual(['invalid', 'definition', 'definition']);
   });
 
+  it('spans a group with its brackets, so the source quoted for a check ends with ")"', () => {
+    const source = 'check y == c - b^2/(4*a)';
+    const check = statements(source)[0]!;
+    if (check.kind !== 'check') throw new Error(check.kind);
+    expect(source.slice(check.expr.span.offset, check.expr.span.offset + check.expr.span.length)).toBe('y == c - b^2/(4*a)');
+  });
+
   it('rejects keywords as names', () => {
     expect(parseCodes('and := 1')).toEqual(['E-RESERVED']);
   });

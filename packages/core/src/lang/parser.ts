@@ -802,8 +802,8 @@ class LineParser {
           const factor: Expr = { kind: 'unit', unit, span: unit.span };
           return { kind: 'binary', operator: '*', left: inner, right: factor, span: spanOf(token, unit) };
         }
-        void close;
-        return inner;
+        // The group as written, with its brackets: what quotes the source shows them.
+        return { ...inner, span: spanOf(token, close) };
       }
       case '[': {
         // "[m]" is a unit; anything else in brackets is a series: [100, 120, 150] CZK.

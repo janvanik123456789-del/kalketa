@@ -33,7 +33,7 @@ describe('what the AI sees of the tables', () => {
     const { join } = await import('node:path');
     const { defaultRegistry } = await import('@kalketa/core');
     const { loadTable } = await import('@kalketa/sheet');
-    const dir = join(import.meta.dirname, '../../../reference/R1-nosnik');
+    const dir = join(import.meta.dirname, '../../../reference/04_Stavebnictvi_a_pozemni_stavby/R1-nosnik');
     const tables = ['Materialy', 'Profily_IPE'].map((name) => {
       const loaded = loadTable(readFileSync(join(dir, 'tables', name, 'schema.json'), 'utf8'), readFileSync(join(dir, 'tables', name, 'data.csv'), 'utf8'), defaultRegistry);
       return loaded.table!;

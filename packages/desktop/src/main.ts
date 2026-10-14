@@ -609,7 +609,8 @@ async function layersWithRealInput(picture: string) {
   // File > Sample calculations: a sample opens in a tab of its own, named as a sample (never as the user's file).
   await clickOn('.menubar-item:nth-child(1) > button');
   await clickMenu('Vzorové příklady');
-  await clickMenu('4 Dimenzování');
+  await clickMenu('Elektrotechnika a elektronika');
+  await clickMenu('1 Dimenzování');
   await pause(600);
   const sampleTab = (await contents.executeJavaScript(`({
     tabs: [...document.querySelectorAll('.doc-tab .doc-tab-title')].map((t) => t.textContent),
@@ -2309,7 +2310,8 @@ async function layersWithRealInput(picture: string) {
   // The sample of a quadratic equation: its slider of a dragged by the mouse, the parabola following.
   await clickOn('.menubar-item:nth-child(1) > button');
   await clickMenu('Vzorové příklady');
-  await clickMenu('7 Kvadratická rovnice');
+  await clickMenu('Matematika a numerické metody');
+  await clickMenu('1 Kvadratická rovnice');
   await pause(1500);
   const sampleState = `(() => {
     const row = [...document.querySelectorAll('.layer-view.active .page .row')].find((r) => r.querySelector('.input-slider') && r.textContent.replace(/\\s+/g, '').startsWith('8a'));
@@ -2352,13 +2354,15 @@ async function layersWithRealInput(picture: string) {
   // The same sample in English: printed in English.
   await clickOn('.menubar-item:nth-child(1) > button');
   await clickMenu('Vzorové příklady');
-  await clickMenu('8 Quadratic equation');
+  await clickMenu('Matematika a numerické metody');
+  await clickMenu('2 Quadratic equation');
   await pause(1500);
   const english = (await contents.executeJavaScript(`(() => ({ head: [...document.querySelectorAll('.layer-view.active .page h1, .layer-view.active .page h2')].map((h) => h.textContent.trim()).find((t) => t === 'Quadratic equation') ?? '', verdicts: [...document.querySelectorAll('.layer-view.active .page .check .status')].map((s) => s.textContent.trim()), errors: document.querySelectorAll('.layer-view.active .page .row.has-error').length }))()`)) as { head: string; verdicts: string[]; errors: number };
   // A real example from an article: the crank mechanism of a steam engine, opened from the menu, calculated whole.
   await clickOn('.menubar-item:nth-child(1) > button');
   await clickMenu('Vzorové příklady');
-  await clickMenu('9 Klikový mechanismus');
+  await clickMenu('Strojírenství a mechanika');
+  await clickMenu('2 Klikový mechanismus');
   await pause(3000);
   const crank = (await contents.executeJavaScript(`({ pictures: [...document.querySelectorAll('.layer-view.active .page img')].filter((i) => i.naturalWidth > 0 && (i.getAttribute('src') ?? '').startsWith('data:image/svg')).length, charts: document.querySelectorAll('.layer-view.active .block.chart svg.chart-svg .chart-data path').length > 0 ? document.querySelectorAll('.layer-view.active .block.chart').length : 0, errors: document.querySelectorAll('.layer-view.active .page .row.has-error').length, verdict: [...document.querySelectorAll('.layer-view.active .page .check .status')].map((s) => s.textContent.trim()).join(' ') })`)) as { pictures: number; charts: number; errors: number; verdict: string };
   await takePicture(picture.replace(/[.]png$/, '-crank.png'));

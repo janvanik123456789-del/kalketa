@@ -13,7 +13,7 @@ import {
   type SheetDocument,
 } from '../src/index.js';
 
-const R1 = join(import.meta.dirname, '../../../reference/R1-nosnik');
+const R1 = join(import.meta.dirname, '../../../reference/04_Stavebnictvi_a_pozemni_stavby/R1-nosnik');
 const NOW = new Date('2026-09-29T12:00:00Z');
 
 /** The reference beam sheet as a document, plus an image and an unknown file. */

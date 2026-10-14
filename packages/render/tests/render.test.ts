@@ -113,7 +113,7 @@ describe('print model', () => {
 });
 
 describe('reference R1 printout', () => {
-  const dir = join(import.meta.dirname, '../../../reference/R1-nosnik');
+  const dir = join(import.meta.dirname, '../../../reference/04_Stavebnictvi_a_pozemni_stavby/R1-nosnik');
   const tables = readdirSync(join(dir, 'tables')).map(
     (name) => loadTable(readFileSync(join(dir, 'tables', name, 'schema.json'), 'utf8'), readFileSync(join(dir, 'tables', name, 'data.csv'), 'utf8'), defaultRegistry).table,
   );

@@ -22,13 +22,15 @@ interface Expected {
 }
 
 const ROOT = import.meta.dirname;
-const cases = readdirSync(ROOT, { withFileTypes: true })
-  .filter((d) => d.isDirectory())
-  .flatMap((d) =>
-    readdirSync(join(ROOT, d.name))
+const folders = (dir: string) => readdirSync(dir, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name);
+// Sorted by field: <category>/<case>/*.expected.json (03_Strojirenstvi_a_mechanika/R9-klikovy-mechanismus).
+const cases = folders(ROOT).flatMap((category) =>
+  folders(join(ROOT, category)).flatMap((name) =>
+    readdirSync(join(ROOT, category, name))
       .filter((f) => f.endsWith('.expected.json'))
-      .map((f) => ({ dir: join(ROOT, d.name), file: f, name: `${d.name}/${f}` })),
-  );
+      .map((f) => ({ dir: join(ROOT, category, name), file: f, name: `${name}/${f}` })),
+  ),
+);
 
 function loadTables(dir: string): Table[] {
   const root = join(dir, 'tables');

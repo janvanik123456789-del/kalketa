@@ -4,8 +4,18 @@ import { exampleDocument, samples, savedSampleTitle } from '../src/samples.js';
 describe('sample calculations shipped with the program', () => {
   it('are the reference cases, named after their first heading', () => {
     const list = samples();
-    expect(list.map((s) => s.id)).toEqual(['R1-nosnik', 'R2-vymenik-hridel', 'R3-roztok', 'R4-kabel', 'R5-fotovoltaika', 'R6-fve', 'R7-kvadraticka-rovnice', 'R8-quadratic-equation', 'R9-klikovy-mechanismus']);
-    expect(list[0]!.title).toBe('Posouzení nosníku N1');
+    expect(list.map((s) => `${s.field} ${s.id}`)).toEqual([
+      '01 R7-kvadraticka-rovnice',
+      '01 R8-quadratic-equation',
+      '03 R2-vymenik-hridel',
+      '03 R9-klikovy-mechanismus',
+      '04 R1-nosnik',
+      '05 R4-kabel',
+      '06 R6-fve',
+      '07 R3-roztok',
+      '16 R5-fotovoltaika',
+    ]);
+    expect(list.find((s) => s.id === 'R1-nosnik')!.title).toBe('Posouzení nosníku N1');
   });
 
   it('print in the language of their sheet: a sheet named *.en.cc in English', () => {

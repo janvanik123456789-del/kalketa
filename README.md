@@ -30,10 +30,10 @@ npm run build:editor
 ## Příkazová řádka
 
 ```bash
-node packages/cli/dist/main.js run reference/R1-nosnik/nosnik.cc --lang cs
-node packages/cli/dist/main.js trace reference/R1-nosnik/nosnik.cc σ --lang cs
-node packages/cli/dist/main.js print reference/R1-nosnik/nosnik.cc --lang cs --out nosnik.html --pdf nosnik.pdf
-node packages/cli/dist/main.js pack reference/R1-nosnik/nosnik.cc --out nosnik.kalk
+node packages/cli/dist/main.js run reference/04_Stavebnictvi_a_pozemni_stavby/R1-nosnik/nosnik.cc --lang cs
+node packages/cli/dist/main.js trace reference/04_Stavebnictvi_a_pozemni_stavby/R1-nosnik/nosnik.cc σ --lang cs
+node packages/cli/dist/main.js print reference/04_Stavebnictvi_a_pozemni_stavby/R1-nosnik/nosnik.cc --lang cs --out nosnik.html --pdf nosnik.pdf
+node packages/cli/dist/main.js pack reference/04_Stavebnictvi_a_pozemni_stavby/R1-nosnik/nosnik.cc --out nosnik.kalk
 node packages/cli/dist/main.js unpack nosnik.kalk --into nosnik
 node packages/cli/dist/main.js import-table katalog.xlsx --name Profily --into nosnik
 ```
@@ -47,7 +47,7 @@ packages/sheet/  tabulky (CSV, Excel), soubor listu .kalk
 packages/render/ tisková vrstva: klasický technický výpočet (HTML + MathML)
 packages/cli/    příkazová řádka
 packages/editor/ editor (React): list s živým přepočtem, tabulky, původ hodnot, tisk
-reference/       referenční výpočty R1–R6 s ověřenými výsledky
+reference/       referenční výpočty R1–R9 s ověřenými výsledky, tříděné podle oboru (vzorové příklady)
 tests/           testy celého repozitáře (pravidla architektury)
 docs/            filozofie, architektura, jazyk
 ```

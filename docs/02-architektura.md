@@ -61,7 +61,7 @@ kalketa/
 │   ├── i18n/            ← katalogy zpráv (cs, en, …), formát čísel podle jazyka
 │   └── ai/              ← volitelný modul AI: smlouva, poskytovatelé, nastavení, firemní pravidla (ai/connect: volání poskytovatele)
 │
-├── reference/           ← referenční výpočty R1–R6 (listy + očekávané výsledky)
+├── reference/           ← referenční výpočty R1–R9 podle oboru (listy + očekávané výsledky)
 └── docs/                ← filozofie, architektura, návrh jazyka
 ```
 

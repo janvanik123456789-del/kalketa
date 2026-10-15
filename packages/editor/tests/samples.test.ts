@@ -10,6 +10,7 @@ describe('sample calculations shipped with the program', () => {
       '02 R10-krychle-pod-vodou',
       '03 R9-klikovy-mechanismus',
       '03 R11-napeti-v-nosniku',
+      '03 R12-prodlouzeni-dratu',
       '03 R2-vymenik-hridel',
       '04 R1-nosnik',
       '05 R4-kabel',

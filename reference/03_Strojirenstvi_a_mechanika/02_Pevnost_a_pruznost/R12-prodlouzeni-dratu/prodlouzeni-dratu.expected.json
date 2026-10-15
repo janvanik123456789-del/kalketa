@@ -1,0 +1,23 @@
+{
+  "sheet": "prodlouzeni-dratu.cc",
+  "verifiedBy": "Úloha 2091 Sbírky řešených úloh z fyziky (Δl = 7,65·10⁻³ m) a samostatný výpočet v Pythonu: součet prodloužení 100 000 elementů (středová metoda) i vzorec ρ·g·l²/(2·E) se shodují.",
+  "relativeTolerance": 1e-09,
+  "values": {
+    "Δl": {
+      "value": 7.651800000000001,
+      "unit": "mm"
+    },
+    "σ_max": {
+      "value": 15.3036,
+      "unit": "MPa"
+    },
+    "Δl_stejne": {
+      "value": 15.303600000000001,
+      "unit": "mm"
+    },
+    "n": {
+      "value": 2.0,
+      "unit": ""
+    }
+  }
+}

@@ -375,6 +375,7 @@ export const en: Catalog = {
     'cmd.file.pdf': 'Export P&DF…',
     'menu.samples': '&Sample calculations',
     'samples.prefix': 'Sample',
+    'status.waiting': 'recalculates when you stop…',
     'samples.field.00': 'Introduction and guide',
     'samples.field.01': 'Mathematics and numerical methods',
     'samples.field.02': 'Physics',

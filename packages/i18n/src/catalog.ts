@@ -144,6 +144,7 @@ export const UI_KEYS = [
   'cmd.file.example',
   'menu.samples',
   'samples.prefix',
+  'status.waiting',
   'samples.field.00',
   'samples.field.01',
   'samples.field.02',

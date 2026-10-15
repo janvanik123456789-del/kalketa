@@ -2367,6 +2367,26 @@ async function layersWithRealInput(picture: string) {
   await pause(3000);
   const crank = (await contents.executeJavaScript(`({ pictures: [...document.querySelectorAll('.layer-view.active .page img')].filter((i) => i.naturalWidth > 0 && (i.getAttribute('src') ?? '').startsWith('data:image/svg')).length, charts: document.querySelectorAll('.layer-view.active .block.chart svg.chart-svg .chart-data path').length > 0 ? document.querySelectorAll('.layer-view.active .block.chart').length : 0, errors: document.querySelectorAll('.layer-view.active .page .row.has-error').length, verdict: [...document.querySelectorAll('.layer-view.active .page .check .status')].map((s) => s.textContent.trim()).join(' ') })`)) as { pictures: number; charts: number; errors: number; verdict: string };
   await takePicture(picture.replace(/[.]png$/, '-crank.png'));
+  // A slow sheet is not calculated at every key: typing a value at its end answers at once, the status says it
+  // waits, and after a pause the sheet is calculated.
+  const crankRows = '.layer-view.active .page .row[data-line]';
+  await contents.executeJavaScript(`[...document.querySelectorAll('${crankRows}')].sort((a, b) => Number(b.dataset.line) - Number(a.dataset.line))[0]?.setAttribute('data-smoke-last', '')`);
+  await clickOn('[data-smoke-last]');
+  await pressKey('End');
+  await pressKey('Enter');
+  await typeText('k_t := 2');
+  await pause(1500);
+  const typedAt = Date.now();
+  await typeText('34567');
+  const typing = Date.now() - typedAt;
+  const waitingShown = (await contents.executeJavaScript(`!!document.querySelector('.statusbar .waiting')`)) as boolean;
+  await pause(1500);
+  const slowTyping = {
+    typing,
+    waitingShown,
+    settled: (await contents.executeJavaScript(`!document.querySelector('.statusbar .waiting')`)) as boolean,
+    value: (await contents.executeJavaScript(`[...document.querySelectorAll('${crankRows}')].map((r) => r.textContent.replace(/\s+/g, '')).find((t) => t.includes('k_t')) ?? ''`)) as string,
+  };
   // A problem from a collection: differentials as relations, its derivations checked, its own picture.
   await clickOn('.menubar-item:nth-child(1) > button');
   await clickMenu('Vzorové příklady');
@@ -2377,12 +2397,13 @@ async function layersWithRealInput(picture: string) {
   await takePicture(picture.replace(/[.]png$/, '-cube.png'));
   const quadraticSample = {
     crank,
+    slowTyping,
     cube,
     before: sampleBefore,
     after: sampleAfter,
     outOfDomain,
     english,
-    ok: !!thumb && sampleBefore.errors === 0 && sampleAfter.errors === 0 && sampleBefore.a !== '' && sampleAfter.a !== sampleBefore.a && sampleAfter.roots !== sampleBefore.roots && outOfDomain.drawn && !outOfDomain.area && outOfDomain.roots === 0 && !outOfDomain.error && outOfDomain.warned && english.head === 'Quadratic equation' && english.verdicts.length === 5 && english.verdicts.every((v) => v.endsWith('OK')) && english.errors === 0 && crank.pictures === 4 && crank.charts === 3 && crank.errors === 0 && crank.verdict.endsWith('VYHOVUJE') && cube.pictures === 1 && cube.derived >= 5 && cube.errors === 0,
+    ok: !!thumb && sampleBefore.errors === 0 && sampleAfter.errors === 0 && sampleBefore.a !== '' && sampleAfter.a !== sampleBefore.a && sampleAfter.roots !== sampleBefore.roots && outOfDomain.drawn && !outOfDomain.area && outOfDomain.roots === 0 && !outOfDomain.error && outOfDomain.warned && english.head === 'Quadratic equation' && english.verdicts.length === 5 && english.verdicts.every((v) => v.endsWith('OK')) && english.errors === 0 && crank.pictures === 4 && crank.charts === 3 && crank.errors === 0 && crank.verdict.endsWith('VYHOVUJE') && slowTyping.waitingShown && slowTyping.settled && cube.pictures === 1 && cube.derived >= 5 && cube.errors === 0,
   };
   const userChart = { namedArea, quadOk, quadTarget, quadEnd, quadEditing, ok: namedArea === 'Integral1=27' && quadOk && quadTarget > 0 && Math.abs(quadEnd - quadTarget) < 12 };
   // Relations: a circle solved by its name, a derivation following from a relation of theory, and the circle

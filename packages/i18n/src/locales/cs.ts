@@ -375,6 +375,7 @@ export const cs: Catalog = {
     'cmd.file.pdf': 'Export do P&DF…',
     'menu.samples': '&Vzorové příklady',
     'samples.prefix': 'Vzor',
+    'status.waiting': 'přepočítá se po dopsání…',
     'samples.field.00': 'Úvod a průvodce',
     'samples.field.01': 'Matematika a numerické metody',
     'samples.field.02': 'Fyzika',

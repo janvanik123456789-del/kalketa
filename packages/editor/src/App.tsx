@@ -82,6 +82,11 @@ const CANVAS_MODE_KEY = 'kalketa.canvasMode';
 /** Provider and model of the AI; keys are kept by the desktop application, not here. */
 const AI_SETTINGS_KEY = 'kalketa.ai';
 const DEFAULT_SIZE_LIMIT_MB = 50;
+/** A sheet whose calculation takes longer than this (ms) waits with it until values stop changing. */
+const SLOW_CALCULATION_MS = 100;
+/** How long after the last key or slider step such a sheet is calculated (ms). */
+const SETTLE_MS = 600;
+const linesIn = (text: string) => text.split('\n').length;
 /** Layers open side by side at most. */
 const MAX_PANES = 3;
 
@@ -212,10 +217,11 @@ export function App() {
   const decimalComma = formatNumber(1.5, ui).includes(',');
   const printCatalog = catalogFor(doc.manifest.language ?? language);
   // Incremental calculation state of each open document.
-  const engines = useRef(new Map<number, { sessions: LayerSessions; tables: ReturnType<typeof tableCache> }>());
+  // cost: how long its last calculation took (ms), lastSource: the sheet it was done for.
+  const engines = useRef(new Map<number, { sessions: LayerSessions; tables: ReturnType<typeof tableCache>; cost: number; lastSource?: string }>());
   let engine = engines.current.get(tab.id);
   if (!engine) {
-    engine = { sessions: new LayerSessions(defaultRegistry), tables: tableCache(defaultRegistry) };
+    engine = { sessions: new LayerSessions(defaultRegistry), tables: tableCache(defaultRegistry), cost: 0 };
     engines.current.set(tab.id, engine);
   }
   const { sessions, tables: buildTables } = engine;
@@ -225,7 +231,34 @@ export function App() {
 
   const { tables, diagnostics: tableDiagnostics } = useMemo(() => buildTables(doc), [buildTables, doc.tables]);
   const blocks = useMemo(() => documentBlocks(doc), [doc.blocks]);
-  const evaluation = useMemo(() => sessions.evaluate(doc.source, doc.layers, tables, blocks), [sessions, doc.source, doc.layers, tables, blocks]);
+  // A sheet that takes long to calculate (integrals, charts, solvers) is not calculated at every key or every
+  // step of a slider: while values change and the lines stay the same, it waits until the change stops
+  // (a pause, the line left), and is then calculated whole. A quick sheet answers every key as before.
+  const [settledSource, setSettledSource] = useState<{ readonly tab: number; readonly source: string } | undefined>();
+  const lastCalculated = engine.lastSource;
+  const waiting =
+    engine.cost > SLOW_CALCULATION_MS &&
+    lastCalculated !== undefined &&
+    lastCalculated !== doc.source &&
+    !(settledSource?.tab === tab.id && settledSource.source === doc.source) &&
+    linesIn(lastCalculated) === linesIn(doc.source);
+  const calcSource = waiting ? lastCalculated : doc.source;
+  const evaluation = useMemo(() => {
+    const start = performance.now();
+    const result = sessions.evaluate(calcSource, doc.layers, tables, blocks);
+    engine.cost = performance.now() - start;
+    engine.lastSource = calcSource;
+    return result;
+  }, [sessions, calcSource, doc.layers, tables, blocks]);
+  useEffect(() => {
+    if (!waiting) return;
+    const timer = setTimeout(() => setSettledSource({ tab: tab.id, source: doc.source }), SETTLE_MS);
+    return () => clearTimeout(timer);
+  }, [waiting, doc.source, tab.id]);
+  // The line left (Enter, a click elsewhere): calculated at once.
+  useEffect(() => {
+    if (!editing && engine.lastSource !== doc.source) setSettledSource({ tab: tab.id, source: doc.source });
+  }, [editing]);
 
   // Open layers side by side; the active one is being worked on. The printed
   // sheet and auxiliary calculations are edited as pages, data layers as
@@ -2170,6 +2203,7 @@ export function App() {
         <span className={warnings > 0 ? 'warn' : ''}>
           {ui.severity.warning}: {warnings}
         </span>
+        {waiting && <span className="waiting">{t(ui, 'status.waiting')}</span>}
         {checks.length > 0 && (
           <span className={failedChecks > 0 ? 'bad' : ''}>
             {t(ui, 'checks.title')}: {checks.length - failedChecks}/{checks.length} ✓

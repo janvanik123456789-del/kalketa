@@ -100,6 +100,7 @@ button, select, input { font: inherit; }
 .statusbar .grow { flex: 1; }
 .statusbar .bad { color: var(--bad); font-weight: 600; }
 .statusbar .warn { color: #8a5a00; }
+.statusbar .waiting { color: var(--muted, #6b7280); font-style: italic; }
 
 /* Dialogs */
 /* The sheet moves down under the tool bar of a canvas edited in it. */

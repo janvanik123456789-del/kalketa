@@ -394,6 +394,7 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
           };
           const lines: EquationLine[] = [
             { role: 'formula', lhs: nameNode(s.name), rhs: formulaNode(s.expr, formulaOptions()) },
+            ...(fit.steps ? fitSteps(fit, s.span, spec) : []),
             { role: 'result', lhs: functionHead(s.name, [{ name: fit.param }], formulaOptions().argumentSeparator), op: '=', rhs: formulaNode(fitted.body, formulaOptions(numbers)) },
             { role: 'given', lhs: sup(mi('R'), mn('2')), op: '=', rhs: mn(numberFormat({ digits: 4 })(fit.r2)) },
           ];
@@ -545,6 +546,62 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
    * discriminant and the formula of the roots with the numbers put in, then each
    * root, kept or set aside (and why), and what the unknown is.
    */
+  /**
+   * The least squares method of a straight line written out (fit(…, steps: true)), as on paper:
+   * the sums over the points, then b₁ = (n·Σx·y − Σx·Σy)/(n·Σx² − (Σx)²) and b₀ = (Σy − b₁·Σx)/n with the numbers put in.
+   */
+  function fitSteps(fit: NonNullable<Extract<Value, { type: 'function' }>['fit']>, at: Statement['span'], spec: NumberFormatOptions): EquationLine[] {
+    const steps = fit.steps!;
+    const o = formulaOptions();
+    const v = (name: string): Expr => ({ kind: 'variable', name, span: at });
+    const bin = (operator: '+' | '-' | '*' | '/' | '^', left: Expr, right: Expr): Expr => ({ kind: 'binary', operator, left, right, span: at });
+    const num = (value: number): Expr => ({ kind: 'number', value, span: at });
+    const sum = (e: Expr): Expr => ({ kind: 'call', name: 'sum', args: [e], named: [], span: at });
+    const [x, y, n] = [v(steps.x), v(steps.y), v('n')];
+    const sx = sum(x);
+    const sy = sum(y);
+    const sxx = sum(bin('^', x, num(2)));
+    const sxy = sum(bin('*', x, y));
+    const b1 = v('b_1');
+    const slope = bin('/', bin('-', bin('*', n, sxy), bin('*', sx, sy)), bin('-', bin('*', n, sxx), bin('^', sx, num(2))));
+    const intercept = bin('/', bin('-', sy, bin('*', b1, sx)), n);
+    const [c0, c1] = [fit.coefficients[0]!.value, fit.coefficients[1]!.value];
+    // Put in, the sums are numbers: in the line of numbers they stand as names of their own, replaced by their values.
+    const known = new Map<string, Quantity>([[' sx', steps.sumX], [' sy', steps.sumY], [' sxx', steps.sumXX], [' sxy', steps.sumXY], ['b_1', c1]]);
+    const asNumbers = (e: Expr): Expr => {
+      const own = e === sx ? ' sx' : e === sy ? ' sy' : e === sxx ? ' sxx' : e === sxy ? ' sxy' : undefined;
+      if (own) return v(own);
+      return e.kind === 'binary' ? { ...e, left: asNumbers(e.left), right: asNumbers(e.right) } : e;
+    };
+    const value = (q: Quantity) => {
+      const d = toDisplay(q, options.registry);
+      return valueNode(d.value, d.unit, numberFormat(spec), d.im, dateFormat);
+    };
+    const filled = (e: Expr) =>
+      formulaNode(
+        asNumbers(e),
+        formulaOptions((part) => {
+          if (part === n) return { node: mn(String(fit.points)), negative: false, hasUnit: false };
+          const q = part.kind === 'variable' ? known.get(part.name) : undefined;
+          return q ? { node: value(q), negative: q.si < 0, hasUnit: !!q.hint || Object.keys(q.dim).length > 0 } : undefined;
+        }),
+      );
+    const said = (lhs: Expr, q: Quantity): EquationLine => ({ role: 'result', lhs: formulaNode(lhs, o), op: '=', rhs: value(q) });
+    return [
+      { role: 'formula', lhs: nameNode('n'), op: '=', rhs: mn(String(fit.points)) },
+      said(sx, steps.sumX),
+      said(sy, steps.sumY),
+      said(sxx, steps.sumXX),
+      said(sxy, steps.sumXY),
+      { role: 'formula', lhs: nameNode('b_1'), op: '=', rhs: formulaNode(slope, o) },
+      ...(mode.substitution ? [{ role: 'substitution' as const, rhs: filled(slope) }] : []),
+      { role: 'result', rhs: value(c1) },
+      { role: 'formula', lhs: nameNode('b_0'), op: '=', rhs: formulaNode(intercept, o) },
+      ...(mode.substitution ? [{ role: 'substitution' as const, rhs: filled(intercept) }] : []),
+      { role: 'result', rhs: value(c0) },
+    ];
+  }
+
   function rootLines(s: Extract<Statement, { kind: 'solve' }>, found: RootsFound, name: string, spec: NumberFormatOptions, quantityNode: (q: Quantity, name?: string) => MathNode): EquationLine[] {
     const out: EquationLine[] = [];
     const o = formulaOptions();

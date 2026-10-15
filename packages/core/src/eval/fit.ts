@@ -11,9 +11,9 @@
  * the print shows its equation with numbers, and R².
  */
 
-import { fail } from '../diagnostics.js';
+import { diagnostic, fail } from '../diagnostics.js';
 import type { Expr } from '../lang/ast.js';
-import { DIMENSIONLESS, divideDims, powerDim, sameDim } from '../units/dimension.js';
+import { DIMENSIONLESS, divideDims, multiplyDims, powerDim, sameDim } from '../units/dimension.js';
 import { formatTerms, unitTerms } from '../units/compose.js';
 import { baseUnitSymbol } from '../units/display.js';
 import type { ResolvedUnit } from '../units/unitExpr.js';
@@ -36,6 +36,19 @@ export interface FitInfo {
   /** Coefficient of determination of the fit, on the data as measured. */
   readonly r2: number;
   readonly points: number;
+  /**
+   * steps: true on a straight line — the method written out as on paper: the sums over the points,
+   * the slope b₁ = (n·Σx·y − Σx·Σy)/(n·Σx² − (Σx)²) and the intercept b₀ = (Σy − b₁·Σx)/n.
+   */
+  readonly steps?: {
+    /** Names of the columns, as the sums are written: Σt·a. */
+    readonly x: string;
+    readonly y: string;
+    readonly sumX: Quantity;
+    readonly sumY: Quantity;
+    readonly sumXX: Quantity;
+    readonly sumXY: Quantity;
+  };
 }
 
 /** Name of a coefficient inside the fitted function (never written by a user). */
@@ -44,7 +57,8 @@ const COEFFICIENT = '\u0000c';
 export function fitCall(call: CallExpr, ctx: EvalContext, evaluate: Evaluate): FunctionValue {
   const xArg = call.named.find((n) => n.name === 'x');
   const kindArg = call.named.find((n) => n.name === 'kind');
-  const extra = call.named.find((n) => n.name !== 'x' && n.name !== 'kind');
+  const stepsArg = call.named.find((n) => n.name === 'steps');
+  const extra = call.named.find((n) => n.name !== 'x' && n.name !== 'kind' && n.name !== 'steps');
   if (extra) fail('E-NAMED-ARG', extra.nameSpan, { function: 'fit', argument: extra.name, problem: 'unknown' });
   if (call.args.length !== 1 || !xArg) return fail('E-FIT-FORM', call.span);
   const kindValue = kindArg ? evaluate(kindArg.value, ctx) : { type: 'text' as const, value: 'linear' };
@@ -52,6 +66,11 @@ export function fitCall(call: CallExpr, ctx: EvalContext, evaluate: Evaluate): F
     return fail('E-FIT-KIND', kindArg?.value.span ?? call.span, { kind: kindValue.type === 'text' ? kindValue.value : '', kinds: FIT_KINDS.join(', ') });
   }
   const kind = kindValue.value as FitKind;
+  const stepsValue = stepsArg ? evaluate(stepsArg.value, ctx) : undefined;
+  if (stepsValue && stepsValue.type !== 'boolean') return fail('E-TYPE', stepsArg!.value.span, { expected: 'boolean', found: stepsValue.type });
+  const steps = stepsValue?.type === 'boolean' && stepsValue.value;
+  // The method written out is that of a straight line; other kinds give their result only.
+  if (steps && kind !== 'linear') ctx.warnings.push(diagnostic('W-FIT-STEPS', stepsArg!.value.span, { kind }));
   const ys = series(evaluate(call.args[0]!, ctx), call.args[0]!.span);
   const xs = series(evaluate(xArg.value, ctx), xArg.value.span);
   if (xs.length !== ys.length) fail('E-PLOT-LENGTH', call.span, {});
@@ -116,12 +135,26 @@ export function fitCall(call: CallExpr, ctx: EvalContext, evaluate: Evaluate): F
   const mean = yv.reduce((s, v) => s + v, 0) / yv.length;
   const total = yv.reduce((s, v) => s + (v - mean) ** 2, 0);
   const residual = yv.reduce((s, v, i) => s + (v - predicted[i]!) ** 2, 0);
+  const yName = call.args[0]!.kind === 'member' ? call.args[0]!.name : call.args[0]!.kind === 'variable' ? call.args[0]!.name : 'y';
+  const sum = (values: readonly number[]) => values.reduce((s, v) => s + v, 0);
   const fit: FitInfo = {
     kind,
     param,
     coefficients: coefficients.map((value, i) => ({ name: `${COEFFICIENT}${i}`, value })),
     r2: total > 0 ? 1 - residual / total : 1,
     points: xv.length,
+    ...(steps && kind === 'linear'
+      ? {
+          steps: {
+            x: param,
+            y: yName,
+            sumX: quantity(sum(xv), x0.dim, x0.hint ? { hint: x0.hint } : {}),
+            sumY: quantity(sum(yv), y0.dim, yHint ? { hint: yHint } : {}),
+            sumXX: quantity(sum(xv.map((x) => x * x)), powerDim(x0.dim, 2)),
+            sumXY: quantity(sum(xv.map((x, i) => x * yv[i]!)), multiplyDims(x0.dim, y0.dim)),
+          },
+        }
+      : {}),
   };
   return { ...fitted, fit };
 }

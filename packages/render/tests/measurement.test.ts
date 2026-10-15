@@ -46,6 +46,22 @@ describe('fit: a curve through measured points', () => {
     expect(lines[2]).toEqual(['R^2', '0,9971']);
   });
 
+  it('writes out the least squares method of a line on request: the sums, the slope and the intercept with numbers', () => {
+    const doc = buildPrintDocument(evaluateSheet(`${MEASURED}T_fit := fit(Mereni.T, x: Mereni.t, steps: true)`), { catalog: cs, registry: defaultRegistry, digits: 4, title: 'T' });
+    const block = doc.blocks.at(-1)!;
+    const lines = block.kind === 'equation' ? block.lines.map((l) => `${l.lhs ? toText(l.lhs) : ''} ${toText(l.rhs)}`.replace(/\s+/g, ' ').trim()) : [];
+    expect(lines).toContain('n 4');
+    expect(lines).toContain('∑t 60 s');
+    expect(lines.find((l) => l.startsWith('b_1 ') && l.includes('n·∑t·T'))).toBeDefined();
+    // The numbers put in, then the slope as the fit has it.
+    expect(lines.some((l) => l.includes('4·') && l.includes('60 s'))).toBe(true);
+    expect(lines).toContain('0,459 Δ°C/s');
+    expect(lines.at(-2)).toBe('T_fit(t) 20,39 °C+0,459 Δ°C/s·t');
+    // Other kinds: the result only, and a word why.
+    const codes = evaluateSheet(`${MEASURED}P := fit(Mereni.T, x: Mereni.t, kind: "poly2", steps: true)`).diagnostics.map((d) => d.code);
+    expect(codes).toEqual(['W-FIT-STEPS']);
+  });
+
   it('fits polynomials and refuses what cannot be fitted', () => {
     const poly = evaluateSheet(`${MEASURED}P := fit(Mereni.T, x: Mereni.t, kind: "poly2")`).statements.at(-1)!.value;
     expect(poly?.type === 'function' && poly.fit?.r2).toBeGreaterThan(0.9999);

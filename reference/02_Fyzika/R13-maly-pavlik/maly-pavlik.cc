@@ -22,8 +22,9 @@ table Pavlik:
 q := Pavlik.a[1]
 k := (Pavlik.a[1] - Pavlik.a[11])/(Pavlik.t[11] - Pavlik.t[1])
 a(t) := q - k·t {eq}
-"Pro srovnání přímka proložená všemi body metodou nejmenších čtverců:"
-a_fit := fit(Pavlik.a, x: Pavlik.t)
+"Přesněji vede přímku všemi body metoda nejmenších čtverců: hledáme přímku b_0 + b_1·t, pro kterou je součet čtverců odchylek bodů od ní Σ(a − b_0 − b_1·t)² nejmenší. Derivace podle b_0 a b_1 položené rovny nule dávají vzorce pro směrnici a úsek; program je spočte ze součtů přes body tabulky:"
+a_fit := fit(Pavlik.a, x: Pavlik.t, steps: true)
+"Přímka ze sbírky (krajní body) a přímka nejmenších čtverců se liší jen málo, R² blízko 1 říká, že body na přímce opravdu leží."
 plot(Pavlik.a, a(t), a_fit(t), t: Pavlik.t, title: "Zrychlení Pavlíka: změřené body a přímky") | m/s^2
 
 ## Rychlost a poloha

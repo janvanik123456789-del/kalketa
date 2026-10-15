@@ -7,6 +7,7 @@ import { createHistory, MERGE_WINDOW_MS, record, redo, undo } from '../src/logic
 import { defineShortcut, definedName } from '../src/logic/shortcuts.js';
 import { pickOf, replacePickKey } from '../src/logic/pick.js';
 import { addColumn, addRow, deleteColumn, deleteRow, fromEditable, setCell, toEditable } from '../src/logic/tableEdit.js';
+import { formatSheetTable, parseSheetTable } from '../src/logic/sheetTableEdit.js';
 
 const statementsOf = (source: string) => parse(source, { isUnit: (n) => defaultRegistry.isUnit(n), predefined: ['T'] }).sheet.statements;
 
@@ -241,5 +242,14 @@ describe('a table in the sheet as cells', () => {
     expect(cellShown('20.1', true)).toBe('20,1');
     expect(cellWritten('20,1', true)).toBe('20.1');
     expect(parseSheetTable('x := 5')).toBeUndefined();
+  });
+});
+
+describe('a sheet table set across', () => {
+  it('keeps its mark when the grid writes it back', () => {
+    const cells = parseSheetTable('table P: {across}\n    | t [s] | a |\n    | 0 | 4 |')!;
+    expect(cells.attributes).toBe('{across}');
+    expect(formatSheetTable(cells).split('\n')[0]).toBe('table P: {across}');
+    expect(formatSheetTable(parseSheetTable('table P:\n    | t |\n    | 0 |')!).split('\n')[0]).toBe('table P:');
   });
 });

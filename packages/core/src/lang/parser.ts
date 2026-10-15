@@ -94,7 +94,7 @@ export function parse(source: string, options: ParseOptions): ParseResult {
   return { sheet: { statements }, diagnostics };
 }
 
-const TABLE_HEAD = /^table[ \t]+([\p{L}_][\p{L}\p{N}_]*)[ \t]*:[ \t]*$/u;
+const TABLE_HEAD = /^table[ \t]+([\p{L}_][\p{L}\p{N}_]*)[ \t]*:[ \t]*(?:\{([^{}]*)\})?[ \t]*$/u;
 const TABLE_ROW = /^[ \t]+\|/;
 const COLUMN = /^([\p{L}_][\p{L}\p{N}_]*)\s*(?:\[([^\]]*)\])?\s*(?:\{([^}]*)\})?\s*(?:=\s*(.+))?$/u;
 
@@ -152,8 +152,11 @@ function sheetTables(source: string, options: ParseOptions): { tables: { stateme
     }
     const nameAt = lines[i]!.indexOf(head[1]!, 5);
     const span: Span = { offset: starts[i]!, length: starts[end]! + lines[end]!.replace(/\r$/, '').length - starts[i]!, line: i + 1, column: 1 };
+    // table Pavlik: {across} — set across in print.
+    const words = (head[2] ?? '').split(/\s+/).filter(Boolean);
+    for (const word of words) if (word !== 'across') diagnostics.push(diagnostic('W-FORMAT', lineSpan(i), { item: word }));
     tables.push({
-      statement: { kind: 'table', name: head[1]!, nameSpan: { offset: starts[i]! + nameAt, length: head[1]!.length, line: i + 1, column: nameAt + 1 }, columns, rows, span },
+      statement: { kind: 'table', name: head[1]!, nameSpan: { offset: starts[i]! + nameAt, length: head[1]!.length, line: i + 1, column: nameAt + 1 }, columns, rows, span, ...(words.includes('across') ? { format: { across: true } } : {}) },
       diagnostics,
     });
     for (let n = i; n <= end; n++) blank.add(n);

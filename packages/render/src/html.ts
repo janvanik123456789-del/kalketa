@@ -396,7 +396,7 @@ ${checkLines(block.lines)}
     }
     case 'datatable':
       return `<section class="block datatable" data-line="${block.line}">
-${dataTableHtml(block, block.name)}${messages(block.messages)}
+${block.across ? acrossTableHtml(block, block.name) : dataTableHtml(block, block.name)}${messages(block.messages)}
 </section>`;
     case 'error':
       return `<section class="block error" data-line="${block.line}">
@@ -417,6 +417,25 @@ function dataTableHtml(table: TableRows & { readonly totals?: readonly number[] 
 <tbody>
 ${body}
 </tbody></table>`;
+}
+
+/** Values of a table set across on one band at most; more go on the next band. */
+const ACROSS_VALUES = 12;
+
+/**
+ * A table set across ({across}), as collections of problems print measured values: each column
+ * on a row, its name and unit at the left, the values side by side; many values in bands below
+ * each other, so the table never runs off the page.
+ */
+function acrossTableHtml(table: TableRows & { readonly totals?: readonly number[] }, caption?: string): string {
+  const name = (c: TableRows['columns'][number]) => `<th>${toMathML(nameNode(c.name))}${c.unit ? ` <span class="unit">[${esc(c.unit)}]</span>` : ''}</th>`;
+  const bands: string[] = [];
+  for (let from = 0; from < Math.max(1, table.rows.length); from += ACROSS_VALUES) {
+    const rows = table.rows.slice(from, from + ACROSS_VALUES);
+    const lines = table.columns.map((c, i) => `<tr>${name(c)}${rows.map((row, n) => `<td class="${[c.numeric ? 'num' : '', table.totals?.includes(from + n) ? 'total' : ''].filter(Boolean).join(' ')}">${esc(row[i] ?? '')}</td>`).join('')}</tr>`);
+    bands.push(`<tbody>\n${lines.join('\n')}\n</tbody>`);
+  }
+  return `<table class="data-table across">${caption ? `<caption>${esc(caption)}</caption>` : ''}\n${bands.join('\n')}</table>`;
 }
 
 /** Lines aligned on "=": the left-hand side only on the first line. */
@@ -586,6 +605,11 @@ table.data-table th, table.data-table td { padding: 0.6mm 3mm; text-align: left;
 table.data-table th { border-bottom: 0.8pt solid #333; font-weight: 600; }
 table.data-table tbody tr:last-child td { border-bottom: 0.8pt solid #333; }
 table.data-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+/* Set across: the names at the left with a line beside them, the values side by side, bands one under another. */
+table.data-table.across th { border-bottom: none; border-right: 0.8pt solid #333; white-space: nowrap; }
+table.data-table.across tbody:first-of-type tr:first-child > * { border-top: 0.8pt solid #333; }
+table.data-table.across tbody + tbody tr:first-child > * { padding-top: 2mm; }
+table.data-table.across td { padding: 0.6mm 2mm; }
 table.data-table .unit { font-weight: 400; }
 table.data-table th .formula { font-weight: 400; font-size: 8.5pt; color: #444; }
 table.data-table tr.total td { font-weight: 600; border-top: 0.6pt solid #333; }

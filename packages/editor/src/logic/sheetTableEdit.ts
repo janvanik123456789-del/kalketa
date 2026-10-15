@@ -12,22 +12,25 @@
 
 export interface SheetTableCells {
   readonly name: string;
+  /** The marks after the head, as written ({across}). */
+  readonly attributes?: string;
   /** Header first, then the rows; every row as long as the header. */
   readonly rows: readonly (readonly string[])[];
 }
 
-const HEAD = /^\s*table[ \t]+(.*?)[ \t]*:[ \t]*$/;
+const HEAD = /^\s*table[ \t]+(.*?)[ \t]*:[ \t]*(\{[^{}]*\})?[ \t]*$/;
 
 /** The cells of a table's text; undefined when the text is no table. */
 export function parseSheetTable(text: string): SheetTableCells | undefined {
   const [head, ...lines] = text.split(/\r?\n/);
-  const name = HEAD.exec(head ?? '')?.[1];
+  const match = HEAD.exec(head ?? '');
+  const name = match?.[1];
   if (name === undefined) return undefined;
   const rows = lines
     .filter((line) => /^[ \t]+\|/.test(line))
     .map((line) => line.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map((c) => c.trim()));
   const width = Math.max(1, ...rows.map((r) => r.length));
-  return { name, rows: (rows.length > 0 ? rows : [['']]).map((r) => [...r, ...Array<string>(width - r.length).fill('')]) };
+  return { name, ...(match?.[2] ? { attributes: match[2] } : {}), rows: (rows.length > 0 ? rows : [['']]).map((r) => [...r, ...Array<string>(width - r.length).fill('')]) };
 }
 
 /** The text of a table from its cells, columns padded to the widest cell. */
@@ -36,7 +39,7 @@ export function formatSheetTable(table: SheetTableCells): string {
   const sizes = Array.from({ length: width }, (_, c) => Math.max(1, ...table.rows.map((r) => [...(r[c] ?? '')].length)));
   const pad = (cell: string, c: number) => cell + ' '.repeat(sizes[c]! - [...cell].length);
   const line = (r: readonly string[]) => `    | ${Array.from({ length: width }, (_, c) => pad(r[c] ?? '', c)).join(' | ')} |`;
-  return [`table ${table.name}:`, ...table.rows.map(line)].join('\n');
+  return [`table ${table.name}:${table.attributes ? ` ${table.attributes}` : ''}`, ...table.rows.map(line)].join('\n');
 }
 
 /** A cell written; the others as they were. */

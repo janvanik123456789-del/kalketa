@@ -198,6 +198,8 @@ export type PrintBlock =
       readonly rows: readonly (readonly string[])[];
       /** Which rows are totals (Σ), set apart. */
       readonly totals?: readonly number[];
+      /** Set across ({across}): each column on a row, the values side by side. */
+      readonly across?: boolean;
       readonly messages: readonly Message[];
     }
   | { readonly kind: 'page-break' }
@@ -373,7 +375,7 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
           const values = row.some((cell) => cell !== '') ? table?.rows[data++] : undefined;
           return row.map((cell, i) => (s.columns[i]?.formula && cell.trim() === '' ? (shown(values?.[i], i) ?? '') : cellText(cell, s.columns[i]?.format, columns[i]?.numeric ?? false, decimalSign)));
         });
-        blocks.push({ kind: 'datatable', line: s.span.line, name: s.name, columns, rows, ...(totals.length > 0 ? { totals } : {}), messages });
+        blocks.push({ kind: 'datatable', line: s.span.line, name: s.name, columns, rows, ...(totals.length > 0 ? { totals } : {}), ...(s.format?.across ? { across: true } : {}), messages });
         break;
       }
       case 'definition':

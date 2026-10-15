@@ -2404,8 +2404,23 @@ async function layersWithRealInput(picture: string) {
   await pause(2500);
   const beam = (await contents.executeJavaScript(`({ pictures: [...document.querySelectorAll('.layer-view.active .page img')].filter((i) => i.naturalWidth > 0).length, charts: document.querySelectorAll('.layer-view.active .block.chart svg.chart-svg .chart-data path').length, errors: document.querySelectorAll('.layer-view.active .page .row.has-error').length })`)) as { pictures: number; charts: number; errors: number };
   await takePicture(picture.replace(/[.]png$/, '-beam.png'));
+  // A measured table set across (values side by side, as the collection prints them), set down again from its menu.
+  await clickOn('.menubar-item:nth-child(1) > button');
+  await clickMenu('Vzorové příklady');
+  await clickMenu('Fyzika');
+  await clickMenu('2 Malý Pavlík');
+  await pause(1500);
+  const acrossTable = '.layer-view.active .block.datatable table.data-table';
+  const acrossBefore = (await contents.executeJavaScript(`document.querySelector('${acrossTable}')?.classList.contains('across') ?? false`)) as boolean;
+  await takePicture(picture.replace(/[.]png$/, '-across.png'));
+  await clickOn(acrossTable, [], 'right');
+  await clickMenu('Tabulka na šířku');
+  await pause(800);
+  const acrossAfter = (await contents.executeJavaScript(`document.querySelector('${acrossTable}')?.classList.contains('across') ?? true`)) as boolean;
+  const across = { before: acrossBefore, after: acrossAfter };
   const quadraticSample = {
     crank,
+    across,
     beam,
     slowTyping,
     cube,
@@ -2413,7 +2428,7 @@ async function layersWithRealInput(picture: string) {
     after: sampleAfter,
     outOfDomain,
     english,
-    ok: !!thumb && sampleBefore.errors === 0 && sampleAfter.errors === 0 && sampleBefore.a !== '' && sampleAfter.a !== sampleBefore.a && sampleAfter.roots !== sampleBefore.roots && outOfDomain.drawn && !outOfDomain.area && outOfDomain.roots === 0 && !outOfDomain.error && outOfDomain.warned && english.head === 'Quadratic equation' && english.verdicts.length === 5 && english.verdicts.every((v) => v.endsWith('OK')) && english.errors === 0 && crank.pictures === 4 && crank.charts === 3 && crank.errors === 0 && crank.verdict.endsWith('VYHOVUJE') && slowTyping.waitingShown && slowTyping.settled && cube.pictures === 1 && cube.derived >= 5 && cube.errors === 0 && beam.pictures === 3 && beam.charts >= 4 && beam.errors === 0,
+    ok: !!thumb && sampleBefore.errors === 0 && sampleAfter.errors === 0 && sampleBefore.a !== '' && sampleAfter.a !== sampleBefore.a && sampleAfter.roots !== sampleBefore.roots && outOfDomain.drawn && !outOfDomain.area && outOfDomain.roots === 0 && !outOfDomain.error && outOfDomain.warned && english.head === 'Quadratic equation' && english.verdicts.length === 5 && english.verdicts.every((v) => v.endsWith('OK')) && english.errors === 0 && crank.pictures === 4 && crank.charts === 3 && crank.errors === 0 && crank.verdict.endsWith('VYHOVUJE') && slowTyping.waitingShown && slowTyping.settled && cube.pictures === 1 && cube.derived >= 5 && cube.errors === 0 && beam.pictures === 3 && beam.charts >= 4 && beam.errors === 0 && across.before && !across.after,
   };
   const userChart = { namedArea, quadOk, quadTarget, quadEnd, quadEditing, ok: namedArea === 'Integral1=27' && quadOk && quadTarget > 0 && Math.abs(quadEnd - quadTarget) < 12 };
   // Relations: a circle solved by its name, a derivation following from a relation of theory, and the circle

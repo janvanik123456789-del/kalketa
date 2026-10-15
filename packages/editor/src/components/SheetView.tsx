@@ -225,7 +225,7 @@ export function SheetView(props: Props) {
   if (rawAt !== undefined && editing?.start !== rawAt) setRawAt(undefined);
   // A solve line expressed by a formula also offers that formula as a definition of its own.
   const [summaryMenu, setSummaryMenu] = useState<{ x: number; y: number } | undefined>();
-  const [formatMenu, setFormatMenu] = useState<{ seg: Segment; at: { x: number; y: number }; text?: boolean; solveLine?: string } | undefined>();
+  const [formatMenu, setFormatMenu] = useState<{ seg: Segment; at: { x: number; y: number }; text?: boolean; table?: boolean; solveLine?: string } | undefined>();
   // Where a dragged picture would land: a line across the page body.
   const [dropMark, setDropMark] = useState<{ x: number; y: number; width: number } | undefined>();
   // Where a picture placed freely would stand while it is dragged.
@@ -885,6 +885,17 @@ export function SheetView(props: Props) {
               if (rows.length === 1) props.onReplace(rows[0]!.start, rows[0]!.end, f(rows[0]!.text));
               else props.onReplaceRows(rows.map((s) => ({ start: s.start, end: s.end, text: f(s.text) })));
             };
+            if (formatMenu.table) {
+              const seg = formatMenu.seg;
+              const across = /^\s*table[^\n]*:\s*\{[^}\n]*\bacross\b/.test(seg.text);
+              // The head line with {across} or without it; the rows as they are.
+              const setAcross = (on: boolean) => {
+                const [head = '', ...rest] = seg.text.split('\n');
+                const plain = head.replace(/\s*\{[^}]*\}\s*$/, '');
+                props.onReplace(seg.start, seg.end, [on ? `${plain} {across}` : plain, ...rest].join('\n'));
+              };
+              return [{ kind: 'action', label: t(props.uiCatalog, 'table.across'), checked: across, run: () => setAcross(!across) }];
+            }
             if (formatMenu.text) {
               const seg = formatMenu.seg;
               // The marks of the line by hand: it opens as written in the language.
@@ -1109,6 +1120,13 @@ export function SheetView(props: Props) {
             const equation = statement.statement.equations[0]!.span;
             const from = result.source.slice(equation.offset, equation.offset + equation.length).replace(/\s+/g, ' ');
             setFormatMenu({ seg, at: { x: e.clientX, y: e.clientY }, solveLine: `${solution.name} := ${formatExpr(solution.formula)}  ' ${t(props.uiCatalog, 'solve.expressedFrom')} ${from}` });
+            return;
+          }
+          // A table in the sheet: set it across or down.
+          if (block?.kind === 'datatable' && !isEditing) {
+            e.preventDefault();
+            props.onSelect(seg.statement);
+            setFormatMenu({ seg, at: { x: e.clientX, y: e.clientY }, table: true });
             return;
           }
           if ((block?.kind === 'equation' || block?.kind === 'check' || block?.kind === 'paragraph' || block?.kind === 'heading') && !(e.target as HTMLElement).closest('textarea')) {

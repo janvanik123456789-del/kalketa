@@ -36,7 +36,7 @@ I_1 := integral(integral(y^2, y: -b_1/2 .. b_1/2), z: -a_1/2 .. a_1/2) == a_1·b
 I_2 := integral(integral(y^2, y: -b_2/2 .. b_2/2), z: -a_2/2 .. a_2/2) == a_2·b_2^3/12 | cm^4
 "Zakřivení nosníku je M/(E·I): čím menší I, tím větší ohyb. Poměr ohybů:"
 n_ohyb := I_1/I_2
-"Průhyb spočtený z rovnice ohybové čáry y″ = −M(x)/(E·I), u podpor nulový:"
+"Průhyb w(x), svislý posun osy nosníku, z rovnice ohybové čáry w″ = −M(x)/(E·I), u podpor nulový (ve sbírce rovnice (7), kde je průhyb psaný y′ s čárkami, aby se nepletl se souřadnicí y v průřezu):"
 solve w_1(x): E·I_1·w_1″ == -M(x) in 0 m .. l
     w_1(0 m) == 0 m
     w_1(l) == 0 m
@@ -51,11 +51,11 @@ w_2max := -w_2(x_w) | mm
 n_w := w_2max/w_1max
 
 ## Napětí na průřezu v první třetině
-"Druhý průřez se prohne víc; pro něj napětí v řezu x_σ = l/3, y svisle od těžiště (−b_2/2 ≤ y ≤ b_2/2):"
+"Druhý průřez se prohne víc; pro něj napětí v řezu x_σ = l/3. Tady y není průhyb, ale výška vlákna v průřezu nad těžištěm (neutrální osou): −b_2/2 ≤ y ≤ b_2/2."
 x_σ := l/3
 M_σ := M(x_σ) | kN·m
 σ(y) := M_σ/I_2·y == 12·M_σ/(a_2·b_2^3)·y == -12/(a_2·b_2^3)·(V_1·x_σ - F_1·(x_σ - x_1))·y {eq}
-"Napětí je lineární v y, jeho sklon:"
+"Napětí je lineární ve výšce y, o kolik se změní na metr výšky průřezu:"
 k_σ := σ(1 m)/(1 m) | GPa/m
 σ_h := σ(b_2/2) | MPa      ' horní okraj: tlak
 σ_d := σ(-b_2/2) | MPa     ' dolní okraj: tah

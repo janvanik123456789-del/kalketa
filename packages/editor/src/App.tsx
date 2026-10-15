@@ -857,6 +857,7 @@ export function App() {
       ...(equationNumbers(doc.layout) ? { equations: equationNumbers(doc.layout)! } : {}),
       ...(doc.layout.verdict ? { verdict: doc.layout.verdict } : {}),
       ...(doc.layout.pageNumbers ? { pageNumbers: doc.layout.pageNumbers } : {}),
+      ...(doc.layout.derivations ? { derivations: doc.layout.derivations } : {}),
     });
   /** Unreviewed AI lines: the user is asked first; they print marked, with a notice. */
   const confirmAiPrint = async () => unreviewedAiLines().size === 0 || (await askConfirm(t(ui, 'print.aiConfirm')));

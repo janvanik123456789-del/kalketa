@@ -2395,15 +2395,25 @@ async function layersWithRealInput(picture: string) {
   await pause(2000);
   const cube = (await contents.executeJavaScript(`({ pictures: [...document.querySelectorAll('.layer-view.active .page img')].filter((i) => i.naturalWidth > 0).length, derived: document.querySelectorAll('.layer-view.active .page .derived').length, errors: document.querySelectorAll('.layer-view.active .page .row.has-error').length })`)) as { pictures: number; derived: number; errors: number };
   await takePicture(picture.replace(/[.]png$/, '-cube.png'));
+  // A beam from a collection: its charts (moment, deflection lines, stress over the height) and its own pictures.
+  await clickOn('.menubar-item:nth-child(1) > button');
+  await clickMenu('Vzorové příklady');
+  await clickMenu('Strojírenství a mechanika');
+  await clickMenu('Pevnost a pružnost');
+  await clickMenu('1 Napětí na průřezu');
+  await pause(2500);
+  const beam = (await contents.executeJavaScript(`({ pictures: [...document.querySelectorAll('.layer-view.active .page img')].filter((i) => i.naturalWidth > 0).length, charts: document.querySelectorAll('.layer-view.active .block.chart svg.chart-svg .chart-data path').length, errors: document.querySelectorAll('.layer-view.active .page .row.has-error').length })`)) as { pictures: number; charts: number; errors: number };
+  await takePicture(picture.replace(/[.]png$/, '-beam.png'));
   const quadraticSample = {
     crank,
+    beam,
     slowTyping,
     cube,
     before: sampleBefore,
     after: sampleAfter,
     outOfDomain,
     english,
-    ok: !!thumb && sampleBefore.errors === 0 && sampleAfter.errors === 0 && sampleBefore.a !== '' && sampleAfter.a !== sampleBefore.a && sampleAfter.roots !== sampleBefore.roots && outOfDomain.drawn && !outOfDomain.area && outOfDomain.roots === 0 && !outOfDomain.error && outOfDomain.warned && english.head === 'Quadratic equation' && english.verdicts.length === 5 && english.verdicts.every((v) => v.endsWith('OK')) && english.errors === 0 && crank.pictures === 4 && crank.charts === 3 && crank.errors === 0 && crank.verdict.endsWith('VYHOVUJE') && slowTyping.waitingShown && slowTyping.settled && cube.pictures === 1 && cube.derived >= 5 && cube.errors === 0,
+    ok: !!thumb && sampleBefore.errors === 0 && sampleAfter.errors === 0 && sampleBefore.a !== '' && sampleAfter.a !== sampleBefore.a && sampleAfter.roots !== sampleBefore.roots && outOfDomain.drawn && !outOfDomain.area && outOfDomain.roots === 0 && !outOfDomain.error && outOfDomain.warned && english.head === 'Quadratic equation' && english.verdicts.length === 5 && english.verdicts.every((v) => v.endsWith('OK')) && english.errors === 0 && crank.pictures === 4 && crank.charts === 3 && crank.errors === 0 && crank.verdict.endsWith('VYHOVUJE') && slowTyping.waitingShown && slowTyping.settled && cube.pictures === 1 && cube.derived >= 5 && cube.errors === 0 && beam.pictures === 3 && beam.charts >= 4 && beam.errors === 0,
   };
   const userChart = { namedArea, quadOk, quadTarget, quadEnd, quadEditing, ok: namedArea === 'Integral1=27' && quadOk && quadTarget > 0 && Math.abs(quadEnd - quadTarget) < 12 };
   // Relations: a circle solved by its name, a derivation following from a relation of theory, and the circle

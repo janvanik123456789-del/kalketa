@@ -36,7 +36,11 @@ export interface HtmlOptions {
   readonly style?: CalcStyle;
   /** Pages numbered through (the browser's @page), or by sections (2.1, 2.2), laid out by the printout itself. */
   readonly pageNumbers?: PageNumbers;
+  /** "✓ odvození ověřeno" under derivations: printed (when left out), or on the screen only. */
+  readonly derivations?: DerivationMarks;
 }
+
+export type DerivationMarks = 'printed' | 'screen';
 
 export type PageNumbers = 'continuous' | 'sections';
 
@@ -171,7 +175,7 @@ ${(options.appendices ?? []).join('\n')}`;
 <meta name="generator" content="Kalketa">
 <title>${esc(doc.title)}</title>
 <style>
-${stylesheet(doc, options)}
+${stylesheet(doc, options)}${hiddenMarks(options)}
 </style>
 </head>
 <body>
@@ -198,7 +202,7 @@ ${content}
 <meta name="generator" content="Kalketa">
 <title>${esc(doc.title)}</title>
 <style>
-${stylesheet(doc, options).replace(/^@page \{[\s\S]*?\n\}\n/, '')}
+${stylesheet(doc, options).replace(/^@page \{[\s\S]*?\n\}\n/, '')}${hiddenMarks(options)}
 ${pagedCss(config)}
 </style>
 </head>
@@ -490,6 +494,11 @@ function math(node: MathNode): string {
 
 function cssString(text: string): string {
   return `"${text.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+}
+
+/** The marks of checked derivations left out of the printout (they stay on the screen, for the user and the AI). */
+function hiddenMarks(options: HtmlOptions): string {
+  return options.derivations === 'screen' ? '\n.derived { display: none; }' : '';
 }
 
 function stylesheet(doc: PrintDocument, options: HtmlOptions): string {

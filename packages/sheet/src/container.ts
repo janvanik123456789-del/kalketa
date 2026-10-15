@@ -66,6 +66,8 @@ export interface Layout {
   readonly verdict?: 'present' | 'future' | 'sign';
   /** Pages numbered through (when left out), or by sections: 2.1, 2.2, each section on a new page. */
   readonly pageNumbers?: 'continuous' | 'sections';
+  /** "✓ odvození ověřeno" under derivations in the printout too (when left out), or on the screen only. */
+  readonly derivations?: 'printed' | 'screen';
 }
 
 export const DEFAULT_LAYOUT: Layout = { paper: 'A4', orientation: 'portrait', digits: 4 };

@@ -8,7 +8,7 @@
 
 import type { SheetResult, UnitRegistry } from '@kalketa/core';
 import { formatDate, t, type Catalog } from '@kalketa/i18n';
-import { appendixHtml, renderBlocksHtml, renderHtml, type CalcStyle, type PageNumbers } from './html.js';
+import { appendixHtml, renderBlocksHtml, renderHtml, type CalcStyle, type DerivationMarks, type PageNumbers } from './html.js';
 import { buildPrintDocument, type EquationNumbers, type VerdictForm } from './model.js';
 import { notesHtml } from './notes.js';
 
@@ -16,7 +16,7 @@ export * from './math.js';
 export { formulaNode, hasSubstitutableParts, type FormulaOptions } from './formula.js';
 export * from './model.js';
 export { pageLabels, sheetSections, type Section } from './paged.js';
-export { renderHtml, renderBlockHtml, renderBlocksHtml, columnsHead, sideGroupHtml, renderSummary, appendixHtml, isInput, textHtml, BLOCK_CSS, TEXT_FONT_FAMILIES, TEXT_COLOR_VALUES, textFontCss, textColorCss, type HtmlOptions, type BlockHtmlOptions, type CalcStyle } from './html.js';
+export { renderHtml, renderBlockHtml, renderBlocksHtml, columnsHead, sideGroupHtml, renderSummary, appendixHtml, isInput, textHtml, BLOCK_CSS, TEXT_FONT_FAMILIES, TEXT_COLOR_VALUES, textFontCss, textColorCss, type HtmlOptions, type BlockHtmlOptions, type CalcStyle, type DerivationMarks } from './html.js';
 export { figureDescription, figurePlace, figureStyle, withFigurePlace, type FigurePlace, isAiNote, kalkConfirmed, kalkFormula, kalkLines, notesHtml, notesImages, NOTES_CSS, type KalkLine, type NotesOptions } from './notes.js';
 
 /** A layer printed after the sheet. */
@@ -49,6 +49,8 @@ export interface PrintSettings {
   readonly style?: CalcStyle;
   /** Pages numbered through, or by sections (2.1, 2.2): positions, else the headings of one level; appendices A.1. */
   readonly pageNumbers?: PageNumbers;
+  /** "✓ odvození ověřeno" in the printout too (when left out), or on the screen only. */
+  readonly derivations?: DerivationMarks;
 }
 
 /** Where the printed content stands among the revisions of the sheet. */
@@ -119,5 +121,6 @@ export function printHtml(result: SheetResult, settings: PrintSettings): string 
     ...(settings.aiLines && settings.aiLines.size > 0 ? { aiLines: settings.aiLines } : {}),
     ...(settings.style ? { style: settings.style } : {}),
     ...(settings.pageNumbers ? { pageNumbers: settings.pageNumbers } : {}),
+    ...(settings.derivations ? { derivations: settings.derivations } : {}),
   });
 }

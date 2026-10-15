@@ -40,6 +40,16 @@ describe('derivations in print', () => {
     expect(solve).toContain('nevyhovuje podmínce');
   });
 
+  it('leave the check marks out of the printout when they are for the screen only', () => {
+    const sheet = evaluateSheet('derive (l^3·F/3)/(E·I) == F·l^3/(3·E·I)');
+    const printed = printHtml(sheet, { catalog: cs, registry: defaultRegistry, title: 'T' });
+    const screen = printHtml(sheet, { catalog: cs, registry: defaultRegistry, title: 'T', derivations: 'screen' });
+    expect(printed).not.toContain('.derived { display: none; }');
+    expect(screen).toContain('.derived { display: none; }');
+    // Still there for the screen and for whoever reads the page: only not printed.
+    expect(screen).toContain('<div class="derived">✓ odvození ověřeno</div>');
+  });
+
   it('mark a wrong step with its message and without the check mark', () => {
     const out = html('derive F·l^3/(3·E·I) == F·l^3/(2·E·I)');
     expect(out).toContain('Odvození: krok 1 neplatí');

@@ -258,6 +258,13 @@ export function PropertiesDialog({ catalog, doc, onApply, onClose }: { catalog: 
         </select>
       </label>
       <label className="field">
+        <span>{t(catalog, 'props.derivations')}</span>
+        <select className="props-derivations" value={layout.derivations ?? 'printed'} onChange={(e) => setLayout({ ...layout, derivations: e.target.value as 'printed' | 'screen' })}>
+          <option value="printed">{t(catalog, 'props.derivationsPrinted')}</option>
+          <option value="screen">{t(catalog, 'props.derivationsScreen')}</option>
+        </select>
+      </label>
+      <label className="field">
         <span>{t(catalog, 'props.pageNumbers')}</span>
         <select className="props-pages" value={layout.pageNumbers ?? 'continuous'} onChange={(e) => setLayout({ ...layout, pageNumbers: e.target.value as 'continuous' | 'sections' })}>
           <option value="continuous">{t(catalog, 'props.pagesContinuous')}</option>

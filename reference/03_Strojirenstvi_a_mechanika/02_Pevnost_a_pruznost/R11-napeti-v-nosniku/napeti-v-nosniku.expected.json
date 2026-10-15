@@ -1,0 +1,55 @@
+{
+  "sheet": "napeti-v-nosniku.cc",
+  "verifiedBy": "Samostatný výpočet v Pythonu: reakce z rovnováhy, M(x) ze sil vlevo, I = a·b³/12, napětí σ = M/I·y; průhyb tabulkovým vzorcem prostého nosníku s osamělými silami (ne rovnicí ohybové čáry), maximum na 200 000 bodech. Reakce a I souhlasí se sbírkou (úloha 2159); sklon napětí −7/6 GPa/m, sbírka má kvůli chybnému znaménku ve vzorci (10) −5/3 GPa/m. Tolerance kvůli průhybu z Rungeho–Kuttovy metody.",
+  "relativeTolerance": 0.001,
+  "values": {
+    "V_1": {
+      "value": 14.166666666666666,
+      "unit": "kN"
+    },
+    "V_2": {
+      "value": 15.833333333333334,
+      "unit": "kN"
+    },
+    "I_1": {
+      "value": 6666.666666666669,
+      "unit": "cm⁴"
+    },
+    "I_2": {
+      "value": 1666.6666666666672,
+      "unit": "cm⁴"
+    },
+    "n_ohyb": {
+      "value": 4.0,
+      "unit": ""
+    },
+    "w_1max": {
+      "value": 4.45355041327367,
+      "unit": "mm"
+    },
+    "w_2max": {
+      "value": 17.81420165309468,
+      "unit": "mm"
+    },
+    "n_w": {
+      "value": 4.0,
+      "unit": ""
+    },
+    "M_σ": {
+      "value": -19.444444444444443,
+      "unit": "kN·m"
+    },
+    "k_σ": {
+      "value": -1.1666666666666663,
+      "unit": "GPa/m"
+    },
+    "σ_h": {
+      "value": -58.333333333333314,
+      "unit": "MPa"
+    },
+    "σ_d": {
+      "value": 58.333333333333314,
+      "unit": "MPa"
+    }
+  }
+}

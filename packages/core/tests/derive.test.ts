@@ -132,4 +132,10 @@ describe('the source of a definition', () => {
     expect(r.statements.at(-1)!.statement).toMatchObject({ kind: 'definition', source: 'EN 1990, 6.10' });
     expect(r.statements.at(-1)!.display).toMatchObject({ value: 21, unit: 'kN·m' });
   });
+
+  it('give a parameter the dimension of a number written with a unit beside it (the bound 0 s makes t a time)', () => {
+    const sheet = 'q := 4 m/s^2\nk := 3.6 m/s^3\na(t) := q - k·t\nv(t) := integral(a(τ), τ: 0 s .. t) == q·t - k/2·t^2';
+    expect(result(sheet, 4).derivation).toEqual([{ ok: true }]);
+    expect(codes(sheet)).toEqual([]);
+  });
 });

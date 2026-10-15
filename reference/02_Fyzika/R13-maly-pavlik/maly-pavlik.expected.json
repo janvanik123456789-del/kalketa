@@ -1,0 +1,31 @@
+{
+  "sheet": "maly-pavlik.cc",
+  "verifiedBy": "Úloha 112 Sbírky řešených úloh z fyziky (a(t) = −3,6·t + 4, v(t) = −1,8·t² + 4·t, s(t) = −0,6·t³ + 2·t²) a samostatný výpočet v Pythonu: směrnice z krajních bodů tabulky, rychlost a poloha numerickou integrací (středová metoda na 20 000 dílcích).",
+  "relativeTolerance": 1e-06,
+  "values": {
+    "q": {
+      "value": 4.0,
+      "unit": "m/s²"
+    },
+    "k": {
+      "value": 3.6,
+      "unit": "m/s³"
+    },
+    "v_1": {
+      "value": 2.2,
+      "unit": "m/s"
+    },
+    "x_1": {
+      "value": 1.400000000375,
+      "unit": "m"
+    },
+    "t_0": {
+      "value": 1.1111111111111112,
+      "unit": "s"
+    },
+    "v_max": {
+      "value": 2.2222222222222223,
+      "unit": "m/s"
+    }
+  }
+}

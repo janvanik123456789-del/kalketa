@@ -184,7 +184,7 @@ export function checkDerivation(
     });
   };
   if (varying.length > 0) {
-    paramDims = dimensionsOfParams(varying, [...members, ...holding.map((h) => h.relation.expr)], ctx, (dims) => {
+    paramDims = dimensionsOfParams(varying, [...members, ...holding.map((h) => h.relation.expr)], ctx, evaluate, (dims) => {
       paramDims = dims;
       const values = sample(0, () => 1, [], new Set(), true);
       const relationsAgree = holding.every((_, k) => {
@@ -323,21 +323,25 @@ function opaqueParts(expr: Expr, ctx: EvalContext, evaluate: Evaluate, atoms: Ex
  * The dimensions of the parameters with which every member has a value: tried from the
  * dimensions of the names the members read, and none (a pure number), in turn.
  */
-function dimensionsOfParams(params: readonly string[], members: readonly Expr[], ctx: EvalContext, works: (dims: readonly Dimension[]) => boolean): readonly Dimension[] {
+function dimensionsOfParams(params: readonly string[], members: readonly Expr[], ctx: EvalContext, evaluate: Evaluate, works: (dims: readonly Dimension[]) => boolean): readonly Dimension[] {
   const names = new Set<string>();
+  // Numbers written with a unit tell a dimension too: the bound 0 s of integral(a(τ), τ: 0 s .. t) makes t a time.
+  const literals: Expr[] = [];
   const walk = (e: Expr): void => {
     if (e.kind === 'variable') names.add(e.name);
+    else if (e.kind === 'number' && e.unit) literals.push(e);
     else if (e.kind === 'unary') walk(e.operand);
     else if (e.kind === 'binary') (walk(e.left), walk(e.right));
+    else if (e.kind === 'range') (walk(e.low), walk(e.high));
     else if (e.kind === 'call') (e.args.forEach(walk), e.named.forEach((n) => walk(n.value)));
   };
   members.forEach(walk);
   const candidates: Dimension[] = [DIMENSIONLESS];
-  for (const name of names) {
-    if (params.includes(name)) continue;
-    const value = tryValue(() => ctx.lookup(name, members[0]!.span));
+  const add = (value: Value | undefined) => {
     if (value?.type === 'quantity' && !candidates.some((d) => sameDim(d, value.dim))) candidates.push(value.dim);
-  }
+  };
+  for (const name of names) if (!params.includes(name)) add(tryValue(() => ctx.lookup(name, members[0]!.span)));
+  for (const literal of literals) add(tryValue(() => evaluate(literal, ctx)));
   // Every combination, the first that works; a few parameters only, so few tries.
   let tries = 0;
   const pick = (i: number, chosen: Dimension[]): readonly Dimension[] | undefined => {

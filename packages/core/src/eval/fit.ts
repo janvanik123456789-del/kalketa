@@ -14,6 +14,7 @@
 import { fail } from '../diagnostics.js';
 import type { Expr } from '../lang/ast.js';
 import { DIMENSIONLESS, divideDims, powerDim, sameDim } from '../units/dimension.js';
+import { formatTerms, unitTerms } from '../units/compose.js';
 import { baseUnitSymbol } from '../units/display.js';
 import type { ResolvedUnit } from '../units/unitExpr.js';
 import { quantity, type FunctionValue, type Quantity, type Value } from '../values/value.js';
@@ -147,7 +148,16 @@ function series(value: Value, span: Parameters<typeof fail>[1]): Quantity[] {
 function quotientHint(y: ResolvedUnit | undefined, x: ResolvedUnit | undefined, k: number): ResolvedUnit | undefined {
   if (!x || x.offset !== undefined) return undefined;
   const power = k === 1 ? x.symbol : `${/[·/]/.test(x.symbol) ? `(${x.symbol})` : x.symbol}${'⁰¹²³⁴⁵⁶⁷⁸⁹'[k]}`;
-  const symbol = y ? `${y.symbol}/${power}` : `1/${power}`;
+  // The terms put together where they read: m/s² per s is m/s³, not m/s²/s.
+  const ty = y ? unitTerms(y.symbol) : new Map<string, number>();
+  const tx = unitTerms(x.symbol);
+  let symbol = y ? `${y.symbol}/${power}` : `1/${power}`;
+  if (ty && tx) {
+    const terms = new Map(ty);
+    for (const [name, e] of tx) terms.set(name, (terms.get(name) ?? 0) - k * e);
+    for (const [name, e] of terms) if (e === 0) terms.delete(name);
+    if (terms.size > 0) symbol = formatTerms(terms);
+  }
   const dim = divideDims(y?.dim ?? DIMENSIONLESS, powerDim(x.dim, k));
   return { symbol, factor: (y?.factor ?? 1) / x.factor ** k, dim };
 }

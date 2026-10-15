@@ -8,6 +8,7 @@ describe('sample calculations shipped with the program', () => {
       '01 R7-kvadraticka-rovnice',
       '01 R8-quadratic-equation',
       '02 R10-krychle-pod-vodou',
+      '02 R13-maly-pavlik',
       '03 R9-klikovy-mechanismus',
       '03 R11-napeti-v-nosniku',
       '03 R12-prodlouzeni-dratu',

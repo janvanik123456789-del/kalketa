@@ -567,9 +567,9 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
     const intercept = bin('/', bin('-', sy, bin('*', b1, sx)), n);
     const [c0, c1] = [fit.coefficients[0]!.value, fit.coefficients[1]!.value];
     // Put in, the sums are numbers: in the line of numbers they stand as names of their own, replaced by their values.
-    const known = new Map<string, Quantity>([[' sx', steps.sumX], [' sy', steps.sumY], [' sxx', steps.sumXX], [' sxy', steps.sumXY], ['b_1', c1]]);
+    const known = new Map<string, Quantity>([['\u0000sx', steps.sumX], ['\u0000sy', steps.sumY], ['\u0000sxx', steps.sumXX], ['\u0000sxy', steps.sumXY], ['b_1', c1]]);
     const asNumbers = (e: Expr): Expr => {
-      const own = e === sx ? ' sx' : e === sy ? ' sy' : e === sxx ? ' sxx' : e === sxy ? ' sxy' : undefined;
+      const own = e === sx ? '\u0000sx' : e === sy ? '\u0000sy' : e === sxx ? '\u0000sxx' : e === sxy ? '\u0000sxy' : undefined;
       if (own) return v(own);
       return e.kind === 'binary' ? { ...e, left: asNumbers(e.left), right: asNumbers(e.right) } : e;
     };

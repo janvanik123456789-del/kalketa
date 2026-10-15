@@ -138,3 +138,12 @@ Nápad uživatele. Technické nákresy ze skript jsou čárové kresby. Vektorov
 - **Pro Kalketu:** model převede nákres na prvky vlastního plátna (čáry, šipky, obdélníky, popisky „F“, „Δl“), ne na SVG. Výřez se tak stane upravitelným obrázkem použitelným i v listu (nýt ze sbírky) a zabere jednotky kB. Ověřuje se jako u vzorců: návrh AI vedle výřezu, uživatel potvrdí, výřez se pak odstraní.
 - **Předpoklad:** plátno musí nejdřív umět kóty, oblouky a šrafy. Bez nich nákresy ze skript nepřevedeme.
 - **Pro převodník:** i bez Kalkety jako výstup SVG, s obtahováním jako levnou cestou a modelem tam, kde je potřeba porozumět nákresu.
+
+### Volby funkcí naservírované v panelu Podrobnosti (2026-10-15)
+
+Nápad uživatele. Uživatel sám přišel na to, že u `fit(…, steps: true)` zkrátí výpis přepsáním na `false`. Jiný uživatel to neodhalí: volby funkce musí vidět, ne je znát.
+
+- **Panel Podrobnosti u řádku s voláním funkce** vysvětlí zápis: co funkce dělá, co je který argument (`x:` proměnná, `kind:` druh křivky) a jaké má volby.
+- **Volby jako přepínače a výběry:** `steps` jako přepínač „Ukázat postup“, `kind` jako výběr „přímka / parabola / …“ s náhledem (sr. [[plain-menus]]: prostá slova, náhled účinku). Změna přepínače přepíše zápis v řádku, zápis zůstává pravdou.
+- **Pro všechny funkce s volbami:** `plot` (kořeny, vrcholy, osa, plocha, tečna – dnes z pravého tlačítka na grafu), `solve` (obor ℝ/ℂ, podmínky), `integral`, `derivative` (`order`), `fit`. Zdroj popisu: nápověda F1 (moduly funkcí) a katalog jazyka.
+- **Otázka:** zda volby ukazovat i přímo v řádku (malé přepínače pod řádkem jako posuvníky), nebo jen v panelu.

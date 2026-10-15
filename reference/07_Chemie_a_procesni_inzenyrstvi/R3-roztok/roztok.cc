@@ -1,4 +1,4 @@
-# Fyziologický roztok a kyselina octová
+# Ředění roztoku a pH kyseliny octové
 "Referenční výpočet R3: příprava roztoku z tabulky látek a disociační rovnováha slabé kyseliny."
 
 ## Příprava roztoku

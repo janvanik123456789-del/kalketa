@@ -1,5 +1,5 @@
 {
-  "sheet": "krychle-pod-vodou.cc",
+  "sheet": "stlaceni-hydrostatickym-tlakem.cc",
   "verifiedBy": "Úloha 2155 Sbírky řešených úloh z fyziky (výsledek −3,27·10⁻¹¹ m³) a samostatný výpočet v Pythonu: vzorec (9) ΔV = −ρ·g·a³·(3·h − 2·a)/E a integrál (8) Simpsonovým pravidlem na 1000 dílcích, oba se shodují na 12 míst.",
   "relativeTolerance": 1e-09,
   "values": {

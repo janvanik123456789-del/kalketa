@@ -2363,7 +2363,7 @@ async function layersWithRealInput(picture: string) {
   await clickMenu('Vzorové příklady');
   await clickMenu('Strojírenství a mechanika');
   await clickMenu('Kinematika a dynamika');
-  await clickMenu('1 Klikový mechanismus');
+  await clickMenu('1 Síly, moment a setrvačník');
   await pause(3000);
   const crank = (await contents.executeJavaScript(`({ pictures: [...document.querySelectorAll('.layer-view.active .page img')].filter((i) => i.naturalWidth > 0 && (i.getAttribute('src') ?? '').startsWith('data:image/svg')).length, charts: document.querySelectorAll('.layer-view.active .block.chart svg.chart-svg .chart-data path').length > 0 ? document.querySelectorAll('.layer-view.active .block.chart').length : 0, errors: document.querySelectorAll('.layer-view.active .page .row.has-error').length, verdict: [...document.querySelectorAll('.layer-view.active .page .check .status')].map((s) => s.textContent.trim()).join(' ') })`)) as { pictures: number; charts: number; errors: number; verdict: string };
   await takePicture(picture.replace(/[.]png$/, '-crank.png'));
@@ -2391,7 +2391,7 @@ async function layersWithRealInput(picture: string) {
   await clickOn('.menubar-item:nth-child(1) > button');
   await clickMenu('Vzorové příklady');
   await clickMenu('Fyzika');
-  await clickMenu('1 Krychle na dně');
+  await clickMenu('1 Stlačení krychle');
   await pause(2000);
   const cube = (await contents.executeJavaScript(`({ pictures: [...document.querySelectorAll('.layer-view.active .page img')].filter((i) => i.naturalWidth > 0).length, derived: document.querySelectorAll('.layer-view.active .page .derived').length, errors: document.querySelectorAll('.layer-view.active .page .row.has-error').length })`)) as { pictures: number; derived: number; errors: number };
   await takePicture(picture.replace(/[.]png$/, '-cube.png'));
@@ -2408,7 +2408,7 @@ async function layersWithRealInput(picture: string) {
   await clickOn('.menubar-item:nth-child(1) > button');
   await clickMenu('Vzorové příklady');
   await clickMenu('Fyzika');
-  await clickMenu('2 Malý Pavlík');
+  await clickMenu('2 Rychlost a poloha');
   await pause(1500);
   const acrossTable = '.layer-view.active .block.datatable table.data-table';
   const acrossBefore = (await contents.executeJavaScript(`document.querySelector('${acrossTable}')?.classList.contains('across') ?? false`)) as boolean;

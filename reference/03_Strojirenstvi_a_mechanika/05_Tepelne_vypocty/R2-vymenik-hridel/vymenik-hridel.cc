@@ -1,4 +1,4 @@
-# Výměník a hřídel čerpadla
+# Tepelná bilance výměníku a hřídel na krut
 "Referenční výpočet R2: tepelná bilance deskového výměníku voda–voda a hřídel oběhového čerpadla."
 
 ## Tepelná bilance výměníku

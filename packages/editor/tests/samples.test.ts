@@ -7,8 +7,8 @@ describe('sample calculations shipped with the program', () => {
     expect(list.map((s) => `${s.field} ${s.id}`)).toEqual([
       '01 R7-kvadraticka-rovnice',
       '01 R8-quadratic-equation',
-      '02 R10-krychle-pod-vodou',
-      '02 R13-maly-pavlik',
+      '02 R10-stlaceni-hydrostatickym-tlakem',
+      '02 R13-rychlost-z-namereneho-zrychleni',
       '03 R9-klikovy-mechanismus',
       '03 R11-napeti-v-nosniku',
       '03 R12-prodlouzeni-dratu',

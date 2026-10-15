@@ -1,4 +1,4 @@
-# Krychle na dně pod vodou
+# Stlačení krychle hydrostatickým tlakem
 "Podle úlohy 2155 Sbírky řešených úloh z fyziky (reseneulohy.cz/2155). Ocelová krychle o hraně 0,1 m je ponořena do vody až na vodorovné dno v hloubce 0,3 m. Modul pružnosti v tahu je 210 GPa. O kolik se zmenší její objem? Obrázek je vlastní."
 
 ## Zápis

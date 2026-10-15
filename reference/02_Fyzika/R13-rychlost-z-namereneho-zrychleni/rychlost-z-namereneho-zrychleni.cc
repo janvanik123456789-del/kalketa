@@ -1,4 +1,4 @@
-# Malý Pavlík
+# Rychlost a poloha z naměřeného zrychlení
 "Podle úlohy 112 Sbírky řešených úloh z fyziky (reseneulohy.cz/112; původně Mandíková, Rojko: Soubor úloh z mechaniky, MFF UK 1994). Malý Pavlík se rozjel na kole po přímé cestě. Závislost jeho zrychlení na čase udává tabulka. Narýsujte graf, určete tvar funkce a(t) a odtud průběh rychlosti a polohy. V čase 0 s byl Pavlík v klidu v počátku. Časy jsou převedené do sekund (sbírka je má v desetinách sekundy). Obrázek je vlastní."
 
 ## Zápis

@@ -1,0 +1,27 @@
+{
+  "sheet": "krychle-pod-vodou.cc",
+  "verifiedBy": "Úloha 2155 Sbírky řešených úloh z fyziky (výsledek −3,27·10⁻¹¹ m³) a samostatný výpočet v Pythonu: vzorec (9) ΔV = −ρ·g·a³·(3·h − 2·a)/E a integrál (8) Simpsonovým pravidlem na 1000 dílcích, oba se shodují na 12 míst.",
+  "relativeTolerance": 1e-09,
+  "values": {
+    "p_s": {
+      "value": 1.9619999999999997,
+      "unit": "kPa"
+    },
+    "ε_zz": {
+      "value": -9.342857142857141e-09,
+      "unit": ""
+    },
+    "ΔV": {
+      "value": -3.270000000000001e-11,
+      "unit": "m³"
+    },
+    "ΔV_abs": {
+      "value": 0.03270000000000001,
+      "unit": "mm³"
+    },
+    "ΔV_rel": {
+      "value": -3.27e-08,
+      "unit": ""
+    }
+  }
+}

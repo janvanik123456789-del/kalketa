@@ -22,6 +22,14 @@ describe('relations', () => {
     expect(codes('relation dV - dV_0 == (2·ε_xx + ε_zz)·dV_0\nderive dV == dV_0·(1 + ε_xx + ε_zz)')).toEqual(['E-DERIVE-STEP']);
   });
 
+  it('let a step follow from two relations at once, the later one moving a name of the earlier (cube under water, (3) and (4))', () => {
+    const sheet = 'relation dV - dV_0 == (ε_xx + ε_yy + ε_zz)·dV_0 {eq=3}\nrelation ε_yy == ε_xx\nderive dV - dV_0 == (2·ε_xx + ε_zz)·dV_0';
+    expect(codes(sheet)).toEqual([]);
+    expect(result(sheet, 3).derivation).toEqual([{ ok: true, relation: { line: 2 } }]);
+    // Without the second relation it does not follow.
+    expect(codes('relation dV - dV_0 == (ε_xx + ε_yy + ε_zz)·dV_0\nderive dV - dV_0 == (2·ε_xx + ε_zz)·dV_0')).toEqual(['E-DERIVE-STEP']);
+  });
+
   it('keep identities as they were: a step that holds in general names no relation', () => {
     const r = result('relation x^2 + y^2 == r^2\nderive (x + y)^2 == x^2 + 2·x·y + y^2', 2);
     expect(r.derivation).toEqual([{ ok: true }]);

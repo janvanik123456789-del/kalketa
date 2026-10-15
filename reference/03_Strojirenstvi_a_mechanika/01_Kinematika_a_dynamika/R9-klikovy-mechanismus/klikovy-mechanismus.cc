@@ -45,7 +45,7 @@ F_D(φ) := π/4·((d^2 - d_T^2)·p_D(φ) + d_T^2·p_at)
 k(φ) := ω_n^2·r·(cos(φ) + r/o·cos(2·φ))
 F_s(φ) := -k(φ)·m_p
 F_p(φ) := F_H(φ) - F_D(φ) + F_s(φ)
-![Síly v klikovém mechanismu: síla na píst F_p, síla v ojnici F_l, síla na vedení F_k, otáčivá složka F_M a moment M_p](images/sily.svg){width=90%}
+![Síly v klikovém mechanismu: síla na píst, síla v ojnici, síla na vedení pístní tyče a otáčivá složka síly v ojnici, která dává kroutící moment](images/sily.svg){width=90%}
 "Síla v ojnici a síla na vedení pístní tyče (Rovnice 764; síla v ojnici je F_p / cos γ, takže F_k = F_p·tg γ):"
 F_l(φ) := F_p(φ)/cos(γ(φ))
 F_k(φ) := F_l(φ)·sin(γ(φ))
@@ -100,7 +100,7 @@ n_min := n_s - Δn/2 | s^-1
 "Kinetická energie soustrojí; rozkmit práce ΔA je z ní jen nepatrná část (2·N), proto otáčky skoro nekolísají:"
 E_k := J·ω_s^2/2 | kJ
 "Takový moment setrvačnosti má plný ocelový kotouč průměru D_s, šířky b_s a hmotnosti m_s:"
-![Setrvačník jako plný ocelový kotouč: průměr D_s, šířka b_s, obvodová rychlost v_s](images/setrvacnik.svg){width=70%}
+![Setrvačník jako plný ocelový kotouč: průměr, šířka a obvodová rychlost](images/setrvacnik.svg){width=70%}
 D_s := 0.5 m
 ρ_s := 7850 kg/m^3
 b_s := 32·J/(π·ρ_s·D_s^4) | mm     ' z J = π·ρ·b·D⁴/32

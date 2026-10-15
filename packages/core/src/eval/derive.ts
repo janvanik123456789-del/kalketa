@@ -97,9 +97,16 @@ export function checkDerivation(
   // The symbols of theory met (no value in the sheet): a ≐ step may hold when they, or one of them, get small.
   const symbols = new Set<string>();
   // The relations as the members are: their sides with the same opaque parts.
-  const holding = relations.flatMap((r) =>
-    r.expr.kind === 'binary' ? [{ relation: r, left: opaqueParts(r.expr.left, own, evaluate, atoms, keys), right: opaqueParts(r.expr.right, own, evaluate, atoms, keys), names: namesIn(r.expr) }] : [],
-  );
+  // Only those that share a name with the members, and whose names are values or symbols here: a name the
+  // sheet has made a function since (ε_xx(z) := … below relation dV − dV₀ = (2·ε_xx + ε_zz)·dV₀) is not that symbol.
+  const memberNames = new Set(members.flatMap((m) => [...namesIn(m)]));
+  const holding = relations.flatMap((r) => {
+    if (r.expr.kind !== 'binary') return [];
+    const names = namesIn(r.expr);
+    if (![...names].some((n) => memberNames.has(n))) return [];
+    if ([...names].some((n) => { const v = tryValue(() => ctx.lookup(n, r.expr.span)); return v !== undefined && v.type !== 'quantity'; })) return [];
+    return [{ relation: r, left: opaqueParts(r.expr.left, own, evaluate, atoms, keys), right: opaqueParts(r.expr.right, own, evaluate, atoms, keys), names }];
+  });
   type Holding = (typeof holding)[number];
   // Symbols of a relation vary like parameters, in the dimension the relation gives them (x, y of x² + y² = r² with r in m: lengths).
   const loose = [...new Set(holding.flatMap((h) => [...h.names]))].filter((n) => !params.includes(n) && !formula(n) && !tryValue(() => ctx.lookup(n, members[0]!.span)));
@@ -134,31 +141,42 @@ export function checkDerivation(
     };
     const at: EvalContext = { ...ctx, warnings: [], lookup };
     // Each relation made to hold: one of its names (one of the step first) calculated from the others.
-    const adjusted = new Set<string>();
+    const solveFor = (h: Holding, name: string): boolean => {
+      const start = tryValue(() => lookup(name, h.relation.expr.span));
+      if (start?.type !== 'quantity' || start.im) return false;
+      const gap = (si: number): number | undefined => {
+        known.set(name, { ...start, si });
+        for (const c of calculated) known.delete(c);
+        calculated.clear();
+        const [l, r] = [tryValue(() => evaluate(h.left, at)), tryValue(() => evaluate(h.right, at))];
+        if (l?.type !== 'quantity' || r?.type !== 'quantity' || l.im || r.im || !sameDim(l.dim, r.dim)) return undefined;
+        const scale = Math.max(Math.abs(l.si), Math.abs(r.si), Number.MIN_VALUE);
+        return (l.si - r.si) / scale;
+      };
+      const root = secant(gap, start.si);
+      if (root === undefined) {
+        known.set(name, start);
+        return false;
+      }
+      gap(root);
+      return true;
+    };
+    const chosen: [Holding, string][] = [];
     for (const h of under) {
-      const candidates = [...h.names].filter((n) => !adjusted.has(n) && !formula(n)).sort((a, b) => Number(prefer.has(b)) - Number(prefer.has(a)));
-      const done = candidates.find((name) => {
-        const start = tryValue(() => lookup(name, h.relation.expr.span));
-        if (start?.type !== 'quantity' || start.im) return false;
-        const gap = (si: number): number | undefined => {
-          known.set(name, { ...start, si });
-          for (const c of calculated) known.delete(c);
-          calculated.clear();
-          const [l, r] = [tryValue(() => evaluate(h.left, at)), tryValue(() => evaluate(h.right, at))];
-          if (l?.type !== 'quantity' || r?.type !== 'quantity' || l.im || r.im || !sameDim(l.dim, r.dim)) return undefined;
-          const scale = Math.max(Math.abs(l.si), Math.abs(r.si), Number.MIN_VALUE);
-          return (l.si - r.si) / scale;
-        };
-        const root = secant(gap, start.si);
-        if (root === undefined) {
-          known.set(name, start);
-          return false;
-        }
-        gap(root);
-        return true;
-      });
+      const taken = new Set(chosen.map(([, n]) => n));
+      const candidates = [...h.names].filter((n) => !taken.has(n) && !formula(n)).sort((a, b) => Number(prefer.has(b)) - Number(prefer.has(a)));
+      const done = candidates.find((name) => solveFor(h, name));
       if (done === undefined) return rewritten.map(() => undefined);
-      adjusted.add(done);
+      chosen.push([h, done]);
+    }
+    // A later relation may move a name an earlier one was solved with (ε_yy = ε_xx after dV − dV₀ = (ε_xx + ε_yy + ε_zz)·dV₀):
+    // solved again in turn until they all hold together.
+    const holds = ([h]: [Holding, string]) => {
+      const [l, r] = [tryValue(() => evaluate(h.left, at)), tryValue(() => evaluate(h.right, at))];
+      return l?.type === 'quantity' && r?.type === 'quantity' && equal(l, r, RELATED * 1e-3);
+    };
+    for (let round = 0; round < 30 && !chosen.every(holds); round++) {
+      for (const [h, name] of chosen) if (!solveFor(h, name)) return rewritten.map(() => undefined);
     }
     return (sides ? [...rewritten, ...holding.flatMap((h) => [h.left, h.right])] : rewritten).map((m) => {
       const value = tryValue(() => evaluate(m, at));

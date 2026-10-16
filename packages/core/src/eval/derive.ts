@@ -27,6 +27,7 @@ import { quantity, type Quantity, type Value } from '../values/value.js';
 import type { EvalContext } from './evaluator.js';
 import { FUNCTION_NAMES } from './functions.js';
 import { TABLE_FUNCTIONS } from './tables.js';
+import { symbolDimensions } from './symbolDims.js';
 
 type Evaluate = (expr: Expr, ctx: EvalContext) => Value;
 
@@ -99,14 +100,30 @@ export function checkDerivation(
   // The relations as the members are: their sides with the same opaque parts.
   // Only those that share a name with the members, and whose names are values or symbols here: a name the
   // sheet has made a function since (ε_xx(z) := … below relation dV − dV₀ = (2·ε_xx + ε_zz)·dV₀) is not that symbol.
+  // Also those that reach the members through symbols of other relations (dF == dF_1 − dF_2, dF_1 == p·dS, …),
+  // a chain of theory; values of the sheet (ρ, g) link nothing, else every relation would count.
   const memberNames = new Set(members.flatMap((m) => [...namesIn(m)]));
-  const holding = relations.flatMap((r) => {
-    if (r.expr.kind !== 'binary') return [];
-    const names = namesIn(r.expr);
-    if (![...names].some((n) => memberNames.has(n))) return [];
-    if ([...names].some((n) => { const v = tryValue(() => ctx.lookup(n, r.expr.span)); return v !== undefined && v.type !== 'quantity'; })) return [];
-    return [{ relation: r, left: opaqueParts(r.expr.left, own, evaluate, atoms, keys), right: opaqueParts(r.expr.right, own, evaluate, atoms, keys), names }];
-  });
+  const valueOf = (n: string, span: Span) => tryValue(() => ctx.lookup(n, span));
+  const usable = relations.filter((r) => r.expr.kind === 'binary' && ![...namesIn(r.expr)].some((n) => { const v = valueOf(n, r.expr.span); return v !== undefined && v.type !== 'quantity'; }));
+  const reached = new Set(memberNames);
+  const taken = new Set<SheetRelation>();
+  for (let grew = true; grew; ) {
+    grew = false;
+    for (const r of usable) {
+      if (taken.has(r)) continue;
+      const names = [...namesIn(r.expr)];
+      if (!names.some((n) => reached.has(n) && (memberNames.has(n) || valueOf(n, r.expr.span) === undefined))) continue;
+      taken.add(r);
+      for (const n of names) if (valueOf(n, r.expr.span) === undefined) reached.add(n);
+      grew = true;
+    }
+  }
+  const holding = usable
+    .filter((r) => taken.has(r))
+    .map((r) => {
+      const expr = r.expr as Extract<Expr, { kind: 'binary' }>;
+      return { relation: r, left: opaqueParts(expr.left, own, evaluate, atoms, keys), right: opaqueParts(expr.right, own, evaluate, atoms, keys), names: namesIn(r.expr) };
+    });
   type Holding = (typeof holding)[number];
   // Symbols of a relation vary like parameters, in the dimension the relation gives them (x, y of x² + y² = r² with r in m: lengths).
   const loose = [...new Set(holding.flatMap((h) => [...h.names]))].filter((n) => !params.includes(n) && !formula(n) && !tryValue(() => ctx.lookup(n, members[0]!.span)));
@@ -184,15 +201,29 @@ export function checkDerivation(
     });
   };
   if (varying.length > 0) {
-    paramDims = dimensionsOfParams(varying, [...members, ...holding.map((h) => h.relation.expr)], ctx, evaluate, (dims) => {
-      paramDims = dims;
-      const values = sample(0, () => 1, [], new Set(), true);
-      const relationsAgree = holding.every((_, k) => {
+    // What the sheet's members and relations say about the dimensions of their symbols (dF a force, y a length).
+    const relationsAgree = (values: readonly (Quantity | undefined)[]) =>
+      holding.every((_, k) => {
         const [l, r] = [values[members.length + 2 * k], values[members.length + 2 * k + 1]];
         return !!l && !!r && sameDim(l.dim, r.dim);
       });
-      return relationsAgree && (params.length === 0 || values.slice(0, members.length).every(Boolean));
-    });
+    const fits = () => {
+      const values = sample(0, () => 1, [], new Set(), true);
+      return relationsAgree(values) && (params.length === 0 || values.slice(0, members.length).every(Boolean));
+    };
+    const equations = [
+      ...members.slice(1).map((m, i) => [members[i]!, m] as const),
+      ...holding.flatMap((h) => (h.relation.expr.kind === 'binary' ? [[h.relation.expr.left, h.relation.expr.right] as const] : [])),
+    ];
+    const solved = symbolDimensions(varying, equations, (name) => tryValue(() => ctx.lookup(name, members[0]!.span)), (literal) => tryValue(() => evaluate(literal, ctx)));
+    if (solved) paramDims = solved;
+    // Else, or where they leave it open: tried from the dimensions of the names around, one combination after another.
+    if (!solved || !fits()) {
+      paramDims = dimensionsOfParams(varying, [...members, ...holding.map((h) => h.relation.expr)], ctx, evaluate, (dims) => {
+        paramDims = dims;
+        return fits();
+      });
+    }
   }
   const points = Array.from({ length: SAMPLES }, (_, i) => sample(i));
   // All the symbols small (γ ≐ tg γ), or one of them (Δl ≪ l in atan(Δl/l) ≐ Δl/l).
@@ -210,7 +241,8 @@ export function checkDerivation(
   // A step that is no identity, tried where the relations above hold that share names with it.
   const followsFrom = (i: number): DerivationStep['relation'] | undefined => {
     const names = new Set([...namesIn(members[i]!), ...namesIn(members[i + 1]!)]);
-    const under = holding.filter((h) => [...h.names].some((n) => names.has(n)));
+    // The relations reached from the members (chained through symbols), not only those sharing a name with this step.
+    const under = holding.some((h) => [...h.names].some((n) => names.has(n))) ? holding : [];
     if (under.length === 0) return undefined;
     let compared = 0;
     for (let point = 0; point < SAMPLES; point++) {

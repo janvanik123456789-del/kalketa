@@ -30,6 +30,19 @@ describe('relations', () => {
     expect(codes('relation dV - dV_0 == (ε_xx + ε_yy + ε_zz)·dV_0\nderive dV - dV_0 == (2·ε_xx + ε_zz)·dV_0')).toEqual(['E-DERIVE-STEP']);
   });
 
+  it('follow a chain of relations through their symbols, the dimensions worked out from them (water on a dam)', () => {
+    const sheet = [
+      'ρ := 1000 kg/m^3', 'g := 9.81 m/s^2', 'l := 100 m',
+      'relation dS == l·dy', 'relation p == p_h + p_a', 'relation dF_1 == p·dS', 'relation dF_2 == p_a·dS',
+      'relation dF == dF_1 - dF_2', 'relation p_h == ρ·g·y',
+      'derive dF == ρ·g·y·l·dy',
+    ].join('\n');
+    expect(codes(sheet)).toEqual([]);
+    expect(result(sheet, 10).derivation).toEqual([{ ok: true, relation: { line: 9 } }]);
+    // A step that does not follow from the chain is still wrong.
+    expect(codes(sheet.replace('derive dF == ρ·g·y·l·dy', 'derive dF == 2·ρ·g·y·l·dy'))).toEqual(['E-DERIVE-STEP']);
+  });
+
   it('keep identities as they were: a step that holds in general names no relation', () => {
     const r = result('relation x^2 + y^2 == r^2\nderive (x + y)^2 == x^2 + 2·x·y + y^2', 2);
     expect(r.derivation).toEqual([{ ok: true }]);

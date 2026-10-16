@@ -1,0 +1,19 @@
+{
+  "sheet": "sila-vody-na-hraz.cc",
+  "verifiedBy": "Úloha 1152 Sbírky řešených úloh z fyziky (F = ρ·g·l·h²/2, M = ρ·g·l·h³/6, H = h/3) a samostatný výpočet v Pythonu: součet sil a momentů 100 000 vodorovných pruhů (středová metoda) souhlasí se vzorci.",
+  "relativeTolerance": 1e-09,
+  "values": {
+    "F": {
+      "value": 441.45,
+      "unit": "MN"
+    },
+    "M": {
+      "value": 4414.5,
+      "unit": "MN·m"
+    },
+    "H": {
+      "value": 10.0,
+      "unit": "m"
+    }
+  }
+}

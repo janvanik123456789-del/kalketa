@@ -782,7 +782,15 @@ function numberEquations(blocks: PrintBlock[], result: SheetResult, mode: Equati
     return { ...block, number };
   });
   // A derivation following from a numbered relation names it by its number: (3).
-  const withRelations = numbered.map((block) => (block.kind === 'equation' && block.follows ? { ...block, follows: block.follows.map((name) => (names.has(name) ? `(${names.get(name)})` : name)) } : block));
+  const byLine = new Map(numbered.flatMap((block) => (block.kind === 'equation' && block.number !== undefined ? [[block.line, block.number] as const] : [])));
+  const relationNumber = (name: string) => {
+    if (names.has(name)) return `(${names.get(name)})`;
+    const line = /^@(\d+)$/.exec(name)?.[1];
+    if (line === undefined) return name;
+    const n = byLine.get(Number(line));
+    return n === undefined ? '' : `(${n})`;
+  };
+  const withRelations = numbered.map((block) => (block.kind === 'equation' && block.follows ? { ...block, follows: block.follows.map(relationNumber) } : block));
   if (names.size === 0) return withRelations;
   // (#hooke) in text and headings: the number of the equation so named; an unknown name stays visible.
   const refer = (text: string) => text.replace(/\(#([\p{L}_][\p{L}\p{N}_]*)\)/gu, (whole, name: string) => (names.has(name) ? `(${names.get(name)})` : whole));
@@ -791,7 +799,8 @@ function numberEquations(blocks: PrintBlock[], result: SheetResult, mode: Equati
 
 /** The relations the steps of a derivation follow from, by name ("" for one without), each once; none when they hold in general. */
 function followsFrom(r: StatementResult): string[] | undefined {
-  const names = [...new Set((r.derivation ?? []).flatMap((step) => (step.relation ? [step.relation.label ?? ''] : [])))];
+  // A relation without a name stands by its line ("@12"): numbered, it is named by its number.
+  const names = [...new Set((r.derivation ?? []).flatMap((step) => (step.relation ? [step.relation.label ?? `@${step.relation.line}`] : [])))];
   return names.length > 0 ? names : undefined;
 }
 

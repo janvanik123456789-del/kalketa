@@ -1,6 +1,6 @@
 # Referenční výpočty
 
-Každý referenční výpočet (R1–R15, viz docs/01-filozofie.md, kap. 10) má vlastní složku
+Každý referenční výpočet (R1–R16, viz docs/01-filozofie.md, kap. 10) má vlastní složku
 s listem a nezávisle ověřenými očekávanými výsledky (s tolerancí a zdrojem ověření).
 Program je nabízí jako vzorové příklady (Soubor → Vzorové příklady), tříděné podle oboru.
 
@@ -45,6 +45,7 @@ Jádro je hotové, až projdou všechny bez kódu specifického pro jeden obor.
 | 02_Fyzika/R10-stlaceni-hydrostatickym-tlakem | fyzik | reálná úloha (Sbírka řešených úloh, č. 2155): hydrostatický tlak, Hookův zákon, diferenciály jako vztahy (`relation`) a odvození z nich, trojný integrál přes objem, čísla rovnic (1)–(9) jako ve sbírce |
 | 02_Fyzika/R13-rychlost-z-namereneho-zrychleni | fyzik | reálná úloha (Sbírka řešených úloh, č. 112): naměřená tabulka v listu, přímka směrnicí i metodou nejmenších čtverců, rychlost a poloha integrací s ověřeným odvozením, grafy bodů a průběhů |
 | 03_…/04_Technicke_tekutiny/R15-vytok-z-nadrze | strojař | reálná úloha (Sbírka řešených úloh, č. 1154): Bernoulliho rovnice a rovnice kontinuity jako vztahy, Torricelliho vzorec odvozený z nich, doba vyprázdnění integrálem, průběh hladiny a výtoku v grafech; **teorie ve vrstvě Podklady** (`podklady.md`, vzorce v ```` ```kalk ```` ověřené testem) |
+| 03_…/01_Kinematika_a_dynamika/R16-raketa | strojař | reálná úloha (Sbírka řešených úloh, č. 2311): Meščerského rovnice jako vztah, největší spotřeba paliva odvozená z podmínky zrychlení na konci hoření, konečná rychlost integrálem zrychlení = Ciolkovského rovnice se ztrátou tíhou, výška dohoření, kontrola tahu na startu; teorie v Podkladech (odvození z bilance hybnosti, tah, přetížení posádky) |
 | 03_…/04_Technicke_tekutiny/R14-sila-vody-na-hraz | strojař | reálná úloha (Sbírka řešených úloh, č. 1152), obecná: tlakové síly na pruh hráze jako řetěz vztahů, odvození síly a momentu z něj, integrály přes výšku, působiště h/3; ukázková čísla a grafy tlaku a zatížení |
 | 03_…/02_Pevnost_a_pruznost/R11-napeti-v-nosniku | strojař | reálná úloha (Sbírka řešených úloh, č. 2159): rovnováha jako vztahy a reakce z nich odvozené, průběh momentu s podmínkou, kvadratický moment dvojným integrálem, ohybová čára obou průřezů, napětí po výšce průřezu, grafy; odhalí chybné znaménko ve vzorci (10) sbírky |
 | 03_…/02_Pevnost_a_pruznost/R12-prodlouzeni-dratu | strojař | reálná úloha (Sbírka řešených úloh, č. 2091): tíha části drátu jako vztah, napětí a poměrné prodloužení jako odvozené funkce, prodloužení integrálem, grafy napětí a prodloužení po délce |

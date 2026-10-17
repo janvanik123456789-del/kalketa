@@ -1,0 +1,14 @@
+{
+  "sheet": "raketa.cc",
+  "verifiedBy": "Úloha 2311 Sbírky řešených úloh z fyziky (113 kg/s, 106 s, ≐ 6000 km/h) a samostatný výpočet v Pythonu: let simulovaný krok po kroku (Runge–Kutta, 200 000 kroků) z Meščerského rovnice až do vyhoření paliva, rychlost i výška na jeho konci.",
+  "relativeTolerance": 0.0001,
+  "values": {
+    "q_max": { "value": 113.0112, "unit": "kg/s" },
+    "τ": { "value": 106.18416581719333, "unit": "s" },
+    "v_max": { "value": 5979.550745333442, "unit": "km/h" },
+    "F_t": { "value": 156.96, "unit": "kN" },
+    "a_0": { "value": 1.4014285714285712, "unit": "m/s²" },
+    "h_k": { "value": 44.34392960237758, "unit": "km" }
+  },
+  "checks": [{ "label": "tah zvedne plnou raketu", "passed": true }]
+}

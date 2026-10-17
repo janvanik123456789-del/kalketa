@@ -181,13 +181,16 @@ export function checkDerivation(
       return true;
     };
     const chosen: [Holding, string][] = [];
+    // Symbols of theory first (those of the step before the others), values of the sheet (g, h_1) last;
+    // of these, the name in the fewest relations: solving m·dv/dt == −m·g − v_R·dm/dt for dt, which dv/dt == n·g
+    // and dm/dt == −q share, makes the rounds below swing apart instead of settling.
+    const relationsWith = (n: string) => under.filter((h) => h.names.has(n)).length;
+    const rank = (n: string) => 4 * ((varying.includes(n) ? 0 : 2) + (prefer.has(n) ? 0 : 1)) + Math.min(relationsWith(n), 3);
     // The simple relations first (p_1 == p_a, y_3 == 0 m): a relation of many symbols (Bernoulli's) solved before them
     // may have no real solution for the name it is wanted for, and take another name that the others then contradict.
     const symbolsOf = (h: Holding) => [...h.names].filter((n) => varying.includes(n)).length;
     for (const h of [...under].sort((a, b) => symbolsOf(a) - symbolsOf(b))) {
       const taken = new Set(chosen.map(([, n]) => n));
-      // Symbols of theory first (those of the step before the others), values of the sheet (g, h_1) last.
-      const rank = (n: string) => (varying.includes(n) ? 0 : 2) + (prefer.has(n) ? 0 : 1);
       const candidates = [...h.names].filter((n) => !taken.has(n) && !formula(n)).sort((a, b) => rank(a) - rank(b));
       const done = candidates.find((name) => solveFor(h, name));
       if (done === undefined) return rewritten.map(() => undefined);
@@ -203,6 +206,8 @@ export function checkDerivation(
     for (let round = 0; round < 30 && !chosen.every(holds); round++) {
       for (const [h, name] of chosen) if (!solveFor(h, name)) return rewritten.map(() => undefined);
     }
+    // Relations that do not hold together say nothing about the step.
+    if (!chosen.every(holds)) return rewritten.map(() => undefined);
     return (sides ? [...rewritten, ...holding.flatMap((h) => [h.left, h.right])] : rewritten).map((m) => {
       const value = tryValue(() => evaluate(m, at));
       return value?.type === 'quantity' ? value : undefined;

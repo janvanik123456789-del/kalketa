@@ -43,6 +43,17 @@ describe('relations', () => {
     expect(codes(sheet.replace('derive dF == ρ·g·y·l·dy', 'derive dF == 2·ρ·g·y·l·dy'))).toEqual(['E-DERIVE-STEP']);
   });
 
+  it('solve each relation for its name in the fewest others, so that they settle together (the rocket at burnout)', () => {
+    // dt is in three relations: Meščerskij's solved for it would swing apart against dv/dt == n·g.
+    const sheet = [
+      'M_r := 2 t', 'v_R := 5000 km/h', 'n := 7', 'g := 9.81 m/s^2',
+      'relation m·dv/dt == -m·g - v_R·dm/dt', 'relation dm/dt == -q', 'relation m == M_r', 'relation dv/dt == n·g',
+      'derive q == (n + 1)·g·M_r/v_R',
+    ].join('\n');
+    expect(codes(sheet)).toEqual([]);
+    expect(codes(sheet.replace('(n + 1)·g', 'n·g'))).toEqual(['E-DERIVE-STEP']);
+  });
+
   it('keep identities as they were: a step that holds in general names no relation', () => {
     const r = result('relation x^2 + y^2 == r^2\nderive (x + y)^2 == x^2 + 2·x·y + y^2', 2);
     expect(r.derivation).toEqual([{ ok: true }]);

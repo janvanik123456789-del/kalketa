@@ -2418,8 +2418,24 @@ async function layersWithRealInput(picture: string) {
   await pause(800);
   const acrossAfter = (await contents.executeJavaScript(`document.querySelector('${acrossTable}')?.classList.contains('across') ?? true`)) as boolean;
   const across = { before: acrossBefore, after: acrossAfter };
+  // A sample with its theory: the sources layer comes with it.
+  await clickOn('.menubar-item:nth-child(1) > button');
+  await clickMenu('Vzorové příklady');
+  await clickMenu('Strojírenství a mechanika');
+  await clickMenu('Technické tekutiny');
+  await clickMenu('2 Výtok vody z nádrže');
+  await pause(2000);
+  const theoryTab = (await contents.executeJavaScript(`[...document.querySelectorAll('.layer-tab')].map((t) => t.textContent.trim()).filter((t) => t.includes('Podklady')).length`)) as number;
+  const tankErrors = (await contents.executeJavaScript(`document.querySelectorAll('.layer-view.active .page .row.has-error').length`)) as number;
+  await contents.executeJavaScript(`[...document.querySelectorAll('.layer-tab')].find((t) => t.textContent.includes('Podklady'))?.setAttribute('data-smoke-theory', '')`);
+  await clickOn('[data-smoke-theory]');
+  await pause(1500);
+  // A formula that holds and has no note of the AI shows as printed, without its mark: count the blocks and the bad marks.
+  const theoryChecks = (await contents.executeJavaScript(`({ blocks: document.querySelectorAll('.layer-view.active .kalk-block').length, bad: document.querySelectorAll('.layer-view.active .kalk-check.bad').length })`)) as { blocks: number; bad: number };
+  await takePicture(picture.replace(/[.]png$/, '-theory.png'));
   const quadraticSample = {
     crank,
+    theory: { theoryTab, tankErrors, theoryChecks },
     across,
     beam,
     slowTyping,
@@ -2428,7 +2444,7 @@ async function layersWithRealInput(picture: string) {
     after: sampleAfter,
     outOfDomain,
     english,
-    ok: !!thumb && sampleBefore.errors === 0 && sampleAfter.errors === 0 && sampleBefore.a !== '' && sampleAfter.a !== sampleBefore.a && sampleAfter.roots !== sampleBefore.roots && outOfDomain.drawn && !outOfDomain.area && outOfDomain.roots === 0 && !outOfDomain.error && outOfDomain.warned && english.head === 'Quadratic equation' && english.verdicts.length === 5 && english.verdicts.every((v) => v.endsWith('OK')) && english.errors === 0 && crank.pictures === 4 && crank.charts === 3 && crank.errors === 0 && crank.verdict.endsWith('VYHOVUJE') && slowTyping.waitingShown && slowTyping.settled && cube.pictures === 1 && cube.derived >= 5 && cube.errors === 0 && beam.pictures === 3 && beam.charts >= 4 && beam.errors === 0 && across.before && !across.after,
+    ok: !!thumb && sampleBefore.errors === 0 && sampleAfter.errors === 0 && sampleBefore.a !== '' && sampleAfter.a !== sampleBefore.a && sampleAfter.roots !== sampleBefore.roots && outOfDomain.drawn && !outOfDomain.area && outOfDomain.roots === 0 && !outOfDomain.error && outOfDomain.warned && english.head === 'Quadratic equation' && english.verdicts.length === 5 && english.verdicts.every((v) => v.endsWith('OK')) && english.errors === 0 && crank.pictures === 4 && crank.charts === 3 && crank.errors === 0 && crank.verdict.endsWith('VYHOVUJE') && slowTyping.waitingShown && slowTyping.settled && cube.pictures === 1 && cube.derived >= 5 && cube.errors === 0 && beam.pictures === 3 && beam.charts >= 4 && beam.errors === 0 && across.before && !across.after && theoryTab >= 1 && tankErrors === 0 && theoryChecks.blocks >= 4 && theoryChecks.bad === 0,
   };
   const userChart = { namedArea, quadOk, quadTarget, quadEnd, quadEditing, ok: namedArea === 'Integral1=27' && quadOk && quadTarget > 0 && Math.abs(quadEnd - quadTarget) < 12 };
   // Relations: a circle solved by its name, a derivation following from a relation of theory, and the circle

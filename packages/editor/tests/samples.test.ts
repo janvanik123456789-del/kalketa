@@ -13,6 +13,7 @@ describe('sample calculations shipped with the program', () => {
       '03 R11-napeti-v-nosniku',
       '03 R12-prodlouzeni-dratu',
       '03 R14-sila-vody-na-hraz',
+      '03 R15-vytok-z-nadrze',
       '03 R2-vymenik-hridel',
       '04 R1-nosnik',
       '05 R4-kabel',
@@ -37,6 +38,10 @@ describe('sample calculations shipped with the program', () => {
     expect(pictures).toHaveLength(4);
     for (const path of pictures) expect(new TextDecoder().decode(crank.files.get(path))).toContain('<svg');
     expect(exampleDocument('R7-kvadraticka-rovnice').manifest).toMatchObject({ language: 'cs', title: 'Vzor – Kvadratická rovnice' });
+    // A sample with theory brings it as a sources layer.
+    const tank = exampleDocument('R15-vytok-z-nadrze');
+    expect(tank.layers.find((l) => l.kind === 'sources')?.text).toContain('## Bernoulliho rovnice');
+    expect(exampleDocument('R1-nosnik').layers.some((l) => l.kind === 'sources')).toBe(false);
   });
 
   it('open as a new document with their tables and a title that says it is a sample', () => {

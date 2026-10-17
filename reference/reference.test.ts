@@ -89,3 +89,27 @@ describe.each(cases)('$name', ({ dir, file }) => {
     expect(Math.abs(got - want.value)).toBeLessThanOrEqual(Math.abs(want.value) * expected.relativeTolerance);
   });
 });
+
+// The theory beside a sample (podklady.md): every formula in it (```kalk) holds as written.
+const notes = folders(ROOT).flatMap((field) => {
+  const found: { name: string; path: string }[] = [];
+  const walk = (dir: string, depth: number) => {
+    for (const name of folders(dir)) {
+      const here = join(dir, name);
+      if (existsSync(join(here, 'podklady.md'))) found.push({ name, path: join(here, 'podklady.md') });
+      else if (depth > 0) walk(here, depth - 1);
+    }
+  };
+  walk(join(ROOT, field), 1);
+  return found;
+});
+
+describe.each(notes)('$name/podklady.md', ({ path }) => {
+  const blocks = [...readFileSync(path, 'utf8').matchAll(/```kalk\r?\n([\s\S]*?)```/g)].map((m) => m[1]!);
+  it('has formulas to check', () => {
+    expect(blocks.length).toBeGreaterThan(0);
+  });
+  it.each(blocks.map((block, i) => [i + 1, block] as const))('formula %i holds', (_, block) => {
+    expect(evaluateSheet(block).diagnostics.filter((d) => d.severity !== 'info')).toEqual([]);
+  });
+});

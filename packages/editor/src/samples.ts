@@ -13,6 +13,8 @@ const SAMPLE_SHEETS = import.meta.glob<string>('../../../reference/*/**/*.cc', {
 const SAMPLE_TABLES = import.meta.glob<string>('../../../reference/*/**/tables/*/{schema.json,data.csv}', { query: '?raw', import: 'default', eager: true });
 // Its pictures, drawings of its own (images/mechanismus.svg in the sheet).
 const SAMPLE_IMAGES = import.meta.glob<string>('../../../reference/*/**/images/*.svg', { query: '?raw', import: 'default', eager: true });
+// Its sources layer (theory, in the Markdown of notes): podklady.md beside the sheet.
+const SAMPLE_NOTES = import.meta.glob<string>('../../../reference/*/**/podklady.md', { query: '?raw', import: 'default', eager: true });
 // The names of a subfield, kept beside its cases: nazev.json {"cs": "Kinematika a dynamika", "en": "Kinematics and dynamics"}.
 const SUBFIELD_NAMES = import.meta.glob<string>('../../../reference/*/*/nazev.json', { query: '?raw', import: 'default', eager: true });
 
@@ -105,7 +107,10 @@ export function exampleDocument(id = DEFAULT_SAMPLE, prefix = 'Vzor'): SheetDocu
     if (folder === id && name) files.set(`images/${name}`, new TextEncoder().encode(text));
   }
   const file = /([^/]+)\.cc$/.exec(entry?.[0] ?? '')?.[1] ?? '';
-  return { ...base, manifest: { ...base.manifest, language: languageOf(file) }, tables, files };
+  // Theory beside the calculation: a sources layer (Podklady), after the layers of a new sheet.
+  const notes = Object.entries(SAMPLE_NOTES).find(([path]) => path.includes(`/${id}/`))?.[1];
+  const layers = notes === undefined ? base.layers : [...base.layers, { id: 'sources', kind: 'sources' as const, visible: true, locked: false, appendix: false, text: notes }];
+  return { ...base, manifest: { ...base.manifest, language: languageOf(file) }, tables, files, layers };
 }
 
 /** quadratic-equation.en → en; a sheet without a language in its name is Czech. */

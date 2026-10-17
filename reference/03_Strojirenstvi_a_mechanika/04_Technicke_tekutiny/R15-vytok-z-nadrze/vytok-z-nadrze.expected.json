@@ -1,0 +1,23 @@
+{
+  "sheet": "vytok-z-nadrze.cc",
+  "verifiedBy": "Úloha 1154 Sbírky řešených úloh z fyziky (v = 13,3 m/s, t ≐ 3160 s = 52,7 min) a samostatný výpočet v Pythonu: vyprazdňování simulované krok po kroku (Runge–Kutta, krok 0,01 s) až do prázdné nádrže, rychlost dopadu ze zachování energie.",
+  "relativeTolerance": 0.0001,
+  "values": {
+    "v_A": {
+      "value": 13.288340754210061,
+      "unit": "m/s"
+    },
+    "S_1": {
+      "value": 2.5446900494077327,
+      "unit": "m²"
+    },
+    "t_v": {
+      "value": 52.64828311864101,
+      "unit": "min"
+    },
+    "t_pol": {
+      "value": 925.2195064572434,
+      "unit": "s"
+    }
+  }
+}

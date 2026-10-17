@@ -158,6 +158,8 @@ export function checkDerivation(
     };
     const at: EvalContext = { ...ctx, warnings: [], lookup };
     // Each relation made to hold: one of its names (one of the step first) calculated from the others.
+    // The size of its sides when first solved, kept: relative to the sides as they go, y_3 == 0 m would never hold.
+    const scales = new Map<Holding, number>();
     const solveFor = (h: Holding, name: string): boolean => {
       const start = tryValue(() => lookup(name, h.relation.expr.span));
       if (start?.type !== 'quantity' || start.im) return false;
@@ -167,8 +169,8 @@ export function checkDerivation(
         calculated.clear();
         const [l, r] = [tryValue(() => evaluate(h.left, at)), tryValue(() => evaluate(h.right, at))];
         if (l?.type !== 'quantity' || r?.type !== 'quantity' || l.im || r.im || !sameDim(l.dim, r.dim)) return undefined;
-        const scale = Math.max(Math.abs(l.si), Math.abs(r.si), Number.MIN_VALUE);
-        return (l.si - r.si) / scale;
+        if (!scales.has(h)) scales.set(h, Math.max(Math.abs(l.si), Math.abs(r.si), Number.MIN_VALUE));
+        return (l.si - r.si) / scales.get(h)!;
       };
       const root = secant(gap, start.si);
       if (root === undefined) {
@@ -179,9 +181,14 @@ export function checkDerivation(
       return true;
     };
     const chosen: [Holding, string][] = [];
-    for (const h of under) {
+    // The simple relations first (p_1 == p_a, y_3 == 0 m): a relation of many symbols (Bernoulli's) solved before them
+    // may have no real solution for the name it is wanted for, and take another name that the others then contradict.
+    const symbolsOf = (h: Holding) => [...h.names].filter((n) => varying.includes(n)).length;
+    for (const h of [...under].sort((a, b) => symbolsOf(a) - symbolsOf(b))) {
       const taken = new Set(chosen.map(([, n]) => n));
-      const candidates = [...h.names].filter((n) => !taken.has(n) && !formula(n)).sort((a, b) => Number(prefer.has(b)) - Number(prefer.has(a)));
+      // Symbols of theory first (those of the step before the others), values of the sheet (g, h_1) last.
+      const rank = (n: string) => (varying.includes(n) ? 0 : 2) + (prefer.has(n) ? 0 : 1);
+      const candidates = [...h.names].filter((n) => !taken.has(n) && !formula(n)).sort((a, b) => rank(a) - rank(b));
       const done = candidates.find((name) => solveFor(h, name));
       if (done === undefined) return rewritten.map(() => undefined);
       chosen.push([h, done]);
@@ -190,7 +197,8 @@ export function checkDerivation(
     // solved again in turn until they all hold together.
     const holds = ([h]: [Holding, string]) => {
       const [l, r] = [tryValue(() => evaluate(h.left, at)), tryValue(() => evaluate(h.right, at))];
-      return l?.type === 'quantity' && r?.type === 'quantity' && equal(l, r, RELATED * 1e-3);
+      if (l?.type !== 'quantity' || r?.type !== 'quantity' || !sameDim(l.dim, r.dim)) return false;
+      return Math.abs(l.si - r.si) <= RELATED * 1e-3 * Math.max(Math.abs(l.si), Math.abs(r.si), scales.get(h) ?? 0);
     };
     for (let round = 0; round < 30 && !chosen.every(holds); round++) {
       for (const [h, name] of chosen) if (!solveFor(h, name)) return rewritten.map(() => undefined);

@@ -44,7 +44,7 @@ describe('the briefing on writing a calculation', () => {
     const told = briefing({ language: 'cs', sheet, python: { numpy: false } });
     expect(told).toContain("Never write the sheet's formula again in Python");
     expect(told).toContain('Runge–Kutta 4');
-    const words: CheckWords = { title: 'T', quantity: 'Q', difference: 'D', states: { agree: 'a', differ: 'd', missing: 'm', units: 'u', unit: 'n' }, failed: 'F', declined: 'X', none: 'N', output: 'O', ask: 'Oprav.', timeout: 'Zrychli.', missing: 'Výpočet v listu ještě není.' };
+    const words: CheckWords = { title: 'T', quantity: 'Q', difference: 'D', states: { agree: 'a', differ: 'd', missing: 'm', units: 'u', unit: 'n' }, failed: 'F', declined: 'X', none: 'N', output: 'O', ask: 'Oprav.', timeout: 'Zrychli.', missing: 'Výpočet v listu ještě není.', capped: 'Strop.' };
     expect(pythonReport([{ ok: false, error: 'timeout 30 s', output: '', rows: [] }], words, String)).toContain('Zrychli.');
     expect(pythonReport([{ ok: false, error: 'NameError: x', output: '', rows: [] }], words, String)).not.toContain('Zrychli.');
   });

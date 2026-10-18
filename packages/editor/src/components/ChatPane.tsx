@@ -242,6 +242,7 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTur
       ask: t(catalog, 'check.ask'),
       timeout: t(catalog, 'check.timeout'),
       missing: t(catalog, 'check.missing'),
+      capped: t(catalog, 'check.capped'),
     };
     const report: ChatTurn = { role: 'user', text: pythonReport(reports, words, (n) => formatNumber(n, catalog, { digits: 2 })), time: new Date().toISOString(), check: true };
     const next = [...answered, report];
@@ -306,6 +307,16 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTur
     if (answered) await checkAnswer(answered, round);
   };
 
+  /** The question of the level of detail in the language of the program, whatever language the model wrote it in. */
+  const shownChoice = (choice: ChoiceBlock): ChoiceBlock => {
+    if (choice.key !== 'detail') return choice;
+    const label: Readonly<Record<string, UiKey>> = { brief: 'props.detailBrief', paper: 'props.detailPaper', teaching: 'props.detailTeaching' };
+    return {
+      ...choice,
+      question: t(catalog, 'choice.detailQuestion'),
+      options: choice.options.map((o) => (label[o.value] ? { ...o, label: t(catalog, label[o.value]!) } : o)),
+    };
+  };
   /** An answer picked from a choice of the model: the user's turn, then the model goes on. */
   const choose = async (choice: ChoiceBlock, option: ChoiceBlock['options'][number]) => {
     if (answer || checking) return;
@@ -376,7 +387,7 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTur
               {(newSheets?.(i) ?? []).map((view) => (
                 <NewSheetCard key={view.entry.id} view={view} catalog={catalog} onOpen={(id) => onOpenSheet?.(id)} />
               ))}
-              {parseChoices(turn.text).map((choice, n) => (
+              {parseChoices(turn.text).map(shownChoice).map((choice, n) => (
                 <div key={`choice${n}`} className="chat-choice">
                   {choice.question && <div className="chat-choice-question">{choice.question}</div>}
                   {choice.options.map((option) => (

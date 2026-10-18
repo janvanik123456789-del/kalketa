@@ -23,6 +23,13 @@ export interface CheckRow {
   /** Relative difference. */
   readonly difference?: number;
   readonly state: 'agree' | 'differ' | 'missing' | 'units' | 'unit';
+  /** Python's value is a round number (10 000, 9 000): a loop that ended by its cap, not by its event. */
+  readonly round?: boolean;
+}
+
+/** A round number of at most two significant digits and at least 100: what a loop stopped by its cap gives. */
+export function isRoundResult(value: number): boolean {
+  return Number.isFinite(value) && Math.abs(value) >= 100 && Number(value.toPrecision(2)) === value;
 }
 
 /** A run of one check. */
@@ -58,6 +65,8 @@ export interface CheckWords {
   readonly timeout: string;
   /** Said to the model when the sheet has none of the names yet: the calculation is not in it, not wrong. */
   readonly missing: string;
+  /** Said to the model when a result that disagrees is a round number: the loop likely ended by its cap. */
+  readonly capped: string;
 }
 
 /** Longest output of a script given back (the end of it, where the error is). */
@@ -74,6 +83,7 @@ export function pythonReport(reports: readonly CheckReport[], words: CheckWords,
     }
     if (!r.ok) parts.push(`${head}${words.failed}: \`${(r.error ?? '').replace(/`/g, "'")}\``);
     if (!r.ok && /timeout/i.test(r.error ?? '')) parts.push(words.timeout);
+    if (r.rows.some((row) => row.round && row.state !== 'agree')) parts.push(words.capped);
     if (r.rows.length > 0) {
       parts.push(
         [
@@ -109,5 +119,7 @@ export function pythonRule(numpy: boolean): string {
   result("v_A", v, "m/s", rel=1e-3)
   ${fence}
   result(name, value, unit="", rel=1e-6): the unit as Kalketa writes it ("m/s", "kN", "m^2", "°C", "" for a plain number), rel the relative difference still taken as agreement (1e-3 or so for a simulation, by its step).
-  The program runs every python block of your answer at once in a sandboxed Python 3.14 (the standard library${numpy ? ' and NumPy' : ''}; no files, no network, no input; at most 30 s, so keep a simulation under about a million steps: choose the step from the time it covers, prefer Runge–Kutta 4 to Euler, stop at the event) and gives you back a table of each result beside the value its core calculated. When a result disagrees, find out which side is wrong before you propose a change, and say so. Check when the user asks for a check or the level of detail asks for one, and when you propose a calculation whose result can be reached another way; not for trivial lines.`;
+  The program runs every python block of your answer at once in a sandboxed Python 3.14 (the standard library${numpy ? ' and NumPy' : ''}; no files, no network, no input; at most 30 s, so keep a simulation under about a million steps: choose the step from the time it covers, prefer Runge–Kutta 4 to Euler) and gives you back a table of each result beside the value its core calculated.
+  A simulation: step the state by its rate as the rate is (h += dt·f(h), f = dh/dt carries its own sign; never h -= dt·f), stop at the event (the tank empty, the body on the ground) and land on it exactly (the last step shortened); check that the loop ended by the event, not by a cap of steps: if it hit the cap, report nothing and say so. Do not integrate a formula that is infinite at a bound (1/sqrt(h) from 0) by Simpson or the trapezoid rule; substitute or simulate instead. Python writes powers as ** (^ is another operator).
+  When a result disagrees, find out which side is wrong before you propose a change, and say so. Check when the user asks for a check or the level of detail asks for one, and when you propose a calculation whose result can be reached another way; not for trivial lines.`;
 }

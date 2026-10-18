@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { briefing, checksNeedAnswer, parsePythonChecks, pythonReport, type CheckReport, type CheckWords } from '../src/index.js';
+import { briefing, checksNeedAnswer, isRoundResult, parsePythonChecks, pythonReport, type CheckReport, type CheckWords } from '../src/index.js';
 
 const FENCE = '`'.repeat(3);
 const WORDS: CheckWords = {
@@ -14,6 +14,7 @@ const WORDS: CheckWords = {
   ask: 'Oprav to.',
   timeout: 'Zrychli to.',
   missing: 'Výpočet v listu ještě není.',
+  capped: 'Kulaté číslo: smyčka skončila stropem.',
 };
 const format = (n: number) => n.toFixed(2).replace('.', ',');
 
@@ -42,6 +43,14 @@ describe('checks in Python written by the model', () => {
     expect(pythonReport([agreed, absent], WORDS, format)).toContain('Výpočet v listu ještě není.');
     expect(pythonReport([agreed, absent], WORDS, format)).not.toContain('Oprav to.');
     expect(pythonReport([absent, wrong], WORDS, format)).toContain('Oprav to.');
+    // A round number that disagrees: the loop ran into its cap.
+    expect(isRoundResult(10000)).toBe(true);
+    expect(isRoundResult(9000)).toBe(true);
+    expect(isRoundResult(3158.9)).toBe(false);
+    expect(isRoundResult(50)).toBe(false);
+    const capped: CheckReport = { ok: true, output: '', rows: [{ name: 't_v', kalketa: '3 158,9 s', python: '10 000 s', difference: 0.68, state: 'differ', round: true }] };
+    expect(pythonReport([capped], WORDS, format)).toContain('Kulaté číslo: smyčka skončila stropem.');
+    expect(pythonReport([wrong], WORDS, format)).not.toContain('Kulaté číslo');
   });
 
   it('are explained to the model only when the program can run them', () => {

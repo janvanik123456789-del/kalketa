@@ -130,7 +130,11 @@ export function checkDerivation(
     });
   type Holding = (typeof holding)[number];
   // Symbols of a relation vary like parameters, in the dimension the relation gives them (x, y of x² + y² = r² with r in m: lengths).
-  const loose = [...new Set(holding.flatMap((h) => [...h.names]))].filter((n) => !params.includes(n) && !formula(n) && !tryValue(() => ctx.lookup(n, members[0]!.span)));
+  // So do symbols of the members themselves that have no value (v_A of derive v_A == sqrt(v_x² + v_y²) above its
+  // definition): their dimension comes from the equation they stand in, not a pure number.
+  const loose = [...new Set([...holding.flatMap((h) => [...h.names]), ...memberNames])].filter(
+    (n) => !n.startsWith(ATOM) && !params.includes(n) && !formula(n) && !tryValue(() => ctx.lookup(n, members[0]!.span)),
+  );
   const varying = [...params, ...loose];
   let paramDims: readonly Dimension[] = varying.map(() => DIMENSIONLESS);
   // small: how small a symbol of theory or a parameter is taken (1 = as usual). under: relations made to hold at the point.
@@ -291,7 +295,16 @@ export function checkDerivation(
 
   const steps: DerivationStep[] = [];
   const diagnostics: Diagnostic[] = [];
+  // A symbol with no value, in no relation and not in the other members, alone first (derive v_A == sqrt(v_x² + v_y²) == …):
+  // it is introduced by the step, as derive v_A := … would; the steps after it are checked (γ == tan(γ) is no such step).
+  const first = members[0];
+  const introduced =
+    !!first && first.kind === 'variable' && loose.includes(first.name) && !holding.some((h) => h.names.has(first.name)) && !members.slice(1).some((m) => namesIn(m).has(first.name));
   for (let i = 0; i + 1 < members.length; i++) {
+    if (i === 0 && introduced) {
+      steps.push({ ok: true });
+      continue;
+    }
     const span = between(members[i]!.span, members[i + 1]!.span);
     let compared = 0;
     let problem: StepProblem | undefined;

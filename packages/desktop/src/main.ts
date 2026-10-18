@@ -3382,7 +3382,7 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
     newSheet.head === 'Nový list: Nosník se silou · řádků: 4' && Number(newSheet.others) >= 2 &&
     newSheet.opened.tab.startsWith('Nosník se silou') && newSheet.opened.marked >= 3 && newSheet.opened.errors.startsWith('chyba: 0') && newSheet.state.startsWith('Otevřeno jako „Nosník se silou“') &&
     pythonChat.checks === 2 && pythonChat.answers === 2 && pythonChat.told.includes('python: ano') && pythonChat.first.includes('✗') && pythonChat.last.includes('✓') && !pythonChat.last.includes('✗') && pythonChat.keep === 2 && pythonChat.tables === 2 && pythonChat.kept &&
-    answerBlocks.choiceButtons === 'Stručně|Jako na papíře|Výukově' && answerBlocks.levelAnswer.includes('úroveň: paper') && answerBlocks.noteButton === 'Vložit do Poznámek AI' && answerBlocks.noteAfter === 'Vloženo' &&
+    answerBlocks.choiceButtons === 'Stručně: vzorec, dosazení, výsledek|Jako na papíře: vztahy, odvození krok po kroku|Výukově: navíc vysvětlení a ověření v Pythonu' && answerBlocks.levelAnswer.includes('úroveň: paper') && answerBlocks.noteButton === 'Vložit do Poznámek AI' && answerBlocks.noteAfter === 'Vloženo' &&
     thinkingCut.includes('Odpověď hned.') && thinkingCut.includes('bez přemýšlení') &&
     together.allButton === 'Přijmout vše (2)' && together.acceptedAll === 2 && together.undoneAll === 0 &&
     together.copy.tab.includes('(upravená kopie)') && together.copy.rows === 2 && together.copy.marked === 2 && together.copy.badges === 2 && together.original.rows === 0 && together.original.state === 2 &&

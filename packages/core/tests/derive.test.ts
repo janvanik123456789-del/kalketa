@@ -157,4 +157,11 @@ describe('a zero written without a unit, and a member written wrong', () => {
     expect(codes(sheet).some((c) => c.startsWith('E-'))).toBe(true);
     expect(codes('a := 2 m\nb := 3 kg\nt := a + b == 5 m')).toEqual(['E-UNIT-MISMATCH']);
   });
+
+  it('a symbol with no value written first is introduced by the step, in the unit the equation gives it', () => {
+    const sheet = 'g := 9.81 m/s^2\nh_1 := 3 m\nh_2 := 6 m\nv_x := sqrt(2·g·h_1) | m/s\nv_y := sqrt(2·g·h_2) | m/s\nderive v_A == sqrt(v_x^2 + v_y^2) == sqrt(2·g·(h_1 + h_2))';
+    expect(codes(sheet)).toEqual([]);
+    // The step after it is still checked.
+    expect(evaluateSheet(sheet.replace('(h_1 + h_2)', '(h_1 + 2·h_2)')).diagnostics.map((d) => [d.code, d.params['step']])).toEqual([['E-DERIVE-STEP', 2]]);
+  });
 });

@@ -1044,6 +1044,7 @@ export const en: Catalog = {
     'check.missing': 'The sheet has no values of these names yet: the calculation is not in it (or its names differ). This is no disagreement. Write the solution into the sheet as one block change after <the last line of the assignment> with the same names; the check is then compared with it.',
     'check.capped': 'The result from Python is a round number, likely the cap of a loop: the simulation did not end by its event. Check the sign of the step (h += dt·f, f = dh/dt is negative) and the end condition of the loop.',
     'choice.detailQuestion': 'How detailed should the calculation in the sheet be?',
+    'check.postponed': 'The check was not run: the sheet has none of the values the script reports yet. Write the calculation into the sheet first, as a block change after <the last line of the assignment> with the same names, and put the check after it.',
     'check.timeout': 'The script did not finish in 30 s. Make it faster: choose the step of a simulation from the time it covers (about a million steps at most), use Runge–Kutta 4 instead of Euler, and stop at the event you look for. Do not copy the formula of the sheet: the check must go another way.',
     'choice.below': 'choice below',
     'note.below': 'proposed note below',

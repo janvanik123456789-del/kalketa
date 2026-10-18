@@ -1044,6 +1044,7 @@ export const cs: Catalog = {
     'check.missing': 'Tyto hodnoty list zatím nemá: výpočet v něm ještě není (nebo se veličiny jmenují jinak). Nejde o nesouhlas. Zapiš řešení do listu jedním blokem change after <poslední řádek zadání> se stejnými jmény; porovnání proběhne s ním.',
     'check.capped': 'Výsledek z Pythonu je kulaté číslo, nejspíš strop smyčky: simulace neskončila svou událostí. Zkontroluj znaménko kroku (h += dt·f, f = dh/dt je záporné) a podmínku konce smyčky.',
     'choice.detailQuestion': 'Jak podrobně má být výpočet v listu?',
+    'check.postponed': 'Ověření neproběhlo: list zatím nemá žádnou z hodnot, které skript hlásí. Nejdřív zapiš výpočet do listu blokem change after <poslední řádek zadání> se stejnými jmény a ověření připoj za něj.',
     'check.timeout': 'Skript nestihl doběhnout za 30 s. Zrychli ho: krok simulace volte podle doby, kterou pokrývá (nejvýš zhruba milion kroků), použijte Rungeovu–Kuttovu metodu 4. řádu místo Eulerovy a zastavte u hledané události. Neopisujte vzorec z listu, ověření musí jít jinou cestou.',
     'choice.below': 'volba níže',
     'note.below': 'návrh zápisu níže',

@@ -12,9 +12,9 @@ import { catalogFor, CATALOGS, formatDate, formatDiagnostic, formatNumber, t, ty
 import { buildPrintDocument, printHtml, renderBlockHtml, revisionFooter, type PrintAppendix } from '@kalketa/render';
 import { emptyScene, readScene, writeScene, type CanvasScene } from '@kalketa/canvas';
 import { CanvasEditor } from '@kalketa/canvas/editor';
-import { withAiLayer, compareWithSheet, PYTHON_PRELUDE, readOutput, addLayer, allDiagnostics, appendixLayers, blockAppendices, documentBlocks, isRemovable, LayerSessions, MAIN_LAYER, removeLayer, freezeRevision, removeRevision, revisionDocument, revisionState, shortHash, tablesByLayer, theorySections, updateLayer, withTheoryIds, conversationsOf, hasConversations, withConversation, withoutConversation, aiMemoryOf, withAiMemory, linkedLibraries, librarySections, entriesOf, newSheetsOf, withEntries, studyAdvice, studyNotes, LARGE_STUDY_PAGES, type StudySettings, aiMadeLines, type SheetEntry, evaluateDocument, type ChangeEntry, type Conversation, type AddableLayerKind, type Layer, type RevisionState, type SheetDocument } from '@kalketa/sheet';
+import { withAiLayer, compareWithSheet, sheetHas, PYTHON_PRELUDE, readOutput, addLayer, allDiagnostics, appendixLayers, blockAppendices, documentBlocks, isRemovable, LayerSessions, MAIN_LAYER, removeLayer, freezeRevision, removeRevision, revisionDocument, revisionState, shortHash, tablesByLayer, theorySections, updateLayer, withTheoryIds, conversationsOf, hasConversations, withConversation, withoutConversation, aiMemoryOf, withAiMemory, linkedLibraries, librarySections, entriesOf, newSheetsOf, withEntries, studyAdvice, studyNotes, LARGE_STUDY_PAGES, type StudySettings, aiMadeLines, type SheetEntry, evaluateDocument, type ChangeEntry, type Conversation, type AddableLayerKind, type Layer, type RevisionState, type SheetDocument } from '@kalketa/sheet';
 import { buildCommands, shortcutOf, type Command } from './commands.js';
-import { applyProposal, applyProposals, cleanFigureDescription, cleanFormula, cleanReread, cleanMemory, parseNewSheets, DEFAULT_AI_SETTINGS, parseAiSettings, parseProposals, providerById, replacedLines, type ChangeProposal, type AiSettings, type ChatTurn, type CheckReport, type ChoiceBlock, type NoteBlock, DETAIL_LEVELS, isRoundResult, noteText } from '@kalketa/ai';
+import { applyProposal, applyProposals, cleanFigureDescription, cleanFormula, cleanReread, cleanMemory, parseNewSheets, DEFAULT_AI_SETTINGS, parseAiSettings, parseProposals, providerById, replacedLines, type ChangeProposal, type AiSettings, type ChatTurn, type CheckReport, type ChoiceBlock, type NoteBlock, DETAIL_LEVELS, isRoundResult, noteText, reportedNames } from '@kalketa/ai';
 import { ChatPane } from './components/ChatPane.js';
 import { TheoryLibraryDialog } from './components/TheoryLibraryDialog.js';
 import { sourceText, useTheoryLibraries, withoutDuplicates, type FoundLibrary } from './theoryLibraries.js';
@@ -1369,13 +1369,16 @@ export function App() {
    * sheet with the changes the answer proposes applied (the check may be of the calculation it proposes).
    */
   const runAnswerCheck = async (code: string, answer: string): Promise<CheckReport> => {
-    if (pythonEngine === 'system' && !(await askConfirm(t(ui, 'python.confirmSystem')))) return { ok: false, output: '', rows: [], declined: true };
-    const raw = await desktop!.runPython(`${PYTHON_PRELUDE}\n${code}`, pythonEngine);
-    const { output, results } = readOutput(raw.stdout);
     // The sheet the check is about: a new sheet the answer writes, else this one with the changes it proposes.
     const written = parseNewSheets(answer)[0];
     const proposed = written ? written.lines.join('\n') : applyProposals(doc.source, parseProposals(answer));
     const sheet = proposed !== undefined && proposed !== doc.source ? evaluateDocument({ ...doc, source: proposed }, defaultRegistry).result : evaluation.main;
+    // The calculation first, its check after: a check of names the sheet has none of is not run.
+    const names = reportedNames(code);
+    if (names.length > 0 && !names.some((name) => sheetHas(sheet, name))) return { ok: true, output: '', rows: [], postponed: names };
+    if (pythonEngine === 'system' && !(await askConfirm(t(ui, 'python.confirmSystem')))) return { ok: false, output: '', rows: [], declined: true };
+    const raw = await desktop!.runPython(`${PYTHON_PRELUDE}\n${code}`, pythonEngine);
+    const { output, results } = readOutput(raw.stdout);
     const number = (v: number) => formatNumber(v, ui, { digits: 6 }).replace('-', '−');
     const rows = compareWithSheet(results, sheet).map((c) => ({
       name: c.name,

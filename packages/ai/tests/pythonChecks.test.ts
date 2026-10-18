@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { briefing, checksNeedAnswer, isRoundResult, parsePythonChecks, pythonReport, type CheckReport, type CheckWords } from '../src/index.js';
+import { briefing, checksNeedAnswer, isRoundResult, parsePythonChecks, pythonReport, reportedNames, type CheckReport, type CheckWords } from '../src/index.js';
 
 const FENCE = '`'.repeat(3);
 const WORDS: CheckWords = {
@@ -15,6 +15,7 @@ const WORDS: CheckWords = {
   timeout: 'Zrychli to.',
   missing: 'Výpočet v listu ještě není.',
   capped: 'Kulaté číslo: smyčka skončila stropem.',
+  postponed: 'Neproběhlo, nejdřív list.',
 };
 const format = (n: number) => n.toFixed(2).replace('.', ',');
 
@@ -51,6 +52,11 @@ describe('checks in Python written by the model', () => {
     const capped: CheckReport = { ok: true, output: '', rows: [{ name: 't_v', kalketa: '3 158,9 s', python: '10 000 s', difference: 0.68, state: 'differ', round: true }] };
     expect(pythonReport([capped], WORDS, format)).toContain('Kulaté číslo: smyčka skončila stropem.');
     expect(pythonReport([wrong], WORDS, format)).not.toContain('Kulaté číslo');
+    // A check of names the sheet does not have yet is not run: the calculation goes into the sheet first.
+    expect(reportedNames(`result("v_A", 1, "m/s")\nresult('t_v', t)\nresult("v_A", 2)\n# result(x)`)).toEqual(['v_A', 't_v']);
+    const later: CheckReport = { ok: true, output: '', rows: [], postponed: ['v_A', 't_v'] };
+    expect(pythonReport([later], WORDS, format)).toContain('Neproběhlo, nejdřív list. (v_A, t_v)');
+    expect(checksNeedAnswer([later])).toBe(true);
   });
 
   it('are explained to the model only when the program can run them', () => {

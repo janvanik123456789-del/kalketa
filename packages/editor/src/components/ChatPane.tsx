@@ -243,6 +243,7 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTur
       timeout: t(catalog, 'check.timeout'),
       missing: t(catalog, 'check.missing'),
       capped: t(catalog, 'check.capped'),
+      postponed: t(catalog, 'check.postponed'),
     };
     const report: ChatTurn = { role: 'user', text: pythonReport(reports, words, (n) => formatNumber(n, catalog, { digits: 2 })), time: new Date().toISOString(), check: true };
     const next = [...answered, report];

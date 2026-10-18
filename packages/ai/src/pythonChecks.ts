@@ -42,6 +42,13 @@ export interface CheckReport {
   readonly rows: readonly CheckRow[];
   /** The user did not let it run (Python of the computer, declined). */
   readonly declined?: boolean;
+  /** Not run: the sheet has none of the names it reports yet (the calculation is to be written first). */
+  readonly postponed?: readonly string[];
+}
+
+/** The names a check reports, read from its text: result("v_A", …). */
+export function reportedNames(code: string): string[] {
+  return [...new Set([...code.matchAll(/\bresult\(\s*(["'])([^"'\n]+)\1/g)].map((m) => m[2]!))];
 }
 
 /** Whether a check needs the model again: it failed, a result disagrees, or it reported nothing. */
@@ -67,6 +74,8 @@ export interface CheckWords {
   readonly missing: string;
   /** Said to the model when a result that disagrees is a round number: the loop likely ended by its cap. */
   readonly capped: string;
+  /** Said to the model when a check was not run: the sheet has none of its names; write the calculation first. */
+  readonly postponed: string;
 }
 
 /** Longest output of a script given back (the end of it, where the error is). */
@@ -79,6 +88,10 @@ export function pythonReport(reports: readonly CheckReport[], words: CheckWords,
     const head = reports.length > 1 ? `${i + 1}. ` : '';
     if (r.declined) {
       parts.push(`${head}${words.declined}`);
+      return;
+    }
+    if (r.postponed) {
+      parts.push(`${head}${words.postponed} (${r.postponed.join(', ')})`);
       return;
     }
     if (!r.ok) parts.push(`${head}${words.failed}: \`${(r.error ?? '').replace(/`/g, "'")}\``);
@@ -121,5 +134,6 @@ export function pythonRule(numpy: boolean): string {
   result(name, value, unit="", rel=1e-6): the unit as Kalketa writes it ("m/s", "kN", "m^2", "°C", "" for a plain number), rel the relative difference still taken as agreement (1e-3 or so for a simulation, by its step).
   The program runs every python block of your answer at once in a sandboxed Python 3.14 (the standard library${numpy ? ' and NumPy' : ''}; no files, no network, no input; at most 30 s, so keep a simulation under about a million steps: choose the step from the time it covers, prefer Runge–Kutta 4 to Euler) and gives you back a table of each result beside the value its core calculated.
   A simulation: step the state by its rate as the rate is (h += dt·f(h), f = dh/dt carries its own sign; never h -= dt·f), stop at the event (the tank empty, the body on the ground) and land on it exactly (the last step shortened); check that the loop ended by the event, not by a cap of steps: if it hit the cap, report nothing and say so. Do not integrate a formula that is infinite at a bound (1/sqrt(h) from 0) by Simpson or the trapezoid rule; substitute or simulate instead. Python writes powers as ** (^ is another operator).
+  Order: write the calculation into the sheet first (its change block), then check it: in the same answer after the change block (the check is compared with the sheet as the change makes it), or once the user accepted it. A check of names the sheet does not have is not run.
   When a result disagrees, find out which side is wrong before you propose a change, and say so. Check when the user asks for a check or the level of detail asks for one, and when you propose a calculation whose result can be reached another way; not for trivial lines.`;
 }

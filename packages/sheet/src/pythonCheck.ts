@@ -88,6 +88,11 @@ function sheetValue(sheet: SheetResult, name: string): Quantity | undefined {
   return value?.type === 'quantity' ? value : undefined;
 }
 
+/** Whether the sheet has a value of this name (defined or found by a solve). */
+export function sheetHas(sheet: SheetResult, name: string): boolean {
+  return sheetValue(sheet, name) !== undefined;
+}
+
 /** A number in a unit as Kalketa reads it ("m/s", "kN·m", "°C", "" for a plain number). */
 function quantityOf(value: number, unit: string): Quantity | undefined {
   const written = `${Number.isFinite(value) ? value : 0}${unit.trim() ? ` ${unit.trim()}` : ''}`;

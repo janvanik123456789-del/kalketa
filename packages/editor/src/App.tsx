@@ -44,7 +44,7 @@ import { captionOf, fromFile, pictureLine, picturePath, pixelWidth, widthFor, ty
 import { importBlockFile } from './blockActions.js';
 import { AboutDialog, CustomizeDialog, FunctionsDialog, PropertiesDialog, SettingsDialog, ShortcutsDialog } from './components/Dialogs.js';
 import { FitDialog } from './components/FitDialog.js';
-import { fitSeries } from './logic/curveFit.js';
+import { applyEdits, fitCharts, fitSeries, readFit, type FitChoice, type LineEdit } from './logic/curveFit.js';
 import { DocumentTabs } from './components/DocumentTabs.js';
 import { RevisionsDialog } from './components/Revisions.js';
 import { Inspector } from './components/Inspector.js';
@@ -1341,29 +1341,44 @@ export function App() {
     }
   };
 
-  // Insert > Fit a curve…: the lines tried at the end of the layer by a calculation of their own,
-  // so the open sheet is not disturbed; what they print is the preview.
+  // Insert > Fit a curve…: the edits tried on the layer by a calculation of their own, so the
+  // open sheet is not disturbed; the lines they write and the charts with the curve are the preview.
   const fitSessions = useRef<LayerSessions | undefined>(undefined);
-  const previewFit = (lines: readonly string[]): string => {
+  const [fitEdit, setFitEdit] = useState<{ readonly choice: FitChoice; readonly start: number; readonly end: number } | undefined>();
+  const previewFit = (edits: readonly LineEdit[], name: string): string => {
     fitSessions.current ??= new LayerSessions(defaultRegistry);
-    const before = textOf(layer);
-    const tried = `${before.replace(/\n*$/, '')}\n${lines.join('\n')}\n`;
-    // The first of the lines tried, counted from 1 as the sheet counts them.
-    const first = tried.split('\n').length - lines.length;
+    const { text: tried, touched } = applyEdits(textOf(layer), edits);
     const layers = layer.kind === 'sheet' ? doc.layers : doc.layers.map((l) => (l.id === layer.id ? { ...l, text: tried } : l));
     const evaluated = fitSessions.current.evaluate(layer.kind === 'sheet' ? tried : doc.source, layers, tables, blocks);
     const own = (layer.kind === 'calc' ? evaluated.aux.get(layer.id) : undefined) ?? evaluated.main;
     const printed = buildPrintDocument(own, { catalog: printCatalog, registry: defaultRegistry, digits: doc.layout.digits, title: '', resolveFile });
+    const lines = tried.split('\n');
+    const calls = new RegExp(`(^|[^\\p{L}\\p{N}_])${name}\\(`, 'u');
     return printed.blocks
-      .filter((b) => 'line' in b && typeof b.line === 'number' && b.line >= first)
+      .filter((b) => 'line' in b && typeof b.line === 'number' && (touched.includes(b.line) || (b.kind === 'chart' && calls.test(lines[b.line - 1] ?? ''))))
       .map((b) => renderBlockHtml(b, ui, { defineOperator: '≔', ...(doc.layout.style ? { style: doc.layout.style } : {}) }))
       .join('\n');
   };
-  const insertFit = (lines: readonly string[]) => {
-    const after = currentRange()?.end ?? lineCount;
-    setSource(insertLineAfter(text, after, lines.join('\n')));
+  const applyFit = (edits: readonly LineEdit[]) => {
+    const { text: changed, touched } = applyEdits(text, edits);
+    setSource(changed);
     setEditing(undefined);
-    reveal.current = { layer: layer.id, line: after + 1 };
+    if (touched[0] !== undefined) reveal.current = { layer: layer.id, line: touched[0] };
+  };
+  /** The curve of a chart (its line, its series) when it is fitted through points as the dialog writes it. */
+  const fittedCurve = (line: number, series: number) => {
+    const chart = result.statements.find((r) => r.statement.span.line === line && r.statement.kind === 'display' && r.statement.expr.kind === 'call' && r.statement.expr.name === 'plot')?.statement;
+    const arg = chart?.kind === 'display' && chart.expr.kind === 'call' ? chart.expr.args[series] : undefined;
+    if (arg?.kind !== 'call') return undefined;
+    const own = result.statements.find((r) => r.statement.kind === 'definition' && r.statement.name === arg.name)?.statement;
+    return own ? readFit(own, result.source, fitSeries(result)) : undefined;
+  };
+  /** A click on a curve of a chart: a curve fitted through points opens in the dialog to be changed. */
+  const editCurve = (line: number, series: number) => {
+    const found = fittedCurve(line, series);
+    if (!found) return;
+    setFitEdit(found);
+    setDialog('fit');
   };
 
   const insertSymbol = (symbol: string) => {
@@ -1556,7 +1571,10 @@ export function App() {
       },
       shortcuts: () => setDialog('shortcuts'),
       functions: () => setDialog('functions'),
-      fitCurve: () => setDialog('fit'),
+      fitCurve: () => {
+        setFitEdit(undefined);
+        setDialog('fit');
+      },
       about: () => setDialog('about'),
       insertSymbol,
       insertTemplate,
@@ -1973,6 +1991,8 @@ export function App() {
           onPick={(statement, key, column) => pickIn(l, statement, key, column)}
           onReplacePicture={(start, end) => void replacePictureFile(l, start, end)}
           onEditCanvas={(path) => openCanvas(path)}
+          onCurve={editCurve}
+          curveEditable={(line, series) => !!fittedCurve(line, series)}
           onCanvasArea={(path, factorWidth, factorHeight, line) => {
             // The canvas's own size grows with its frame; what is drawn keeps its size and place.
             const scene = readScene(doc.files.get(path));
@@ -2326,12 +2346,19 @@ export function App() {
           catalog={ui}
           series={fitSeries(result)}
           taken={new Set(result.values.keys())}
+          charts={fitCharts(result)}
+          after={currentRange()?.end ?? lineCount}
+          {...(fitEdit ? { editing: fitEdit } : {})}
           preview={previewFit}
-          onInsert={(lines) => {
+          onApply={(edits) => {
             setDialog(undefined);
-            insertFit(lines);
+            setFitEdit(undefined);
+            applyFit(edits);
           }}
-          onClose={() => setDialog(undefined)}
+          onClose={() => {
+            setDialog(undefined);
+            setFitEdit(undefined);
+          }}
         />
       )}
       {dialog === 'functions' && (

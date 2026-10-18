@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { chartLayout, xPosition, yPosition, type ChartSpec } from '@kalketa/chart';
-import { nearestOnCurve } from '../src/logic/chartPoint.js';
+import { nearestOnCurve, seriesAt } from '../src/logic/chartPoint.js';
 
 // A narrow parabola, y = −2·x² + 2·x + 10 over −10 .. 10, the y axis −50 .. 20: most of it out of the chart.
 const f = (x: number) => -2 * x * x + 2 * x + 10;
@@ -24,5 +24,28 @@ describe('the point of a tangent dragged along the curve', () => {
     expect(f(x)).toBeGreaterThanOrEqual(-50);
     expect(x).toBeGreaterThan(3);
     expect(nearestOnCurve(chart, Number.NaN, 10)).toBeUndefined();
+  });
+});
+
+describe('the curve under the pointer (a click opens a fitted curve to be edited)', () => {
+  const two: ChartSpec = {
+    kind: 'line',
+    series: [
+      { label: 'y', xs: [0, 1, 2, 3], ys: [0, 1, 4, 9], mark: 'points' },
+      { label: 'P(x)', xs: [0, 1.5, 3], ys: [0, 2.25, 9] },
+    ],
+    xTitle: 'x',
+    yTitle: 'y',
+  };
+  const chart = { spec: two, layout: chartLayout(two, { width: 640, height: 371 }) };
+  const { layout } = chart;
+
+  it('is the nearest line or point within a few units, else none', () => {
+    // On the line of P between its samples, not on a point of y.
+    expect(seriesAt(chart, xPosition(layout, 0.75), yPosition(layout, 1.125))).toBe(1);
+    // On a measured point.
+    expect(seriesAt(chart, xPosition(layout, 2), yPosition(layout, 4) + 2)).toBe(0);
+    // Far from both.
+    expect(seriesAt(chart, xPosition(layout, 0.5), yPosition(layout, 8))).toBeUndefined();
   });
 });

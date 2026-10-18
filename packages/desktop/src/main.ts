@@ -2474,7 +2474,69 @@ async function layersWithRealInput(picture: string) {
   await clickOn('.dialog-buttons button.default');
   await pause(1500);
   const fitInserted = (await contents.executeJavaScript(`({ dialog: document.querySelectorAll('.fit-dialog').length, errors: document.querySelectorAll('.layer-view.active .page .row.has-error').length, charts: document.querySelectorAll('.layer-view.active .block.chart svg.chart-svg .chart-data path').length })`)) as { dialog: number; errors: number; charts: number };
-  const fitDialog = { preview: fitPreview, inserted: fitInserted, ok: fitPreview.charts === 1 && fitPreview.lines.includes('spline(Body.x, Body.y, x)') && fitInserted.dialog === 0 && fitInserted.errors === 0 && fitInserted.charts >= 3 };
+  // Into a chart the sheet has: pchip added to the chart of R17 (picked from the list by the keyboard).
+  const joinBefore = (await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .block.chart')][0]?.querySelectorAll('.chart-data path[fill="none"]').length ?? 0`)) as number;
+  await clickOn('.menubar-item:nth-child(4) > button');
+  await clickMenu('Proložit křivku');
+  await pause(600);
+  await clickOn('.fit-method input[data-method="pchip"]');
+  // The list focused (as by Tab) and moved by the arrow key: a click would open the list of the system.
+  await contents.executeJavaScript(`document.querySelector('select.fit-place')?.focus()`);
+  await pressKey('Down');
+  await pause(1200);
+  const joinPlace = (await contents.executeJavaScript(`document.querySelector('select.fit-place')?.selectedOptions[0]?.textContent ?? ''`)) as string;
+  const joinLines = (await contents.executeJavaScript(`document.querySelector('.fit-lines')?.textContent ?? ''`)) as string;
+  await clickOn('.dialog-buttons button.default');
+  await pause(1500);
+  const joinAfter = (await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .block.chart')][0]?.querySelectorAll('.chart-data path[fill="none"]').length ?? 0`)) as number;
+  // A click on the spline in its chart opens it to be edited; straight segments instead, written in place.
+  const curvePoint = (await contents.executeJavaScript(`(() => {
+    const charts = [...document.querySelectorAll('.layer-view.active .block.chart')];
+    const path = charts[charts.length - 1]?.querySelector('.chart-data path[fill="none"]');
+    if (!path) return undefined;
+    path.scrollIntoView({ block: 'center' });
+    const at = path.getPointAtLength(path.getTotalLength() * 0.35);
+    const m = path.getScreenCTM();
+    return { x: Math.round(at.x * m.a + at.y * m.c + m.e), y: Math.round(at.x * m.b + at.y * m.d + m.f) };
+  })()`)) as { x: number; y: number } | undefined;
+  // Over the curve the pointer shows it can be clicked.
+  if (curvePoint) contents.sendInputEvent({ type: 'mouseMove', ...curvePoint });
+  await pause(300);
+  const curveCursor = (await contents.executeJavaScript(`(() => { const charts = [...document.querySelectorAll('.layer-view.active .chart-view')]; return charts[charts.length - 1]?.style.cursor ?? ''; })()`)) as string;
+  if (curvePoint) {
+    contents.sendInputEvent({ type: 'mouseDown', ...curvePoint, button: 'left', clickCount: 1 });
+    contents.sendInputEvent({ type: 'mouseUp', ...curvePoint, button: 'left', clickCount: 1 });
+  }
+  await pause(1200);
+  const editTitle = (await contents.executeJavaScript(`document.querySelector('.dialog .dialog-title span')?.textContent ?? ''`)) as string;
+  const editName = (await contents.executeJavaScript(`document.querySelector('.fit-name input')?.value ?? ''`)) as string;
+  if (editTitle) {
+    await clickOn('.fit-method input[data-method="polyline"]');
+    await pause(800);
+    await takePicture(picture.replace(/[.]png$/, '-fit-edit.png'));
+    await clickOn('.dialog-buttons button.default');
+    await pause(1500);
+  }
+  const edited = (await contents.executeJavaScript(`({ errors: document.querySelectorAll('.layer-view.active .page .row.has-error').length, rows: [...document.querySelectorAll('.layer-view.active .page .row')].map((r) => r.textContent).filter((t) => t.includes('interp1')).length })`)) as { errors: number; rows: number };
+  const fitDialog = {
+    preview: fitPreview,
+    inserted: fitInserted,
+    joined: { before: joinBefore, after: joinAfter, place: joinPlace, lines: joinLines },
+    edit: { point: !!curvePoint, cursor: curveCursor, title: editTitle, name: editName, ...edited },
+    ok:
+      fitPreview.charts === 1 &&
+      fitPreview.lines.includes('spline(Body.x, Body.y, x)') &&
+      fitInserted.dialog === 0 &&
+      fitInserted.errors === 0 &&
+      fitInserted.charts >= 3 &&
+      joinPlace.startsWith('Přidat do grafu') &&
+      joinAfter === joinBefore + 1 &&
+      curveCursor === 'pointer' &&
+      editTitle === 'Upravit proložení křivky' &&
+      editName === 'y_spl' &&
+      edited.errors === 0 &&
+      edited.rows >= 1,
+  };
   const quadraticSample = {
     crank,
     theory: { theoryTab, tankErrors, theoryChecks, rocket, parabola, thermistor, fitDialog },

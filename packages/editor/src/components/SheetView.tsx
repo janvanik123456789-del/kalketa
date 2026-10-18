@@ -15,7 +15,7 @@ import { segments, type Segment } from '../logic/segments.js';
 import { lineAttributesOf, lineFormatOf, withLineAttribute, withLineAttributes, withLineFormat, type LineFormatChoice } from '../logic/lineFormat.js';
 import { defineShortcut } from '../logic/shortcuts.js';
 import { pickOf } from '../logic/pick.js';
-import { nearestOnCurve } from '../logic/chartPoint.js';
+import { nearestOnCurve, seriesAt } from '../logic/chartPoint.js';
 import { inputNumber, sliderStep, sliderValue, withInputNumber } from '../logic/slider.js';
 import { placeable, plotFlag, plotOption, plotShowsRoots, plotYRange, withPlotFlag, withPlotOption, withPlotRoots, withPlotYRange } from '../logic/placement.js';
 import { PickControl } from './PickControl.js';
@@ -66,6 +66,10 @@ interface Props {
   onPlace?(start: number, end: number, after: number, text: string): void;
   /** Starts editing a canvas shown in the sheet (in the sheet or in the window, as set). */
   onEditCanvas(path: string): void;
+  /** A click on a curve of the chart on `line` (its series, counted from 0): a fitted curve opens to be edited. */
+  onCurve?(line: number, series: number): void;
+  /** Whether that curve opens to be edited (it is fitted through points): the pointer shows it can be clicked. */
+  curveEditable?(line: number, series: number): boolean;
   /** A canvas made larger or smaller by an edge in the sheet: its own size times these factors, the drawing as it is. */
   onCanvasArea(path: string, factorWidth: number, factorHeight: number, line?: { start: number; end: number; text: string }): void;
   /** Opens a canvas in the large window. */
@@ -411,7 +415,7 @@ export function SheetView(props: Props) {
    * (beside it, so the menu covers neither the picture nor its handles);
    * dragged, it moves between the rows of the sheet.
    */
-  const pressPicture = (e: ReactMouseEvent, seg: Segment, figure: Element) => {
+  const pressPicture = (e: ReactMouseEvent, seg: Segment, figure: Element, onClick?: () => void) => {
     const from = { x: e.clientX, y: e.clientY };
     const start = figure.getBoundingClientRect();
     // Where in the picture it was taken: the picture follows the pointer from there.
@@ -440,7 +444,8 @@ export function SheetView(props: Props) {
       original.style.opacity = '';
       setDropMark(undefined);
       setDropBox(undefined);
-      if (!dragging) {
+      if (!dragging && onClick) onClick();
+      else if (!dragging) {
         // A click on a chart selects it (its frame and handles); on a picture it also offers what can be done with it.
         const box = figure.getBoundingClientRect();
         if (placeable(seg.text)?.kind !== 'chart') setPictureMenu({ seg, at: { x: box.right + 12, y: box.top } });
@@ -1095,7 +1100,12 @@ export function SheetView(props: Props) {
           if ((block?.kind === 'picture' || block?.kind === 'chart') && figure && e.button === 0) {
             props.onEdit(undefined);
             props.onSelect(seg.statement);
-            pressPicture(e, seg, figure);
+            // On a curve of the chart: a click (no drag) offers it to be edited, when it is a fitted one.
+            const svg = block.kind === 'chart' ? figure.querySelector('svg.chart-svg') : null;
+            const box = svg?.getBoundingClientRect();
+            const unit = box && block.kind === 'chart' ? box.width / block.layout.width : 0;
+            const series = box && block.kind === 'chart' && unit > 0 ? seriesAt(block, (e.clientX - box.left) / unit, (e.clientY - box.top) / unit) : undefined;
+            pressPicture(e, seg, figure, series !== undefined && block.kind === 'chart' && props.onCurve ? () => props.onCurve!(block.line, series) : undefined);
             return;
           }
           props.onEdit({ start: seg.start, end: seg.end });
@@ -1224,6 +1234,7 @@ export function SheetView(props: Props) {
               block={block}
               catalog={props.printCatalog}
               sliders={chartSliders(seg)}
+              {...(props.curveEditable ? { editable: (series: number) => props.curveEditable!(block.line, series) } : {})}
               onOption={(name, value) => props.onReplace(seg.start, seg.end, withPlotOption(seg.text, name, value))}
               onResize={(width, ratio) => {
                 const item = placeable(seg.text);
@@ -1349,7 +1360,7 @@ function chartX(chart: Extract<PrintBlock, { kind: 'chart' }>, x: number): strin
   return chart.xUnit ? `${n} ${chart.xUnit}` : n;
 }
 
-function ChartBlock({ block, catalog, onResize, onOption, sliders }: { block: Extract<PrintBlock, { kind: 'chart' }>; catalog: Catalog; onResize(width: number, ratio?: number): void; onOption(name: string, value: string | undefined): void; sliders?: ReactNode }) {
+function ChartBlock({ block, catalog, onResize, onOption, sliders, editable }: { block: Extract<PrintBlock, { kind: 'chart' }>; catalog: Catalog; onResize(width: number, ratio?: number): void; onOption(name: string, value: string | undefined): void; sliders?: ReactNode; /** A curve that opens to be edited by a click (a fitted one). */ editable?(series: number): boolean }) {
   const [hover, setHover] = useState<{ left: number; top: number; height: number; lines: string[] } | undefined>();
   const [dragged, setDragged] = useState<number | undefined>();
   const view = useRef<HTMLDivElement>(null);
@@ -1366,6 +1377,11 @@ function ChartBlock({ block, catalog, onResize, onOption, sliders }: { block: Ex
     const unit = box.width / block.layout.width;
     const px = (e.clientX - box.left) / unit;
     const { plot } = block.layout;
+    // Over a fitted curve the pointer says it can be clicked, and the values below say what for.
+    const over = editable ? seriesAt(block, px, (e.clientY - box.top) / unit) : undefined;
+    const clickable = over !== undefined && !!editable?.(over);
+    e.currentTarget.style.cursor = clickable ? 'pointer' : '';
+    const hint = clickable ? [t(catalog, 'fit.clickToEdit', { name: block.spec.series[over!]!.label })] : [];
     if (px < plot.left - 4 || px > plot.right + 4) return setHover(undefined);
     const x = xValueAt(block.layout, px);
     const number = (v: number) => formatNumber(v, catalog, { digits: 4 }).replace('-', '−');
@@ -1380,7 +1396,7 @@ function ChartBlock({ block, catalog, onResize, onOption, sliders }: { block: Ex
         left: (box.left - own.left + xPosition(block.layout, x) * unit) * toBlock,
         top: (box.top - own.top + plot.top * unit) * toBlock,
         height: (plot.bottom - plot.top) * unit * toBlock,
-        lines: [`${name(block.spec.xTitle, 'x')} = ${withUnit(x, block.xUnit)}`, `${name(block.spec.yTitle, 'y')} = ${withUnit(y, block.yUnit)}`],
+        lines: [`${name(block.spec.xTitle, 'x')} = ${withUnit(x, block.xUnit)}`, `${name(block.spec.yTitle, 'y')} = ${withUnit(y, block.yUnit)}`, ...hint],
       });
     }
     const near = block.spec.series[0]!.xs.reduce((best, v, i, xs) => (Math.abs(v - x) < Math.abs(xs[best]! - x) ? i : best), 0);
@@ -1392,7 +1408,7 @@ function ChartBlock({ block, catalog, onResize, onOption, sliders }: { block: Ex
       left: (box.left - own.left + xPosition(block.layout, at) * unit) * toBlock,
       top: (box.top - own.top + plot.top * unit) * toBlock,
       height: (plot.bottom - plot.top) * unit * toBlock,
-      lines,
+      lines: [...lines, ...hint],
     });
   };
   // The point of the tangent dragged along the curve; a label dragged off it. Both written into the line.

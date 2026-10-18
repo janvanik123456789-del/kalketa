@@ -36,3 +36,30 @@ export function nearestOnCurve(chart: { readonly spec: ChartSpec; readonly layou
   }
   return best?.x;
 }
+
+/**
+ * The curve of a chart under the pointer at (px, py) in the units of the chart: the index of the
+ * series whose line (or point) is nearest, if it is within `within` units; undefined for none.
+ */
+export function seriesAt(chart: { readonly spec: ChartSpec; readonly layout: ChartLayout }, px: number, py: number, within = 6): number | undefined {
+  if (!Number.isFinite(px) || !Number.isFinite(py)) return undefined;
+  const { layout } = chart;
+  let best: { index: number; d: number } | undefined;
+  chart.spec.series.forEach((s, index) => {
+    const points = s.xs.map((x, j) => [xPosition(layout, x), yPosition(layout, s.ys[j]!)] as const).filter(([, y]) => Number.isFinite(y));
+    const line = (s.mark ?? chart.spec.kind) === 'line';
+    let d = Infinity;
+    for (let k = 0; k < points.length; k++) {
+      const [ax, ay] = points[k]!;
+      d = Math.min(d, Math.hypot(px - ax, py - ay));
+      const next = line ? points[k + 1] : undefined;
+      if (!next) continue;
+      const [bx, by] = next;
+      const len = (bx - ax) ** 2 + (by - ay) ** 2;
+      const t = len > 0 ? Math.min(1, Math.max(0, ((px - ax) * (bx - ax) + (py - ay) * (by - ay)) / len)) : 0;
+      d = Math.min(d, Math.hypot(ax + t * (bx - ax) - px, ay + t * (by - ay) - py));
+    }
+    if (d <= within && (!best || d < best.d)) best = { index, d };
+  });
+  return best?.index;
+}

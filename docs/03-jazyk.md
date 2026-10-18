@@ -390,8 +390,22 @@ pchip(x, y, xi)                      ' kubika zachovávající tvar dat, nepřek
 
   Rozdíly proti MATLABu: `polyfit` vrací funkci listu s jednotkami (ne holé koeficienty) a tiskne se jako `fit` (rovnice, R², s `steps: true` normální rovnice). `interp1` za krajními body nevrací NaN, ale chybu `E-INTERP-RANGE`, dokud se nedopíše `"extrap"`; `spline` a `pchip` pokračují jako v MATLABu. x se seřadí, opakované x je chyba (`E-INTERP-X`). Hodnoty ověřené proti NumPy a SciPy v `packages/core/tests/interpolation.test.ts`.
 - **Výsledek je funkce** jedné proměnné, pojmenované po sloupci x (`t`), s koeficienty v jednotkách: `T_lin(t) = 20,7 °C + 0,428 Δ°C/s·t`. V tisku je pod voláním rovnice s čísly a **R²**.
+- **x jako teplota ve °C (2026-10-18):** absolutní teplota (sloupec `T [°C]`, `37 °C`) se prokládá na **údaji teploměru**, od nuly své stupnice. Funkce je `P(T) = c₀ + c₁·(T − 0 °C) + c₂·(T − 0 °C)² + …`: T − 0 °C je rozdíl, takže `P(37 °C)` nehlásí `W-ABS-TEMP-MUL`, c₀ je hodnota při 0 °C a koeficienty v kΩ/°C, kΩ/°C² jsou tytéž, jaké dá `np.polyfit` na čísla 0 … 40. Tak se i vytisknou, čtenář dosadí 37. Volání v kelvinech dá totéž: `P(310.15 K) = P(37 °C)`. Stejně `exp` (a·e^(b·(T − 0 °C))). U °F je nula 0 °F. `log` a `power` logaritmují x a logaritmus údaje ve °C nedává smysl: chyba `E-FIT-ABS-X` s radou převést x na kelviny (`T_K := NTC.T | K`, pak je to termodynamická teplota bez příznaku absolutní). Kdo chce polynom v kelvinech, proloží také `T_K`.
+
+```text
+table NTC:
+    | T [°C] | R [kΩ] |
+    | 0 | 33.62 |
+    | 10 | 20.17 |
+    | 20 | 12.54 |
+    | 30 | 8.037 |
+    | 40 | 5.301 |
+P := polyfit(NTC.T, NTC.R, 2)        ' P(T) = 33,2 kΩ − 1,389 kΩ/°C·(T − 0 °C) + 0,01754 kΩ/°C²·(T − 0 °C)²
+R_37 := P(37 °C)                     ' 5,804 kΩ, bez varování
+```
+
 - **Graf:** když je osa x řada naměřených hodnot (`x: Mereni.t`), čárový graf nakreslí data jako **body** a funkci proměnné (`T_lin(x)`) jako **čáru** přes celý rozsah.
-- Chyby: zápis (`E-FIT-FORM`), druh (`E-FIT-KIND`), málo bodů (`E-FIT-POINTS`), záporné hodnoty u logaritmických druhů (`E-FIT-POSITIVE`), body bez jednoznačné křivky (`E-FIT-SINGULAR`).
+- Chyby: zápis (`E-FIT-FORM`), druh (`E-FIT-KIND`), málo bodů (`E-FIT-POINTS`), záporné hodnoty u logaritmických druhů (`E-FIT-POSITIVE`), body bez jednoznačné křivky (`E-FIT-SINGULAR`), logaritmus teploty ve °C (`E-FIT-ABS-X`).
 - *Na později:* vlastní tvar s parametry (`fit(a + b·t + c·e^t, …)`), kosmetika tisku (osa podle sloupce, zápis záporných koeficientů).
 
 ### 7.2 Uživatelské funkce (F7)

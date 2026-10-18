@@ -88,6 +88,51 @@ r := P(2.5)`);
   });
 });
 
+const NTC = `table NTC:
+    | T [°C] | R [kΩ] |
+    | 0 | 33.62 |
+    | 10 | 20.17 |
+    | 20 | 12.54 |
+    | 30 | 8.037 |
+    | 40 | 5.301 |
+`;
+
+describe('a fit over an absolute temperature', () => {
+  it('is fitted on the reading in °C: the coefficients as np.polyfit gives them over 0 … 40, no warning', () => {
+    const result = evaluateSheet(`${NTC}P := polyfit(NTC.T, NTC.R, 2)
+R_37 := P(37 °C)`);
+    expect(result.diagnostics.map((d) => d.code)).toEqual([]);
+    const fitted = result.statements.at(-2)!.value;
+    const c = fitted?.type === 'function' ? (fitted.fit?.coefficients ?? []).map((k) => k.value) : [];
+    // np.polyfit([0, 10, 20, 30, 40], R, 2) = [0.0175392857, -1.38928143, 33.1956571] (kΩ per °C^k)
+    close(c.map((q) => q.si / 1000), [33.19565714285714, -1.3892814285714285, 0.017539285714285707]);
+    expect(c.map((q) => q.hint?.symbol)).toEqual(['kΩ', 'kΩ/°C', 'kΩ/°C²']);
+    close(numbers(result.statements.at(-1)!.value), [5803.5264285714305]);
+  });
+
+  it('takes the same temperature in kelvin, and a series of them', () => {
+    close(last(`${NTC}P := polyfit(NTC.T, NTC.R, 2)
+R_K := P(310.15 K)`).value, [5803.5264285714305]);
+    const series = last(`${NTC}P := polyfit(NTC.T, NTC.R, 1)
+r := P(NTC.T)`);
+    expect(series.codes).toEqual([]);
+    expect(series.value).toHaveLength(5);
+  });
+
+  it('fits an exponential on the reading too; a logarithm of °C asks for kelvin', () => {
+    // np.polyfit(T, ln R, 1): b = -0.0461459, a = e^3.48296 = 32.5558 kΩ
+    const e = last(`${NTC}E := fit(NTC.R, x: NTC.T, kind: "exp")
+R_e := E(37 °C)`);
+    expect(e.codes).toEqual([]);
+    close(e.value, [5903.5736756439565]);
+    expect(last(`${NTC}L := fit(NTC.R, x: NTC.T, kind: "log")`).codes).toEqual(['E-FIT-ABS-X']);
+    expect(last(`${NTC}L := fit(NTC.R, x: NTC.T, kind: "power")`).codes).toEqual(['E-FIT-ABS-X']);
+    // In kelvin the logarithm is that of the thermodynamic temperature.
+    expect(last(`${NTC}T_K := NTC.T | K
+L := fit(NTC.R, x: T_K, kind: "log")`).codes).toEqual([]);
+  });
+});
+
 describe('an absolute temperature put into kelvin', () => {
   it('is the thermodynamic temperature: 1/T_K gives no warning, unlike 1/T in °C', () => {
     expect(last('T := 37 °C\nx := 1/T').codes).toEqual(['W-ABS-TEMP-MUL']);

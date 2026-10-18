@@ -79,6 +79,16 @@ describe('fit: a curve through measured points', () => {
     expect(lines.find((l) => l.startsWith('P(x)'))).toBe('P(x) = 2,16−0,04143·x+0,2786·x^2');
   });
 
+  it('prints a fit over a temperature in °C from the zero of the scale, as the reader evaluates it', () => {
+    const ntc = 'table NTC:\n    | T [°C] | R [kΩ] |\n    | 0 | 33.62 |\n    | 10 | 20.17 |\n    | 20 | 12.54 |\n    | 30 | 8.037 |\n    | 40 | 5.301 |\n';
+    const sheet = evaluateSheet(`${ntc}P := polyfit(NTC.T, NTC.R, 2)\nR_37 := P(37 °C)`);
+    expect(sheet.diagnostics).toEqual([]);
+    const doc = buildPrintDocument(sheet, { catalog: cs, registry: defaultRegistry, digits: 4, title: 'P' });
+    const block = doc.blocks.find((b) => b.kind === 'equation' && b.lines.some((l) => l.lhs && toText(l.lhs) === 'P(T)'));
+    const lines = block?.kind === 'equation' ? block.lines.map((l) => `${l.lhs ? toText(l.lhs) : ''} ${l.op ?? ''} ${toText(l.rhs)}`.replace(/\s+/g, ' ').trim()) : [];
+    expect(lines.find((l) => l.startsWith('P(T)'))).toBe('P(T) = 33,2 kΩ−1,389 kΩ/°C·(T−0 °C)+0,01754 kΩ/°C²·(T−0 °C)^2');
+  });
+
   it('fits polynomials and refuses what cannot be fitted', () => {
     const poly = evaluateSheet(`${MEASURED}P := fit(Mereni.T, x: Mereni.t, kind: "poly2")`).statements.at(-1)!.value;
     expect(poly?.type === 'function' && poly.fit?.r2).toBeGreaterThan(0.9999);

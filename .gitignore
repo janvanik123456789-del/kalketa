@@ -4,3 +4,4 @@ dist/
 coverage/
 release/
 .claude/settings.local.json
+packages/desktop/pyodide-packages/

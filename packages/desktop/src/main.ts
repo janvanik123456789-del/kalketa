@@ -20,6 +20,7 @@ import { stat } from 'node:fs/promises';
 import { canSealKeys, registerAiBridge } from './ai.js';
 import { registerTheoryBridge } from './theory.js';
 import { systemFonts } from './fonts.js';
+import { pyodidePlace, runPyodide, runSystemPython, stopPyodide } from './python.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 // .calc: calculation files from before the program was renamed (it was CalcCanvas).
@@ -456,6 +457,14 @@ function registerBridge(): void {
 
   registerAiBridge(fromEditor);
   registerTheoryBridge(fromEditor);
+  // A check of the calculation in Python: the built-in one (no files, no network) or, chosen in the settings and
+  // confirmed in the editor before each run, Python of the computer. The editor puts result() before the script.
+  ipcMain.handle('kalketa:python-run', async (event, request: { code: unknown; engine: unknown }) => {
+    fromEditor(event);
+    if (typeof request?.code !== 'string' || request.code.length > 200_000) throw new Error('Not a script');
+    if (request.engine === 'system') return runSystemPython(request.code);
+    return runPyodide(request.code, pyodidePlace(app.isPackaged ? process.resourcesPath : undefined));
+  });
 }
 
 /**
@@ -2433,6 +2442,14 @@ async function layersWithRealInput(picture: string) {
   // A formula that holds and has no note of the AI shows as printed, without its mark: count the blocks and the bad marks.
   const theoryChecks = (await contents.executeJavaScript(`({ blocks: document.querySelectorAll('.layer-view.active .kalk-block').length, bad: document.querySelectorAll('.layer-view.active .kalk-check.bad').length })`)) as { blocks: number; bad: number };
   await takePicture(picture.replace(/[.]png$/, '-theory.png'));
+  // The check in Python below the theory: run by a click in the built-in Python, its results beside the sheet.
+  await clickOn('.layer-view.active .python-run');
+  let pythonCheck = { summary: '', rows: 0, agree: 0 };
+  for (let i = 0; i < 120 && !pythonCheck.summary; i++) {
+    await pause(500);
+    pythonCheck = (await contents.executeJavaScript(`({ summary: document.querySelector('.layer-view.active .python-summary')?.textContent ?? '', rows: document.querySelectorAll('.layer-view.active .python-compare tbody tr').length, agree: document.querySelectorAll('.layer-view.active .python-compare tr.agree').length })`)) as typeof pythonCheck;
+  }
+  await takePicture(picture.replace(/[.]png$/, '-python.png'));
   // A rocket: Meščerskij's equation as a relation, the fuel rate derived under it, its flight in charts.
   await clickOn('.menubar-item:nth-child(1) > button');
   await clickMenu('Vzorové příklady');
@@ -2544,7 +2561,7 @@ async function layersWithRealInput(picture: string) {
   };
   const quadraticSample = {
     crank,
-    theory: { theoryTab, tankErrors, theoryChecks, rocket, parabola, thermistor, fitDialog },
+    theory: { theoryTab, tankErrors, theoryChecks, pythonCheck, rocket, parabola, thermistor, fitDialog },
     across,
     beam,
     slowTyping,
@@ -2553,7 +2570,7 @@ async function layersWithRealInput(picture: string) {
     after: sampleAfter,
     outOfDomain,
     english,
-    ok: !!thumb && sampleBefore.errors === 0 && sampleAfter.errors === 0 && sampleBefore.a !== '' && sampleAfter.a !== sampleBefore.a && sampleAfter.roots !== sampleBefore.roots && outOfDomain.drawn && !outOfDomain.area && outOfDomain.roots === 0 && !outOfDomain.error && outOfDomain.warned && english.head === 'Quadratic equation' && english.verdicts.length === 5 && english.verdicts.every((v) => v.endsWith('OK')) && english.errors === 0 && crank.pictures === 4 && crank.charts === 3 && crank.errors === 0 && crank.verdict.endsWith('VYHOVUJE') && slowTyping.waitingShown && slowTyping.settled && cube.pictures === 1 && cube.derived >= 5 && cube.errors === 0 && beam.pictures === 3 && beam.charts >= 4 && beam.errors === 0 && across.before && !across.after && theoryTab >= 1 && tankErrors === 0 && theoryChecks.blocks >= 4 && theoryChecks.bad === 0 && rocket.errors === 0 && rocket.charts >= 2 && parabola.errors === 0 && parabola.charts >= 2 && parabola.normal >= 2 && thermistor.errors === 0 && thermistor.charts >= 3 && fitDialog.ok,
+    ok: !!thumb && sampleBefore.errors === 0 && sampleAfter.errors === 0 && sampleBefore.a !== '' && sampleAfter.a !== sampleBefore.a && sampleAfter.roots !== sampleBefore.roots && outOfDomain.drawn && !outOfDomain.area && outOfDomain.roots === 0 && !outOfDomain.error && outOfDomain.warned && english.head === 'Quadratic equation' && english.verdicts.length === 5 && english.verdicts.every((v) => v.endsWith('OK')) && english.errors === 0 && crank.pictures === 4 && crank.charts === 3 && crank.errors === 0 && crank.verdict.endsWith('VYHOVUJE') && slowTyping.waitingShown && slowTyping.settled && cube.pictures === 1 && cube.derived >= 5 && cube.errors === 0 && beam.pictures === 3 && beam.charts >= 4 && beam.errors === 0 && across.before && !across.after && theoryTab >= 1 && tankErrors === 0 && theoryChecks.blocks >= 4 && theoryChecks.bad === 0 && pythonCheck.rows === 4 && pythonCheck.agree === 4 && rocket.errors === 0 && rocket.charts >= 2 && parabola.errors === 0 && parabola.charts >= 2 && parabola.normal >= 2 && thermistor.errors === 0 && thermistor.charts >= 3 && fitDialog.ok,
   };
   const userChart = { namedArea, quadOk, quadTarget, quadEnd, quadEditing, ok: namedArea === 'Integral1=27' && quadOk && quadTarget > 0 && Math.abs(quadEnd - quadTarget) < 12 };
   // Relations: a circle solved by its name, a derivation following from a relation of theory, and the circle
@@ -3490,4 +3507,5 @@ if (!app.requestSingleInstanceLock()) {
     createWindow();
   });
   app.on('window-all-closed', () => app.quit());
+  app.on('will-quit', () => void stopPyodide());
 }

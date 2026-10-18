@@ -129,3 +129,4 @@ export function evaluateDocument(
   const evaluation = new LayerSessions(registry).evaluate(doc.source, doc.layers, tables, documentBlocks(doc));
   return { result: evaluation.main, evaluation, tableDiagnostics: diagnostics };
 }
+export * from './pythonCheck.js';

@@ -10,8 +10,8 @@
     "build": "tsc -p tsconfig.json",
     "start": "electron .",
     "icon": "electron scripts/make-icon.mjs",
-    "dist": "electron-builder --win",
-    "dist:linux": "electron-builder --linux"
+    "dist": "node ../../scripts/pyodide-packages.mjs && electron-builder --win",
+    "dist:linux": "node ../../scripts/pyodide-packages.mjs && electron-builder --linux"
   },
   "devDependencies": {
     "electron": "^44.4.5",
@@ -32,10 +32,17 @@
       "package.json",
       "!**/node_modules/@napi-rs/**"
     ],
+    "asarUnpack": [
+      "**/node_modules/pyodide/**"
+    ],
     "extraResources": [
       {
         "from": "../editor/dist",
         "to": "editor"
+      },
+      {
+        "from": "pyodide-packages",
+        "to": "pyodide-packages"
       }
     ],
     "fileAssociations": [
@@ -93,6 +100,7 @@
   },
   "dependencies": {
     "@kalketa/ai": "*",
-    "pdfjs-dist": "^6.4.299"
+    "pdfjs-dist": "^6.4.299",
+    "pyodide": "314.0.7"
   }
 }

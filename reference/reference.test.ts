@@ -5,10 +5,11 @@
  * in the same folder.
  */
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { dirname, join } from 'node:path';
+import { afterAll, describe, expect, it } from 'vitest';
 import { defaultRegistry, evaluateSheet, toDisplay, type Table } from '@kalketa/core';
-import { loadTable } from '@kalketa/sheet';
+import { compareWithSheet, loadTable, PYTHON_PRELUDE, readOutput } from '@kalketa/sheet';
+import { pyodidePlace, runPyodide, stopPyodide } from '../packages/desktop/src/python.js';
 
 type ExpectedValue = { value: number; unit: string } | { boolean: boolean } | { row: string };
 
@@ -112,4 +113,19 @@ describe.each(notes)('$name/podklady.md', ({ path }) => {
   it.each(blocks.map((block, i) => [i + 1, block] as const))('formula %i holds', (_, block) => {
     expect(evaluateSheet(block).diagnostics.filter((d) => d.severity !== 'info')).toEqual([]);
   });
+
+  // A check in Python beside the theory (```python): run in the built-in Python, every result agrees with the sheet.
+  const scripts = [...readFileSync(path, 'utf8').matchAll(/```python\r?\n([\s\S]*?)```/g)].map((m) => m[1]!);
+  it.each(scripts.map((script, i) => [i + 1, script] as const))('check in Python %i agrees with the sheet', async (_, script) => {
+    const dir = dirname(path);
+    const expected = JSON.parse(readFileSync(join(dir, readdirSync(dir).find((f) => f.endsWith('.expected.json'))!), 'utf8')) as Expected;
+    const sheet = evaluateSheet(readFileSync(join(dir, expected.sheet), 'utf8'), { tables: loadTables(dir) });
+    const run = await runPyodide(`${PYTHON_PRELUDE}\n${script}`, pyodidePlace());
+    expect(run.error).toBeUndefined();
+    const rows = compareWithSheet(readOutput(run.stdout).results, sheet);
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows.filter((r) => r.state !== 'agree')).toEqual([]);
+  }, 120_000);
 });
+
+afterAll(() => stopPyodide());

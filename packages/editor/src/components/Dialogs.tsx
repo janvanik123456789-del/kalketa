@@ -102,6 +102,8 @@ export interface Settings {
   readonly sizeLimit: number;
   /** Where a canvas is edited by a double click: right in the sheet, or in a large window. */
   readonly canvasMode: 'inline' | 'window';
+  /** Where checks in Python run: the built-in Python, or Python of the computer (asked before each run). */
+  readonly python: 'pyodide' | 'system';
   readonly ai: AiSettings;
   /** A newly typed API key, handed to the desktop application on OK. */
   readonly aiKey?: { readonly key: string; readonly remember: boolean };
@@ -112,6 +114,7 @@ export function SettingsDialog({
   language,
   sizeLimit,
   canvasMode,
+  python,
   ai,
   aiOn = true,
   onApply,
@@ -121,6 +124,7 @@ export function SettingsDialog({
   language: string;
   sizeLimit: number;
   canvasMode: 'inline' | 'window';
+  python: 'pyodide' | 'system';
   ai: AiSettings;
   /** The AI is switched on for this run: only then may the dialog look for servers by itself. */
   aiOn?: boolean;
@@ -130,6 +134,7 @@ export function SettingsDialog({
   const [value, setValue] = useState(language);
   const [limit, setLimit] = useState(String(sizeLimit));
   const [canvas, setCanvas] = useState(canvasMode);
+  const [pythonEngine, setPythonEngine] = useState(python);
   const [aiDraft, setAiDraft] = useState<AiDraft>({ settings: ai, key: '', remember: true });
   const apply = () => {
     const mb = Number(limit.replace(',', '.'));
@@ -137,6 +142,7 @@ export function SettingsDialog({
       language: value,
       sizeLimit: Number.isFinite(mb) && mb > 0 ? mb : sizeLimit,
       canvasMode: canvas,
+      python: pythonEngine,
       ai: aiDraft.settings,
       ...(aiDraft.key.trim() ? { aiKey: { key: aiDraft.key, remember: aiDraft.remember } } : {}),
     });
@@ -164,6 +170,13 @@ export function SettingsDialog({
         <select value={canvas} onChange={(e) => setCanvas(e.target.value === 'window' ? 'window' : 'inline')}>
           <option value="inline">{t(catalog, 'settings.canvasInline')}</option>
           <option value="window">{t(catalog, 'settings.canvasWindow')}</option>
+        </select>
+      </label>
+      <label className="field">
+        <span>{t(catalog, 'settings.python')}</span>
+        <select value={pythonEngine} onChange={(e) => setPythonEngine(e.target.value === 'system' ? 'system' : 'pyodide')}>
+          <option value="pyodide">{t(catalog, 'settings.pythonPyodide')}</option>
+          <option value="system">{t(catalog, 'settings.pythonSystem')}</option>
         </select>
       </label>
       <AiSettingsSection catalog={catalog} draft={aiDraft} onChange={setAiDraft} aiOn={aiOn} />

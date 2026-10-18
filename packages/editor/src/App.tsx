@@ -12,7 +12,7 @@ import { catalogFor, CATALOGS, formatDate, formatDiagnostic, formatNumber, t, ty
 import { buildPrintDocument, printHtml, renderBlockHtml, revisionFooter, type PrintAppendix } from '@kalketa/render';
 import { emptyScene, readScene, writeScene, type CanvasScene } from '@kalketa/canvas';
 import { CanvasEditor } from '@kalketa/canvas/editor';
-import { addLayer, allDiagnostics, appendixLayers, blockAppendices, documentBlocks, isRemovable, LayerSessions, MAIN_LAYER, removeLayer, freezeRevision, removeRevision, revisionDocument, revisionState, shortHash, tablesByLayer, theorySections, updateLayer, withTheoryIds, conversationsOf, hasConversations, withConversation, withoutConversation, aiMemoryOf, withAiMemory, linkedLibraries, librarySections, entriesOf, newSheetsOf, withEntries, studyAdvice, studyNotes, LARGE_STUDY_PAGES, type StudySettings, aiMadeLines, type SheetEntry, evaluateDocument, type ChangeEntry, type Conversation, type AddableLayerKind, type Layer, type RevisionState, type SheetDocument } from '@kalketa/sheet';
+import { compareWithSheet, PYTHON_PRELUDE, readOutput, addLayer, allDiagnostics, appendixLayers, blockAppendices, documentBlocks, isRemovable, LayerSessions, MAIN_LAYER, removeLayer, freezeRevision, removeRevision, revisionDocument, revisionState, shortHash, tablesByLayer, theorySections, updateLayer, withTheoryIds, conversationsOf, hasConversations, withConversation, withoutConversation, aiMemoryOf, withAiMemory, linkedLibraries, librarySections, entriesOf, newSheetsOf, withEntries, studyAdvice, studyNotes, LARGE_STUDY_PAGES, type StudySettings, aiMadeLines, type SheetEntry, evaluateDocument, type ChangeEntry, type Conversation, type AddableLayerKind, type Layer, type RevisionState, type SheetDocument } from '@kalketa/sheet';
 import { buildCommands, shortcutOf, type Command } from './commands.js';
 import { applyProposal, applyProposals, cleanFigureDescription, cleanFormula, cleanReread, cleanMemory, parseNewSheets, DEFAULT_AI_SETTINGS, parseAiSettings, parseProposals, providerById, replacedLines, type ChangeProposal, type AiSettings, type ChatTurn } from '@kalketa/ai';
 import { ChatPane } from './components/ChatPane.js';
@@ -44,6 +44,7 @@ import { captionOf, fromFile, pictureLine, picturePath, pixelWidth, widthFor, ty
 import { importBlockFile } from './blockActions.js';
 import { AboutDialog, CustomizeDialog, FunctionsDialog, PropertiesDialog, SettingsDialog, ShortcutsDialog } from './components/Dialogs.js';
 import { FitDialog } from './components/FitDialog.js';
+import { PythonRunnerContext, type PythonRunner } from './components/PythonCheck.js';
 import { applyEdits, fitCharts, fitSeries, readFit, type FitChoice, type LineEdit } from './logic/curveFit.js';
 import { DocumentTabs } from './components/DocumentTabs.js';
 import { RevisionsDialog } from './components/Revisions.js';
@@ -81,6 +82,7 @@ const SESSION_KEY = 'kalketa.session';
 const RECENT_LIMIT = 8;
 const SIZE_LIMIT_KEY = 'kalketa.sizeLimitMb';
 const CANVAS_MODE_KEY = 'kalketa.canvasMode';
+const PYTHON_ENGINE_KEY = 'kalketa.pythonEngine';
 /** Provider and model of the AI; keys are kept by the desktop application, not here. */
 const AI_SETTINGS_KEY = 'kalketa.ai';
 const DEFAULT_SIZE_LIMIT_MB = 50;
@@ -999,6 +1001,7 @@ export function App() {
   const canvasPath = canvasEdit?.path;
   /** Where a canvas is edited by default (Tools > Settings): right in the sheet, or in a large window. */
   const [canvasMode, setCanvasMode] = useState<'inline' | 'window'>(() => (stored(CANVAS_MODE_KEY) === 'window' ? 'window' : 'inline'));
+  const [pythonEngine, setPythonEngine] = useState<'pyodide' | 'system'>(() => (stored(PYTHON_ENGINE_KEY) === 'system' ? 'system' : 'pyodide'));
   // The conversation the chat shows, by document tab; the conversations themselves are in the sheet (AI notes).
   // Absent: the latest one; '' after "New chat": a new one with the next question.
   const [activeChat, setActiveChat] = useState<Readonly<Record<string, string>>>({});
@@ -1340,6 +1343,19 @@ export function App() {
       }
     }
   };
+
+  // A check in Python from the sources: run where the settings say (Python of the computer only when
+  // the user lets it, each time), its results set beside the values of the sheet.
+  const pythonRunner: PythonRunner | undefined = desktop
+    ? async (code) => {
+        if (pythonEngine === 'system' && !(await askConfirm(t(ui, 'python.confirmSystem')))) return undefined;
+        const raw = await desktop!.runPython(`${PYTHON_PRELUDE}\n${code}`, pythonEngine);
+        const { output, results } = readOutput(raw.stdout);
+        // A failed script shows its whole traceback below the last line of it.
+        const shown = [output, raw.ok ? '' : raw.stderr.trim()].filter(Boolean).join('\n');
+        return { ok: raw.ok, output: shown, ...(raw.error ? { error: raw.error } : {}), results, engine: raw.engine, ms: raw.ms, comparisons: compareWithSheet(results, evaluation.main) };
+      }
+    : undefined;
 
   // Insert > Fit a curve…: the edits tried on the layer by a calculation of their own, so the
   // open sheet is not disturbed; the lines they write and the charts with the curve are the preview.
@@ -1897,6 +1913,7 @@ export function App() {
     }
     if (l.kind === 'ai' || l.kind === 'sources') {
       return (
+        <PythonRunnerContext.Provider key={l.id} value={pythonRunner}>
         <NotesView
           key={l.id}
           layer={l}
@@ -1945,6 +1962,7 @@ export function App() {
             if (layers.some((x, i) => x !== doc.layers[i])) change({ ...doc, layers }, `${l.id}:notes`);
           }}
         />
+        </PythonRunnerContext.Provider>
       );
     }
     const source = textOf(l);
@@ -2287,6 +2305,7 @@ export function App() {
           language={language}
           sizeLimit={sizeLimit}
           canvasMode={canvasMode}
+          python={pythonEngine}
           ai={aiSettings}
           aiOn={aiOn}
           onApply={(next) => {
@@ -2295,6 +2314,8 @@ export function App() {
             if (next.aiKey && desktop) void desktop.aiSetKey({ provider: next.ai.provider, ...next.aiKey });
             setCanvasMode(next.canvasMode);
             remember(CANVAS_MODE_KEY, next.canvasMode);
+            setPythonEngine(next.python);
+            remember(PYTHON_ENGINE_KEY, next.python);
             setLanguage(next.language);
             remember(LANGUAGE_KEY, next.language);
             setSizeLimit(next.sizeLimit);

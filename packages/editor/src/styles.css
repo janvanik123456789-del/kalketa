@@ -706,6 +706,21 @@ button.icon:hover { color: var(--accent); }
 /* A formula in Kalketa notation in the sources: the line as written, typeset under it. */
 .word-code.kalk-block pre { margin-bottom: 0; border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
 .kalk-preview { border: 1px solid #d5dae1; border-top: none; padding: 4px 10px; background: #fff; }
+/* A check in Python below its script: run it, its results beside the sheet's, its output. */
+.python-panel { border: 1px solid #d5dae1; border-top: none; padding: 4px 10px 6px; background: #fff; font-size: 0.92em; }
+.python-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.python-run { font: inherit; padding: 1px 10px; }
+.python-summary.ok { color: #1f7a3a; }
+.python-summary.bad { color: #b42318; }
+.python-engine { color: #6b7280; margin-left: 8px; font-size: 0.9em; }
+.python-compare { border-collapse: collapse; margin: 6px 0 2px; }
+.python-compare th, .python-compare td { border-bottom: 1px solid #e5e7eb; padding: 1px 10px 1px 0; text-align: right; font-variant-numeric: tabular-nums; }
+.python-compare th:first-child, .python-compare td:first-child { text-align: left; }
+.python-compare tr.agree td:last-child { color: #1f7a3a; }
+.python-compare tr:not(.agree) td:last-child { color: #b42318; }
+.python-notes { margin: 2px 0; padding-left: 18px; color: #b42318; }
+.python-error { color: #b42318; margin: 4px 0; white-space: pre-wrap; }
+.python-output { margin: 4px 0 0; max-height: 14em; overflow: auto; background: #f7f8fa; padding: 4px 6px; white-space: pre-wrap; }
 .kalk-preview .kalk-formula { margin: 2px 0; position: relative; }
 .kalk-preview .kalk-check { display: block; font-size: 0.85em; }
 /* A confirmed formula stands as the book prints it: centred, its number at the right, its text hidden. */

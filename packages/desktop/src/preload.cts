@@ -44,6 +44,7 @@ contextBridge.exposeInMainWorld('kalketaDesktop', {
   studyRead: (path: string, sheetPath?: string): Promise<unknown> => ipcRenderer.invoke('kalketa:study-read', { path, sheetPath }),
   studySave: (path: string, sheetPath: string | undefined, settings: unknown): Promise<unknown> => ipcRenderer.invoke('kalketa:study-save', { path, sheetPath, settings }),
   studyBytes: (path: string, sheetPath?: string): Promise<unknown> => ipcRenderer.invoke('kalketa:study-bytes', { path, sheetPath }),
+  runPython: (code: string, engine: 'pyodide' | 'system'): Promise<unknown> => ipcRenderer.invoke('kalketa:python-run', { code, engine }),
   aiFormula: (ask: unknown): Promise<unknown> => ipcRenderer.invoke('kalketa:ai-formula', ask),
   aiChatCancel: (id: string): Promise<void> => ipcRenderer.invoke('kalketa:ai-chat-cancel', id),
   onAiChatEvent: (listener: (piece: { id: string; text?: string; thinking?: string; cut?: boolean }) => void): void => {

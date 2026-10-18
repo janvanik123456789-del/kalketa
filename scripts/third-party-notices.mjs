@@ -55,6 +55,18 @@ function notice({ name, version, path }) {
 }
 
 const packages = [...found.values()].sort((a, b) => a.name.localeCompare(b.name));
+// The Python packages of the built-in Python (scripts/pyodide-packages.mjs): their licences as the wheels carry them.
+const WHEELS = join(ROOT, 'packages', 'desktop', 'pyodide-packages');
+const wheels = existsSync(WHEELS)
+  ? readdirSync(WHEELS)
+      .filter((f) => f.endsWith('.whl.LICENSE.txt'))
+      .sort()
+      .map((f) => {
+        const [name, version] = f.split('-');
+        const head = `${name} ${version} (Python, in the built-in Python of checks)`;
+        return `${head}\n${'-'.repeat(head.length)}\n${readFileSync(join(WHEELS, f), 'utf8').trim()}`;
+      })
+  : [];
 const text = [
   'Third-party software in this program',
   '====================================',
@@ -64,6 +76,7 @@ const text = [
   'its notices are in LICENSES.chromium.html next to the program.',
   '',
   ...packages.map(notice).map((n) => `${n}\n`),
+  ...wheels.map((n) => `${n}\n`),
 ].join('\n');
 
 mkdirSync(dirname(OUT), { recursive: true });

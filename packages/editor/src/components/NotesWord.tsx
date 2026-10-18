@@ -24,6 +24,7 @@ import { captionOf, isPictureType, type IncomingPicture } from '../logic/picture
 import { ask } from './Ask.js';
 import { ContextMenu, type MenuItem } from './MenuBar.js';
 import { PdfCleanupDialog } from './PdfCleanup.js';
+import { PythonPanel } from './PythonCheck.js';
 
 interface Props {
   readonly text: string;
@@ -306,6 +307,8 @@ function CodeView({ node, editor, getPos }: ReactNodeViewProps) {
       <pre>
         <NodeViewContent<'code'> as="code" />
       </pre>
+      {/* A check in Python: run, and its results beside the sheet. */}
+      {node.attrs['language'] === 'python' && lines.length > 0 && <PythonPanel code={node.textContent} catalog={catalog} />}
       {kalk && lines.length > 0 && (
         <div
           className={`kalk-preview${confirmed ? ' confirmed' : ''}`}

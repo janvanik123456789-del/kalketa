@@ -371,6 +371,7 @@ export const UI_KEYS = [
   'fit.chart',
   'fit.preview',
   'check.timeout',
+  'check.missing',
   'choice.below',
   'note.below',
   'note.head',

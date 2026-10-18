@@ -1041,6 +1041,7 @@ export const en: Catalog = {
     'check.running': 'Checking in Python…',
     'check.heading': 'Check in Python (AI)',
     'check.kept': 'The check is kept in the sources.',
+    'check.missing': 'The sheet has no values of these names yet: the calculation is not in it (or its names differ). This is no disagreement. Write the solution into the sheet as one block change after <the last line of the assignment> with the same names; the check is then compared with it.',
     'check.timeout': 'The script did not finish in 30 s. Make it faster: choose the step of a simulation from the time it covers (about a million steps at most), use Runge–Kutta 4 instead of Euler, and stop at the event you look for. Do not copy the formula of the sheet: the check must go another way.',
     'choice.below': 'choice below',
     'note.below': 'proposed note below',

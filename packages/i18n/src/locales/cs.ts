@@ -1041,6 +1041,7 @@ export const cs: Catalog = {
     'check.running': 'Ověřuje se v Pythonu…',
     'check.heading': 'Ověření v Pythonu (AI)',
     'check.kept': 'Ověření je uložené v Podkladech.',
+    'check.missing': 'Tyto hodnoty list zatím nemá: výpočet v něm ještě není (nebo se veličiny jmenují jinak). Nejde o nesouhlas. Zapiš řešení do listu jedním blokem change after <poslední řádek zadání> se stejnými jmény; porovnání proběhne s ním.',
     'check.timeout': 'Skript nestihl doběhnout za 30 s. Zrychli ho: krok simulace volte podle doby, kterou pokrývá (nejvýš zhruba milion kroků), použijte Rungeovu–Kuttovu metodu 4. řádu místo Eulerovy a zastavte u hledané události. Neopisujte vzorec z listu, ověření musí jít jinou cestou.',
     'choice.below': 'volba níže',
     'note.below': 'návrh zápisu níže',

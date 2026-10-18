@@ -139,3 +139,22 @@ describe('the source of a definition', () => {
     expect(codes(sheet)).toEqual([]);
   });
 });
+
+describe('a zero written without a unit, and a member written wrong', () => {
+  it('a bare zero is of any unit where it is written: in a sum, a comparison, a bound, a relation', () => {
+    expect(codes('x := 2 m + 0')).toEqual([]);
+    expect(codes('h_1 := 3 m\nx := integral(h, h: 0 .. h_1)')).toEqual([]);
+    expect(codes('y := 0 m\nok := y == 0')).toEqual([]);
+    // The ground at y = 0 in Bernoulli's equation, as on paper: the derivation follows.
+    expect(codes('g := 9.81 m/s^2\ny_1 := 9 m\nrelation p_a + ρ·g·y_1 == p_a + ρ·g·0 + ρ·v^2/2\nderive v == sqrt(2·g·y_1)')).toEqual([]);
+    // A value that is zero is no bare zero: a forgotten unit is still caught.
+    expect(codes('x := 0\ny := x + 2 m')).toEqual(['E-UNIT-MISMATCH']);
+  });
+
+  it('a member of a derivation the values cannot calculate for an error of its own is that error, not a step left unchecked', () => {
+    const sheet = 'h_1 := 3 m\nS_1 := 2 m^2\nS_2 := 6 cm^2\ng := 9.81 m/s^2\nt_v := integral(h, dh: 0 m .. h_1) == S_1/S_2·sqrt(2·h_1/g) | s';
+    expect(codes(sheet)).not.toContain('W-DERIVE-UNVERIFIED');
+    expect(codes(sheet).some((c) => c.startsWith('E-'))).toBe(true);
+    expect(codes('a := 2 m\nb := 3 kg\nt := a + b == 5 m')).toEqual(['E-UNIT-MISMATCH']);
+  });
+});

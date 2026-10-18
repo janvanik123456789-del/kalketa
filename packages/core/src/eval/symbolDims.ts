@@ -61,6 +61,8 @@ export function symbolDimensions(
   const of = (e: Expr): Linear | undefined => {
     switch (e.kind) {
       case 'number':
+        // A zero written without a unit is of any unit (y == 0, ρ·g·0): it says nothing of the dimensions.
+        if (!e.unit && e.value === 0) return undefined;
         if (!e.unit) return ZERO;
         {
           const v = literal(e);

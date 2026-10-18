@@ -22,6 +22,7 @@ import { callCalculus, isBindingCall } from './calculus.js';
 import { PLOT_FUNCTION } from './plot.js';
 import { isUnboundedCall } from './derive.js';
 import { fitCall, polyfitCall, polyvalCall } from './fit.js';
+import { withBareZero } from './zero.js';
 import { BINDING_FUNCTIONS } from '../lang/parser.js';
 import { asMatrix, at, inverseOf, matrix, normalized } from '../functions/linear.js';
 import { callTableFunction, memberOf, TABLE_FUNCTIONS } from './tables.js';
@@ -285,9 +286,13 @@ function product(a: MatrixValue, b: MatrixValue, leftExpr: Expr, rightExpr: Expr
 }
 
 /** Two numbers (real or complex): + − · / ^ and comparisons. */
+/** Operations where a zero written without a unit takes the unit of the other side (p_a + ρ·g·0, y == 0). */
+const SUMS_AND_COMPARISONS: ReadonlySet<BinaryOperator> = new Set(['+', '-', '==', '!=', '<', '<=', '>', '>=']);
+
 function arithmetic(op: BinaryOperator, left: Value, right: Value, leftExpr: Expr, rightExpr: Expr, span: Span, ctx: EvalContext): Value {
-  const a = asComplex(left, leftExpr.span);
-  const b = asComplex(right, rightExpr.span);
+  const [a, b] = SUMS_AND_COMPARISONS.has(op)
+    ? withBareZero(asComplex(left, leftExpr.span), asComplex(right, rightExpr.span), leftExpr, rightExpr)
+    : [asComplex(left, leftExpr.span), asComplex(right, rightExpr.span)];
   if (a.im || b.im) return complexBinary(op, a, b, leftExpr, rightExpr, span, ctx);
 
   switch (op) {

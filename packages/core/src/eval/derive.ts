@@ -19,7 +19,8 @@
  * relation holds, one of its names calculated from the others there.
  */
 
-import { diagnostic, type Diagnostic, type Span } from '../diagnostics.js';
+import { CalcError, diagnostic, type Diagnostic, type Span } from '../diagnostics.js';
+import { withBareZero } from './zero.js';
 import type { Expr } from '../lang/ast.js';
 import { DIMENSIONLESS, sameDim, type Dimension } from '../units/dimension.js';
 import { baseUnitSymbol } from '../units/display.js';
@@ -31,7 +32,10 @@ import { symbolDimensions } from './symbolDims.js';
 
 type Evaluate = (expr: Expr, ctx: EvalContext) => Value;
 
-export type StepProblem = 'differs' | 'units' | 'unverified';
+/** Errors of a member that mean a symbol of theory without a value, not a member written wrong. */
+const SYMBOLIC: ReadonlySet<string> = new Set(['E-UNDEFINED', 'E-FUNC-UNKNOWN', 'E-NO-BOUNDS', 'E-DEPENDENCY']);
+
+export type StepProblem = 'differs' | 'units' | 'unverified' | 'invalid';
 
 /** Step i joins member i and member i + 1. */
 export interface DerivationStep {
@@ -250,6 +254,16 @@ export function checkDerivation(
     const value = tryValue(() => evaluate(m, { ...ctx, warnings: [] }));
     return value?.type === 'quantity' ? value : undefined;
   });
+  // A member written wrong (units that do not add up, bounds of different units): its own error, not a step
+  // left unchecked. Symbols of theory without values (E-UNDEFINED) are no error here: the step is tried with them.
+  const wrong = members.map((m) => {
+    try {
+      evaluate(m, { ...ctx, warnings: [] });
+      return undefined;
+    } catch (err) {
+      return err instanceof CalcError && !SYMBOLIC.has(err.diagnostic.code) ? err.diagnostic : undefined;
+    }
+  });
 
   // A step that is no identity, tried where the relations above hold that share names with it.
   const followsFrom = (i: number): DerivationStep['relation'] | undefined => {
@@ -260,7 +274,7 @@ export function checkDerivation(
     let compared = 0;
     for (let point = 0; point < SAMPLES; point++) {
       const values = sample(point, () => 1, under, names);
-      const [a, b] = [values[i], values[i + 1]];
+      const [a, b] = sideBySide(values[i], values[i + 1], i);
       if (!a || !b) continue;
       compared++;
       if (!sameDim(a.dim, b.dim) || !equal(a, b, approx.includes(i) ? ROUNDED : RELATED)) return undefined;
@@ -270,6 +284,11 @@ export function checkDerivation(
     return { ...(last.label !== undefined ? { label: last.label } : {}), line: last.line };
   };
 
+  // Two members of a step; a member written as a bare 0 is in the unit of the other one (y == 0).
+  function sideBySide(a: Quantity | undefined, b: Quantity | undefined, i: number): [Quantity | undefined, Quantity | undefined] {
+    return a && b ? withBareZero(a, b, members[i]!, members[i + 1]!) : [a, b];
+  }
+
   const steps: DerivationStep[] = [];
   const diagnostics: Diagnostic[] = [];
   for (let i = 0; i + 1 < members.length; i++) {
@@ -278,7 +297,7 @@ export function checkDerivation(
     let problem: StepProblem | undefined;
     const numbers = !usesNames(members[i]!) || !usesNames(members[i + 1]!);
     for (const values of numbers ? [actual] : points) {
-      const [a, b] = [values[i], values[i + 1]];
+      const [a, b] = sideBySide(values[i], values[i + 1], i);
       if (!a || !b) continue;
       compared++;
       if (!sameDim(a.dim, b.dim)) {
@@ -304,7 +323,11 @@ export function checkDerivation(
       }
       diagnostics.push(diagnostic('E-DERIVE-STEP', span, { step: i + 1 }));
     }
-    if (!problem && compared === 0) {
+    const invalid = !problem && compared === 0 ? (wrong[i] ?? wrong[i + 1]) : undefined;
+    if (invalid) {
+      problem = 'invalid';
+      diagnostics.push(invalid);
+    } else if (!problem && compared === 0) {
       problem = 'unverified';
       diagnostics.push(diagnostic('W-DERIVE-UNVERIFIED', span, { step: i + 1 }));
     }

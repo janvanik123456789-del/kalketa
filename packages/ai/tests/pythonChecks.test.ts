@@ -13,6 +13,7 @@ const WORDS: CheckWords = {
   output: 'Výstup',
   ask: 'Oprav to.',
   timeout: 'Zrychli to.',
+  missing: 'Výpočet v listu ještě není.',
 };
 const format = (n: number) => n.toFixed(2).replace('.', ',');
 
@@ -36,6 +37,11 @@ describe('checks in Python written by the model', () => {
     expect(text).toContain(`${FENCE}text\nkontrola\n${FENCE}`);
     expect(text.endsWith('Oprav to.')).toBe(true);
     expect(pythonReport([agreed], WORDS, format)).not.toContain('Oprav to.');
+    // Results the sheet has no value for: the calculation is not in the sheet yet, which is no disagreement.
+    const absent: CheckReport = { ok: true, output: '', rows: [{ name: 't_v', python: '52,6 min', state: 'missing' }] };
+    expect(pythonReport([agreed, absent], WORDS, format)).toContain('Výpočet v listu ještě není.');
+    expect(pythonReport([agreed, absent], WORDS, format)).not.toContain('Oprav to.');
+    expect(pythonReport([absent, wrong], WORDS, format)).toContain('Oprav to.');
   });
 
   it('are explained to the model only when the program can run them', () => {

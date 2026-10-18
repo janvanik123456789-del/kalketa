@@ -56,6 +56,8 @@ export interface CheckWords {
   readonly ask: string;
   /** Said to the model when a script ran out of time: how to make it faster. */
   readonly timeout: string;
+  /** Said to the model when the sheet has none of the names yet: the calculation is not in it, not wrong. */
+  readonly missing: string;
 }
 
 /** Longest output of a script given back (the end of it, where the error is). */
@@ -84,7 +86,11 @@ export function pythonReport(reports: readonly CheckReport[], words: CheckWords,
     const output = r.output.trim();
     if (output) parts.push(`${words.output}:\n\n\`\`\`text\n${output.length > MAX_OUTPUT ? `…${output.slice(-MAX_OUTPUT)}` : output}\n\`\`\``);
   });
-  if (checksNeedAnswer(reports)) parts.push(words.ask);
+  // Results the sheet has no value for are not a disagreement: the calculation is not in the sheet yet.
+  const rows = reports.flatMap((r) => (r.declined ? [] : r.rows));
+  const onlyMissing = reports.every((r) => r.declined || r.ok) && rows.length > 0 && rows.every((row) => row.state === 'agree' || row.state === 'missing') && rows.some((row) => row.state === 'missing');
+  if (onlyMissing) parts.push(words.missing);
+  else if (checksNeedAnswer(reports)) parts.push(words.ask);
   return parts.join('\n\n');
 }
 

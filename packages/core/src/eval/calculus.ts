@@ -21,6 +21,7 @@ import { quantity, type Quantity, type Value } from '../values/value.js';
 import { asQuantity } from './coerce.js';
 import type { EvalContext } from './evaluator.js';
 import { extremum, rootsOf } from './roots.js';
+import { withBareZero } from './zero.js';
 
 type CallExpr = Extract<Expr, { kind: 'call' }>;
 type Evaluate = (expr: Expr, ctx: EvalContext) => Value;
@@ -72,8 +73,8 @@ function parts(call: CallExpr, options: readonly string[]): { body: Expr; variab
 function range(variable: NamedArg, call: CallExpr, ctx: EvalContext, evaluate: Evaluate): [Quantity, Quantity] {
   const r = variable.value;
   if (r.kind !== 'range') return fail('E-CALCULUS-FORM', r.span, { function: call.name });
-  const low = asQuantity(evaluate(r.low, ctx), r.low.span);
-  const high = asQuantity(evaluate(r.high, ctx), r.high.span);
+  // A bound written as a bare 0 is in the unit of the other one (h: 0 .. h_1).
+  const [low, high] = withBareZero(asQuantity(evaluate(r.low, ctx), r.low.span), asQuantity(evaluate(r.high, ctx), r.high.span), r.low, r.high);
   if (!sameDim(low.dim, high.dim)) fail('E-UNIT-MISMATCH', r.span, { operator: '..', left: baseUnitSymbol(low.dim), right: baseUnitSymbol(high.dim) });
   return [low, high];
 }

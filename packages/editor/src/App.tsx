@@ -1372,7 +1372,9 @@ export function App() {
     if (pythonEngine === 'system' && !(await askConfirm(t(ui, 'python.confirmSystem')))) return { ok: false, output: '', rows: [], declined: true };
     const raw = await desktop!.runPython(`${PYTHON_PRELUDE}\n${code}`, pythonEngine);
     const { output, results } = readOutput(raw.stdout);
-    const proposed = applyProposals(doc.source, parseProposals(answer));
+    // The sheet the check is about: a new sheet the answer writes, else this one with the changes it proposes.
+    const written = parseNewSheets(answer)[0];
+    const proposed = written ? written.lines.join('\n') : applyProposals(doc.source, parseProposals(answer));
     const sheet = proposed !== undefined && proposed !== doc.source ? evaluateDocument({ ...doc, source: proposed }, defaultRegistry).result : evaluation.main;
     const number = (v: number) => formatNumber(v, ui, { digits: 6 }).replace('-', '−');
     const rows = compareWithSheet(results, sheet).map((c) => ({

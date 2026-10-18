@@ -563,6 +563,7 @@ export const cs: Catalog = {
     'layers.used': 'list z ní čerpá, tiskne se jako příloha',
     'layers.newName': 'Název nové vrstvy',
     'layers.lockedNotice': 'Vrstva je zamčená proti úpravám.',
+    'layers.deleteAiConfirm': 'Odstranit Poznámky AI? Smažou se i všechny rozhovory s AI, paměť výpočtu a deník navržených změn; řádky přijaté od AI ztratí označení. Jde to vrátit přes Zpět.',
     'layers.deleteConfirm': 'Opravdu odstranit vrstvu „{name}“ i s obsahem?',
     'layers.hiddenNotice': 'Vrstva je skrytá. Zobrazíte ji v panelu Vrstvy.',
     'cmd.insert.block': '&Blok ze souboru…',

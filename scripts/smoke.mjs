@@ -230,7 +230,7 @@ if (!line) {
 const result = JSON.parse(line);
 writeFileSync(join(out, 'result.json'), JSON.stringify(result, null, 2));
 // Checks that pass when false; every other true/false check passes when true.
-const passWhenFalse = new Set(['aiDeletable', 'aiTabWhileEmpty', 'aiTabAfterClose']);
+const passWhenFalse = new Set(['aiTabWhileEmpty', 'aiTabAfterClose']);
 const failed = Object.entries({ ...result, ...result.layers })
   .filter(([key, value]) => key !== 'ok' && typeof value === 'boolean' && value === passWhenFalse.has(key))
   .map(([key]) => key);

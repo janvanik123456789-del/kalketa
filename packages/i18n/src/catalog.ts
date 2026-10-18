@@ -566,6 +566,7 @@ export const UI_KEYS = [
   'layers.newName',
   'layers.lockedNotice',
   'layers.deleteConfirm',
+  'layers.deleteAiConfirm',
   'layers.hiddenNotice',
   'cmd.insert.block',
   'blocks.title',

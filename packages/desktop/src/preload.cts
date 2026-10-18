@@ -29,6 +29,7 @@ contextBridge.exposeInMainWorld('kalketaDesktop', {
   },
   systemFonts: (): Promise<string[]> => ipcRenderer.invoke('kalketa:system-fonts'),
   clipboardPictures: (): Promise<{ name: string; type: string; bytes: Uint8Array }[]> => ipcRenderer.invoke('kalketa:clipboard-pictures'),
+  clipboardText: (): Promise<string> => ipcRenderer.invoke('kalketa:clipboard-text'),
   aiPolicy: (): Promise<unknown> => ipcRenderer.invoke('kalketa:ai-policy'),
   aiKeyState: (provider: string): Promise<unknown> => ipcRenderer.invoke('kalketa:ai-key-state', provider),
   aiSetKey: (request: { provider: string; key: string; remember: boolean }): Promise<unknown> => ipcRenderer.invoke('kalketa:ai-set-key', request),

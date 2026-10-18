@@ -563,6 +563,7 @@ export const en: Catalog = {
     'layers.used': 'used by the sheet, printed as an appendix',
     'layers.newName': 'Name of the new layer',
     'layers.lockedNotice': 'This layer is locked against changes.',
+    'layers.deleteAiConfirm': 'Remove the AI notes? All conversations with the AI, the memory of the calculation and the journal of proposed changes go too; the lines accepted from the AI lose their mark. Undo brings them back.',
     'layers.deleteConfirm': 'Delete the layer “{name}” with its content?',
     'layers.hiddenNotice': 'This layer is hidden. Show it in the Layers panel.',
     'cmd.insert.block': 'B&lock from file…',

@@ -39,11 +39,11 @@ describe('layer list', () => {
     expect(removeLayer(layers, id).map((l) => l.id)).toEqual(['main', 'data']);
   });
 
-  it('has at most one AI notes layer, added by an AI, which people cannot remove', () => {
+  it('has at most one AI notes layer, added by an AI, which people may remove', () => {
     const withAi = withAiLayer(defaultLayers());
     expect(withAi.filter((l) => l.kind === 'ai')).toHaveLength(1);
     expect(withAiLayer(withAi)).toEqual(withAi);
-    expect(removeLayer(withAi, 'ai').map((l) => l.id)).toContain('ai');
+    expect(removeLayer(withAi, 'ai').map((l) => l.id)).not.toContain('ai');
     // Empty AI notes are left out; notes the AI wrote stay.
     expect(withoutEmptyAiLayer(withAi).some((l) => l.kind === 'ai')).toBe(false);
     expect(withoutEmptyAiLayer(updateLayer(withAi, 'ai', { text: 'Kontrola: OK' })).some((l) => l.kind === 'ai')).toBe(true);

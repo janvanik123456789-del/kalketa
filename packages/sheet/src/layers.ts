@@ -72,7 +72,8 @@ export function updateLayer(layers: readonly Layer[], id: string, change: Partia
 
 /** Whether people may delete the layer: not the printed sheet, not the AI notes. */
 export function isRemovable(layer: Layer): boolean {
-  return layer.kind !== 'sheet' && layer.kind !== 'ai';
+  // The AI notes too: with their conversations, memory and journal (the files under layers/<id>/ go with them).
+  return layer.kind !== 'sheet';
 }
 
 /**

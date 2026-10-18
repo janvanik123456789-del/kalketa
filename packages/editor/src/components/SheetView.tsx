@@ -57,6 +57,8 @@ interface Props {
   /** Tab at the end of a line: a new cell beside it, on its row. */
   onInsertBeside(line: number): void;
   onDelete(start: number, end: number): void;
+  /** Ctrl+C on marked rows: their text for the clipboard (the program keeps what they use, for Ctrl+V elsewhere). */
+  onCopyRows?(rows: readonly { start: number; end: number; text: string }[]): string;
   /** Several rows at once (marked ones), in one step to undo. */
   onDeleteRows(rows: readonly { start: number; end: number }[]): void;
   onPick(statement: Statement, key: string, column?: string): void;
@@ -856,6 +858,20 @@ export function SheetView(props: Props) {
   };
 
   // A cell of a row (a line beside another, or one with a line beside it) can go from its menu.
+  // Ctrl+C on marked rows (no text field in focus): the rows as they are written, in the order of the sheet.
+  useEffect(() => {
+    if (marked.size === 0 || !props.onCopyRows) return;
+    const copy = (e: ClipboardEvent) => {
+      if ((e.target as HTMLElement | null)?.closest?.('input, textarea, select, [contenteditable="true"]')) return;
+      const rows = segs.filter((s) => marked.has(s.start));
+      if (rows.length === 0 || !e.clipboardData) return;
+      e.clipboardData.setData('text/plain', props.onCopyRows!(rows.map((s) => ({ start: s.start, end: s.end, text: s.text }))));
+      e.preventDefault();
+    };
+    document.addEventListener('copy', copy);
+    return () => document.removeEventListener('copy', copy);
+  }, [marked, segs]);
+
   const withCellDelete = (seg: Segment, items: MenuItem[]): MenuItem[] => {
     const at = segs.indexOf(seg);
     const cell = lineAttributesOf(seg.text).has('beside') || lineAttributesOf(segs[at + 1]?.text ?? '').has('beside');

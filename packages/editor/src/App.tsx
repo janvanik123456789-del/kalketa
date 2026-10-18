@@ -69,6 +69,9 @@ const PANE_TABS: readonly (readonly [Exclude<Pane, 'none'>, Parameters<typeof t>
   ['chat', 'pane.chatTab'],
 ];
 type Tab = DocTab<SheetDocument, FileRef>;
+/** Rows copied by Ctrl+C with what they use (pictures, tables), for Ctrl+V in any calculation of the window. */
+let rowClipboard: { readonly text: string; readonly files: ReadonlyMap<string, Uint8Array>; readonly tables: SheetDocument['tables'] } | undefined;
+
 type DialogKind = 'settings' | 'properties' | 'revisions' | 'customize' | 'shortcuts' | 'functions' | 'about' | 'study' | 'fit';
 
 const MM_TO_PX = 96 / 25.4;
@@ -627,11 +630,15 @@ export function App() {
 
   const deleteLayer = async (id: string) => {
     const target = doc.layers.find((l) => l.id === id);
-    if (!target || !isRemovable(target) || !(await askConfirm(t(ui, 'layers.deleteConfirm', { name: nameOf(target) })))) return;
+    // The AI notes take their conversations, memory and journal with them: the lines the AI made lose their mark.
+    const asked = target?.kind === 'ai' ? t(ui, 'layers.deleteAiConfirm') : t(ui, 'layers.deleteConfirm', { name: target ? nameOf(target) : '' });
+    if (!target || !isRemovable(target) || !(await askConfirm(asked))) return;
     // Pictures of the layer go with it; tables of a data layer move to another data layer.
     const files = new Map([...doc.files].filter(([path]) => !path.startsWith(`layers/${id}/`)));
     change({ ...doc, layers: removeLayer(doc.layers, id), files });
     setPanes(openPanes.filter((p) => p !== id));
+    // A conversation kept in them is gone: the chat starts a new one.
+    if (target.kind === 'ai') setActiveChat((all) => ({ ...all, [tab.id]: '' }));
   };
 
   /** A new table belongs to the active data layer, else to the first one. */
@@ -1456,6 +1463,45 @@ export function App() {
     setDialog('fit');
   };
 
+  /**
+   * Ctrl+C on marked rows: their text, and (kept in the window) the pictures and tables they use,
+   * so Ctrl+V in another calculation brings them along.
+   */
+  const copyRows = (rows: readonly { start: number; end: number; text: string }[]): string => {
+    const text = [...rows].sort((a, b) => a.start - b.start).map((r) => r.text).join('\n');
+    const files = new Map([...text.matchAll(/\]\(([^)\s]+)\)/g)].flatMap((m) => (doc.files.has(m[1]!) ? [[m[1]!, doc.files.get(m[1]!)!] as const] : [])));
+    const tables = new Map([...doc.tables].filter(([name]) => new RegExp(`(^|[^\\p{L}\\p{N}_])${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^\\p{L}\\p{N}_]|$)`, 'u').test(text)));
+    rowClipboard = { text, files, tables };
+    return text;
+  };
+  /**
+   * Ctrl+V outside a line: the text of the clipboard as rows after the current one, with what copied rows use and
+   * this calculation lacks. `inEmpty`: pasted into an empty line being edited, which the rows take the place of.
+   */
+  const pasteRows = (pasted: string, inEmpty = false) => {
+    const text = pasted.replace(/\r\n?/g, '\n').replace(/\n+$/, '');
+    if (!text.trim()) return;
+    const into = layer.kind === 'sheet' || layer.kind === 'calc' ? layer : doc.layers[0]!;
+    const range = into.id === layer.id ? currentRange() : undefined;
+    const replace = inEmpty && range ? range : undefined;
+    const at = replace ? replace.start - 1 : (range?.end ?? lastRowInView(into.id) ?? textOf(into).split('\n').length);
+    const carried = rowClipboard?.text === text ? rowClipboard : undefined;
+    changeWith((present) => {
+      const files = new Map(present.files);
+      for (const [path, bytes] of carried?.files ?? []) if (!files.has(path)) files.set(path, bytes);
+      let next: SheetDocument = { ...present, files };
+      for (const [name, table] of carried?.tables ?? []) {
+        if (next.tables.has(name)) continue;
+        next = assignTable({ ...next, tables: new Map(next.tables).set(name, table) }, name);
+      }
+      const own = into.kind === 'sheet' ? next.source : (next.layers.find((l) => l.id === into.id)?.text ?? '');
+      const changed = replace ? replaceLines(own, replace.start, replace.end, text) : insertLineAfter(own, at, text);
+      return into.kind === 'sheet' ? { ...next, source: changed } : { ...next, layers: updateLayer(next.layers, into.id, { text: changed }) };
+    });
+    setEditing(undefined);
+    reveal.current = { layer: into.id, line: at + 1 };
+  };
+
   const insertSymbol = (symbol: string) => {
     const area = document.querySelector<HTMLTextAreaElement>('textarea.row-editor');
     // A line of text edited formatted: the symbol among its words.
@@ -1665,6 +1711,8 @@ export function App() {
   dialogOpen.current = dialog !== undefined || canvasPath !== undefined;
   const picturesRef = useRef(insertPictures);
   picturesRef.current = insertPictures;
+  const pasteRowsRef = useRef(pasteRows);
+  pasteRowsRef.current = pasteRows;
   const layerOfElement = (element: EventTarget | null): Layer | undefined => {
     const id = (element as Element | null)?.closest?.('.layer-view')?.getAttribute('data-layer');
     return id ? doc.layers.find((l) => l.id === id) : undefined;
@@ -1694,6 +1742,14 @@ export function App() {
     const paste = (e: ClipboardEvent) => {
       if (dialogOpen.current || (e.target as HTMLElement | null)?.closest?.('.notes-word')) return;
       const data = e.clipboardData;
+      // Rows pasted into an empty line being edited (a new calculation opens with one): they become rows, not one line.
+      const row = (e.target as HTMLElement | null)?.closest?.('textarea.row-editor');
+      const rows = data?.getData('text/plain') ?? '';
+      if (row instanceof HTMLTextAreaElement && row.value.trim() === '' && rows.replace(/\r?\n+$/, '').includes('\n') && ![...(data?.files ?? [])].length) {
+        e.preventDefault();
+        pasteRowsRef.current(rows, true);
+        return;
+      }
       const files = [...(data?.files ?? [])].filter((f) => f.type.startsWith('image/'));
       if (files.length > 0) {
         e.preventDefault();
@@ -1742,10 +1798,15 @@ export function App() {
       const inSheetText = !!target.closest?.('[data-text-editor]');
       if (inRich && !(inSheetText && ['Ctrl+Shift+K', 'Ctrl+D'].includes(key)) && !['Ctrl+N', 'Ctrl+O', 'Ctrl+S', 'Ctrl+Shift+S', 'Ctrl+P', 'Ctrl+W', 'Ctrl+Shift+N', 'Ctrl+Tab', 'Ctrl+Shift+Tab', 'Ctrl++', 'Ctrl+=', 'Ctrl+-', 'Ctrl+0', 'F1'].includes(key)) return;
       const inField = !inRow && target.matches?.('input, select, textarea');
-      // Outside text fields Ctrl+V takes pictures from the clipboard directly (no paste event there to rely on).
+      // Outside text fields Ctrl+V takes pictures from the clipboard directly (no paste event there to rely on),
+      // else its text as rows (rows copied by Ctrl+C, here or in another calculation).
       if (key === 'Ctrl+V' && !inRow && !inField && desktop) {
         e.preventDefault();
-        void desktop.clipboardPictures().then((pictures) => void picturesRef.current(pictures));
+        void desktop.clipboardPictures().then(async (pictures) => {
+          if (pictures.length > 0) return void picturesRef.current(pictures);
+          const text = await desktop!.clipboardText().catch(() => '');
+          if (text.trim()) pasteRowsRef.current(text);
+        });
         return;
       }
       // Clipboard keys stay native; in other fields undo/redo stay native too.
@@ -2068,6 +2129,7 @@ export function App() {
           onPick={(statement, key, column) => pickIn(l, statement, key, column)}
           onReplacePicture={(start, end) => void replacePictureFile(l, start, end)}
           onEditCanvas={(path) => openCanvas(path)}
+          onCopyRows={copyRows}
           onCurve={editCurve}
           curveEditable={(line, series) => !!fittedCurve(line, series)}
           onCanvasArea={(path, factorWidth, factorHeight, line) => {

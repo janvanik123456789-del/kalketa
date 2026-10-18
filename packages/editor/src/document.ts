@@ -102,6 +102,8 @@ export interface DesktopBridge {
   systemFonts?(): Promise<string[]>;
   /** Pictures on the clipboard: picture files copied in a file manager, or a copied picture. */
   clipboardPictures(): Promise<{ name: string; type: string; bytes: Uint8Array }[]>;
+  /** The text of the clipboard (rows copied in a calculation). */
+  clipboardText(): Promise<string>;
   /** Company rules for the AI (read by the application from next to the program). */
   aiPolicy(): Promise<unknown>;
   aiKeyState(provider: string): Promise<AiKeyState>;

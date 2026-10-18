@@ -57,9 +57,26 @@ describe('fit: a curve through measured points', () => {
     expect(lines.some((l) => l.includes('4·') && l.includes('60 s'))).toBe(true);
     expect(lines).toContain('0,459 Δ°C/s');
     expect(lines.at(-2)).toBe('T_fit(t) 20,39 °C+0,459 Δ°C/s·t');
-    // Other kinds: the result only, and a word why.
-    const codes = evaluateSheet(`${MEASURED}P := fit(Mereni.T, x: Mereni.t, kind: "poly2", steps: true)`).diagnostics.map((d) => d.code);
+    // Kinds fitted on logarithms: the result only, and a word why.
+    const codes = evaluateSheet(`${MEASURED}P := fit(Mereni.T, x: Mereni.t, kind: "exp", steps: true)`).diagnostics.map((d) => d.code);
     expect(codes).toEqual(['W-FIT-STEPS']);
+  });
+
+  it('writes out a polynomial by its normal equations: the sums, the system in letters and in numbers, the coefficients', () => {
+    const points = 'table Body:\n    | x | y |\n    | 1 | 2.1 |\n    | 2 | 3.9 |\n    | 3 | 4.2 |\n    | 4 | 6.2 |\n    | 5 | 9.1 |\n';
+    const sheet = evaluateSheet(`${points}P := fit(Body.y, x: Body.x, kind: "poly2", steps: true)`);
+    expect(sheet.diagnostics).toEqual([]);
+    const doc = buildPrintDocument(sheet, { catalog: cs, registry: defaultRegistry, digits: 4, title: 'P' });
+    const block = doc.blocks.at(-1)!;
+    const lines = block.kind === 'equation' ? block.lines.map((l) => `${l.lhs ? toText(l.lhs) : ''} ${l.op ?? ''} ${toText(l.rhs)}`.replace(/\s+/g, ' ').trim()) : [];
+    expect(lines).toContain('∑x^4 = 979');
+    expect(lines).toContain('∑x^2·y = 382,2');
+    expect(lines).toContain('n·b_0+∑x·b_1+∑x^2·b_2 = ∑y');
+    expect(lines).toContain('55·b_0+225·b_1+979·b_2 = 382,2');
+    // The coefficients from the highest, as the system gives them (verified with numpy.polyfit).
+    expect(lines.filter((l) => l.startsWith('b_'))).toEqual(['b_2 = 0,2786', 'b_1 = −0,04143', 'b_0 = 2,16']);
+    // A negative coefficient is subtracted in the curve.
+    expect(lines.find((l) => l.startsWith('P(x)'))).toBe('P(x) = 2,16−0,04143·x+0,2786·x^2');
   });
 
   it('fits polynomials and refuses what cannot be fitted', () => {

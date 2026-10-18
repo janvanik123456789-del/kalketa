@@ -72,7 +72,7 @@ export const cs: Catalog = {
     'E-PLUS-MINUS': 'Znaménko ± dává dvě čísla (a + b a a − b); řadu ani matici takto spojit nejde.',
     'E-SOLVE-ROOTS': 'Rovnice má pro {name} víc kladných řešení ({roots}). Vyberte jedno intervalem, např. solve {name}: … in 0 m .. 1 m.',
     'E-ROOTS-POLYNOMIAL': 'roots: výraz není mnohočlen v {name} (nejvýš {max}. stupně, celé mocniny, dělení jen tím, co {name} neobsahuje).',
-    'W-FIT-STEPS': 'Postup metody nejmenších čtverců (steps: true) umí fit zatím jen u přímky; u druhu „{kind}“ ukáže jen výsledek.',
+    'W-FIT-STEPS': 'Postup metody nejmenších čtverců (steps: true) umí fit u přímky a polynomů (linear, poly2, poly3); druh „{kind}“ se prokládá přes logaritmy, ukáže jen výsledek.',
     'E-SOLVE-RELATION': '„{name}“ není jméno vztahu. Vztah se zapíše řádkem relation a pojmenuje: relation x^2 + y^2 == r^2 {eq=Kruh}; pak solve y: Kruh.',
     'E-PLOT-IMPLICIT': 'Implicitní křivka (rovnice v grafu) potřebuje rozsah obou os: plot(x^2 + y^2 == 25, x: -6 .. 6, y: -6 .. 6). Strany rovnice musí mít stejnou jednotku.',
     'E-SOLVE-INEQUALITY': 'Nerovnici (≤, ≥, <, >) řeší solve jen pro jednu neznámou a jednu nerovnici.',

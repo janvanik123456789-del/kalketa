@@ -355,7 +355,7 @@ export function renderBlockHtml(block: PrintBlock, catalog: Catalog, options: Bl
     }
     case 'equation':
       return `<section class="block equation${options.style === 'compact' ? ' compact' : options.style === 'book' ? ' book' : ''}${block.number !== undefined ? ' numbered' : ''}" data-line="${block.line}">
-${numbered(options.style === 'compact' ? equationFlow(block.lines, block.comment, options.defineOperator ?? '=', block.source) : equationTable(block.lines, block.comment, options.defineOperator ?? '=', block.source), block.number)}${block.table ? dataTableHtml(block.table) : ''}${block.derived ? `<div class="derived">✓ ${esc(derivedText(block.follows, catalog))}</div>` : ''}${imported(block.imported, catalog)}${blockCalc(block.blockCalc, catalog)}${messages(block.messages)}
+${numbered(options.style === 'compact' ? compactLines(block, options.defineOperator ?? '=') : equationTable(block.lines, block.comment, options.defineOperator ?? '=', block.source), block.number)}${block.table ? dataTableHtml(block.table) : ''}${block.derived ? `<div class="derived">✓ ${esc(derivedText(block.follows, catalog))}</div>` : ''}${imported(block.imported, catalog)}${blockCalc(block.blockCalc, catalog)}${messages(block.messages)}
 </section>`;
     case 'selection': {
       const condition = block.condition
@@ -446,6 +446,19 @@ function equationTable(lines: readonly EquationLine[], note: string | undefined,
     return `<tr class="${line.role}"><td class="lhs">${lhs}</td><td class="op">${op}</td><td class="rhs">${math(line.rhs)}</td><td class="note">${i === 0 ? comment(note) + sourceRef(source) : ''}</td></tr>`;
   });
   return `<table class="eq">\n${rows.join('\n')}\n</table>`;
+}
+
+/** The compact style of a block: its steps on a line, a system of equations in it one under another. */
+function compactLines(block: Extract<PrintBlock, { kind: 'equation' }>, defineOperator: string): string {
+  if (!block.stacked) return equationFlow(block.lines, block.comment, defineOperator, block.source);
+  const [from, to] = block.stacked;
+  const before = block.lines.slice(0, from);
+  const after = block.lines.slice(to);
+  return [
+    before.length > 0 ? equationFlow(before, block.comment, defineOperator, block.source) : '',
+    equationTable(block.lines.slice(from, to), before.length > 0 ? undefined : block.comment, defineOperator),
+    after.length > 0 ? equationFlow(after, undefined, defineOperator) : '',
+  ].join('\n');
 }
 
 /**

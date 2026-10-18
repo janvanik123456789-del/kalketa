@@ -1,0 +1,10 @@
+{
+  "sheet": "prolozeni-parabolou.cc",
+  "verifiedBy": "Samostatně v Pythonu: numpy.polyfit (stupeň 2 a 1) a přímé řešení soustavy normálních rovnic (Σx = 15, Σx² = 55, Σx³ = 225, Σx⁴ = 979, Σy = 25,5, Σx·y = 92,8, Σx²·y = 382,2); součty čtverců odchylek z rozdílů bodů a křivek.",
+  "relativeTolerance": 0.0001,
+  "values": {
+    "S_P": { "value": 0.8045714285714276, "unit": "" },
+    "S_L": { "value": 1.8909999999999982, "unit": "" }
+  },
+  "checks": [{ "label": "parabola sedí na body lépe než přímka", "passed": true }]
+}

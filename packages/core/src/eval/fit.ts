@@ -25,6 +25,8 @@ type CallExpr = Extract<Expr, { kind: 'call' }>;
 
 export const FIT_KINDS = ['linear', 'poly2', 'poly3', 'exp', 'power', 'log'] as const;
 export type FitKind = (typeof FIT_KINDS)[number];
+/** The degree of the polynomial kinds (a line is one of degree 1). */
+const DEGREES: Partial<Record<FitKind, number>> = { linear: 1, poly2: 2, poly3: 3 };
 
 /** What a fitted function was made from: shown in print as its equation and R². */
 export interface FitInfo {
@@ -37,17 +39,18 @@ export interface FitInfo {
   readonly r2: number;
   readonly points: number;
   /**
-   * steps: true on a straight line — the method written out as on paper: the sums over the points,
-   * the slope b₁ = (n·Σx·y − Σx·Σy)/(n·Σx² − (Σx)²) and the intercept b₀ = (Σy − b₁·Σx)/n.
+   * steps: true on a straight line or a polynomial — the method written out as on paper: the sums
+   * over the points, then for a line b₁ = (n·Σx·y − Σx·Σy)/(n·Σx² − (Σx)²) and b₀ = (Σy − b₁·Σx)/n,
+   * for a polynomial the normal equations Σⱼ bⱼ·Σx^(i+j) = Σx^i·y with their numbers.
    */
   readonly steps?: {
     /** Names of the columns, as the sums are written: Σt·a. */
     readonly x: string;
     readonly y: string;
-    readonly sumX: Quantity;
-    readonly sumY: Quantity;
-    readonly sumXX: Quantity;
-    readonly sumXY: Quantity;
+    /** Σx^k for k = 0 … 2·degree (k = 0 is n). */
+    readonly powers: readonly Quantity[];
+    /** Σx^k·y for k = 0 … degree (k = 0 is Σy). */
+    readonly withY: readonly Quantity[];
   };
 }
 
@@ -69,8 +72,9 @@ export function fitCall(call: CallExpr, ctx: EvalContext, evaluate: Evaluate): F
   const stepsValue = stepsArg ? evaluate(stepsArg.value, ctx) : undefined;
   if (stepsValue && stepsValue.type !== 'boolean') return fail('E-TYPE', stepsArg!.value.span, { expected: 'boolean', found: stepsValue.type });
   const steps = stepsValue?.type === 'boolean' && stepsValue.value;
-  // The method written out is that of a straight line; other kinds give their result only.
-  if (steps && kind !== 'linear') ctx.warnings.push(diagnostic('W-FIT-STEPS', stepsArg!.value.span, { kind }));
+  // The method written out is that of a line or a polynomial; the kinds fitted on logarithms give their result only.
+  const degree = DEGREES[kind];
+  if (steps && degree === undefined) ctx.warnings.push(diagnostic('W-FIT-STEPS', stepsArg!.value.span, { kind }));
   const ys = series(evaluate(call.args[0]!, ctx), call.args[0]!.span);
   const xs = series(evaluate(xArg.value, ctx), xArg.value.span);
   if (xs.length !== ys.length) fail('E-PLOT-LENGTH', call.span, {});
@@ -101,8 +105,7 @@ export function fitCall(call: CallExpr, ctx: EvalContext, evaluate: Evaluate): F
   let body: Expr;
   // Slopes of an absolute temperature are differences: °C/s, not an absolute °C.
   const yHint = deltaOf(y0.hint);
-  if (kind === 'linear' || kind === 'poly2' || kind === 'poly3') {
-    const degree = { linear: 1, poly2: 2, poly3: 3 }[kind];
+  if (degree !== undefined) {
     // Scaled x for a well-conditioned system, the coefficients scaled back.
     const scale = Math.max(...xv.map(Math.abs)) || 1;
     const a = leastSquares(xv.map((x) => Array.from({ length: degree + 1 }, (_, k) => (x / scale) ** k)), yv, call);
@@ -143,15 +146,17 @@ export function fitCall(call: CallExpr, ctx: EvalContext, evaluate: Evaluate): F
     coefficients: coefficients.map((value, i) => ({ name: `${COEFFICIENT}${i}`, value })),
     r2: total > 0 ? 1 - residual / total : 1,
     points: xv.length,
-    ...(steps && kind === 'linear'
+    ...(steps && degree !== undefined
       ? {
           steps: {
             x: param,
             y: yName,
-            sumX: quantity(sum(xv), x0.dim, x0.hint ? { hint: x0.hint } : {}),
-            sumY: quantity(sum(yv), y0.dim, yHint ? { hint: yHint } : {}),
-            sumXX: quantity(sum(xv.map((x) => x * x)), powerDim(x0.dim, 2)),
-            sumXY: quantity(sum(xv.map((x, i) => x * yv[i]!)), multiplyDims(x0.dim, y0.dim)),
+            powers: Array.from({ length: 2 * degree + 1 }, (_, k) =>
+              quantity(sum(xv.map((x) => x ** k)), powerDim(x0.dim, k), k === 1 && x0.hint ? { hint: x0.hint } : {}),
+            ),
+            withY: Array.from({ length: degree + 1 }, (_, k) =>
+              quantity(sum(xv.map((x, i) => x ** k * yv[i]!)), multiplyDims(powerDim(x0.dim, k), y0.dim), k === 0 && yHint ? { hint: yHint } : {}),
+            ),
           },
         }
       : {}),

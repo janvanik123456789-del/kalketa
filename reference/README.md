@@ -1,6 +1,6 @@
 # Referenční výpočty
 
-Každý referenční výpočet (R1–R16, viz docs/01-filozofie.md, kap. 10) má vlastní složku
+Každý referenční výpočet (R1–R17, viz docs/01-filozofie.md, kap. 10) má vlastní složku
 s listem a nezávisle ověřenými očekávanými výsledky (s tolerancí a zdrojem ověření).
 Program je nabízí jako vzorové příklady (Soubor → Vzorové příklady), tříděné podle oboru.
 
@@ -42,6 +42,7 @@ Jádro je hotové, až projdou všechny bez kódu specifického pro jeden obor.
 | 16_…/R5-fotovoltaika | ekonom | vlastní měna, kurz k datu z tabulky, řady peněžních toků, NPV, IRR, doba a datum návratnosti |
 | 01_…/R7-kvadraticka-rovnice | výuka | kvadratická rovnice jako na papíře: podmínka řešitelnosti, kořeny s dosazením, Vietovy vzorce, rozklad, vrchol přes derivaci, tečna s úhlem, plocha mezi kořeny, graf s body a šrafováním, posuvníky koeficientů |
 | 01_…/R8-quadratic-equation | výuka | totéž v angličtině (soubor `*.en.cc` se tiskne anglicky) |
+| 01_…/R17-prolozeni-parabolou | výuka | proložení pěti bodů parabolou metodou nejmenších čtverců s postupem (`fit(…, kind: "poly2", steps: true)`: součty mocnin, soustava normálních rovnic obecně i s čísly, koeficienty), srovnání s přímkou součtem čtverců odchylek, graf bodů a obou křivek; teorie v Podkladech (odvození normálních rovnic ověřené derivací, přímka jako zvláštní případ, R²) |
 | 02_Fyzika/R10-stlaceni-hydrostatickym-tlakem | fyzik | reálná úloha (Sbírka řešených úloh, č. 2155): hydrostatický tlak, Hookův zákon, diferenciály jako vztahy (`relation`) a odvození z nich, trojný integrál přes objem, čísla rovnic (1)–(9) jako ve sbírce |
 | 02_Fyzika/R13-rychlost-z-namereneho-zrychleni | fyzik | reálná úloha (Sbírka řešených úloh, č. 112): naměřená tabulka v listu, přímka směrnicí i metodou nejmenších čtverců, rychlost a poloha integrací s ověřeným odvozením, grafy bodů a průběhů |
 | 03_…/04_Technicke_tekutiny/R15-vytok-z-nadrze | strojař | reálná úloha (Sbírka řešených úloh, č. 1154): Bernoulliho rovnice a rovnice kontinuity jako vztahy, Torricelliho vzorec odvozený z nich, doba vyprázdnění integrálem, průběh hladiny a výtoku v grafech; **teorie ve vrstvě Podklady** (`podklady.md`, vzorce v ```` ```kalk ```` ověřené testem) |

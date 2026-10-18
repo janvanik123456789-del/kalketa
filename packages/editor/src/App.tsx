@@ -1761,6 +1761,13 @@ export function App() {
       // A file copied in a file manager arrives as its path (or nothing); the desktop reads it.
       const text = data?.getData('text/plain') ?? '';
       const looksLikeFile = /^(file:\/\/|\/|[A-Za-z]:\\).*\.(png|jpe?g|gif|webp|svg|bmp)\s*$/i.test(text.trim());
+      // Text pasted outside any field (the menu took Ctrl+V, as on Linux; or the web): rows of the calculation.
+      const inField = (e.target as HTMLElement | null)?.closest?.('input, textarea, select, [contenteditable="true"]');
+      if (!inField && text.trim() !== '' && !looksLikeFile) {
+        e.preventDefault();
+        pasteRowsRef.current(text);
+        return;
+      }
       if (!desktop || (text !== '' && !looksLikeFile)) return;
       e.preventDefault();
       const area = document.activeElement;
@@ -1802,11 +1809,15 @@ export function App() {
       // else its text as rows (rows copied by Ctrl+C, here or in another calculation).
       if (key === 'Ctrl+V' && !inRow && !inField && desktop) {
         e.preventDefault();
-        void desktop.clipboardPictures().then(async (pictures) => {
-          if (pictures.length > 0) return void picturesRef.current(pictures);
-          const text = await desktop!.clipboardText().catch(() => '');
-          if (text.trim()) pasteRowsRef.current(text);
-        });
+        // Pictures that cannot be read (a clipboard of the system that holds none) do not stop the text.
+        void desktop
+          .clipboardPictures()
+          .catch(() => [])
+          .then(async (pictures) => {
+            if (pictures.length > 0) return void picturesRef.current(pictures);
+            const text = await desktop!.clipboardText().catch(() => '');
+            if (text.trim()) pasteRowsRef.current(text);
+          });
         return;
       }
       // Clipboard keys stay native; in other fields undo/redo stay native too.

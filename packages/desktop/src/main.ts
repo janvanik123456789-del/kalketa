@@ -2477,12 +2477,18 @@ async function layersWithRealInput(picture: string) {
   await pause(1200);
   const tabsAfter = (await contents.executeJavaScript(`document.querySelectorAll('.doc-tab').length`)) as number;
   await pressKey('V', ['control']);
-  await pause(1500);
-  const pastedRows = (await contents.executeJavaScript(`({
+  // The rows and the picture as they show, waited for (a slower system paints them later).
+  const readPasted = async () =>
+    (await contents.executeJavaScript(`({
     rows: [...document.querySelectorAll('.layer-view.active .row[data-line]')].map((r) => r.textContent).filter((t) => /poloměr nádrže|výška podstavce|tíhové zrychlení/.test(t)).length,
     picture: [...document.querySelectorAll('.layer-view.active .page img')].filter((i) => i.naturalWidth > 0).length,
     status: document.querySelector('.statusbar')?.textContent ?? '',
   })`)) as { rows: number; picture: number; status: string };
+  let pastedRows = await readPasted();
+  for (let i = 0; i < 40 && (pastedRows.rows < 3 || pastedRows.picture < 1); i++) {
+    await pause(250);
+    pastedRows = await readPasted();
+  }
   await takePicture(picture.replace(/[.]png$/, '-rows-pasted.png'));
   const rowsCopy = { marked: copyMarked, copied: copiedText.split('\n').length, newTab: tabsAfter - copyTabsBefore, ...pastedRows };
   // A rocket: Meščerskij's equation as a relation, the fuel rate derived under it, its flight in charts.

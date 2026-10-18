@@ -122,6 +122,19 @@ const fakeApi = createServer((request, response) => {
         response.end(event('[DONE]'));
         return;
       }
+      // "Spočítej…": without a level of detail, the model asks for it by a choice; with one (the user picked it),
+      // it says which and proposes a note for the AI notes.
+      const level = /chose the level of detail "(\w+)"/.exec(system)?.[1];
+      if (question.startsWith('Spočítej') || question.includes('→')) {
+        const lf = String.fromCharCode(10);
+        const fence = '`'.repeat(3);
+        const text = level
+          ? `úroveň: ${level}.${lf}${lf}${fence}note ai Shrnutí výpočtu${lf}Výpočet je hotový, výsledky souhlasí.${lf}${fence}${lf}`
+          : `Než začnu, zvolte podrobnost.${lf}${lf}${fence}choice detail Jak podrobně má být výpočet?${lf}brief: Stručně${lf}paper: Jako na papíře${lf}teaching: Výukově${lf}${fence}${lf}`;
+        response.write(event({ model: 'local-smoke-7b', choices: [{ delta: { content: text } }] }));
+        response.end(event('[DONE]'));
+        return;
+      }
       // "Ověř…": a check in Python of a number of the sheet, first wrong (twice the value), then, given the
       // program's report that it disagrees, right; and whether the briefing told how to write checks.
       const report = question.includes('Ověření v Pythonu') || question.includes('Check in Python');

@@ -3131,6 +3131,7 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
   let resumed: string[] = [];
   let newSheet = { head: '', others: '', opened: { tab: '', rows: 0, marked: 0, errors: '' }, state: '' };
   let pythonChat = { checks: 0, first: '', last: '', answers: 0, told: '', keep: 0, tables: 0, kept: false };
+  let answerBlocks = { choiceButtons: '', levelAnswer: '', noteButton: '', noteAfter: '' };
   let thinkingCut = '';
   let together = { allButton: '', acceptedAll: 0, undoneAll: -1, copy: { tab: '', rows: 0, marked: 0, badges: 0 }, original: { rows: -1, state: 0 } };
   let proposal = { card: '', accepted: false, state: '', undone: false, journal: '', marked: '', reviewed: false, markedAgain: false, printAsks: '', printClosed: false };
@@ -3282,6 +3283,28 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
     await clickOn('.menubar-item:nth-child(2) > button');
     await clickMenu('Zpět');
     await pause(400);
+    // How detailed the calculation should be: the model asks by a choice, the user clicks an answer; the model then
+    // writes in that level (it gets it in its briefing) and proposes a note, put into the AI notes by a click.
+    await clickOn('.chat-input');
+    await typeText('Spočítej úlohu.');
+    await pressKey('Enter');
+    for (let i = 0; i < 60 && !(await contents.executeJavaScript(`!!document.querySelector('.chat-pane .chat-choice-option[data-value="paper"]:not([disabled])')`)); i++) await pause(150);
+    const choiceButtons = (await contents.executeJavaScript(`[...document.querySelectorAll('.chat-pane .chat-choice-option')].map((b) => b.textContent).join('|')`)) as string;
+    await clickOn('.chat-pane .chat-choice-option[data-value="paper"]');
+    for (let i = 0; i < 60 && !(await contents.executeJavaScript(`!!document.querySelector('.chat-pane .chat-note-keep')`)); i++) await pause(150);
+    const levelAnswer = (await contents.executeJavaScript(`[...document.querySelectorAll('.chat-pane .chat-turn.assistant:not(.writing)')].pop()?.textContent ?? ''`)) as string;
+    const noteButton = (await contents.executeJavaScript(`document.querySelector('.chat-pane .chat-note-keep')?.textContent ?? ''`)) as string;
+    await clickOn('.chat-pane .chat-note-keep');
+    await pause(400);
+    const noteAfter = (await contents.executeJavaScript(`document.querySelector('.chat-pane .chat-note-keep')?.textContent ?? ''`)) as string;
+    await takePicture(picture.replace(/[.]png$/, '-ai-blocks.png'));
+    answerBlocks = { choiceButtons, levelAnswer, noteButton, noteAfter };
+    // Both taken back (the note, the level kept in the calculation), so the later steps find the sheet as it was.
+    for (let n = 0; n < 2; n++) {
+      await clickOn('.menubar-item:nth-child(2) > button');
+      await clickMenu('Zpět');
+      await pause(300);
+    }
     if (await contents.executeJavaScript(`!!document.querySelector('.layer-tab[data-layer="main"]')`)) await clickOn('.layer-tab[data-layer="main"]');
   }
   // The side pane's tabs switch what it shows with one click.
@@ -3294,7 +3317,7 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
   await clickMenu('Boční panel');
   await clickMenu(back);
   await pause(300);
-  await writeFile(picture.replace(/[.]png$/, '-ai-chat.json'), JSON.stringify({ pasted, unpasted, typed, theory, offered, quietWhileOff, head, shown, cutOff, cleared, aiTab, layerShown, kept, resumed, proposal, together, newSheet, pythonChat, paneTabs, thoughtFolded, thought }, null, 2));
+  await writeFile(picture.replace(/[.]png$/, '-ai-chat.json'), JSON.stringify({ pasted, unpasted, typed, theory, offered, quietWhileOff, head, shown, cutOff, cleared, aiTab, layerShown, kept, resumed, proposal, together, newSheet, pythonChat, answerBlocks, paneTabs, thoughtFolded, thought }, null, 2));
   return (
     pasted === 'Klopení je ztráta stability ohýbaného nosníku. Vloženo ze schránky.' && unpasted === 'Klopení je ztráta stability ohýbaného nosníku.' &&
     typed === 'H2:Klopení|P:Klopení je ztráta stability ohýbaného nosníku.' && theory.heading === 'Klopení' && /^T\d+$/.test(theory.badge) &&
@@ -3318,6 +3341,7 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
     newSheet.head === 'Nový list: Nosník se silou · řádků: 4' && Number(newSheet.others) >= 2 &&
     newSheet.opened.tab.startsWith('Nosník se silou') && newSheet.opened.marked >= 3 && newSheet.opened.errors.startsWith('chyba: 0') && newSheet.state.startsWith('Otevřeno jako „Nosník se silou“') &&
     pythonChat.checks === 2 && pythonChat.answers === 2 && pythonChat.told.includes('python: ano') && pythonChat.first.includes('✗') && pythonChat.last.includes('✓') && !pythonChat.last.includes('✗') && pythonChat.keep === 2 && pythonChat.tables === 2 && pythonChat.kept &&
+    answerBlocks.choiceButtons === 'Stručně|Jako na papíře|Výukově' && answerBlocks.levelAnswer.includes('úroveň: paper') && answerBlocks.noteButton === 'Vložit do Poznámek AI' && answerBlocks.noteAfter === 'Vloženo' &&
     thinkingCut.includes('Odpověď hned.') && thinkingCut.includes('bez přemýšlení') &&
     together.allButton === 'Přijmout vše (2)' && together.acceptedAll === 2 && together.undoneAll === 0 &&
     together.copy.tab.includes('(upravená kopie)') && together.copy.rows === 2 && together.copy.marked === 2 && together.copy.badges === 2 && together.original.rows === 0 && together.original.state === 2 &&

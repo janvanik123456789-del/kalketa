@@ -12,6 +12,7 @@ const WORDS: CheckWords = {
   none: 'Žádný výsledek.',
   output: 'Výstup',
   ask: 'Oprav to.',
+  timeout: 'Zrychli to.',
 };
 const format = (n: number) => n.toFixed(2).replace('.', ',');
 

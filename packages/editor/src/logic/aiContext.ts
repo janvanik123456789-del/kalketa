@@ -127,6 +127,18 @@ export function languageGuide(): string {
  */
 export const SHEET_FRAGMENTS: readonly { readonly topic: string; readonly source: string }[] = [
   {
+    topic: 'as on paper: the law of the theory as a relation, the derivation from it, then the definition with the numbers',
+    source: [
+      'g := 9.81 m/s^2',
+      'h := 9 m            \' výška pádu',
+      '"Při pádu se potenciální energie tělesa mění na kinetickou (zákon zachování energie)." [T2]',
+      'relation m·g·h_0 == m·v^2/2 {eq}',
+      '"Odtud rychlost po pádu z výšky h_0:"',
+      'derive v == sqrt(2·g·h_0) {eq}',
+      'v_1 := sqrt(2·g·h) | m/s',
+    ].join('\n'),
+  },
+  {
     topic: 'headings, text and comments',
     source: ['# Výpočet průměru nýtu', '## Zadání', '"Nýt je namáhán smykem v jednom střihu."', "F := 1600 N            ' zatěžující síla", 'n := 1.5', '"Mez kluzu v tahu je přibližně polovina meze pevnosti." [T1]', 'R_m := 340 MPa', 'σ_k := R_m/2'].join('\n'),
   },

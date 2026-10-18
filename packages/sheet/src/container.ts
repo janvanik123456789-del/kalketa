@@ -68,6 +68,8 @@ export interface Layout {
   readonly pageNumbers?: 'continuous' | 'sections';
   /** "✓ odvození ověřeno" under derivations in the printout too (when left out), or on the screen only. */
   readonly derivations?: 'printed' | 'screen';
+  /** How detailed a calculation the AI writes should be; the AI asks when it is not set. */
+  readonly detail?: 'brief' | 'paper' | 'teaching';
 }
 
 export const DEFAULT_LAYOUT: Layout = { paper: 'A4', orientation: 'portrait', digits: 4 };

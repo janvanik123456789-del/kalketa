@@ -6,6 +6,7 @@
  */
 
 import { pythonRule } from './pythonChecks.js';
+import { writingRules } from './writingRules.js';
 import type { AiChangeRecord, AiSheetContext } from './contract.js';
 import { selectTheory } from './theorySearch.js';
 
@@ -122,6 +123,7 @@ ${sheet.theory!.filter((s) => s.id).map((s) => `[${s.id}] ${s.title}`).join('\n'
 - Point at lines by their numbers. The program computes; do not recalculate results by hand unless asked.
 - Answer in ${languageName(input.language)}, briefly and to the point. Keep identifiers, units and formulas as they are written in the sheet.
 - Lines of the sheet are given with their numbers; the findings and computed results refer to those numbers.${input.python ? `\n${pythonRule(input.python.numpy)}` : ''}`,
+    writingRules(sheet.detail),
     input.languageGuide ? `Calculation language:\n${input.languageGuide}` : '',
     `The sheet "${sheet.title}" (read-only for you):\n${numbered(sheet.source)}`,
     sheet.findings && sheet.findings.length > 0 ? `Findings of the program (errors, warnings, checks):\n${sheet.findings.join('\n')}` : 'The program found no errors and no failed checks.',

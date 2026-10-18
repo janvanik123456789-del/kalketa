@@ -5,7 +5,7 @@
  * appears as it is written; Stop ends it.
  */
 import { useEffect, useRef, useState } from 'react';
-import { AI_OFF, checkCitations, checksNeedAnswer, CITED_ID, parsePythonChecks, providerById, pythonReport, withoutProposals, type AiSettings, type ChatTurn, type CheckReport, type CitableSection } from '@kalketa/ai';
+import { AI_OFF, checkCitations, checksNeedAnswer, CITED_ID, parseChoices, parseNotes, parsePythonChecks, providerById, pythonReport, withoutAnswerBlocks, withoutProposals, type AiSettings, type ChatTurn, type CheckReport, type ChoiceBlock, type CitableSection, type NoteBlock } from '@kalketa/ai';
 import { formatNumber, t, type Catalog, type UiKey } from '@kalketa/i18n';
 import { notesHtml } from '@kalketa/render';
 import { desktop } from '../document.js';
@@ -79,6 +79,11 @@ export interface ChatPaneProps {
   runCheck?(code: string, answer: string): Promise<CheckReport>;
   /** Keeps a check of an answer in the sources, to be run again later. */
   onCheckToSources?(code: string): void;
+  /** The user picked an answer of a choice block: a known question (detail) is kept in the calculation. */
+  onChoice?(choice: ChoiceBlock, value: string): void;
+  /** Puts a note the model proposed into its layer; whether it is there already. */
+  onKeepNote?(note: NoteBlock): void;
+  noteKept?(note: NoteBlock): boolean;
 }
 
 /** How many times in a row the model gets the results of its checks back when they disagree. */
@@ -93,7 +98,7 @@ export interface AnswerProposals {
   readonly effect?: ProposalEffect;
 }
 
-export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTurns, context, onOpenSettings, onNew, libraries = [], onLibraries, onToggleLibrary, proposals, onDecide, onReview, answerProposals, onAcceptAll, onNewSheet, newSheets, onOpenSheet, runCheck, onCheckToSources }: ChatPaneProps) {
+export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTurns, context, onOpenSettings, onNew, libraries = [], onLibraries, onToggleLibrary, proposals, onDecide, onReview, answerProposals, onAcceptAll, onNewSheet, newSheets, onOpenSheet, runCheck, onCheckToSources, onChoice, onKeepNote, noteKept }: ChatPaneProps) {
   const [libraryMenu, setLibraryMenu] = useState(false);
   // The menu of libraries closes like any menu: a click anywhere else, or Esc.
   useEffect(() => {
@@ -147,10 +152,14 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTur
    */
   const answerHtml = (full: string, sent?: ChatTurn['theory']) => {
     // A proposed change is shown as a card under the answer, not as its block of lines.
-    const text = withoutProposals(
-      full,
-      (n) => `*(${t(catalog, 'proposal.below', { n: String(n) })})*`,
-      () => `*(${t(catalog, 'newSheet.below')})*`,
+    const text = withoutAnswerBlocks(
+      withoutProposals(
+        full,
+        (n) => `*(${t(catalog, 'proposal.below', { n: String(n) })})*`,
+        () => `*(${t(catalog, 'newSheet.below')})*`,
+      ),
+      () => `*(${t(catalog, 'choice.below')})*`,
+      () => `*(${t(catalog, 'note.below')})*`,
     );
     const citations = checkCitations(text, theory);
     let i = 0;
@@ -231,6 +240,7 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTur
       none: t(catalog, 'python.noResults'),
       output: t(catalog, 'check.output'),
       ask: t(catalog, 'check.ask'),
+      timeout: t(catalog, 'check.timeout'),
     };
     const report: ChatTurn = { role: 'user', text: pythonReport(reports, words, (n) => formatNumber(n, catalog, { digits: 2 })), time: new Date().toISOString(), check: true };
     const next = [...answered, report];
@@ -295,6 +305,16 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTur
     if (answered) await checkAnswer(answered, round);
   };
 
+  /** An answer picked from a choice of the model: the user's turn, then the model goes on. */
+  const choose = async (choice: ChoiceBlock, option: ChoiceBlock['options'][number]) => {
+    if (answer || checking) return;
+    onChoice?.(choice, option.value);
+    const asked = [...turns, { role: 'user' as const, text: `${choice.question ? `${choice.question} ` : ''}→ ${option.label}`, time: new Date().toISOString() }];
+    onTurns(asked);
+    setError(undefined);
+    await askModel(asked, 0);
+  };
+
   const cancel = () => {
     if (!answer) return;
     // What was written so far stays in the conversation.
@@ -355,6 +375,30 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTur
               {(newSheets?.(i) ?? []).map((view) => (
                 <NewSheetCard key={view.entry.id} view={view} catalog={catalog} onOpen={(id) => onOpenSheet?.(id)} />
               ))}
+              {parseChoices(turn.text).map((choice, n) => (
+                <div key={`choice${n}`} className="chat-choice">
+                  {choice.question && <div className="chat-choice-question">{choice.question}</div>}
+                  {choice.options.map((option) => (
+                    // Only the last answer still waits for a pick; an older question was answered by what followed.
+                    <button key={option.value} type="button" className="chat-choice-option" data-value={option.value} disabled={i !== turns.length - 1 || !!answer || checking} onClick={() => void choose(choice, option)}>
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              ))}
+              {onKeepNote &&
+                parseNotes(turn.text).map((note, n) => {
+                  const kept = noteKept?.(note) ?? false;
+                  return (
+                    <div key={`note${n}`} className="chat-note-card">
+                      <div className="chat-note-head">{t(catalog, 'note.head', { title: note.title || '…' })}</div>
+                      <div className="chat-note-text" dangerouslySetInnerHTML={{ __html: notesHtml(note.text) }} />
+                      <button type="button" className="chat-note-keep" disabled={kept} onClick={() => onKeepNote(note)}>
+                        {kept ? t(catalog, 'note.kept') : t(catalog, note.target === 'ai' ? 'note.toAi' : 'note.toSources')}
+                      </button>
+                    </div>
+                  );
+                })}
               {onCheckToSources &&
                 parsePythonChecks(turn.text).map((code, n) => (
                   <button key={`py${n}`} type="button" className="chat-check-keep" title={t(catalog, 'check.keepTip')} onClick={() => onCheckToSources(code)}>

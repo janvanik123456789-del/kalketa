@@ -54,6 +54,8 @@ export interface CheckWords {
   readonly output: string;
   /** Said to the model when something disagrees or failed. */
   readonly ask: string;
+  /** Said to the model when a script ran out of time: how to make it faster. */
+  readonly timeout: string;
 }
 
 /** Longest output of a script given back (the end of it, where the error is). */
@@ -69,6 +71,7 @@ export function pythonReport(reports: readonly CheckReport[], words: CheckWords,
       return;
     }
     if (!r.ok) parts.push(`${head}${words.failed}: \`${(r.error ?? '').replace(/`/g, "'")}\``);
+    if (!r.ok && /timeout/i.test(r.error ?? '')) parts.push(words.timeout);
     if (r.rows.length > 0) {
       parts.push(
         [
@@ -88,10 +91,17 @@ export function pythonReport(reports: readonly CheckReport[], words: CheckWords,
 /** What the briefing tells the model about checks in Python, when the program can run them. */
 export function pythonRule(numpy: boolean): string {
   const fence = '`'.repeat(3);
-  return `- You can check a calculation independently in Python. Solve the same problem another way (a step-by-step simulation instead of an integral, a library routine instead of the sheet's formula, energy instead of forces) and report each result under the name it has in the sheet:
+  return `- You can check a calculation independently in Python. The check is worth something only when it reaches the result another way than the sheet: a step-by-step simulation of the differential equation instead of its integral, energy instead of forces, a library routine instead of the formula, a limiting case. Never write the sheet's formula again in Python: two copies of one formula always agree and prove nothing. Report each result under the name it has in the sheet:
   ${fence}python
   from math import sqrt
-  result("v_A", sqrt(2 * 9.81 * 9.0), "m/s")
+  # free fall from h: step by step, not v = sqrt(2 g h)
+  g, h, dt = 9.81, 9.0, 1e-3
+  v = y = 0.0
+  while y < h:
+      v += g * dt
+      y += v * dt
+  result("v_A", v, "m/s", rel=1e-3)
   ${fence}
-  result(name, value, unit="", rel=1e-6): the unit as Kalketa writes it ("m/s", "kN", "m^2", "°C", "" for a plain number), rel the relative difference still taken as agreement (larger for a simulation). The program runs every python block of your answer at once in a sandboxed Python 3.14 (the standard library${numpy ? ' and NumPy' : ''}; no files, no network, at most 30 s; no input, only print) and gives you back a table of each result beside the value its core calculated. When a result disagrees, find out which side is wrong before you propose a change, and say so. Check when the user asks for a check, and when you propose a calculation whose result can be reached another way; not for trivial lines.`;
+  result(name, value, unit="", rel=1e-6): the unit as Kalketa writes it ("m/s", "kN", "m^2", "°C", "" for a plain number), rel the relative difference still taken as agreement (1e-3 or so for a simulation, by its step).
+  The program runs every python block of your answer at once in a sandboxed Python 3.14 (the standard library${numpy ? ' and NumPy' : ''}; no files, no network, no input; at most 30 s, so keep a simulation under about a million steps: choose the step from the time it covers, prefer Runge–Kutta 4 to Euler, stop at the event) and gives you back a table of each result beside the value its core calculated. When a result disagrees, find out which side is wrong before you propose a change, and say so. Check when the user asks for a check or the level of detail asks for one, and when you propose a calculation whose result can be reached another way; not for trivial lines.`;
 }

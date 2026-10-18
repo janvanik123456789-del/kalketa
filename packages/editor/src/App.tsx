@@ -12,9 +12,9 @@ import { catalogFor, CATALOGS, formatDate, formatDiagnostic, formatNumber, t, ty
 import { buildPrintDocument, printHtml, renderBlockHtml, revisionFooter, type PrintAppendix } from '@kalketa/render';
 import { emptyScene, readScene, writeScene, type CanvasScene } from '@kalketa/canvas';
 import { CanvasEditor } from '@kalketa/canvas/editor';
-import { compareWithSheet, PYTHON_PRELUDE, readOutput, addLayer, allDiagnostics, appendixLayers, blockAppendices, documentBlocks, isRemovable, LayerSessions, MAIN_LAYER, removeLayer, freezeRevision, removeRevision, revisionDocument, revisionState, shortHash, tablesByLayer, theorySections, updateLayer, withTheoryIds, conversationsOf, hasConversations, withConversation, withoutConversation, aiMemoryOf, withAiMemory, linkedLibraries, librarySections, entriesOf, newSheetsOf, withEntries, studyAdvice, studyNotes, LARGE_STUDY_PAGES, type StudySettings, aiMadeLines, type SheetEntry, evaluateDocument, type ChangeEntry, type Conversation, type AddableLayerKind, type Layer, type RevisionState, type SheetDocument } from '@kalketa/sheet';
+import { withAiLayer, compareWithSheet, PYTHON_PRELUDE, readOutput, addLayer, allDiagnostics, appendixLayers, blockAppendices, documentBlocks, isRemovable, LayerSessions, MAIN_LAYER, removeLayer, freezeRevision, removeRevision, revisionDocument, revisionState, shortHash, tablesByLayer, theorySections, updateLayer, withTheoryIds, conversationsOf, hasConversations, withConversation, withoutConversation, aiMemoryOf, withAiMemory, linkedLibraries, librarySections, entriesOf, newSheetsOf, withEntries, studyAdvice, studyNotes, LARGE_STUDY_PAGES, type StudySettings, aiMadeLines, type SheetEntry, evaluateDocument, type ChangeEntry, type Conversation, type AddableLayerKind, type Layer, type RevisionState, type SheetDocument } from '@kalketa/sheet';
 import { buildCommands, shortcutOf, type Command } from './commands.js';
-import { applyProposal, applyProposals, cleanFigureDescription, cleanFormula, cleanReread, cleanMemory, parseNewSheets, DEFAULT_AI_SETTINGS, parseAiSettings, parseProposals, providerById, replacedLines, type ChangeProposal, type AiSettings, type ChatTurn, type CheckReport } from '@kalketa/ai';
+import { applyProposal, applyProposals, cleanFigureDescription, cleanFormula, cleanReread, cleanMemory, parseNewSheets, DEFAULT_AI_SETTINGS, parseAiSettings, parseProposals, providerById, replacedLines, type ChangeProposal, type AiSettings, type ChatTurn, type CheckReport, type ChoiceBlock, type NoteBlock, DETAIL_LEVELS, noteText } from '@kalketa/ai';
 import { ChatPane } from './components/ChatPane.js';
 import { TheoryLibraryDialog } from './components/TheoryLibraryDialog.js';
 import { sourceText, useTheoryLibraries, withoutDuplicates, type FoundLibrary } from './theoryLibraries.js';
@@ -1023,7 +1023,7 @@ export function App() {
       .map((d) => ({ title: d.history.present.manifest.title, source: d.history.present.source }));
     return {
       // A section both in the sources and in a library goes once, from the library.
-      sheet: { ...sheetContext(doc.manifest.title, evaluation.main), theory: withoutDuplicates(theorySections(layers), fromLibraries.sections), libraries: fromLibraries.libraries, ...(changes.length > 0 ? { changes } : {}), ...(others.length > 0 ? { others } : {}) },
+      sheet: { ...sheetContext(doc.manifest.title, evaluation.main), ...((pickedDetail.current ?? doc.layout.detail) ? { detail: pickedDetail.current ?? doc.layout.detail } : {}), theory: withoutDuplicates(theorySections(layers), fromLibraries.sections), libraries: fromLibraries.libraries, ...(changes.length > 0 ? { changes } : {}), ...(others.length > 0 ? { others } : {}) },
       languageGuide: languageGuide(),
       ...(memory.trim() ? { memory } : {}),
     };
@@ -1377,6 +1377,26 @@ export function App() {
     }));
     return { ok: raw.ok, ...(raw.error ? { error: raw.error } : {}), output: [output, raw.ok ? '' : raw.stderr.trim()].filter(Boolean).join('\n'), rows };
   };
+  /** A level of detail picked from the model's question: kept in the calculation, so it is not asked again. */
+  const keepChoice = (choice: ChoiceBlock, value: string) => {
+    if (choice.key !== 'detail' || !(DETAIL_LEVELS as readonly string[]).includes(value)) return;
+    const detail = value as (typeof DETAIL_LEVELS)[number];
+    // The answer goes to the model at once, before the calculation takes the level: its briefing has it from here.
+    pickedDetail.current = detail;
+    change({ ...doc, layout: { ...doc.layout, detail } });
+  };
+  /** The layer a note of the model goes into: the AI notes, or the sources (made when there is none). */
+  const noteLayer = (layers: readonly Layer[], note: NoteBlock) => layers.find((l) => l.kind === (note.target === 'ai' ? 'ai' : 'sources'));
+  const noteIsKept = (note: NoteBlock) => (noteLayer(doc.layers, note)?.text ?? '').includes(noteText(note).trim());
+  const keepNote = (note: NoteBlock) => {
+    changeWith((present) => {
+      let layers: readonly Layer[] = note.target === 'ai' ? withAiLayer(present.layers) : present.layers;
+      if (!noteLayer(layers, note)) layers = addLayer(layers, 'sources', note.title || t(ui, 'check.heading')).layers;
+      const own = noteLayer(layers, note)!;
+      const before = (own.text ?? '').trimEnd();
+      return { ...present, layers: updateLayer(layers, own.id, { text: `${before ? `${before}\n\n` : ''}${noteText(note)}` }) };
+    });
+  };
   /** A check of an answer kept in the sources (a new sources layer when there is none), to be run there again. */
   const keepCheck = (code: string) => {
     changeWith((present) => {
@@ -1393,6 +1413,11 @@ export function App() {
 
   // Insert > Fit a curve…: the edits tried on the layer by a calculation of their own, so the
   // open sheet is not disturbed; the lines they write and the charts with the curve are the preview.
+  // A level of detail just picked in the chat, until the calculation has it (then the calculation's own counts).
+  const pickedDetail = useRef<(typeof DETAIL_LEVELS)[number] | undefined>(undefined);
+  useEffect(() => {
+    pickedDetail.current = undefined;
+  }, [doc.layout.detail]);
   const fitSessions = useRef<LayerSessions | undefined>(undefined);
   const [fitEdit, setFitEdit] = useState<{ readonly choice: FitChoice; readonly start: number; readonly end: number } | undefined>();
   const previewFit = (edits: readonly LineEdit[], name: string): string => {
@@ -2183,6 +2208,9 @@ export function App() {
                     newSheets={newSheetViews}
                     onOpenSheet={openNewSheet}
                     {...(desktop ? { runCheck: runAnswerCheck, onCheckToSources: keepCheck } : {})}
+                    onChoice={keepChoice}
+                    onKeepNote={keepNote}
+                    noteKept={noteIsKept}
                       onNew={() => {
                         rememberConversation(chat);
                         startedChat.current[tab.id] = undefined;

@@ -37,6 +37,8 @@ export interface AiSheetContext {
   readonly others?: readonly { readonly title: string; readonly source: string }[];
   /** Changes the AI proposed for the sheet and what the user decided, oldest first (the journal, ch. 9.7). */
   readonly changes?: readonly AiChangeRecord[];
+  /** How detailed a calculation the model writes should be (Calculation properties); asked when not set. */
+  readonly detail?: 'brief' | 'paper' | 'teaching';
 }
 
 /** A proposed change as the journal keeps it: lines as numbered when it was proposed. */

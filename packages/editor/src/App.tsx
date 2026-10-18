@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { defaultRegistry, formatPicture, parsePicture, rowLabel, TEXT_COLORS, toDecimalComma, type Diagnostic, type Statement } from '@kalketa/core';
 import { catalogFor, CATALOGS, formatDate, formatDiagnostic, formatNumber, t, type Catalog, type UiKey } from '@kalketa/i18n';
-import { buildPrintDocument, printHtml, revisionFooter, type PrintAppendix } from '@kalketa/render';
+import { buildPrintDocument, printHtml, renderBlockHtml, revisionFooter, type PrintAppendix } from '@kalketa/render';
 import { emptyScene, readScene, writeScene, type CanvasScene } from '@kalketa/canvas';
 import { CanvasEditor } from '@kalketa/canvas/editor';
 import { addLayer, allDiagnostics, appendixLayers, blockAppendices, documentBlocks, isRemovable, LayerSessions, MAIN_LAYER, removeLayer, freezeRevision, removeRevision, revisionDocument, revisionState, shortHash, tablesByLayer, theorySections, updateLayer, withTheoryIds, conversationsOf, hasConversations, withConversation, withoutConversation, aiMemoryOf, withAiMemory, linkedLibraries, librarySections, entriesOf, newSheetsOf, withEntries, studyAdvice, studyNotes, LARGE_STUDY_PAGES, type StudySettings, aiMadeLines, type SheetEntry, evaluateDocument, type ChangeEntry, type Conversation, type AddableLayerKind, type Layer, type RevisionState, type SheetDocument } from '@kalketa/sheet';
@@ -43,6 +43,8 @@ import { createTable, importTableFile, type TableChange } from './tableActions.j
 import { captionOf, fromFile, pictureLine, picturePath, pixelWidth, widthFor, type IncomingPicture } from './logic/pictures.js';
 import { importBlockFile } from './blockActions.js';
 import { AboutDialog, CustomizeDialog, FunctionsDialog, PropertiesDialog, SettingsDialog, ShortcutsDialog } from './components/Dialogs.js';
+import { FitDialog } from './components/FitDialog.js';
+import { fitSeries } from './logic/curveFit.js';
 import { DocumentTabs } from './components/DocumentTabs.js';
 import { RevisionsDialog } from './components/Revisions.js';
 import { Inspector } from './components/Inspector.js';
@@ -66,7 +68,7 @@ const PANE_TABS: readonly (readonly [Exclude<Pane, 'none'>, Parameters<typeof t>
   ['chat', 'pane.chatTab'],
 ];
 type Tab = DocTab<SheetDocument, FileRef>;
-type DialogKind = 'settings' | 'properties' | 'revisions' | 'customize' | 'shortcuts' | 'functions' | 'about' | 'study';
+type DialogKind = 'settings' | 'properties' | 'revisions' | 'customize' | 'shortcuts' | 'functions' | 'about' | 'study' | 'fit';
 
 const MM_TO_PX = 96 / 25.4;
 const PAGE_GAP_PX = 24;
@@ -1339,6 +1341,31 @@ export function App() {
     }
   };
 
+  // Insert > Fit a curve…: the lines tried at the end of the layer by a calculation of their own,
+  // so the open sheet is not disturbed; what they print is the preview.
+  const fitSessions = useRef<LayerSessions | undefined>(undefined);
+  const previewFit = (lines: readonly string[]): string => {
+    fitSessions.current ??= new LayerSessions(defaultRegistry);
+    const before = textOf(layer);
+    const tried = `${before.replace(/\n*$/, '')}\n${lines.join('\n')}\n`;
+    // The first of the lines tried, counted from 1 as the sheet counts them.
+    const first = tried.split('\n').length - lines.length;
+    const layers = layer.kind === 'sheet' ? doc.layers : doc.layers.map((l) => (l.id === layer.id ? { ...l, text: tried } : l));
+    const evaluated = fitSessions.current.evaluate(layer.kind === 'sheet' ? tried : doc.source, layers, tables, blocks);
+    const own = (layer.kind === 'calc' ? evaluated.aux.get(layer.id) : undefined) ?? evaluated.main;
+    const printed = buildPrintDocument(own, { catalog: printCatalog, registry: defaultRegistry, digits: doc.layout.digits, title: '', resolveFile });
+    return printed.blocks
+      .filter((b) => 'line' in b && typeof b.line === 'number' && b.line >= first)
+      .map((b) => renderBlockHtml(b, ui, { defineOperator: '≔', ...(doc.layout.style ? { style: doc.layout.style } : {}) }))
+      .join('\n');
+  };
+  const insertFit = (lines: readonly string[]) => {
+    const after = currentRange()?.end ?? lineCount;
+    setSource(insertLineAfter(text, after, lines.join('\n')));
+    setEditing(undefined);
+    reveal.current = { layer: layer.id, line: after + 1 };
+  };
+
   const insertSymbol = (symbol: string) => {
     const area = document.querySelector<HTMLTextAreaElement>('textarea.row-editor');
     // A line of text edited formatted: the symbol among its words.
@@ -1529,6 +1556,7 @@ export function App() {
       },
       shortcuts: () => setDialog('shortcuts'),
       functions: () => setDialog('functions'),
+      fitCurve: () => setDialog('fit'),
       about: () => setDialog('about'),
       insertSymbol,
       insertTemplate,
@@ -1742,7 +1770,7 @@ export function App() {
     },
     {
       label: t(ui, 'menu.insert'),
-      items: [cmd('insert.text'), cmd('insert.definition'), cmd('insert.check'), cmd('insert.pick'), cmd('insert.pageBreak'), cmd('insert.clear'), sep, cmd('insert.picture'), cmd('insert.canvas'), cmd('insert.chart'), cmd('insert.sheetTable'), cmd('insert.newTable'), cmd('insert.importTable'), cmd('insert.block'),
+      items: [cmd('insert.text'), cmd('insert.definition'), cmd('insert.check'), cmd('insert.pick'), cmd('insert.pageBreak'), cmd('insert.clear'), sep, cmd('insert.picture'), cmd('insert.canvas'), cmd('insert.chart'), cmd('insert.fit'), cmd('insert.sheetTable'), cmd('insert.newTable'), cmd('insert.importTable'), cmd('insert.block'),
         ...(doc.blocks.size > 0
           ? [
               {
@@ -2293,6 +2321,19 @@ export function App() {
       {dialog === 'customize' && <CustomizeDialog catalog={ui} layout={toolbars} commands={commands} onApply={changeToolbars} onClose={() => setDialog(undefined)} />}
       {dialog === 'shortcuts' && <ShortcutsDialog catalog={ui} commands={commands} onClose={() => setDialog(undefined)} />}
       {canvasEdit?.mode === 'window' && canvasEditor(canvasEdit.path, 'window')}
+      {dialog === 'fit' && (
+        <FitDialog
+          catalog={ui}
+          series={fitSeries(result)}
+          taken={new Set(result.values.keys())}
+          preview={previewFit}
+          onInsert={(lines) => {
+            setDialog(undefined);
+            insertFit(lines);
+          }}
+          onClose={() => setDialog(undefined)}
+        />
+      )}
       {dialog === 'functions' && (
         <FunctionsDialog
           catalog={ui}

@@ -133,6 +133,15 @@ const ICONS: Readonly<Record<string, ReactElement>> = {
       <path {...S} d="M5 14c2-6 4-9 6-9s3.5 4 6 6" />
     </>
   ),
+  'insert.fit': (
+    <>
+      <path {...S} d="M3 16c3-1 5-3 7-6s4-5 7-6" />
+      <circle {...S} cx="4.5" cy="12.5" r="1" />
+      <circle {...S} cx="9" cy="11.5" r="1" />
+      <circle {...S} cx="12" cy="6" r="1" />
+      <circle {...S} cx="16" cy="5.5" r="1" />
+    </>
+  ),
   'help.functions': (
     <>
       <path {...S} d="M8 3.5c-2 0-2 1.5-2 3v8c0 1.5-.5 2.5-2 2.5M4 9h4.5" />

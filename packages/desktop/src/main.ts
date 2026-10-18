@@ -2458,9 +2458,26 @@ async function layersWithRealInput(picture: string) {
   await pause(2000);
   const thermistor = (await contents.executeJavaScript(`({ errors: document.querySelectorAll('.layer-view.active .page .row.has-error').length, charts: document.querySelectorAll('.layer-view.active .block.chart svg.chart-svg .chart-data path').length })`)) as { errors: number; charts: number };
   await takePicture(picture.replace(/[.]png$/, '-thermistor.png'));
+  // Insert > Fit a curve…: the points of R17, a spline chosen by a click, its preview, the lines written by OK.
+  await clickOn('.menubar-item:nth-child(1) > button');
+  await clickMenu('Vzorové příklady');
+  await clickMenu('Matematika a numerické metody');
+  await clickMenu('3 Proložení naměřených bodů');
+  await pause(1500);
+  await clickOn('.menubar-item:nth-child(4) > button');
+  await clickMenu('Proložit křivku');
+  await pause(600);
+  await clickOn('.fit-method input[data-method="spline"]');
+  await pause(1200);
+  const fitPreview = (await contents.executeJavaScript(`({ charts: document.querySelectorAll('.fit-preview svg.chart-svg').length, lines: document.querySelector('.fit-lines')?.textContent ?? '' })`)) as { charts: number; lines: string };
+  await takePicture(picture.replace(/[.]png$/, '-fit.png'));
+  await clickOn('.dialog-buttons button.default');
+  await pause(1500);
+  const fitInserted = (await contents.executeJavaScript(`({ dialog: document.querySelectorAll('.fit-dialog').length, errors: document.querySelectorAll('.layer-view.active .page .row.has-error').length, charts: document.querySelectorAll('.layer-view.active .block.chart svg.chart-svg .chart-data path').length })`)) as { dialog: number; errors: number; charts: number };
+  const fitDialog = { preview: fitPreview, inserted: fitInserted, ok: fitPreview.charts === 1 && fitPreview.lines.includes('spline(Body.x, Body.y, x)') && fitInserted.dialog === 0 && fitInserted.errors === 0 && fitInserted.charts >= 3 };
   const quadraticSample = {
     crank,
-    theory: { theoryTab, tankErrors, theoryChecks, rocket, parabola, thermistor },
+    theory: { theoryTab, tankErrors, theoryChecks, rocket, parabola, thermistor, fitDialog },
     across,
     beam,
     slowTyping,
@@ -2469,7 +2486,7 @@ async function layersWithRealInput(picture: string) {
     after: sampleAfter,
     outOfDomain,
     english,
-    ok: !!thumb && sampleBefore.errors === 0 && sampleAfter.errors === 0 && sampleBefore.a !== '' && sampleAfter.a !== sampleBefore.a && sampleAfter.roots !== sampleBefore.roots && outOfDomain.drawn && !outOfDomain.area && outOfDomain.roots === 0 && !outOfDomain.error && outOfDomain.warned && english.head === 'Quadratic equation' && english.verdicts.length === 5 && english.verdicts.every((v) => v.endsWith('OK')) && english.errors === 0 && crank.pictures === 4 && crank.charts === 3 && crank.errors === 0 && crank.verdict.endsWith('VYHOVUJE') && slowTyping.waitingShown && slowTyping.settled && cube.pictures === 1 && cube.derived >= 5 && cube.errors === 0 && beam.pictures === 3 && beam.charts >= 4 && beam.errors === 0 && across.before && !across.after && theoryTab >= 1 && tankErrors === 0 && theoryChecks.blocks >= 4 && theoryChecks.bad === 0 && rocket.errors === 0 && rocket.charts >= 2 && parabola.errors === 0 && parabola.charts >= 2 && parabola.normal >= 2 && thermistor.errors === 0 && thermistor.charts >= 3,
+    ok: !!thumb && sampleBefore.errors === 0 && sampleAfter.errors === 0 && sampleBefore.a !== '' && sampleAfter.a !== sampleBefore.a && sampleAfter.roots !== sampleBefore.roots && outOfDomain.drawn && !outOfDomain.area && outOfDomain.roots === 0 && !outOfDomain.error && outOfDomain.warned && english.head === 'Quadratic equation' && english.verdicts.length === 5 && english.verdicts.every((v) => v.endsWith('OK')) && english.errors === 0 && crank.pictures === 4 && crank.charts === 3 && crank.errors === 0 && crank.verdict.endsWith('VYHOVUJE') && slowTyping.waitingShown && slowTyping.settled && cube.pictures === 1 && cube.derived >= 5 && cube.errors === 0 && beam.pictures === 3 && beam.charts >= 4 && beam.errors === 0 && across.before && !across.after && theoryTab >= 1 && tankErrors === 0 && theoryChecks.blocks >= 4 && theoryChecks.bad === 0 && rocket.errors === 0 && rocket.charts >= 2 && parabola.errors === 0 && parabola.charts >= 2 && parabola.normal >= 2 && thermistor.errors === 0 && thermistor.charts >= 3 && fitDialog.ok,
   };
   const userChart = { namedArea, quadOk, quadTarget, quadEnd, quadEditing, ok: namedArea === 'Integral1=27' && quadOk && quadTarget > 0 && Math.abs(quadEnd - quadTarget) < 12 };
   // Relations: a circle solved by its name, a derivation following from a relation of theory, and the circle

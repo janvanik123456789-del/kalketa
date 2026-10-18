@@ -15,7 +15,8 @@
 
 import { CalcError, fail, type Span } from '../diagnostics.js';
 import type { Expr, Statement } from '../lang/ast.js';
-import type { FunctionValue, Value } from '../values/value.js';
+import { sameDim } from '../units/dimension.js';
+import type { FunctionValue, Quantity, Value } from '../values/value.js';
 import type { EvalContext } from './evaluator.js';
 import { BINDING_FUNCTIONS, BINDING_OPTIONS } from '../lang/parser.js';
 import { BUILTIN_CONSTANTS, builtinFunctions } from './functions.js';
@@ -106,6 +107,9 @@ export function applyFunction(fn: FunctionValue, call: CallExpr, ctx: EvalContex
     fail('E-FUNC-ARITY', call.span, { function: fn.name, expected: fn.params.length, found: call.args.length });
   }
   const args = call.args.map((arg) => evaluate(arg, ctx));
+  // A curve fitted on a reading in °C, called with kelvin (P(310.15 K)): the same absolute temperature.
+  const zero = fn.fit?.zero;
+  if (zero) args.forEach((arg, i) => (args[i] = asAbsolute(arg, zero)));
   if (fn.native) return fn.native(args, call.span);
   const inner: EvalContext = {
     registry: ctx.registry,
@@ -119,6 +123,12 @@ export function applyFunction(fn: FunctionValue, call: CallExpr, ctx: EvalContex
     },
   };
   return evaluate(fn.body, inner);
+}
+
+function asAbsolute(value: Value, zero: Quantity): Value {
+  if (value.type === 'vector') return { type: 'vector', items: value.items.map((q) => asAbsolute(q, zero) as Quantity) };
+  if (value.type !== 'quantity' || value.absolute || value.im || !sameDim(value.dim, zero.dim)) return value;
+  return { ...value, absolute: true, ...(zero.hint ? { hint: zero.hint } : {}) };
 }
 
 /** The function a call refers to, from the names defined above. */

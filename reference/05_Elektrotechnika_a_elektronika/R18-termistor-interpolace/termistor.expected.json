@@ -1,0 +1,57 @@
+{
+  "sheet": "termistor.cc",
+  "verifiedBy": "Samostatně v Pythonu: numpy.interp (lomená čára), scipy.interpolate.CubicSpline (not-a-knot) a PchipInterpolator na tabulce katalogu; konstanta B_0/100 a model B termistoru z exp a ln v NumPy; přesná hodnota z modelu R_25 = 10 kΩ, B = 3950 K, ze kterého je tabulka spočtená.",
+  "relativeTolerance": 1e-06,
+  "values": {
+    "R_lin": {
+      "value": 6.1218,
+      "unit": "kΩ"
+    },
+    "R_spl": {
+      "value": 5.986902824774485,
+      "unit": "kΩ"
+    },
+    "R_pch": {
+      "value": 5.987246169405493,
+      "unit": "kΩ"
+    },
+    "B_0100": {
+      "value": 3950.0105910366415,
+      "unit": "K"
+    },
+    "R_B": {
+      "value": 5.989276417541739,
+      "unit": "kΩ"
+    },
+    "R_1": {
+      "value": 5.989411672745506,
+      "unit": "kΩ"
+    },
+    "δ_1": {
+      "value": 2.210372812690764,
+      "unit": "%"
+    },
+    "δ_2": {
+      "value": -0.04188805358692482,
+      "unit": "%"
+    },
+    "δ_3": {
+      "value": -0.03615552675844125,
+      "unit": "%"
+    },
+    "δ_4": {
+      "value": -0.0022582385575953268,
+      "unit": "%"
+    }
+  },
+  "checks": [
+    {
+      "label": "spline do 0,1 %",
+      "passed": true
+    },
+    {
+      "label": "lomená čára nestačí na 1 %",
+      "passed": true
+    }
+  ]
+}

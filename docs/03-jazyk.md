@@ -376,8 +376,19 @@ T_60 := T_par(60 s)                                      ' proložená křivka j
 plot(Mereni.T, T_lin(x), T_par(x), x: Mereni.t)         ' body a křivky v jednom grafu
 ```
 
-- **`fit(y, x: řada, kind: …)`** proloží body metodou nejmenších čtverců. Druhy: `linear` (a + b·x), `poly2`, `poly3`, `exp` (a·e^(b·x)), `power` (a·x^b), `log` (a + b·ln x); `exp`, `power` a `log` se prokládají na logaritmech a potřebují kladné hodnoty.
+- **`fit(y, x: řada, kind: …)`** proloží body metodou nejmenších čtverců. Druhy: `linear` (a + b·x), `poly2` … `poly10`, `exp` (a·e^(b·x)), `power` (a·x^b), `log` (a + b·ln x); `exp`, `power` a `log` se prokládají na logaritmech a potřebují kladné hodnoty.
 - **Postup jako na papíře (2026-10-15):** `fit(Mereni.T, x: Mereni.t, steps: true)` u přímky vytiskne metodu nejmenších čtverců: počet bodů n, součty Σt, ΣT, Σt², Σt·T, směrnici b₁ = (n·Σt·T − Σt·ΣT)/(n·Σt² − (Σt)²) a úsek b₀ = (ΣT − b₁·Σt)/n s dosazením. U polynomů (`poly2`, `poly3`, 2026-10-18) vytiskne součty Σx … Σx^(2·k), Σy … Σx^k·y, soustavu normálních rovnic n·b₀ + Σx·b₁ + Σx²·b₂ = Σy, … obecně i s čísly a nalezené koeficienty. U druhů prokládaných přes logaritmy (`exp`, `power`, `log`) jen výsledek (`W-FIT-STEPS`). Konkurence (Mathcad `slope`/`intercept`/`linfit`, Excel `LINEST`) dává jen koeficienty; Calcpad a SMath regresi vestavěnou nemají.
+- **Zkratky jako v MATLABu a NumPy (2026-10-18):** výpočet jako na papíře má přednost, ale kdo zná MATLAB, píše rovnou:
+
+```text
+P := polyfit(x, y, 3)                ' polynom 3. stupně (1 až 10); n + 1 bodů = polynom všemi body (Lagrange)
+polyval(P, 2.5)                      ' totéž co P(2.5); polyval([1, 0, -2], 3) = 7 z koeficientů od nejvyšší mocniny
+interp1(x, y, xi)                    ' lomená čára; 4. argument "nearest" | "spline" | "pchip", 5. "extrap"
+spline(x, y, xi)                     ' kubický spline, konce not-a-knot (MATLAB spline, SciPy CubicSpline)
+pchip(x, y, xi)                      ' kubika zachovávající tvar dat, nepřekmitne (SciPy PchipInterpolator)
+```
+
+  Rozdíly proti MATLABu: `polyfit` vrací funkci listu s jednotkami (ne holé koeficienty) a tiskne se jako `fit` (rovnice, R², s `steps: true` normální rovnice). `interp1` za krajními body nevrací NaN, ale chybu `E-INTERP-RANGE`, dokud se nedopíše `"extrap"`; `spline` a `pchip` pokračují jako v MATLABu. x se seřadí, opakované x je chyba (`E-INTERP-X`). Hodnoty ověřené proti NumPy a SciPy v `packages/core/tests/interpolation.test.ts`.
 - **Výsledek je funkce** jedné proměnné, pojmenované po sloupci x (`t`), s koeficienty v jednotkách: `T_lin(t) = 20,7 °C + 0,428 Δ°C/s·t`. V tisku je pod voláním rovnice s čísly a **R²**.
 - **Graf:** když je osa x řada naměřených hodnot (`x: Mereni.t`), čárový graf nakreslí data jako **body** a funkci proměnné (`T_lin(x)`) jako **čáru** přes celý rozsah.
 - Chyby: zápis (`E-FIT-FORM`), druh (`E-FIT-KIND`), málo bodů (`E-FIT-POINTS`), záporné hodnoty u logaritmických druhů (`E-FIT-POSITIVE`), body bez jednoznačné křivky (`E-FIT-SINGULAR`).

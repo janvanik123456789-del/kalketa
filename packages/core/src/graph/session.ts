@@ -609,14 +609,14 @@ export class SheetSession {
           const unit = target;
           const wrong = value.items.find((q) => !sameDim(unit.dim, q.dim));
           if (wrong) throw new CalcError(diagnostic('E-TARGET-UNIT', statement.target.span, { unit: unit.symbol, found: baseUnitSymbol(wrong.dim) }));
-          const items = value.items.map((q) => ({ ...q, hint: unit }));
+          const items = value.items.map((q) => inTarget(q, unit));
           value = value.type === 'vector' ? { type: 'vector', items } : { ...value, items };
         } else if (value.type !== 'quantity' || !sameDim(target.dim, value.dim)) {
           const found = value.type === 'quantity' ? baseUnitSymbol(value.dim) : value.type;
           throw new CalcError(diagnostic('E-TARGET-UNIT', statement.target.span, { unit: target.symbol, found }));
         } else {
           // The value keeps its target unit when used further on.
-          value = { ...value, hint: target };
+          value = inTarget(value, target);
         }
       }
       // {decimals=2 rounded}: the rows below go on with the value as shown, not the exact one.
@@ -743,6 +743,16 @@ function sheetTable(statement: Extract<Statement, { kind: 'table' }>, registry: 
   const computed = rows.flatMap((row) => row.map((v) => (v?.type === 'quantity' ? v.si : 0))).join(',');
   const table: Table = { ...built.table, rows, ...(totals.length > 0 ? { totals } : {}), fingerprint: `${built.table.fingerprint}:${computed}` };
   return { table, diagnostics };
+}
+
+/**
+ * A value in the unit its line asks for (T_K := T | K). An absolute temperature put into kelvin is said to be
+ * the thermodynamic one: it goes on as a temperature written in K, so 1/T_K (Arrhenius, a thermistor) gives no warning.
+ */
+function inTarget(q: Quantity, target: ResolvedUnit): Quantity {
+  if (!q.absolute || target.offset !== undefined) return { ...q, hint: target };
+  const { absolute: _, ...plain } = q;
+  return { ...plain, hint: target };
 }
 
 /** A value given for a block input must be of the same kind as the block's own. */

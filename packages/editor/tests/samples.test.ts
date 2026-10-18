@@ -19,6 +19,7 @@ describe('sample calculations shipped with the program', () => {
       '03 R2-vymenik-hridel',
       '04 R1-nosnik',
       '05 R4-kabel',
+      '05 R18-termistor-interpolace',
       '06 R6-fve',
       '07 R3-roztok',
       '16 R5-fotovoltaika',

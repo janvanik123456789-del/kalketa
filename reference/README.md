@@ -1,6 +1,6 @@
 # Referenční výpočty
 
-Každý referenční výpočet (R1–R17, viz docs/01-filozofie.md, kap. 10) má vlastní složku
+Každý referenční výpočet (R1–R18, viz docs/01-filozofie.md, kap. 10) má vlastní složku
 s listem a nezávisle ověřenými očekávanými výsledky (s tolerancí a zdrojem ověření).
 Program je nabízí jako vzorové příklady (Soubor → Vzorové příklady), tříděné podle oboru.
 
@@ -39,6 +39,7 @@ Jádro je hotové, až projdou všechny bez kódu specifického pro jeden obor.
 | 03_…/05_Tepelne_vypocty/R2-vymenik-hridel | strojař | °C a rozdíly teplot, logaritmický teplotní spád, vlastní funkce, řešič pro nejmenší průměr, materiál z tabulky |
 | 07_…/R3-roztok | chemik | tabulka látek (molární hmotnost), ředění, disociační rovnováha řešičem, pH |
 | 05_…/R4-kabel | elektrikář | 2D interpolace korekčních součinitelů, nejmenší vyhovující průřez, komplexní impedance a úbytek napětí |
+| 05_…/R18-termistor-interpolace | elektrikář | odpor termistoru NTC mezi body katalogové tabulky zkratkami jako v MATLABu (`interp1`, `spline`, `pchip`), konstanta B z tabulky a model B s teplotou převedenou na K (`T | K`), chyby metod proti přesnému modelu, graf chyby po celém rozsahu; teorie v Podkladech (lomená čára a odhad chyby, spline not-a-knot, pchip, Rungeho jev, model B a citlivost) |
 | 16_…/R5-fotovoltaika | ekonom | vlastní měna, kurz k datu z tabulky, řady peněžních toků, NPV, IRR, doba a datum návratnosti |
 | 01_…/R7-kvadraticka-rovnice | výuka | kvadratická rovnice jako na papíře: podmínka řešitelnosti, kořeny s dosazením, Vietovy vzorce, rozklad, vrchol přes derivaci, tečna s úhlem, plocha mezi kořeny, graf s body a šrafováním, posuvníky koeficientů |
 | 01_…/R8-quadratic-equation | výuka | totéž v angličtině (soubor `*.en.cc` se tiskne anglicky) |

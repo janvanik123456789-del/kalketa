@@ -2450,9 +2450,17 @@ async function layersWithRealInput(picture: string) {
   await pause(2000);
   const parabola = (await contents.executeJavaScript(`({ errors: document.querySelectorAll('.layer-view.active .page .row.has-error').length, charts: document.querySelectorAll('.layer-view.active .block.chart svg.chart-svg .chart-data path').length, normal: [...document.querySelectorAll('.layer-view.active .page math')].filter((m) => m.textContent.includes('979')).length })`)) as { errors: number; charts: number; normal: number };
   await takePicture(picture.replace(/[.]png$/, '-parabola.png'));
+  // Shortcuts as in MATLAB: a thermistor table read between its points by interp1, spline and pchip.
+  await clickOn('.menubar-item:nth-child(1) > button');
+  await clickMenu('Vzorové příklady');
+  await clickMenu('Elektrotechnika a elektronika');
+  await clickMenu('2 Odpor termistoru NTC');
+  await pause(2000);
+  const thermistor = (await contents.executeJavaScript(`({ errors: document.querySelectorAll('.layer-view.active .page .row.has-error').length, charts: document.querySelectorAll('.layer-view.active .block.chart svg.chart-svg .chart-data path').length })`)) as { errors: number; charts: number };
+  await takePicture(picture.replace(/[.]png$/, '-thermistor.png'));
   const quadraticSample = {
     crank,
-    theory: { theoryTab, tankErrors, theoryChecks, rocket, parabola },
+    theory: { theoryTab, tankErrors, theoryChecks, rocket, parabola, thermistor },
     across,
     beam,
     slowTyping,
@@ -2461,7 +2469,7 @@ async function layersWithRealInput(picture: string) {
     after: sampleAfter,
     outOfDomain,
     english,
-    ok: !!thumb && sampleBefore.errors === 0 && sampleAfter.errors === 0 && sampleBefore.a !== '' && sampleAfter.a !== sampleBefore.a && sampleAfter.roots !== sampleBefore.roots && outOfDomain.drawn && !outOfDomain.area && outOfDomain.roots === 0 && !outOfDomain.error && outOfDomain.warned && english.head === 'Quadratic equation' && english.verdicts.length === 5 && english.verdicts.every((v) => v.endsWith('OK')) && english.errors === 0 && crank.pictures === 4 && crank.charts === 3 && crank.errors === 0 && crank.verdict.endsWith('VYHOVUJE') && slowTyping.waitingShown && slowTyping.settled && cube.pictures === 1 && cube.derived >= 5 && cube.errors === 0 && beam.pictures === 3 && beam.charts >= 4 && beam.errors === 0 && across.before && !across.after && theoryTab >= 1 && tankErrors === 0 && theoryChecks.blocks >= 4 && theoryChecks.bad === 0 && rocket.errors === 0 && rocket.charts >= 2 && parabola.errors === 0 && parabola.charts >= 2 && parabola.normal >= 2,
+    ok: !!thumb && sampleBefore.errors === 0 && sampleAfter.errors === 0 && sampleBefore.a !== '' && sampleAfter.a !== sampleBefore.a && sampleAfter.roots !== sampleBefore.roots && outOfDomain.drawn && !outOfDomain.area && outOfDomain.roots === 0 && !outOfDomain.error && outOfDomain.warned && english.head === 'Quadratic equation' && english.verdicts.length === 5 && english.verdicts.every((v) => v.endsWith('OK')) && english.errors === 0 && crank.pictures === 4 && crank.charts === 3 && crank.errors === 0 && crank.verdict.endsWith('VYHOVUJE') && slowTyping.waitingShown && slowTyping.settled && cube.pictures === 1 && cube.derived >= 5 && cube.errors === 0 && beam.pictures === 3 && beam.charts >= 4 && beam.errors === 0 && across.before && !across.after && theoryTab >= 1 && tankErrors === 0 && theoryChecks.blocks >= 4 && theoryChecks.bad === 0 && rocket.errors === 0 && rocket.charts >= 2 && parabola.errors === 0 && parabola.charts >= 2 && parabola.normal >= 2 && thermistor.errors === 0 && thermistor.charts >= 3,
   };
   const userChart = { namedArea, quadOk, quadTarget, quadEnd, quadEditing, ok: namedArea === 'Integral1=27' && quadOk && quadTarget > 0 && Math.abs(quadEnd - quadTarget) < 12 };
   // Relations: a circle solved by its name, a derivation following from a relation of theory, and the circle

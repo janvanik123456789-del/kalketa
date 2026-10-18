@@ -500,6 +500,8 @@ export const CALCULUS: readonly FunctionDef[] = [
   { name: 'derivative', module: 'calculus', params: 'f(x), x: a, order: 1', arity: [1, 1] },
   { name: 'roots', module: 'calculus', params: 'p(x), x', arity: [2, 2] },
   { name: 'fit', module: 'calculus', params: 'y, x: series, kind: "linear"', arity: [1, 1] },
+  { name: 'polyfit', module: 'calculus', params: 'x, y, n, steps: false', arity: [3, 3] },
+  { name: 'polyval', module: 'calculus', params: 'p, x', arity: [2, 2] },
   { name: 'minimize', module: 'calculus', params: 'f(x), x: a .. b', arity: [1, 1] },
   { name: 'maximize', module: 'calculus', params: 'f(x), x: a .. b', arity: [1, 1] },
 ];

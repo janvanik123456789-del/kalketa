@@ -5,6 +5,7 @@
  * codes) comes from the program, so the briefing never goes stale.
  */
 
+import { pythonRule } from './pythonChecks.js';
 import type { AiChangeRecord, AiSheetContext } from './contract.js';
 import { selectTheory } from './theorySearch.js';
 
@@ -20,6 +21,8 @@ export interface ChatTurn {
   readonly citations?: readonly { readonly id: string; readonly status: 'ok' | 'unknown' | 'misquoted'; readonly quote?: string }[];
   /** For an answer: the theory sections the model was given, and how many the theory has. */
   readonly theory?: { readonly sent: readonly string[]; readonly total: number };
+  /** A turn the program wrote, not the user: the result of the checks in Python of the answer before it. */
+  readonly check?: true;
 }
 
 export interface BriefingInput {
@@ -30,6 +33,8 @@ export interface BriefingInput {
   readonly languageGuide?: string;
   /** Company rules for the model (AiPolicy.instructions); they come last and win. */
   readonly companyInstructions?: string;
+  /** The program can run checks in Python (the built-in one); with NumPy or without. */
+  readonly python?: { readonly numpy: boolean };
   /** What the user asks: from larger theory, the sections for it are chosen. */
   readonly query?: string;
   /** Section ids already cited in the conversation; they go along. */
@@ -116,7 +121,7 @@ ${sheet.theory!.filter((s) => s.id).map((s) => `[${s.id}] ${s.title}`).join('\n'
 - State every assumption (coefficients, categories) openly.
 - Point at lines by their numbers. The program computes; do not recalculate results by hand unless asked.
 - Answer in ${languageName(input.language)}, briefly and to the point. Keep identifiers, units and formulas as they are written in the sheet.
-- Lines of the sheet are given with their numbers; the findings and computed results refer to those numbers.`,
+- Lines of the sheet are given with their numbers; the findings and computed results refer to those numbers.${input.python ? `\n${pythonRule(input.python.numpy)}` : ''}`,
     input.languageGuide ? `Calculation language:\n${input.languageGuide}` : '',
     `The sheet "${sheet.title}" (read-only for you):\n${numbered(sheet.source)}`,
     sheet.findings && sheet.findings.length > 0 ? `Findings of the program (errors, warnings, checks):\n${sheet.findings.join('\n')}` : 'The program found no errors and no failed checks.',

@@ -122,6 +122,20 @@ const fakeApi = createServer((request, response) => {
         response.end(event('[DONE]'));
         return;
       }
+      // "Ověř…": a check in Python of a number of the sheet, first wrong (twice the value), then, given the
+      // program's report that it disagrees, right; and whether the briefing told how to write checks.
+      const report = question.includes('Ověření v Pythonu') || question.includes('Check in Python');
+      if (question.startsWith('Ověř') || report) {
+        const lf = String.fromCharCode(10);
+        const fence = '`'.repeat(3);
+        const found = /^ *\d+ \| ([A-Za-z][A-Za-z0-9_]*) := (\d+(?:\.\d+)?)(?: ([A-Za-zΩ°µ/^·0-9]+))?[ \t]*$/m.exec(system);
+        const [name, value, unit] = found ? [found[1], Number(found[2]), found[3] ?? ''] : ['x', 1, ''];
+        const told = system.includes('check a calculation independently in Python') ? 'ano' : 'ne';
+        const text = `python: ${told}; ${report ? 'opraveno' : 'první pokus'}.${lf}${lf}${fence}python${lf}print("kontrola ${name}")${lf}result("${name}", ${report ? value : value * 2}, "${unit}")${lf}${fence}${lf}`;
+        response.write(event({ model: 'local-smoke-7b', choices: [{ delta: { content: text } }] }));
+        response.end(event('[DONE]'));
+        return;
+      }
       // "Navrhni dvě…": two changes that belong together, a variable at the top and a line using it at the end.
       if (question.startsWith('Navrhni dvě')) {
         const lines = [...system.matchAll(/^ *(\d+) \| /gm)].map((m) => Number(m[1]));

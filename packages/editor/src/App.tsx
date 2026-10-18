@@ -14,7 +14,7 @@ import { emptyScene, readScene, writeScene, type CanvasScene } from '@kalketa/ca
 import { CanvasEditor } from '@kalketa/canvas/editor';
 import { compareWithSheet, PYTHON_PRELUDE, readOutput, addLayer, allDiagnostics, appendixLayers, blockAppendices, documentBlocks, isRemovable, LayerSessions, MAIN_LAYER, removeLayer, freezeRevision, removeRevision, revisionDocument, revisionState, shortHash, tablesByLayer, theorySections, updateLayer, withTheoryIds, conversationsOf, hasConversations, withConversation, withoutConversation, aiMemoryOf, withAiMemory, linkedLibraries, librarySections, entriesOf, newSheetsOf, withEntries, studyAdvice, studyNotes, LARGE_STUDY_PAGES, type StudySettings, aiMadeLines, type SheetEntry, evaluateDocument, type ChangeEntry, type Conversation, type AddableLayerKind, type Layer, type RevisionState, type SheetDocument } from '@kalketa/sheet';
 import { buildCommands, shortcutOf, type Command } from './commands.js';
-import { applyProposal, applyProposals, cleanFigureDescription, cleanFormula, cleanReread, cleanMemory, parseNewSheets, DEFAULT_AI_SETTINGS, parseAiSettings, parseProposals, providerById, replacedLines, type ChangeProposal, type AiSettings, type ChatTurn } from '@kalketa/ai';
+import { applyProposal, applyProposals, cleanFigureDescription, cleanFormula, cleanReread, cleanMemory, parseNewSheets, DEFAULT_AI_SETTINGS, parseAiSettings, parseProposals, providerById, replacedLines, type ChangeProposal, type AiSettings, type ChatTurn, type CheckReport } from '@kalketa/ai';
 import { ChatPane } from './components/ChatPane.js';
 import { TheoryLibraryDialog } from './components/TheoryLibraryDialog.js';
 import { sourceText, useTheoryLibraries, withoutDuplicates, type FoundLibrary } from './theoryLibraries.js';
@@ -1357,6 +1357,40 @@ export function App() {
       }
     : undefined;
 
+  /**
+   * A check in Python of an answer of the AI: run where the settings say, its results set beside the
+   * sheet with the changes the answer proposes applied (the check may be of the calculation it proposes).
+   */
+  const runAnswerCheck = async (code: string, answer: string): Promise<CheckReport> => {
+    if (pythonEngine === 'system' && !(await askConfirm(t(ui, 'python.confirmSystem')))) return { ok: false, output: '', rows: [], declined: true };
+    const raw = await desktop!.runPython(`${PYTHON_PRELUDE}\n${code}`, pythonEngine);
+    const { output, results } = readOutput(raw.stdout);
+    const proposed = applyProposals(doc.source, parseProposals(answer));
+    const sheet = proposed !== undefined && proposed !== doc.source ? evaluateDocument({ ...doc, source: proposed }, defaultRegistry).result : evaluation.main;
+    const number = (v: number) => formatNumber(v, ui, { digits: 6 }).replace('-', '−');
+    const rows = compareWithSheet(results, sheet).map((c) => ({
+      name: c.name,
+      ...(c.kalketa ? { kalketa: `${number(c.kalketa.value)} ${c.kalketa.unit}`.trim() } : {}),
+      python: `${number(c.python.value)} ${c.python.unit}`.trim(),
+      ...(c.difference !== undefined ? { difference: c.difference } : {}),
+      state: c.state,
+    }));
+    return { ok: raw.ok, ...(raw.error ? { error: raw.error } : {}), output: [output, raw.ok ? '' : raw.stderr.trim()].filter(Boolean).join('\n'), rows };
+  };
+  /** A check of an answer kept in the sources (a new sources layer when there is none), to be run there again. */
+  const keepCheck = (code: string) => {
+    changeWith((present) => {
+      const own = present.layers.find((l) => l.kind === 'sources');
+      const added = own ? undefined : addLayer(present.layers, 'sources', t(ui, 'check.heading'));
+      const layers = added?.layers ?? present.layers;
+      const id = own?.id ?? added!.id;
+      const before = (layers.find((l) => l.id === id)?.text ?? '').trimEnd();
+      const fence = '`'.repeat(3);
+      return { ...present, layers: updateLayer(layers, id, { text: `${before ? `${before}\n\n` : ''}## ${t(ui, 'check.heading')}\n\n${fence}python\n${code}\n${fence}\n` }) };
+    });
+    setNotice(t(ui, 'check.kept'));
+  };
+
   // Insert > Fit a curve…: the edits tried on the layer by a calculation of their own, so the
   // open sheet is not disturbed; the lines they write and the charts with the curve are the preview.
   const fitSessions = useRef<LayerSessions | undefined>(undefined);
@@ -2148,6 +2182,7 @@ export function App() {
                     onNewSheet={toNewSheet}
                     newSheets={newSheetViews}
                     onOpenSheet={openNewSheet}
+                    {...(desktop ? { runCheck: runAnswerCheck, onCheckToSources: keepCheck } : {})}
                       onNew={() => {
                         rememberConversation(chat);
                         startedChat.current[tab.id] = undefined;

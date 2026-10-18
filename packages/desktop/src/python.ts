@@ -202,6 +202,11 @@ export async function runSystemPython(code: string, timeoutMs = PYTHON_TIMEOUT_M
   }
 }
 
+/** Whether the built-in Python has NumPy (its wheel shipped with the program). */
+export function pyodideHasNumpy(resources?: string): boolean {
+  return hasNumpy(pyodidePlace(resources).packagesDir);
+}
+
 /** Where Pyodide is: next to this module in development, unpacked from the archive in the program. */
 export function pyodidePlace(resources?: string): PyodidePlace {
   const candidates = [

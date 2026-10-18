@@ -30,6 +30,8 @@ export interface ConversationTurn {
   readonly theory?: { readonly sent: readonly string[]; readonly total: number };
   /** For an answer: the sources it cited, with their state when it was written (ch. 9.6). */
   readonly citations?: readonly { readonly id: string; readonly status: 'ok' | 'unknown' | 'misquoted'; readonly quote?: string }[];
+  /** A turn the program wrote: the result of the checks in Python of the answer before it. */
+  readonly check?: true;
 }
 
 export interface Conversation {

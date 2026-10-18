@@ -13,3 +13,4 @@ export * from './formulas.js';
 export * from './citations.js';
 export * from './theorySearch.js';
 export * from './proposals.js';
+export * from './pythonChecks.js';

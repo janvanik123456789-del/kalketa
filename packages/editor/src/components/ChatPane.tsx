@@ -5,8 +5,8 @@
  * appears as it is written; Stop ends it.
  */
 import { useEffect, useRef, useState } from 'react';
-import { AI_OFF, checkCitations, CITED_ID, providerById, withoutProposals, type AiSettings, type ChatTurn, type CitableSection } from '@kalketa/ai';
-import { t, type Catalog, type UiKey } from '@kalketa/i18n';
+import { AI_OFF, checkCitations, checksNeedAnswer, CITED_ID, parsePythonChecks, providerById, pythonReport, withoutProposals, type AiSettings, type ChatTurn, type CheckReport, type CitableSection } from '@kalketa/ai';
+import { formatNumber, t, type Catalog, type UiKey } from '@kalketa/i18n';
 import { notesHtml } from '@kalketa/render';
 import { desktop } from '../document.js';
 import type { AiSheetContext } from '../logic/aiContext.js';
@@ -72,7 +72,17 @@ export interface ChatPaneProps {
   newSheets?(turn: number): readonly NewSheetView[];
   /** Opens a new calculation the model wrote as a new sheet. */
   onOpenSheet?(id: string): void;
+  /**
+   * Runs a check in Python of an answer (a ```python block) and sets its results beside the sheet,
+   * with the changes the answer proposes applied; without it, answers are not checked.
+   */
+  runCheck?(code: string, answer: string): Promise<CheckReport>;
+  /** Keeps a check of an answer in the sources, to be run again later. */
+  onCheckToSources?(code: string): void;
 }
+
+/** How many times in a row the model gets the results of its checks back when they disagree. */
+const MAX_CHECK_ROUNDS = 2;
 
 /** The open proposals of one answer, for accepting them together or in a new sheet. */
 export interface AnswerProposals {
@@ -83,7 +93,7 @@ export interface AnswerProposals {
   readonly effect?: ProposalEffect;
 }
 
-export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTurns, context, onOpenSettings, onNew, libraries = [], onLibraries, onToggleLibrary, proposals, onDecide, onReview, answerProposals, onAcceptAll, onNewSheet, newSheets, onOpenSheet }: ChatPaneProps) {
+export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTurns, context, onOpenSettings, onNew, libraries = [], onLibraries, onToggleLibrary, proposals, onDecide, onReview, answerProposals, onAcceptAll, onNewSheet, newSheets, onOpenSheet, runCheck, onCheckToSources }: ChatPaneProps) {
   const [libraryMenu, setLibraryMenu] = useState(false);
   // The menu of libraries closes like any menu: a click anywhere else, or Esc.
   useEffect(() => {
@@ -122,6 +132,8 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTur
     return () => clearInterval(timer);
   }, [answer?.id, answer?.text === '']);
   const [error, setError] = useState<string>();
+  // The checks in Python of the last answer are running.
+  const [checking, setChecking] = useState(false);
   const list = useRef<HTMLDivElement>(null);
   const provider = providerById(settings.provider);
 
@@ -185,11 +197,50 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTur
 
   const send = async () => {
     const question = draft.trim();
-    if (!question || answer) return;
+    if (!question || answer || checking) return;
     const asked = [...turns, { role: 'user' as const, text: question, time: new Date().toISOString() }];
     onTurns(asked);
     setDraft('');
     setError(undefined);
+    await askModel(asked, 0);
+  };
+
+  /**
+   * The checks in Python of an answer (```python blocks), run at once by the program: their results
+   * beside the sheet go into the conversation as a turn of the program. When one disagrees or fails,
+   * the model gets them and answers again, at most MAX_CHECK_ROUNDS times in a row.
+   */
+  const checkAnswer = async (answered: readonly ChatTurn[], round: number) => {
+    const last = answered[answered.length - 1];
+    const codes = last?.role === 'assistant' && runCheck ? parsePythonChecks(last.text) : [];
+    if (codes.length === 0) return;
+    setChecking(true);
+    const reports: CheckReport[] = [];
+    try {
+      for (const code of codes) reports.push(await runCheck!(code, last!.text));
+    } finally {
+      setChecking(false);
+    }
+    const words = {
+      title: t(catalog, 'check.title'),
+      quantity: t(catalog, 'python.name'),
+      difference: t(catalog, 'python.difference'),
+      states: { agree: t(catalog, 'python.state.agree'), differ: t(catalog, 'python.state.differ'), missing: t(catalog, 'python.state.missing'), units: t(catalog, 'python.state.units'), unit: t(catalog, 'python.state.unit') },
+      failed: t(catalog, 'python.failed'),
+      declined: t(catalog, 'check.declined'),
+      none: t(catalog, 'python.noResults'),
+      output: t(catalog, 'check.output'),
+      ask: t(catalog, 'check.ask'),
+    };
+    const report: ChatTurn = { role: 'user', text: pythonReport(reports, words, (n) => formatNumber(n, catalog, { digits: 2 })), time: new Date().toISOString(), check: true };
+    const next = [...answered, report];
+    onTurns(next);
+    if (checksNeedAnswer(reports) && round < MAX_CHECK_ROUNDS) await askModel(next, round + 1);
+  };
+
+  /** One answer of the model to the conversation as it is; its checks in Python after it. */
+  const askModel = async (asked: readonly ChatTurn[], round: number) => {
+    let answered: ChatTurn[] | undefined;
     const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     setAnswer({ id, text: '', thinking: false, thought: '', started: Date.now() });
     const stop = listen(id, (piece) =>
@@ -215,10 +266,12 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTur
         languageGuide,
         turns: asked,
         ...(memory ? { memory } : {}),
+        ...(runCheck ? { python: true } : {}),
       });
       // An answer the length limit cut keeps a note saying so; no answer at all is not kept, the user is told why.
       if (result.ok)
-        onTurns([
+        onTurns(
+          (answered = [
           ...asked,
           {
             role: 'assistant',
@@ -230,7 +283,8 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTur
             // The sources it cited, with their state as they are now: the AI notes list them.
             citations: checkCitations(result.text, theory),
           },
-        ]);
+          ]),
+        );
       else if (result.problem !== 'cancelled') setError(t(catalog, `ai.problem.${result.problem}` as UiKey, { detail: result.detail ?? '', name: provider.urlEditable ? t(catalog, 'ai.otherServer') : provider.name }));
     } catch (e) {
       setError(t(catalog, 'ai.problem.provider', { detail: e instanceof Error ? e.message : String(e) }));
@@ -238,6 +292,7 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTur
       stop();
       setAnswer(undefined);
     }
+    if (answered) await checkAnswer(answered, round);
   };
 
   const cancel = () => {
@@ -300,6 +355,12 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTur
               {(newSheets?.(i) ?? []).map((view) => (
                 <NewSheetCard key={view.entry.id} view={view} catalog={catalog} onOpen={(id) => onOpenSheet?.(id)} />
               ))}
+              {onCheckToSources &&
+                parsePythonChecks(turn.text).map((code, n) => (
+                  <button key={`py${n}`} type="button" className="chat-check-keep" title={t(catalog, 'check.keepTip')} onClick={() => onCheckToSources(code)}>
+                    {t(catalog, 'check.keep')}
+                  </button>
+                ))}
               {(() => {
                 const all = answerProposals?.(i);
                 if (!all) return null;
@@ -321,12 +382,16 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTur
                 );
               })()}
             </div>
+          ) : turn.check ? (
+            // The program's report of the checks in Python: a table, as the model got it.
+            <div key={i} className="chat-turn check" dangerouslySetInnerHTML={{ __html: notesHtml(turn.text) }} />
           ) : (
             <div key={i} className="chat-turn user">
               {turn.text}
             </div>
           ),
         )}
+        {checking && <div className="chat-turn check writing">{t(catalog, 'check.running')}</div>}
         {answer &&
           (answer.text ? (
             <div className="chat-turn assistant writing" dangerouslySetInnerHTML={{ __html: answerHtml(answer.text) }} />
@@ -363,8 +428,8 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTur
             }
           }}
         />
-        {answer ? (
-          <button type="button" className="chat-stop" onClick={cancel}>
+        {answer || checking ? (
+          <button type="button" className="chat-stop" onClick={cancel} disabled={!answer}>
             {t(catalog, 'chat.stop')}
           </button>
         ) : (

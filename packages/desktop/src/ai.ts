@@ -10,6 +10,7 @@
  */
 
 import { app, ipcMain, safeStorage, type IpcMainInvokeEvent } from 'electron';
+import { pyodideHasNumpy } from './python.js';
 import { existsSync, readFileSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
@@ -36,6 +37,8 @@ interface ChatAsk {
   readonly language: string;
   readonly sheet: AiSheetContext;
   readonly languageGuide?: string;
+  /** The editor runs checks in Python of the answers: the model is told how to write them. */
+  readonly python?: boolean;
   readonly turns: readonly ChatTurn[];
   /** The sheet's memory from earlier conversations (ch. 9.7). */
   readonly memory?: string;
@@ -186,6 +189,7 @@ export function registerAiBridge(fromEditor: (event: IpcMainInvokeEvent) => unkn
       ...(ask.languageGuide ? { languageGuide: ask.languageGuide } : {}),
       ...(policy.instructions ? { companyInstructions: policy.instructions } : {}),
       ...(typeof ask.memory === 'string' && ask.memory.trim() ? { memory: ask.memory } : {}),
+      ...(ask.python === true ? { python: { numpy: pyodideHasNumpy(app.isPackaged ? process.resourcesPath : undefined) } } : {}),
       query: asked,
       cited,
     });

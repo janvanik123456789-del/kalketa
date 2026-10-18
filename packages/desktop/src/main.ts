@@ -2500,7 +2500,12 @@ async function layersWithRealInput(picture: string) {
     return { x: Math.round(at.x * m.a + at.y * m.c + m.e), y: Math.round(at.x * m.b + at.y * m.d + m.f) };
   })()`)) as { x: number; y: number } | undefined;
   // Over the curve the pointer shows it can be clicked.
-  if (curvePoint) contents.sendInputEvent({ type: 'mouseMove', ...curvePoint });
+  // The pointer comes to the curve from beside it, as a hand moves it (one move alone is not always a move over the chart).
+  if (curvePoint) {
+    contents.sendInputEvent({ type: 'mouseMove', x: curvePoint.x - 12, y: curvePoint.y - 12 });
+    await pause(100);
+    contents.sendInputEvent({ type: 'mouseMove', ...curvePoint });
+  }
   await pause(300);
   const curveCursor = (await contents.executeJavaScript(`(() => { const charts = [...document.querySelectorAll('.layer-view.active .chart-view')]; return charts[charts.length - 1]?.style.cursor ?? ''; })()`)) as string;
   if (curvePoint) {

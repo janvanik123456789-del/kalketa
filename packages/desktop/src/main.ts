@@ -2507,7 +2507,9 @@ async function layersWithRealInput(picture: string) {
   await pause(1500);
   const joinAfter = (await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .block.chart')][0]?.querySelectorAll('.chart-data path[fill="none"]').length ?? 0`)) as number;
   // A click on the spline in its chart opens it to be edited; straight segments instead, written in place.
-  const curvePoint = (await contents.executeJavaScript(`(() => {
+  // Where the spline is on the screen now (measured again after the window paints: the page may have moved).
+  const measureCurve = async () =>
+    (await contents.executeJavaScript(`(() => {
     const charts = [...document.querySelectorAll('.layer-view.active .block.chart')];
     const path = charts[charts.length - 1]?.querySelector('.chart-data path[fill="none"]');
     if (!path) return undefined;
@@ -2516,14 +2518,22 @@ async function layersWithRealInput(picture: string) {
     const m = path.getScreenCTM();
     return { x: Math.round(at.x * m.a + at.y * m.c + m.e), y: Math.round(at.x * m.b + at.y * m.d + m.f) };
   })()`)) as { x: number; y: number } | undefined;
-  // Over the curve the pointer shows it can be clicked.
-  // The pointer comes to the curve from beside it, as a hand moves it (one move alone is not always a move over the chart).
+  // The pointer comes to the curve from beside it, as a hand moves it; the hidden window handles moves when it paints.
+  const moveTo = async (point: { x: number; y: number }) => {
+    for (let step = 3; step >= 0; step--) {
+      contents.sendInputEvent({ type: 'mouseMove', x: point.x - step * 4, y: point.y - step * 4 });
+      await pause(60);
+    }
+  };
+  let curvePoint = await measureCurve();
   if (curvePoint) {
-    contents.sendInputEvent({ type: 'mouseMove', x: curvePoint.x - 12, y: curvePoint.y - 12 });
-    await pause(100);
-    contents.sendInputEvent({ type: 'mouseMove', ...curvePoint });
+    await moveTo(curvePoint);
+    await takePicture(picture.replace(/[.]png$/, '-fit-hover.png'));
+    curvePoint = await measureCurve();
+    if (curvePoint) await moveTo(curvePoint);
   }
   await pause(300);
+  // Over the curve the pointer shows it can be clicked.
   const curveCursor = (await contents.executeJavaScript(`(() => { const charts = [...document.querySelectorAll('.layer-view.active .chart-view')]; return charts[charts.length - 1]?.style.cursor ?? ''; })()`)) as string;
   if (curvePoint) {
     contents.sendInputEvent({ type: 'mouseDown', ...curvePoint, button: 'left', clickCount: 1 });

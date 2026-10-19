@@ -427,6 +427,7 @@ export const UI_KEYS = [
   'sheetCheck.failed',
   'sheetCheck.hint.redefined',
   'sheetCheck.hint.unit',
+  'sheetCheck.hint.table',
   'sheetCheck.hint.derive',
   'sheetCheck.hint.bareUnit',
   'sheetCheck.hint.units',

@@ -1106,6 +1106,7 @@ export const cs: Catalog = {
     'sheetCheck.failed': 'Tyto kontroly (check) se změnami nevyhovují. Buď je chyba ve výpočtu, nebo v kontrole; najdi, která strana se mýlí, a oprav ji (fyzikálně, ne úpravou tolerance):',
     'sheetCheck.hint.redefined': 'Hodně jmen „už je definováno výše“ znamená, že řešení už v listu je (uživatel přijal dřívější návrh). Neopakuj ho: navrhni jen nové řádky za poslední řádek listu, nebo nahraď staré řádky blokem change od-do (např. change 15-40).',
     'sheetCheck.hint.unit': 'Jednotka za | se skládá jen z jednotek, mocnin, · a /: m^0.5/s, kN·m, 1/s. Funkce jako sqrt v ní nejsou (odmocnina je ^0.5). Nevíš-li, jakou jednotku výsledek má, | vynech: list ji spočítá sám.',
+    'sheetCheck.hint.table': 'Buňky tabulky jsou hodnoty (čísla s jednotkou ve sloupci), ne vzorce. Průběh veličiny nakresli funkcí: v_A(y) := …, plot(v_A(y), y: 0 m .. h_1); body po kroku 0,5 m dá plot(v_A(y), y: 0 m .. h_1, kind: "points", samples: 7).',
     'check.timeout': 'Skript nestihl doběhnout za 30 s. Zrychli ho: krok simulace volte podle doby, kterou pokrývá (nejvýš zhruba 200 000 kroků, dt = t_konec/100000), použijte Rungeovu–Kuttovu metodu 4. řádu místo Eulerovy a zastavte u hledané události. Neopisujte vzorec z listu, ověření musí jít jinou cestou.',
     'choice.below': 'volba níže',
     'note.below': 'návrh zápisu níže',

@@ -168,7 +168,7 @@ export function checkDerivation(
     // Each relation made to hold: one of its names (one of the step first) calculated from the others.
     // The size of its sides when first solved, kept: relative to the sides as they go, y_3 == 0 m would never hold.
     const scales = new Map<Holding, number>();
-    const solveFor = (h: Holding, name: string): boolean => {
+    const solveFor = (h: Holding, name: string, notZero = false): boolean => {
       const start = tryValue(() => lookup(name, h.relation.expr.span));
       if (start?.type !== 'quantity' || start.im) return false;
       const gap = (si: number): number | undefined => {
@@ -181,7 +181,7 @@ export function checkDerivation(
         return (l.si - r.si) / scales.get(h)!;
       };
       const root = secant(gap, start.si);
-      if (root === undefined) {
+      if (root === undefined || (notZero && start.si !== 0 && Math.abs(root) < 1e-9 * Math.abs(start.si))) {
         known.set(name, start);
         return false;
       }
@@ -200,7 +200,9 @@ export function checkDerivation(
     for (const h of [...under].sort((a, b) => symbolsOf(a) - symbolsOf(b))) {
       const taken = new Set(chosen.map(([, n]) => n));
       const candidates = [...h.names].filter((n) => !taken.has(n) && !formula(n)).sort((a, b) => rank(a) - rank(b));
-      const done = candidates.find((name) => solveFor(h, name));
+      // A factor of both sides (ρ in ρ·g·h == ρ·v²/2) solved to zero makes the relation hold for nothing it says:
+      // another name is solved for first; zero is taken only when it is the one answer (v_1 == 0 m/s).
+      const done = candidates.find((name) => solveFor(h, name, true)) ?? candidates.find((name) => solveFor(h, name));
       if (done === undefined) return rewritten.map(() => undefined);
       chosen.push([h, done]);
     }

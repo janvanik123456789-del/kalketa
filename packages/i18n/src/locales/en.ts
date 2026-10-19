@@ -1106,6 +1106,7 @@ export const en: Catalog = {
     'sheetCheck.failed': 'These checks (check) do not pass with the changes. Either the calculation or the check is wrong; find which side is wrong and correct it (by the physics, not by loosening the tolerance):',
     'sheetCheck.hint.redefined': 'Many names "already defined above" mean the solution is in the sheet already (the user accepted an earlier proposal). Do not repeat it: propose only new lines after the last line of the sheet, or replace old lines by a change block from-to (e.g. change 15-40).',
     'sheetCheck.hint.unit': 'The unit after | is made of units, powers, · and / only: m^0.5/s, kN·m, 1/s. Functions such as sqrt are not part of it (a root is ^0.5). If you do not know the unit of the result, leave | out: the sheet works it out itself.',
+    'sheetCheck.hint.table': 'Cells of a table are values (numbers, the unit in the column), not formulas. Draw the course of a quantity by a function: v_A(y) := …, plot(v_A(y), y: 0 m .. h_1); points every 0.5 m come from plot(v_A(y), y: 0 m .. h_1, kind: "points", samples: 7).',
     'check.timeout': 'The script did not finish in 30 s. Make it faster: choose the step of a simulation from the time it covers (about 200 000 steps at most, dt = t_end/100000), use Runge–Kutta 4 instead of Euler, and stop at the event you look for. Do not copy the formula of the sheet: the check must go another way.',
     'choice.below': 'choice below',
     'note.below': 'proposed note below',

@@ -265,6 +265,7 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTur
         'E-UNIT-MISMATCH': t(catalog, 'sheetCheck.hint.units'),
         'E-REDEFINED': t(catalog, 'sheetCheck.hint.redefined'),
         'E-UNKNOWN-UNIT': t(catalog, 'sheetCheck.hint.unit'),
+        'E-TABLE-CELL': t(catalog, 'sheetCheck.hint.table'),
       },
     };
     const text = [sheetWrong ? sheetReport(sheet!, sheetWords) : '', codes.length > 0 ? pythonReport(reports, words, (n) => formatNumber(n, catalog, { digits: 2 })) : ''].filter(Boolean).join('\n\n');

@@ -46,8 +46,11 @@ export interface SheetWords {
 const SMALL = 10;
 /** How close a number in text must be to a value to be that value rounded ("~4000×", "52,7 min"). */
 const TOLERANCE = 0.03;
-/** Factors a value is shown with in another unit: powers of ten (mm, kN, %) and of sixty (min, h). */
-const SCALES = [1, 60, 3600, 1 / 60, 1 / 3600].flatMap((s) => Array.from({ length: 19 }, (_, i) => s * 10 ** (i - 9)));
+/**
+ * Factors a value is shown with in another unit: those of the prefixes (c, m, k, M…, and % of a ratio) and of
+ * sixty (min, h). Not any power of ten: "~400×" is not 4 039 rounded.
+ */
+const SCALES = [1, 60, 3600, 1 / 60, 1 / 3600].flatMap((s) => [1, 1e2, 1e-2, 1e3, 1e-3, 1e4, 1e-4, 1e6, 1e-6, 1e9, 1e-9].map((p) => s * p));
 
 /** The numbers written in a text: 6,3 and 6.3, 3 159 and 3 159,5; not the digits of names (h_1, T8, R2). */
 export function numbersIn(text: string): { readonly text: string; readonly value: number }[] {

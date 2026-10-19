@@ -149,6 +149,14 @@ describe('a zero written without a unit, and a member written wrong', () => {
     expect(codes('g := 9.81 m/s^2\ny_1 := 9 m\nrelation p_a + ρ·g·y_1 == p_a + ρ·g·0 + ρ·v^2/2\nderive v == sqrt(2·g·y_1)')).toEqual([]);
     // A value that is zero is no bare zero: a forgotten unit is still caught.
     expect(codes('x := 0\ny := x + 2 m')).toEqual(['E-UNIT-MISMATCH']);
+    // The speed at the surface squared (ρ·0²/2) is a bare zero too.
+    expect(codes('g := 9.81 m/s^2\nh_1 := 3 m\nrelation p_a + ρ·g·h_1 + ρ·0²/2 == p_a + ρ·v_A^2/2\nderive v_A == sqrt(2·g·h_1)')).toEqual([]);
+  });
+
+  it('a relation with a factor of both sides (ρ) holds by another name than that factor solved to zero', () => {
+    const sheet = 'g := 9.81 m/s^2\nh_1 := 3 m\nrelation ρ·g·h_1 == ρ·v_A^2/2\n';
+    expect(codes(`${sheet}derive ρ·v_A^2/2 == ρ·g·h_1\nderive v_A == sqrt(2·g·h_1)`)).toEqual([]);
+    expect(codes(`${sheet}derive ρ·v_A^2/2 == 3·ρ·g·h_1`)).toEqual(['E-DERIVE-STEP']);
   });
 
   it('a member of a derivation the values cannot calculate for an error of its own is that error, not a step left unchecked', () => {

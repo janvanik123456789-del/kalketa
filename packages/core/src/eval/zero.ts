@@ -1,7 +1,7 @@
 /**
  * A zero written without a unit is a zero of any unit, as on paper: the ground is y = 0, a body at rest
  * has v = 0, p_a + ρ·g·0 is p_a. Only a zero as written counts (0, −0, a product with 0, 0 over
- * something), never a value that happens to be zero, so a forgotten unit elsewhere is still caught.
+ * something, a power of 0), never a value that happens to be zero, so a forgotten unit elsewhere is still caught.
  */
 
 import type { Expr } from '../lang/ast.js';
@@ -14,7 +14,8 @@ export function isBareZero(e: Expr): boolean {
     case 'unary':
       return (e.operator === '-' || e.operator === '+') && isBareZero(e.operand);
     case 'binary':
-      return e.operator === '*' ? isBareZero(e.left) || isBareZero(e.right) : e.operator === '/' ? isBareZero(e.left) : false;
+      // A power of zero (the speed at the surface squared, ρ·0²/2) is zero too.
+      return e.operator === '*' ? isBareZero(e.left) || isBareZero(e.right) : e.operator === '/' || e.operator === '^' ? isBareZero(e.left) : false;
     default:
       return false;
   }

@@ -16,6 +16,9 @@ describe('the check of the sheet an answer proposes', () => {
     const prose = ['Rychlost hladiny je zanedbatelná (nádrž je ~200× širší než otvor).', 'Nádrž se vyprázdní asi za 52,7 min, proud dopadá rychlostí 13,3 m/s.', 'Otvor má 6,3 cm², nádrž poloměr 0,9 m; μ je 0,6 až 0,62.'];
     const lone = loneNumbers(prose, VALUES, [ASSIGNMENT, 'Pro ostrou hranu je μ přibližně 0,6 až 0,62.']);
     expect(lone.map((n) => n.number)).toEqual(['200']);
+    // Not any power of ten: "~400×" is not the ratio 4 039 of the areas rounded.
+    expect(loneNumbers(['Hladina je asi 400× širší než otvor.'], [4039.19], []).map((n) => n.number)).toEqual(['400']);
+    expect(loneNumbers(['Hladina je asi 4 000× širší než otvor.'], [4039.19], [])).toEqual([]);
     // A value shown in another unit is the value: 3 159 s is 52,6 min, 0,0019 m/s is 1,9 mm/s.
     expect(loneNumbers(['za 3 159 s, hladina klesá 1,9 mm/s'], VALUES, [])).toEqual([]);
   });

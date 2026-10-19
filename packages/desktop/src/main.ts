@@ -2907,16 +2907,18 @@ async function sheetPictureWithRealInput(contents: Electron.WebContents): Promis
     await pause(300);
     sheetPicture.offered = (await contents.executeJavaScript(`[...document.querySelectorAll('.menu-panel .menu-label')].some((l) => l.textContent.includes('Popsat obrázek pro AI'))`)) as boolean;
     if (sheetPicture.offered) await clickMenu('Popsat obrázek pro AI');
-    // The model answers, then the line is written and the sheet calculated again (a slower system takes longer).
-    await pause(500);
-    for (let i = 0; i < 80 && ((await contents.executeJavaScript(`document.querySelector('.statusbar')?.textContent ?? ''`)) as string).includes('popisuje'); i++) await pause(150);
+    // The model answers, then the line is written and the sheet calculated again (a slower system takes longer):
+    // the menu is looked at again until it offers the description to be edited.
+    for (let i = 0; i < 20 && !sheetPicture.described; i++) {
+      await pause(500);
+      await contents.executeJavaScript(`document.querySelector('.layer-view.active .page figure img')?.setAttribute('data-smoke-picture', '')`);
+      await clickOn('[data-smoke-picture]', [], 'right');
+      await pause(250);
+      sheetPicture.described = (await contents.executeJavaScript(`[...document.querySelectorAll('.menu-panel .menu-label')].some((l) => l.textContent.includes('Upravit popis pro AI'))`)) as boolean;
+      sheetPicture.menu = (await contents.executeJavaScript(`[...document.querySelectorAll('.menu-panel .menu-label')].map((l) => l.textContent).join('|')`)) as string;
+      if (!sheetPicture.described) await pressKey('Escape');
+    }
     sheetPicture.notice = (await contents.executeJavaScript(`document.querySelector('.statusbar')?.textContent ?? ''`)) as string;
-    await pause(1200);
-    await contents.executeJavaScript(`document.querySelector('.layer-view.active .page figure img')?.setAttribute('data-smoke-picture', '')`);
-    await clickOn('[data-smoke-picture]', [], 'right');
-    await pause(300);
-    sheetPicture.described = (await contents.executeJavaScript(`[...document.querySelectorAll('.menu-panel .menu-label')].some((l) => l.textContent.includes('Upravit popis pro AI'))`)) as boolean;
-    sheetPicture.menu = (await contents.executeJavaScript(`[...document.querySelectorAll('.menu-panel .menu-label')].map((l) => l.textContent).join('|')`)) as string;
     await pressKey('Escape');
   }
   return sheetPicture;

@@ -6,8 +6,9 @@
  */
 
 import { COLOR_BAR, surfaceRange, surfaceSvg, type ChartSurface, type Colormap } from './surface.js';
+import { surface3dSvg } from './surface3d.js';
 
-export type ChartKind = 'line' | 'points' | 'bar' | 'map';
+export type ChartKind = 'line' | 'points' | 'bar' | 'map' | 'surface';
 
 export interface ChartSeries {
   /** Name in the legend and at the end of the curve, e.g. "M(x)". */
@@ -362,6 +363,12 @@ export function chartSvg(spec: ChartSpec, options: ChartOptions = {}): string {
   const formatX = options.formatX ?? format;
   const parts: string[] = [];
   const text = (x: number, y: number, content: string, attrs: string) => `<text x="${r(x)}" y="${r(y)}" ${attrs}>${label(content)}</text>`;
+  // A surface in 3D draws its own box, ticks and titles: nothing of the axes of the plane.
+  if (spec.kind === 'surface' && spec.surface) {
+    const own = surface3dSvg(spec, layout, format, formatX, layout.paint.colormap, layout.paint.font, !!spec.surface.equalScale);
+    const named = options.title ? `<title>${esc(options.title)}</title>` : '';
+    return `<svg class="chart-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" role="img" font-family='${FONT}' font-size="${layout.paint.font}" style="width:100%;height:auto;display:block">${named}${own}</svg>`;
+  }
 
   // Grid and y ticks: hairlines behind the data.
   const { paint } = layout;

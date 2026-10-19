@@ -1160,6 +1160,8 @@ function sourceText(result: SheetResult, span: { offset: number; length: number 
 
 /** Size of a chart in the SVG user space: about the text width of A4 at 96 dpi, so text in it reads like 8 pt. */
 export const CHART_SIZE = { width: 640, height: 300 } as const;
+/** A surface in 3D: a box seen from above wants more height than a curve. */
+const SURFACE_SIZE = { width: 640, height: 420 } as const;
 
 /** The size of a chart whose axes share one scale (a circle round): its plot area as high as its ranges ask. */
 function equalScaleSize(spec: ChartSpec): { width: number; height: number } {
@@ -1223,12 +1225,14 @@ function chartBlock(
             ...(plot.surface.levels ? { levels: plot.surface.levels } : {}),
             ...(plot.surface.levelCount !== undefined ? { levelCount: plot.surface.levelCount } : {}),
             ...(plot.surface.extremes ? { extremes: plot.surface.extremes } : {}),
+            ...(plot.surface.view ? { view: plot.surface.view } : {}),
+            ...(plot.equalScale ? { equalScale: true } : {}),
           },
         }
       : {}),
   };
   // Its height to its width as dragged in the sheet (ratio=0.6), else the usual one.
-  const size = plot.place?.ratio ? { width: CHART_SIZE.width, height: Math.round(CHART_SIZE.width * plot.place.ratio) } : plot.equalScale ? equalScaleSize(spec) : CHART_SIZE;
+  const size = plot.place?.ratio ? { width: CHART_SIZE.width, height: Math.round(CHART_SIZE.width * plot.place.ratio) } : plot.kind === 'surface' ? SURFACE_SIZE : plot.equalScale ? equalScaleSize(spec) : CHART_SIZE;
   const options = { ...size, format, look, ...(plot.xDates ? { formatX: date } : {}), ...(plot.title ? { title: plot.title } : {}) };
   return {
     kind: 'chart',

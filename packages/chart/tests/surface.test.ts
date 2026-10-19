@@ -1,6 +1,6 @@
 import { inflateSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
-import { chartLayout, chartSvg, colormapOf, contourSegments, pngDataUri, surfaceLevels, type ChartSpec, type ChartSurface } from '../src/index.js';
+import { chartLayout, chartSvg, colormapOf, contourSegments, parseView, pngDataUri, surfaceLevels, viewText, type ChartSpec, type ChartSurface } from '../src/index.js';
 
 /** z = x + y over 0 .. 4 × 0 .. 2, on a grid of 5 × 3 points. */
 const xs = [0, 1, 2, 3, 4];
@@ -51,5 +51,20 @@ describe('a surface drawn as a map', () => {
     const length = png.readUInt32BE(idat - 4);
     const rows = inflateSync(png.subarray(idat + 4, idat + 4 + length));
     expect([...rows]).toEqual([0, ...rgba.subarray(0, 12), 0, ...rgba.subarray(12)]);
+  });
+
+  it('in 3D is shaded cells in a box with ticks, from the view asked, and its colour bar', () => {
+    const solid: ChartSpec = { ...map, kind: 'surface' };
+    const svg = chartSvg(solid);
+    expect(svg).toContain('class="chart-surface"');
+    // A patch for each cell of the grid (4 × 2), besides the floor and two walls of the box.
+    const patches = /<g class="chart-surface">(.*?)<\/g>/.exec(svg)![1]!;
+    expect((patches.match(/<path /g) ?? []).length).toBe(4 * 2);
+    expect(svg).toContain('class="chart-colorbar"');
+    expect(svg).not.toContain('<image');
+    // Another view draws the same cells elsewhere.
+    expect(chartSvg({ ...solid, surface: { ...plane, view: { az: -60, el: 60 } } })).not.toBe(svg);
+    expect(parseView('az=400 el=95')).toEqual({ az: 40, el: 90 });
+    expect(viewText({ az: 35.4, el: 29.6 })).toBe('az=35 el=30');
   });
 });

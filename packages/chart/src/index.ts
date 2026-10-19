@@ -6,4 +6,5 @@
 
 export * from './chart.js';
 export * from './surface.js';
+export * from './surface3d.js';
 export { pngDataUri } from './png.js';

@@ -2708,9 +2708,48 @@ async function layersWithRealInput(picture: string) {
     tip: mapTip,
     ok: mapShown.picture && mapShown.contours >= 5 && mapShown.bar && mapShown.peak.includes('40') && mapShown.errors === 0 && /w\(x;\s?y\) = (39|40)/.test(mapTip) && mapTip.includes('mm'),
   };
+  // The same plate in 3D, chosen by the right button; turned by dragging it with the mouse, the view stays
+  // (written into its line: after the sheet is calculated again, the turned picture is the one shown).
+  await contents.executeJavaScript(`document.querySelector('.layer-view.active .block.chart svg.chart-svg')?.setAttribute('data-smoke-surface', '')`);
+  await clickOn('[data-smoke-surface]', [], 'right');
+  await pause(300);
+  await clickMenu('Plocha ve 3D');
+  const firstPatch = `document.querySelector('.layer-view.active .block.chart .chart-surface path')?.getAttribute('d') ?? ''`;
+  let before3d = '';
+  for (let i = 0; i < 40 && !before3d; i++) {
+    await pause(250);
+    before3d = (await contents.executeJavaScript(firstPatch)) as string;
+  }
+  const centre = (await contents.executeJavaScript(`(() => {
+    const svg = document.querySelector('.layer-view.active .block.chart svg.chart-svg');
+    if (!svg) return undefined;
+    svg.scrollIntoView({ block: 'center' });
+    const r = svg.getBoundingClientRect();
+    return { x: Math.round(r.left + r.width * 0.4), y: Math.round(r.top + r.height / 2) };
+  })()`)) as { x: number; y: number } | undefined;
+  let during3d = '';
+  if (centre) {
+    contents.sendInputEvent({ type: 'mouseMove', ...centre });
+    contents.sendInputEvent({ type: 'mouseDown', ...centre, button: 'left', clickCount: 1 });
+    for (let step = 1; step <= 8; step++) {
+      contents.sendInputEvent({ type: 'mouseMove', x: centre.x + step * 10, y: centre.y + step * 3, button: 'left' });
+      await pause(60);
+    }
+    during3d = (await contents.executeJavaScript(firstPatch)) as string;
+    contents.sendInputEvent({ type: 'mouseUp', x: centre.x + 80, y: centre.y + 24, button: 'left', clickCount: 1 });
+  }
+  await pause(1800);
+  const after3d = (await contents.executeJavaScript(firstPatch)) as string;
+  const surface3d = {
+    shown: before3d !== '',
+    turning: during3d !== '' && during3d !== before3d,
+    kept: after3d !== '' && after3d !== before3d,
+    errors: (await contents.executeJavaScript(`document.querySelectorAll('.layer-view.active .page .row.has-error').length`)) as number,
+  };
+  await takePicture(picture.replace(/[.]png$/, '-surface-3d.png'));
   const quadraticSample = {
     crank,
-    theory: { theoryTab, tankErrors, theoryChecks, pythonCheck, rowsCopy, rocket, parabola, thermistor, fitDialog, chartLook, surfaceMap },
+    theory: { theoryTab, tankErrors, theoryChecks, pythonCheck, rowsCopy, rocket, parabola, thermistor, fitDialog, chartLook, surfaceMap, surface3d },
     across,
     beam,
     slowTyping,
@@ -2719,7 +2758,7 @@ async function layersWithRealInput(picture: string) {
     after: sampleAfter,
     outOfDomain,
     english,
-    ok: !!thumb && sampleBefore.errors === 0 && sampleAfter.errors === 0 && sampleBefore.a !== '' && sampleAfter.a !== sampleBefore.a && sampleAfter.roots !== sampleBefore.roots && outOfDomain.drawn && !outOfDomain.area && outOfDomain.roots === 0 && !outOfDomain.error && outOfDomain.warned && english.head === 'Quadratic equation' && english.verdicts.length === 5 && english.verdicts.every((v) => v.endsWith('OK')) && english.errors === 0 && crank.pictures === 4 && crank.charts === 3 && crank.errors === 0 && crank.verdict.endsWith('VYHOVUJE') && slowTyping.waitingShown && slowTyping.settled && cube.pictures === 1 && cube.derived >= 5 && cube.errors === 0 && beam.pictures === 3 && beam.charts >= 4 && beam.errors === 0 && across.before && !across.after && theoryTab >= 1 && tankErrors === 0 && theoryChecks.blocks >= 4 && theoryChecks.bad === 0 && pythonCheck.rows === 4 && pythonCheck.agree === 4 && rowsCopy.marked === 6 && rowsCopy.rows === 3 && rowsCopy.picture === 1 && rowsCopy.status.startsWith('chyba: 0') && rocket.errors === 0 && rocket.charts >= 2 && parabola.errors === 0 && parabola.charts >= 2 && parabola.normal >= 2 && thermistor.errors === 0 && thermistor.charts >= 3 && fitDialog.ok && chartLook.ok && surfaceMap.ok,
+    ok: !!thumb && sampleBefore.errors === 0 && sampleAfter.errors === 0 && sampleBefore.a !== '' && sampleAfter.a !== sampleBefore.a && sampleAfter.roots !== sampleBefore.roots && outOfDomain.drawn && !outOfDomain.area && outOfDomain.roots === 0 && !outOfDomain.error && outOfDomain.warned && english.head === 'Quadratic equation' && english.verdicts.length === 5 && english.verdicts.every((v) => v.endsWith('OK')) && english.errors === 0 && crank.pictures === 4 && crank.charts === 3 && crank.errors === 0 && crank.verdict.endsWith('VYHOVUJE') && slowTyping.waitingShown && slowTyping.settled && cube.pictures === 1 && cube.derived >= 5 && cube.errors === 0 && beam.pictures === 3 && beam.charts >= 4 && beam.errors === 0 && across.before && !across.after && theoryTab >= 1 && tankErrors === 0 && theoryChecks.blocks >= 4 && theoryChecks.bad === 0 && pythonCheck.rows === 4 && pythonCheck.agree === 4 && rowsCopy.marked === 6 && rowsCopy.rows === 3 && rowsCopy.picture === 1 && rowsCopy.status.startsWith('chyba: 0') && rocket.errors === 0 && rocket.charts >= 2 && parabola.errors === 0 && parabola.charts >= 2 && parabola.normal >= 2 && thermistor.errors === 0 && thermistor.charts >= 3 && fitDialog.ok && chartLook.ok && surfaceMap.ok && surface3d.shown && surface3d.turning && surface3d.kept && surface3d.errors === 0,
   };
   const userChart = { namedArea, quadOk, quadTarget, quadEnd, quadEditing, ok: namedArea === 'Integral1=27' && quadOk && quadTarget > 0 && Math.abs(quadEnd - quadTarget) < 12 };
   // Relations: a circle solved by its name, a derivation following from a relation of theory, and the circle

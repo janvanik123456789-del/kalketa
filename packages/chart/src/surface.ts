@@ -20,6 +20,9 @@ export interface ChartSurface {
   readonly levelCount?: number;
   /** The highest and the lowest point: marked with their value. */
   readonly extremes?: readonly { readonly x: number; readonly y: number; readonly z: number; readonly peak: boolean }[];
+  /** Seen in 3D (kind "surface"): from where, and x and y at one scale (they share a unit). */
+  readonly view?: { readonly az: number; readonly el: number };
+  readonly equalScale?: boolean;
 }
 
 /** Colours of a map from low to high: sequential (one way), diverging (round zero), grey (for black-and-white print). */
@@ -71,10 +74,10 @@ function along(stops: readonly string[], t: number): [number, number, number] {
   return a.map((v, i) => Math.round(v + (b[i]! - v) * f)) as [number, number, number];
 }
 
-const css = (c: readonly number[]) => `#${c.map((v) => v.toString(16).padStart(2, '0')).join('')}`;
+export const css = (c: readonly number[]) => `#${c.map((v) => v.toString(16).padStart(2, '0')).join('')}`;
 
 /** The colour of a value: diverging maps keep zero white, so plus and minus read at a glance. */
-function painter(map: Exclude<Colormap, 'auto'>, lo: number, hi: number): (v: number) => [number, number, number] {
+export function painter(map: Exclude<Colormap, 'auto'>, lo: number, hi: number): (v: number) => [number, number, number] {
   if (map === 'diverging') {
     const m = Math.max(Math.abs(lo), Math.abs(hi)) || 1;
     return (v) => along(DIVERGING, 0.5 + v / (2 * m));
@@ -211,19 +214,7 @@ export function surfaceSvg(spec: ChartSpec, layout: ChartLayout, format: (value:
       `<text data-label="e0.${k}" class="chart-label chart-extreme-label" x="${r(px)}" y="${r(below ? py + 19 : py - 10)}" text-anchor="${anchor}" fill="${INK}" font-weight="600" stroke="#fff" stroke-width="3" paint-order="stroke">${format(e.z)}</text>`
     );
   });
-  // The colour bar: the colours from low to high, the levels on it, the title above.
-  const barX = plot.right + 14;
-  const barW = 12;
-  const id = `kalketa-bar-${map}`;
-  const stops = Array.from({ length: 11 }, (_, k) => `<stop offset="${k / 10}" stop-color="${css(paint(lo + ((hi - lo) * (10 - k)) / 10))}"/>`).join('');
-  const barY = (v: number) => plot.bottom - ((v - lo) / (hi - lo || 1)) * (plot.bottom - plot.top);
-  const ticks = [lo, ...levels, hi].filter((v, k, all) => k === 0 || k === all.length - 1 || (Math.abs(barY(v) - barY(lo)) > font && Math.abs(barY(v) - barY(hi)) > font));
-  const bar =
-    `<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1">${stops}</linearGradient></defs>` +
-    `<rect class="chart-colorbar" x="${barX}" y="${plot.top}" width="${barW}" height="${plot.bottom - plot.top}" fill="url(#${id})" stroke="${INK_2}" stroke-width="0.6"/>` +
-    ticks.map((v) => `<line x1="${barX + barW}" x2="${barX + barW + 3}" y1="${r(barY(v))}" y2="${r(barY(v))}" stroke="${INK_2}"/><text x="${barX + barW + 5}" y="${r(barY(v) + font * 0.35)}" fill="${INK_2}">${format(v)}</text>`).join('') +
-    // The title ends at the right edge of the chart: a long one runs to the left, over the plot, not off the paper.
-    `<text x="${layout.width - 2}" y="${plot.top - 10}" text-anchor="end" fill="${INK_2}">${esc(surface.zTitle)}</text>`;
+  const bar = colorBar(surface, layout, format, map, paint, levels, font);
   return (
     cells +
     `<g class="chart-contours">${lines.join('')}</g>` +
@@ -234,7 +225,28 @@ export function surfaceSvg(spec: ChartSpec, layout: ChartLayout, format: (value:
   );
 }
 
-function esc(text: string): string {
+/** The colour bar at the right of the plot: the colours from low to high, the levels on it, the title above. */
+export function colorBar(surface: ChartSurface, layout: ChartLayout, format: (value: number) => string, map: Exclude<Colormap, 'auto'>, paint: (v: number) => [number, number, number], levels: readonly number[], font: number): string {
+  const { plot } = layout;
+  const [lo, hi] = surfaceRange(surface);
+  const barX = plot.right + 14;
+  const barW = 12;
+  const id = `kalketa-bar-${map}`;
+  const stops = Array.from({ length: 11 }, (_, k) => `<stop offset="${k / 10}" stop-color="${css(paint(lo + ((hi - lo) * (10 - k)) / 10))}"/>`).join('');
+  const barY = (v: number) => plot.bottom - ((v - lo) / (hi - lo || 1)) * (plot.bottom - plot.top);
+  const ticks = [lo, ...levels, hi].filter((v, k, all) => k === 0 || k === all.length - 1 || (Math.abs(barY(v) - barY(lo)) > font && Math.abs(barY(v) - barY(hi)) > font));
+  return (
+    `<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1">${stops}</linearGradient></defs>` +
+    `<rect class="chart-colorbar" x="${barX}" y="${plot.top}" width="${barW}" height="${plot.bottom - plot.top}" fill="url(#${id})" stroke="${INK_2}" stroke-width="0.6"/>` +
+    ticks.map((v) => `<line x1="${barX + barW}" x2="${barX + barW + 3}" y1="${r(barY(v))}" y2="${r(barY(v))}" stroke="${INK_2}"/><text x="${barX + barW + 5}" y="${r(barY(v) + font * 0.35)}" fill="${INK_2}">${format(v)}</text>`).join('') +
+    // The title starts over the bar; a long one ends at the right edge of the chart, running to the left, not off the paper.
+    (barX + (surface.zTitle.length * 6.6 * font) / 11 < layout.width - 2
+      ? `<text x="${barX}" y="${plot.top - 10}" fill="${INK_2}">${esc(surface.zTitle)}</text>`
+      : `<text x="${layout.width - 2}" y="${plot.top - 10}" text-anchor="end" fill="${INK_2}">${esc(surface.zTitle)}</text>`)
+  );
+}
+
+export function esc(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 

@@ -7,7 +7,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { formatExpr, formatPicture, fromDecimalComma, parsePicture, TEXT_ALIGNS, TEXT_COLORS, toDecimalComma, type SheetResult, type Statement, type StatementResult } from '@kalketa/core';
 import { formatDate, formatNumber, t, type Catalog, type UiKey } from '@kalketa/i18n';
-import { labelParts, surfaceAt, xPosition, xValueAt, yPosition } from '@kalketa/chart';
+import { chartSvg as drawChart, DEFAULT_VIEW, labelParts, surfaceAt, viewText, xPosition, xValueAt, yPosition } from '@kalketa/chart';
 import { columnsHead, isInput, pageLabels, renderBlockHtml, renderSummary, sheetSections, type CalcStyle, type PrintBlock, type PrintDocument, type Section } from '@kalketa/render';
 import { isCanvasPath } from '@kalketa/canvas';
 import { paginate, type PageGeometry } from '../logic/pages.js';
@@ -603,7 +603,7 @@ export function SheetView(props: Props) {
             ],
           }
         : { kind: 'action', label: t(c, 'picture.more'), run: () => setPictureMenu({ seg, at }) },
-      ...(item.kind === 'chart' ? yRangeItems(seg) : []),
+      ...(item.kind === 'chart' ? (blockByLine.get(seg.start)?.kind === 'chart' && (blockByLine.get(seg.start) as { spec: { surface?: unknown } }).spec.surface ? surfaceItems(seg) : yRangeItems(seg)) : []),
     ];
   };
 
@@ -709,6 +709,22 @@ export function SheetView(props: Props) {
       ...(current !== undefined ? [{ kind: 'action' as const, label: t(c, 'chart.yRangeAuto'), run: () => props.onReplace(seg.start, seg.end, withPlotYRange(seg.text, undefined)) }] : []),
       { kind: 'separator' },
       ...chartToolItems(seg),
+      ...chartLookItems(seg),
+    ];
+  };
+
+  /** A surface: shown as a map or in 3D, its view as dragged or back to the usual one. */
+  const surfaceItems = (seg: Segment): MenuItem[] => {
+    const c = props.uiCatalog;
+    const set = (name: string, value: string | undefined) => props.onReplace(seg.start, seg.end, withPlotOption(seg.text, name, value));
+    const threeD = plotOption(seg.text, 'kind')?.replace(/"/g, '') === 'surface';
+    const view = plotOption(seg.text, 'view');
+    return [
+      { kind: 'separator' },
+      { kind: 'action', label: t(c, 'chart.asMap'), checked: !threeD, run: () => props.onReplace(seg.start, seg.end, withPlotOption(withPlotOption(seg.text, 'kind', undefined), 'view', undefined)) },
+      { kind: 'action', label: t(c, 'chart.as3d'), checked: threeD, run: () => set('kind', '"surface"') },
+      ...(threeD ? [{ kind: 'action' as const, label: t(c, 'chart.viewFromAbove'), run: () => set('view', `"az=0 el=90"`) }] : []),
+      ...(threeD && view ? [{ kind: 'action' as const, label: t(c, 'chart.viewUsual'), run: () => set('view', undefined) }] : []),
       ...chartLookItems(seg),
     ];
   };
@@ -1409,6 +1425,10 @@ function ChartBlock({ block, catalog, onResize, onOption, sliders, editable }: {
     const clickable = over !== undefined && !!editable?.(over);
     e.currentTarget.style.cursor = clickable ? 'pointer' : '';
     const hint = clickable ? [t(catalog, 'fit.clickToEdit', { name: block.spec.series[over!]!.label })] : [];
+    if (block.spec.kind === 'surface') {
+      e.currentTarget.style.cursor = 'grab';
+      return setHover(undefined);
+    }
     if (px < plot.left - 4 || px > plot.right + 4) return setHover(undefined);
     const x = xValueAt(block.layout, px);
     const number = (v: number) => formatNumber(v, catalog, { digits: 4 }).replace('-', '−');
@@ -1453,11 +1473,56 @@ function ChartBlock({ block, catalog, onResize, onOption, sliders, editable }: {
       lines: [...lines, ...hint],
     });
   };
+  /**
+   * A surface in 3D turned by dragging: left and right round the vertical, up and down the height of the eye.
+   * Drawn anew as the pointer moves; where it stops is written into the line (view: "az=… el=…").
+   */
+  const turnSurface = (e: ReactPointerEvent<HTMLDivElement>, surface: NonNullable<typeof block.spec.surface>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const holder = document.documentElement;
+    const pointer = e.pointerId;
+    try {
+      holder.setPointerCapture(pointer);
+    } catch {
+      // Without capture the moves come to the window as long as the element stays.
+    }
+    const own = e.currentTarget;
+    const start = { x: e.clientX, y: e.clientY };
+    const from = surface.view ?? DEFAULT_VIEW;
+    let view = from;
+    let frame: number | undefined;
+    const number = (v: number) => formatNumber(v, catalog, { digits: 4 }).replace('-', '−');
+    const draw = () => {
+      frame = undefined;
+      const svg = own.querySelector('svg.chart-svg');
+      if (!svg) return;
+      svg.outerHTML = drawChart({ ...block.spec, surface: { ...surface, view } }, { width: block.layout.width, height: block.layout.height, look: block.look, format: number });
+    };
+    const move = (ev: PointerEvent) => {
+      view = { az: Math.round(from.az - (ev.clientX - start.x) * 0.5), el: Math.round(Math.max(0, Math.min(90, from.el + (ev.clientY - start.y) * 0.4))) };
+      frame ??= requestAnimationFrame(draw);
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      try {
+        holder.releasePointerCapture(pointer);
+      } catch {
+        // Released already.
+      }
+      if (view.az !== from.az || view.el !== from.el) onOption('view', `"${viewText(view)}"`);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
   // The point of the tangent dragged along the curve; a label dragged off it. Both written into the line.
   const startDrag = (e: ReactPointerEvent<HTMLDivElement>) => {
     const target = e.target as Element;
     const handle = target.closest?.('[data-chart-drag="tangent"]');
     const labelEl = target.closest?.('[data-label]');
+    const surface = block.spec.kind === 'surface' ? block.spec.surface : undefined;
+    if (surface && e.button === 0 && target.closest?.('svg.chart-svg')) return turnSurface(e, surface);
     if (!handle && !labelEl) return;
     // No mousedown follows (the row would take the chart to move it), and the pointer is held by the page:
     // the chart is drawn anew as the point moves, and the element pressed is gone, yet the moves still come.

@@ -136,4 +136,11 @@ w(x, y) := q·x·(a - x)·y·(b - y)/(1000 kN·m)
     expect(p.surface!.z[25]![25]).toBe(1);
     expect(surfaceOf('plot(x^2 + y^2 == 1, x: -2 .. 2, y: -2 .. 2)')!.surface).toBeUndefined();
   });
+  it('is seen in 3D from the view written in its line', () => {
+    const p = surfaceOf(`${PLATE}plot(w(x, y), x: 0 m .. a, y: 0 m .. b, kind: "surface", view: "az=-200 el=40") | mm`)!;
+    expect(p.kind).toBe('surface');
+    expect(p.surface!.view).toEqual({ az: 160, el: 40 });
+    expect(surfaceOf(`${PLATE}plot(w(x, y), x: 0 m .. a, y: 0 m .. b, kind: "surface")`)!.surface!.view).toBeUndefined();
+    expect(codes(`${PLATE}plot(w(x, y), x: 0 m .. a, y: 0 m .. b, kind: "surface", view: "el=120")`)).toContain('E-PLOT-VIEW');
+  });
 });

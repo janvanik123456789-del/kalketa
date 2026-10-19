@@ -9,6 +9,7 @@
  *   plot(CF, kind: "bar")                   a series against its order
  *   plot(x^2 + y^2 == 25, x: -6 .. 6, y: -6 .. 6)   an implicit curve (also a relation by its name)
  *   plot(w(x, y), x: 0 m .. a, y: 0 m .. b)  a surface over x and y: a colour map with contour lines
+ *   plot(w(x, y), x: …, y: …, kind: "surface", view: "az=35 el=30")   the same surface seen in 3D
  *
  * One chart has one y axis: curves of different dimensions are an error
  * (two charts, never a second axis).
@@ -31,10 +32,10 @@ type CallExpr = Extract<Expr, { kind: 'call' }>;
 type Evaluate = (expr: Expr, ctx: EvalContext) => Value;
 
 export const PLOT_FUNCTION = 'plot';
-export type PlotKind = 'line' | 'points' | 'bar' | 'map';
+export type PlotKind = 'line' | 'points' | 'bar' | 'map' | 'surface';
 const KINDS: readonly PlotKind[] = ['line', 'points', 'bar'];
 /** Options of plot(...); every other named argument is the variable. */
-export const PLOT_OPTIONS: readonly string[] = ['kind', 'title', 'samples', 'place', 'ylim', 'roots', 'symmetry', 'extremes', 'inflections', 'area', 'tangent', 'labels', 'points', 'style', 'levels'];
+export const PLOT_OPTIONS: readonly string[] = ['kind', 'title', 'samples', 'place', 'ylim', 'roots', 'symmetry', 'extremes', 'inflections', 'area', 'tangent', 'labels', 'points', 'style', 'levels', 'view'];
 /** Curves in one chart: the categorical colours a reader still tells apart. */
 export const MAX_PLOT_SERIES = 8;
 const LINE_SAMPLES = 201;
@@ -100,6 +101,8 @@ export interface PlotSurface {
   /** levels: [10, 20] mm or levels: 8 — the values of the contour lines (a count: that many round ones). */
   readonly levels?: readonly number[];
   readonly levelCount?: number;
+  /** view: "az=35 el=30" — from where a surface in 3D is seen (kind "surface"). */
+  readonly view?: { readonly az: number; readonly el: number };
   /** extremes: true — the highest and the lowest point of the grid. */
   readonly extremes?: readonly { readonly x: number; readonly y: number; readonly z: number; readonly peak: boolean }[];
 }
@@ -640,7 +643,11 @@ function surfaceStatement(call: CallExpr, binders: readonly NamedArg[], ctx: Eva
   const extra = binders[2];
   if (extra) fail('E-NAMED-ARG', extra.nameSpan, { function: call.name, argument: extra.name, problem: 'unknown' });
   const kind = option(call, 'kind', ctx, evaluate);
-  if (kind !== undefined && kind !== 'map') fail('E-PLOT-KIND', call.named.find((n) => n.name === 'kind')!.value.span, { kind });
+  if (kind !== undefined && kind !== 'map' && kind !== 'surface') fail('E-PLOT-KIND', call.named.find((n) => n.name === 'kind')!.value.span, { kind });
+  // Seen in 3D: from where (az round the vertical, el above the floor, in degrees), as dragged in the editor.
+  const viewText = option(call, 'view', ctx, evaluate);
+  const view = viewText === undefined ? undefined : parseView(viewText);
+  if (viewText !== undefined && !view) fail('E-PLOT-VIEW', call.named.find((n) => n.name === 'view')!.value.span, { view: viewText });
   const title = option(call, 'title', ctx, evaluate);
   const style = option(call, 'style', ctx, evaluate);
   const placeText = option(call, 'place', ctx, evaluate);
@@ -723,7 +730,7 @@ function surfaceStatement(call: CallExpr, binders: readonly NamedArg[], ctx: Eva
     if (extremes.length === 2 && extremes[0]!.z === extremes[1]!.z) extremes = extremes.slice(0, 1);
   }
   return {
-    kind: 'map',
+    kind: kind === 'surface' ? 'surface' : 'map',
     ...(title !== undefined ? { title } : {}),
     ...(style ? { style } : {}),
     variable: xBinder.name,
@@ -744,8 +751,20 @@ function surfaceStatement(call: CallExpr, binders: readonly NamedArg[], ctx: Eva
       ...(levels ? { levels } : {}),
       ...(levelCount !== undefined ? { levelCount } : {}),
       ...(extremes && extremes.length > 0 ? { extremes } : {}),
+      ...(view ? { view } : {}),
     },
   };
+}
+
+/** view: "az=35 el=30" — azimuth round the vertical (−180 .. 180) and elevation above the floor (0 .. 90), degrees. */
+function parseView(text: string): { az: number; el: number } | undefined {
+  const az = /\baz\s*=\s*(-?\d+(?:[.,]\d+)?)/.exec(text)?.[1];
+  const el = /\bel\s*=\s*(-?\d+(?:[.,]\d+)?)/.exec(text)?.[1];
+  if (az === undefined && el === undefined) return undefined;
+  const a = az === undefined ? 35 : Number(az.replace(',', '.'));
+  const e = el === undefined ? 30 : Number(el.replace(',', '.'));
+  if (!(e >= 0 && e <= 90)) return undefined;
+  return { az: ((((a + 180) % 360) + 360) % 360) - 180, el: e };
 }
 
 /** Points evenly across the range of measured x, for a smooth curve through them. */

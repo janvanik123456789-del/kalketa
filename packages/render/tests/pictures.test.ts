@@ -11,6 +11,12 @@ describe('pictures in the sheet', () => {
     expect(parsePicture('![](images/sheet/a.png)')).toEqual({ caption: '', path: 'images/sheet/a.png' });
     expect(parsePicture('![a](b.png){width=150%}')).toBeUndefined();
     expect(formatPicture({ caption: 'Řez [A]', path: 'images/sheet/rez.png', width: 42.4 })).toBe('![Řez  A](images/sheet/rez.png){width=42%}');
+    // What the picture shows, for the AI: kept with the placement, words with spaces in quotes; not printed.
+    const described = '![Nádrž](images/nadrz.svg){width=80% alt="Válec na podstavci, otvor u dna, proud dopadá v bodě A"}';
+    expect(parsePicture(described)).toEqual({ caption: 'Nádrž', path: 'images/nadrz.svg', width: 80, description: 'Válec na podstavci, otvor u dna, proud dopadá v bodě A' });
+    expect(formatPicture(parsePicture(described)!)).toBe(described);
+    expect(formatPicture({ caption: '', path: 'a.png', description: 'řádek "1" {a}\nřádek 2' })).toBe('![](a.png){alt="řádek  1   a  řádek 2"}'.replace(/ {2,}/g, ' '));
+    expect(evaluateSheet(described).diagnostics).toEqual([]);
   });
 
   it('are numbered, sized and shown from the files of the sheet', () => {

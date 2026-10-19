@@ -504,7 +504,7 @@ async function runSmokeTest(pdfPath: string): Promise<void> {
     await writeFile(pdfPath, pdf);
     ok =
       state.bridge && state.sideBySide && state.menus === 8 && state.toolbars > 0 && state.rows > 10 && state.summary > 0 && state.math > 0 && reshapedColumns === 3 && pdf.length > 1000 &&
-      layers.deflection && layers.pickTaken.column.startsWith('→') && /mm|cm/.test(layers.pickTaken.text) && layers.newKeepsExample && layers.samplesOk && layers.derivations && layers.summaryOk && layers.definitionAtCursor && layers.sheetGridOk && layers.tableEnter && layers.solvedByFormula && layers.rootsAndExtremes && layers.userChart.ok && layers.relations.ok && layers.quadraticSample.ok && layers.saveOnClose.ok && layers.wordPrinted && layers.wordColored && layers.paletteColored && layers.wordText.focused && layers.wordText.pane && layers.wordText.bold === 'dynamiky' && !layers.wordText.shown.includes('"') && layers.wordText.align === 'center' && layers.cellMarked === 'Síla na konci' && layers.systemFont !== '' && layers.cellFont.replace(/"/g, '').startsWith(layers.systemFont) && layers.cellDeleted && layers.paperRoots && layers.tableRowAdded && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.notesPicture === 'FIGURE+img BLOCKQUOTE' && layers.notesPlaced === 'narrower centred' && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.charts && layers.functionBar && layers.revisions && layers.roots && layers.toolIcons && layers.aiSettings && layers.aiChat && layers.pdfCleanup && layers.theoryLibrary && layers.study && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
+      layers.deflection && layers.pickTaken.column.startsWith('→') && /mm|cm/.test(layers.pickTaken.text) && layers.newKeepsExample && layers.samplesOk && layers.derivations && layers.summaryOk && layers.definitionAtCursor && layers.sheetGridOk && layers.tableEnter && layers.solvedByFormula && layers.rootsAndExtremes && layers.userChart.ok && layers.relations.ok && layers.quadraticSample.ok && layers.saveOnClose.ok && layers.wordPrinted && layers.wordColored && layers.paletteColored && layers.wordText.focused && layers.wordText.pane && layers.wordText.bold === 'dynamiky' && !layers.wordText.shown.includes('"') && layers.wordText.align === 'center' && layers.cellMarked === 'Síla na konci' && layers.systemFont !== '' && layers.cellFont.replace(/"/g, '').startsWith(layers.systemFont) && layers.cellDeleted && layers.paperRoots && layers.tableRowAdded && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.notesPicture === 'FIGURE+img BLOCKQUOTE' && layers.notesPlaced === 'narrower centred' && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.charts && layers.functionBar && layers.revisions && layers.roots && layers.toolIcons && layers.aiSettings && layers.aiChat && layers.pdfCleanup && layers.theoryLibrary && layers.study && layers.sheetPicture.offered && layers.sheetPicture.described && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
     console.log(JSON.stringify({ ok, ...state, reshapedColumns, layers, pdfBytes: pdf.length }));
   } catch (err) {
     console.log(JSON.stringify({ ok: false, error: (err as Error).message, console: smokeConsole.slice(-5) }));
@@ -2220,6 +2220,7 @@ async function layersWithRealInput(picture: string) {
   const theoryLibrary = await theoryLibraryWithRealInput(contents, picture);
   // A whole book as a PDF in the theory folder: one chapter of it chosen, then cited in the chat.
   const study = await studyWithRealInput(contents, picture);
+  const sheetPicture = await sheetPictureWithRealInput(contents);
 
   // A file whose AI notes an AI wrote: they have a tab, can only be read, and cannot be deleted.
   const aiFile = process.env['KALKETA_SMOKE_AI'];
@@ -2866,10 +2867,38 @@ async function layersWithRealInput(picture: string) {
   smokeSave.path = undefined;
   smokeClose.choice = undefined;
   const saveOnClose = { closeButtons, keptOnCancel, savedOnClose, windowSaved, ok: closeButtons.join('|') === 'Uložit|Neukládat|Zrušit' && keptOnCancel && savedOnClose && windowSaved };
-  return { ...state, pickTaken, deflection, derivations, summaryOk, summaryOpens, summaryAtEnd, bookStyle, verdictFuture, verdictBack, pageHead, definitionAtCursor, solveFormatted, sheetGridOk, sheetGrid, tableEnter, tableEnterAt, lastRowEnter, draggedRows, selectedAll, bothFormatted, roundedOn, equationNumber, solvedByFormula, rootsAndExtremes, wordText, wordColored, paletteColored, wordPrinted, cellMarked, cellFont, systemFont, cellDeleted, paperRoots, tableRowAdded, chartSteps, samplesOk, sampleTab, newKeepsExample, citations, notesPicture, notesPlaced, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, toolIcons, aiSettings, aiChat, pdfCleanup, theoryLibrary, study, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, placedFree, strictPlaced, canvasOk, besideText, pictures, blocksOk, userChart, quadraticSample, saveOnClose, relations: relationsOk };
+  return { ...state, pickTaken, deflection, derivations, summaryOk, summaryOpens, summaryAtEnd, bookStyle, verdictFuture, verdictBack, pageHead, definitionAtCursor, solveFormatted, sheetGridOk, sheetGrid, tableEnter, tableEnterAt, lastRowEnter, draggedRows, selectedAll, bothFormatted, roundedOn, equationNumber, solvedByFormula, rootsAndExtremes, wordText, wordColored, paletteColored, wordPrinted, cellMarked, cellFont, systemFont, cellDeleted, paperRoots, tableRowAdded, chartSteps, samplesOk, sampleTab, newKeepsExample, citations, notesPicture, notesPlaced, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, toolIcons, aiSettings, aiChat, pdfCleanup, theoryLibrary, study, sheetPicture, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, placedFree, strictPlaced, canvasOk, besideText, pictures, blocksOk, userChart, quadraticSample, saveOnClose, relations: relationsOk };
 }
 
 /** The tidied sources saved as a library (.kalkt) and attached in the chat: the model cites it by its key. */
+/** A picture of the sheet described for the AI by its right button (the fake AI of scripts/smoke.mjs reads PNG only). */
+async function sheetPictureWithRealInput(contents: Electron.WebContents): Promise<{ offered: boolean; described: boolean }> {
+  const sheetPicture = { offered: false, described: false };
+  // A picture of the assignment described for the AI by its right button: the drawing (SVG) goes to the model
+  // as a PNG, the description comes into its line; then the menu offers it to be edited.
+  await clickOn('.menubar-item:nth-child(1) > button');
+  await clickMenu('Vzorové příklady');
+  await clickMenu('Strojírenství a mechanika');
+  await clickMenu('Technické tekutiny');
+  await clickMenu('2 Výtok vody z nádrže');
+  await pause(2000);
+  await contents.executeJavaScript(`document.querySelector('.layer-view.active .page figure img')?.setAttribute('data-smoke-picture', '')`);
+  if (await contents.executeJavaScript(`!!document.querySelector('[data-smoke-picture]')`)) {
+    await clickOn('[data-smoke-picture]', [], 'right');
+    await pause(300);
+    sheetPicture.offered = (await contents.executeJavaScript(`[...document.querySelectorAll('.menu-panel .menu-label')].some((l) => l.textContent.includes('Popsat obrázek pro AI'))`)) as boolean;
+    if (sheetPicture.offered) await clickMenu('Popsat obrázek pro AI');
+    for (let i = 0; i < 40 && !(await contents.executeJavaScript(`!(document.querySelector('.statusbar')?.textContent ?? '').includes('popisuje')`)); i++) await pause(150);
+    await pause(800);
+    await contents.executeJavaScript(`document.querySelector('.layer-view.active .page figure img')?.setAttribute('data-smoke-picture', '')`);
+    await clickOn('[data-smoke-picture]', [], 'right');
+    await pause(300);
+    sheetPicture.described = (await contents.executeJavaScript(`[...document.querySelectorAll('.menu-panel .menu-label')].some((l) => l.textContent.includes('Upravit popis pro AI'))`)) as boolean;
+    await pressKey('Escape');
+  }
+  return sheetPicture;
+}
+
 async function theoryLibraryWithRealInput(contents: Electron.WebContents, picture: string): Promise<boolean> {
   await clickOn('.layer-view.active .word-library');
   await pause(400);

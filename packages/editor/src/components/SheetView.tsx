@@ -70,6 +70,10 @@ interface Props {
   onEditCanvas(path: string): void;
   /** A click on a curve of the chart on `line` (its series, counted from 0): a fitted curve opens to be edited. */
   onCurve?(line: number, series: number): void;
+  /** A picture of the sheet described by the AI, in words of the user's language (alt="…"); undefined when it cannot. */
+  describePicture?(path: string, context: string): Promise<string | undefined>;
+  /** A short message in the status bar (undefined clears it). */
+  onNotice?(text: string | undefined): void;
   /** The look of a chart to be chosen: the chart, and how its own style is written into its line. */
   onChartLook?(chart: Extract<PrintBlock, { kind: 'chart' }>, write: (style: string | undefined) => void): void;
   /** Whether that curve opens to be edited (it is fitted through points): the pointer shows it can be clicked. */
@@ -548,12 +552,12 @@ export function SheetView(props: Props) {
   type Side = 'left' | 'right' | undefined;
   /** Changes of a picture line: each placement clears the others, offsets go with the flow. */
   const pictureSetters = (seg: Segment, picture: NonNullable<ReturnType<typeof parsePicture>>) => {
-    const set = (change: Partial<{ caption: string; width: number | undefined; side: Side; wrap: Side; align: Side; noWrap: boolean; dx: number | undefined; dy: number | undefined }>) => {
-      const { width, side, wrap, align, noWrap, dx, dy, ...rest } = { ...picture, ...change };
+    const set = (change: Partial<{ caption: string; description: string | undefined; width: number | undefined; side: Side; wrap: Side; align: Side; noWrap: boolean; dx: number | undefined; dy: number | undefined }>) => {
+      const { width, side, wrap, align, noWrap, dx, dy, description, ...rest } = { ...picture, ...change };
       props.onReplace(
         seg.start,
         seg.end,
-        formatPicture({ ...rest, ...(width !== undefined ? { width } : {}), ...(side ? { side } : {}), ...(wrap ? { wrap } : {}), ...(align ? { align } : {}), ...(noWrap ? { noWrap } : {}), ...(dx ? { dx } : {}), ...(dy ? { dy } : {}) }),
+        formatPicture({ ...rest, ...(description ? { description } : {}), ...(width !== undefined ? { width } : {}), ...(side ? { side } : {}), ...(wrap ? { wrap } : {}), ...(align ? { align } : {}), ...(noWrap ? { noWrap } : {}), ...(dx ? { dx } : {}), ...(dy ? { dy } : {}) }),
       );
     };
     const setAlign = (align: Side) => set({ align, side: undefined, wrap: undefined });
@@ -603,6 +607,7 @@ export function SheetView(props: Props) {
             ],
           }
         : { kind: 'action', label: t(c, 'picture.more'), run: () => setPictureMenu({ seg, at }) },
+      ...(item.kind === 'picture' ? describeItems(seg) : []),
       ...(item.kind === 'chart' ? (blockByLine.get(seg.start)?.kind === 'chart' && (blockByLine.get(seg.start) as { spec: { surface?: unknown } }).spec.surface ? surfaceItems(seg) : yRangeItems(seg)) : []),
     ];
   };
@@ -806,6 +811,42 @@ export function SheetView(props: Props) {
     ];
   };
 
+  /** What the picture shows, in words the AI reads with the sheet (it is not printed): described by the AI, or by hand. */
+  const describeItems = (seg: Segment): MenuItem[] => {
+    const picture = parsePicture(seg.text);
+    if (!picture) return [];
+    const c = props.uiCatalog;
+    const { set } = pictureSetters(seg, picture);
+    return props.describePicture && !isCanvasPath(picture.path)
+        ? [
+            {
+              kind: 'action' as const,
+              label: t(c, picture.description ? 'picture.describeAgain' : 'picture.describe'),
+              run: () => {
+                const context = [picture.caption, ...props.source.split('\n').filter((l) => /^\s*(#|")/.test(l)).slice(0, 12)].join('\n');
+                props.onNotice?.(t(c, 'picture.describing'));
+                void props.describePicture!(picture.path, context).then((description) => {
+                  if (description) set({ description });
+                  props.onNotice?.(description ? undefined : t(c, 'picture.describeFailed'));
+                });
+              },
+            },
+            ...(picture.description
+              ? [
+                  {
+                    kind: 'action' as const,
+                    label: t(c, 'picture.descriptionEdit'),
+                    run: () =>
+                      void ask(t(c, 'picture.descriptionPrompt'), picture.description ?? '').then((text) => {
+                        if (text !== undefined) set({ description: text.trim() || undefined });
+                      }),
+                  },
+                ]
+              : []),
+          ]
+        : [];
+  };
+
   const pictureItems = (seg: Segment): MenuItem[] => {
     const picture = parsePicture(seg.text);
     if (!picture) return [];
@@ -827,6 +868,7 @@ export function SheetView(props: Props) {
             if (caption !== undefined) set({ caption: caption.trim() });
           }),
       },
+      ...describeItems(seg),
       {
         kind: 'submenu',
         label: t(c, 'picture.width'),

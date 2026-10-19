@@ -151,6 +151,33 @@ function recentFiles(): string[] {
 const IDLE_ENDS_CONVERSATION = 3 * 60 * 1000;
 
 /** Equation numbers: as set, else in the book style those of formulas (as textbooks number them). */
+/** A drawing (SVG) as a PNG on white, at most 1600 px on its longer side: what a model that reads pictures takes. */
+async function svgToPng(svg: Uint8Array): Promise<Uint8Array> {
+  const url = URL.createObjectURL(new Blob([svg as BlobPart], { type: 'image/svg+xml' }));
+  try {
+    const image = new Image();
+    await new Promise<void>((resolve, reject) => {
+      image.onload = () => resolve();
+      image.onerror = () => reject(new Error('svg'));
+      image.src = url;
+    });
+    const [w, h] = [image.naturalWidth || 800, image.naturalHeight || 600];
+    const scale = Math.min(2, 1600 / Math.max(w, h));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(w * scale);
+    canvas.height = Math.round(h * scale);
+    const g = canvas.getContext('2d')!;
+    g.fillStyle = '#fff';
+    g.fillRect(0, 0, canvas.width, canvas.height);
+    g.drawImage(image, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+    if (!blob) throw new Error('png');
+    return new Uint8Array(await blob.arrayBuffer());
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 function equationNumbers(layout: SheetDocument['layout']): SheetDocument['layout']['equations'] {
   return layout.equations ?? (layout.style === 'book' ? 'formulas' : undefined);
 }
@@ -493,6 +520,11 @@ export function App() {
   const askAboutPicture = async (path: string, purpose: 'formula' | 'figure', context = ''): Promise<{ text: string; model: string } | undefined> => {
     const bytes = doc.files.get(path);
     if (!bytes) return undefined;
+    // A drawing (SVG) is shown to the model as a picture: models read PNG and JPEG, not SVG.
+    if (/\.svg$/i.test(path)) {
+      const png = await svgToPng(bytes).catch(() => undefined);
+      return png ? askAboutImage(png, 'image/png', purpose, context) : undefined;
+    }
     return askAboutImage(bytes, path.endsWith('.jpg') || path.endsWith('.jpeg') ? 'image/jpeg' : 'image/png', purpose, context);
   };
   /** A picture given as bytes (a part of a page of a PDF, a picture of the sheet) read by the model. */
@@ -1005,7 +1037,9 @@ export function App() {
     if (!picture || !old) return;
     const folder = target.kind === 'sheet' ? 'images/sheet' : `layers/${target.id}/images`;
     const path = picturePath(folder, picture.name, picture.type, (p) => doc.files.has(p));
-    setLayerText(target, replaceLines(current, start, end, formatPicture({ ...old, path })), undefined, new Map([[path, picture.bytes]]));
+    // A new picture: the description of the old one does not fit it.
+    const { description: _old, ...kept } = old;
+    setLayerText(target, replaceLines(current, start, end, formatPicture({ ...kept, path })), undefined, new Map([[path, picture.bytes]]));
   };
 
   /** The canvas open in the canvas window (its path in the calculation file). */
@@ -2186,6 +2220,8 @@ export function App() {
           onCopyRows={copyRows}
           onCurve={editCurve}
           onChartLook={(chart, write) => setChartLook({ chart, write })}
+          {...(desktop ? { describePicture: describeFigure } : {})}
+          onNotice={setNotice}
           curveEditable={(line, series) => !!fittedCurve(line, series)}
           onCanvasArea={(path, factorWidth, factorHeight, line) => {
             // The canvas's own size grows with its frame; what is drawn keeps its size and place.

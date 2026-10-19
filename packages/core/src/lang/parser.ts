@@ -1162,6 +1162,8 @@ export interface Placement {
 export interface PictureLine extends Placement {
   readonly caption: string;
   readonly path: string;
+  /** alt="…": what the picture shows, in words, for a reader who cannot see it (the AI); not printed. */
+  readonly description?: string;
 }
 
 const PICTURE = /^!\[([^\]]*)\]\(([^()\s]+)\)\s*(?:\{([^}]*)\})?$/;
@@ -1195,8 +1197,11 @@ function citationsOf(tokens: readonly Token[]): string[] | undefined {
 export function parsePicture(text: string): PictureLine | undefined {
   const match = PICTURE.exec(text.trim());
   if (!match) return undefined;
-  const placement = parsePlacement(match[3] ?? '');
-  return placement ? { caption: match[1]!.trim(), path: match[2]!, ...placement } : undefined;
+  // The description first: its words are not options of the placement.
+  const options = match[3] ?? '';
+  const description = /(?:^|\s)alt="([^"]*)"/.exec(options)?.[1];
+  const placement = parsePlacement(options.replace(/(?:^|\s)alt="[^"]*"/, ' '));
+  return placement ? { caption: match[1]!.trim(), path: match[2]!, ...placement, ...(description ? { description } : {}) } : undefined;
 }
 
 /** "width=40% wrap=right dx=6% dy=8mm" -> the placement; undefined when malformed. */
@@ -1257,6 +1262,7 @@ export function formatPlacement(placement: Placement): string {
 
 /** The line of a picture, as parsePicture reads it. */
 export function formatPicture(picture: PictureLine): string {
-  const options = formatPlacement(picture);
+  const description = picture.description?.replace(/["{}\n]/g, ' ').replace(/\s+/g, ' ').trim();
+  const options = [formatPlacement(picture), description ? `alt="${description}"` : ''].filter(Boolean).join(' ');
   return `![${picture.caption.replace(/[\[\]\n]/g, ' ').trim()}](${picture.path})${options ? `{${options}}` : ''}`;
 }

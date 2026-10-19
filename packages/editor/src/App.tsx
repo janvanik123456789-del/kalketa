@@ -1434,7 +1434,12 @@ export function App() {
     const written = [doc.source, ...doc.layers.map((l) => l.text ?? ''), ...added.map((line) => line.replace(/"[^"\n]*"/g, ''))];
     // Python written into the sheet: said first, it belongs in a python block (text lines do not count).
     const python = pythonLines(added.filter((line) => !line.trim().startsWith('"')));
-    return { problems, numbers: loneNumbers(added.flatMap(proseOf), values, written), ...(python.length > 0 ? { python } : {}) };
+    // Checks that do not pass with the changes, and did pass (or were not) before: the calculation or the check is wrong.
+    const failing = (result: typeof sheet, source: string) =>
+      result.checks.filter((c) => c.passed === false && result.statements[c.statement]?.status === 'ok').map((c) => ({ label: c.label ?? '', line: source.split('\n')[(result.statements[c.statement]?.statement.span.line ?? 0) - 1] ?? '' }));
+    const before = new Set(failing(evaluation.main, doc.source).map((f) => `${f.label}|${f.line.trim()}`));
+    const failed = failing(sheet, proposed).filter((f) => !before.has(`${f.label}|${f.line.trim()}`));
+    return { problems, numbers: loneNumbers(added.flatMap(proseOf), values, written), ...(python.length > 0 ? { python } : {}), ...(failed.length > 0 ? { failed } : {}) };
   };
   /**
    * A check in Python of an answer of the AI: run where the settings say, its results set beside the

@@ -158,7 +158,7 @@ const fakeApi = createServer((request, response) => {
         const fence = '`'.repeat(3);
         const body = sheetReport
           ? `smoke_d := 2 m${lf}smoke_d2 := smoke_d·1.5${lf}"Druhá délka je o polovinu větší."`
-          : `smoke_d := 2 m${lf}smoke_d := 3 m${lf}"Je to asi 777× víc než nic."`;
+          : `smoke_d := 2 m${lf}smoke_d := 3 m${lf}"Je to asi 777× víc než nic."${lf}check "Smoke dost dlouhé": smoke_d ≥ 5 m`;
         const text = `zdvojeno: ${sheetReport ? 'opraveno' : 'první'}${lf}${lf}${fence}change after ${Math.max(...lines)}${lf}${body}${lf}${fence}${lf}`;
         response.write(event({ model: 'local-smoke-7b', choices: [{ delta: { content: text } }] }));
         response.end(event('[DONE]'));

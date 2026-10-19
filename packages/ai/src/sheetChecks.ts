@@ -24,6 +24,8 @@ export interface SheetCheck {
   readonly numbers: readonly LoneNumber[];
   /** Lines of Python written into the sheet (they belong in a python block). */
   readonly python?: readonly string[];
+  /** Checks of the sheet that pass no more (or newly written ones that do not): the line and its label. */
+  readonly failed?: readonly { readonly line: string; readonly label: string }[];
 }
 
 /** The words of the report, in the user's language (the model reads them too). */
@@ -34,6 +36,8 @@ export interface SheetWords {
   readonly ask: string;
   /** Said first when the change block holds Python. */
   readonly python: string;
+  /** Said before the checks that do not pass. */
+  readonly failed: string;
   /** Advice by the code of a problem, said once after the problems. */
   readonly hints: Readonly<Record<string, string>>;
 }
@@ -92,7 +96,7 @@ export function pythonLines(lines: readonly string[]): string[] {
 
 /** Whether the proposed sheet needs the model again. */
 export function sheetNeedsAnswer(check: SheetCheck | undefined): boolean {
-  return !!check && (check.problems.length > 0 || check.numbers.length > 0 || (check.python?.length ?? 0) > 0);
+  return !!check && (check.problems.length > 0 || check.numbers.length > 0 || (check.python?.length ?? 0) > 0 || (check.failed?.length ?? 0) > 0);
 }
 
 /** Text shown as it is in Markdown: names keep their underscores (smoke_d, t_v), not turned to italics. */
@@ -103,6 +107,7 @@ export function sheetReport(check: SheetCheck, words: SheetWords): string {
   const parts = [`**${words.title}**`];
   if (check.python && check.python.length > 0) parts.push(`${words.python}\n\n${check.python.slice(0, 5).map((l) => `- \`${l.trim().replace(/`/g, "'")}\``).join('\n')}`);
   if (check.problems.length > 0) parts.push(`${words.problems}\n\n${check.problems.map((p) => `- \`${p.line.trim().replace(/`/g, "'")}\` – ${plain(p.message)}`).join('\n')}`);
+  if (check.failed && check.failed.length > 0) parts.push(`${words.failed}\n\n${check.failed.map((f) => `- ${plain(f.label)}: \`${f.line.trim().replace(/`/g, "'")}\``).join('\n')}`);
   const hints = [...new Set(check.problems.flatMap((p) => (p.code && words.hints[p.code] ? [words.hints[p.code]!] : [])))];
   if (hints.length > 0) parts.push(hints.join('\n\n'));
   if (check.numbers.length > 0) parts.push(`${words.numbers}\n\n${check.numbers.map((n) => `- ${n.number}: „${plain(n.line.trim())}“`).join('\n')}`);

@@ -4,7 +4,7 @@
  * It reads in print as a contour map of a terrain does: what is high, what is low, and how much.
  */
 
-import { niceScale, xPosition, yPosition, type ChartLayout, type ChartSpec } from './chart.js';
+import { labelSvg, niceScale, xPosition, yPosition, type ChartLayout, type ChartSpec } from './chart.js';
 import { pngDataUri } from './png.js';
 
 /** A surface of a chart: z on a grid, in the units of the axes and of z. */
@@ -337,8 +337,8 @@ export function colorBar(surface: ChartSurface, layout: ChartLayout, format: (va
     ticks.map((v) => `<line x1="${barX + barW}" x2="${barX + barW + 3}" y1="${r(barY(v))}" y2="${r(barY(v))}" stroke="${INK_2}"/><text x="${barX + barW + 5}" y="${r(barY(v) + font * 0.35)}" fill="${INK_2}">${format(v)}</text>`).join('') +
     // The title starts over the bar; a long one ends at the right edge of the chart, running to the left, not off the paper.
     (barX + (surface.zTitle.length * 6.6 * font) / 11 < layout.width - 2
-      ? `<text x="${barX}" y="${plot.top - 10}" fill="${INK_2}">${esc(surface.zTitle)}</text>`
-      : `<text x="${layout.width - 2}" y="${plot.top - 10}" text-anchor="end" fill="${INK_2}">${esc(surface.zTitle)}</text>`)
+      ? `<text x="${barX}" y="${plot.top - 10}" fill="${INK_2}">${labelSvg(surface.zTitle)}</text>`
+      : `<text x="${layout.width - 2}" y="${plot.top - 10}" text-anchor="end" fill="${INK_2}">${labelSvg(surface.zTitle)}</text>`)
   );
 }
 

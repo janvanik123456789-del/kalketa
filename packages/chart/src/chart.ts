@@ -339,6 +339,11 @@ export function labelParts(text: string): { text: string; sub: boolean }[] {
 }
 
 /** A label for SVG text: indices as subscripts. */
+/** A label as SVG text: an index (z_e) written lower and smaller. */
+export function labelSvg(text: string): string {
+  return label(text);
+}
+
 function label(text: string): string {
   // dy moves the rest of the text too: down for an index, back up after it.
   let down = false;

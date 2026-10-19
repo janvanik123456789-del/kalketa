@@ -5,7 +5,7 @@
  * dragged in the editor, written into its line, the same in print.
  */
 
-import { niceScale, type ChartLayout, type ChartSpec } from './chart.js';
+import { labelSvg, niceScale, type ChartLayout, type ChartSpec } from './chart.js';
 import { cellOutline, colorBar, colormapOf, edgeLookup, esc, painter, surfaceLevels, surfaceRange, type Colormap } from './surface.js';
 
 /** How a surface is seen: turned round the vertical axis by az, looked at from el above the floor (degrees). */
@@ -177,7 +177,7 @@ export function surface3dSvg(spec: ChartSpec, layout: ChartLayout, format: (valu
     let [dx, dy] = [ax - middle[0], ay - middle[1]];
     const n = Math.hypot(dx, dy) || 1;
     [dx, dy] = [dx / n, dy / n];
-    return `<text x="${r(sx + dx * font * 3)}" y="${r(sy + dy * font * 3 + font * 0.35)}" text-anchor="middle" fill="${INK_2}">${esc(text)}</text>`;
+    return `<text x="${r(sx + dx * font * 3)}" y="${r(sy + dy * font * 3 + font * 0.35)}" text-anchor="middle" fill="${INK_2}">${labelSvg(text)}</text>`;
   };
   ticks.push(title([0, frontY, -zh], [0, frontY, -zh], spec.xTitle), title([frontX, 0, -zh], [frontX, 0, -zh], spec.yTitle));
 
@@ -195,14 +195,23 @@ export function surface3dSvg(spec: ChartSpec, layout: ChartLayout, format: (valu
   // The cut as a line on the surface, the points of the sheet on it.
   const cut = surface.cut;
   const cutLine = cut
-    ? `<path class="chart-cut-line" d="${cut.along
-        .map((a, k) => [cut.axis === 'x' ? X(cut.at) : X(a), cut.axis === 'x' ? Y(a) : Y(cut.at), cut.z[k]!] as const)
-        .filter(([, , v]) => Number.isFinite(v))
-        .map(([px, py, v], k) => {
-          const [sx, sy] = screen([px, py, Z(v)]);
-          return `${k === 0 ? 'M' : 'L'}${r(sx)} ${r(sy)}`;
-        })
-        .join('')}" fill="none" stroke="${INK}" stroke-width="1.8" stroke-dasharray="8 3 2 3"/>`
+    ? `<path class="chart-cut-line" d="${(() => {
+        // Broken where the surface has no value (the hole of a ring): a new piece after each gap.
+        let pen = false;
+        return cut.along
+          .map((a, k) => {
+            const v = cut.z[k]!;
+            if (!Number.isFinite(v)) {
+              pen = false;
+              return '';
+            }
+            const [sx, sy] = screen([cut.axis === 'x' ? X(cut.at) : X(a), cut.axis === 'x' ? Y(a) : Y(cut.at), Z(v)]);
+            const move = pen ? 'L' : 'M';
+            pen = true;
+            return `${move}${r(sx)} ${r(sy)}`;
+          })
+          .join('');
+      })()}" fill="none" stroke="${INK}" stroke-width="1.8" stroke-dasharray="8 3 2 3"/>`
     : '';
   const sheetPoints = (surface.points ?? [])
     .filter((p) => Number.isFinite(p.z))

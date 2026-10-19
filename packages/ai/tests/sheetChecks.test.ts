@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { loneNumbers, numbersIn, proseOf, sheetNeedsAnswer, sheetReport, type SheetCheck } from '../src/index.js';
+import { loneNumbers, numbersIn, proseOf, pythonLines, sheetNeedsAnswer, sheetReport, type SheetCheck } from '../src/index.js';
 
 // The values of the tank sample (R15) in SI: S_1, S_2, v_A, v_x, t_v, v_hlad.
 const VALUES = [2.5446900494, 0.00063, 13.28834, 7.672027, 3158.8969, 0.0018994];
@@ -25,9 +25,20 @@ describe('the check of the sheet an answer proposes', () => {
     expect(sheetNeedsAnswer(check)).toBe(true);
     expect(sheetNeedsAnswer({ problems: [], numbers: [] })).toBe(false);
     expect(sheetNeedsAnswer(undefined)).toBe(false);
-    const text = sheetReport(check, { title: 'Kontrola listu', problems: 'List hlásí:', numbers: 'Čísla bez výpočtu:', ask: 'Oprav to.' });
+    const text = sheetReport(check, { title: 'Kontrola listu', problems: 'List hlásí:', numbers: 'Čísla bez výpočtu:', ask: 'Oprav to.', python: 'Python patří do bloku python:', hints: { 'E-DERIVE-STEP': 'Výchozí rovnice je relation.' } });
     expect(text).toContain('- `t_v := S_1/S_2·sqrt(2·h_1/g) | min` – „t\\_v“ už je definováno výše.');
     expect(text).toContain('- 200: „"nádrž je ~200× širší"“');
     expect(text.endsWith('Oprav to.')).toBe(true);
+  });
+
+  it('finds Python written into the sheet, and advises by the kind of a problem', () => {
+    const lines = ['## Ověření', '# free fall from H', 'g_fall := 9.81', 'while y_fall < H_fall:', '    v_fall := v_fall + g_fall * dt', 'v += g*dt', 'S := 3.14 * r**2', 'g_val, H_val = 9.81, 9.0', 'result("v_A_sim", v, "m/s", rel=1e-3)', 'import math', 'y := if(a > b, 1, 2)', 'h(t) := (sqrt(h_1) - k·t)^2'];
+    expect(pythonLines(lines)).toEqual(['while y_fall < H_fall:', 'v += g*dt', 'S := 3.14 * r**2', 'g_val, H_val = 9.81, 9.0', 'result("v_A_sim", v, "m/s", rel=1e-3)', 'import math']);
+    const check: SheetCheck = { problems: [{ line: 'derive p_a + ρ·g·H == p_a + ρ·v_A^2/2', message: 'krok 1 neplatí', code: 'E-DERIVE-STEP' }], numbers: [], python: ['while y < H:'] };
+    expect(sheetNeedsAnswer({ problems: [], numbers: [], python: ['import math'] })).toBe(true);
+    const text = sheetReport(check, { title: 'Kontrola', problems: 'List hlásí:', numbers: 'Čísla:', ask: 'Oprav.', python: 'Python patří do bloku python:', hints: { 'E-DERIVE-STEP': 'Výchozí rovnice je relation.' } });
+    expect(text.indexOf('Python patří')).toBeLessThan(text.indexOf('List hlásí'));
+    expect(text).toContain('- `while y < H:`');
+    expect(text).toContain('Výchozí rovnice je relation.');
   });
 });

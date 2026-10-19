@@ -133,6 +133,15 @@ describe('parser: numbers with units', () => {
     expect(parseCodes('L := 5 m\nV := 2 L')).toEqual(['W-AMBIGUOUS-UNIT']);
     expect(parseCodes('L := 5 m\nV := 2 [L]')).toEqual([]);
   });
+
+  it('warns when a one-letter unit stands alone among names: t meant as time would be tonnes', () => {
+    expect(parseCodes('t_v := 60 s\ntau := t/t_v')).toEqual(['W-BARE-UNIT']);
+    expect(parseCodes('k := 2 m/s\nh := 3 m - k·t')).toEqual(['W-BARE-UNIT']);
+    // After a number, a unit as meant; a parameter of a function or a variable of a chart is a name.
+    expect(parseCodes('f := 5/s\nv := 3 m/s')).toEqual([]);
+    expect(parseCodes('k := 2 m/s\nh(t) := 3 m - k·t')).toEqual([]);
+    expect(parseCodes('k := 2 m/s\nplot(3 m - k·t, t: 0 s .. 1 s)')).toEqual([]);
+  });
 });
 
 describe('parser: statements', () => {

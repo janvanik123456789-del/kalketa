@@ -40,6 +40,10 @@ ${DETAIL_LEVELS.map((l) => DETAIL_RULES[l]).join('\n')}`;
 - Choose the unit a result is shown in so it reads well (| m², | min, | kN·m), not the unit of the formula.
 - Units convert themselves: m² and cm², kN and N, min and s may stand in one formula as they are; never convert values by hand, never copy a value into another unit to make a formula work.
 - A zero needs no unit: y_2 == 0, p_a + ρ·g·0 (a zero written bare is of any unit).
+- A name that is not defined and is also a unit is read as the unit: t is tonnes, s seconds, m metres, g grams, h hours. A quantity that changes with time or position is a function of it, its variable a parameter: h(t) := (sqrt(h_1) - k·t)^2, v_1(t) := sqrt(2·g·h(t)); never t used outside a function, an integral or a chart.
+- A chart of a function: plot(h(t), t: 0 s .. t_v). Quantities of different units go into separate charts, one plot line each; never scale a curve (h·10) to share an axis.
+- A text line is text only: no values joined to it ("…" ratio "…" or "…"·x is wrong); a value is printed by its own line.
+- The starting equation of the theory (Bernoulli for two points, continuity) is a relation … {eq}; derive only writes the steps that follow from the relations above it.
 - An integral is written with its integrand, its variable and its bounds: integral(1/sqrt(h), h: 0 .. h_1); the variable is the name (h), not its differential (dh).
 - State every assumption as a text line with the section of the theory it comes from (the one that says it), e.g. "Vlastní tíhu nosníku zanedbáváme." [T2].
 - Where the task has a limit or a requirement, end with a check: check "…": value ≤ limit.

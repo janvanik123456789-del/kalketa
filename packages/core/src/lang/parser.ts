@@ -912,6 +912,14 @@ class LineParser {
     }
     if (!this.freeNames && !this.defined.has(name) && this.isUnit(name)) {
       const unit: UnitExpr = { kind: 'unit-name', name, span: token.span };
+      // A one-letter unit alone among names (k·t, t/t_v) is most likely meant as a variable: t would be tonnes,
+      // s seconds. A unit after a number (5/s) is a unit as meant.
+      const before = this.tokens[this.pos - 2];
+      const afterNumber = before?.type === 'number' || (before?.type === '/' && this.tokens[this.pos - 3]?.type === 'number');
+      // Nor a name given to an option (by: S, a column of a table), nor "m = 5" (another hint says to use :=).
+      const option = before?.type === ':';
+      const shown = this.peek().type === '=';
+      if (name.length === 1 && !afterNumber && !option && !shown) this.diagnostics.push(diagnostic('W-BARE-UNIT', token.span, { name }));
       return { kind: 'unit', unit, span: token.span };
     }
     return { kind: 'variable', name, span: token.span };

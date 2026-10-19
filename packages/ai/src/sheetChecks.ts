@@ -9,6 +9,8 @@
 export interface SheetProblem {
   readonly line: string;
   readonly message: string;
+  /** Its code (E-DERIVE-STEP…): some get a word of advice in the report. */
+  readonly code?: string;
 }
 
 /** A number in the text of the proposed lines that no value of the sheet and no given number explains. */
@@ -20,6 +22,8 @@ export interface LoneNumber {
 export interface SheetCheck {
   readonly problems: readonly SheetProblem[];
   readonly numbers: readonly LoneNumber[];
+  /** Lines of Python written into the sheet (they belong in a python block). */
+  readonly python?: readonly string[];
 }
 
 /** The words of the report, in the user's language (the model reads them too). */
@@ -28,6 +32,10 @@ export interface SheetWords {
   readonly problems: string;
   readonly numbers: string;
   readonly ask: string;
+  /** Said first when the change block holds Python. */
+  readonly python: string;
+  /** Advice by the code of a problem, said once after the problems. */
+  readonly hints: Readonly<Record<string, string>>;
 }
 
 /** Small whole numbers (counts, "2×", powers) are said in text without a calculation. */
@@ -74,9 +82,17 @@ export function proseOf(line: string): string[] {
   return [...line.matchAll(/"([^"\n]*)"/g)].map((m) => m[1]!).filter((s) => s.trim() !== '');
 }
 
+/**
+ * The lines of a change that are Python, not the language of the sheet: a loop or a block (while …:, for …:,
+ * def …:), an import, x += …, x ** 2, result(…, rel=…). A "# …" line is a heading of the sheet, not counted.
+ */
+export function pythonLines(lines: readonly string[]): string[] {
+  return lines.filter((line) => /^\s*(while|for|if|elif|else|def|with|try|except)\b.*:\s*(#.*)?$/.test(line) || /^\s*(import|from)\s+\w+/.test(line) || /^\s*\w+\s*[-+*/]=/.test(line) || /\*\*/.test(line) || /\bresult\(.*\brel\s*=/.test(line) || /^\s*\w+(\s*,\s*\w+)+\s*=[^=]/.test(line));
+}
+
 /** Whether the proposed sheet needs the model again. */
 export function sheetNeedsAnswer(check: SheetCheck | undefined): boolean {
-  return !!check && (check.problems.length > 0 || check.numbers.length > 0);
+  return !!check && (check.problems.length > 0 || check.numbers.length > 0 || (check.python?.length ?? 0) > 0);
 }
 
 /** Text shown as it is in Markdown: names keep their underscores (smoke_d, t_v), not turned to italics. */
@@ -85,7 +101,10 @@ const plain = (text: string) => text.replace(/[_*]/g, (c) => `\\${c}`);
 /** The report of the proposed sheet, as a turn of the program the model answers. */
 export function sheetReport(check: SheetCheck, words: SheetWords): string {
   const parts = [`**${words.title}**`];
+  if (check.python && check.python.length > 0) parts.push(`${words.python}\n\n${check.python.slice(0, 5).map((l) => `- \`${l.trim().replace(/`/g, "'")}\``).join('\n')}`);
   if (check.problems.length > 0) parts.push(`${words.problems}\n\n${check.problems.map((p) => `- \`${p.line.trim().replace(/`/g, "'")}\` – ${plain(p.message)}`).join('\n')}`);
+  const hints = [...new Set(check.problems.flatMap((p) => (p.code && words.hints[p.code] ? [words.hints[p.code]!] : [])))];
+  if (hints.length > 0) parts.push(hints.join('\n\n'));
   if (check.numbers.length > 0) parts.push(`${words.numbers}\n\n${check.numbers.map((n) => `- ${n.number}: „${plain(n.line.trim())}“`).join('\n')}`);
   parts.push(words.ask);
   return parts.join('\n\n');

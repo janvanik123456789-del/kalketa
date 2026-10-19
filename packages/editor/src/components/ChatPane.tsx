@@ -251,7 +251,14 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTur
       capped: t(catalog, 'check.capped'),
       postponed: t(catalog, 'check.postponed'),
     };
-    const sheetWords = { title: t(catalog, 'sheetCheck.title'), problems: t(catalog, 'sheetCheck.problems'), numbers: t(catalog, 'sheetCheck.numbers'), ask: t(catalog, 'sheetCheck.ask') };
+    const sheetWords = {
+      title: t(catalog, 'sheetCheck.title'),
+      problems: t(catalog, 'sheetCheck.problems'),
+      numbers: t(catalog, 'sheetCheck.numbers'),
+      ask: t(catalog, 'sheetCheck.ask'),
+      python: t(catalog, 'sheetCheck.python'),
+      hints: { 'E-DERIVE-STEP': t(catalog, 'sheetCheck.hint.derive'), 'W-BARE-UNIT': t(catalog, 'sheetCheck.hint.bareUnit'), 'E-UNIT-MISMATCH': t(catalog, 'sheetCheck.hint.units') },
+    };
     const text = [sheetWrong ? sheetReport(sheet!, sheetWords) : '', codes.length > 0 ? pythonReport(reports, words, (n) => formatNumber(n, catalog, { digits: 2 })) : ''].filter(Boolean).join('\n\n');
     const report: ChatTurn = { role: 'user', text, time: new Date().toISOString(), check: true };
     const next = [...answered, report];

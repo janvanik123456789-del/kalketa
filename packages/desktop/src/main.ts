@@ -2760,7 +2760,7 @@ async function layersWithRealInput(picture: string) {
     errors: (await contents.executeJavaScript(`document.querySelectorAll('.layer-view.active .page .row.has-error').length`)) as number,
   };
   await takePicture(picture.replace(/[.]png$/, '-surface-3d.png'));
-  // A section through the plate from the menu, typed as on paper (y = 1 m): its line on the surface, its curve below.
+  // A section through the plate from the menu, typed as on paper (y = 1 m): its line on the surface, its curve a figure below.
   await contents.executeJavaScript(`document.querySelector('.layer-view.active .block.chart svg.chart-svg')?.setAttribute('data-smoke-cut', '')`);
   await clickOn('[data-smoke-cut]', [], 'right');
   await pause(300);
@@ -2768,7 +2768,7 @@ async function layersWithRealInput(picture: string) {
   await pause(300);
   await typeText('y = 1 m');
   await pressKey('Enter');
-  const readCut = `(() => { const svg = document.querySelector('.layer-view.active .block.chart svg.chart-svg'); return { line: !!svg?.querySelector('.chart-cut-line'), panel: !!svg?.querySelector('svg.chart-cut'), title: [...(svg?.querySelectorAll('text') ?? [])].some((t) => t.textContent === 'Řez y = 1 m') }; })()`;
+  const readCut = `(() => { const svg = document.querySelector('.layer-view.active .block.chart svg.chart-svg'); const figure = document.querySelector('.layer-view.active figure.chart-cut-figure'); return { line: !!svg?.querySelector('.chart-cut-line'), panel: !!figure?.querySelector('svg.chart-svg path'), title: (figure?.querySelector('figcaption')?.textContent ?? '') === 'Řez y = 1 m' }; })()`;
   let surfaceCut = { line: false, panel: false, title: false };
   for (let i = 0; i < 30 && !surfaceCut.panel; i++) {
     await pause(200);

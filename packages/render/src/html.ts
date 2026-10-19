@@ -351,7 +351,9 @@ export function renderBlockHtml(block: PrintBlock, catalog: Catalog, options: Bl
       const place = block.wrap ? ` wrap-${block.wrap}` : block.align ? ` align-${block.align}` : '';
       const styles = [block.width !== undefined ? `width:${block.width}%` : '', block.wrap && block.dx ? `margin-${block.wrap}:${block.dx}%` : '', block.wrap && block.dy ? `clear:${block.wrap}` : ''].filter(Boolean);
       const stop = block.wrap && block.dy ? `<div class="wrap-stop wrap-${block.wrap}" style="height:${block.dy}mm"></div>` : '';
-      return `${stop}<figure class="block chart${place}" data-line="${block.line}"${styles.length ? ` style="${styles.join(';')}"` : ''}>${block.svg}${caption}${messages(block.messages)}</figure>`;
+      // The cut of a surface: a figure of its own below it, as wide, with its caption.
+      const cut = block.cut ? `<figure class="block chart chart-cut-figure${place}" data-line="${block.line}"${styles.length ? ` style="${styles.join(';')}"` : ''}>${block.cut.svg}<figcaption>${esc(block.cut.caption)}</figcaption></figure>` : '';
+      return `${stop}<figure class="block chart${place}" data-line="${block.line}"${styles.length ? ` style="${styles.join(';')}"` : ''}>${block.svg}${caption}${messages(block.messages)}</figure>${cut}`;
     }
     case 'equation':
       return `<section class="block equation${options.style === 'compact' ? ' compact' : options.style === 'book' ? ' book' : ''}${block.number !== undefined ? ' numbered' : ''}" data-line="${block.line}">

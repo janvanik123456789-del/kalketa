@@ -29,7 +29,7 @@ import {
   type UnitRegistry,
   type Value,
 } from '@kalketa/core';
-import { chartLayout, chartSvg, CUT_PANEL, parseChartLook, withLook, type ChartLayout, type ChartLook, type ChartSpec } from '@kalketa/chart';
+import { chartLayout, chartSvg, cutChart, parseChartLook, withLook, type ChartLayout, type ChartLook, type ChartSpec } from '@kalketa/chart';
 import { formatDate, formatDiagnostic, formatNumber, t, type Catalog, type NumberFormatOptions } from '@kalketa/i18n';
 import { formulaNode, hasSubstitutableParts, THIN_SPACE, type FormulaOptions, type Substituted } from './formula.js';
 import { mi, mn, mo, mtext, mu, nameNode, paren, row, sup, toText, type MathNode, table } from './math.js';
@@ -177,6 +177,8 @@ export type PrintBlock =
       /** How it is drawn: the style of the calculation with its own over it; and its own alone. */
       readonly look: ChartLook;
       readonly ownLook?: ChartLook;
+      /** The cut of a surface: a chart of its own below it, with its caption ("Řez y = 0 m"). */
+      readonly cut?: { readonly svg: string; readonly caption: string };
       /** What the SVG shows and where, for reading values under the pointer in the editor. */
       readonly spec: ChartSpec;
       readonly layout: ChartLayout;
@@ -1234,7 +1236,9 @@ function chartBlock(
               ? (() => {
                   const c = plot.surface.cut;
                   const label = `${c.axis === 'x' ? plot.variable : plot.yVariable ?? 'y'} = ${format(c.at)}${(c.axis === 'x' ? plot.xUnit : plot.yUnit) ? ` ${c.axis === 'x' ? plot.xUnit : plot.yUnit}` : ''}`;
-                  return { cut: { ...c, label, title: cutTitle(label) } };
+                  // Along an axis of the unit of z (a sphere in metres): the curve at one scale, a circle round.
+                  const equalScale = (c.axis === 'x' ? plot.yUnit : plot.xUnit) === plot.surface.zUnit;
+                  return { cut: { ...c, label, title: cutTitle(label), ...(equalScale ? { equalScale: true } : {}) } };
                 })()
               : {}),
           },
@@ -1244,12 +1248,13 @@ function chartBlock(
   // Its height to its width as dragged in the sheet (ratio=0.6), else the usual one.
   // A cut adds its panel below the surface: the chart is that much higher.
   const base = plot.place?.ratio ? { width: CHART_SIZE.width, height: Math.round(CHART_SIZE.width * plot.place.ratio) } : plot.kind === 'surface' ? SURFACE_SIZE : plot.equalScale ? equalScaleSize(spec) : CHART_SIZE;
-  const size = spec.surface?.cut ? { width: base.width, height: base.height + CUT_PANEL } : base;
+  const size = base;
   const options = { ...size, format, look, ...(plot.xDates ? { formatX: date } : {}), ...(plot.title ? { title: plot.title } : {}) };
   return {
     kind: 'chart',
     line,
     svg: chartSvg(spec, options),
+    ...(spec.surface?.cut ? { cut: { svg: cutChart(spec, options)!.svg, caption: spec.surface.cut.title } } : {}),
     look,
     ...(ownLook ? { ownLook } : {}),
     spec,

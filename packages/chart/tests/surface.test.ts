@@ -1,6 +1,6 @@
 import { inflateSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
-import { cellOutline, chartLayout, chartSvg, colormapOf, contourSegments, edgeLookup, parseView, pngDataUri, surfaceLevels, viewText, type ChartSpec, type ChartSurface } from '../src/index.js';
+import { cellOutline, chartLayout, chartSvg, cutChart, colormapOf, contourSegments, edgeLookup, parseView, pngDataUri, surfaceLevels, viewText, type ChartSpec, type ChartSurface } from '../src/index.js';
 
 /** z = x + y over 0 .. 4 × 0 .. 2, on a grid of 5 × 3 points. */
 const xs = [0, 1, 2, 3, 4];
@@ -67,17 +67,21 @@ describe('a surface drawn as a map', () => {
     expect(parseView('az=400 el=95')).toEqual({ az: 40, el: 90 });
     expect(viewText({ az: 35.4, el: 29.6 })).toBe('az=35 el=30');
   });
-  it('with a cut draws its line and, below, the curve along it in a panel of its own', () => {
+  it('with a cut draws its line, and the curve along it is a chart of its own, at one scale where the units agree', () => {
     const cut = { axis: 'y' as const, at: 1, along: xs, z: xs.map((x) => x + 1), label: 'y = 1 m', title: 'Řez y = 1 m' };
     const withCut: ChartSpec = { ...map, surface: { ...plane, cut, points: [{ x: 3, y: 0.5, z: 3.5 }] } };
-    const svg = chartSvg(withCut, { height: 480 });
+    const svg = chartSvg(withCut, { height: 300 });
     expect(svg).toContain('class="chart-cut-line"');
-    expect(svg).toContain('<svg class="chart-cut" x="0" y="300"');
-    expect(svg).toContain('>Řez y = 1 m</text>');
     expect(svg).toContain('class="chart-point"');
-    // The surface keeps the room above the panel.
-    expect(chartLayout(withCut, { height: 480 }).plot.bottom).toBeLessThan(300);
-    expect(chartSvg({ ...withCut, kind: 'surface' }, { height: 480 })).toContain('class="chart-cut"');
+    expect(svg).not.toContain('Řez y = 1 m');
+    const own = cutChart(withCut)!;
+    expect(own.spec.series[0]!.ys).toEqual(cut.z);
+    expect(own.svg).toContain('class="chart-svg"');
+    // At one scale: z from 1 to 5 over x from 0 to 4 makes the plot as high as it is wide.
+    const equal = cutChart({ ...withCut, surface: { ...withCut.surface!, cut: { ...cut, equalScale: true } } })!;
+    const plot = equal.layout.plot;
+    expect((plot.bottom - plot.top) / (equal.layout.y.max - equal.layout.y.min)).toBeCloseTo((plot.right - plot.left) / (equal.layout.x.max - equal.layout.x.min), 0);
+    expect(cutChart(map)).toBeUndefined();
   });
   it('on its edge is cut where the surface ends between the points of the grid, not in steps of whole cells', () => {
     // A cell with three corners of value: the fourth side has none; the surface ends 0,4 of the way to it.

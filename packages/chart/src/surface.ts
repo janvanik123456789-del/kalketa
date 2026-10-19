@@ -32,6 +32,8 @@ export interface ChartSurface {
     /** "y = 1 m" on the line, "Řez y = 1 m" over the curve. */
     readonly label: string;
     readonly title: string;
+    /** z and the axis along the cut share a unit: the curve is drawn at one scale. */
+    readonly equalScale?: boolean;
   };
   /** Points of the sheet on the surface, z at them. */
   readonly points?: readonly { readonly x: number; readonly y: number; readonly z: number }[];

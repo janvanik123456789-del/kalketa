@@ -48,7 +48,10 @@ export function surface3dSvg(spec: ChartSpec, layout: ChartLayout, format: (valu
   const [x0, x1, y0, y1] = [xs[0]!, xs[xs.length - 1]!, ys[0]!, ys[ys.length - 1]!];
   // The box: x and y to ±1 (at one scale when they share a unit), z to ±0.6 of the wider side.
   const [wx, wy] = equalScale ? [(x1 - x0) / Math.max(x1 - x0, y1 - y0), (y1 - y0) / Math.max(x1 - x0, y1 - y0)] : [1, 1];
-  const zh = 0.62;
+  // The height of the box: where z shares the unit of x and y (a sphere, an ellipsoid in metres), the true
+  // proportions, as the map and the cut have them; else z stretched to a box of a readable height.
+  const metre = 2 / Math.max(x1 - x0, y1 - y0);
+  const zh = surface.trueScale && hi > lo ? Math.max(0.04, Math.min(3, (metre * (hi - lo)) / 2)) : 0.62;
   const X = (x: number) => wx * ((2 * (x - x0)) / (x1 - x0) - 1);
   const Y = (y: number) => wy * ((2 * (y - y0)) / (y1 - y0) - 1);
   const Z = (v: number) => zh * (hi > lo ? (2 * (v - lo)) / (hi - lo) - 1 : 0);
@@ -81,7 +84,9 @@ export function surface3dSvg(spec: ChartSpec, layout: ChartLayout, format: (valu
   // The walls at the back and the floor, with the grid of the ticks.
   const xTicks = niceScale(x0, x1, 6).ticks.filter((t) => t >= x0 - 1e-9 * (x1 - x0) && t <= x1 + 1e-9 * (x1 - x0));
   const yTicks = niceScale(y0, y1, 6).ticks.filter((t) => t >= y0 - 1e-9 * (y1 - y0) && t <= y1 + 1e-9 * (y1 - y0));
-  const zTicks = niceScale(lo, hi, 5).ticks.filter((t) => t >= lo - 1e-9 * (hi - lo) && t <= hi + 1e-9 * (hi - lo));
+  // As many ticks on z as its edge has room for on the paper (a flat ring has a short one).
+  const zEdge = Math.abs(screen([-wx, -wy, zh])[1] - screen([-wx, -wy, -zh])[1]);
+  const zTicks = niceScale(lo, hi, Math.max(2, Math.min(5, Math.floor(zEdge / (font * 1.8))))).ticks.filter((t) => t >= lo - 1e-9 * (hi - lo) && t <= hi + 1e-9 * (hi - lo));
   const backX = depthOf([wx, 0, 0]) > depthOf([-wx, 0, 0]) ? wx : -wx;
   const backY = depthOf([0, wy, 0]) > depthOf([0, -wy, 0]) ? wy : -wy;
   const line = (a: Point3, b: Point3, stroke = GRID, width = 0.8) => {

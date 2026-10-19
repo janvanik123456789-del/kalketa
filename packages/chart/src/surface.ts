@@ -23,6 +23,8 @@ export interface ChartSurface {
   /** Seen in 3D (kind "surface"): from where, and x and y at one scale (they share a unit). */
   readonly view?: { readonly az: number; readonly el: number };
   readonly equalScale?: boolean;
+  /** x, y and z share a unit: in 3D all three at one scale (an ellipsoid as flat as it is). */
+  readonly trueScale?: boolean;
   /** A cut along x = at or y = at: z along the other axis, drawn as a line on the surface and as a curve below it. */
   readonly cut?: {
     readonly axis: 'x' | 'y';

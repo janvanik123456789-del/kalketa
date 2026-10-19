@@ -99,4 +99,14 @@ describe('a surface drawn as a map', () => {
     const patches = /<g class="chart-surface">(.*?)<\/g>/.exec(svg)![1]!;
     expect((patches.match(/L/g) ?? []).length).toBe(4);
   });
+  it('in 3D keeps true proportions where x, y and z share a unit: a flat surface stays flat', () => {
+    // z from 1 to 5 over 4 × 2: stretched to the usual box, or at one scale with x and y.
+    const box = (svg: string) => {
+      const ys = [...svg.matchAll(/<path d="M[^"]*Z" fill="#f7f7f4"/g)].flatMap((m) => [...m[0].matchAll(/[ML][\d.]+ ([\d.]+)/g)].map((n) => Number(n[1])));
+      return Math.max(...ys) - Math.min(...ys);
+    };
+    const solid: ChartSpec = { ...map, kind: 'surface', surface: { ...plane, equalScale: true, view: { az: 0, el: 0 } } };
+    const flat: ChartSpec = { ...solid, surface: { ...plane, equalScale: true, trueScale: true, z: plane.z.map((c) => c.map((v) => 1 + v / 100)), view: { az: 0, el: 0 } } };
+    expect(box(chartSvg(flat))).toBeLessThan(box(chartSvg(solid)) / 3);
+  });
 });

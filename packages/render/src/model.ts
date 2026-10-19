@@ -1230,6 +1230,7 @@ function chartBlock(
             ...(plot.surface.extremes ? { extremes: plot.surface.extremes } : {}),
             ...(plot.surface.view ? { view: plot.surface.view } : {}),
             ...(plot.equalScale ? { equalScale: true } : {}),
+            ...(plot.equalScale && plot.surface.zUnit === plot.xUnit ? { trueScale: true } : {}),
             ...(plot.surface.points ? { points: plot.surface.points } : {}),
             ...(plot.surface.edges ? { edges: plot.surface.edges } : {}),
             ...(plot.surface.cut

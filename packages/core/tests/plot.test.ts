@@ -135,6 +135,15 @@ w(x, y) := q·x·(a - x)·y·(b - y)/(1000 kN·m)
     expect(p.surface!.z[0]![0]).toBeNaN();
     expect(p.surface!.z[25]![25]).toBe(1);
     expect(surfaceOf('plot(x^2 + y^2 == 1, x: -2 .. 2, y: -2 .. 2)')!.surface).toBeUndefined();
+    // Where it ends between the points of the grid is found: on the circle x² + y² = 1, z ≈ 0 there.
+    const edges = p.surface!.edges!;
+    expect(edges.length).toBeGreaterThan(50);
+    for (const e of edges.slice(0, 10)) {
+      const x = p.surface!.xs[e.i]! + (e.dir === 'x' ? e.t * (p.surface!.xs[1]! - p.surface!.xs[0]!) : 0);
+      const y = p.surface!.ys[e.j]! + (e.dir === 'y' ? e.t * (p.surface!.ys[1]! - p.surface!.ys[0]!) : 0);
+      expect(Math.hypot(x, y)).toBeCloseTo(1, 4);
+      expect(e.z).toBeLessThan(0.01);
+    }
   });
   it('is seen in 3D from the view written in its line', () => {
     const p = surfaceOf(`${PLATE}plot(w(x, y), x: 0 m .. a, y: 0 m .. b, kind: "surface", view: "az=-200 el=40") | mm`)!;

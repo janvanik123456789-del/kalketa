@@ -6,7 +6,7 @@
  */
 
 import { niceScale, type ChartLayout, type ChartSpec } from './chart.js';
-import { colorBar, colormapOf, esc, painter, surfaceLevels, surfaceRange, type Colormap } from './surface.js';
+import { cellOutline, colorBar, colormapOf, edgeLookup, esc, painter, surfaceLevels, surfaceRange, type Colormap } from './surface.js';
 
 /** How a surface is seen: turned round the vertical axis by az, looked at from el above the floor (degrees). */
 export interface SurfaceView {
@@ -103,27 +103,38 @@ export function surface3dSvg(spec: ChartSpec, layout: ChartLayout, format: (valu
     return l.map((v) => v / n) as [number, number, number];
   })();
   const cells: { depth: number; d: string; fill: string }[] = [];
+  const edgeAt = edgeLookup(surface);
   for (let i = 0; i + 1 < xs.length; i++) {
     for (let j = 0; j + 1 < ys.length; j++) {
       const values = [z[i]![j]!, z[i + 1]![j]!, z[i + 1]![j + 1]!, z[i]![j + 1]!];
-      if (!values.every(Number.isFinite)) continue;
-      const points: Point3[] = [
-        [X(xs[i]!), Y(ys[j]!), Z(values[0]!)],
-        [X(xs[i + 1]!), Y(ys[j]!), Z(values[1]!)],
-        [X(xs[i + 1]!), Y(ys[j + 1]!), Z(values[2]!)],
-        [X(xs[i]!), Y(ys[j + 1]!), Z(values[3]!)],
-      ];
+      // A cell on the edge of the surface: only its part with values, up to the edge found between the points.
+      const outline = values.every(Number.isFinite)
+        ? [
+            { fx: 0, fy: 0, z: values[0]! },
+            { fx: 1, fy: 0, z: values[1]! },
+            { fx: 1, fy: 1, z: values[2]! },
+            { fx: 0, fy: 1, z: values[3]! },
+          ]
+        : surface.edges
+          ? cellOutline(surface, i, j, edgeAt)
+          : undefined;
+      if (!outline) continue;
+      const points: Point3[] = outline.map((o) => [X(xs[i]! + (xs[i + 1]! - xs[i]!) * o.fx), Y(ys[j]! + (ys[j + 1]! - ys[j]!) * o.fy), Z(o.z)]);
       const t = points.map(turn);
-      // The normal of the cell as seen: the cross product of its diagonals.
-      const d1 = [t[2]!.u - t[0]!.u, t[2]!.v - t[0]!.v, t[2]!.depth - t[0]!.depth];
-      const d2 = [t[3]!.u - t[1]!.u, t[3]!.v - t[1]!.v, t[3]!.depth - t[1]!.depth];
-      const n = [d1[1]! * d2[2]! - d1[2]! * d2[1]!, d1[2]! * d2[0]! - d1[0]! * d2[2]!, d1[0]! * d2[1]! - d1[1]! * d2[0]!];
+      // The normal of the patch as seen (Newell's method: any polygon, not only four corners).
+      const n: [number, number, number] = [0, 0, 0];
+      t.forEach((a, k) => {
+        const b = t[(k + 1) % t.length]!;
+        n[0] += (a.v - b.v) * (a.depth + b.depth);
+        n[1] += (a.depth - b.depth) * (a.u + b.u);
+        n[2] += (a.u - b.u) * (a.v + b.v);
+      });
       const len = Math.hypot(...n) || 1;
       const facing = Math.abs((n[0]! * light[0] + n[1]! * light[1] + n[2]! * light[2]) / len);
       const shade = 0.55 + 0.45 * facing;
-      const [red, green, blue] = paint(values.reduce((s, v) => s + v, 0) / 4).map((c) => Math.round(Math.min(255, c * shade)));
+      const [red, green, blue] = paint(outline.reduce((s, o) => s + o.z, 0) / outline.length).map((c) => Math.round(Math.min(255, c * shade)));
       const fill = `#${[red, green, blue].map((c) => c!.toString(16).padStart(2, '0')).join('')}`;
-      cells.push({ depth: t.reduce((s, p) => s + p.depth, 0) / 4, d: path(points), fill });
+      cells.push({ depth: t.reduce((s, p) => s + p.depth, 0) / t.length, d: path(points), fill });
     }
   }
   cells.sort((a, b) => b.depth - a.depth);

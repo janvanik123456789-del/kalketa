@@ -101,6 +101,12 @@ export interface PlotSurface {
   /** levels: [10, 20] mm or levels: 8 — the values of the contour lines (a count: that many round ones). */
   readonly levels?: readonly number[];
   readonly levelCount?: number;
+  /**
+   * Where the surface ends between two points of the grid (one with a value, one without): found by halving
+   * the edge, so a round edge (a sphere) is drawn round, not in steps of the grid. t from the point (i, j)
+   * along x ('x') or y ('y'); z there, in the unit of z.
+   */
+  readonly edges?: readonly { readonly i: number; readonly j: number; readonly dir: 'x' | 'y'; readonly t: number; readonly z: number }[];
   /** view: "az=35 el=30" — from where a surface in 3D is seen (kind "surface"). */
   readonly view?: { readonly az: number; readonly el: number };
   /** cut: y == 1 m — the surface along a line of constant x or y: z at points along the other axis. */
@@ -687,6 +693,42 @@ function surfaceStatement(call: CallExpr, binders: readonly NamedArg[], ctx: Eva
     }
     grid.push(column);
   }
+  // Where the surface ends between a point with a value and one without: the edge halved down to the end.
+  const valueAt = (xs: number, ys: number): Quantity | undefined => {
+    const inner: EvalContext = { ...ctx, lookup: (n, where) => (n === xBinder.name ? at(x0, xs) : n === yBinder.name ? at(y0, ys) : ctx.lookup(n, where)) };
+    try {
+      const value = evaluate(body, inner);
+      return value.type === 'quantity' && !value.im && Number.isFinite(value.si) ? value : undefined;
+    } catch (err) {
+      if (err instanceof CalcError && GAP_CODES.has(err.diagnostic.code)) return undefined;
+      throw err;
+    }
+  };
+  const xSi = (i: number) => x0.si + ((x1.si - x0.si) * i) / cells;
+  const ySi = (j: number) => y0.si + ((y1.si - y0.si) * j) / cells;
+  const rawEdges: { i: number; j: number; dir: 'x' | 'y'; t: number; q: Quantity }[] = [];
+  const halve = (i: number, j: number, dir: 'x' | 'y') => {
+    const [a, b] = dir === 'x' ? [grid[i]![j], grid[i + 1]![j]] : [grid[i]![j], grid[i]![j + 1]];
+    if ((a === undefined) === (b === undefined)) return;
+    // t runs from (i, j); the side with a value is kept as the edge is halved.
+    let [inside, outside] = a ? [0, 1] : [1, 0];
+    let last = (a ?? b)!;
+    for (let k = 0; k < 22; k++) {
+      const t = (inside + outside) / 2;
+      const q = dir === 'x' ? valueAt(xSi(i + t), ySi(j)) : valueAt(xSi(i), ySi(j + t));
+      if (q) [inside, last] = [t, q];
+      else outside = t;
+    }
+    rawEdges.push({ i, j, dir, t: inside, q: last });
+  };
+  if (grid.some((c) => c.some((q) => q === undefined)) && grid.some((c) => c.some((q) => q !== undefined))) {
+    for (let i = 0; i <= cells; i++) {
+      for (let j = 0; j <= cells; j++) {
+        if (i < cells) halve(i, j, 'x');
+        if (j < cells) halve(i, j, 'y');
+      }
+    }
+  }
   const first = grid.flat().find((q): q is Quantity => q !== undefined);
   if (!first) return fail('E-PLOT-FORM', body.span, {});
   const other = grid.flat().find((q) => q && !sameDim(q.dim, first.dim));
@@ -801,6 +843,7 @@ function surfaceStatement(call: CallExpr, binders: readonly NamedArg[], ctx: Eva
       ...(extremes && extremes.length > 0 ? { extremes } : {}),
       ...(view ? { view } : {}),
       ...(cut ? { cut } : {}),
+      ...(rawEdges.length > 0 ? { edges: rawEdges.map((e) => ({ i: e.i, j: e.j, dir: e.dir, t: e.t, z: toDisplay(e.q, ctx.registry, zUnit).value })) } : {}),
       ...(points && points.length > 0 ? { points } : {}),
     },
   };

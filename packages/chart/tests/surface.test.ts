@@ -1,6 +1,6 @@
 import { inflateSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
-import { chartLayout, chartSvg, colormapOf, contourSegments, parseView, pngDataUri, surfaceLevels, viewText, type ChartSpec, type ChartSurface } from '../src/index.js';
+import { cellOutline, chartLayout, chartSvg, colormapOf, contourSegments, edgeLookup, parseView, pngDataUri, surfaceLevels, viewText, type ChartSpec, type ChartSurface } from '../src/index.js';
 
 /** z = x + y over 0 .. 4 × 0 .. 2, on a grid of 5 × 3 points. */
 const xs = [0, 1, 2, 3, 4];
@@ -78,5 +78,21 @@ describe('a surface drawn as a map', () => {
     // The surface keeps the room above the panel.
     expect(chartLayout(withCut, { height: 480 }).plot.bottom).toBeLessThan(300);
     expect(chartSvg({ ...withCut, kind: 'surface' }, { height: 480 })).toContain('class="chart-cut"');
+  });
+  it('on its edge is cut where the surface ends between the points of the grid, not in steps of whole cells', () => {
+    // A cell with three corners of value: the fourth side has none; the surface ends 0,4 of the way to it.
+    const z = [[1, 1], [1, NaN]];
+    const edge: ChartSurface = { xs: [0, 1], ys: [0, 1], z, zTitle: 'z', edges: [{ i: 1, j: 0, dir: 'y', t: 0.4, z: 0.5 }, { i: 0, j: 1, dir: 'x', t: 0.6, z: 0.5 }] };
+    expect(cellOutline(edge, 0, 0, edgeLookup(edge))).toEqual([
+      { fx: 0, fy: 0, z: 1 },
+      { fx: 1, fy: 0, z: 1 },
+      { fx: 1, fy: 0.4, z: 0.5 },
+      { fx: 0.6, fy: 1, z: 0.5 },
+      { fx: 0, fy: 1, z: 1 },
+    ]);
+    // In 3D the cell is drawn as that polygon of five points.
+    const svg = chartSvg({ kind: 'surface', series: [], xTitle: 'x', yTitle: 'y', surface: edge });
+    const patches = /<g class="chart-surface">(.*?)<\/g>/.exec(svg)![1]!;
+    expect((patches.match(/L/g) ?? []).length).toBe(4);
   });
 });

@@ -35,6 +35,59 @@ export interface ChartSurface {
   };
   /** Points of the sheet on the surface, z at them. */
   readonly points?: readonly { readonly x: number; readonly y: number; readonly z: number }[];
+  /** Where the surface ends between a point of the grid with a value and one without (t from (i, j) along x or y). */
+  readonly edges?: readonly { readonly i: number; readonly j: number; readonly dir: 'x' | 'y'; readonly t: number; readonly z: number }[];
+}
+
+/** A point of the outline of a cell: fx, fy from 0 to 1 across the cell, z there. */
+export interface CellPoint {
+  readonly fx: number;
+  readonly fy: number;
+  readonly z: number;
+}
+
+/**
+ * The part of the cell (i, j) where the surface has values, as a polygon round the cell: its corners with a value
+ * and the points where it ends on the sides between them. Undefined when fewer than three points are left.
+ */
+export function cellOutline(surface: ChartSurface, i: number, j: number, edgeAt: (dir: 'x' | 'y', i: number, j: number) => { t: number; z: number } | undefined): CellPoint[] | undefined {
+  const z = surface.z;
+  const corners = [z[i]![j]!, z[i + 1]![j]!, z[i + 1]![j + 1]!, z[i]![j + 1]!];
+  const points: CellPoint[] = [];
+  const corner = (k: number, fx: number, fy: number) => {
+    if (Number.isFinite(corners[k]!)) points.push({ fx, fy, z: corners[k]! });
+  };
+  const side = (e: { t: number; z: number } | undefined, place: (t: number) => [number, number]) => {
+    if (e) {
+      const [fx, fy] = place(e.t);
+      points.push({ fx, fy, z: e.z });
+    }
+  };
+  corner(0, 0, 0);
+  if (Number.isFinite(corners[0]!) !== Number.isFinite(corners[1]!)) side(edgeAt('x', i, j), (t) => [t, 0]);
+  corner(1, 1, 0);
+  if (Number.isFinite(corners[1]!) !== Number.isFinite(corners[2]!)) side(edgeAt('y', i + 1, j), (t) => [1, t]);
+  corner(2, 1, 1);
+  if (Number.isFinite(corners[2]!) !== Number.isFinite(corners[3]!)) side(edgeAt('x', i, j + 1), (t) => [t, 1]);
+  corner(3, 0, 1);
+  if (Number.isFinite(corners[3]!) !== Number.isFinite(corners[0]!)) side(edgeAt('y', i, j), (t) => [0, t]);
+  return points.length >= 3 ? points : undefined;
+}
+
+/** The edges of a surface by their place, for cellOutline. */
+export function edgeLookup(surface: ChartSurface): (dir: 'x' | 'y', i: number, j: number) => { t: number; z: number } | undefined {
+  const map = new Map((surface.edges ?? []).map((e) => [`${e.dir}${e.i},${e.j}`, e] as const));
+  return (dir, i, j) => map.get(`${dir}${i},${j}`);
+}
+
+/** Whether a point lies inside a polygon (even-odd rule). */
+function inside(points: readonly CellPoint[], fx: number, fy: number): boolean {
+  let hit = false;
+  for (let k = 0, m = points.length - 1; k < points.length; m = k++) {
+    const [a, b] = [points[k]!, points[m]!];
+    if (a.fy > fy !== b.fy > fy && fx < ((b.fx - a.fx) * (fy - a.fy)) / (b.fy - a.fy) + a.fx) hit = !hit;
+  }
+  return hit;
 }
 
 /** Colours of a map from low to high: sequential (one way), diverging (round zero), grey (for black-and-white print). */
@@ -112,6 +165,13 @@ function mapPicture(surface: ChartSurface, layout: ChartLayout, paint: (v: numbe
   const height = Math.max(2, Math.ceil((plot.bottom - plot.top) / PIXEL));
   const rgba = new Uint8Array(width * height * 4);
   const [nx, ny] = [xs.length - 1, ys.length - 1];
+  const edgeAt = edgeLookup(surface);
+  const outlines = new Map<number, CellPoint[] | undefined>();
+  const outlineOf = (i: number, j: number) => {
+    const key = i * (ny + 1) + j;
+    if (!outlines.has(key)) outlines.set(key, cellOutline(surface, i, j, edgeAt));
+    return outlines.get(key);
+  };
   for (let q = 0; q < height; q++) {
     // Row q from the top: y from the high end down.
     const v = (1 - (q + 0.5) / height) * ny;
@@ -129,13 +189,21 @@ function mapPicture(surface: ChartSurface, layout: ChartLayout, paint: (v: numbe
       ] as const;
       let weight = 0;
       let sum = 0;
+      let finite = 0;
       for (const [value, w] of corners) {
         if (!Number.isFinite(value)) continue;
         weight += w;
         sum += value * w;
+        finite++;
       }
       const at = (q * width + p) * 4;
-      if (weight < 0.5) continue;
+      if (finite === 0) continue;
+      // A cell on the edge: coloured where the surface is, up to its edge found between the points of the grid.
+      if (finite < 4) {
+        const outline = surface.edges ? outlineOf(i, j) : undefined;
+        if (outline ? !inside(outline, fx, fy) : weight < 0.5) continue;
+        if (!(weight > 0)) continue;
+      }
       const [red, green, blue] = paint(sum / weight);
       rgba[at] = red;
       rgba[at + 1] = green;

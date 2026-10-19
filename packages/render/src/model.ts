@@ -1229,6 +1229,7 @@ function chartBlock(
             ...(plot.surface.view ? { view: plot.surface.view } : {}),
             ...(plot.equalScale ? { equalScale: true } : {}),
             ...(plot.surface.points ? { points: plot.surface.points } : {}),
+            ...(plot.surface.edges ? { edges: plot.surface.edges } : {}),
             ...(plot.surface.cut
               ? (() => {
                   const c = plot.surface.cut;

@@ -8,6 +8,7 @@ describe('sample calculations shipped with the program', () => {
       '01 R7-kvadraticka-rovnice',
       '01 R8-quadratic-equation',
       '01 R17-prolozeni-parabolou',
+      '01 R19-plochy-3d',
       '02 R10-stlaceni-hydrostatickym-tlakem',
       '02 R13-rychlost-z-namereneho-zrychleni',
       '03 R9-klikovy-mechanismus',

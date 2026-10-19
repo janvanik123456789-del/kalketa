@@ -1,0 +1,57 @@
+{
+  "sheet": "plochy-3d.cc",
+  "verifiedBy": "Samostatně v Pythonu (math) ze vzorců pro objemy rotačních těles: polokoule 2/3·π·R³, polovina zploštělého elipsoidu 2/3·π·a²·c, paraboloid do výšky H = π·p·H² (= ½·π·R²·H), kužel π·R²·H/3, polovina anuloidu π²·R·r² (Pappova věta); výška koule v bodě √(R² − x² − y²).",
+  "relativeTolerance": 0.0001,
+  "values": {
+    "z_b": {
+      "value": 0.812403840463596,
+      "unit": "m"
+    },
+    "V": {
+      "value": 2.0943951023931953,
+      "unit": "m³"
+    },
+    "V_e": {
+      "value": 1.256637061435917,
+      "unit": "m³"
+    },
+    "V_p": {
+      "value": 1.5707963267948966,
+      "unit": "m³"
+    },
+    "R_p": {
+      "value": 1.0,
+      "unit": "m"
+    },
+    "V_k": {
+      "value": 1.2566370614359172,
+      "unit": "m³"
+    },
+    "V_t": {
+      "value": 0.4317951925476594,
+      "unit": "m³"
+    }
+  },
+  "checks": [
+    {
+      "label": "Objem polokoule",
+      "passed": true
+    },
+    {
+      "label": "Objem poloviny elipsoidu",
+      "passed": true
+    },
+    {
+      "label": "Objem paraboloidu",
+      "passed": true
+    },
+    {
+      "label": "Objem kužele",
+      "passed": true
+    },
+    {
+      "label": "Objem poloviny anuloidu",
+      "passed": true
+    }
+  ]
+}

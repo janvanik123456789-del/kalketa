@@ -23,6 +23,18 @@ export interface ChartSurface {
   /** Seen in 3D (kind "surface"): from where, and x and y at one scale (they share a unit). */
   readonly view?: { readonly az: number; readonly el: number };
   readonly equalScale?: boolean;
+  /** A cut along x = at or y = at: z along the other axis, drawn as a line on the surface and as a curve below it. */
+  readonly cut?: {
+    readonly axis: 'x' | 'y';
+    readonly at: number;
+    readonly along: readonly number[];
+    readonly z: readonly number[];
+    /** "y = 1 m" on the line, "Řez y = 1 m" over the curve. */
+    readonly label: string;
+    readonly title: string;
+  };
+  /** Points of the sheet on the surface, z at them. */
+  readonly points?: readonly { readonly x: number; readonly y: number; readonly z: number }[];
 }
 
 /** Colours of a map from low to high: sequential (one way), diverging (round zero), grey (for black-and-white print). */
@@ -204,6 +216,20 @@ export function surfaceSvg(spec: ChartSpec, layout: ChartLayout, format: (value:
       labels.push(`<text class="chart-contour-label" x="${r(spot[0])}" y="${r(spot[1] + font * 0.35)}" text-anchor="middle" font-size="${font - 1}" fill="${INK}" stroke="#fff" stroke-width="3" stroke-opacity="0.85" paint-order="stroke">${format(level)}</text>`);
     }
   }
+  // The line of the cut across the map, its value at its end; the points of the sheet with z at them.
+  const cut = surface.cut;
+  const cutLine = cut
+    ? (() => {
+        const [ax, ay, bx, by] = cut.axis === 'y' ? [plot.left, yPosition(layout, cut.at), plot.right, yPosition(layout, cut.at)] : [xPosition(layout, cut.at), plot.bottom, xPosition(layout, cut.at), plot.top];
+        return `<line class="chart-cut-line" x1="${r(ax)}" y1="${r(ay)}" x2="${r(bx)}" y2="${r(by)}" stroke="${INK}" stroke-width="1.6" stroke-dasharray="8 3 2 3"/><text x="${r(cut.axis === 'y' ? bx - 4 : bx + 4)}" y="${r(cut.axis === 'y' ? ay - 5 : by + font + 2)}" text-anchor="${cut.axis === 'y' ? 'end' : 'start'}" fill="${INK}" font-weight="600" stroke="#fff" stroke-width="3" paint-order="stroke">${esc(cut.label)}</text>`;
+      })()
+    : '';
+  const sheetPoints = (surface.points ?? [])
+    .map((p, k) => {
+      const [px, py] = [xPosition(layout, p.x), yPosition(layout, p.y)];
+      return `<circle class="chart-point" cx="${r(px)}" cy="${r(py)}" r="4.5" fill="${INK}" stroke="#fff" stroke-width="1.5"/><text data-label="p0.${k}" class="chart-label chart-point-label" x="${r(px + 8)}" y="${r(py - 8)}" fill="${INK}" stroke="#fff" stroke-width="3" paint-order="stroke">${Number.isFinite(p.z) ? format(p.z) : '–'}</text>`;
+    })
+    .join('');
   // The highest and the lowest point: a diamond, its value beside it.
   const marks = (surface.extremes ?? []).map((e, k) => {
     const [px, py] = [xPosition(layout, e.x), yPosition(layout, e.y)];
@@ -220,7 +246,9 @@ export function surfaceSvg(spec: ChartSpec, layout: ChartLayout, format: (value:
     `<g class="chart-contours">${lines.join('')}</g>` +
     `<rect x="${plot.left}" y="${plot.top}" width="${plot.right - plot.left}" height="${plot.bottom - plot.top}" fill="none" stroke="${INK_2}" stroke-width="0.8"/>` +
     labels.join('') +
+    cutLine +
     marks.join('') +
+    sheetPoints +
     bar
   );
 }

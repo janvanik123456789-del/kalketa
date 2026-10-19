@@ -143,4 +143,18 @@ w(x, y) := q·x·(a - x)·y·(b - y)/(1000 kN·m)
     expect(surfaceOf(`${PLATE}plot(w(x, y), x: 0 m .. a, y: 0 m .. b, kind: "surface")`)!.surface!.view).toBeUndefined();
     expect(codes(`${PLATE}plot(w(x, y), x: 0 m .. a, y: 0 m .. b, kind: "surface", view: "el=120")`)).toContain('E-PLOT-VIEW');
   });
+  it('is cut along a line of x or y, and shows points of the sheet with z at them', () => {
+    const p = surfaceOf(`${PLATE}x_v := 3 m
+y_v := 0.5 m
+plot(w(x, y), x: 0 m .. a, y: 0 m .. b, cut: y == 1 m, points: [x_v, y_v]) | mm`)!;
+    expect(p.surface!.cut!.axis).toBe('y');
+    expect(p.surface!.cut!.at).toBe(1);
+    expect(p.surface!.cut!.along[50]).toBe(2);
+    expect(p.surface!.cut!.z[50]).toBeCloseTo(40, 9);
+    expect(p.surface!.points).toEqual([{ x: 3, y: 0.5, z: expect.closeTo(22.5, 9) }]);
+    expect(surfaceOf(`${PLATE}plot(w(x, y), x: 0 m .. a, y: 0 m .. b, cut: x == 1 m)`)!.surface!.cut!.axis).toBe('x');
+    // Outside the range, or not along an axis of the surface: said so.
+    expect(codes(`${PLATE}plot(w(x, y), x: 0 m .. a, y: 0 m .. b, cut: x == 5 m)`)).toContain('E-PLOT-CUT');
+    expect(codes(`${PLATE}plot(w(x, y), x: 0 m .. a, y: 0 m .. b, cut: z == 1 m)`)).toContain('E-PLOT-CUT');
+  });
 });

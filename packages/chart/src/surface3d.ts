@@ -181,5 +181,24 @@ export function surface3dSvg(spec: ChartSpec, layout: ChartLayout, format: (valu
   const boxRight = Math.max(...corners.map((c) => screen(c)[0]));
   const barLayout = { ...layout, plot: { ...plot, right: Math.min(plot.right, boxRight + pad + 10) } };
   const bar = colorBar(surface, barLayout, format, map, paint, surfaceLevels(surface), font);
-  return `<g class="chart-box">${back.join('')}</g><g class="chart-surface">${patches}</g><g class="chart-ticks">${ticks.join('')}</g>${marks}${bar}`;
+  // The cut as a line on the surface, the points of the sheet on it.
+  const cut = surface.cut;
+  const cutLine = cut
+    ? `<path class="chart-cut-line" d="${cut.along
+        .map((a, k) => [cut.axis === 'x' ? X(cut.at) : X(a), cut.axis === 'x' ? Y(a) : Y(cut.at), cut.z[k]!] as const)
+        .filter(([, , v]) => Number.isFinite(v))
+        .map(([px, py, v], k) => {
+          const [sx, sy] = screen([px, py, Z(v)]);
+          return `${k === 0 ? 'M' : 'L'}${r(sx)} ${r(sy)}`;
+        })
+        .join('')}" fill="none" stroke="${INK}" stroke-width="1.8" stroke-dasharray="8 3 2 3"/>`
+    : '';
+  const sheetPoints = (surface.points ?? [])
+    .filter((p) => Number.isFinite(p.z))
+    .map((p, k) => {
+      const [px, py] = screen([X(p.x), Y(p.y), Z(p.z)]);
+      return `<circle class="chart-point" cx="${r(px)}" cy="${r(py)}" r="4.5" fill="${INK}" stroke="#fff" stroke-width="1.5"/><text data-label="p0.${k}" class="chart-label chart-point-label" x="${r(px + 8)}" y="${r(py - 8)}" fill="${INK}" stroke="#fff" stroke-width="3" paint-order="stroke">${format(p.z)}</text>`;
+    })
+    .join('');
+  return `<g class="chart-box">${back.join('')}</g><g class="chart-surface">${patches}</g><g class="chart-ticks">${ticks.join('')}</g>${cutLine}${marks}${sheetPoints}${bar}`;
 }

@@ -29,7 +29,7 @@ import {
   type UnitRegistry,
   type Value,
 } from '@kalketa/core';
-import { chartLayout, chartSvg, parseChartLook, withLook, type ChartLayout, type ChartLook, type ChartSpec } from '@kalketa/chart';
+import { chartLayout, chartSvg, CUT_PANEL, parseChartLook, withLook, type ChartLayout, type ChartLook, type ChartSpec } from '@kalketa/chart';
 import { formatDate, formatDiagnostic, formatNumber, t, type Catalog, type NumberFormatOptions } from '@kalketa/i18n';
 import { formulaNode, hasSubstitutableParts, THIN_SPACE, type FormulaOptions, type Substituted } from './formula.js';
 import { mi, mn, mo, mtext, mu, nameNode, paren, row, sup, toText, type MathNode, table } from './math.js';
@@ -389,7 +389,7 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
       case 'display': {
         if (r.plot && s.kind === 'display' && s.expr.kind === 'call') {
           const label = r.plot.title ? t(catalog, 'print.figure', { n: String(++figures) }) : undefined;
-          blocks.push(chartBlock(r.plot, s.expr, s.span.line, formulaOptions(), (v) => numberFormat({ digits: 4 })(v).replace('-', '−'), dateFormat, label, s.comment, messages, options.chartStyle));
+          blocks.push(chartBlock(r.plot, s.expr, s.span.line, formulaOptions(), (v) => numberFormat({ digits: 4 })(v).replace('-', '−'), dateFormat, label, s.comment, messages, options.chartStyle, (at) => t(options.catalog, 'print.cut', { at })));
           break;
         }
         // A fitted curve: the call, then its equation with the numbers found, and R².
@@ -1186,6 +1186,7 @@ function chartBlock(
   comment: string | undefined,
   messages: readonly Message[],
   chartStyle: string | undefined,
+  cutTitle: (at: string) => string,
 ): PrintBlock {
   const ownLook = plot.style ? parseChartLook(plot.style) : undefined;
   const look = withLook(chartStyle ? parseChartLook(chartStyle) : undefined, ownLook);
@@ -1227,12 +1228,22 @@ function chartBlock(
             ...(plot.surface.extremes ? { extremes: plot.surface.extremes } : {}),
             ...(plot.surface.view ? { view: plot.surface.view } : {}),
             ...(plot.equalScale ? { equalScale: true } : {}),
+            ...(plot.surface.points ? { points: plot.surface.points } : {}),
+            ...(plot.surface.cut
+              ? (() => {
+                  const c = plot.surface.cut;
+                  const label = `${c.axis === 'x' ? plot.variable : plot.yVariable ?? 'y'} = ${format(c.at)}${(c.axis === 'x' ? plot.xUnit : plot.yUnit) ? ` ${c.axis === 'x' ? plot.xUnit : plot.yUnit}` : ''}`;
+                  return { cut: { ...c, label, title: cutTitle(label) } };
+                })()
+              : {}),
           },
         }
       : {}),
   };
   // Its height to its width as dragged in the sheet (ratio=0.6), else the usual one.
-  const size = plot.place?.ratio ? { width: CHART_SIZE.width, height: Math.round(CHART_SIZE.width * plot.place.ratio) } : plot.kind === 'surface' ? SURFACE_SIZE : plot.equalScale ? equalScaleSize(spec) : CHART_SIZE;
+  // A cut adds its panel below the surface: the chart is that much higher.
+  const base = plot.place?.ratio ? { width: CHART_SIZE.width, height: Math.round(CHART_SIZE.width * plot.place.ratio) } : plot.kind === 'surface' ? SURFACE_SIZE : plot.equalScale ? equalScaleSize(spec) : CHART_SIZE;
+  const size = spec.surface?.cut ? { width: base.width, height: base.height + CUT_PANEL } : base;
   const options = { ...size, format, look, ...(plot.xDates ? { formatX: date } : {}), ...(plot.title ? { title: plot.title } : {}) };
   return {
     kind: 'chart',

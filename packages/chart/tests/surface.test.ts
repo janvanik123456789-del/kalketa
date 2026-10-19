@@ -67,4 +67,16 @@ describe('a surface drawn as a map', () => {
     expect(parseView('az=400 el=95')).toEqual({ az: 40, el: 90 });
     expect(viewText({ az: 35.4, el: 29.6 })).toBe('az=35 el=30');
   });
+  it('with a cut draws its line and, below, the curve along it in a panel of its own', () => {
+    const cut = { axis: 'y' as const, at: 1, along: xs, z: xs.map((x) => x + 1), label: 'y = 1 m', title: 'Řez y = 1 m' };
+    const withCut: ChartSpec = { ...map, surface: { ...plane, cut, points: [{ x: 3, y: 0.5, z: 3.5 }] } };
+    const svg = chartSvg(withCut, { height: 480 });
+    expect(svg).toContain('class="chart-cut-line"');
+    expect(svg).toContain('<svg class="chart-cut" x="0" y="300"');
+    expect(svg).toContain('>Řez y = 1 m</text>');
+    expect(svg).toContain('class="chart-point"');
+    // The surface keeps the room above the panel.
+    expect(chartLayout(withCut, { height: 480 }).plot.bottom).toBeLessThan(300);
+    expect(chartSvg({ ...withCut, kind: 'surface' }, { height: 480 })).toContain('class="chart-cut"');
+  });
 });

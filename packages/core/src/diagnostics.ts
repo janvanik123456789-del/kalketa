@@ -100,6 +100,7 @@ export const DIAGNOSTIC_SEVERITY = {
   'E-PLOT-YLIM': 'error',
   'E-PLOT-LEVELS': 'error',
   'E-PLOT-VIEW': 'error',
+  'E-PLOT-CUT': 'error',
   'E-PLOT-AREA': 'error',
   'E-PLOT-POINTS': 'error',
   'E-ROOTS-POLYNOMIAL': 'error',

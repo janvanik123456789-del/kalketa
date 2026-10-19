@@ -271,6 +271,8 @@ export function chartLayout(spec: ChartSpec, options: ChartOptions = {}): ChartL
   const height = options.height ?? 320;
   const format = options.format ?? String;
   const paint = paintOf(options.look);
+  // A surface with a cut: its curve in a panel of its own below, the rest for the surface.
+  const panel = cutPanel(spec, height);
   const scale = paint.font / 11;
   const xs = finite(spec.series.flatMap((s) => s.xs));
   const ys = finite(spec.series.flatMap((s) => s.ys));
@@ -288,7 +290,7 @@ export function chartLayout(spec: ChartSpec, options: ChartOptions = {}): ChartL
   const ends = !bar && paint.names && spec.series.length > 1 && spec.series.length <= 4 ? Math.max(...spec.series.map((s) => labelWidth(s.label))) * scale + 12 : 12;
   const legend = spec.series.length > 1 && paint.legend === 'top' ? 22 * scale : 0;
   const barRoom = spec.surface ? COLOR_BAR * scale + Math.max(0, Math.max(...surfaceRange(spec.surface).map((v) => format(v).length)) - 4) * 6.6 * scale : 0;
-  const plot = { left: Math.ceil(ticksWidth + 16), top: Math.round(26 * scale + legend), right: width - Math.ceil(spec.surface ? barRoom : Math.min(ends, width * 0.25)), bottom: Math.round(height - 29 - 11 * scale) };
+  const plot = { left: Math.ceil(ticksWidth + 16), top: Math.round(26 * scale + legend), right: width - Math.ceil(spec.surface ? barRoom : Math.min(ends, width * 0.25)), bottom: Math.round(height - panel - 29 - 11 * scale) };
   return { width, height, plot, x, y, ...(categories ? { categories } : {}), paint };
 }
 
@@ -356,6 +358,25 @@ function labelWidth(text: string): number {
 const r = (v: number) => Math.round(v * 100) / 100;
 
 /** The chart as an SVG element that scales to the width of its box. */
+/** The height of the panel of the cut of a surface, px (the chart is made that much higher). */
+export const CUT_PANEL = 180;
+
+/** The height of the panel of the cut of a surface (none without a cut). */
+function cutPanel(spec: ChartSpec, height: number): number {
+  return spec.surface?.cut ? Math.min(CUT_PANEL, Math.round(height * 0.45)) : 0;
+}
+
+/** The curve of the cut of a surface in its panel below the surface: an ordinary chart of z along the other axis. */
+function cutSvg(spec: ChartSpec, options: ChartOptions, top: number, width: number, height: number): string {
+  const surface = spec.surface!;
+  const cut = surface.cut!;
+  const own: ChartSpec = { kind: 'line', series: [{ label: cut.title, xs: cut.along, ys: cut.z }], xTitle: cut.axis === 'y' ? spec.xTitle : spec.yTitle, yTitle: surface.zTitle };
+  const inner = chartSvg(own, { ...options, width, height, look: { ...(options.look ?? {}), legend: 'none', names: false } });
+  // The chart of the cut nested in the picture, at its place; its title over it.
+  const nested = inner.replace(/^<svg class="chart-svg"[^>]*>/, `<svg class="chart-cut" x="0" y="${top}" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`);
+  return `<line x1="8" x2="${width - 8}" y1="${top + 2}" y2="${top + 2}" stroke="${GRID}" stroke-width="1"/><text x="${width / 2}" y="${top + 16}" text-anchor="middle" fill="${INK}" font-weight="600">${esc(cut.title)}</text>${nested}`;
+}
+
 export function chartSvg(spec: ChartSpec, options: ChartOptions = {}): string {
   const layout = chartLayout(spec, options);
   const { width, height, plot } = layout;
@@ -367,7 +388,9 @@ export function chartSvg(spec: ChartSpec, options: ChartOptions = {}): string {
   if (spec.kind === 'surface' && spec.surface) {
     const own = surface3dSvg(spec, layout, format, formatX, layout.paint.colormap, layout.paint.font, !!spec.surface.equalScale);
     const named = options.title ? `<title>${esc(options.title)}</title>` : '';
-    return `<svg class="chart-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" role="img" font-family='${FONT}' font-size="${layout.paint.font}" style="width:100%;height:auto;display:block">${named}${own}</svg>`;
+    const panel = cutPanel(spec, height);
+    const below = panel ? cutSvg(spec, options, height - panel, width, panel) : '';
+    return `<svg class="chart-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" role="img" font-family='${FONT}' font-size="${layout.paint.font}" style="width:100%;height:auto;display:block">${named}${own}${below}</svg>`;
   }
 
   // Grid and y ticks: hairlines behind the data.
@@ -389,7 +412,7 @@ export function chartSvg(spec: ChartSpec, options: ChartOptions = {}): string {
   parts.push(`<line x1="${plot.left}" x2="${plot.right}" y1="${r(zero)}" y2="${r(zero)}" stroke="${AXIS}" stroke-width="1"/>`);
   parts.push(`<line x1="${plot.left}" x2="${plot.left}" y1="${plot.top}" y2="${plot.bottom}" stroke="${AXIS}" stroke-width="1"/>`);
   if (paint.frame) parts.push(`<rect class="chart-frame" x="${plot.left}" y="${plot.top}" width="${plot.right - plot.left}" height="${plot.bottom - plot.top}" fill="none" stroke="${INK_2}" stroke-width="1"/>`);
-  if (spec.xTitle) parts.push(text((plot.left + plot.right) / 2, height - 8, spec.xTitle, `text-anchor="middle" fill="${INK_2}"`));
+  if (spec.xTitle) parts.push(text((plot.left + plot.right) / 2, height - cutPanel(spec, height) - 8, spec.xTitle, `text-anchor="middle" fill="${INK_2}"`));
   if (spec.yTitle) parts.push(text(plot.left - 6, plot.top - 10, spec.yTitle, `text-anchor="start" fill="${INK_2}"`));
 
   const data = spec.surface ? surfaceSvg(spec, layout, format, paint.colormap, paint.font) : `<g class="chart-data">${spec.kind === 'bar' ? bars(spec, layout) : curves(spec, layout)}</g>`;
@@ -407,6 +430,8 @@ export function chartSvg(spec: ChartSpec, options: ChartOptions = {}): string {
   if (spec.kind !== 'bar' && paint.names && spec.series.length > 1 && spec.series.length <= 4) parts.push(endLabels(spec, layout));
 
   const title = options.title ? `<title>${esc(options.title)}</title>` : '';
+  const panel = cutPanel(spec, height);
+  if (panel) parts.push(cutSvg(spec, options, height - panel, width, panel));
   return `<svg class="chart-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" role="img" font-family='${FONT}' font-size="${paint.font}" style="width:100%;height:auto;display:block">${title}${parts.join('')}</svg>`;
 }
 

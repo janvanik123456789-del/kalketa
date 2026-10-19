@@ -35,7 +35,7 @@ export const PLOT_FUNCTION = 'plot';
 export type PlotKind = 'line' | 'points' | 'bar' | 'map' | 'surface';
 const KINDS: readonly PlotKind[] = ['line', 'points', 'bar'];
 /** Options of plot(...); every other named argument is the variable. */
-export const PLOT_OPTIONS: readonly string[] = ['kind', 'title', 'samples', 'place', 'ylim', 'roots', 'symmetry', 'extremes', 'inflections', 'area', 'tangent', 'labels', 'points', 'style', 'levels', 'view'];
+export const PLOT_OPTIONS: readonly string[] = ['kind', 'title', 'samples', 'place', 'ylim', 'roots', 'symmetry', 'extremes', 'inflections', 'area', 'tangent', 'labels', 'points', 'style', 'levels', 'view', 'cut'];
 /** Curves in one chart: the categorical colours a reader still tells apart. */
 export const MAX_PLOT_SERIES = 8;
 const LINE_SAMPLES = 201;
@@ -103,6 +103,10 @@ export interface PlotSurface {
   readonly levelCount?: number;
   /** view: "az=35 el=30" — from where a surface in 3D is seen (kind "surface"). */
   readonly view?: { readonly az: number; readonly el: number };
+  /** cut: y == 1 m — the surface along a line of constant x or y: z at points along the other axis. */
+  readonly cut?: { readonly axis: 'x' | 'y'; readonly at: number; readonly along: readonly number[]; readonly z: readonly number[] };
+  /** points: [x_v, y_v] or [x₁, y₁ | x₂, y₂] — points of the sheet on the surface, z there. */
+  readonly points?: readonly { readonly x: number; readonly y: number; readonly z: number }[];
   /** extremes: true — the highest and the lowest point of the grid. */
   readonly extremes?: readonly { readonly x: number; readonly y: number; readonly z: number; readonly peak: boolean }[];
 }
@@ -713,6 +717,50 @@ function surfaceStatement(call: CallExpr, binders: readonly NamedArg[], ctx: Eva
       levels = items.map((q) => toDisplay(q, ctx.registry, zUnit).value).sort((a, b) => a - b);
     }
   }
+  // z at a point of the sheet (x, y as quantities), in the unit of z; NaN where it has none.
+  const zAt = (x: Quantity, y: Quantity): number => {
+    const inner: EvalContext = { ...ctx, lookup: (n, where) => (n === xBinder.name ? x : n === yBinder.name ? y : ctx.lookup(n, where)) };
+    try {
+      const value = evaluate(body, inner);
+      return value.type === 'quantity' && !value.im ? toDisplay(value, ctx.registry, zUnit).value : NaN;
+    } catch (err) {
+      if (err instanceof CalcError && GAP_CODES.has(err.diagnostic.code)) return NaN;
+      throw err;
+    }
+  };
+  // A cut along a line of constant x or y: cut: y == 1 m.
+  const cutArg = call.named.find((n) => n.name === 'cut');
+  let cut: { axis: 'x' | 'y'; at: number; along: number[]; z: number[] } | undefined;
+  if (cutArg) {
+    const e = cutArg.value;
+    const name = e.kind === 'binary' && e.operator === '==' && e.left.kind === 'variable' ? e.left.name : e.kind === 'binary' && e.operator === '==' && e.left.kind === 'unit' && e.left.unit.kind === 'unit-name' ? e.left.unit.name : undefined;
+    const axis = name === xBinder.name ? 'x' : name === yBinder.name ? 'y' : undefined;
+    if (!axis || e.kind !== 'binary') return fail('E-PLOT-CUT', e.span, { x: xBinder.name, y: yBinder.name });
+    const [lo, hi] = axis === 'x' ? [x0, x1] : [y0, y1];
+    const value = asQuantity(evaluate(e.right, ctx), e.right.span);
+    if (!sameDim(value.dim, lo.dim) || value.si < lo.si - 1e-9 * Math.abs(hi.si - lo.si) || value.si > hi.si + 1e-9 * Math.abs(hi.si - lo.si)) return fail('E-PLOT-CUT', e.span, { x: xBinder.name, y: yBinder.name });
+    const [from, to] = axis === 'x' ? [y0, y1] : [x0, x1];
+    const n = 100;
+    const steps = Array.from({ length: n + 1 }, (_, k) => at(from, from.si + ((to.si - from.si) * k) / n));
+    cut = {
+      axis,
+      at: (axis === 'x' ? xShown(value.si) : yShown(value.si)).value,
+      along: steps.map((q) => (axis === 'x' ? yShown(q.si) : xShown(q.si)).value),
+      z: steps.map((q) => (axis === 'x' ? zAt(value, q) : zAt(q, value))),
+    };
+  }
+  // Points of the sheet on the surface: points: [x_v, y_v] or rows [x₁, y₁ | x₂, y₂].
+  const pointsArg = call.named.find((n) => n.name === 'points');
+  let points: { x: number; y: number; z: number }[] | undefined;
+  if (pointsArg) {
+    const v = evaluate(pointsArg.value, ctx);
+    const pairs = v.type === 'vector' && v.items.length === 2 ? [[v.items[0]!, v.items[1]!]] : v.type === 'matrix' && v.cols === 2 ? Array.from({ length: v.rows }, (_, i) => [v.items[2 * i]!, v.items[2 * i + 1]!]) : undefined;
+    if (!pairs) return fail('E-PLOT-POINTS', pointsArg.value.span, {});
+    points = pairs.map(([px, py]) => {
+      if (!sameDim(px!.dim, x0.dim) || !sameDim(py!.dim, y0.dim) || px!.im || py!.im) fail('E-PLOT-POINTS', pointsArg.value.span, {});
+      return { x: xShown(px!.si).value, y: yShown(py!.si).value, z: zAt(px!, py!) };
+    });
+  }
   // The highest and the lowest point of the grid.
   let extremes: { x: number; y: number; z: number; peak: boolean }[] | undefined;
   if (flag(call, 'extremes', ctx, evaluate)) {
@@ -752,6 +800,8 @@ function surfaceStatement(call: CallExpr, binders: readonly NamedArg[], ctx: Eva
       ...(levelCount !== undefined ? { levelCount } : {}),
       ...(extremes && extremes.length > 0 ? { extremes } : {}),
       ...(view ? { view } : {}),
+      ...(cut ? { cut } : {}),
+      ...(points && points.length > 0 ? { points } : {}),
     },
   };
 }

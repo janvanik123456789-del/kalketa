@@ -724,12 +724,27 @@ export function SheetView(props: Props) {
     const set = (name: string, value: string | undefined) => props.onReplace(seg.start, seg.end, withPlotOption(seg.text, name, value));
     const threeD = plotOption(seg.text, 'kind')?.replace(/"/g, '') === 'surface';
     const view = plotOption(seg.text, 'view');
+    const cut = plotOption(seg.text, 'cut');
     return [
       { kind: 'separator' },
       { kind: 'action', label: t(c, 'chart.asMap'), checked: !threeD, run: () => props.onReplace(seg.start, seg.end, withPlotOption(withPlotOption(seg.text, 'kind', undefined), 'view', undefined)) },
       { kind: 'action', label: t(c, 'chart.as3d'), checked: threeD, run: () => set('kind', '"surface"') },
       ...(threeD ? [{ kind: 'action' as const, label: t(c, 'chart.viewFromAbove'), run: () => set('view', `"az=0 el=90"`) }] : []),
       ...(threeD && view ? [{ kind: 'action' as const, label: t(c, 'chart.viewUsual'), run: () => set('view', undefined) }] : []),
+      { kind: 'separator' },
+      {
+        kind: 'action',
+        label: t(c, 'chart.cut'),
+        checked: cut !== undefined,
+        run: () =>
+          void ask(t(c, 'chart.cutAsk'), cut ? (props.decimalComma ? toDecimalComma(cut) : cut).replace('==', '=') : '').then((answer) => {
+            if (answer === undefined) return;
+            // "y = 1 m" as written by hand: the equation of the line of the cut, == in the sheet.
+            const typed = answer.trim().replace(/\s*={1,2}\s*/, ' == ');
+            set('cut', typed ? (props.decimalComma ? fromDecimalComma(typed) : typed) : undefined);
+          }),
+      },
+      ...(cut !== undefined ? [{ kind: 'action' as const, label: t(c, 'chart.cutRemove'), run: () => set('cut', undefined) }] : []),
       ...chartLookItems(seg),
     ];
   };

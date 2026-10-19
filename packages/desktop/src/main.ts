@@ -2610,9 +2610,64 @@ async function layersWithRealInput(picture: string) {
       edited.errors === 0 &&
       edited.rows >= 1,
   };
+  // The look of a chart, by its right button: muted colours and a frame, seen in the preview; for this chart only
+  // (its line gets style: "…"), then saved as the style of charts of the calculation (every chart takes it).
+  const readLook = async () =>
+    (await contents.executeJavaScript(`(() => {
+    const charts = [...document.querySelectorAll('.layer-view.active .block.chart svg.chart-svg')];
+    return {
+      charts: charts.length,
+      framed: charts.filter((c) => c.querySelector('.chart-frame')).length,
+      muted: charts.filter((c) => c.innerHTML.includes('#4c72b0')).length,
+      errors: document.querySelectorAll('.layer-view.active .page .row.has-error').length,
+    };
+  })()`)) as { charts: number; framed: number; muted: number; errors: number };
+  const openLook = async () => {
+    await contents.executeJavaScript(`document.querySelector('.layer-view.active .block.chart svg.chart-svg')?.setAttribute('data-smoke-look', '')`);
+    await clickOn('[data-smoke-look]', [], 'right');
+    await pause(300);
+    await clickMenu('Vzhled grafu');
+    await pause(500);
+  };
+  await openLook();
+  const lookItems = (await contents.executeJavaScript(`[...document.querySelectorAll('.look-options label')].length`)) as number;
+  await contents.executeJavaScript(`document.querySelector('.look-options select')?.focus()`);
+  await pressKey('Down');
+  await pause(200);
+  await contents.executeJavaScript(`[...document.querySelectorAll('.look-options .look-check')].find((l) => l.textContent.includes('Rámeček'))?.querySelector('input')?.setAttribute('data-smoke-frame', '')`);
+  await clickOn('[data-smoke-frame]');
+  await pause(400);
+  const lookPreview = (await contents.executeJavaScript(`(() => { const svg = document.querySelector('.look-preview svg'); return { frame: !!svg?.querySelector('.chart-frame'), muted: !!svg?.innerHTML.includes('#4c72b0') }; })()`)) as { frame: boolean; muted: boolean };
+  await takePicture(picture.replace(/[.]png$/, '-chart-look.png'));
+  await clickOn('.dialog-buttons button[data-choice="0"]');
+  await pause(1500);
+  const lookOwn = await readLook();
+  await openLook();
+  await clickOn('.dialog-buttons button[data-choice="1"]');
+  await pause(1500);
+  const lookStyle = await readLook();
+  await takePicture(picture.replace(/[.]png$/, '-chart-style.png'));
+  const chartLook = {
+    items: lookItems,
+    preview: lookPreview,
+    own: lookOwn,
+    style: lookStyle,
+    ok:
+      lookItems >= 8 &&
+      lookPreview.frame &&
+      lookPreview.muted &&
+      lookOwn.charts >= 2 &&
+      lookOwn.framed === 1 &&
+      lookOwn.muted === 1 &&
+      lookOwn.errors === 0 &&
+      lookStyle.charts >= 2 &&
+      lookStyle.framed === lookStyle.charts &&
+      lookStyle.muted === lookStyle.charts &&
+      lookStyle.errors === 0,
+  };
   const quadraticSample = {
     crank,
-    theory: { theoryTab, tankErrors, theoryChecks, pythonCheck, rowsCopy, rocket, parabola, thermistor, fitDialog },
+    theory: { theoryTab, tankErrors, theoryChecks, pythonCheck, rowsCopy, rocket, parabola, thermistor, fitDialog, chartLook },
     across,
     beam,
     slowTyping,
@@ -2621,7 +2676,7 @@ async function layersWithRealInput(picture: string) {
     after: sampleAfter,
     outOfDomain,
     english,
-    ok: !!thumb && sampleBefore.errors === 0 && sampleAfter.errors === 0 && sampleBefore.a !== '' && sampleAfter.a !== sampleBefore.a && sampleAfter.roots !== sampleBefore.roots && outOfDomain.drawn && !outOfDomain.area && outOfDomain.roots === 0 && !outOfDomain.error && outOfDomain.warned && english.head === 'Quadratic equation' && english.verdicts.length === 5 && english.verdicts.every((v) => v.endsWith('OK')) && english.errors === 0 && crank.pictures === 4 && crank.charts === 3 && crank.errors === 0 && crank.verdict.endsWith('VYHOVUJE') && slowTyping.waitingShown && slowTyping.settled && cube.pictures === 1 && cube.derived >= 5 && cube.errors === 0 && beam.pictures === 3 && beam.charts >= 4 && beam.errors === 0 && across.before && !across.after && theoryTab >= 1 && tankErrors === 0 && theoryChecks.blocks >= 4 && theoryChecks.bad === 0 && pythonCheck.rows === 4 && pythonCheck.agree === 4 && rowsCopy.marked === 6 && rowsCopy.rows === 3 && rowsCopy.picture === 1 && rowsCopy.status.startsWith('chyba: 0') && rocket.errors === 0 && rocket.charts >= 2 && parabola.errors === 0 && parabola.charts >= 2 && parabola.normal >= 2 && thermistor.errors === 0 && thermistor.charts >= 3 && fitDialog.ok,
+    ok: !!thumb && sampleBefore.errors === 0 && sampleAfter.errors === 0 && sampleBefore.a !== '' && sampleAfter.a !== sampleBefore.a && sampleAfter.roots !== sampleBefore.roots && outOfDomain.drawn && !outOfDomain.area && outOfDomain.roots === 0 && !outOfDomain.error && outOfDomain.warned && english.head === 'Quadratic equation' && english.verdicts.length === 5 && english.verdicts.every((v) => v.endsWith('OK')) && english.errors === 0 && crank.pictures === 4 && crank.charts === 3 && crank.errors === 0 && crank.verdict.endsWith('VYHOVUJE') && slowTyping.waitingShown && slowTyping.settled && cube.pictures === 1 && cube.derived >= 5 && cube.errors === 0 && beam.pictures === 3 && beam.charts >= 4 && beam.errors === 0 && across.before && !across.after && theoryTab >= 1 && tankErrors === 0 && theoryChecks.blocks >= 4 && theoryChecks.bad === 0 && pythonCheck.rows === 4 && pythonCheck.agree === 4 && rowsCopy.marked === 6 && rowsCopy.rows === 3 && rowsCopy.picture === 1 && rowsCopy.status.startsWith('chyba: 0') && rocket.errors === 0 && rocket.charts >= 2 && parabola.errors === 0 && parabola.charts >= 2 && parabola.normal >= 2 && thermistor.errors === 0 && thermistor.charts >= 3 && fitDialog.ok && chartLook.ok,
   };
   const userChart = { namedArea, quadOk, quadTarget, quadEnd, quadEditing, ok: namedArea === 'Integral1=27' && quadOk && quadTarget > 0 && Math.abs(quadEnd - quadTarget) < 12 };
   // Relations: a circle solved by its name, a derivation following from a relation of theory, and the circle

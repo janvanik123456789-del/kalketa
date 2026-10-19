@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chartLayout, chartSvg, niceScale, xPosition, xValueAt, yPosition, type ChartSpec } from '../src/index.js';
+import { chartLayout, chartLookText, chartSvg, lookDifference, niceScale, parseChartLook, withLook, xPosition, xValueAt, yPosition, type ChartSpec } from '../src/index.js';
 
 const line: ChartSpec = { kind: 'line', series: [{ label: 'M(x)', xs: [0, 2.5, 5], ys: [0, 37.5, 0] }], xTitle: 'x [m]', yTitle: 'M(x) [kN·m]' };
 
@@ -33,6 +33,36 @@ describe('chart', () => {
     expect(layout.categories).toEqual([1, 2, 3]);
     expect(layout.y.min).toBeLessThanOrEqual(-100);
     expect(xValueAt(layout, layout.plot.right - 1)).toBe(3);
+  });
+
+  it('reads and writes its look, the own one over the style of the calculation', () => {
+    const look = parseChartLook('colors=#000000,#FF0000,red line=2,5 dashes=off markers=always grid=y frame font=13 legend=none names=off what=1');
+    expect(look).toEqual({ colors: ['#000000', '#ff0000'], line: 2.5, dashes: false, markers: 'always', grid: 'y', frame: true, font: 13, legend: 'none', names: false });
+    expect(parseChartLook(chartLookText(look))).toEqual(look);
+    expect(chartLookText({})).toBe('');
+    const style = { line: 3, grid: 'y' as const };
+    expect(withLook(style, { grid: 'none' })).toEqual({ line: 3, grid: 'none' });
+    // A chart keeps of its own only what differs from the style.
+    expect(lookDifference({ line: 3, grid: 'none', frame: true }, style)).toEqual({ grid: 'none', frame: true });
+  });
+
+  it('is drawn in the look chosen', () => {
+    const two: ChartSpec = { ...line, series: [line.series[0]!, { label: 'V(x)', xs: [0, 2.5, 5], ys: [30, 0, -30] }] };
+    const usual = chartSvg(two);
+    expect(usual).toContain('stroke="#2a78d6" stroke-width="2"');
+    expect(usual).toContain('stroke-dasharray="7 4"');
+    expect(usual).not.toContain('chart-frame');
+    const own = chartSvg(two, { look: { colors: ['#111111', '#222222'], line: 3, dashes: false, frame: true, font: 13, legend: 'none', names: false, grid: 'none' } });
+    expect(own).toContain('stroke="#111111" stroke-width="3"');
+    expect(own).toContain('stroke="#222222" stroke-width="3"');
+    expect(own).not.toContain('stroke-dasharray="7 4"');
+    expect(own).toContain('class="chart-frame"');
+    expect(own).toContain('font-size="13"');
+    // No legend and no names at the ends: the label of a curve is not written at all.
+    expect(own).not.toContain('>V(x)<');
+    // No grid: of the lines across the plot only the axis is left.
+    expect((own.match(/stroke="#e1e0d9"/g) ?? []).length).toBe(0);
+    expect((usual.match(/stroke="#e1e0d9"/g) ?? []).length).toBeGreaterThan(3);
   });
 
   it('escapes texts', () => {

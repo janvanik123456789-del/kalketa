@@ -76,3 +76,20 @@ describe('the height of a chart to its width', () => {
     expect(formatPlacement({ width: 60, ratio: 0.8 })).toBe('width=60% ratio=0.8');
   });
 });
+
+describe('the look of a chart', () => {
+  it('is the style of charts of the calculation with the chart’s own style over it', () => {
+    const block = (text: string, chartStyle?: string) =>
+      buildPrintDocument(evaluateSheet(text), { catalog: catalogFor('cs'), registry: defaultRegistry, title: 'T', digits: 4, ...(chartStyle ? { chartStyle } : {}) }).blocks.find((b) => b.kind === 'chart')!;
+    const usual = block('plot(x^2, x: 0 .. 4)');
+    expect(usual.kind === 'chart' && usual.look).toEqual({});
+    const styled = block('plot(x^2, x: 0 .. 4)', 'line=3 frame');
+    expect(styled.kind === 'chart' && styled.look).toEqual({ line: 3, frame: true });
+    expect(styled.kind === 'chart' && styled.svg).toContain('class="chart-frame"');
+    const own = block('plot(x^2, x: 0 .. 4, style: "frame=off grid=y")', 'line=3 frame');
+    expect(own.kind === 'chart' && own.look).toEqual({ line: 3, frame: false, grid: 'y' });
+    expect(own.kind === 'chart' && own.ownLook).toEqual({ frame: false, grid: 'y' });
+    expect(own.kind === 'chart' && own.svg).not.toContain('chart-frame');
+    expect(evaluateSheet('plot(x^2, x: 0 .. 4, style: "frame")').diagnostics).toEqual([]);
+  });
+});

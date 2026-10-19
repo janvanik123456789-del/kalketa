@@ -102,6 +102,7 @@ async function main(argv: string[]): Promise<number> {
       paper: doc.layout.paper,
       orientation: doc.layout.orientation,
       ...(doc.layout.style ? { style: doc.layout.style } : {}),
+      ...(doc.layout.chartStyle ? { chartStyle: doc.layout.chartStyle } : {}),
       resolveFile: (path) => dataUri(path, doc.files.get(path), doc.files),
       appendices: [...appendixLayers(doc.layers, evaluation, (layer) => t(printCatalog, `layer.kind.${layer.kind}` as UiKey)), ...blockAppendices(evaluation.main)],
       footer: revisionFooter(printCatalog, {

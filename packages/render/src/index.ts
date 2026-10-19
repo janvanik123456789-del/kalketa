@@ -47,6 +47,8 @@ export interface PrintSettings {
   readonly aiLines?: ReadonlySet<number>;
   /** How the calculation is set; "airy" when absent. */
   readonly style?: CalcStyle;
+  /** The style of charts of the calculation (layout.json chartStyle). */
+  readonly chartStyle?: string;
   /** Pages numbered through, or by sections (2.1, 2.2): positions, else the headings of one level; appendices A.1. */
   readonly pageNumbers?: PageNumbers;
   /** "✓ odvození ověřeno" in the printout too (when left out), or on the screen only. */
@@ -89,6 +91,7 @@ export function printHtml(result: SheetResult, settings: PrintSettings): string 
     digits: settings.digits ?? 4,
     importSource: (layer: string) => titles.get(layer),
     ...(settings.resolveFile ? { resolveFile: settings.resolveFile } : {}),
+    ...(settings.chartStyle ? { chartStyle: settings.chartStyle } : {}),
   };
   const doc = buildPrintDocument(result, {
     ...common,

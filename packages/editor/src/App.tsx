@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { defaultRegistry, formatPicture, parsePicture, rowLabel, TEXT_COLORS, toDecimalComma, type Diagnostic, type Statement } from '@kalketa/core';
 import { catalogFor, CATALOGS, formatDate, formatDiagnostic, formatNumber, t, type Catalog, type UiKey } from '@kalketa/i18n';
-import { buildPrintDocument, printHtml, renderBlockHtml, revisionFooter, type PrintAppendix } from '@kalketa/render';
+import { buildPrintDocument, printHtml, renderBlockHtml, revisionFooter, type PrintAppendix, type PrintBlock } from '@kalketa/render';
 import { emptyScene, readScene, writeScene, type CanvasScene } from '@kalketa/canvas';
 import { CanvasEditor } from '@kalketa/canvas/editor';
 import { withAiLayer, compareWithSheet, sheetHas, PYTHON_PRELUDE, readOutput, addLayer, allDiagnostics, appendixLayers, blockAppendices, documentBlocks, isRemovable, LayerSessions, MAIN_LAYER, removeLayer, freezeRevision, removeRevision, revisionDocument, revisionState, shortHash, tablesByLayer, theorySections, updateLayer, withTheoryIds, conversationsOf, hasConversations, withConversation, withoutConversation, aiMemoryOf, withAiMemory, linkedLibraries, librarySections, entriesOf, newSheetsOf, withEntries, studyAdvice, studyNotes, LARGE_STUDY_PAGES, type StudySettings, aiMadeLines, type SheetEntry, evaluateDocument, type ChangeEntry, type Conversation, type AddableLayerKind, type Layer, type RevisionState, type SheetDocument } from '@kalketa/sheet';
@@ -44,6 +44,8 @@ import { captionOf, fromFile, pictureLine, picturePath, pixelWidth, widthFor, ty
 import { importBlockFile } from './blockActions.js';
 import { AboutDialog, CustomizeDialog, FunctionsDialog, PropertiesDialog, SettingsDialog, ShortcutsDialog } from './components/Dialogs.js';
 import { FitDialog } from './components/FitDialog.js';
+import { ChartLookDialog } from './components/ChartLookDialog.js';
+import { chartLookText, lookDifference, parseChartLook } from '@kalketa/chart';
 import { PythonRunnerContext, type PythonRunner } from './components/PythonCheck.js';
 import { applyEdits, fitCharts, fitSeries, readFit, type FitChoice, type LineEdit } from './logic/curveFit.js';
 import { DocumentTabs } from './components/DocumentTabs.js';
@@ -223,6 +225,8 @@ export function App() {
   // The user writes numbers the way the program language does: 50,5 in Czech.
   const decimalComma = formatNumber(1.5, ui).includes(',');
   const printCatalog = catalogFor(doc.manifest.language ?? language);
+  /** Numbers of the ticks of a chart as the print writes them (4 digits, decimal comma of the language). */
+  const chartNumber = useCallback((v: number) => formatNumber(v, printCatalog, { digits: 4 }).replace('-', '−'), [printCatalog]);
   // Incremental calculation state of each open document.
   // cost: how long its last calculation took (ms), lastSource: the sheet it was done for.
   const engines = useRef(new Map<number, { sessions: LayerSessions; tables: ReturnType<typeof tableCache>; cost: number; lastSource?: string }>());
@@ -312,10 +316,10 @@ export function App() {
         openPanes.flatMap((id) => {
           const l = layerById(id);
           if (l?.kind !== 'sheet' && l?.kind !== 'calc') return [];
-          return [[id, buildPrintDocument(resultOf(l), { catalog: printCatalog, registry: defaultRegistry, digits: doc.layout.digits, title: '', showHidden: true, resolveFile, ...(doc.layout.summary ? { summary: doc.layout.summary } : {}), ...(equationNumbers(doc.layout) ? { equations: equationNumbers(doc.layout)! } : {}), ...(doc.layout.verdict ? { verdict: doc.layout.verdict } : {}) })] as const];
+          return [[id, buildPrintDocument(resultOf(l), { catalog: printCatalog, registry: defaultRegistry, digits: doc.layout.digits, title: '', showHidden: true, resolveFile, ...(doc.layout.summary ? { summary: doc.layout.summary } : {}), ...(equationNumbers(doc.layout) ? { equations: equationNumbers(doc.layout)! } : {}), ...(doc.layout.verdict ? { verdict: doc.layout.verdict } : {}), ...(doc.layout.chartStyle ? { chartStyle: doc.layout.chartStyle } : {}) })] as const];
         }),
       ),
-    [evaluation, openKey, printCatalog, doc.layout.digits, doc.layout.summary, doc.layout.equations, doc.layout.style, doc.layout.verdict, resolveFile],
+    [evaluation, openKey, printCatalog, doc.layout.digits, doc.layout.summary, doc.layout.equations, doc.layout.style, doc.layout.verdict, doc.layout.chartStyle, resolveFile],
   );
 
   useEffect(() => {
@@ -864,6 +868,7 @@ export function App() {
       headRight,
       aiLines: unreviewedAiLines(),
       style: doc.layout.style ?? 'airy',
+      ...(doc.layout.chartStyle ? { chartStyle: doc.layout.chartStyle } : {}),
       ...(doc.layout.summary ? { summary: doc.layout.summary } : {}),
       ...(equationNumbers(doc.layout) ? { equations: equationNumbers(doc.layout)! } : {}),
       ...(doc.layout.verdict ? { verdict: doc.layout.verdict } : {}),
@@ -1461,6 +1466,7 @@ export function App() {
     pickedDetail.current = undefined;
   }, [doc.layout.detail]);
   const fitSessions = useRef<LayerSessions | undefined>(undefined);
+  const [chartLook, setChartLook] = useState<{ readonly chart: Extract<PrintBlock, { kind: 'chart' }>; write(style: string | undefined): void } | undefined>();
   const [fitEdit, setFitEdit] = useState<{ readonly choice: FitChoice; readonly start: number; readonly end: number } | undefined>();
   const previewFit = (edits: readonly LineEdit[], name: string): string => {
     fitSessions.current ??= new LayerSessions(defaultRegistry);
@@ -1468,7 +1474,7 @@ export function App() {
     const layers = layer.kind === 'sheet' ? doc.layers : doc.layers.map((l) => (l.id === layer.id ? { ...l, text: tried } : l));
     const evaluated = fitSessions.current.evaluate(layer.kind === 'sheet' ? tried : doc.source, layers, tables, blocks);
     const own = (layer.kind === 'calc' ? evaluated.aux.get(layer.id) : undefined) ?? evaluated.main;
-    const printed = buildPrintDocument(own, { catalog: printCatalog, registry: defaultRegistry, digits: doc.layout.digits, title: '', resolveFile });
+    const printed = buildPrintDocument(own, { catalog: printCatalog, registry: defaultRegistry, digits: doc.layout.digits, title: '', resolveFile, ...(doc.layout.chartStyle ? { chartStyle: doc.layout.chartStyle } : {}) });
     const lines = tried.split('\n');
     const calls = new RegExp(`(^|[^\\p{L}\\p{N}_])${name}\\(`, 'u');
     return printed.blocks
@@ -2177,6 +2183,7 @@ export function App() {
           onEditCanvas={(path) => openCanvas(path)}
           onCopyRows={copyRows}
           onCurve={editCurve}
+          onChartLook={(chart, write) => setChartLook({ chart, write })}
           curveEditable={(line, series) => !!fittedCurve(line, series)}
           onCanvasArea={(path, factorWidth, factorHeight, line) => {
             // The canvas's own size grows with its frame; what is drawn keeps its size and place.
@@ -2534,6 +2541,33 @@ export function App() {
       {dialog === 'customize' && <CustomizeDialog catalog={ui} layout={toolbars} commands={commands} onApply={changeToolbars} onClose={() => setDialog(undefined)} />}
       {dialog === 'shortcuts' && <ShortcutsDialog catalog={ui} commands={commands} onClose={() => setDialog(undefined)} />}
       {canvasEdit?.mode === 'window' && canvasEditor(canvasEdit.path, 'window')}
+      {chartLook && (
+        <ChartLookDialog
+          catalog={ui}
+          spec={chartLook.chart.spec}
+          size={{ width: chartLook.chart.layout.width, height: chartLook.chart.layout.height }}
+          format={chartNumber}
+          base={doc.layout.chartStyle ? parseChartLook(doc.layout.chartStyle) : {}}
+          own={chartLook.chart.ownLook ?? {}}
+          onApply={(look) => {
+            // The chart keeps of its own only what differs from the style of the calculation.
+            const own = chartLookText(lookDifference(look, doc.layout.chartStyle ? parseChartLook(doc.layout.chartStyle) : undefined));
+            chartLook.write(own ? `"${own}"` : undefined);
+            setChartLook(undefined);
+          }}
+          onSaveStyle={(look) => {
+            // The style of the calculation: this chart takes it, so it keeps nothing of its own.
+            chartLook.write(undefined);
+            const style = chartLookText(look);
+            changeWith((present) => {
+              const { chartStyle: _, ...layout } = present.layout;
+              return { ...present, layout: style ? { ...layout, chartStyle: style } : layout };
+            });
+            setChartLook(undefined);
+          }}
+          onClose={() => setChartLook(undefined)}
+        />
+      )}
       {dialog === 'fit' && (
         <FitDialog
           catalog={ui}

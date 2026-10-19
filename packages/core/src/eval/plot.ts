@@ -33,7 +33,7 @@ export const PLOT_FUNCTION = 'plot';
 export type PlotKind = 'line' | 'points' | 'bar';
 const KINDS: readonly PlotKind[] = ['line', 'points', 'bar'];
 /** Options of plot(...); every other named argument is the variable. */
-export const PLOT_OPTIONS: readonly string[] = ['kind', 'title', 'samples', 'place', 'ylim', 'roots', 'symmetry', 'extremes', 'inflections', 'area', 'tangent', 'labels', 'points'];
+export const PLOT_OPTIONS: readonly string[] = ['kind', 'title', 'samples', 'place', 'ylim', 'roots', 'symmetry', 'extremes', 'inflections', 'area', 'tangent', 'labels', 'points', 'style'];
 /** Curves in one chart: the categorical colours a reader still tells apart. */
 export const MAX_PLOT_SERIES = 8;
 const LINE_SAMPLES = 201;
@@ -109,6 +109,8 @@ export interface PlotResult {
   readonly tangent?: PlotTangent;
   /** points: [x_v; y_v] or [x₁, y₁ | x₂, y₂] — points of the sheet, in the units of the axes. */
   readonly points?: readonly { readonly x: number; readonly y: number }[];
+  /** style: "line=2.5 grid=y frame" — how the chart looks, over the style of charts of the calculation. */
+  readonly style?: string;
   /** labels: "e0.0=0,18 r0.1=-20,-5" — the labels moved by hand, by their key, in units of the chart. */
   readonly labelOffsets?: Readonly<Record<string, readonly [number, number]>>;
 }
@@ -138,6 +140,7 @@ export function plotStatement(given: CallExpr, ctx: EvalContext, evaluate: Evalu
   if (!KINDS.includes(plotKind)) fail('E-PLOT-KIND', call.named.find((n) => n.name === 'kind')!.value.span, { kind: kind ?? '' });
   const title = option(call, 'title', ctx, evaluate);
   const placeText = option(call, 'place', ctx, evaluate);
+  const style = option(call, 'style', ctx, evaluate);
   const place = placeText === undefined ? undefined : parsePlacement(placeText);
   // A chart has no lines of its own to stand beside: side= is for pictures.
   if (placeText !== undefined && (!place || place.side)) fail('E-PLOT-POSITION', call.named.find((n) => n.name === 'place')!.value.span, { place: placeText });
@@ -229,6 +232,7 @@ export function plotStatement(given: CallExpr, ctx: EvalContext, evaluate: Evalu
   return {
     kind: plotKind,
     ...(title !== undefined ? { title } : {}),
+    ...(style ? { style } : {}),
     variable: binder?.name ?? '',
     xUnit: x.unit,
     yUnit: yUnitSymbol,

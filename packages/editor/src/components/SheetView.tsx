@@ -70,6 +70,8 @@ interface Props {
   onEditCanvas(path: string): void;
   /** A click on a curve of the chart on `line` (its series, counted from 0): a fitted curve opens to be edited. */
   onCurve?(line: number, series: number): void;
+  /** The look of a chart to be chosen: the chart, and how its own style is written into its line. */
+  onChartLook?(chart: Extract<PrintBlock, { kind: 'chart' }>, write: (style: string | undefined) => void): void;
   /** Whether that curve opens to be edited (it is fitted through points): the pointer shows it can be clicked. */
   curveEditable?(line: number, series: number): boolean;
   /** A canvas made larger or smaller by an edge in the sheet: its own size times these factors, the drawing as it is. */
@@ -707,7 +709,16 @@ export function SheetView(props: Props) {
       ...(current !== undefined ? [{ kind: 'action' as const, label: t(c, 'chart.yRangeAuto'), run: () => props.onReplace(seg.start, seg.end, withPlotYRange(seg.text, undefined)) }] : []),
       { kind: 'separator' },
       ...chartToolItems(seg),
+      ...chartLookItems(seg),
     ];
+  };
+
+  /** The look of the chart: colours, lines, grid, text; for this chart or as the style of charts of the calculation. */
+  const chartLookItems = (seg: Segment): MenuItem[] => {
+    const block = blockByLine.get(seg.start);
+    if (block?.kind !== 'chart' || !props.onChartLook) return [];
+    const write = (style: string | undefined) => props.onReplace(seg.start, seg.end, withPlotOption(seg.text, 'style', style));
+    return [{ kind: 'separator' }, { kind: 'action', label: t(props.uiCatalog, 'look.menu'), run: () => props.onChartLook!(block, write) }];
   };
 
   /** The area under the curve (hatched, its integral in it), the tangent to drag along it, the labels back in place. */

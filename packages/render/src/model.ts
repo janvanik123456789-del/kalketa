@@ -29,7 +29,7 @@ import {
   type UnitRegistry,
   type Value,
 } from '@kalketa/core';
-import { chartLayout, chartSvg, type ChartLayout, type ChartSpec } from '@kalketa/chart';
+import { chartLayout, chartSvg, parseChartLook, withLook, type ChartLayout, type ChartLook, type ChartSpec } from '@kalketa/chart';
 import { formatDate, formatDiagnostic, formatNumber, t, type Catalog, type NumberFormatOptions } from '@kalketa/i18n';
 import { formulaNode, hasSubstitutableParts, THIN_SPACE, type FormulaOptions, type Substituted } from './formula.js';
 import { mi, mn, mo, mtext, mu, nameNode, paren, row, sup, toText, type MathNode, table } from './math.js';
@@ -53,6 +53,8 @@ export interface PrintOptions {
   readonly showHidden?: boolean;
   /** Where values from another layer are shown to come from, e.g. "Příloha A: Zatížení". */
   readonly importSource?: (layerId: string) => string | undefined;
+  /** The style of charts of the calculation ("line=2.5 grid=y"); a chart's own style: "…" goes over it. */
+  readonly chartStyle?: string;
 }
 
 export type LineRole = 'given' | 'formula' | 'substitution' | 'result';
@@ -172,6 +174,9 @@ export type PrintBlock =
       readonly line: number;
       /** The chart drawn as SVG. */
       readonly svg: string;
+      /** How it is drawn: the style of the calculation with its own over it; and its own alone. */
+      readonly look: ChartLook;
+      readonly ownLook?: ChartLook;
       /** What the SVG shows and where, for reading values under the pointer in the editor. */
       readonly spec: ChartSpec;
       readonly layout: ChartLayout;
@@ -384,7 +389,7 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
       case 'display': {
         if (r.plot && s.kind === 'display' && s.expr.kind === 'call') {
           const label = r.plot.title ? t(catalog, 'print.figure', { n: String(++figures) }) : undefined;
-          blocks.push(chartBlock(r.plot, s.expr, s.span.line, formulaOptions(), (v) => numberFormat({ digits: 4 })(v).replace('-', '−'), dateFormat, label, s.comment, messages));
+          blocks.push(chartBlock(r.plot, s.expr, s.span.line, formulaOptions(), (v) => numberFormat({ digits: 4 })(v).replace('-', '−'), dateFormat, label, s.comment, messages, options.chartStyle));
           break;
         }
         // A fitted curve: the call, then its equation with the numbers found, and R².
@@ -1178,7 +1183,10 @@ function chartBlock(
   label: string | undefined,
   comment: string | undefined,
   messages: readonly Message[],
+  chartStyle: string | undefined,
 ): PrintBlock {
+  const ownLook = plot.style ? parseChartLook(plot.style) : undefined;
+  const look = withLook(chartStyle ? parseChartLook(chartStyle) : undefined, ownLook);
   const names = call.args.map((arg) => superscripts(toText(formulaNode(arg, formula)).replace(/\s+/g, ' ')));
   const unit = (u: string) => (u ? ` [${u}]` : '');
   const spec: ChartSpec = {
@@ -1207,11 +1215,13 @@ function chartBlock(
   };
   // Its height to its width as dragged in the sheet (ratio=0.6), else the usual one.
   const size = plot.place?.ratio ? { width: CHART_SIZE.width, height: Math.round(CHART_SIZE.width * plot.place.ratio) } : plot.equalScale ? equalScaleSize(spec) : CHART_SIZE;
-  const options = { ...size, format, ...(plot.xDates ? { formatX: date } : {}), ...(plot.title ? { title: plot.title } : {}) };
+  const options = { ...size, format, look, ...(plot.xDates ? { formatX: date } : {}), ...(plot.title ? { title: plot.title } : {}) };
   return {
     kind: 'chart',
     line,
     svg: chartSvg(spec, options),
+    look,
+    ...(ownLook ? { ownLook } : {}),
     spec,
     layout: chartLayout(spec, options),
     xUnit: plot.xUnit,

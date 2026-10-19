@@ -194,6 +194,18 @@ table.shortcuts td { padding: 2px 16px 2px 0; }
 .fit-options .hint { margin: 2px 0; color: #4b5563; font-size: 12px; min-height: 3em; }
 .fit-lines { margin: 0; padding: 6px; background: #fff; border: 1px solid #d5d9df; font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .fit-preview { background: #fff; border: 1px solid #d5d9df; padding: 8mm 6mm; overflow: auto; max-height: 64vh; font-size: 10pt; }
+.look-dialog { display: grid; grid-template-columns: minmax(250px, 300px) minmax(0, 1fr); gap: 12px; min-height: 380px; }
+.look-options { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.look-options fieldset { border: 1px solid #c9ced6; padding: 4px 8px 6px; margin: 0; display: flex; flex-direction: column; gap: 4px; }
+.look-options legend { font-weight: 600; padding: 0 4px; }
+.look-field { display: grid; grid-template-columns: 110px minmax(0, 1fr); align-items: center; gap: 6px; }
+.look-check { display: flex; align-items: center; gap: 6px; }
+.look-colors { display: flex; flex-wrap: wrap; gap: 4px; padding-left: 116px; }
+.look-colors input[type='color'] { width: 26px; height: 22px; padding: 0; border: 1px solid #c9ced6; background: none; cursor: pointer; }
+.look-reset { align-self: flex-start; }
+.look-options .hint { margin: 2px 0; color: #4b5563; font-size: 12px; }
+.look-preview { background: #fff; border: 1px solid #d5d9df; padding: 6mm; overflow: auto; max-height: 64vh; align-self: start; }
+@media (max-width: 760px) { .look-dialog { grid-template-columns: 1fr; } }
 .functions-list { max-height: 60vh; overflow-y: auto; }
 .functions-list h4 { margin: 10px 0 4px; }
 table.functions { border-collapse: collapse; width: 100%; }

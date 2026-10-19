@@ -70,6 +70,8 @@ export interface Layout {
   readonly derivations?: 'printed' | 'screen';
   /** How detailed a calculation the AI writes should be; the AI asks when it is not set. */
   readonly detail?: 'brief' | 'paper' | 'teaching';
+  /** The style of charts of the calculation ("colors=… line=2.5 grid=y frame"); a chart's own style: "…" goes over it. */
+  readonly chartStyle?: string;
 }
 
 export const DEFAULT_LAYOUT: Layout = { paper: 'A4', orientation: 'portrait', digits: 4 };

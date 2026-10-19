@@ -3172,6 +3172,7 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
   let resumed: string[] = [];
   let newSheet = { head: '', others: '', opened: { tab: '', rows: 0, marked: 0, errors: '' }, state: '' };
   let pythonChat = { checks: 0, first: '', last: '', answers: 0, told: '', keep: 0, tables: 0, kept: false };
+  let sheetCheck = { checks: 0, report: '', answers: '' };
   let answerBlocks = { choiceButtons: '', levelAnswer: '', noteButton: '', noteAfter: '' };
   let thinkingCut = '';
   let together = { allButton: '', acceptedAll: 0, undoneAll: -1, copy: { tab: '', rows: 0, marked: 0, badges: 0 }, original: { rows: -1, state: 0 } };
@@ -3324,6 +3325,19 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
     await clickOn('.menubar-item:nth-child(2) > button');
     await clickMenu('Zpět');
     await pause(400);
+    // The sheet an answer proposes, checked by the program: a name defined twice and a number in text the sheet does
+    // not compute go back to the model by themselves; the corrected proposal passes, so no second report comes.
+    const checksBefore = (await contents.executeJavaScript(`${checkTurns}.length`)) as number;
+    await clickOn('.chat-input');
+    await typeText('Zdvoj výpočet.');
+    await pressKey('Enter');
+    const doubled = `[...document.querySelectorAll('.chat-pane .chat-turn.assistant:not(.writing)')].filter((t) => t.textContent.includes('zdvojeno:'))`;
+    for (let i = 0; i < 100 && ((await contents.executeJavaScript(`${doubled}.length`)) as number) < 2; i++) await pause(150);
+    await pause(600);
+    sheetCheck = (await contents.executeJavaScript(`(() => {
+      const checks = [...${checkTurns}].slice(${checksBefore}).map((t) => t.textContent);
+      return { checks: checks.length, report: checks[0] ?? '', answers: ${doubled}.map((t) => t.textContent.match(/zdvojeno: \\S+/)?.[0] ?? '').join('|') };
+    })()`)) as typeof sheetCheck;
     // How detailed the calculation should be: the model asks by a choice, the user clicks an answer; the model then
     // writes in that level (it gets it in its briefing) and proposes a note, put into the AI notes by a click.
     await clickOn('.chat-input');
@@ -3358,7 +3372,7 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
   await clickMenu('Boční panel');
   await clickMenu(back);
   await pause(300);
-  await writeFile(picture.replace(/[.]png$/, '-ai-chat.json'), JSON.stringify({ pasted, unpasted, typed, theory, offered, quietWhileOff, head, shown, cutOff, cleared, aiTab, layerShown, kept, resumed, proposal, together, newSheet, pythonChat, answerBlocks, paneTabs, thoughtFolded, thought }, null, 2));
+  await writeFile(picture.replace(/[.]png$/, '-ai-chat.json'), JSON.stringify({ pasted, unpasted, typed, theory, offered, quietWhileOff, head, shown, cutOff, cleared, aiTab, layerShown, kept, resumed, proposal, together, newSheet, pythonChat, sheetCheck, answerBlocks, paneTabs, thoughtFolded, thought }, null, 2));
   return (
     pasted === 'Klopení je ztráta stability ohýbaného nosníku. Vloženo ze schránky.' && unpasted === 'Klopení je ztráta stability ohýbaného nosníku.' &&
     typed === 'H2:Klopení|P:Klopení je ztráta stability ohýbaného nosníku.' && theory.heading === 'Klopení' && /^T\d+$/.test(theory.badge) &&
@@ -3382,6 +3396,7 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
     newSheet.head === 'Nový list: Nosník se silou · řádků: 4' && Number(newSheet.others) >= 2 &&
     newSheet.opened.tab.startsWith('Nosník se silou') && newSheet.opened.marked >= 3 && newSheet.opened.errors.startsWith('chyba: 0') && newSheet.state.startsWith('Otevřeno jako „Nosník se silou“') &&
     pythonChat.checks === 2 && pythonChat.answers === 2 && pythonChat.told.includes('python: ano') && pythonChat.first.includes('✗') && pythonChat.last.includes('✓') && !pythonChat.last.includes('✗') && pythonChat.keep === 2 && pythonChat.tables === 2 && pythonChat.kept &&
+    sheetCheck.checks === 1 && sheetCheck.report.includes('Kontrola navrženého listu') && sheetCheck.report.includes('„smoke_d“ už je definováno') && sheetCheck.report.includes('t_v2 == t_v') && sheetCheck.report.includes('777') && sheetCheck.answers === 'zdvojeno: první|zdvojeno: opraveno' &&
     answerBlocks.choiceButtons === 'Stručně: vzorec, dosazení, výsledek|Jako na papíře: vztahy, odvození krok po kroku|Výukově: navíc vysvětlení a ověření v Pythonu' && answerBlocks.levelAnswer.includes('úroveň: paper') && answerBlocks.noteButton === 'Vložit do Poznámek AI' && answerBlocks.noteAfter === 'Vloženo' &&
     thinkingCut.includes('Odpověď hned.') && thinkingCut.includes('bez přemýšlení') &&
     together.allButton === 'Přijmout vše (2)' && together.acceptedAll === 2 && together.undoneAll === 0 &&

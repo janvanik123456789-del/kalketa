@@ -35,7 +35,8 @@ ${DETAIL_LEVELS.map((l) => DETAIL_RULES[l]).join('\n')}`;
   return `How to write a calculation into the sheet:
 - Keep the assignment as it is (its text, given values, picture) and write the solution below it, under headings, one part of the task per heading, as ONE block that inserts it after the last line of the assignment: ${FENCE}change after <that line number>. A ${FENCE}sheet block opens a new file; use it only when the user asks for a new calculation, never for the solution of this one.
 - Given values one per line with their unit and a comment: L := 6 m            ' span. A value given in another unit is not copied into a new name; the unit it is shown in is set with | (A := π·d²/4 | mm²).
-- Names as in the theory and the task (σ_k, h_1, v_A), each defined once, above its use. A definition prints its value; no extra line "name =" after it.
+- Names as in the theory and the task (σ_k, h_1, v_A), each defined once, above its use. A definition prints its value; no extra line "name =" after it. The same quantity computed a second way (an integral and its closed form) gets a name of its own and the two are compared: t_v2 := … then check "Uzavřený tvar": t_v2 == t_v.
+- A number in text (a ratio, a comparison, "~4000× wider") is computed in the sheet first, on a line of its own with a name; text never claims a number the sheet does not compute. The program checks the proposed sheet and returns its errors and such numbers to you.
 - Choose the unit a result is shown in so it reads well (| m², | min, | kN·m), not the unit of the formula.
 - Units convert themselves: m² and cm², kN and N, min and s may stand in one formula as they are; never convert values by hand, never copy a value into another unit to make a formula work.
 - A zero needs no unit: y_2 == 0, p_a + ρ·g·0 (a zero written bare is of any unit).

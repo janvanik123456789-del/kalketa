@@ -149,6 +149,21 @@ const fakeApi = createServer((request, response) => {
         response.end(event('[DONE]'));
         return;
       }
+      // "Zdvoj…": a proposal with a name defined twice and a number in text the sheet does not compute; given the
+      // program's report of the proposed sheet, the same calculation with a name of its own and no such number.
+      const sheetReport = question.includes('Kontrola navrženého listu') || question.includes('Check of the proposed sheet');
+      if (question.startsWith('Zdvoj') || sheetReport) {
+        const lines = [...system.matchAll(/^ *(\d+) \| /gm)].map((m) => Number(m[1]));
+        const lf = String.fromCharCode(10);
+        const fence = '`'.repeat(3);
+        const body = sheetReport
+          ? `smoke_d := 2 m${lf}smoke_d2 := smoke_d·1.5${lf}"Druhá délka je o polovinu větší."`
+          : `smoke_d := 2 m${lf}smoke_d := 3 m${lf}"Je to asi 777× víc než nic."`;
+        const text = `zdvojeno: ${sheetReport ? 'opraveno' : 'první'}${lf}${lf}${fence}change after ${Math.max(...lines)}${lf}${body}${lf}${fence}${lf}`;
+        response.write(event({ model: 'local-smoke-7b', choices: [{ delta: { content: text } }] }));
+        response.end(event('[DONE]'));
+        return;
+      }
       // "Navrhni dvě…": two changes that belong together, a variable at the top and a line using it at the end.
       if (question.startsWith('Navrhni dvě')) {
         const lines = [...system.matchAll(/^ *(\d+) \| /gm)].map((m) => Number(m[1]));

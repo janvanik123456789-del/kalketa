@@ -14,7 +14,7 @@ import { emptyScene, readScene, writeScene, type CanvasScene } from '@kalketa/ca
 import { CanvasEditor } from '@kalketa/canvas/editor';
 import { withAiLayer, compareWithSheet, sheetHas, PYTHON_PRELUDE, readOutput, addLayer, allDiagnostics, appendixLayers, blockAppendices, documentBlocks, isRemovable, LayerSessions, MAIN_LAYER, removeLayer, freezeRevision, removeRevision, revisionDocument, revisionState, shortHash, tablesByLayer, theorySections, updateLayer, withTheoryIds, conversationsOf, hasConversations, withConversation, withoutConversation, aiMemoryOf, withAiMemory, linkedLibraries, librarySections, entriesOf, newSheetsOf, withEntries, studyAdvice, studyNotes, LARGE_STUDY_PAGES, type StudySettings, aiMadeLines, type SheetEntry, evaluateDocument, type ChangeEntry, type Conversation, type AddableLayerKind, type Layer, type RevisionState, type SheetDocument } from '@kalketa/sheet';
 import { buildCommands, shortcutOf, type Command } from './commands.js';
-import { applyProposal, applyProposals, cleanFigureDescription, cleanFormula, cleanReread, cleanMemory, parseNewSheets, DEFAULT_AI_SETTINGS, parseAiSettings, parseProposals, providerById, replacedLines, type ChangeProposal, type AiSettings, type ChatTurn, type CheckReport, type ChoiceBlock, type NoteBlock, DETAIL_LEVELS, isRoundResult, noteText, reportedNames } from '@kalketa/ai';
+import { applyProposal, applyProposals, cleanFigureDescription, cleanFormula, cleanReread, cleanMemory, parseNewSheets, DEFAULT_AI_SETTINGS, parseAiSettings, parseProposals, providerById, replacedLines, type ChangeProposal, type AiSettings, type ChatTurn, type CheckReport, type ChoiceBlock, type NoteBlock, DETAIL_LEVELS, isRoundResult, loneNumbers, noteText, proseOf, reportedNames, type SheetCheck } from '@kalketa/ai';
 import { ChatPane } from './components/ChatPane.js';
 import { TheoryLibraryDialog } from './components/TheoryLibraryDialog.js';
 import { sourceText, useTheoryLibraries, withoutDuplicates, type FoundLibrary } from './theoryLibraries.js';
@@ -1364,15 +1364,44 @@ export function App() {
       }
     : undefined;
 
+  /** The sheet an answer is about: a new sheet it writes, else this one with the changes it proposes; undefined when it proposes none. */
+  const proposedSource = (answer: string): string | undefined => {
+    const written = parseNewSheets(answer)[0];
+    const proposed = written ? written.lines.join('\n') : applyProposals(doc.source, parseProposals(answer));
+    return proposed !== undefined && proposed !== doc.source ? proposed : undefined;
+  };
+  /**
+   * The sheet an answer proposes, evaluated: the problems its changes bring (not those the sheet had),
+   * and the numbers its new text claims without the sheet computing them.
+   */
+  const checkProposedSheet = (answer: string): SheetCheck | undefined => {
+    const proposed = proposedSource(answer);
+    if (proposed === undefined) return undefined;
+    const sheet = evaluateDocument({ ...doc, source: proposed }, defaultRegistry).result;
+    const lineOf = (source: string, d: Diagnostic) => (d.span ? (source.split('\n')[d.span.line - 1] ?? '') : '');
+    const had = new Set(evaluation.main.diagnostics.map((d) => `${d.code}|${lineOf(doc.source, d).trim()}`));
+    const problems = sheet.diagnostics
+      .filter((d) => d.severity !== 'info' && !had.has(`${d.code}|${lineOf(proposed, d).trim()}`))
+      .map((d) => ({ line: lineOf(proposed, d), message: formatDiagnostic(d, ui) }));
+    // The lines the answer adds; the numbers of their text are to come from the sheet, the assignment or the theory.
+    const present = new Map<string, number>();
+    for (const line of doc.source.split('\n')) present.set(line, (present.get(line) ?? 0) + 1);
+    const added = proposed.split('\n').filter((line) => {
+      const n = present.get(line) ?? 0;
+      if (n > 0) present.set(line, n - 1);
+      return n === 0;
+    });
+    const values = [...sheet.values.values(), ...sheet.statements.flatMap((s) => (s.solutions ?? []).map((x) => x.value))].flatMap((v) => (v?.type === 'quantity' ? [v.si] : []));
+    const written = [doc.source, ...doc.layers.map((l) => l.text ?? ''), ...added.map((line) => line.replace(/"[^"\n]*"/g, ''))];
+    return { problems, numbers: loneNumbers(added.flatMap(proseOf), values, written) };
+  };
   /**
    * A check in Python of an answer of the AI: run where the settings say, its results set beside the
    * sheet with the changes the answer proposes applied (the check may be of the calculation it proposes).
    */
   const runAnswerCheck = async (code: string, answer: string): Promise<CheckReport> => {
-    // The sheet the check is about: a new sheet the answer writes, else this one with the changes it proposes.
-    const written = parseNewSheets(answer)[0];
-    const proposed = written ? written.lines.join('\n') : applyProposals(doc.source, parseProposals(answer));
-    const sheet = proposed !== undefined && proposed !== doc.source ? evaluateDocument({ ...doc, source: proposed }, defaultRegistry).result : evaluation.main;
+    const proposed = proposedSource(answer);
+    const sheet = proposed !== undefined ? evaluateDocument({ ...doc, source: proposed }, defaultRegistry).result : evaluation.main;
     // The calculation first, its check after: a check of names the sheet has none of is not run.
     const names = reportedNames(code);
     if (names.length > 0 && !names.some((name) => sheetHas(sheet, name))) return { ok: true, output: '', rows: [], postponed: names };
@@ -2286,6 +2315,7 @@ export function App() {
                     onNewSheet={toNewSheet}
                     newSheets={newSheetViews}
                     onOpenSheet={openNewSheet}
+                    checkSheet={checkProposedSheet}
                     {...(desktop ? { runCheck: runAnswerCheck, onCheckToSources: keepCheck } : {})}
                     onChoice={keepChoice}
                     onKeepNote={keepNote}

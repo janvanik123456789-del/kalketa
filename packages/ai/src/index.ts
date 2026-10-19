@@ -16,3 +16,4 @@ export * from './proposals.js';
 export * from './pythonChecks.js';
 export * from './answerBlocks.js';
 export * from './writingRules.js';
+export * from './sheetChecks.js';

@@ -5,7 +5,7 @@
  * appears as it is written; Stop ends it.
  */
 import { useEffect, useRef, useState } from 'react';
-import { AI_OFF, checkCitations, checksNeedAnswer, CITED_ID, parseChoices, parseNotes, parsePythonChecks, providerById, pythonReport, withoutAnswerBlocks, withoutProposals, type AiSettings, type ChatTurn, type CheckReport, type ChoiceBlock, type CitableSection, type NoteBlock } from '@kalketa/ai';
+import { AI_OFF, checkCitations, checksNeedAnswer, CITED_ID, parseChoices, parseNotes, parsePythonChecks, providerById, pythonReport, sheetNeedsAnswer, sheetReport, withoutAnswerBlocks, withoutProposals, type AiSettings, type ChatTurn, type CheckReport, type SheetCheck, type ChoiceBlock, type CitableSection, type NoteBlock } from '@kalketa/ai';
 import { formatNumber, t, type Catalog, type UiKey } from '@kalketa/i18n';
 import { notesHtml } from '@kalketa/render';
 import { desktop } from '../document.js';
@@ -77,6 +77,8 @@ export interface ChatPaneProps {
    * with the changes the answer proposes applied; without it, answers are not checked.
    */
   runCheck?(code: string, answer: string): Promise<CheckReport>;
+  /** The sheet an answer proposes, evaluated: what its changes break, or undefined when it proposes none. */
+  checkSheet?(answer: string): SheetCheck | undefined;
   /** Keeps a check of an answer in the sources, to be run again later. */
   onCheckToSources?(code: string): void;
   /** The user picked an answer of a choice block: a known question (detail) is kept in the calculation. */
@@ -98,7 +100,7 @@ export interface AnswerProposals {
   readonly effect?: ProposalEffect;
 }
 
-export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTurns, context, onOpenSettings, onNew, libraries = [], onLibraries, onToggleLibrary, proposals, onDecide, onReview, answerProposals, onAcceptAll, onNewSheet, newSheets, onOpenSheet, runCheck, onCheckToSources, onChoice, onKeepNote, noteKept }: ChatPaneProps) {
+export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTurns, context, onOpenSettings, onNew, libraries = [], onLibraries, onToggleLibrary, proposals, onDecide, onReview, answerProposals, onAcceptAll, onNewSheet, newSheets, onOpenSheet, runCheck, checkSheet, onCheckToSources, onChoice, onKeepNote, noteKept }: ChatPaneProps) {
   const [libraryMenu, setLibraryMenu] = useState(false);
   // The menu of libraries closes like any menu: a click anywhere else, or Esc.
   useEffect(() => {
@@ -221,12 +223,16 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTur
    */
   const checkAnswer = async (answered: readonly ChatTurn[], round: number) => {
     const last = answered[answered.length - 1];
-    const codes = last?.role === 'assistant' && runCheck ? parsePythonChecks(last.text) : [];
-    if (codes.length === 0) return;
+    if (last?.role !== 'assistant') return;
+    // The sheet with the changes first: what they break goes back to the model with the checks in Python.
+    const sheet = checkSheet?.(last.text);
+    const sheetWrong = sheetNeedsAnswer(sheet);
+    const codes = runCheck ? parsePythonChecks(last.text) : [];
+    if (codes.length === 0 && !sheetWrong) return;
     setChecking(true);
     const reports: CheckReport[] = [];
     try {
-      for (const code of codes) reports.push(await runCheck!(code, last!.text));
+      for (const code of codes) reports.push(await runCheck!(code, last.text));
     } finally {
       setChecking(false);
     }
@@ -245,10 +251,12 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTur
       capped: t(catalog, 'check.capped'),
       postponed: t(catalog, 'check.postponed'),
     };
-    const report: ChatTurn = { role: 'user', text: pythonReport(reports, words, (n) => formatNumber(n, catalog, { digits: 2 })), time: new Date().toISOString(), check: true };
+    const sheetWords = { title: t(catalog, 'sheetCheck.title'), problems: t(catalog, 'sheetCheck.problems'), numbers: t(catalog, 'sheetCheck.numbers'), ask: t(catalog, 'sheetCheck.ask') };
+    const text = [sheetWrong ? sheetReport(sheet!, sheetWords) : '', codes.length > 0 ? pythonReport(reports, words, (n) => formatNumber(n, catalog, { digits: 2 })) : ''].filter(Boolean).join('\n\n');
+    const report: ChatTurn = { role: 'user', text, time: new Date().toISOString(), check: true };
     const next = [...answered, report];
     onTurns(next);
-    if (checksNeedAnswer(reports) && round < MAX_CHECK_ROUNDS) await askModel(next, round + 1);
+    if ((sheetWrong || (codes.length > 0 && checksNeedAnswer(reports))) && round < MAX_CHECK_ROUNDS) await askModel(next, round + 1);
   };
 
   /** One answer of the model to the conversation as it is; its checks in Python after it. */

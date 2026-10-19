@@ -5,7 +5,9 @@
  * and the editor draw the same picture.
  */
 
-export type ChartKind = 'line' | 'points' | 'bar';
+import { COLOR_BAR, surfaceRange, surfaceSvg, type ChartSurface, type Colormap } from './surface.js';
+
+export type ChartKind = 'line' | 'points' | 'bar' | 'map';
 
 export interface ChartSeries {
   /** Name in the legend and at the end of the curve, e.g. "M(x)". */
@@ -49,6 +51,8 @@ export interface ChartSpec {
   readonly tangent?: { readonly x: number; readonly y: number; readonly slope: number };
   /** Labels moved by hand, by their key (r0.1, e0.0, a0.0, i0.0, t, s), in units of the chart. */
   readonly labelOffsets?: Readonly<Record<string, readonly [number, number]>>;
+  /** A surface z(x, y) drawn as a map (kind "map"): its grid, contour lines and colour bar. */
+  readonly surface?: ChartSurface;
 }
 
 export interface ChartOptions {
@@ -88,10 +92,12 @@ export interface ChartLook {
   readonly legend?: 'top' | 'none';
   /** The names of the curves at their ends (on when left out). */
   readonly names?: boolean;
+  /** Colours of a map of a surface: chosen by its values (when left out), one way, round zero, grey. */
+  readonly colormap?: Colormap;
 }
 
 /** The parts of a look in the order they are written. */
-export const LOOK_KEYS = ['colors', 'line', 'dashes', 'markers', 'grid', 'frame', 'font', 'legend', 'names'] as const;
+export const LOOK_KEYS = ['colors', 'line', 'dashes', 'markers', 'grid', 'frame', 'font', 'legend', 'names', 'colormap'] as const;
 
 /** A look read from its text: "colors=#2a78d6,#eb6834 line=2.5 dashes=off grid=y frame font=12". Parts it does not know are left out. */
 export function parseChartLook(text: string): ChartLook {
@@ -124,6 +130,9 @@ export function parseChartLook(text: string): ChartLook {
         break;
       case 'legend':
         if (value === 'top' || value === 'none') look.legend = value;
+        break;
+      case 'colormap':
+        if (value === 'auto' || value === 'sequential' || value === 'diverging' || value === 'gray') look.colormap = value;
         break;
     }
   }
@@ -177,6 +186,7 @@ interface Paint {
   readonly font: number;
   readonly legend: 'top' | 'none';
   readonly names: boolean;
+  readonly colormap: Colormap;
 }
 
 function paintOf(look: ChartLook | undefined): Paint {
@@ -190,6 +200,7 @@ function paintOf(look: ChartLook | undefined): Paint {
     font: look?.font ?? 11,
     legend: look?.legend ?? 'top',
     names: look?.names ?? true,
+    colormap: look?.colormap ?? 'auto',
   };
 }
 
@@ -275,7 +286,8 @@ export function chartLayout(spec: ChartSpec, options: ChartOptions = {}): ChartL
   const ticksWidth = Math.max(...y.ticks.map((v) => format(v).length)) * 6.6 * scale;
   const ends = !bar && paint.names && spec.series.length > 1 && spec.series.length <= 4 ? Math.max(...spec.series.map((s) => labelWidth(s.label))) * scale + 12 : 12;
   const legend = spec.series.length > 1 && paint.legend === 'top' ? 22 * scale : 0;
-  const plot = { left: Math.ceil(ticksWidth + 16), top: Math.round(26 * scale + legend), right: width - Math.ceil(Math.min(ends, width * 0.25)), bottom: Math.round(height - 29 - 11 * scale) };
+  const barRoom = spec.surface ? COLOR_BAR * scale + Math.max(0, Math.max(...surfaceRange(spec.surface).map((v) => format(v).length)) - 4) * 6.6 * scale : 0;
+  const plot = { left: Math.ceil(ticksWidth + 16), top: Math.round(26 * scale + legend), right: width - Math.ceil(spec.surface ? barRoom : Math.min(ends, width * 0.25)), bottom: Math.round(height - 29 - 11 * scale) };
   return { width, height, plot, x, y, ...(categories ? { categories } : {}), paint };
 }
 
@@ -373,10 +385,10 @@ export function chartSvg(spec: ChartSpec, options: ChartOptions = {}): string {
   if (spec.xTitle) parts.push(text((plot.left + plot.right) / 2, height - 8, spec.xTitle, `text-anchor="middle" fill="${INK_2}"`));
   if (spec.yTitle) parts.push(text(plot.left - 6, plot.top - 10, spec.yTitle, `text-anchor="start" fill="${INK_2}"`));
 
-  const data = `<g class="chart-data">${spec.kind === 'bar' ? bars(spec, layout) : curves(spec, layout)}</g>`;
+  const data = spec.surface ? surfaceSvg(spec, layout, format, paint.colormap, paint.font) : `<g class="chart-data">${spec.kind === 'bar' ? bars(spec, layout) : curves(spec, layout)}</g>`;
   // A y axis set by hand cuts off what lies beyond it: the data in a window of the plot area.
   parts.push(
-    spec.yRange
+    spec.yRange && !spec.surface
       ? `<svg x="${plot.left}" y="${plot.top}" width="${plot.right - plot.left}" height="${plot.bottom - plot.top}" viewBox="${plot.left} ${plot.top} ${plot.right - plot.left} ${plot.bottom - plot.top}" overflow="hidden">${data}</svg>`
       : data,
   );

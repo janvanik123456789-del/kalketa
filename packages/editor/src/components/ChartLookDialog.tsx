@@ -71,6 +71,12 @@ export function ChartLookDialog({ catalog, spec, size, format, base, own, onAppl
     >
       <div className="look-dialog">
         <div className="look-options">
+          {spec.surface ? (
+            <fieldset>
+              <legend>{say('look.surface')}</legend>
+              {choose('look.colormap', look.colormap ?? 'auto', ['auto', 'sequential', 'diverging', 'gray'] as const, (v) => say(`look.colormap.${v}`), (colormap) => set({ colormap }))}
+            </fieldset>
+          ) : (
           <fieldset>
             <legend>{say('look.curves')}</legend>
             {choose('look.palette', palette, [...Object.keys(CHART_PALETTES), ...(palette === 'own' ? ['own'] : [])], (p) => say(`look.palette.${p}` as UiKey), (p) => p !== 'own' && set({ colors: CHART_PALETTES[p]! }))}
@@ -90,13 +96,14 @@ export function ChartLookDialog({ catalog, spec, size, format, base, own, onAppl
             {check('look.dashes', look.dashes ?? true, (dashes) => set({ dashes }))}
             {choose('look.markers', look.markers ?? 'auto', ['auto', 'always', 'never'] as const, (v) => say(`look.markers.${v}`), (markers) => set({ markers }))}
           </fieldset>
+          )}
           <fieldset>
             <legend>{say('look.frameAndText')}</legend>
             {choose('look.grid', look.grid ?? 'both', ['both', 'y', 'x', 'none'] as const, (v) => say(`look.grid.${v}`), (grid) => set({ grid }))}
             {check('look.frame', look.frame ?? false, (frame) => set({ frame }))}
             {choose('look.font', look.font ?? 11, FONTS, (v) => `${v} px`, (font) => set({ font }))}
-            {check('look.legend', (look.legend ?? 'top') === 'top', (on) => set({ legend: on ? 'top' : 'none' }))}
-            {check('look.names', look.names ?? true, (names) => set({ names }))}
+            {!spec.surface && check('look.legend', (look.legend ?? 'top') === 'top', (on) => set({ legend: on ? 'top' : 'none' }))}
+            {!spec.surface && check('look.names', look.names ?? true, (names) => set({ names }))}
           </fieldset>
           <button type="button" className="look-reset" onClick={() => setLook({})}>
             {say('look.reset')}

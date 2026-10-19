@@ -8,6 +8,7 @@
  *   plot(Vyroba.E, x: Vyroba.mesic)         data: y for every x of a series
  *   plot(CF, kind: "bar")                   a series against its order
  *   plot(x^2 + y^2 == 25, x: -6 .. 6, y: -6 .. 6)   an implicit curve (also a relation by its name)
+ *   plot(w(x, y), x: 0 m .. a, y: 0 m .. b)  a surface over x and y: a colour map with contour lines
  *
  * One chart has one y axis: curves of different dimensions are an error
  * (two charts, never a second axis).
@@ -16,7 +17,7 @@
 import { CalcError, DependencyFailed, diagnostic, fail, type DiagnosticCode, type Span } from '../diagnostics.js';
 import type { Expr, NamedArg } from '../lang/ast.js';
 import { parsePlacement, type Placement } from '../lang/parser.js';
-import { multiplyDims, sameDim, type Dimension } from '../units/dimension.js';
+import { isDimensionless, multiplyDims, sameDim, type Dimension } from '../units/dimension.js';
 import { baseUnitSymbol, toDisplay } from '../units/display.js';
 import type { UnitRegistry } from '../units/registry.js';
 import type { ResolvedUnit } from '../units/unitExpr.js';
@@ -30,10 +31,10 @@ type CallExpr = Extract<Expr, { kind: 'call' }>;
 type Evaluate = (expr: Expr, ctx: EvalContext) => Value;
 
 export const PLOT_FUNCTION = 'plot';
-export type PlotKind = 'line' | 'points' | 'bar';
+export type PlotKind = 'line' | 'points' | 'bar' | 'map';
 const KINDS: readonly PlotKind[] = ['line', 'points', 'bar'];
 /** Options of plot(...); every other named argument is the variable. */
-export const PLOT_OPTIONS: readonly string[] = ['kind', 'title', 'samples', 'place', 'ylim', 'roots', 'symmetry', 'extremes', 'inflections', 'area', 'tangent', 'labels', 'points', 'style'];
+export const PLOT_OPTIONS: readonly string[] = ['kind', 'title', 'samples', 'place', 'ylim', 'roots', 'symmetry', 'extremes', 'inflections', 'area', 'tangent', 'labels', 'points', 'style', 'levels'];
 /** Curves in one chart: the categorical colours a reader still tells apart. */
 export const MAX_PLOT_SERIES = 8;
 const LINE_SAMPLES = 201;
@@ -85,6 +86,24 @@ export interface PlotTangent {
   readonly slope: number;
 }
 
+/**
+ * A surface z(x, y) over a rectangle: its values on a grid, in the units of the axes and of z. The print
+ * layer draws it as a colour map with contour lines (kind: "map").
+ */
+export interface PlotSurface {
+  /** x of the columns and y of the rows of the grid, in the units of the axes. */
+  readonly xs: readonly number[];
+  readonly ys: readonly number[];
+  /** z[i][j] at xs[i], ys[j] in the unit of z; NaN where the expression has no value (a hole). */
+  readonly z: readonly (readonly number[])[];
+  readonly zUnit: string;
+  /** levels: [10, 20] mm or levels: 8 — the values of the contour lines (a count: that many round ones). */
+  readonly levels?: readonly number[];
+  readonly levelCount?: number;
+  /** extremes: true — the highest and the lowest point of the grid. */
+  readonly extremes?: readonly { readonly x: number; readonly y: number; readonly z: number; readonly peak: boolean }[];
+}
+
 export interface PlotResult {
   readonly kind: PlotKind;
   readonly title?: string;
@@ -111,6 +130,8 @@ export interface PlotResult {
   readonly points?: readonly { readonly x: number; readonly y: number }[];
   /** style: "line=2.5 grid=y frame" — how the chart looks, over the style of charts of the calculation. */
   readonly style?: string;
+  /** A surface over x and y (kind "map"): its grid of values. */
+  readonly surface?: PlotSurface;
   /** labels: "e0.0=0,18 r0.1=-20,-5" — the labels moved by hand, by their key, in units of the chart. */
   readonly labelOffsets?: Readonly<Record<string, readonly [number, number]>>;
 }
@@ -129,6 +150,8 @@ export function plotStatement(given: CallExpr, ctx: EvalContext, evaluate: Evalu
   // An equation among the curves (x^2 + y^2 == 25, or a relation by its name) is an implicit curve over x and y.
   const implicit = call.args.map((arg) => equationOf(arg, formulaOf));
   const anyImplicit = implicit.some(Boolean);
+  // One expression over two ranges, not an equation: a surface z(x, y).
+  if (!anyImplicit && binders.length >= 2 && call.args.length === 1 && binders[0]!.value.kind === 'range' && binders[1]!.value.kind === 'range') return surfaceStatement(call, binders, ctx, evaluate, target);
   const extra = binders[anyImplicit ? 2 : 1];
   if (extra) fail('E-NAMED-ARG', extra.nameSpan, { function: call.name, argument: extra.name, problem: 'unknown' });
   if (call.args.length === 0) fail('E-PLOT-FORM', call.span, {});
@@ -605,6 +628,124 @@ function yLimits(call: CallExpr, yDim: Dimension, y: (q: Quantity) => number, ct
   const [a, b] = [y(low), y(high)];
   if (!(b > a)) return fail('E-PLOT-YLIM', r.span, {});
   return [a, b];
+}
+
+/** Cells of the grid of a surface along each axis, unless samples: says otherwise. */
+const SURFACE_CELLS = 50;
+const MAX_SURFACE_CELLS = 200;
+
+/** plot(z(x, y), x: a .. b, y: c .. d): the values of z on a grid over the rectangle, holes where it has none. */
+function surfaceStatement(call: CallExpr, binders: readonly NamedArg[], ctx: EvalContext, evaluate: Evaluate, target: ResolvedUnit | undefined): PlotResult {
+  const [xBinder, yBinder] = [binders[0]!, binders[1]!];
+  const extra = binders[2];
+  if (extra) fail('E-NAMED-ARG', extra.nameSpan, { function: call.name, argument: extra.name, problem: 'unknown' });
+  const kind = option(call, 'kind', ctx, evaluate);
+  if (kind !== undefined && kind !== 'map') fail('E-PLOT-KIND', call.named.find((n) => n.name === 'kind')!.value.span, { kind });
+  const title = option(call, 'title', ctx, evaluate);
+  const style = option(call, 'style', ctx, evaluate);
+  const placeText = option(call, 'place', ctx, evaluate);
+  const place = placeText === undefined ? undefined : parsePlacement(placeText);
+  if (placeText !== undefined && (!place || place.side)) fail('E-PLOT-POSITION', call.named.find((n) => n.name === 'place')!.value.span, { place: placeText });
+  const cellsArg = call.named.find((n) => n.name === 'samples');
+  let cells = SURFACE_CELLS;
+  if (cellsArg) {
+    const value = asQuantity(evaluate(cellsArg.value, ctx), cellsArg.value.span);
+    if (!Number.isInteger(value.si) || value.si < 2 || value.si > MAX_SURFACE_CELLS) fail('E-PLOT-SAMPLES', cellsArg.value.span, { max: MAX_SURFACE_CELLS });
+    cells = value.si;
+  }
+  const [x0, x1] = rangeOf(xBinder, ctx, evaluate);
+  const [y0, y1] = rangeOf(yBinder, ctx, evaluate);
+  const at = (q: Quantity, si: number): Quantity => ({ ...q, si });
+  const body = call.args[0]!;
+  // z at every point of the grid; a point without a value is a hole, not a failed chart.
+  const grid: (Quantity | undefined)[][] = [];
+  for (let i = 0; i <= cells; i++) {
+    const x = at(x0, x0.si + ((x1.si - x0.si) * i) / cells);
+    const column: (Quantity | undefined)[] = [];
+    for (let j = 0; j <= cells; j++) {
+      const y = at(y0, y0.si + ((y1.si - y0.si) * j) / cells);
+      const inner: EvalContext = { ...ctx, lookup: (n, where) => (n === xBinder.name ? x : n === yBinder.name ? y : ctx.lookup(n, where)) };
+      try {
+        const value = evaluate(body, inner);
+        if (value.type !== 'quantity') return fail('E-PLOT-FORM', body.span, {});
+        column.push(real(value, body.span));
+      } catch (err) {
+        if (err instanceof CalcError && GAP_CODES.has(err.diagnostic.code)) column.push(undefined);
+        else throw err;
+      }
+    }
+    grid.push(column);
+  }
+  const first = grid.flat().find((q): q is Quantity => q !== undefined);
+  if (!first) return fail('E-PLOT-FORM', body.span, {});
+  const other = grid.flat().find((q) => q && !sameDim(q.dim, first.dim));
+  if (other) fail('E-PLOT-UNITS', body.span, { left: baseUnitSymbol(first.dim, ctx.registry.baseSymbols()), right: baseUnitSymbol(other.dim, ctx.registry.baseSymbols()) });
+  if (target && !sameDim(target.dim, first.dim)) throw new CalcError(diagnostic('E-TARGET-UNIT', call.span, { unit: target.symbol, found: baseUnitSymbol(first.dim) }));
+  const zUnit = target ?? first.hint;
+  const z = grid.map((column) => column.map((q) => (q ? toDisplay(q, ctx.registry, zUnit).value : NaN)));
+  const xShown = (si: number) => toDisplay(at(x0, si), ctx.registry, x0.hint ?? x1.hint);
+  const yShown = (si: number) => toDisplay(at(y0, si), ctx.registry, y0.hint ?? y1.hint);
+  const xs = Array.from({ length: cells + 1 }, (_, i) => xShown(x0.si + ((x1.si - x0.si) * i) / cells).value);
+  const ys = Array.from({ length: cells + 1 }, (_, j) => yShown(y0.si + ((y1.si - y0.si) * j) / cells).value);
+  const xUnit = xShown(x0.si).unit;
+  const yUnit = yShown(y0.si).unit;
+  // The levels of the contour lines: values of z, or how many round ones.
+  const levelsArg = call.named.find((n) => n.name === 'levels');
+  let levels: number[] | undefined;
+  let levelCount: number | undefined;
+  if (levelsArg) {
+    const value = evaluate(levelsArg.value, ctx);
+    const items = value.type === 'vector' ? value.items : value.type === 'quantity' ? [value] : undefined;
+    if (!items || items.length === 0) return fail('E-PLOT-LEVELS', levelsArg.value.span, {});
+    const count = value.type === 'quantity' && isDimensionless(value.dim) ? value.si : undefined;
+    if (count !== undefined) {
+      if (!Number.isInteger(count) || count < 1 || count > 50) fail('E-PLOT-LEVELS', levelsArg.value.span, {});
+      levelCount = count;
+    } else {
+      if (items.some((q) => !sameDim(q.dim, first.dim) || q.im)) fail('E-PLOT-LEVELS', levelsArg.value.span, {});
+      levels = items.map((q) => toDisplay(q, ctx.registry, zUnit).value).sort((a, b) => a - b);
+    }
+  }
+  // The highest and the lowest point of the grid.
+  let extremes: { x: number; y: number; z: number; peak: boolean }[] | undefined;
+  if (flag(call, 'extremes', ctx, evaluate)) {
+    let hi: [number, number] | undefined;
+    let lo: [number, number] | undefined;
+    z.forEach((column, i) =>
+      column.forEach((v, j) => {
+        if (!Number.isFinite(v)) return;
+        if (!hi || v > z[hi[0]]![hi[1]]!) hi = [i, j];
+        if (!lo || v < z[lo[0]]![lo[1]]!) lo = [i, j];
+      }),
+    );
+    const span = Math.max(...z.flat().filter(Number.isFinite).map(Math.abs)) || 1;
+    extremes = [hi, lo].flatMap((p, k) => (p ? [{ x: xs[p[0]]!, y: ys[p[1]]!, z: tidy(z[p[0]]![p[1]]!, span), peak: k === 0 }] : []));
+    if (extremes.length === 2 && extremes[0]!.z === extremes[1]!.z) extremes = extremes.slice(0, 1);
+  }
+  return {
+    kind: 'map',
+    ...(title !== undefined ? { title } : {}),
+    ...(style ? { style } : {}),
+    variable: xBinder.name,
+    yVariable: yBinder.name,
+    xUnit,
+    yUnit,
+    series: [],
+    xRange: [xs[0]!, xs[xs.length - 1]!],
+    yRange: [ys[0]!, ys[ys.length - 1]!],
+    // A plate of 4 m by 2 m is drawn twice as wide as high: both axes at one scale where they share a unit.
+    ...(xUnit === yUnit ? { equalScale: true } : {}),
+    ...(place && Object.keys(place).length ? { place } : {}),
+    surface: {
+      xs,
+      ys,
+      z,
+      zUnit: toDisplay(first, ctx.registry, zUnit).unit,
+      ...(levels ? { levels } : {}),
+      ...(levelCount !== undefined ? { levelCount } : {}),
+      ...(extremes && extremes.length > 0 ? { extremes } : {}),
+    },
+  };
 }
 
 /** Points evenly across the range of measured x, for a smooth curve through them. */

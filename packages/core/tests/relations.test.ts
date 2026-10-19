@@ -129,8 +129,9 @@ describe('relations', () => {
     it('ask for the range of y and for sides of one unit', () => {
       expect(codes('plot(x^2 + y^2 == 25, x: -6 .. 6)')).toEqual(['E-PLOT-IMPLICIT']);
       expect(codes('plot(x^2 + y^2 == 25 m, x: -6 .. 6, y: -6 .. 6)')).toEqual(['E-PLOT-IMPLICIT']);
-      // An ordinary chart keeps its one variable.
-      expect(codes('plot(x^2, x: 0 .. 1, y: 0 .. 1)')).toEqual(['E-NAMED-ARG']);
+      // An expression over two ranges is a surface (here one that does not change with y); a third range is too many.
+      expect(codes('plot(x^2, x: 0 .. 1, y: 0 .. 1)')).toEqual([]);
+      expect(codes('plot(x^2, x: 0 .. 1, y: 0 .. 1, t: 0 .. 1)')).toEqual(['E-NAMED-ARG']);
     });
   });
 });

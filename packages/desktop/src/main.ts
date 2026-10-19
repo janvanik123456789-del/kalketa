@@ -2665,9 +2665,52 @@ async function layersWithRealInput(picture: string) {
       lookStyle.muted === lookStyle.charts &&
       lookStyle.errors === 0,
   };
+  // A surface over x and y: the deflection of a plate as a map, pasted into a new calculation; the pointer over
+  // its middle reads x, y and w there.
+  await pressKey('N', ['control']);
+  await pause(1200);
+  clipboard.writeText(['a := 4 m', 'b := 2 m', 'q := 10 kN/m^2', 'w(x, y) := q·x·(a - x)·y·(b - y)/(1000 kN·m)', 'plot(w(x, y), x: 0 m .. a, y: 0 m .. b, extremes: true) | mm'].join('\n'));
+  await pressKey('V', ['control']);
+  const readMap = async () =>
+    (await contents.executeJavaScript(`(() => {
+    const svg = document.querySelector('.layer-view.active .block.chart svg.chart-svg');
+    return {
+      picture: !!svg?.querySelector('image.chart-map'),
+      contours: svg?.querySelectorAll('.chart-contour').length ?? 0,
+      bar: !!svg?.querySelector('.chart-colorbar'),
+      peak: [...(svg?.querySelectorAll('.chart-extreme-label') ?? [])].map((t) => t.textContent).join('|'),
+      errors: document.querySelectorAll('.layer-view.active .page .row.has-error').length,
+    };
+  })()`)) as { picture: boolean; contours: number; bar: boolean; peak: string; errors: number };
+  let mapShown = await readMap();
+  for (let i = 0; i < 40 && !mapShown.picture; i++) {
+    await pause(250);
+    mapShown = await readMap();
+  }
+  const mapMiddle = (await contents.executeJavaScript(`(() => {
+    const image = document.querySelector('.layer-view.active .block.chart image.chart-map');
+    if (!image) return undefined;
+    image.scrollIntoView({ block: 'center' });
+    const r = image.getBoundingClientRect();
+    return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+  })()`)) as { x: number; y: number } | undefined;
+  if (mapMiddle) {
+    for (let step = 3; step >= 0; step--) {
+      contents.sendInputEvent({ type: 'mouseMove', x: mapMiddle.x - step * 4, y: mapMiddle.y - step * 4 });
+      await pause(80);
+    }
+  }
+  await pause(300);
+  const mapTip = (await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .chart-tooltip div, .layer-view.active .chart-tooltip span')].map((e) => e.textContent).join('|') || (document.querySelector('.layer-view.active .chart-tooltip')?.textContent ?? '')`)) as string;
+  await takePicture(picture.replace(/[.]png$/, '-surface-map.png'));
+  const surfaceMap = {
+    ...mapShown,
+    tip: mapTip,
+    ok: mapShown.picture && mapShown.contours >= 5 && mapShown.bar && mapShown.peak.includes('40') && mapShown.errors === 0 && /w\(x;\s?y\) = (39|40)/.test(mapTip) && mapTip.includes('mm'),
+  };
   const quadraticSample = {
     crank,
-    theory: { theoryTab, tankErrors, theoryChecks, pythonCheck, rowsCopy, rocket, parabola, thermistor, fitDialog, chartLook },
+    theory: { theoryTab, tankErrors, theoryChecks, pythonCheck, rowsCopy, rocket, parabola, thermistor, fitDialog, chartLook, surfaceMap },
     across,
     beam,
     slowTyping,
@@ -2676,7 +2719,7 @@ async function layersWithRealInput(picture: string) {
     after: sampleAfter,
     outOfDomain,
     english,
-    ok: !!thumb && sampleBefore.errors === 0 && sampleAfter.errors === 0 && sampleBefore.a !== '' && sampleAfter.a !== sampleBefore.a && sampleAfter.roots !== sampleBefore.roots && outOfDomain.drawn && !outOfDomain.area && outOfDomain.roots === 0 && !outOfDomain.error && outOfDomain.warned && english.head === 'Quadratic equation' && english.verdicts.length === 5 && english.verdicts.every((v) => v.endsWith('OK')) && english.errors === 0 && crank.pictures === 4 && crank.charts === 3 && crank.errors === 0 && crank.verdict.endsWith('VYHOVUJE') && slowTyping.waitingShown && slowTyping.settled && cube.pictures === 1 && cube.derived >= 5 && cube.errors === 0 && beam.pictures === 3 && beam.charts >= 4 && beam.errors === 0 && across.before && !across.after && theoryTab >= 1 && tankErrors === 0 && theoryChecks.blocks >= 4 && theoryChecks.bad === 0 && pythonCheck.rows === 4 && pythonCheck.agree === 4 && rowsCopy.marked === 6 && rowsCopy.rows === 3 && rowsCopy.picture === 1 && rowsCopy.status.startsWith('chyba: 0') && rocket.errors === 0 && rocket.charts >= 2 && parabola.errors === 0 && parabola.charts >= 2 && parabola.normal >= 2 && thermistor.errors === 0 && thermistor.charts >= 3 && fitDialog.ok && chartLook.ok,
+    ok: !!thumb && sampleBefore.errors === 0 && sampleAfter.errors === 0 && sampleBefore.a !== '' && sampleAfter.a !== sampleBefore.a && sampleAfter.roots !== sampleBefore.roots && outOfDomain.drawn && !outOfDomain.area && outOfDomain.roots === 0 && !outOfDomain.error && outOfDomain.warned && english.head === 'Quadratic equation' && english.verdicts.length === 5 && english.verdicts.every((v) => v.endsWith('OK')) && english.errors === 0 && crank.pictures === 4 && crank.charts === 3 && crank.errors === 0 && crank.verdict.endsWith('VYHOVUJE') && slowTyping.waitingShown && slowTyping.settled && cube.pictures === 1 && cube.derived >= 5 && cube.errors === 0 && beam.pictures === 3 && beam.charts >= 4 && beam.errors === 0 && across.before && !across.after && theoryTab >= 1 && tankErrors === 0 && theoryChecks.blocks >= 4 && theoryChecks.bad === 0 && pythonCheck.rows === 4 && pythonCheck.agree === 4 && rowsCopy.marked === 6 && rowsCopy.rows === 3 && rowsCopy.picture === 1 && rowsCopy.status.startsWith('chyba: 0') && rocket.errors === 0 && rocket.charts >= 2 && parabola.errors === 0 && parabola.charts >= 2 && parabola.normal >= 2 && thermistor.errors === 0 && thermistor.charts >= 3 && fitDialog.ok && chartLook.ok && surfaceMap.ok,
   };
   const userChart = { namedArea, quadOk, quadTarget, quadEnd, quadEditing, ok: namedArea === 'Integral1=27' && quadOk && quadTarget > 0 && Math.abs(quadEnd - quadTarget) < 12 };
   // Relations: a circle solved by its name, a derivation following from a relation of theory, and the circle

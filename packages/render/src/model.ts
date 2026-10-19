@@ -1212,6 +1212,20 @@ function chartBlock(
     ...(plot.tangent ? { tangent: plot.tangent } : {}),
     ...(plot.labelOffsets ? { labelOffsets: plot.labelOffsets } : {}),
     ...(plot.points ? { points: plot.points } : {}),
+    // A surface: its grid, the title of the colour bar from the expression and the unit of z.
+    ...(plot.surface
+      ? {
+          surface: {
+            xs: plot.surface.xs,
+            ys: plot.surface.ys,
+            z: plot.surface.z,
+            zTitle: `${names[0] ?? ''}${unit(plot.surface.zUnit)}`.trim(),
+            ...(plot.surface.levels ? { levels: plot.surface.levels } : {}),
+            ...(plot.surface.levelCount !== undefined ? { levelCount: plot.surface.levelCount } : {}),
+            ...(plot.surface.extremes ? { extremes: plot.surface.extremes } : {}),
+          },
+        }
+      : {}),
   };
   // Its height to its width as dragged in the sheet (ratio=0.6), else the usual one.
   const size = plot.place?.ratio ? { width: CHART_SIZE.width, height: Math.round(CHART_SIZE.width * plot.place.ratio) } : plot.equalScale ? equalScaleSize(spec) : CHART_SIZE;

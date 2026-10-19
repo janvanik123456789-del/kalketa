@@ -99,3 +99,41 @@ describe('plot', () => {
     expect(a.statements.at(-1)!.dependencies).toEqual(expect.arrayContaining(['M', 'L']));
   });
 });
+
+describe('a surface over x and y', () => {
+  const PLATE = `a := 4 m
+b := 2 m
+q := 10 kN/m^2
+w(x, y) := q·x·(a - x)·y·(b - y)/(1000 kN·m)
+`;
+  const surfaceOf = (text: string) => evaluateSheet(text).statements.find((s) => s.plot)?.plot;
+
+  it('is z on a grid in the units of the axes and of z, a map by default', () => {
+    const p = surfaceOf(`${PLATE}plot(w(x, y), x: 0 m .. a, y: 0 m .. b) | mm`)!;
+    expect(p.kind).toBe('map');
+    expect([p.variable, p.yVariable, p.xUnit, p.yUnit, p.surface!.zUnit]).toEqual(['x', 'y', 'm', 'm', 'mm']);
+    expect(p.surface!.xs).toHaveLength(51);
+    expect(p.surface!.z[25]![25]).toBeCloseTo(40, 9);
+    expect(p.xRange).toEqual([0, 4]);
+    expect(p.yRange).toEqual([0, 2]);
+    // Both axes in metres: drawn at one scale, the plate twice as wide as high.
+    expect(p.equalScale).toBe(true);
+  });
+
+  it('takes its grid, levels and extremes from the options', () => {
+    const p = surfaceOf(`${PLATE}plot(w(x, y), x: 0 m .. a, y: 0 m .. b, samples: 20, levels: [10, 20, 30] mm, extremes: true) | mm`)!;
+    expect(p.surface!.xs).toHaveLength(21);
+    expect(p.surface!.levels).toEqual([10, 20, 30]);
+    expect(p.surface!.extremes![0]).toEqual({ x: 2, y: 1, z: 40, peak: true });
+    expect(surfaceOf(`${PLATE}plot(w(x, y), x: 0 m .. a, y: 0 m .. b, levels: 5)`)!.surface!.levelCount).toBe(5);
+    expect(codes(`${PLATE}plot(w(x, y), x: 0 m .. a, y: 0 m .. b, levels: [1, 2] s)`)).toContain('E-PLOT-LEVELS');
+    expect(codes(`${PLATE}plot(w(x, y), x: 0 m .. a, y: 0 m .. b, kind: "bar")`)).toContain('E-PLOT-KIND');
+  });
+
+  it('has holes where it has no value, and is not an implicit curve', () => {
+    const p = surfaceOf('plot(sqrt(1 - x^2 - y^2), x: -1 .. 1, y: -1 .. 1)')!;
+    expect(p.surface!.z[0]![0]).toBeNaN();
+    expect(p.surface!.z[25]![25]).toBe(1);
+    expect(surfaceOf('plot(x^2 + y^2 == 1, x: -2 .. 2, y: -2 .. 2)')!.surface).toBeUndefined();
+  });
+});

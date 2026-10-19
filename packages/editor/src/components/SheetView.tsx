@@ -7,7 +7,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { formatExpr, formatPicture, fromDecimalComma, parsePicture, TEXT_ALIGNS, TEXT_COLORS, toDecimalComma, type SheetResult, type Statement, type StatementResult } from '@kalketa/core';
 import { formatDate, formatNumber, t, type Catalog, type UiKey } from '@kalketa/i18n';
-import { labelParts, xPosition, xValueAt, yPosition } from '@kalketa/chart';
+import { labelParts, surfaceAt, xPosition, xValueAt, yPosition } from '@kalketa/chart';
 import { columnsHead, isInput, pageLabels, renderBlockHtml, renderSummary, sheetSections, type CalcStyle, type PrintBlock, type PrintDocument, type Section } from '@kalketa/render';
 import { isCanvasPath } from '@kalketa/canvas';
 import { paginate, type PageGeometry } from '../logic/pages.js';
@@ -1413,6 +1413,21 @@ function ChartBlock({ block, catalog, onResize, onOption, sliders, editable }: {
     const x = xValueAt(block.layout, px);
     const number = (v: number) => formatNumber(v, catalog, { digits: 4 }).replace('-', '−');
     const withUnit = (v: number, u: string) => (Number.isFinite(v) ? `${number(v)}${u ? ` ${u}` : ''}` : '–');
+    // Over a map of a surface: x, y where the pointer is and z there, read between the points of its grid.
+    const surface = block.spec.surface;
+    if (surface) {
+      const py = (e.clientY - box.top) / unit;
+      if (py < plot.top || py > plot.bottom) return setHover(undefined);
+      const y = block.layout.y.min + ((plot.bottom - py) / (plot.bottom - plot.top)) * (block.layout.y.max - block.layout.y.min);
+      const name = (title: string, fallback: string) => title.split(' [')[0] || fallback;
+      const zUnit = /\[([^\]]*)\]$/.exec(surface.zTitle)?.[1] ?? '';
+      return setHover({
+        left: (box.left - own.left + xPosition(block.layout, x) * unit) * toBlock,
+        top: (box.top - own.top + plot.top * unit) * toBlock,
+        height: (plot.bottom - plot.top) * unit * toBlock,
+        lines: [`${name(block.spec.xTitle, 'x')} = ${withUnit(x, block.xUnit)}`, `${name(block.spec.yTitle, 'y')} = ${withUnit(y, block.yUnit)}`, `${name(surface.zTitle, 'z')} = ${withUnit(surfaceAt(surface, x, y), zUnit)}`],
+      });
+    }
     // Over an implicit curve (x² + y² = 25) the pointer reads where it is: x and y.
     if (block.spec.series.some((s) => s.implicit)) {
       const py = (e.clientY - box.top) / unit;

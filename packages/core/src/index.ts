@@ -28,7 +28,7 @@ export { FUNCTION_NAMES, BUILTIN_CONSTANTS, builtinFunctions } from './eval/func
 export { FUNCTION_MODULES, FunctionRegistry, signature, type FunctionDef, type FunctionModuleId } from './functions/registry.js';
 export * from './graph/session.js';
 export * from './graph/compare.js';
-export { isPlotCall, MAX_PLOT_SERIES, type PlotKind, type PlotResult, type PlotSeries } from './eval/plot.js';
+export { isPlotCall, MAX_PLOT_SERIES, type PlotKind, type PlotResult, type PlotSeries, type PlotSurface } from './eval/plot.js';
 export * from './tables/table.js';
 export { TABLE_FUNCTIONS, ROW_VARIABLE } from './eval/tables.js';
 export * from './provenance/trace.js';

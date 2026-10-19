@@ -5,3 +5,5 @@
  */
 
 export * from './chart.js';
+export * from './surface.js';
+export { pngDataUri } from './png.js';

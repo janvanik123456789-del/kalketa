@@ -2695,11 +2695,13 @@ async function layersWithRealInput(picture: string) {
     const r = image.getBoundingClientRect();
     return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
   })()`)) as { x: number; y: number } | undefined;
-  if (mapMiddle) {
+  // The pointer comes from beside it; a hidden window handles moves when it paints, so the move is made again.
+  for (let round = 0; round < 2 && mapMiddle; round++) {
     for (let step = 3; step >= 0; step--) {
       contents.sendInputEvent({ type: 'mouseMove', x: mapMiddle.x - step * 4, y: mapMiddle.y - step * 4 });
       await pause(80);
     }
+    if (round === 0) await takePicture(picture.replace(/[.]png$/, '-surface-hover.png'));
   }
   await pause(300);
   const mapTip = (await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .chart-tooltip div, .layer-view.active .chart-tooltip span')].map((e) => e.textContent).join('|') || (document.querySelector('.layer-view.active .chart-tooltip')?.textContent ?? '')`)) as string;
@@ -2736,6 +2738,8 @@ async function layersWithRealInput(picture: string) {
       contents.sendInputEvent({ type: 'mouseMove', x: centre.x + step * 10, y: centre.y + step * 3, button: 'left' });
       await pause(60);
     }
+    // The page paints (a hidden window draws its frames when it paints), then the turned picture is read.
+    await takePicture(picture.replace(/[.]png$/, '-surface-turning.png'));
     during3d = (await contents.executeJavaScript(firstPatch)) as string;
     contents.sendInputEvent({ type: 'mouseUp', x: centre.x + 80, y: centre.y + 24, button: 'left', clickCount: 1 });
   }
@@ -2872,8 +2876,8 @@ async function layersWithRealInput(picture: string) {
 
 /** The tidied sources saved as a library (.kalkt) and attached in the chat: the model cites it by its key. */
 /** A picture of the sheet described for the AI by its right button (the fake AI of scripts/smoke.mjs reads PNG only). */
-async function sheetPictureWithRealInput(contents: Electron.WebContents): Promise<{ offered: boolean; described: boolean }> {
-  const sheetPicture = { offered: false, described: false };
+async function sheetPictureWithRealInput(contents: Electron.WebContents): Promise<{ offered: boolean; described: boolean; notice: string; menu: string }> {
+  const sheetPicture = { offered: false, described: false, notice: '', menu: '' };
   // A picture of the assignment described for the AI by its right button: the drawing (SVG) goes to the model
   // as a PNG, the description comes into its line; then the menu offers it to be edited.
   await clickOn('.menubar-item:nth-child(1) > button');
@@ -2888,12 +2892,16 @@ async function sheetPictureWithRealInput(contents: Electron.WebContents): Promis
     await pause(300);
     sheetPicture.offered = (await contents.executeJavaScript(`[...document.querySelectorAll('.menu-panel .menu-label')].some((l) => l.textContent.includes('Popsat obrázek pro AI'))`)) as boolean;
     if (sheetPicture.offered) await clickMenu('Popsat obrázek pro AI');
-    for (let i = 0; i < 40 && !(await contents.executeJavaScript(`!(document.querySelector('.statusbar')?.textContent ?? '').includes('popisuje')`)); i++) await pause(150);
-    await pause(800);
+    // The model answers, then the line is written and the sheet calculated again (a slower system takes longer).
+    await pause(500);
+    for (let i = 0; i < 80 && ((await contents.executeJavaScript(`document.querySelector('.statusbar')?.textContent ?? ''`)) as string).includes('popisuje'); i++) await pause(150);
+    sheetPicture.notice = (await contents.executeJavaScript(`document.querySelector('.statusbar')?.textContent ?? ''`)) as string;
+    await pause(1200);
     await contents.executeJavaScript(`document.querySelector('.layer-view.active .page figure img')?.setAttribute('data-smoke-picture', '')`);
     await clickOn('[data-smoke-picture]', [], 'right');
     await pause(300);
     sheetPicture.described = (await contents.executeJavaScript(`[...document.querySelectorAll('.menu-panel .menu-label')].some((l) => l.textContent.includes('Upravit popis pro AI'))`)) as boolean;
+    sheetPicture.menu = (await contents.executeJavaScript(`[...document.querySelectorAll('.menu-panel .menu-label')].map((l) => l.textContent).join('|')`)) as string;
     await pressKey('Escape');
   }
   return sheetPicture;

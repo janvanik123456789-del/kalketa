@@ -11,7 +11,7 @@
 
 import { app, BrowserWindow, clipboard, ClipboardItem, dialog, ipcMain, Menu, nativeImage, shell, utilityProcess, type IpcMainInvokeEvent } from 'electron';
 import { execFileSync } from 'node:child_process';
-import { appendFileSync, cpSync, existsSync, mkdtempSync, readFileSync } from 'node:fs';
+import { appendFileSync, cpSync, existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, dirname, extname, join, resolve } from 'node:path';
@@ -138,6 +138,32 @@ function startupMark(name: string, seconds = process.uptime()): void {
   }
 }
 startupMark('main');
+/** The file keeping the folder of the calculation opened or saved last: open and save dialogs start there. */
+const lastFolderFile = () => join(app.getPath('userData'), 'last-folder.json');
+
+function lastFolder(): string | undefined {
+  try {
+    const folder = (JSON.parse(readFileSync(lastFolderFile(), 'utf8')) as { folder?: unknown }).folder;
+    return typeof folder === 'string' && existsSync(folder) ? folder : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function rememberFolder(path: string): void {
+  try {
+    writeFileSync(lastFolderFile(), JSON.stringify({ folder: dirname(resolve(path)) }));
+  } catch {
+    // Not kept: the dialogs start where the system says.
+  }
+}
+
+/** Where a dialog starts: in the last folder, with the suggested name when there is one. */
+function inLastFolder(name?: string): { defaultPath?: string } {
+  const folder = lastFolder();
+  return folder ? { defaultPath: name ? join(folder, name) : folder } : name ? { defaultPath: name } : {};
+}
+
 /** File given on the command line or by double click, before the window was ready. */
 let pendingOpen: string | undefined = sheetArgument(process.argv);
 
@@ -291,6 +317,7 @@ async function openFor(window: BrowserWindow, path: string): Promise<OpenedFile 
   const editor = editors.get(window.webContents.id);
   editor?.files.add(fileKey(path));
   editor?.granted.add(fileKey(path));
+  rememberFolder(path);
   return file;
 }
 
@@ -334,6 +361,7 @@ function registerBridge(): void {
   ipcMain.handle('kalketa:open-dialog', async (event, labels: { sheets: string }) => {
     const owner = fromEditor(event);
     const result = await dialog.showOpenDialog(owner, {
+      ...inLastFolder(),
       properties: ['openFile'],
       filters: [{ name: String(labels?.sheets ?? 'Kalketa'), extensions: ['kalk', 'calc', 'cc'] }],
     });
@@ -361,7 +389,7 @@ function registerBridge(): void {
       const result = smokeSave.path
         ? { canceled: false, filePath: smokeSave.path }
         : await dialog.showSaveDialog(owner, {
-            defaultPath: `${request.suggestedName}.kalk`,
+            ...inLastFolder(`${request.suggestedName}.kalk`),
             filters: [{ name: 'Kalketa', extensions: ['kalk'] }],
           });
       if (result.canceled || !result.filePath) return undefined;
@@ -378,6 +406,7 @@ function registerBridge(): void {
     await writeFile(path, request.bytes);
     editors.get(event.sender.id)?.files.add(fileKey(path));
     editors.get(event.sender.id)?.granted.add(fileKey(path));
+    rememberFolder(path);
     return path;
   });
 
@@ -398,7 +427,7 @@ function registerBridge(): void {
     const result = smokePdf.path
       ? { canceled: false, filePath: smokePdf.path }
       : await dialog.showSaveDialog(owner, {
-          defaultPath: `${request.suggestedName}.pdf`,
+          ...inLastFolder(`${request.suggestedName}.pdf`),
           filters: [{ name: 'PDF', extensions: ['pdf'] }],
         });
     if (result.canceled || !result.filePath) return undefined;
@@ -2969,7 +2998,9 @@ async function layersWithRealInput(picture: string) {
   }
   smokeSave.path = undefined;
   smokeClose.choice = undefined;
-  const saveOnClose = { closeButtons, keptOnCancel, savedOnClose, windowSaved, ok: closeButtons.join('|') === 'Uložit|Neukládat|Zrušit' && keptOnCancel && savedOnClose && windowSaved };
+  // The folder of the file saved last is where the open and save dialogs start next time.
+  const folderKept = lastFolder() === dirname(resolve(tabFile));
+  const saveOnClose = { closeButtons, keptOnCancel, savedOnClose, windowSaved, folderKept, ok: closeButtons.join('|') === 'Uložit|Neukládat|Zrušit' && keptOnCancel && savedOnClose && windowSaved && folderKept };
   return { ...state, pickTaken, deflection, derivations, summaryOk, summaryOpens, summaryAtEnd, bookStyle, verdictFuture, verdictBack, pageHead, definitionAtCursor, solveFormatted, sheetGridOk, sheetGrid, tableEnter, tableEnterAt, lastRowEnter, draggedRows, selectedAll, bothFormatted, roundedOn, equationNumber, solvedByFormula, rootsAndExtremes, wordText, wordColored, paletteColored, wordPrinted, cellMarked, cellFont, systemFont, cellDeleted, paperRoots, tableRowAdded, chartSteps, samplesOk, sampleTab, newKeepsExample, citations, notesPicture, notesPlaced, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, toolIcons, aiSettings, aiChat, pdfCleanup, theoryLibrary, study, sheetPicture, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, placedFree, strictPlaced, canvasOk, besideText, pictures, blocksOk, userChart, quadraticSample, saveOnClose, relations: relationsOk };
 }
 

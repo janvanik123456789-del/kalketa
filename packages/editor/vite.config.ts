@@ -25,9 +25,9 @@ export default defineConfig(({ command }) => ({
   server: { port: 5173, strictPort: true, fs: { allow: ['../..'] } },
 }));
 
-/** The built editor may load only its own files; images come as data: URIs. */
+/** The built editor may load only its own files; images come as data: URIs; no plugins, forms or changed base. */
 function contentSecurityPolicy(): Plugin {
-  const policy = "default-src 'self'; img-src 'self' data: blob:; font-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; frame-src 'self' about: data:; connect-src 'self'";
+  const policy = "default-src 'self'; img-src 'self' data: blob:; font-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; frame-src 'self' about: data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'";
   return {
     name: 'kalketa-csp',
     transformIndexHtml: (html) => html.replace('<head>', `<head>\n    <meta http-equiv="Content-Security-Policy" content="${policy}" />`),

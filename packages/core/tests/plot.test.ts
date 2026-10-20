@@ -177,7 +177,7 @@ describe('the range of x centred on the axis of symmetry', () => {
     expect(ends('y(x) := 2·x^2 + 12·x + 5\nplot(y(x), x: 0 .. 10, center: true)')).toEqual([-8, 2]);
     expect(ends('q := 10 kN/m\nL := 6 m\nM(x) := q·x·(L - x)/2\nplot(M(x), x: 0 m .. 4 m, center: true)').map((v) => Math.round(v * 1e9) / 1e9)).toEqual([1, 5]);
     const [a, b] = ends('plot(cos(x), x: 1 .. 4, center: true)');
-    expect((a + b) / 2).toBeCloseTo(Math.PI, 6);
+    expect((a! + b!) / 2).toBeCloseTo(Math.PI, 6);
   });
   it('keeps the range of a curve without an axis, and says so', () => {
     expect(ends('plot(3·x + 1, x: 0 .. 4, center: true)')).toEqual([0, 4]);

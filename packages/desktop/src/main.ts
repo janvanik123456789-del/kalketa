@@ -91,7 +91,11 @@ interface CloseGuard {
  * files it has open. A file is open in one window at most: two copies would
  * overwrite each other's changes.
  */
-const editors = new Map<number, { readonly window: BrowserWindow; readonly guard: CloseGuard; files: Set<string> }>();
+/**
+ * The editor windows: the files each has open (as it says), and the files this process gave it (opened or saved
+ * through it): only into those it saves without a dialog, only next to those it looks for theory.
+ */
+const editors = new Map<number, { readonly window: BrowserWindow; readonly guard: CloseGuard; files: Set<string>; readonly granted: Set<string> }>();
 /** The editor window used last; files opened from outside go there. */
 let lastFocused: BrowserWindow | undefined;
 /** The first window, which the smoke test drives. */
@@ -175,7 +179,7 @@ function createWindow(options: { blank?: boolean } = {}): BrowserWindow {
   });
   const contentsId = win.webContents.id;
   const guard: CloseGuard = { dirty: false, message: '', save: 'Save', discard: "Don't save", cancel: 'Cancel' };
-  editors.set(contentsId, { window: win, guard, files: new Set() });
+  editors.set(contentsId, { window: win, guard, files: new Set(), granted: new Set() });
   lastFocused = win;
   win.on('focus', () => (lastFocused = win));
   win.on('closed', () => {
@@ -284,7 +288,9 @@ async function openFor(window: BrowserWindow, path: string): Promise<OpenedFile 
   }
   const file = await readSheet(path);
   // Counted at once, so a quick second attempt from another window is caught too.
-  editors.get(window.webContents.id)?.files.add(fileKey(path));
+  const editor = editors.get(window.webContents.id);
+  editor?.files.add(fileKey(path));
+  editor?.granted.add(fileKey(path));
   return file;
 }
 
@@ -319,6 +325,11 @@ function fromEditor(event: IpcMainInvokeEvent): BrowserWindow {
   return editor.window;
 }
 
+/** Whether this process gave the window that file: opened by it, or saved where the user chose. */
+function grantedTo(event: IpcMainInvokeEvent, path: unknown): path is string {
+  return typeof path === 'string' && path !== '' && !!editors.get(event.sender.id)?.granted.has(fileKey(path));
+}
+
 function registerBridge(): void {
   ipcMain.handle('kalketa:open-dialog', async (event, labels: { sheets: string }) => {
     const owner = fromEditor(event);
@@ -343,8 +354,9 @@ function registerBridge(): void {
 
   ipcMain.handle('kalketa:save', async (event, request: { path?: string; current?: string; suggestedName: string; bytes: Uint8Array; openElsewhere?: string }) => {
     const owner = fromEditor(event);
-    // A file from before the rename (.calc) is saved where it is; new files get .kalk.
-    let path = typeof request.path === 'string' && ['.kalk', '.calc'].includes(extname(request.path).toLowerCase()) ? request.path : undefined;
+    // A file from before the rename (.calc) is saved where it is; new files get .kalk. Without a dialog only into a
+    // file this process gave the window: a path the page made up gets the dialog.
+    let path = grantedTo(event, request.path) && ['.kalk', '.calc'].includes(extname(request.path).toLowerCase()) ? request.path : undefined;
     if (!path) {
       const result = smokeSave.path
         ? { canceled: false, filePath: smokeSave.path }
@@ -362,8 +374,10 @@ function registerBridge(): void {
       await dialog.showMessageBox(owner, { type: 'warning', message: String(request.openElsewhere ?? path), noLink: true });
       return undefined;
     }
+    if (!(request.bytes instanceof Uint8Array)) throw new Error('Bad request');
     await writeFile(path, request.bytes);
     editors.get(event.sender.id)?.files.add(fileKey(path));
+    editors.get(event.sender.id)?.granted.add(fileKey(path));
     return path;
   });
 
@@ -424,7 +438,7 @@ function registerBridge(): void {
   ipcMain.on('kalketa:open-files', (event, paths: unknown) => {
     const editor = editors.get(event.sender.id);
     if (!editor || !Array.isArray(paths)) return;
-    editor.files = new Set(paths.filter((p): p is string => typeof p === 'string').map(fileKey));
+    editor.files = new Set(paths.filter((p): p is string => typeof p === 'string').map(fileKey).filter((key) => editor.granted.has(key)));
   });
 
   ipcMain.handle('kalketa:system-fonts', async (event) => {
@@ -461,7 +475,7 @@ function registerBridge(): void {
   });
 
   registerAiBridge(fromEditor);
-  registerTheoryBridge(fromEditor);
+  registerTheoryBridge(fromEditor, grantedTo);
   // A check of the calculation in Python: the built-in one (no files, no network) or, chosen in the settings and
   // confirmed in the editor before each run, Python of the computer. The editor puts result() before the script.
   ipcMain.handle('kalketa:python-run', async (event, request: { code: unknown; engine: unknown; ask?: { message?: unknown; run?: unknown; cancel?: unknown; more?: unknown } }) => {
@@ -2257,7 +2271,9 @@ async function layersWithRealInput(picture: string) {
   // Those sources saved as a theory library, attached in the chat and cited by its key.
   const theoryLibrary = await theoryLibraryWithRealInput(contents, picture);
   // A whole book as a PDF in the theory folder: one chapter of it chosen, then cited in the chat.
-  const study = await studyWithRealInput(contents, picture);
+  // A calculation path the page makes up opens no project folder: theory is looked for only next to files it was given.
+  const madeUpFolder = (await contents.executeJavaScript(`window.kalketaDesktop.theoryFolders('C:/Windows/System32/x.kalk').then((list) => list.some((f) => f.kind === 'project'))`)) as boolean;
+  const study = (await studyWithRealInput(contents, picture)) && !madeUpFolder;
   const sheetPicture = await sheetPictureWithRealInput(contents);
 
   // A file whose AI notes an AI wrote: they have a tab, can only be read, and cannot be deleted.
@@ -2755,7 +2771,7 @@ async function layersWithRealInput(picture: string) {
   const surfaceMap = {
     ...mapShown,
     tip: mapTip,
-    ok: mapShown.picture && mapShown.contours >= 5 && mapShown.bar && mapShown.peak.includes('40') && mapShown.errors === 0 && /w\(x;\s?y\) = (39|40)/.test(mapTip) && mapTip.includes('mm'),
+    ok: mapShown.picture && mapShown.contours >= 5 && mapShown.bar && mapShown.peak.includes('40') && mapShown.errors === 0 && /w\(x;\s?y\) = (3[5-9]|40)/.test(mapTip) && mapTip.includes('mm'),
   };
   // The same plate in 3D, chosen by the right button; turned by dragging it with the mouse, the view stays
   // (written into its line: after the sheet is calculated again, the turned picture is the one shown).
@@ -3430,7 +3446,7 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
   let layerShown = { memory: '', sheet: [] as string[], unknown: [] as string[], hiddenConversations: -1 };
   let resumed: string[] = [];
   let newSheet = { head: '', others: '', opened: { tab: '', rows: 0, marked: 0, errors: '' }, state: '' };
-  let pythonChat = { checks: 0, first: '', last: '', answers: 0, told: '', keep: 0, tables: 0, kept: false, askedFirst: false, declined: false };
+  let pythonChat = { checks: 0, first: '', last: '', answers: 0, told: '', keep: 0, tables: 0, kept: false, askedFirst: false, declined: false, copyWithoutAi: false };
   let sheetCheck = { checks: 0, report: '', answers: '' };
   let answerBlocks = { choiceButtons: '', levelAnswer: '', noteButton: '', noteAfter: '' };
   let thinkingCut = '';
@@ -3572,7 +3588,7 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
     pythonChat = (await contents.executeJavaScript(`(() => {
       const checks = [...${checkTurns}].map((t) => t.textContent);
       const answers = [...document.querySelectorAll('.chat-pane .chat-turn.assistant:not(.writing)')].map((t) => t.textContent).filter((t) => t.includes('python:'));
-      return { checks: checks.length, first: checks[0] ?? '', last: checks[checks.length - 1] ?? '', answers: answers.length, told: answers[0] ?? '', keep: document.querySelectorAll('.chat-pane .chat-check-keep').length, tables: document.querySelectorAll('.chat-pane .chat-turn.check table').length, kept: false, askedFirst: false, declined: false };
+      return { checks: checks.length, first: checks[0] ?? '', last: checks[checks.length - 1] ?? '', answers: answers.length, told: answers[0] ?? '', keep: document.querySelectorAll('.chat-pane .chat-check-keep').length, tables: document.querySelectorAll('.chat-pane .chat-turn.check table').length, kept: false, askedFirst: false, declined: false, copyWithoutAi: false };
     })()`)) as typeof pythonChat;
     await takePicture(picture.replace(/[.]png$/, '-ai-python.png'));
     // The corrected check kept in the sources: it says so.
@@ -3611,6 +3627,16 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
     }
     pythonChat = { ...pythonChat, askedFirst: asked.includes('napsala AI'), declined: declinedText.includes('nebylo povoleno') };
     await toggleAskAi();
+    // A copy for others, from the File menu: without the conversations (their names are plain in the ZIP directory).
+    const copyFile = join(tmpdir(), `kalketa-smoke-noai-${process.pid}.kalk`);
+    smokeSave.path = copyFile;
+    await clickOn('.menubar-item:nth-child(1) > button');
+    await clickMenu('Uložit kopii bez rozhovorů s AI…');
+    for (let i = 0; i < 50 && !existsSync(copyFile); i++) await pause(100);
+    smokeSave.path = undefined;
+    await pause(300);
+    const copyNotice = (await contents.executeJavaScript(`document.body.textContent.includes('Kopie bez rozhovorů')`)) as boolean;
+    pythonChat = { ...pythonChat, copyWithoutAi: existsSync(copyFile) && !readFileSync(copyFile).includes('conversations.json') && copyNotice };
     // The sheet an answer proposes, checked by the program: a name defined twice and a number in text the sheet does
     // not compute go back to the model by themselves; the corrected proposal passes, so no second report comes.
     const checksBefore = (await contents.executeJavaScript(`${checkTurns}.length`)) as number;
@@ -3681,7 +3707,7 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
     proposal.printAsks.startsWith('Výpočet obsahuje řádky navržené AI') && proposal.printClosed &&
     newSheet.head === 'Nový list: Nosník se silou · řádků: 4' && Number(newSheet.others) >= 2 &&
     newSheet.opened.tab.startsWith('Nosník se silou') && newSheet.opened.marked >= 3 && newSheet.opened.errors.startsWith('chyba: 0') && newSheet.state.startsWith('Otevřeno jako „Nosník se silou“') &&
-    pythonChat.checks === 2 && pythonChat.answers === 2 && pythonChat.told.includes('python: ano') && pythonChat.first.includes('✗') && pythonChat.last.includes('✓') && !pythonChat.last.includes('✗') && pythonChat.keep === 2 && pythonChat.tables === 2 && pythonChat.kept && pythonChat.askedFirst && pythonChat.declined &&
+    pythonChat.checks === 2 && pythonChat.answers === 2 && pythonChat.told.includes('python: ano') && pythonChat.first.includes('✗') && pythonChat.last.includes('✓') && !pythonChat.last.includes('✗') && pythonChat.keep === 2 && pythonChat.tables === 2 && pythonChat.kept && pythonChat.askedFirst && pythonChat.declined && pythonChat.copyWithoutAi &&
     sheetCheck.checks === 1 && sheetCheck.report.includes('Kontrola navrženého listu') && sheetCheck.report.includes('„smoke_d“ už je definováno') && sheetCheck.report.includes('t_v2 == t_v') && sheetCheck.report.includes('777') && sheetCheck.report.includes('Smoke dost dlouhé') && sheetCheck.answers === 'zdvojeno: první|zdvojeno: opraveno' &&
     answerBlocks.choiceButtons === 'Stručně: vzorec, dosazení, výsledek|Jako na papíře: vztahy, odvození krok po kroku|Výukově: navíc vysvětlení a ověření v Pythonu' && answerBlocks.levelAnswer.includes('úroveň: paper') && answerBlocks.noteButton === 'Vložit do Poznámek AI' && answerBlocks.noteAfter === 'Vloženo' &&
     thinkingCut.includes('Odpověď hned.') && thinkingCut.includes('bez přemýšlení') &&

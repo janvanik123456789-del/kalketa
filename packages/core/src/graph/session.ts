@@ -10,7 +10,7 @@
 
 import { CalcError, DependencyFailed, diagnostic, type Diagnostic, type Span } from '../diagnostics.js';
 import { asBoolean, asComplex } from '../eval/coerce.js';
-import { compare, evaluate, type EvalContext } from '../eval/evaluator.js';
+import { compare, evaluate, LINE_TIME_LIMIT_MS, withTimeLimit, type EvalContext } from '../eval/evaluator.js';
 import { BUILTIN_CONSTANTS } from '../eval/functions.js';
 import { defineFunction, isBuiltinFunction } from '../eval/userFunctions.js';
 import { allRoots, solveStatement, type RootsFound } from '../eval/solver.js';
@@ -522,7 +522,7 @@ export class SheetSession {
     }
     const withDerivation = (result: PartialResult): PartialResult =>
       derived ? { ...result, derivation: derived.steps, diagnostics: [...result.diagnostics, ...derived.diagnostics] } : result;
-    const result = withDerivation(this.evaluateValue(statement, context, ctx, dependencies, tableReads));
+    const result = withDerivation(withTimeLimit(LINE_TIME_LIMIT_MS, () => this.evaluateValue(statement, context, ctx, dependencies, tableReads)));
     // A symbol of theory (derive M_mp := l^3·F/3) has no value without values of its names: no error then.
     const noValue = (d: Diagnostic) => d.code === 'E-UNDEFINED' || d.code === 'I-DEPENDENCY-FAILED';
     if (statement.kind === 'definition' && statement.symbolic && (result.status === 'error' || result.status === 'blocked') && result.diagnostics.every((d) => noValue(d) || d.severity !== 'error')) {

@@ -45,7 +45,35 @@ export interface EvalContext {
 /** Relative tolerance for comparisons, so 0.1 + 0.2 == 0.3 holds. */
 const COMPARE_EPSILON = 1e-12;
 
+/** Longest evaluation of one line of a sheet: a line that would compute for ever fails, the window stays alive. */
+export const LINE_TIME_LIMIT_MS = 15_000;
+
+let deadline = Infinity;
+let limitSeconds = 0;
+let expired = false;
+let ticks = 0;
+
+/**
+ * Runs f with a time limit on the expressions it evaluates; once over, every evaluation fails at once (E-TIME-LIMIT),
+ * so loops that pass over failing points end quickly too. Nested calls keep the outer limit.
+ */
+export function withTimeLimit<T>(ms: number, f: () => T): T {
+  if (deadline !== Infinity) return f();
+  deadline = Date.now() + ms;
+  limitSeconds = Math.max(1, Math.round(ms / 1000));
+  try {
+    return f();
+  } finally {
+    deadline = Infinity;
+    expired = false;
+  }
+}
+
 export function evaluate(expr: Expr, ctx: EvalContext): Value {
+  if (expired || ((++ticks & 1023) === 0 && Date.now() > deadline)) {
+    expired = true;
+    fail('E-TIME-LIMIT', expr.span, { seconds: limitSeconds });
+  }
   const value = evaluateRaw(expr, ctx);
   if (value.type === 'quantity' && (!Number.isFinite(value.si) || !Number.isFinite(value.im ?? 0))) fail('E-NOT-FINITE', expr.span);
   return value;

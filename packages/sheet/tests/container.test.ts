@@ -112,6 +112,11 @@ describe('.calc container', () => {
   it('rejects damaged and foreign files', async () => {
     const codes = async (bytes: Uint8Array) => (await readSheetFile(bytes)).diagnostics.map((d) => [d.code, d.params['problem']]);
     expect(await codes(strToU8('hello'))).toEqual([['E-FILE-INVALID', 'not-zip']]);
+    // A ZIP bomb: a few kilobytes that unpack to more than the limit are not unpacked.
+    const bomb = zipSync({ 'manifest.json': strToU8('{}'), 'zeros.bin': new Uint8Array(4_000_000) }, { level: 9 });
+    expect(bomb.length).toBeLessThan(10_000);
+    expect((await readSheetFile(bomb, { bytes: 1_000_000, entries: 100 })).diagnostics.map((d) => [d.code, d.params['problem']])).toEqual([['E-FILE-INVALID', 'too-large']]);
+    expect((await readSheetFile(zipSync(Object.fromEntries(Array.from({ length: 30 }, (_, i) => [`f${i}`, strToU8('x')]))), { bytes: 1_000_000, entries: 20 })).diagnostics[0]?.params['problem']).toBe('too-large');
     expect(await codes(zipSync({ 'a.txt': strToU8('x') }))).toEqual([['E-FILE-INVALID', 'missing']]);
     expect(await codes(zipSync({ 'manifest.json': strToU8('{') }))).toEqual([['E-FILE-INVALID', 'json']]);
     expect(await codes(zipSync({ 'manifest.json': strToU8('{"format":"other"}') }))).toEqual([['E-FILE-INVALID', 'format']]);

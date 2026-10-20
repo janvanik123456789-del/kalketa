@@ -157,12 +157,29 @@ export async function writeSheetFile(doc: SheetDocument): Promise<Uint8Array> {
   return zipSync(zippable, { level: 6 });
 }
 
-export async function readSheetFile(bytes: Uint8Array): Promise<ReadResult> {
+/** How much a file may unpack to: a small archive of zeros (a ZIP bomb) does not fill the memory. */
+export const UNPACK_LIMITS = { bytes: 1024 * 1024 * 1024, entries: 20_000 };
+
+export async function readSheetFile(bytes: Uint8Array, limits = UNPACK_LIMITS): Promise<ReadResult> {
   let raw: Record<string, Uint8Array>;
+  let total = 0;
+  let count = 0;
+  let tooLarge = false;
   try {
-    raw = unzipSync(bytes);
+    // The sizes the archive declares bound what is unpacked (fflate unpacks an entry into a buffer of that size).
+    raw = unzipSync(bytes, {
+      filter: (entry) => {
+        total += entry.originalSize;
+        count++;
+        if (total > limits.bytes || count > limits.entries) {
+          tooLarge = true;
+          throw new Error('too large');
+        }
+        return true;
+      },
+    });
   } catch {
-    return { diagnostics: [diagnostic('E-FILE-INVALID', NO_SPAN, { problem: 'not-zip', value: '' })] };
+    return { diagnostics: [diagnostic('E-FILE-INVALID', NO_SPAN, { problem: tooLarge ? 'too-large' : 'not-zip', value: '' })] };
   }
   return readSheetEntries(raw);
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { builtinFunctions, FUNCTION_MODULES, FUNCTION_NAMES, fromDecimalComma, SheetSession, signature, toDecimalComma } from '../src/index.js';
+import { builtinFunctions, evaluateSheet, withTimeLimit, FUNCTION_MODULES, FUNCTION_NAMES, fromDecimalComma, SheetSession, signature, toDecimalComma } from '../src/index.js';
 import { codes, expectValue } from './helpers.js';
 
 describe('user functions', () => {
@@ -42,6 +42,13 @@ describe('user functions', () => {
 
   it('report mistakes', () => {
     expect(codes('f(x) := f(x) + 1')).toContain('E-RECURSION');
+    // A line that would compute for minutes is stopped (here the whole sheet within a short limit); after it, all computes again.
+    const start = Date.now();
+    const slow = withTimeLimit(200, () => evaluateSheet('s := sum(sum(i·j, j: 1 .. 10000), i: 1 .. 10000)'));
+    expect(Date.now() - start).toBeLessThan(5000);
+    expect(slow.diagnostics.map((d) => d.code)).toEqual(['E-TIME-LIMIT']);
+    expect(slow.diagnostics[0]?.params['seconds']).toBe(1);
+    expect(codes('b := 2')).toEqual([]);
     expect(codes('f(x) := x + y')).toContain('E-UNDEFINED');
     expect(codes('f(x) := g(x)')).toContain('E-FUNC-UNKNOWN');
     expect(codes('f(x) := x\nf(1, 2)')).toContain('E-FUNC-ARITY');

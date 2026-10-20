@@ -124,6 +124,7 @@ export const DIAGNOSTIC_SEVERITY = {
   'E-PLOT-LENGTH': 'error',
   'E-NOT-FUNCTION': 'error',
   'E-RECURSION': 'error',
+  'E-TIME-LIMIT': 'error',
 
   // Solver
   'E-SOLVE-COUNT': 'error',

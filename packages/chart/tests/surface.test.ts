@@ -102,11 +102,16 @@ describe('a surface drawn as a map', () => {
   it('in 3D keeps true proportions where x, y and z share a unit: a flat surface stays flat', () => {
     // z from 1 to 5 over 4 × 2: stretched to the usual box, or at one scale with x and y.
     const box = (svg: string) => {
-      const ys = [...svg.matchAll(/<path d="M[^"]*Z" fill="#f7f7f4"/g)].flatMap((m) => [...m[0].matchAll(/[ML][\d.]+ ([\d.]+)/g)].map((n) => Number(n[1])));
-      return Math.max(...ys) - Math.min(...ys);
+      // The walls of the box: how high they stand against how wide they are.
+      const points = [...svg.matchAll(/<path d="M[^"]*Z" fill="#f7f7f4"/g)].flatMap((m) => [...m[0].matchAll(/[ML]([\d.]+) ([\d.]+)/g)].map((n) => [Number(n[1]), Number(n[2])] as const));
+      const [xs, ys] = [points.map((p) => p[0]), points.map((p) => p[1])];
+      return (Math.max(...ys) - Math.min(...ys)) / (Math.max(...xs) - Math.min(...xs));
     };
     const solid: ChartSpec = { ...map, kind: 'surface', surface: { ...plane, equalScale: true, view: { az: 0, el: 0 } } };
-    const flat: ChartSpec = { ...solid, surface: { ...plane, equalScale: true, trueScale: true, z: plane.z.map((c) => c.map((v) => 1 + v / 100)), view: { az: 0, el: 0 } } };
-    expect(box(chartSvg(flat))).toBeLessThan(box(chartSvg(solid)) / 3);
+    const low = (k: number): ChartSpec => ({ ...solid, surface: { ...plane, equalScale: true, trueScale: true, z: plane.z.map((c) => c.map((v) => 1 + v / k)), view: { az: 0, el: 0 } } });
+    // 0,8 m high over 4 m: drawn as it is, lower than the usual box.
+    expect(box(chartSvg(low(5)))).toBeLessThan(box(chartSvg(solid)) / 2);
+    // 4 cm over 4 m (the deflection of a plate): stretched as usual, else nothing would be seen.
+    expect(box(chartSvg(low(100)))).toBeCloseTo(box(chartSvg(solid)), 2);
   });
 });

@@ -63,9 +63,11 @@ export interface CommandContext {
     setPane(pane: 'details' | 'tables' | 'layers' | 'chat' | 'none'): void;
     toggleTableEditor(): void;
     customize(): void;
-    insert(kind: 'text' | 'definition' | 'check' | 'pick' | 'pageBreak' | 'clear' | 'chart' | 'sheetTable'): void;
+    insert(kind: 'text' | 'definition' | 'check' | 'pick' | 'pageBreak' | 'clear' | 'sheetTable'): void;
     /** Insert > Fit a curve…: the dialog of methods with a preview. */
     fitCurve(): void;
+    /** Insert > Chart…: the dialog of the kind of chart. */
+    insertChart(): void;
     newTable(): void;
     importTable(): void;
     insertBlock(): void;
@@ -133,7 +135,7 @@ export function buildCommands(ctx: CommandContext): Map<string, Command> {
   add('insert.clear', 'insert', () => a.insert('clear'));
   add('insert.picture', 'insert', a.insertPicture);
   add('insert.canvas', 'insert', a.insertCanvas);
-  add('insert.chart', 'insert', () => a.insert('chart'));
+  add('insert.chart', 'insert', a.insertChart);
   add('insert.fit', 'insert', a.fitCurve);
   add('insert.sheetTable', 'insert', () => a.insert('sheetTable'));
   add('insert.newTable', 'insert', a.newTable);

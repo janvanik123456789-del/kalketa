@@ -16,6 +16,9 @@ export interface SurfaceView {
 
 export const DEFAULT_VIEW: SurfaceView = { az: 35, el: 30 };
 
+/** The least height of a surface, against half its width, drawn at true proportions (lower ones are stretched). */
+const TRUE_SCALE_LOWEST = 0.16;
+
 /** "az=35 el=30" read; parts missing or wrong are as usual. */
 export function parseView(text: string | undefined): SurfaceView {
   const az = Number(/\baz\s*=\s*(-?[\d.]+)/.exec(text ?? '')?.[1]);
@@ -50,8 +53,10 @@ export function surface3dSvg(spec: ChartSpec, layout: ChartLayout, format: (valu
   const [wx, wy] = equalScale ? [(x1 - x0) / Math.max(x1 - x0, y1 - y0), (y1 - y0) / Math.max(x1 - x0, y1 - y0)] : [1, 1];
   // The height of the box: where z shares the unit of x and y (a sphere, an ellipsoid in metres), the true
   // proportions, as the map and the cut have them; else z stretched to a box of a readable height.
+  // A surface much lower than wide (the deflection of a plate, 4 cm over 4 m) is stretched as usual: drawn true it
+  // would be a flat sheet with nothing to see.
   const metre = 2 / Math.max(x1 - x0, y1 - y0);
-  const zh = surface.trueScale && hi > lo ? Math.max(0.04, Math.min(3, (metre * (hi - lo)) / 2)) : 0.62;
+  const zh = surface.trueScale && hi > lo && (hi - lo) * metre >= TRUE_SCALE_LOWEST ? Math.min(3, (metre * (hi - lo)) / 2) : 0.62;
   const X = (x: number) => wx * ((2 * (x - x0)) / (x1 - x0) - 1);
   const Y = (y: number) => wy * ((2 * (y - y0)) / (y1 - y0) - 1);
   const Z = (v: number) => zh * (hi > lo ? (2 * (v - lo)) / (hi - lo) - 1 : 0);

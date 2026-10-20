@@ -194,6 +194,8 @@ table.shortcuts td { padding: 2px 16px 2px 0; }
 .fit-options .hint { margin: 2px 0; color: #4b5563; font-size: 12px; min-height: 3em; }
 .fit-lines { margin: 0; padding: 6px; background: #fff; border: 1px solid #d5d9df; font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .fit-preview { background: #fff; border: 1px solid #d5d9df; padding: 8mm 6mm; overflow: auto; max-height: 64vh; font-size: 10pt; }
+.chart-range { display: grid !important; grid-template-columns: 70px minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 4px; }
+.chart-range input { min-width: 0; width: 100%; box-sizing: border-box; }
 .look-dialog { display: grid; grid-template-columns: minmax(250px, 300px) minmax(0, 1fr); gap: 12px; min-height: 380px; }
 .look-options { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
 .look-options fieldset { border: 1px solid #c9ced6; padding: 4px 8px 6px; margin: 0; display: flex; flex-direction: column; gap: 4px; }

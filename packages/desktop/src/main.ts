@@ -1403,6 +1403,10 @@ async function layersWithRealInput(picture: string) {
   await typeText('M_t(x) = 6·x·(4 - x)');
   await clickOn('.menubar-item:nth-child(4) > button');
   await clickMenu('Graf');
+  // The dialog offers the curve of the last function: Enter takes it.
+  for (let i = 0; i < 20 && !(await contents.executeJavaScript(`!!document.querySelector('.chart-dialog')`)); i++) await pause(100);
+  await pressKey('Enter');
+  await pause(300);
   await clickOn('.sheet-scroll');
   await pause(500);
   const chartBox = (await contents.executeJavaScript(`(() => {
@@ -2775,9 +2779,31 @@ async function layersWithRealInput(picture: string) {
     surfaceCut = (await contents.executeJavaScript(readCut)) as typeof surfaceCut;
   }
   await takePicture(picture.replace(/[.]png$/, '-surface-cut.png'));
+  // Insert > Chart…: the plate offers a map of w(x, y) over 0 m .. a and 0 m .. b; a click makes it a surface in 3D,
+  // the preview shows it, OK writes its line.
+  const chartsBefore = (await contents.executeJavaScript(`document.querySelectorAll('.layer-view.active .block.chart svg.chart-svg .chart-surface').length`)) as number;
+  await clickOn('.menubar-item:nth-child(4) > button');
+  await clickMenu('Graf');
+  for (let i = 0; i < 20 && !(await contents.executeJavaScript(`!!document.querySelector('.chart-dialog')`)); i++) await pause(100);
+  const offeredLine = (await contents.executeJavaScript(`document.querySelector('.chart-line')?.textContent ?? ''`)) as string;
+  await clickOn('.chart-dialog input[data-kind="surface"]');
+  let dialogPreview = false;
+  for (let i = 0; i < 40 && !dialogPreview; i++) {
+    await pause(200);
+    dialogPreview = (await contents.executeJavaScript(`!!document.querySelector('.chart-dialog .fit-preview .chart-surface')`)) as boolean;
+  }
+  const chosenLine = (await contents.executeJavaScript(`document.querySelector('.chart-line')?.textContent ?? ''`)) as string;
+  await takePicture(picture.replace(/[.]png$/, '-chart-dialog.png'));
+  await clickOn('.dialog-buttons button.default');
+  let chartsAfter = chartsBefore;
+  for (let i = 0; i < 30 && chartsAfter === chartsBefore; i++) {
+    await pause(200);
+    chartsAfter = (await contents.executeJavaScript(`document.querySelectorAll('.layer-view.active .block.chart svg.chart-svg .chart-surface').length`)) as number;
+  }
+  const chartDialog = { offered: offeredLine, chosen: chosenLine, preview: dialogPreview, added: chartsAfter - chartsBefore };
   const quadraticSample = {
     crank,
-    theory: { theoryTab, tankErrors, theoryChecks, pythonCheck, rowsCopy, rocket, parabola, thermistor, surfacesSample, fitDialog, chartLook, surfaceMap, surface3d, surfaceCut },
+    theory: { theoryTab, tankErrors, theoryChecks, pythonCheck, rowsCopy, rocket, parabola, thermistor, surfacesSample, fitDialog, chartLook, surfaceMap, surface3d, surfaceCut, chartDialog },
     across,
     beam,
     slowTyping,
@@ -2786,7 +2812,7 @@ async function layersWithRealInput(picture: string) {
     after: sampleAfter,
     outOfDomain,
     english,
-    ok: !!thumb && sampleBefore.errors === 0 && sampleAfter.errors === 0 && sampleBefore.a !== '' && sampleAfter.a !== sampleBefore.a && sampleAfter.roots !== sampleBefore.roots && outOfDomain.drawn && !outOfDomain.area && outOfDomain.roots === 0 && !outOfDomain.error && outOfDomain.warned && english.head === 'Quadratic equation' && english.verdicts.length === 5 && english.verdicts.every((v) => v.endsWith('OK')) && english.errors === 0 && crank.pictures === 4 && crank.charts === 3 && crank.errors === 0 && crank.verdict.endsWith('VYHOVUJE') && slowTyping.waitingShown && slowTyping.settled && cube.pictures === 1 && cube.derived >= 5 && cube.errors === 0 && beam.pictures === 3 && beam.charts >= 4 && beam.errors === 0 && across.before && !across.after && theoryTab >= 1 && tankErrors === 0 && theoryChecks.blocks >= 4 && theoryChecks.bad === 0 && pythonCheck.rows === 4 && pythonCheck.agree === 4 && rowsCopy.marked === 6 && rowsCopy.rows === 3 && rowsCopy.picture === 1 && rowsCopy.status.startsWith('chyba: 0') && rocket.errors === 0 && rocket.charts >= 2 && parabola.errors === 0 && parabola.charts >= 2 && parabola.normal >= 2 && thermistor.errors === 0 && thermistor.charts >= 3 && surfacesSample.errors === 0 && surfacesSample.maps >= 4 && surfacesSample.solids >= 6 && surfacesSample.verdicts >= 5 && fitDialog.ok && chartLook.ok && surfaceMap.ok && surface3d.shown && surface3d.turning && surface3d.kept && surface3d.errors === 0 && surfaceCut.line && surfaceCut.panel && surfaceCut.title,
+    ok: !!thumb && sampleBefore.errors === 0 && sampleAfter.errors === 0 && sampleBefore.a !== '' && sampleAfter.a !== sampleBefore.a && sampleAfter.roots !== sampleBefore.roots && outOfDomain.drawn && !outOfDomain.area && outOfDomain.roots === 0 && !outOfDomain.error && outOfDomain.warned && english.head === 'Quadratic equation' && english.verdicts.length === 5 && english.verdicts.every((v) => v.endsWith('OK')) && english.errors === 0 && crank.pictures === 4 && crank.charts === 3 && crank.errors === 0 && crank.verdict.endsWith('VYHOVUJE') && slowTyping.waitingShown && slowTyping.settled && cube.pictures === 1 && cube.derived >= 5 && cube.errors === 0 && beam.pictures === 3 && beam.charts >= 4 && beam.errors === 0 && across.before && !across.after && theoryTab >= 1 && tankErrors === 0 && theoryChecks.blocks >= 4 && theoryChecks.bad === 0 && pythonCheck.rows === 4 && pythonCheck.agree === 4 && rowsCopy.marked === 6 && rowsCopy.rows === 3 && rowsCopy.picture === 1 && rowsCopy.status.startsWith('chyba: 0') && rocket.errors === 0 && rocket.charts >= 2 && parabola.errors === 0 && parabola.charts >= 2 && parabola.normal >= 2 && thermistor.errors === 0 && thermistor.charts >= 3 && surfacesSample.errors === 0 && surfacesSample.maps >= 4 && surfacesSample.solids >= 6 && surfacesSample.verdicts >= 5 && fitDialog.ok && chartLook.ok && surfaceMap.ok && surface3d.shown && surface3d.turning && surface3d.kept && surface3d.errors === 0 && surfaceCut.line && surfaceCut.panel && surfaceCut.title && chartDialog.offered === 'plot(w(x, y), x: 0 m .. a, y: 0 m .. b)' && chartDialog.chosen === 'plot(w(x, y), x: 0 m .. a, y: 0 m .. b, kind: "surface")' && chartDialog.preview && chartDialog.added === 1,
   };
   const userChart = { namedArea, quadOk, quadTarget, quadEnd, quadEditing, ok: namedArea === 'Integral1=27' && quadOk && quadTarget > 0 && Math.abs(quadEnd - quadTarget) < 12 };
   // Relations: a circle solved by its name, a derivation following from a relation of theory, and the circle

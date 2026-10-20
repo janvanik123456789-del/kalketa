@@ -7,7 +7,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
-import { defaultRegistry, formatPicture, parsePicture, rowLabel, TEXT_COLORS, toDecimalComma, type Diagnostic, type Statement } from '@kalketa/core';
+import { defaultRegistry, formatPicture, parsePicture, rowLabel, TEXT_COLORS, toDecimalComma, type Diagnostic, type Expr, type Statement } from '@kalketa/core';
 import { catalogFor, CATALOGS, formatDate, formatDiagnostic, formatNumber, t, type Catalog, type UiKey } from '@kalketa/i18n';
 import { buildPrintDocument, printHtml, renderBlockHtml, revisionFooter, type PrintAppendix, type PrintBlock } from '@kalketa/render';
 import { emptyScene, readScene, writeScene, type CanvasScene } from '@kalketa/canvas';
@@ -44,6 +44,8 @@ import { captionOf, fromFile, pictureLine, picturePath, pixelWidth, widthFor, ty
 import { importBlockFile } from './blockActions.js';
 import { AboutDialog, CustomizeDialog, FunctionsDialog, PropertiesDialog, SettingsDialog, ShortcutsDialog } from './components/Dialogs.js';
 import { FitDialog } from './components/FitDialog.js';
+import { ChartDialog } from './components/ChartDialog.js';
+import type { ChartFunction, ChartRelation, ChartSources } from './logic/chartInsert.js';
 import { ChartLookDialog } from './components/ChartLookDialog.js';
 import { chartLookText, lookDifference, parseChartLook } from '@kalketa/chart';
 import { PythonRunnerContext, type PythonRunner } from './components/PythonCheck.js';
@@ -74,7 +76,7 @@ type Tab = DocTab<SheetDocument, FileRef>;
 /** Rows copied by Ctrl+C with what they use (pictures, tables), for Ctrl+V in any calculation of the window. */
 let rowClipboard: { readonly text: string; readonly files: ReadonlyMap<string, Uint8Array>; readonly tables: SheetDocument['tables'] } | undefined;
 
-type DialogKind = 'settings' | 'properties' | 'revisions' | 'customize' | 'shortcuts' | 'functions' | 'about' | 'study' | 'fit';
+type DialogKind = 'settings' | 'properties' | 'revisions' | 'customize' | 'shortcuts' | 'functions' | 'about' | 'study' | 'fit' | 'chart';
 
 const MM_TO_PX = 96 / 25.4;
 const PAGE_GAP_PX = 24;
@@ -1350,7 +1352,7 @@ export function App() {
     return `${base}_${n}`;
   };
 
-  const insert = (kind: 'text' | 'definition' | 'check' | 'pick' | 'pageBreak' | 'clear' | 'chart' | 'sheetTable') => {
+  const insert = (kind: 'text' | 'definition' | 'check' | 'pick' | 'pageBreak' | 'clear' | 'sheetTable') => {
     switch (kind) {
       case 'sheetTable': {
         // A table in the sheet (measured points): opened as a grid to fill in.
@@ -1378,15 +1380,6 @@ export function App() {
         return insertLine('@page', undefined, false);
       case 'clear':
         return insertLine('@clear', undefined, false);
-      case 'chart': {
-        // A chart of the last function of one variable in the sheet, else an example to rewrite.
-        const fn = [...result.statements].reverse().find((r) => r.statement.kind === 'definition' && r.statement.params?.length === 1)?.statement;
-        if (fn?.kind === 'definition' && fn.params) {
-          const p = fn.params[0]!.name;
-          return insertLine(`plot(${fn.name}(${p}), ${p}: 0 .. 10)`);
-        }
-        return insertLine('plot(sin(x), x: 0 .. 2·π)');
-      }
     }
   };
 
@@ -1522,6 +1515,72 @@ export function App() {
       .filter((b) => 'line' in b && typeof b.line === 'number' && (touched.includes(b.line) || (b.kind === 'chart' && calls.test(lines[b.line - 1] ?? ''))))
       .map((b) => renderBlockHtml(b, ui, { defineOperator: '≔', ...(doc.layout.style ? { style: doc.layout.style } : {}) }))
       .join('\n');
+  };
+  /**
+   * What Insert > Chart… can draw: the functions of one and of two variables, the named relations and the series
+   * of the sheet. The ranges first offered are found by trying the function with the units of the values it uses
+   * (x in metres where it takes a, b in metres), up to a value of that unit (0 m .. a).
+   */
+  const chartSources = (): ChartSources => {
+    fitSessions.current ??= new LayerSessions(defaultRegistry);
+    const sheetText = textOf(layer);
+    const lines = sheetText.split('\n');
+    const namesIn = (e: Expr, out: string[] = []): string[] => {
+      if (e.kind === 'variable' && !out.includes(e.name)) out.push(e.name);
+      for (const v of Object.values(e)) {
+        if (v && typeof v === 'object') for (const c of Array.isArray(v) ? v : [v]) if (c && typeof c === 'object' && 'kind' in c && 'span' in c) namesIn(c as Expr, out);
+      }
+      return out;
+    };
+    const quantityOf = (name: string) => {
+      const v = result.values.get(name);
+      return v?.type === 'quantity' && !v.im ? v : undefined;
+    };
+    // Does f(1 u₁, 1 u₂) give a number? Tried in a line of its own after the sheet.
+    const works = (name: string, units: readonly string[]) => {
+      const probe = `${name}(${units.map((u) => (u ? `1 ${u}` : '1')).join(', ')})`;
+      const own = fitSessions.current!.evaluate(layer.kind === 'sheet' ? `${sheetText}\n${probe}` : doc.source, layer.kind === 'sheet' ? doc.layers : doc.layers.map((l) => (l.id === layer.id ? { ...l, text: `${sheetText}\n${probe}` } : l)), tables, blocks);
+      const res = (layer.kind === 'calc' ? own.aux.get(layer.id) : undefined) ?? own.main;
+      const last = res.statements.find((r) => r.statement.span.line === lines.length + 1);
+      return last?.status === 'ok' && last.value?.type === 'quantity' && Number.isFinite(last.value.si);
+    };
+    const functions: ChartFunction[] = [];
+    for (const r of result.statements) {
+      const s = r.statement;
+      if (s.kind !== 'definition' || !s.params || (s.params.length !== 1 && s.params.length !== 2) || r.status === 'error') continue;
+      const params = s.params.map((p) => p.name);
+      const used = namesIn(s.expr).filter((n) => !params.includes(n) && quantityOf(n));
+      const units = ['', ...new Set(used.map((n) => quantityOf(n)!.hint?.symbol ?? '').filter(Boolean))].slice(0, 5);
+      const combos = params.length === 1 ? units.map((u) => [u]) : units.flatMap((u) => units.map((w) => [u, w]));
+      const fitting = combos.find((c) => works(s.name, c)) ?? params.map(() => '');
+      // Up to a value of the sheet of that unit (each parameter its own one), else 10 of the unit.
+      const taken = new Set<string>();
+      const ranges = fitting.map((u) => {
+        const ref = used.find((n) => !taken.has(n) && quantityOf(n)!.si > 0 && (quantityOf(n)!.hint?.symbol ?? '') === u);
+        if (ref) taken.add(ref);
+        return { from: u ? `0 ${u}` : '0', to: ref ?? (u ? `10 ${u}` : '10') };
+      });
+      functions.push({ name: s.name, params, ranges });
+    }
+    const relations: ChartRelation[] = [];
+    for (const r of result.statements) {
+      const s = r.statement;
+      if (s.kind !== 'derive' || !s.relation || typeof s.format?.eq !== 'string') continue;
+      const text = (lines[s.span.line - 1] ?? '').replace(/^\s*relation\s+/, '').replace(/\s*\{[^}]*\}\s*$/, '').trim();
+      const names = s.members.flatMap((m) => namesIn(m));
+      const axes = [...new Set(names.filter((n) => !quantityOf(n)))].slice(0, 2);
+      // As far round as the largest value it uses, and a half more: the curve stays inside.
+      const scale = names.map(quantityOf).filter((q) => q && q.si > 0).sort((p, q) => q!.si - p!.si)[0];
+      const ref = scale ? names.find((n) => quantityOf(n) === scale)! : undefined;
+      const span = ref ? { from: `-1.5·${ref}`, to: `1.5·${ref}` } : { from: '-10', to: '10' };
+      relations.push({ name: s.format.eq, text, axes, ranges: axes.map(() => span) });
+    }
+    return { functions, relations, series: fitSeries(result).map((f) => f.expr) };
+  };
+  /** The chart of a line as it will print, inserted after the line being edited (or at the end). */
+  const previewChart = (line: string): string => {
+    const after = currentRange()?.end ?? lineCount;
+    return previewFit([{ start: after + 1, removed: 0, lines: [line] }], '\u0000');
   };
   const applyFit = (edits: readonly LineEdit[]) => {
     const { text: changed, touched } = applyEdits(text, edits);
@@ -1778,6 +1837,7 @@ export function App() {
         setFitEdit(undefined);
         setDialog('fit');
       },
+      insertChart: () => setDialog('chart'),
       about: () => setDialog('about'),
       insertSymbol,
       insertTemplate,
@@ -2609,6 +2669,19 @@ export function App() {
             setChartLook(undefined);
           }}
           onClose={() => setChartLook(undefined)}
+        />
+      )}
+      {dialog === 'chart' && (
+        <ChartDialog
+          catalog={ui}
+          sources={chartSources()}
+          decimalComma={decimalComma}
+          preview={previewChart}
+          onApply={(line) => {
+            setDialog(undefined);
+            insertLine(line);
+          }}
+          onClose={() => setDialog(undefined)}
         />
       )}
       {dialog === 'fit' && (

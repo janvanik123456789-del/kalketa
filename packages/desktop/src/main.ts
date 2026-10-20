@@ -1620,8 +1620,21 @@ async function layersWithRealInput(picture: string) {
     const labelMoved = !!labelAt && !!labelNow && labelNow.y - labelAt.y > 15 && !!(await contents.executeJavaScript(`!!document.querySelector('.layer-view.active .block.chart .chart-label-lead')`));
     const chartTools = chartArea === 'S=64' && /^k=/.test(tangentBefore) && tangentAfter !== tangentBefore && /α=/.test(tangentAfter) && tangentOnCurve && nearPointer && labelMoved;
     await takePicture(picture.replace(/[.]png$/, '-chartroots.png'));
-    chartPlaced = placed && restored && yRanged && yAuto && chartRoots.length > 0 && chartRoots.every((t) => /^x=[−-]?[\d,]+$/.test(t)) && chartAxis === 'x=2' && chartVertex === '[2;24]' && chartTools;
-    chartSteps = `framed=${chartFramed} placed=${placed} restored=${restored} yRange=${yRanged} yAuto=${yAuto} roots=${chartRoots.join(' ')} axis=${chartAxis} vertex=${chartVertex} area=${chartArea} tangent=${tangentBefore}->${tangentAfter} onCurve=${tangentOnCurve} near=${nearPointer} end=${handleEnd} target=${dragTarget} start=${handle?.x} labelMoved=${labelMoved}`;
+    // The range of x centred on the axis of symmetry from the menu: 0 .. 10 about x = 2 becomes −3 .. 7; then back.
+    const xTicks = `[...document.querySelectorAll('.layer-view.active .block.chart svg.chart-svg text[text-anchor="middle"]')].map((t) => t.textContent.replace('−', '-')).filter((t) => /^-?[\\d,]+$/.test(t))`;
+    await clickOn('.layer-view.active .block.chart svg', [], 'right');
+    await clickMenu('Vystředit rozsah x');
+    let centred: string[] = [];
+    for (let i = 0; i < 20 && !centred.includes('-2'); i++) {
+      await pause(200);
+      centred = (await contents.executeJavaScript(xTicks)) as string[];
+    }
+    await clickOn('.layer-view.active .block.chart svg', [], 'right');
+    await clickMenu('Vystředit rozsah x');
+    await pause(500);
+    const chartCentred = centred.includes('-2') && centred.includes('6') && !centred.includes('10');
+    chartPlaced = chartCentred && placed && restored && yRanged && yAuto && chartRoots.length > 0 && chartRoots.every((t) => /^x=[−-]?[\d,]+$/.test(t)) && chartAxis === 'x=2' && chartVertex === '[2;24]' && chartTools;
+    chartSteps = `centred=${centred.join(' ')} framed=${chartFramed} placed=${placed} restored=${restored} yRange=${yRanged} yAuto=${yAuto} roots=${chartRoots.join(' ')} axis=${chartAxis} vertex=${chartVertex} area=${chartArea} tangent=${tangentBefore}->${tangentAfter} onCurve=${tangentOnCurve} near=${nearPointer} end=${handleEnd} target=${dragTarget} start=${handle?.x} labelMoved=${labelMoved}`;
   }
   const charts = !!chartBox && chartBox.paths > 0 && /^x = [\d,]+ \| Mt\(x\) = /.test(chartTip) && chartPlaced;
 

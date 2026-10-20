@@ -315,6 +315,7 @@ export const UI_KEYS = [
   'solve.toDefinition',
   'solve.expressedFrom',
   'chart.fullWidth',
+  'chart.center',
   'chartDialog.title',
   'chartDialog.kind',
   'chartDialog.kind.curve',

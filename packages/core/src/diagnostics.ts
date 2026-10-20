@@ -92,6 +92,7 @@ export const DIAGNOSTIC_SEVERITY = {
   'W-PLOT-NO-POINTS': 'warning',
   'W-PLOT-NO-TANGENT': 'warning',
   'W-PLOT-NO-YLIM': 'warning',
+  'W-PLOT-NO-CENTER': 'warning',
   'W-PLOT-YLIM-HIDES': 'warning',
   'E-NO-BOUNDS': 'error',
   'E-SOLVE-ROOTS': 'error',

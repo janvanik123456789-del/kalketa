@@ -697,6 +697,8 @@ export function SheetView(props: Props) {
       { kind: 'action', label: t(c, 'chart.inflections'), checked: plotFlag(seg.text, 'inflections'), run: () => props.onReplace(seg.start, seg.end, withPlotFlag(seg.text, 'inflections', !plotFlag(seg.text, 'inflections'))) },
       // The axis of symmetry of a symmetric curve (a parabola: x = −b/(2·a)), drawn where the curve has one.
       { kind: 'action', label: t(c, 'chart.symmetry'), checked: plotFlag(seg.text, 'symmetry'), run: () => props.onReplace(seg.start, seg.end, withPlotFlag(seg.text, 'symmetry', !plotFlag(seg.text, 'symmetry'))) },
+      // The range of x moved so the axis of symmetry is in its middle (as wide as written; the line keeps its range).
+      { kind: 'action', label: t(c, 'chart.center'), checked: plotFlag(seg.text, 'center'), run: () => props.onReplace(seg.start, seg.end, withPlotFlag(seg.text, 'center', !plotFlag(seg.text, 'center'))) },
       {
         kind: 'action',
         label: t(c, 'chart.yRange'),

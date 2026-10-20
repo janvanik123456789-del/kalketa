@@ -35,7 +35,7 @@ export const PLOT_FUNCTION = 'plot';
 export type PlotKind = 'line' | 'points' | 'bar' | 'map' | 'surface';
 const KINDS: readonly PlotKind[] = ['line', 'points', 'bar'];
 /** Options of plot(...); every other named argument is the variable. */
-export const PLOT_OPTIONS: readonly string[] = ['kind', 'title', 'samples', 'place', 'ylim', 'roots', 'symmetry', 'extremes', 'inflections', 'area', 'tangent', 'labels', 'points', 'style', 'levels', 'view', 'cut'];
+export const PLOT_OPTIONS: readonly string[] = ['kind', 'title', 'samples', 'place', 'ylim', 'roots', 'symmetry', 'extremes', 'inflections', 'area', 'tangent', 'labels', 'points', 'style', 'levels', 'view', 'cut', 'center'];
 /** Curves in one chart: the categorical colours a reader still tells apart. */
 export const MAX_PLOT_SERIES = 8;
 const LINE_SAMPLES = 201;
@@ -181,7 +181,19 @@ export function plotStatement(given: CallExpr, ctx: EvalContext, evaluate: Evalu
   // A chart has no lines of its own to stand beside: side= is for pictures.
   if (placeText !== undefined && (!place || place.side)) fail('E-PLOT-POSITION', call.named.find((n) => n.name === 'place')!.value.span, { place: placeText });
   const binder = binders[0];
-  const xs = binder ? samplePoints(binder, call, plotKind, ctx, evaluate) : undefined;
+  const sampled = binder ? samplePoints(binder, call, plotKind, ctx, evaluate) : undefined;
+  // center: true — the range of x moved, as wide as written, so the axis of symmetry of the first curve is in its
+  // middle (the vertex of a parabola), wherever the axis is; without one the range stays as written, and says so.
+  let xs = sampled;
+  if (sampled && binder?.value.kind === 'range' && flag(call, 'center', ctx, evaluate)) {
+    const axis = equationOf(call.args[0]!, formulaOf) ? undefined : centreOf(call.args[0]!, binder.name, sampled, ctx, evaluate);
+    if (axis === undefined) ctx.warnings.push(diagnostic('W-PLOT-NO-CENTER', call.named.find((n) => n.name === 'center')!.value.span, {}));
+    else {
+      const [lo, hi] = [sampled[0]!.si, sampled[sampled.length - 1]!.si];
+      const shift = axis - (lo + hi) / 2;
+      xs = sampled.map((q) => ({ ...q, si: q.si + shift }));
+    }
+  }
 
   // Over measured x (a series, not a range) a line chart shows the data as points and a
   // function of x (a fitted curve) as a line through their whole range.
@@ -625,6 +637,39 @@ function symmetryAxes(body: Expr, name: string, xs: readonly Quantity[], ys: rea
         return left !== undefined && right !== undefined && Math.abs(left - right) <= 1e-6 * scale;
       });
     });
+}
+
+/**
+ * The axis of symmetry of a curve nearest the middle of its range, looked for also beyond it (up to twice its width
+ * to each side): a peak or dip of the curve where it is the same at equal distances to both sides. SI; undefined
+ * when there is none (a line, an odd function).
+ */
+function centreOf(body: Expr, name: string, xs: readonly Quantity[], ctx: EvalContext, evaluate: Evaluate): number | undefined {
+  const f = valueAt(body, name, xs[0]!, ctx, evaluate);
+  const [lo, hi] = [xs[0]!.si, xs[xs.length - 1]!.si];
+  const width = hi - lo;
+  if (!(width > 0)) return undefined;
+  const n = 400;
+  const at = Array.from({ length: n + 1 }, (_, k) => lo - 2 * width + (5 * width * k) / n);
+  const ys = at.map((x) => f(x)?.si);
+  const finite = ys.filter((y): y is number => y !== undefined);
+  const scale = Math.max(...finite.map(Math.abs), Number.MIN_VALUE);
+  const candidates: number[] = [];
+  for (let k = 1; k < n; k++) {
+    const [a, b, c] = [ys[k - 1], ys[k], ys[k + 1]];
+    if (a === undefined || b === undefined || c === undefined || !((b - a) * (c - b) <= 0) || (a === b && b === c)) continue;
+    // The vertex of the parabola through the three samples.
+    const h = at[1]! - at[0]!;
+    const bend = a - 2 * b + c;
+    candidates.push(at[k]! + (bend === 0 ? 0 : (h * (a - c)) / (2 * bend)));
+  }
+  const symmetric = (x0: number) =>
+    [0.1, 0.25, 0.5, 0.75].every((share) => {
+      const [l, r] = [f(x0 - share * width)?.si, f(x0 + share * width)?.si];
+      return l !== undefined && r !== undefined && Math.abs(l - r) <= 1e-6 * scale;
+    });
+  const middle = (lo + hi) / 2;
+  return candidates.filter(symmetric).sort((p, q) => Math.abs(p - middle) - Math.abs(q - middle))[0];
 }
 
 /** ylim: low .. high, in the unit of the curves (or a pure number for pure numbers). */

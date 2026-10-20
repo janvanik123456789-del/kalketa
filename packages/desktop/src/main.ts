@@ -1908,7 +1908,7 @@ async function layersWithRealInput(picture: string) {
     `[...document.querySelectorAll('.layer-view.active .row[data-line="3"] figcaption')].map((f) => f.textContent.replace(/\\s+/g, ' ').trim()).join('|')`,
   )) as string;
   // A picture file copied in a file manager (Explorer and Linux file managers put its file:// URI on the clipboard).
-  const copiedFile = join(mkdtempSync(join(tmpdir(), 'kalketa-')), 'Detail uložení.png');
+  const copiedFile = join(mkdtempSync(join(tmpdir(), 'kalketa-smoke-file-')), 'Detail uložení.png');
   await writeFile(copiedFile, png);
   await clipboard.write([new ClipboardItem({ 'text/uri-list': pathToFileURL(copiedFile).href })]);
   await clickOn('.layer-view.active .row[data-line="1"]');

@@ -6,7 +6,7 @@
 // KALKETA_SMOKE_EXE=<path to Kalketa.exe> runs the same test on a packaged build.
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -15,6 +15,16 @@ import { newDocument, writeSheetFile } from '@kalketa/sheet';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const desktop = join(root, 'packages', 'desktop');
+// What earlier runs left in the temporary folder (profiles, saved sheets, pictures): gone after two days.
+const twoDaysAgo = Date.now() - 2 * 24 * 3600 * 1000;
+for (const name of readdirSync(tmpdir()).filter((n) => n.startsWith('kalketa-smoke'))) {
+  try {
+    const path = join(tmpdir(), name);
+    if (statSync(path).mtimeMs < twoDaysAgo) rmSync(path, { recursive: true, force: true });
+  } catch {
+    // In use or gone already: left for the next run.
+  }
+}
 const out = mkdtempSync(join(tmpdir(), 'kalketa-smoke-run-'));
 
 // A sheet whose AI notes an AI wrote.

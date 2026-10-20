@@ -1,6 +1,7 @@
 import { afterAll, describe, expect, it } from 'vitest';
 import { PYTHON_PRELUDE, readOutput } from '@kalketa/sheet';
-import { pyodidePlace, runPyodide, runSystemPython, stopPyodide, usesNumpy } from '../src/python.js';
+import { PYTHON_PRELUDE as DESKTOP_PRELUDE } from '../src/python.js';
+import { pythonEnvironment, pyodidePlace, runPyodide, runSystemPython, scriptExcerpt, stopPyodide, usesNumpy } from '../src/python.js';
 
 const place = pyodidePlace();
 afterAll(() => stopPyodide());
@@ -76,3 +77,29 @@ result("x", 2.5, "m")
   }, 60_000);
 });
 
+
+describe('Python of the computer', () => {
+  it('gets only the variables it needs to start, not the keys and tokens of the environment', () => {
+    const env = pythonEnvironment({ Path: 'C:\Python', SystemRoot: 'C:\Windows', ANTHROPIC_API_KEY: 'sk-secret', GITHUB_TOKEN: 'ghp', HOME: '/home/a' }, '/tmp/k');
+    expect(env['ANTHROPIC_API_KEY']).toBeUndefined();
+    expect(env['GITHUB_TOKEN']).toBeUndefined();
+    expect(env['Path']).toBe('C:\Python');
+    expect(env['SystemRoot']).toBe('C:\Windows');
+    expect(env['TEMP']).toBe('/tmp/k');
+    expect(env['PYTHONIOENCODING']).toBe('utf-8');
+  });
+
+  it('is asked about with the start of the script shown, and how much more there is', () => {
+    const code = Array.from({ length: 40 }, (_, i) => `x${i} = ${i}`).join('\n');
+    const shown = scriptExcerpt(code, '… {n} more lines');
+    expect(shown.split('\n')).toHaveLength(31);
+    expect(shown.endsWith('… 10 more lines')).toBe(true);
+    expect(scriptExcerpt('print(1)', '…')).toBe('print(1)');
+  });
+});
+
+describe('the prelude of a script', () => {
+  it('is put before it by the desktop exactly as the sheet reads its output', () => {
+    expect(DESKTOP_PRELUDE).toBe(PYTHON_PRELUDE);
+  });
+});

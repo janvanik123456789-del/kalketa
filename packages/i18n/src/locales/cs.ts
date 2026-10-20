@@ -1077,6 +1077,7 @@ export const cs: Catalog = {
     'python.state.missing': 'list takovou hodnotu nemá',
     'python.state.units': 'jednotky nesouhlasí (jiná veličina)',
     'python.state.unit': 'jednotku z Pythonu Kalketa nezná',
+    'python.moreLines': '… a dalších řádků: {n}',
     'python.confirmSystem': 'Spustit skript v Pythonu z počítače? Na rozdíl od vestavěného Pythonu má přístup k souborům a síti. Spouštějte jen skripty, kterým rozumíte.',
     'settings.python': 'Ověřovací Python',
     'settings.pythonPyodide': 'Vestavěný (bez přístupu k souborům a síti)',

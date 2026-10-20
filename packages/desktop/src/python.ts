@@ -166,13 +166,22 @@ function pythonCommands(): [string, string[]][] {
 }
 
 /** Runs a script in Python of the computer: isolated (-I), in an empty folder of its own, stopped when too long. */
+/** Variables of the environment Python needs to start and find itself; everything else (API keys, tokens) stays out. */
+const KEPT_VARIABLES = new Set(['PATH', 'PATHEXT', 'SYSTEMROOT', 'SYSTEMDRIVE', 'WINDIR', 'COMSPEC', 'HOME', 'USERPROFILE', 'LOCALAPPDATA', 'APPDATA', 'PROGRAMDATA', 'PROGRAMFILES', 'PROGRAMFILES(X86)', 'NUMBER_OF_PROCESSORS', 'PROCESSOR_ARCHITECTURE', 'LANG', 'LC_ALL', 'LC_CTYPE', 'PYENV_ROOT', 'CONDA_PREFIX', 'VIRTUAL_ENV']);
+
+/** The environment of Python of the computer: the variables it needs, its temporary folder, UTF-8 out. */
+export function pythonEnvironment(env: NodeJS.ProcessEnv, folder: string): NodeJS.ProcessEnv {
+  const kept = Object.fromEntries(Object.entries(env).filter(([name]) => KEPT_VARIABLES.has(name.toUpperCase())));
+  return { ...kept, TEMP: folder, TMP: folder, TMPDIR: folder, PYTHONIOENCODING: 'utf-8', PYTHONDONTWRITEBYTECODE: '1' };
+}
+
 export async function runSystemPython(code: string, timeoutMs = PYTHON_TIMEOUT_MS): Promise<PythonOutcome> {
   const start = Date.now();
   const folder = await mkdtemp(join(tmpdir(), 'kalketa-python-'));
   try {
     for (const [command, args] of pythonCommands()) {
       const outcome = await new Promise<PythonOutcome | undefined>((resolve) => {
-        const child = spawn(command, [...args, '-I', '-'], { cwd: folder, windowsHide: true, env: { ...process.env, PYTHONIOENCODING: 'utf-8', PYTHONDONTWRITEBYTECODE: '1' } });
+        const child = spawn(command, [...args, '-I', '-'], { cwd: folder, windowsHide: true, env: pythonEnvironment(process.env, folder) });
         let stdout = '';
         let stderr = '';
         let timedOut = false;
@@ -219,3 +228,20 @@ export function pyodidePlace(resources?: string): PyodidePlace {
   const packagesDir = packages.find((dir) => existsSync(dir));
   return { indexDir, ...(packagesDir ? { packagesDir } : {}) };
 }
+
+/** The start of a script for the question before it runs: its first lines, and how many more there are. */
+export function scriptExcerpt(code: string, more: string, lines = 30): string {
+  const all = code.replace(/\r\n/g, '\n').split('\n');
+  const shown = all.slice(0, lines).map((l) => (l.length > 160 ? `${l.slice(0, 160)}…` : l));
+  return all.length > lines ? `${shown.join('\n')}\n${more.replace('{n}', String(all.length - lines))}` : shown.join('\n');
+}
+
+/**
+ * Put before every script by this process (not by the page), so what the user is shown is all that runs besides
+ * it: result(name, value, unit="", rel=1e-6). The same text as PYTHON_PRELUDE of @kalketa/sheet (a test keeps them so).
+ */
+export const PYTHON_PRELUDE = `def result(name, value, unit="", rel=1e-6):
+    """Report a result of the check by its name in the sheet, with its unit as Kalketa writes it."""
+    import json as _json
+    print("@@kalketa " + _json.dumps({"name": str(name), "value": float(value), "unit": str(unit), "rel": float(rel)}), flush=True)
+`;

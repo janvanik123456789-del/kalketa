@@ -504,6 +504,7 @@ export const UI_KEYS = [
   'python.state.units',
   'python.state.unit',
   'python.confirmSystem',
+  'python.moreLines',
   'settings.python',
   'settings.pythonPyodide',
   'settings.pythonSystem',

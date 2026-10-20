@@ -133,7 +133,8 @@ export interface DesktopBridge {
    * A script checking the calculation, run in Python: the built-in one (Pyodide: no files, no network)
    * or Python of the computer (the editor asks before each run). result() is put before it by the editor.
    */
-  runPython(code: string, engine: 'pyodide' | 'system'): Promise<{ readonly ok: boolean; readonly stdout: string; readonly stderr: string; readonly error?: string; readonly engine: 'pyodide' | 'system'; readonly ms: number }>;
+  /** The script alone (the program puts result() before it); Python of the computer asks the user first, with these words. */
+  runPython(code: string, engine: 'pyodide' | 'system', ask?: { message: string; run: string; cancel: string; more: string }): Promise<{ readonly ok: boolean; readonly stdout: string; readonly stderr: string; readonly error?: string; readonly declined?: boolean; readonly engine: 'pyodide' | 'system'; readonly ms: number }>;
   /** A formula read from a picture by a model that reads images; the answer as the chat gets it. */
   aiFormula(ask: { provider: string; model: string; url?: string; effort?: string; purpose?: 'formula' | 'figure' | 'text'; language?: string; context?: string; image: { type: string; data: string } }): Promise<{ readonly ok: true; readonly text: string; readonly model: string } | { readonly ok: false; readonly problem: string; readonly detail?: string }>;
   theoryRead(path: string, sheetPath?: string): Promise<Uint8Array>;

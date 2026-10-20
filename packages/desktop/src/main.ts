@@ -20,7 +20,7 @@ import { stat } from 'node:fs/promises';
 import { canSealKeys, registerAiBridge } from './ai.js';
 import { registerTheoryBridge } from './theory.js';
 import { systemFonts } from './fonts.js';
-import { pyodidePlace, runPyodide, runSystemPython, stopPyodide } from './python.js';
+import { pyodidePlace, PYTHON_PRELUDE, runPyodide, runSystemPython, scriptExcerpt, stopPyodide } from './python.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 // .calc: calculation files from before the program was renamed (it was CalcCanvas).
@@ -464,11 +464,32 @@ function registerBridge(): void {
   registerTheoryBridge(fromEditor);
   // A check of the calculation in Python: the built-in one (no files, no network) or, chosen in the settings and
   // confirmed in the editor before each run, Python of the computer. The editor puts result() before the script.
-  ipcMain.handle('kalketa:python-run', async (event, request: { code: unknown; engine: unknown }) => {
-    fromEditor(event);
+  ipcMain.handle('kalketa:python-run', async (event, request: { code: unknown; engine: unknown; ask?: { message?: unknown; run?: unknown; cancel?: unknown; more?: unknown } }) => {
+    const owner = fromEditor(event);
     if (typeof request?.code !== 'string' || request.code.length > 200_000) throw new Error('Not a script');
-    if (request.engine === 'system') return runSystemPython(request.code);
-    return runPyodide(request.code, pyodidePlace(app.isPackaged ? process.resourcesPath : undefined));
+    // The prelude (result()) is put before the script here, so the script shown is all that runs besides it.
+    const script = `${PYTHON_PRELUDE}\n${request.code}`;
+    if (request.engine === 'system') {
+      // Python of the computer reaches files and the network: the user agrees to each script, asked by this
+      // process (not by the page), the script itself shown. The words come from the editor in the user's language.
+      const ask = request.ask ?? {};
+      const word = (v: unknown, fallback: string) => (typeof v === 'string' && v.trim() ? v.slice(0, 400) : fallback);
+      if (!smokeTest) {
+        const { response } = await dialog.showMessageBox(owner, {
+          type: 'warning',
+          title: 'Kalketa',
+          message: word(ask.message, 'Run the script in the Python of this computer? It can reach your files and the network.'),
+          detail: scriptExcerpt(request.code, word(ask.more, '… {n} more lines')),
+          buttons: [word(ask.run, 'Run'), word(ask.cancel, 'Cancel')],
+          defaultId: 1,
+          cancelId: 1,
+          noLink: true,
+        });
+        if (response !== 0) return { ok: false, stdout: '', stderr: '', declined: true, engine: 'system', ms: 0 };
+      }
+      return runSystemPython(script);
+    }
+    return runPyodide(script, pyodidePlace(app.isPackaged ? process.resourcesPath : undefined));
   });
 }
 

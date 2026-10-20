@@ -1077,6 +1077,7 @@ export const en: Catalog = {
     'python.state.missing': 'the sheet has no such value',
     'python.state.units': 'the units do not match (another quantity)',
     'python.state.unit': 'Kalketa does not know the unit from Python',
+    'python.moreLines': '… and {n} more lines',
     'python.confirmSystem': 'Run the script in Python of the computer? Unlike the built-in Python, it can reach files and the network. Run only scripts you understand.',
     'settings.python': 'Python for checks',
     'settings.pythonPyodide': 'Built-in (no access to files or the network)',

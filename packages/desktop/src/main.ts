@@ -9,7 +9,7 @@
  * (keys stay here, see ai.ts).
  */
 
-import { app, BrowserWindow, clipboard, ClipboardItem, dialog, ipcMain, Menu, nativeImage, shell, type IpcMainInvokeEvent } from 'electron';
+import { app, BrowserWindow, clipboard, ClipboardItem, dialog, ipcMain, Menu, nativeImage, shell, utilityProcess, type IpcMainInvokeEvent } from 'electron';
 import { execFileSync } from 'node:child_process';
 import { appendFileSync, cpSync, existsSync, mkdtempSync, readFileSync } from 'node:fs';
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
@@ -20,7 +20,7 @@ import { stat } from 'node:fs/promises';
 import { canSealKeys, registerAiBridge } from './ai.js';
 import { registerTheoryBridge } from './theory.js';
 import { systemFonts } from './fonts.js';
-import { pyodidePlace, PYTHON_PRELUDE, runPyodide, runSystemPython, scriptExcerpt, stopPyodide } from './python.js';
+import { pyodidePlace, PYTHON_PRELUDE, runPyodide, runSystemPython, scriptExcerpt, setPyodideLauncher, stopPyodide } from './python.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 // .calc: calculation files from before the program was renamed (it was CalcCanvas).
@@ -3430,7 +3430,7 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
   let layerShown = { memory: '', sheet: [] as string[], unknown: [] as string[], hiddenConversations: -1 };
   let resumed: string[] = [];
   let newSheet = { head: '', others: '', opened: { tab: '', rows: 0, marked: 0, errors: '' }, state: '' };
-  let pythonChat = { checks: 0, first: '', last: '', answers: 0, told: '', keep: 0, tables: 0, kept: false };
+  let pythonChat = { checks: 0, first: '', last: '', answers: 0, told: '', keep: 0, tables: 0, kept: false, askedFirst: false, declined: false };
   let sheetCheck = { checks: 0, report: '', answers: '' };
   let answerBlocks = { choiceButtons: '', levelAnswer: '', noteButton: '', noteAfter: '' };
   let thinkingCut = '';
@@ -3572,7 +3572,7 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
     pythonChat = (await contents.executeJavaScript(`(() => {
       const checks = [...${checkTurns}].map((t) => t.textContent);
       const answers = [...document.querySelectorAll('.chat-pane .chat-turn.assistant:not(.writing)')].map((t) => t.textContent).filter((t) => t.includes('python:'));
-      return { checks: checks.length, first: checks[0] ?? '', last: checks[checks.length - 1] ?? '', answers: answers.length, told: answers[0] ?? '', keep: document.querySelectorAll('.chat-pane .chat-check-keep').length, tables: document.querySelectorAll('.chat-pane .chat-turn.check table').length, kept: false };
+      return { checks: checks.length, first: checks[0] ?? '', last: checks[checks.length - 1] ?? '', answers: answers.length, told: answers[0] ?? '', keep: document.querySelectorAll('.chat-pane .chat-check-keep').length, tables: document.querySelectorAll('.chat-pane .chat-turn.check table').length, kept: false, askedFirst: false, declined: false };
     })()`)) as typeof pythonChat;
     await takePicture(picture.replace(/[.]png$/, '-ai-python.png'));
     // The corrected check kept in the sources: it says so.
@@ -3584,6 +3584,33 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
     await clickOn('.menubar-item:nth-child(2) > button');
     await clickMenu('Zpět');
     await pause(400);
+    // Asked before a check of the AI runs (settings): declined, it does not run and the chat says so.
+    const toggleAskAi = async () => {
+      await clickOn('.menubar-item:nth-child(6) > button');
+      await clickMenu('Nastavení');
+      await pause(400);
+      await clickOn('.python-ask-ai');
+      await clickOn('.dialog-buttons button.default');
+      await pause(300);
+    };
+    await toggleAskAi();
+    const declinedBefore = (await contents.executeJavaScript(`document.querySelectorAll('.chat-pane .chat-turn.check').length`)) as number;
+    await clickOn('.chat-input');
+    await typeText('Ověř výpočet v Pythonu.');
+    await pressKey('Enter');
+    let asked = '';
+    for (let i = 0; i < 150 && !asked; i++) {
+      await pause(200);
+      asked = (await contents.executeJavaScript(`document.querySelector('.dialog p.ask')?.textContent ?? ''`)) as string;
+    }
+    if (asked) await clickOn('.dialog-buttons button:not(.default)');
+    let declinedText = '';
+    for (let i = 0; i < 100 && !declinedText; i++) {
+      await pause(200);
+      declinedText = (await contents.executeJavaScript(`[...document.querySelectorAll('.chat-pane .chat-turn.check:not(.writing)')].slice(${declinedBefore}).map((t) => t.textContent).join(' ')`)) as string;
+    }
+    pythonChat = { ...pythonChat, askedFirst: asked.includes('napsala AI'), declined: declinedText.includes('nebylo povoleno') };
+    await toggleAskAi();
     // The sheet an answer proposes, checked by the program: a name defined twice and a number in text the sheet does
     // not compute go back to the model by themselves; the corrected proposal passes, so no second report comes.
     const checksBefore = (await contents.executeJavaScript(`${checkTurns}.length`)) as number;
@@ -3654,7 +3681,7 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
     proposal.printAsks.startsWith('Výpočet obsahuje řádky navržené AI') && proposal.printClosed &&
     newSheet.head === 'Nový list: Nosník se silou · řádků: 4' && Number(newSheet.others) >= 2 &&
     newSheet.opened.tab.startsWith('Nosník se silou') && newSheet.opened.marked >= 3 && newSheet.opened.errors.startsWith('chyba: 0') && newSheet.state.startsWith('Otevřeno jako „Nosník se silou“') &&
-    pythonChat.checks === 2 && pythonChat.answers === 2 && pythonChat.told.includes('python: ano') && pythonChat.first.includes('✗') && pythonChat.last.includes('✓') && !pythonChat.last.includes('✗') && pythonChat.keep === 2 && pythonChat.tables === 2 && pythonChat.kept &&
+    pythonChat.checks === 2 && pythonChat.answers === 2 && pythonChat.told.includes('python: ano') && pythonChat.first.includes('✗') && pythonChat.last.includes('✓') && !pythonChat.last.includes('✗') && pythonChat.keep === 2 && pythonChat.tables === 2 && pythonChat.kept && pythonChat.askedFirst && pythonChat.declined &&
     sheetCheck.checks === 1 && sheetCheck.report.includes('Kontrola navrženého listu') && sheetCheck.report.includes('„smoke_d“ už je definováno') && sheetCheck.report.includes('t_v2 == t_v') && sheetCheck.report.includes('777') && sheetCheck.report.includes('Smoke dost dlouhé') && sheetCheck.answers === 'zdvojeno: první|zdvojeno: opraveno' &&
     answerBlocks.choiceButtons === 'Stručně: vzorec, dosazení, výsledek|Jako na papíře: vztahy, odvození krok po kroku|Výukově: navíc vysvětlení a ověření v Pythonu' && answerBlocks.levelAnswer.includes('úroveň: paper') && answerBlocks.noteButton === 'Vložit do Poznámek AI' && answerBlocks.noteAfter === 'Vloženo' &&
     thinkingCut.includes('Odpověď hned.') && thinkingCut.includes('bez přemýšlení') &&
@@ -3878,6 +3905,16 @@ if (!app.requestSingleInstanceLock()) {
     startupMark('ready');
     Menu.setApplicationMenu(null); // the editor has its own menus, toolbars and shortcuts
     registerBridge();
+    // The built-in Python runs in a utility process of its own: whatever a script does there stays out of this process.
+    setPyodideLauncher((script) => {
+      const child = utilityProcess.fork(script, [], { serviceName: 'Kalketa Python', execArgv: ['--max-old-space-size=1024'], stdio: 'ignore' });
+      return {
+        postMessage: (m) => child.postMessage(m),
+        onMessage: (l) => child.on('message', l),
+        onExit: (l) => child.on('exit', l),
+        kill: () => void child.kill(),
+      };
+    });
     createWindow();
   });
   app.on('window-all-closed', () => app.quit());

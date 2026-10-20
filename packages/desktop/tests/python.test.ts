@@ -46,6 +46,13 @@ describe('the built-in Python (Pyodide)', () => {
     expect(after.stdout.trim()).toBe('4');
   }, 90_000);
 
+  it('runs in a process of its own: a script that ends it takes down only that process', async () => {
+    const ended = await runPyodide('import os\nos._exit(3)', place, 20_000);
+    expect(ended.ok).toBe(false);
+    const after = await runPyodide('print(6 * 7)', place);
+    expect(after.stdout.trim()).toBe('42');
+  }, 120_000);
+
   it('loads NumPy from the wheel shipped with the program (scripts/pyodide-packages.mjs)', async () => {
     if (!place.packagesDir) return;
     const run = await runPyodide('import numpy as np\nprint(np.polyfit([1, 2, 3, 4, 5], [2.1, 3.9, 4.2, 6.2, 9.1], 2).round(4).tolist())', place);

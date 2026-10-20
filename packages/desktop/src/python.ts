@@ -3,23 +3,22 @@
  * sources layer, by a person or by the AI, runs here and its results are set beside the sheet.
  *
  * Two engines:
- *  - the built-in one: Pyodide (CPython compiled to WebAssembly) in a thread of its own. The script
- *    sees nothing of the program: no files of the computer, no network (the `js` module is an empty
- *    object, `pyodide_js` is taken away); NumPy is loaded from the wheel shipped with the program.
- *    A script that runs too long is stopped with its thread.
+ *  - the built-in one: Pyodide (CPython compiled to WebAssembly) in a process of its own
+ *    (pyodideChild.cts). The script sees nothing of the program: no files of the computer, no network
+ *    (the `js` module is an empty object, `pyodide_js` is taken away); NumPy is loaded from the wheel
+ *    shipped with the program. A script that runs too long is stopped with its process.
  *  - Python of the computer, when the user chose it in the settings: it can do what the user can,
  *    so the editor asks before every run. It runs isolated (-I) in an empty folder of its own.
  *
- * No Electron here: the tests run it in Node.
+ * No Electron here: the tests run it in Node (main.ts gives Electron's utility process by setPyodideLauncher).
  */
 
-import { spawn } from 'node:child_process';
+import { fork, spawn } from 'node:child_process';
 import { existsSync, readdirSync } from 'node:fs';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { pathToFileURL } from 'node:url';
-import { Worker } from 'node:worker_threads';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 export type PythonEngine = 'pyodide' | 'system';
 
@@ -43,54 +42,47 @@ export interface PyodidePlace {
 /** Longest run of a script before it is stopped. */
 export const PYTHON_TIMEOUT_MS = 30_000;
 
-// The thread of Pyodide: started once (loading takes a few seconds) and kept while it behaves.
-const WORKER = String.raw`
-const { parentPort, workerData } = require('node:worker_threads');
-let ready;
-let out = [];
-let err = [];
-// Any JavaScript object the script gets hold of (a callback, an array) leads by .constructor to Function,
-// and Function builds code that reaches the computer: in this thread, functions have no constructor.
-for (const f of [function () {}, async function () {}, function* () {}, async function* () {}]) {
-  Object.defineProperty(Object.getPrototypeOf(f), 'constructor', { value: undefined, writable: false, configurable: false });
+/** The process of the built-in Python as python.ts sees it: Electron's utility process or a Node child. */
+export interface PyodideProcess {
+  postMessage(message: unknown): void;
+  onMessage(listener: (message: unknown) => void): void;
+  onExit(listener: () => void): void;
+  kill(): void;
 }
-async function start() {
-  const { loadPyodide } = await import(workerData.pyodideUrl);
-  const py = await loadPyodide({
-    indexURL: workerData.indexDir,
-    ...(workerData.packagesDir ? { packageCacheDir: workerData.packagesDir } : {}),
-    // The script sees no JavaScript: no fetch, no require, no files of the computer (not even Object's prototype).
-    jsglobals: Object.create(null),
-    stdout: (line) => out.push(line),
-    stderr: (line) => err.push(line),
-  });
-  py.unregisterJsModule('pyodide_js');
-  py.runPython("import sys\nsys.modules.pop('pyodide_js', None)");
-  return py;
-}
-parentPort.on('message', async ({ id, code, numpy }) => {
-  out = [];
-  err = [];
-  let globals;
-  try {
-    ready ??= start();
-    const py = await ready;
-    // Only the wheels shipped with the program: a package not there is never fetched.
-    if (numpy) await py.loadPackage('numpy', { messageCallback: () => {}, errorCallback: (line) => err.push(line) });
-    globals = py.globals.get('dict')();
-    await py.runPythonAsync(code, { globals });
-    parentPort.postMessage({ id, ok: true, stdout: out.join('\n'), stderr: err.join('\n') });
-  } catch (e) {
-    const text = String((e && e.message) || e);
-    parentPort.postMessage({ id, ok: false, stdout: out.join('\n'), stderr: err.join('\n'), error: text });
-  } finally {
-    globals?.destroy?.();
-  }
-});
-`;
 
-let worker: Worker | undefined;
-let workerPlace: string | undefined;
+/** Starts the process of the built-in Python from its script; Electron gives its own (a utility process). */
+export type PyodideLauncher = (script: string) => PyodideProcess;
+
+/** By default a Node child, as in the tests: an own process with its memory limited. */
+const forkNode: PyodideLauncher = (script) => {
+  const child = fork(script, [], { execArgv: ['--max-old-space-size=1024'], serialization: 'advanced', stdio: 'ignore' });
+  return {
+    postMessage: (m) => child.send(m as never),
+    onMessage: (l) => child.on('message', l),
+    onExit: (l) => child.on('exit', l),
+    kill: () => child.kill(),
+  };
+};
+let launcher: PyodideLauncher = forkNode;
+
+/** Sets how the process of the built-in Python is started (Electron: utilityProcess.fork). */
+export function setPyodideLauncher(launch: PyodideLauncher): void {
+  launcher = launch;
+}
+
+/** The script of the process: compiled next to this module, or the source in the tests (Node strips its types). */
+export function pyodideChildScript(): string {
+  const here = dirname(fileURLToPath(import.meta.url));
+  const built = join(here, 'pyodideChild.cjs');
+  return existsSync(built) ? built : join(here, 'pyodideChild.cts');
+}
+
+interface Running {
+  readonly child: PyodideProcess;
+  readonly place: string;
+  readonly waiting: Map<number, (m: { ok: boolean; stdout: string; stderr: string; error?: string } | undefined) => void>;
+}
+let running: Running | undefined;
 let nextId = 0;
 
 /** Whether a script asks for NumPy (import numpy, from numpy import …). */
@@ -109,55 +101,59 @@ export function lastError(text: string): string {
   return lines[lines.length - 1] ?? text;
 }
 
-/** Runs a script in the built-in Python. */
+/** The process of the built-in Python for this place: started once (loading takes a few seconds), kept while it behaves. */
+function pyodideProcess(place: PyodidePlace): Running {
+  const key = `${place.indexDir}|${place.packagesDir ?? ''}`;
+  if (running && running.place === key) return running;
+  running?.child.kill();
+  const child = launcher(pyodideChildScript());
+  const own: Running = { child, place: key, waiting: new Map() };
+  child.onMessage((m) => {
+    const message = m as { id: number; ok: boolean; stdout: string; stderr: string; error?: string };
+    own.waiting.get(message.id)?.(message);
+  });
+  // A process that ended (crashed, out of memory, stopped) is not used again; what it ran fails.
+  child.onExit(() => {
+    if (running === own) running = undefined;
+    for (const answer of own.waiting.values()) answer(undefined);
+  });
+  child.postMessage({ start: { pyodideUrl: pathToFileURL(join(place.indexDir, 'pyodide.mjs')).href, indexDir: place.indexDir + (place.indexDir.endsWith('/') || place.indexDir.endsWith('\\') ?'' : '/'), ...(place.packagesDir ? { packagesDir: place.packagesDir } : {}) } });
+  running = own;
+  return own;
+}
+
+/** Runs a script in the built-in Python, in a process of its own. */
 export function runPyodide(code: string, place: PyodidePlace, timeoutMs = PYTHON_TIMEOUT_MS): Promise<PythonOutcome> {
   const start = Date.now();
-  const key = `${place.indexDir}|${place.packagesDir ?? ''}`;
-  if (!worker || workerPlace !== key) {
-    void worker?.terminate();
-    worker = new Worker(WORKER, {
-      eval: true,
-      workerData: { pyodideUrl: pathToFileURL(join(place.indexDir, 'pyodide.mjs')).href, indexDir: place.indexDir + (place.indexDir.endsWith('/') || place.indexDir.endsWith('\\') ? '' : '/'), packagesDir: place.packagesDir },
-      resourceLimits: { maxOldGenerationSizeMb: 1024 },
-    });
-    workerPlace = key;
-  }
-  const own = worker;
+  const own = pyodideProcess(place);
   const id = ++nextId;
   const numpy = usesNumpy(code) && hasNumpy(place.packagesDir);
   return new Promise((resolve) => {
+    let timedOut = false;
     const done = (outcome: Omit<PythonOutcome, 'engine' | 'ms'>) => {
       clearTimeout(timer);
-      own.off('message', onMessage);
-      own.off('error', onError);
+      own.waiting.delete(id);
       resolve({ ...outcome, engine: 'pyodide', ms: Date.now() - start });
     };
-    const onMessage = (m: { id: number; ok: boolean; stdout: string; stderr: string; error?: string }) => {
-      if (m.id !== id) return;
-      done({ ok: m.ok, stdout: m.stdout, stderr: m.stderr, ...(m.error ? { error: lastError(m.error) } : {}) });
-    };
-    const onError = (e: Error) => {
-      // A thread that broke is not used again.
-      if (worker === own) worker = undefined;
-      done({ ok: false, stdout: '', stderr: '', error: e.message });
-    };
-    // Too long: the thread is stopped with the script and started anew next time.
+    own.waiting.set(id, (m) =>
+      done(m ? { ok: m.ok, stdout: m.stdout, stderr: m.stderr, ...(m.error ? { error: lastError(m.error) } : {}) } : { ok: false, stdout: '', stderr: '', error: timedOut ? `timeout ${Math.round(timeoutMs / 1000)} s` : 'The built-in Python stopped' }),
+    );
+    // Too long: the process is stopped with the script and started anew next time.
     const timer = setTimeout(() => {
-      if (worker === own) worker = undefined;
-      void own.terminate();
+      timedOut = true;
+      if (running === own) running = undefined;
+      own.child.kill();
       done({ ok: false, stdout: '', stderr: '', error: `timeout ${Math.round(timeoutMs / 1000)} s` });
     }, timeoutMs);
-    own.on('message', onMessage);
-    own.on('error', onError);
-    own.postMessage({ id, code, numpy });
+    own.child.postMessage({ job: { id, code, numpy } });
   });
 }
 
-/** Stops the thread of the built-in Python (when the program ends). */
+/** Stops the process of the built-in Python (when the program ends). */
 export async function stopPyodide(): Promise<void> {
-  const own = worker;
-  worker = undefined;
-  await own?.terminate();
+  const own = running;
+  running = undefined;
+  own?.child.kill();
 }
 
 /** The commands that start Python of the computer, tried in order. */

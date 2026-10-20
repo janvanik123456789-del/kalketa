@@ -104,6 +104,8 @@ export interface Settings {
   readonly canvasMode: 'inline' | 'window';
   /** Where checks in Python run: the built-in Python, or Python of the computer (asked before each run). */
   readonly python: 'pyodide' | 'system';
+  /** Checks the AI writes run only after the user agrees to each (Python of the computer always asks). */
+  readonly pythonAskAi: boolean;
   readonly ai: AiSettings;
   /** A newly typed API key, handed to the desktop application on OK. */
   readonly aiKey?: { readonly key: string; readonly remember: boolean };
@@ -115,6 +117,7 @@ export function SettingsDialog({
   sizeLimit,
   canvasMode,
   python,
+  pythonAskAi,
   ai,
   aiOn = true,
   onApply,
@@ -125,6 +128,7 @@ export function SettingsDialog({
   sizeLimit: number;
   canvasMode: 'inline' | 'window';
   python: 'pyodide' | 'system';
+  pythonAskAi: boolean;
   ai: AiSettings;
   /** The AI is switched on for this run: only then may the dialog look for servers by itself. */
   aiOn?: boolean;
@@ -135,6 +139,7 @@ export function SettingsDialog({
   const [limit, setLimit] = useState(String(sizeLimit));
   const [canvas, setCanvas] = useState(canvasMode);
   const [pythonEngine, setPythonEngine] = useState(python);
+  const [askAi, setAskAi] = useState(pythonAskAi);
   const [aiDraft, setAiDraft] = useState<AiDraft>({ settings: ai, key: '', remember: true });
   const apply = () => {
     const mb = Number(limit.replace(',', '.'));
@@ -143,6 +148,7 @@ export function SettingsDialog({
       sizeLimit: Number.isFinite(mb) && mb > 0 ? mb : sizeLimit,
       canvasMode: canvas,
       python: pythonEngine,
+      pythonAskAi: askAi,
       ai: aiDraft.settings,
       ...(aiDraft.key.trim() ? { aiKey: { key: aiDraft.key, remember: aiDraft.remember } } : {}),
     });
@@ -178,6 +184,12 @@ export function SettingsDialog({
           <option value="pyodide">{t(catalog, 'settings.pythonPyodide')}</option>
           <option value="system">{t(catalog, 'settings.pythonSystem')}</option>
         </select>
+      </label>
+      <label className="field">
+        <span />
+        <span>
+          <input type="checkbox" className="python-ask-ai" checked={askAi} onChange={(e) => setAskAi(e.target.checked)} /> {t(catalog, 'settings.pythonAskAi')}
+        </span>
       </label>
       <AiSettingsSection catalog={catalog} draft={aiDraft} onChange={setAiDraft} aiOn={aiOn} />
     </Dialog>

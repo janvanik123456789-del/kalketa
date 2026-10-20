@@ -40,7 +40,7 @@ export interface CheckReport {
   /** What the script printed besides its results (kept short for the model). */
   readonly output: string;
   readonly rows: readonly CheckRow[];
-  /** The user did not let it run (Python of the computer, declined). */
+  /** The user did not let it run (asked before it, declined). */
   readonly declined?: boolean;
   /** Not run: the sheet has none of the names it reports yet (the calculation is to be written first). */
   readonly postponed?: readonly string[];

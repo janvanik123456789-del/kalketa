@@ -90,6 +90,7 @@ const RECENT_LIMIT = 8;
 const SIZE_LIMIT_KEY = 'kalketa.sizeLimitMb';
 const CANVAS_MODE_KEY = 'kalketa.canvasMode';
 const PYTHON_ENGINE_KEY = 'kalketa.pythonEngine';
+const PYTHON_ASK_AI_KEY = 'kalketa.pythonAskAi';
 /** Provider and model of the AI; keys are kept by the desktop application, not here. */
 const AI_SETTINGS_KEY = 'kalketa.ai';
 const DEFAULT_SIZE_LIMIT_MB = 50;
@@ -1050,6 +1051,7 @@ export function App() {
   /** Where a canvas is edited by default (Tools > Settings): right in the sheet, or in a large window. */
   const [canvasMode, setCanvasMode] = useState<'inline' | 'window'>(() => (stored(CANVAS_MODE_KEY) === 'window' ? 'window' : 'inline'));
   const [pythonEngine, setPythonEngine] = useState<'pyodide' | 'system'>(() => (stored(PYTHON_ENGINE_KEY) === 'system' ? 'system' : 'pyodide'));
+  const [pythonAskAi, setPythonAskAi] = useState(() => stored(PYTHON_ASK_AI_KEY) === 'yes');
   // The conversation the chat shows, by document tab; the conversations themselves are in the sheet (AI notes).
   // Absent: the latest one; '' after "New chat": a new one with the next question.
   const [activeChat, setActiveChat] = useState<Readonly<Record<string, string>>>({});
@@ -1446,6 +1448,8 @@ export function App() {
     // The calculation first, its check after: a check of names the sheet has none of is not run.
     const names = reportedNames(code);
     if (names.length > 0 && !names.some((name) => sheetHas(sheet, name))) return { ok: true, output: '', rows: [], postponed: names };
+    // The built-in Python asks only when the user wants it so (Python of the computer asks itself, in the program).
+    if (pythonEngine === 'pyodide' && pythonAskAi && !(await askConfirm(t(ui, 'python.confirmAi')))) return { ok: false, output: '', rows: [], declined: true };
     const raw = await desktop!.runPython(code, pythonEngine, pythonAsk());
     if (raw.declined) return { ok: false, output: '', rows: [], declined: true };
     const { output, results } = readOutput(raw.stdout);
@@ -2590,6 +2594,7 @@ export function App() {
           sizeLimit={sizeLimit}
           canvasMode={canvasMode}
           python={pythonEngine}
+          pythonAskAi={pythonAskAi}
           ai={aiSettings}
           aiOn={aiOn}
           onApply={(next) => {
@@ -2600,6 +2605,8 @@ export function App() {
             remember(CANVAS_MODE_KEY, next.canvasMode);
             setPythonEngine(next.python);
             remember(PYTHON_ENGINE_KEY, next.python);
+            setPythonAskAi(next.pythonAskAi);
+            remember(PYTHON_ASK_AI_KEY, next.pythonAskAi ? 'yes' : 'no');
             setLanguage(next.language);
             remember(LANGUAGE_KEY, next.language);
             setSizeLimit(next.sizeLimit);

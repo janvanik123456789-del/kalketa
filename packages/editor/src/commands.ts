@@ -36,11 +36,15 @@ export interface CommandContext {
   readonly aiOn: boolean;
   /** Number of open calculations. */
   readonly documents: number;
+  /** The calculation keeps conversations, a memory or a journal of the AI. */
+  readonly aiRecords: boolean;
   readonly actions: {
     newDocument(): void;
     open(): void;
     save(): void;
     saveAs(): void;
+    /** A copy for others: without the conversations, memory and journal of the AI. */
+    saveCopyWithoutAi(): void;
     closeDocument(): void;
     closeAllDocuments(): void;
     newWindow(): void;
@@ -96,6 +100,7 @@ export function buildCommands(ctx: CommandContext): Map<string, Command> {
   add('file.open', 'file', a.open, { shortcut: 'Ctrl+O' });
   add('file.save', 'file', a.save, { shortcut: 'Ctrl+S' });
   add('file.saveAs', 'file', a.saveAs, { shortcut: 'Ctrl+Shift+S' });
+  add('file.saveWithoutAi', 'file', a.saveCopyWithoutAi, { enabled: ctx.aiRecords });
   add('file.close', 'file', a.closeDocument, { shortcut: 'Ctrl+W' });
   add('file.properties', 'file', a.properties);
   add('file.revisions', 'file', a.revisions);

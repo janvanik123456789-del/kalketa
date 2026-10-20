@@ -12,7 +12,7 @@ import { catalogFor, CATALOGS, formatDate, formatDiagnostic, formatNumber, t, ty
 import { buildPrintDocument, printHtml, renderBlockHtml, revisionFooter, type PrintAppendix, type PrintBlock } from '@kalketa/render';
 import { emptyScene, readScene, writeScene, type CanvasScene } from '@kalketa/canvas';
 import { CanvasEditor } from '@kalketa/canvas/editor';
-import { withAiLayer, compareWithSheet, sheetHas, readOutput, addLayer, allDiagnostics, appendixLayers, blockAppendices, documentBlocks, isRemovable, LayerSessions, MAIN_LAYER, removeLayer, freezeRevision, removeRevision, revisionDocument, revisionState, shortHash, tablesByLayer, theorySections, updateLayer, withTheoryIds, conversationsOf, hasConversations, withConversation, withoutConversation, aiMemoryOf, withAiMemory, linkedLibraries, librarySections, entriesOf, newSheetsOf, withEntries, studyAdvice, studyNotes, LARGE_STUDY_PAGES, type StudySettings, aiMadeLines, type SheetEntry, evaluateDocument, type ChangeEntry, type Conversation, type AddableLayerKind, type Layer, type RevisionState, type SheetDocument } from '@kalketa/sheet';
+import { withAiLayer, copyWithoutAiRecords, hasAiRecords, compareWithSheet, sheetHas, readOutput, addLayer, allDiagnostics, appendixLayers, blockAppendices, documentBlocks, isRemovable, LayerSessions, MAIN_LAYER, removeLayer, freezeRevision, removeRevision, revisionDocument, revisionState, shortHash, tablesByLayer, theorySections, updateLayer, withTheoryIds, conversationsOf, hasConversations, withConversation, withoutConversation, aiMemoryOf, withAiMemory, linkedLibraries, librarySections, entriesOf, newSheetsOf, withEntries, studyAdvice, studyNotes, LARGE_STUDY_PAGES, type StudySettings, aiMadeLines, type SheetEntry, evaluateDocument, type ChangeEntry, type Conversation, type AddableLayerKind, type Layer, type RevisionState, type SheetDocument } from '@kalketa/sheet';
 import { buildCommands, shortcutOf, type Command } from './commands.js';
 import { applyProposal, applyProposals, cleanFigureDescription, cleanFormula, cleanReread, cleanMemory, parseNewSheets, DEFAULT_AI_SETTINGS, parseAiSettings, parseProposals, providerById, replacedLines, type ChangeProposal, type AiSettings, type ChatTurn, type CheckReport, type ChoiceBlock, type NoteBlock, DETAIL_LEVELS, isRoundResult, loneNumbers, noteText, proseOf, pythonLines, reportedNames, type SheetCheck } from '@kalketa/ai';
 import { ChatPane } from './components/ChatPane.js';
@@ -1774,11 +1774,17 @@ export function App() {
     tableEditor,
     aiOn,
     documents: docs.tabs.length,
+    aiRecords: hasAiRecords(doc),
     actions: {
       newDocument: () => openDocument(emptyDocument(t(ui, 'editor.untitled'), language), undefined, [], true),
       open: () => void pickAndOpen({ sheets: t(ui, 'editor.sheetFiles') }).then(show),
       save: () => void save(),
       saveAs: () => void save(true),
+      // Always into a new file (never over the open one); the calculation itself keeps its conversations.
+      saveCopyWithoutAi: () =>
+        void copyWithoutAiRecords(doc)
+          .then((copy) => saveDocument(copy, undefined, undefined, { openElsewhere: t(ui, 'docs.openElsewhere') }))
+          .then((target) => target?.kind === 'path' && setNotice(t(ui, 'file.savedWithoutAi', { path: target.path }))),
       closeDocument: () => void closeDocument(tab.id),
       closeAllDocuments: () => void closeAllDocuments(),
       newWindow: () => void desktop?.newWindow(),
@@ -2007,6 +2013,7 @@ export function App() {
         sep,
         cmd('file.save'),
         cmd('file.saveAs'),
+        cmd('file.saveWithoutAi'),
         cmd('file.close'),
         sep,
         cmd('file.properties'),

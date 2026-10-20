@@ -139,6 +139,8 @@ export const UI_KEYS = [
   'cmd.file.open',
   'cmd.file.save',
   'cmd.file.saveAs',
+  'cmd.file.saveWithoutAi',
+  'file.savedWithoutAi',
   'cmd.file.properties',
   'cmd.file.print',
   'cmd.file.pdf',

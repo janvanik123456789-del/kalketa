@@ -390,6 +390,8 @@ export const en: Catalog = {
     'cmd.file.open': '&Open…',
     'cmd.file.save': '&Save',
     'cmd.file.saveAs': 'Save &as…',
+    'cmd.file.saveWithoutAi': 'Save a copy &without AI conversations…',
+    'file.savedWithoutAi': 'The copy without the conversations, memory and journal of the AI is saved: {path}. The open calculation keeps them.',
     'cmd.file.properties': 'P&roperties…',
     'cmd.file.print': '&Print…',
     'cmd.file.pdf': 'Export P&DF…',

@@ -1,5 +1,6 @@
+import { strFromU8, unzipSync } from 'fflate';
 import { describe, expect, it } from 'vitest';
-import { aiMadeLines, aiMemoryOf, entriesOf, newSheetsOf, withEntries, conversationsOf, newDocument, readSheetFile, withAiMemory, withConversation, withoutConversation, writeSheetFile, type Conversation } from '../src/index.js';
+import { aiMadeLines, aiMemoryOf, copyWithoutAiRecords, entriesOf, freezeRevision, hasAiRecords, revisionDocument, newSheetsOf, withEntries, conversationsOf, newDocument, readSheetFile, withAiMemory, withConversation, withoutConversation, writeSheetFile, type Conversation } from '../src/index.js';
 
 const first: Conversation = {
   id: 'c1',
@@ -45,6 +46,26 @@ describe('conversations with the AI in the sheet', () => {
     expect(aiMemoryOf(read.document!)).toBe('Intent: check beam N1 to EN 1993. Assumed: S235, L/250.\n');
     expect(read.document!.layers.some((l) => l.kind === 'ai')).toBe(true);
     expect(aiMemoryOf(withAiMemory(read.document!, ''))).toBe('');
+  });
+
+  it('stay out of a copy given to others, revisions included, which opens without damage', async () => {
+    let doc = withAiMemory(withConversation(newDocument('N1', 'L := 5 m'), first), 'Intent: beam N1.');
+    doc = await freezeRevision(doc, { label: 'A', now: new Date('2026-10-05T08:00:00Z') });
+    expect(hasAiRecords(doc)).toBe(true);
+    const copy = await copyWithoutAiRecords(doc);
+    expect(hasAiRecords(copy)).toBe(false);
+    expect(copy.layers.some((l) => l.kind === 'ai')).toBe(false);
+    expect(copy.source).toBe('L := 5 m');
+    const bytes = await writeSheetFile(copy);
+    const entries = unzipSync(bytes);
+    expect(Object.keys(entries).filter((p) => /conversations|memory|entries\.json/.test(p))).toEqual([]);
+    expect(Object.values(entries).some((data) => strFromU8(data).includes('Proč nevyhovuje'))).toBe(false);
+    const read = await readSheetFile(bytes);
+    expect(read.diagnostics).toEqual([]);
+    expect(read.document!.revisions.map((r) => r.label)).toEqual(['A']);
+    expect(hasAiRecords((await revisionDocument(read.document!.revisions[0]!)).document!)).toBe(false);
+    // The sheet itself keeps them.
+    expect(conversationsOf(doc)).toEqual([first]);
   });
 
   it('make no AI notes layer for nothing', () => {

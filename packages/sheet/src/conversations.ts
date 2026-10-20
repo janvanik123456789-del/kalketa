@@ -17,7 +17,7 @@
 
 import { strFromU8, strToU8 } from 'fflate';
 import type { SheetDocument } from './container.js';
-import { withAiLayer } from './layers.js';
+import { withAiLayer, withoutEmptyAiLayer } from './layers.js';
 
 export interface ConversationTurn {
   readonly role: 'user' | 'assistant';
@@ -193,6 +193,22 @@ export function withEntries(doc: SheetDocument, entries: readonly JournalEntry[]
   const files = new Map(doc.files);
   files.set(entriesPath(layer.id), strToU8(JSON.stringify({ version: 1, entries: list }, null, 2) + '\n'));
   return { ...doc, layers, files };
+}
+
+/** Whether the sheet keeps conversations, a memory or a journal of the AI. */
+export function hasAiRecords(doc: SheetDocument): boolean {
+  return doc.layers.some((l) => l.kind === 'ai' && hasConversations(doc.files, l.id));
+}
+
+/**
+ * The sheet without the conversations, memory and journal of the AI (its notes stay): for a copy given to others.
+ * An AI notes layer left empty goes with them.
+ */
+export function withoutAiRecords(doc: SheetDocument): SheetDocument {
+  if (!hasAiRecords(doc)) return doc;
+  const files = new Map(doc.files);
+  for (const layer of doc.layers.filter((l) => l.kind === 'ai')) for (const p of [path(layer.id), memoryPath(layer.id), entriesPath(layer.id)]) files.delete(p);
+  return { ...doc, files, layers: withoutEmptyAiLayer(doc.layers) };
 }
 
 /** The sheet's memory for the model, or '' when there is none. */

@@ -10,6 +10,7 @@
 
 import { strFromU8, strToU8 } from 'fflate';
 import { hashEntries, readSheetEntries, sheetEntries, type ReadResult, type SheetDocument } from './container.js';
+import { withoutAiRecords } from './conversations.js';
 
 export interface Revision {
   /** "A", "B", … or a label of the user's own ("01", "P1"). */
@@ -79,6 +80,27 @@ export async function freezeRevision(doc: SheetDocument, options: FreezeOptions 
     entries,
   };
   return { ...doc, revisions: [...doc.revisions, revision] };
+}
+
+/**
+ * A copy of the sheet without the conversations, memory and journal of the AI, its revisions included: a revision
+ * that had them gets the fingerprint of its content without them (printouts of it then match the original file only).
+ */
+export async function copyWithoutAiRecords(doc: SheetDocument): Promise<SheetDocument> {
+  const revisions: Revision[] = [];
+  for (const revision of doc.revisions) {
+    const frozen = (await revisionDocument(revision)).document;
+    const stripped = frozen && withoutAiRecords(frozen);
+    if (!frozen || !stripped || stripped === frozen) {
+      revisions.push(revision);
+      continue;
+    }
+    const content = sheetEntries(stripped);
+    const hash = await hashEntries(content);
+    const { contentHash: _old, ...manifest } = stripped.manifest;
+    revisions.push({ ...revision, hash, entries: new Map([[MANIFEST, strToU8(JSON.stringify({ ...manifest, contentHash: hash }, null, 2) + '\n')], ...content]) });
+  }
+  return { ...withoutAiRecords(doc), revisions };
 }
 
 /** Removes a revision (only the user can decide that; frozen content is gone then). */

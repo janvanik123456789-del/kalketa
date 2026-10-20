@@ -390,6 +390,8 @@ export const cs: Catalog = {
     'cmd.file.open': '&Otevřít…',
     'cmd.file.save': '&Uložit',
     'cmd.file.saveAs': 'Uložit &jako…',
+    'cmd.file.saveWithoutAi': 'Uložit kopii &bez rozhovorů s AI…',
+    'file.savedWithoutAi': 'Kopie bez rozhovorů, paměti a deníku AI je uložena: {path}. Otevřený výpočet je má dál.',
     'cmd.file.properties': '&Vlastnosti výpočtu…',
     'cmd.file.print': '&Tisk…',
     'cmd.file.pdf': 'Export do P&DF…',

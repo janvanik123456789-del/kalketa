@@ -1,18 +1,17 @@
 /**
  * Study files in the theory folders (docs/01-filozofie.md, ch. 9.6): PDF, HTML
  * and Markdown. The main process reads them (a PDF's pages and table of
- * contents through pdf.js) and keeps a PDF's text in a cache by file, size and
+ * contents through pdf.js, in a process of its own) and keeps a PDF's text in a cache by file, size and
  * time, so a book is read once; the editor makes the chapters and sections
  * (@kalketa/sheet, studyFile.ts). The card next to a file (<file>.kalketa.json)
  * says how it is cited and which chapters or pages are read.
  */
 
-import { app } from 'electron';
+import { app, utilityProcess } from 'electron';
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
-import { createRequire } from 'node:module';
-import { basename, extname, join } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { basename, dirname, extname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 /** Study files by extension. */
 const STUDY_EXTENSIONS = ['.pdf', '.html', '.htm', '.md'];
@@ -41,58 +40,27 @@ export interface StudyRead {
   readonly modified: string;
 }
 
-/** What pdf.js gives for one entry of the table of contents. */
-interface OutlineNode {
-  readonly title: string;
-  readonly dest: string | unknown[] | null;
-  readonly items: readonly OutlineNode[];
-}
+/** Longest reading of one PDF (a book of a thousand pages takes about a minute). */
+const PDF_TIMEOUT_MS = 300_000;
 
-const require = createRequire(import.meta.url);
-
-/** The text of each page of a PDF, its printed page numbers and its table of contents. */
-async function readPdf(bytes: Uint8Array): Promise<Pick<StudyRead, 'title' | 'pages' | 'labels' | 'outline'>> {
-  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
-  pdfjs.GlobalWorkerOptions.workerSrc = pathToFileURL(require.resolve('pdfjs-dist/legacy/build/pdf.worker.mjs')).href;
-  const task = pdfjs.getDocument({ data: bytes, disableFontFace: true, verbosity: 0 });
-  const doc = await task.promise;
-  try {
-    const pages: string[] = [];
-    for (let n = 1; n <= doc.numPages; n++) {
-      const page = await doc.getPage(n);
-      const content = await page.getTextContent();
-      let text = '';
-      for (const item of content.items) if ('str' in item) text += item.str + (item.hasEOL ? '\n' : '');
-      // A word split at the end of a line ("ohý-\nbaný") is joined again, so quotes from it are found.
-      pages.push(text.replace(/(\p{Ll})-\n(\p{Ll})/gu, '$1$2').replace(/[ \t]+\n/g, '\n').trim());
-      page.cleanup();
-    }
-    const labels = (await doc.getPageLabels().catch(() => null)) ?? undefined;
-    const outline: StudyChapter[] = [];
-    const walk = async (nodes: readonly OutlineNode[], level: number) => {
-      for (const node of nodes) {
-        try {
-          const dest = typeof node.dest === 'string' ? await doc.getDestination(node.dest) : node.dest;
-          const ref = Array.isArray(dest) ? dest[0] : undefined;
-          const index = typeof ref === 'number' ? ref : ref ? await doc.getPageIndex(ref as Parameters<typeof doc.getPageIndex>[0]) : undefined;
-          if (index !== undefined && node.title.trim()) outline.push({ title: node.title.trim(), level, page: index + 1 });
-        } catch {
-          // An entry pointing nowhere is left out.
-        }
-        if (node.items.length) await walk(node.items, level + 1);
-      }
+/** A PDF read by pdf.js in a utility process of its own (pdfChild.cts), ended after the file. */
+function readPdf(bytes: Uint8Array): Promise<Pick<StudyRead, 'title' | 'pages' | 'labels' | 'outline'>> {
+  return new Promise((resolve, reject) => {
+    const child = utilityProcess.fork(join(dirname(fileURLToPath(import.meta.url)), 'pdfChild.cjs'), [], { serviceName: 'Kalketa PDF', execArgv: ['--max-old-space-size=2048'], stdio: 'ignore' });
+    let done = false;
+    const finish = (error?: Error, read?: Pick<StudyRead, 'title' | 'pages' | 'labels' | 'outline'>) => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      child.kill();
+      if (error) reject(error);
+      else resolve(read!);
     };
-    await walk(((await doc.getOutline()) ?? []) as OutlineNode[], 1);
-    const meta = (await doc.getMetadata().catch(() => undefined))?.info as { Title?: string } | undefined;
-    return {
-      ...(meta?.Title?.trim() ? { title: meta.Title.trim() } : {}),
-      pages,
-      ...(labels && labels.some((l, i) => l !== String(i + 1)) ? { labels } : {}),
-      ...(outline.length ? { outline } : {}),
-    };
-  } finally {
-    await task.destroy();
-  }
+    const timer = setTimeout(() => finish(new Error('Reading the PDF took too long')), PDF_TIMEOUT_MS);
+    child.on('message', (m: { read?: Pick<StudyRead, 'title' | 'pages' | 'labels' | 'outline'>; error?: string }) => finish(m.error !== undefined ? new Error(m.error) : undefined, m.read));
+    child.on('exit', () => finish(new Error('Reading the PDF stopped')));
+    child.on('spawn', () => child.postMessage(bytes));
+  });
 }
 
 function cacheDir(): string {
@@ -110,10 +78,9 @@ export async function readStudyFile(path: string): Promise<StudyRead> {
     // Not read yet, or changed since.
   }
   const bytes = new Uint8Array(await readFile(path));
-  // Before pdf.js reads it: pdf.js takes the bytes over and leaves them empty.
   const contentHash = `sha256:${createHash('sha256').update(bytes).digest('hex')}`;
   const ext = extname(path).toLowerCase();
-  const read = ext === '.pdf' ? await readPdf(bytes.slice()) : { text: new TextDecoder().decode(bytes) };
+  const read = ext === '.pdf' ? await readPdf(bytes) : { text: new TextDecoder().decode(bytes) };
   const content: StudyRead = {
     kind: ext === '.pdf' ? 'pdf' : ext === '.md' ? 'md' : 'html',
     fileName: basename(path),

@@ -6,6 +6,9 @@ import {
   dockToolbar,
   floatToolbar,
   floating,
+  GREEK_CAPITALS,
+  GREEK_CASE,
+  GREEK_LETTERS,
   parseLayout,
   removeToolbar,
   renameToolbar,
@@ -72,9 +75,9 @@ describe('toolbar layout', () => {
     let layout = setColumns(defaultLayout(), 'greek', 4.4);
     const greek = layout.toolbars.find((t) => t.id === 'greek')!;
     expect(greek.columns).toBe(4);
-    expect(gridRows(greek.items, 4)).toBe(6); // 21 letters
+    expect(gridRows(greek.items, 4)).toBe(7); // the switch and 24 letters
     layout = setColumns(layout, 'greek', 99);
-    expect(layout.toolbars.find((t) => t.id === 'greek')!.columns).toBe(21);
+    expect(layout.toolbars.find((t) => t.id === 'greek')!.columns).toBe(25);
     layout = setColumns(layout, 'standard', 0);
     expect(layout.toolbars.find((t) => t.id === 'standard')!.columns).toBe(1);
     expect(gridRows(['a', '|', 'b', 'c'], 2)).toBe(2); // separators take no cell
@@ -115,6 +118,18 @@ describe('toolbar layout', () => {
     // The vector arrow comes next to the index.
     const items = parseLayout(stored).toolbars.find((t) => t.id === 'operators')!.items;
     expect(items[items.indexOf('sym:_') + 1]).toBe('sym:⃗');
+  });
+
+  it('gives an older Greek toolbar the whole alphabet and the switch to capitals, in place', () => {
+    const before = ['α', 'β', 'γ', 'δ', 'ε', 'η', 'θ', 'λ', 'μ', 'ν', 'π', 'ρ', 'σ', 'τ', 'φ', 'ψ', 'ω', 'Δ', 'Σ', 'Φ', 'Ω'].map((s) => `sym:${s}`);
+    const old = defaultLayout();
+    const stored = JSON.stringify({ ...old, items: 9, toolbars: old.toolbars.map((t) => (t.id === 'greek' ? { ...t, items: before } : t)) });
+    const items = parseLayout(stored).toolbars.find((t) => t.id === 'greek')!.items;
+    expect(items[0]).toBe(GREEK_CASE);
+    expect(items.slice(1, 25)).toEqual(GREEK_LETTERS.map((s) => `sym:${s}`));
+    // The capitals the user had stay where they were.
+    expect(items.slice(25)).toEqual(['sym:Δ', 'sym:Σ', 'sym:Φ', 'sym:Ω']);
+    expect(GREEK_CAPITALS.join('')).toBe('ΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩ');
   });
 
   it('gives a layout from before the AI chat its button on the View toolbar', () => {

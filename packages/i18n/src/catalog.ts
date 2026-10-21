@@ -542,6 +542,7 @@ export const UI_KEYS = [
   'help.functionsFilter',
   'help.functionsInsert',
   'cmd.symbol',
+  'cmd.greek.capitals',
   'cmd.define',
   'cmd.vector',
   'cmd.rounded',

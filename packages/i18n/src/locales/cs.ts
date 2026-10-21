@@ -450,6 +450,7 @@ export const cs: Catalog = {
     'cmd.help.shortcuts': '&Klávesové zkratky',
     'cmd.help.about': '&O programu Kalketa',
     'cmd.symbol': 'Vložit {symbol}',
+    'cmd.greek.capitals': 'Velká řecká písmena',
     'cmd.define': 'Definice ≔ (:=)',
     'cmd.vector': 'Vektor: šipka nad písmenem před kurzorem (p⃗_1)',
     'cmd.rounded': 'Rovná se po zaokrouhlení ≐ (krok odvození k zaokrouhlenému výsledku)',

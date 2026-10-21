@@ -91,6 +91,7 @@ const SIZE_LIMIT_KEY = 'kalketa.sizeLimitMb';
 const CANVAS_MODE_KEY = 'kalketa.canvasMode';
 const PYTHON_ENGINE_KEY = 'kalketa.pythonEngine';
 const PYTHON_ASK_AI_KEY = 'kalketa.pythonAskAi';
+const GREEK_CAPITALS_KEY = 'kalketa.greekCapitals';
 /** Provider and model of the AI; keys are kept by the desktop application, not here. */
 const AI_SETTINGS_KEY = 'kalketa.ai';
 const DEFAULT_SIZE_LIMIT_MB = 50;
@@ -1052,6 +1053,7 @@ export function App() {
   const [canvasMode, setCanvasMode] = useState<'inline' | 'window'>(() => (stored(CANVAS_MODE_KEY) === 'window' ? 'window' : 'inline'));
   const [pythonEngine, setPythonEngine] = useState<'pyodide' | 'system'>(() => (stored(PYTHON_ENGINE_KEY) === 'system' ? 'system' : 'pyodide'));
   const [pythonAskAi, setPythonAskAi] = useState(() => stored(PYTHON_ASK_AI_KEY) === 'yes');
+  const [greekCapitals, setGreekCapitals] = useState(() => stored(GREEK_CAPITALS_KEY) === 'yes');
   // The conversation the chat shows, by document tab; the conversations themselves are in the sheet (AI notes).
   // Absent: the latest one; '' after "New chat": a new one with the next question.
   const [activeChat, setActiveChat] = useState<Readonly<Record<string, string>>>({});
@@ -1775,6 +1777,7 @@ export function App() {
     aiOn,
     documents: docs.tabs.length,
     aiRecords: hasAiRecords(doc),
+    greekCapitals,
     actions: {
       newDocument: () => openDocument(emptyDocument(t(ui, 'editor.untitled'), language), undefined, [], true),
       open: () => void pickAndOpen({ sheets: t(ui, 'editor.sheetFiles') }).then(show),
@@ -1852,6 +1855,11 @@ export function App() {
       insertChart: () => setDialog('chart'),
       about: () => setDialog('about'),
       insertSymbol,
+      toggleGreekCapitals: () =>
+        setGreekCapitals((on) => {
+          remember(GREEK_CAPITALS_KEY, on ? 'no' : 'yes');
+          return !on;
+        }),
       insertTemplate,
       insertPicture: () => void insertPictureFile(),
       insertCanvas,

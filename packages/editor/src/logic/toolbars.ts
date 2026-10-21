@@ -55,14 +55,27 @@ const ADDED_ITEMS: readonly { readonly since: number; readonly toolbar: string; 
   { since: 8, toolbar: 'operators', after: 'sym:⃗', ids: ['sym:′', 'sym:″'] },
   // The conditions of a solution as on paper (solve x ∈ ℝ: …) and the two roots (−b ± √D)/(2·a).
   { since: 9, toolbar: 'operators', after: 'sym:≐', ids: ['sym:±', 'sym:∈', 'sym:ℝ', 'sym:ℂ'] },
+  // The whole Greek alphabet, with the switch to capitals first.
+  { since: 10, toolbar: 'greek', after: '', ids: ['greek.capitals'] },
+  { since: 10, toolbar: 'greek', after: 'sym:ε', ids: ['sym:ζ'] },
+  { since: 10, toolbar: 'greek', after: 'sym:θ', ids: ['sym:ι', 'sym:κ'] },
+  { since: 10, toolbar: 'greek', after: 'sym:ν', ids: ['sym:ξ', 'sym:ο'] },
+  { since: 10, toolbar: 'greek', after: 'sym:τ', ids: ['sym:υ'] },
+  { since: 10, toolbar: 'greek', after: 'sym:φ', ids: ['sym:χ'] },
 ];
-export const ITEMS_VERSION = 9;
+export const ITEMS_VERSION = 10;
 
 export const SEPARATOR = '|';
 
 const dock = (d: Dock, band: number, order: number): ToolbarPlace => ({ kind: 'dock', dock: d, band, order });
 
-export const GREEK_SYMBOLS = ['α', 'β', 'γ', 'δ', 'ε', 'η', 'θ', 'λ', 'μ', 'ν', 'π', 'ρ', 'σ', 'τ', 'φ', 'ψ', 'ω', 'Δ', 'Σ', 'Φ', 'Ω'];
+/** The Greek alphabet; the buttons show the small letters, or the capitals when switched (GREEK_CASE). */
+export const GREEK_LETTERS = ['α', 'β', 'γ', 'δ', 'ε', 'ζ', 'η', 'θ', 'ι', 'κ', 'λ', 'μ', 'ν', 'ξ', 'ο', 'π', 'ρ', 'σ', 'τ', 'υ', 'φ', 'χ', 'ψ', 'ω'];
+export const GREEK_CAPITALS = GREEK_LETTERS.map((l) => l.toUpperCase());
+/** Every Greek symbol a button may insert (layouts from before keep their Δ, Σ, Φ, Ω). */
+export const GREEK_SYMBOLS = [...GREEK_LETTERS, ...GREEK_CAPITALS];
+/** The switch of the Greek toolbar between small letters and capitals. */
+export const GREEK_CASE = 'greek.capitals';
 export const OPERATOR_SYMBOLS = [':=', '·', '÷', '≤', '≥', '≠', '≐', '±', '∈', 'ℝ', 'ℂ', '√', '∛', '²', '³', '^', '⁻¹', '°', 'Δ°C', '_', '⃗', '′', '″', '|'];
 /** Symbols shown otherwise than inserted: ^ is a general power. */
 export const SYMBOL_GLYPHS: Readonly<Record<string, string>> = { '^': 'xⁿ', ':=': '≔', '⃗': 'a⃗' };
@@ -133,7 +146,7 @@ export function defaultLayout(): ToolbarLayout {
         items: [...FUNCTION_TEMPLATES.map((f) => `fn:${f.id}`), SEPARATOR, 'insert.chart', 'help.functions'],
       },
       { id: 'operators', builtin: true, visible: true, place: dock('left', 0, 0), items: OPERATOR_SYMBOLS.flatMap((s) => (s === '∛' ? [`sym:${s}`, 'fn:root'] : [`sym:${s}`])) },
-      { id: 'greek', builtin: true, visible: true, place: dock('left', 1, 0), items: GREEK_SYMBOLS.map((s) => `sym:${s}`) },
+      { id: 'greek', builtin: true, visible: true, place: dock('left', 1, 0), items: [GREEK_CASE, ...GREEK_LETTERS.map((s) => `sym:${s}`)] },
     ],
   };
 }

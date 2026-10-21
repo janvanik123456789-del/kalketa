@@ -1129,7 +1129,12 @@ async function layersWithRealInput(picture: string) {
   await typeText('k_d1 + 1');
   // Text with an index from the _ button of the Operators toolbar: printed as in a formula.
   await pressKey('Enter');
-  await typeText('"Mez kluzu σ');
+  await typeText('"Mez kluzu ');
+  // The capital from the Greek toolbar switched to capitals, then switched back: the small letters again.
+  await clickOn('.tool-button[title="Velká řecká písmena"]');
+  await clickOn('.tool-button[title="Vložit Σ"]');
+  await clickOn('.tool-button[title="Velká řecká písmena"]');
+  const greekBack = (await contents.executeJavaScript(`!!document.querySelector('.tool-button[title="Vložit σ"]') && !document.querySelector('.tool-button[title="Vložit Ψ"]')`)) as boolean;
   await clickOn('.tool-button[title="Vložit _"]');
   await typeText('Kt a p');
   await clickOn('.tool-button[title^="Vektor"]');
@@ -1145,6 +1150,7 @@ async function layersWithRealInput(picture: string) {
       indexed: !!rows[2]?.querySelector('p.text math msub') && !!rows[2]?.querySelector('p.text math mover'),
     };
   })()`)) as { rows: string[]; errors: number; indexed: boolean };
+  const greekCapital = greekBack && (typedDefs.rows[2] ?? '').includes('Σ');
   // The right button on a result: two decimal places, here and wherever it is substituted.
   await clickOn('#smoke-def-1', [], 'right');
   await clickMenu('Výsledek na 2 desetinná');
@@ -1244,7 +1250,7 @@ async function layersWithRealInput(picture: string) {
   await pause(400);
   const rowsAfterDelete = (await contents.executeJavaScript(rowsNow)) as number;
   const definitionAtCursor =
-    typedDefs.errors === 0 && typedDefs.rows[0]!.includes('≔2') && typedDefs.rows[1]!.includes('=3') && typedDefs.indexed && /=3,3[45]/.test(formatted) && bothFormatted[0]!.includes('2,3') && !bothFormatted[0]!.includes('2,34') && bothFormatted[1]!.includes('=3,3') && !bothFormatted[1]!.includes('3,34') && roundedOn.endsWith('=3,3') && equationNumber === '(1)' && positionShown === 'Pos. 1' && positionGone && italicText.includes('italic') && draggedRows === 3 && selectedAll.marked > 10 && selectedAll.windowText === 0 && markedRows === 3 && rowsAfterDelete === rowsBeforeDefs;
+    typedDefs.errors === 0 && typedDefs.rows[0]!.includes('≔2') && typedDefs.rows[1]!.includes('=3') && typedDefs.indexed && greekCapital && /=3,3[45]/.test(formatted) && bothFormatted[0]!.includes('2,3') && !bothFormatted[0]!.includes('2,34') && bothFormatted[1]!.includes('=3,3') && !bothFormatted[1]!.includes('3,34') && roundedOn.endsWith('=3,3') && equationNumber === '(1)' && positionShown === 'Pos. 1' && positionGone && italicText.includes('italic') && draggedRows === 3 && selectedAll.marked > 10 && selectedAll.windowText === 0 && markedRows === 3 && rowsAfterDelete === rowsBeforeDefs;
 
   // solve without an interval: the unknown is expressed by a formula, its unit comes from it;
   // the right button puts the formula in as a definition.

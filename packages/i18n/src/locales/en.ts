@@ -450,6 +450,7 @@ export const en: Catalog = {
     'cmd.help.shortcuts': '&Keyboard shortcuts',
     'cmd.help.about': '&About Kalketa',
     'cmd.symbol': 'Insert {symbol}',
+    'cmd.greek.capitals': 'Capital Greek letters',
     'cmd.define': 'Definition ≔ (:=)',
     'cmd.vector': 'Vector: an arrow over the letter before the cursor (p⃗_1)',
     'cmd.rounded': 'Equal when rounded ≐ (a step of a derivation to a rounded result)',

@@ -4,7 +4,7 @@
  */
 
 import { t, type Catalog, type UiKey } from '@kalketa/i18n';
-import { FUNCTION_TEMPLATES, GREEK_SYMBOLS, OPERATOR_SYMBOLS, OPERATOR_TEMPLATES, SYMBOL_GLYPHS } from './logic/toolbars.js';
+import { FUNCTION_TEMPLATES, GREEK_CASE, GREEK_LETTERS, GREEK_SYMBOLS, OPERATOR_SYMBOLS, OPERATOR_TEMPLATES, SYMBOL_GLYPHS } from './logic/toolbars.js';
 
 export type CommandCategory = 'file' | 'edit' | 'view' | 'insert' | 'tools' | 'window' | 'help' | 'symbol';
 
@@ -38,6 +38,8 @@ export interface CommandContext {
   readonly documents: number;
   /** The calculation keeps conversations, a memory or a journal of the AI. */
   readonly aiRecords: boolean;
+  /** The Greek toolbar shows (and inserts) capitals. */
+  readonly greekCapitals: boolean;
   readonly actions: {
     newDocument(): void;
     open(): void;
@@ -83,6 +85,7 @@ export interface CommandContext {
     functions(): void;
     about(): void;
     insertSymbol(symbol: string): void;
+    toggleGreekCapitals(): void;
     /** A function template with ‸ where the cursor goes; `line` puts it on a line of its own. */
     insertTemplate(template: string, line?: boolean): void;
     insertPicture(): void;
@@ -161,7 +164,14 @@ export function buildCommands(ctx: CommandContext): Map<string, Command> {
   add('help.shortcuts', 'help', a.shortcuts);
   add('help.about', 'help', a.about);
 
+  list.push({ id: GREEK_CASE, category: 'symbol', label: t(c, 'cmd.greek.capitals'), glyph: 'Αα', enabled: true, checked: ctx.greekCapitals, run: a.toggleGreekCapitals });
   for (const symbol of [...OPERATOR_SYMBOLS, ...GREEK_SYMBOLS]) {
+    // A small Greek letter's button inserts its capital while the toolbar is switched to capitals.
+    if (ctx.greekCapitals && GREEK_LETTERS.includes(symbol)) {
+      const capital = symbol.toUpperCase();
+      list.push({ id: `sym:${symbol}`, category: 'symbol', label: t(c, 'cmd.symbol', { symbol: capital }), glyph: capital, enabled: true, run: () => a.insertSymbol(capital) });
+      continue;
+    }
     list.push({
       id: `sym:${symbol}`,
       category: 'symbol',

@@ -1,7 +1,7 @@
 import { builtinFunctions, evaluateSheet } from '@kalketa/core';
 import { CATALOGS } from '@kalketa/i18n';
 import { describe, expect, it } from 'vitest';
-import { FUNCTION_EXAMPLES, functionAtCursor, functionsOfLine, howToWrite } from '../src/logic/functionHelp.js';
+import { FUNCTION_EXAMPLES, functionAtCursor, functionsOfLine, helpNamesOfLine, helpOf, howToWrite, STATEMENT_EXAMPLES, STATEMENTS } from '../src/logic/functionHelp.js';
 
 /** The value the last line of a sheet shows, as text. */
 function lastShown(source: string): string {
@@ -50,6 +50,30 @@ describe('the help of the functions', () => {
     expect(evaluateSheet('interp1([0, 10], [1, 2], 15)').diagnostics.some((d) => d.severity === 'error')).toBe(true);
     expect(evaluateSheet('payback([-1000, 100, 100])').diagnostics.some((d) => d.severity === 'error')).toBe(true);
     expect(evaluateSheet('F := 12 kN\nx := if(F > 10 kN and F < 20 kN, 1, 0)').diagnostics).toEqual([]);
+  });
+
+  it('describes the lines solve, derive and relation, with examples that compute', () => {
+    for (const keyword of STATEMENTS) {
+      const r = evaluateSheet(STATEMENT_EXAMPLES[keyword]);
+      expect(r.diagnostics.filter((d) => d.severity !== 'info').map((d) => `${keyword}: ${d.code}`)).toEqual([]);
+      expect(STATEMENT_EXAMPLES[keyword]).toContain(`${keyword} `);
+      for (const catalog of Object.values(CATALOGS)) {
+        const help = helpOf(keyword, catalog, false)!;
+        expect(help.summary, `${catalog.locale} ${keyword}`).toBeTruthy();
+        expect(help.details, `${catalog.locale} ${keyword}`).toBeTruthy();
+      }
+    }
+    const solved = evaluateSheet(STATEMENT_EXAMPLES.solve).statements.at(-1)!.solutions![0]!;
+    expect(`${solved.name} = ${solved.display.value} ${solved.display.unit}`).toBe('x = 4 cm');
+    const circle = evaluateSheet(STATEMENT_EXAMPLES.relation).statements.at(-1)!.solutions![0]!;
+    expect(`${circle.name} = ${circle.display.value} ${circle.display.unit}`).toBe('y = 4 m');
+    expect(helpNamesOfLine('solve x ∈ ℝ, x > 0: sqrt(x) == 2')).toEqual(['solve', 'sqrt']);
+    expect(helpNamesOfLine('solve x: sqrt(x) == 2', 'solve x: sqrt('.length)).toEqual(['sqrt', 'solve']);
+    expect(helpNamesOfLine('  derive a == b')).toEqual(['derive']);
+    expect(helpOf('solved', CATALOGS['cs']!, true)).toBeUndefined();
+    // What the help of solve says: a system, a first guess.
+    expect(evaluateSheet('solve (x, y): x + y == 1, x - y == 0').values.get('x')).toMatchObject({ si: 0.5 });
+    expect(evaluateSheet('solve x: x^2 == 2 m^2 guess x = 1 m').diagnostics).toEqual([]);
   });
 
   it('writes a function in the notation of the user', () => {

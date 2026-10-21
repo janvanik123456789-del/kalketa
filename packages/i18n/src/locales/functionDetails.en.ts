@@ -3,6 +3,25 @@
  * result has and what to watch for. The one sentence of the function is in en.ts (functions); the example
  * in the notation of the sheet is in the editor (functionHelp.ts), the same for every language.
  */
+/** The lines that are no functions: solve, derive, relation. */
+export const EN_STATEMENT_HELP: Readonly<Record<string, { readonly summary: string; readonly details: string }>> = {
+  solve: {
+    summary: 'Solves an equation or a system: solve x: k·x == F finds the x at which both sides are equal. The unknown is then a value of the sheet.',
+    details:
+      'The equation is written with ==. More unknowns and equations are separated by commas: solve (x, y): x + y == 1, x - y == 0. in a .. b limits the search to an interval, guess x = 1 m gives a first guess (and with it the unit). With a domain ∈ ℝ, ℂ, ℕ, ℕ₀ or ℤ (the ℝ▾ button) and conditions after a comma (solve x ∈ ℝ, x > 0: …) it writes out every root as on paper, a quadratic with its discriminant, and marks those that fail; two roots are then x_1 and x_2. solve w(x): … solves a differential equation, solve y: Circle the equation of a named relation. Written by the solve button of the Functions toolbar.',
+  },
+  derive: {
+    summary: 'Derives a formula step by step: derive a == b == c checks that each step follows from the one before, as a teacher would.',
+    details:
+      'Steps are separated by ==; the program compares them for general values and marks a right step as checked, a wrong one as an error. ≐ marks a step that holds only approximately (small angles: sin(γ) ≐ γ). derive M := … == … names the resulting formula, so it can be used further. Steps may start from relations above the line. Written by the a=b button of the Functions toolbar.',
+  },
+  relation: {
+    summary: 'An equation that holds: a physical law or a geometric relation, e.g. relation x^2 + y^2 == r^2 {eq=Circle}.',
+    details:
+      'Unlike solve it computes and checks nothing; names the sheet has no value for are general symbols in it. derive steps below start from it. A named one ({eq=Circle}) is solved by a line solve y: Circle and drawn into a chart as a curve: plot(Circle, x: -6 m .. 6 m, y: -6 m .. 6 m).',
+  },
+};
+
 export const EN_FUNCTION_DETAILS: Readonly<Record<string, string>> = {
   // Mathematics
   abs: 'The argument may have a unit, the result keeps it (|−3.5 kN| = 3.5 kN). Of a complex number it gives the magnitude |a + bj| = √(a² + b²). The magnitude of a series (vector) is norm.',

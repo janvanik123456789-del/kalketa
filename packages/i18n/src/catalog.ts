@@ -18,6 +18,8 @@ export interface Catalog {
   readonly functions: Readonly<Record<string, string>>;
   /** Help of each built-in function beyond its sentence: arguments, units of the result, what to watch for. */
   readonly functionDetails: Readonly<Record<string, string>>;
+  /** Help of the lines that are no functions (solve, derive, relation): their sentence and the rest. */
+  readonly statementHelp: Readonly<Record<string, { readonly summary: string; readonly details: string }>>;
   /** Translations of term codes used as parameter values. */
   readonly terms: Readonly<Record<string, string>>;
   readonly severity: Readonly<Record<Severity, string>>;
@@ -544,6 +546,8 @@ export const UI_KEYS = [
   'help.functionsFilter',
   'help.functionsInsert',
   'help.example',
+  'help.statements',
+  'help.derived',
   'help.gives',
   'help.toInsert',
   'insertFunction.title',

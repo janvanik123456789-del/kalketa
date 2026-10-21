@@ -43,7 +43,7 @@ import { createTable, importTableFile, type TableChange } from './tableActions.j
 import { captionOf, fromFile, pictureLine, picturePath, pixelWidth, widthFor, type IncomingPicture } from './logic/pictures.js';
 import { importBlockFile } from './blockActions.js';
 import { AboutDialog, CustomizeDialog, FunctionHelpDialog, InsertFunctionDialog, PropertiesDialog, SettingsDialog, ShortcutsDialog } from './components/Dialogs.js';
-import { functionAtCursor, functionsOfLine } from './logic/functionHelp.js';
+import { helpNamesOfLine } from './logic/functionHelp.js';
 import { FitDialog } from './components/FitDialog.js';
 import { ChartDialog } from './components/ChartDialog.js';
 import type { ChartFunction, ChartRelation, ChartSources } from './logic/chartInsert.js';
@@ -1856,7 +1856,7 @@ export function App() {
       functions: () => {
         const area = document.querySelector<HTMLTextAreaElement>('textarea.row-editor');
         const line = selectedLine();
-        setHelpFunction((area ? functionAtCursor(area.value, area.selectionStart) : undefined)?.name ?? functionsOfLine(area?.value ?? line)[0]?.name);
+        setHelpFunction((area ? helpNamesOfLine(area.value, area.selectionStart) : helpNamesOfLine(line))[0]);
         setDialog('functions');
       },
       insertFunction: () => setDialog('insertFunction'),

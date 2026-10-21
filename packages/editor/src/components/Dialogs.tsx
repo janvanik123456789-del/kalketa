@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { builtinFunctions, evaluateSheet, FUNCTION_MODULES, signature, type FunctionDef } from '@kalketa/core';
 import { CATALOGS, formatValue, t, type Catalog } from '@kalketa/i18n';
-import { FUNCTION_EXAMPLES, howToWrite } from '../logic/functionHelp.js';
+import { FUNCTION_EXAMPLES, helpOf, STATEMENT_EXAMPLES, STATEMENTS, type StatementKeyword } from '../logic/functionHelp.js';
 import type { SheetDocument } from '@kalketa/sheet';
 import { plainLabel, type Command, type CommandCategory } from '../commands.js';
 import { commandIcon } from '../icons.js';
@@ -561,28 +561,37 @@ export function InsertFunctionDialog({ catalog, separator, onInsert, onClose }: 
 /** Help → Functions (F1): every function described, how it is written in Kalketa, an example and its value. */
 export function FunctionHelpDialog({ catalog, decimalComma, initial, onClose }: { catalog: Catalog; decimalComma: boolean; initial?: string; onClose(): void }) {
   const [filter, setFilter] = useState('');
-  const [chosen, setChosen] = useState(initial && builtinFunctions.has(initial) ? initial : 'sqrt');
+  const [chosen, setChosen] = useState(initial && helpOf(initial, catalog, decimalComma) ? initial : 'sqrt');
   const shown = matchingFunctions(catalog, filter);
-  const def = builtinFunctions.get(chosen)!;
-  const help = howToWrite(def, catalog, decimalComma);
-  const value = exampleValue(FUNCTION_EXAMPLES[def.name] ?? '', catalog);
+  const wanted = filter.trim().toLowerCase();
+  const statements = STATEMENTS.filter((s) => !wanted || s.includes(wanted) || (catalog.statementHelp[s]?.summary ?? '').toLowerCase().includes(wanted));
+  const help = helpOf(chosen, catalog, decimalComma)!;
+  const def = builtinFunctions.get(chosen);
+  const value = exampleValue(def ? (FUNCTION_EXAMPLES[chosen] ?? '') : STATEMENT_EXAMPLES[chosen as StatementKeyword], catalog);
+  const nameButton = (name: string) => (
+    <button key={name} type="button" className={`function-help-name${name === chosen ? ' active' : ''}`} onClick={() => setChosen(name)}>
+      {name}
+    </button>
+  );
   return (
     <Dialog title={t(catalog, 'help.functionsTitle')} catalog={catalog} wide onClose={onClose}>
       <div className="function-help">
         <div className="function-help-list">
           <input className="functions-filter" type="search" autoFocus placeholder={t(catalog, 'help.functionsFilter')} value={filter} onChange={(e) => setFilter(e.target.value)} />
           <div className="functions-list">
+            {statements.length > 0 && (
+              <section>
+                <h4>{t(catalog, 'help.statements')}</h4>
+                {statements.map(nameButton)}
+              </section>
+            )}
             {FUNCTION_MODULES.map((module) => {
               const defs = shown.filter((d) => d.module === module);
               if (defs.length === 0) return null;
               return (
                 <section key={module}>
                   <h4>{catalog.functionModules[module]}</h4>
-                  {defs.map((d) => (
-                    <button key={d.name} type="button" className={`function-help-name${d.name === chosen ? ' active' : ''}`} onClick={() => setChosen(d.name)}>
-                      {d.name}
-                    </button>
-                  ))}
+                  {defs.map((d) => nameButton(d.name))}
                 </section>
               );
             })}
@@ -592,7 +601,7 @@ export function FunctionHelpDialog({ catalog, decimalComma, initial, onClose }: 
           <h3>
             <code>{help.signature}</code>
           </h3>
-          <p className="function-help-module">{catalog.functionModules[def.module]}</p>
+          <p className="function-help-module">{def ? catalog.functionModules[def.module] : t(catalog, 'help.statements')}</p>
           <p>{help.summary}</p>
           <p>{help.details}</p>
           <h4>{t(catalog, 'help.example')}</h4>
@@ -602,7 +611,7 @@ export function FunctionHelpDialog({ catalog, decimalComma, initial, onClose }: 
               {t(catalog, 'help.gives')} <strong>{value}</strong>
             </p>
           )}
-          <p className="hint">{t(catalog, 'help.toInsert')}</p>
+          {def && <p className="hint">{t(catalog, 'help.toInsert')}</p>}
         </article>
       </div>
     </Dialog>
@@ -617,6 +626,10 @@ function exampleValue(example: string, catalog: Catalog): string | undefined {
   if (last.displayList) return `[${last.displayList.map((d) => formatValue(d.value, d.im, '', catalog)).join(catalog.locale === 'cs' ? '; ' : ', ')}] ${last.displayList[0]?.unit ?? ''}`.trim();
   if (last.displayMatrix) return `${last.displayMatrix.rows}×${last.displayMatrix.cols}`;
   if (last.value?.type === 'text') return last.value.value;
+  if (last.statement.kind === 'derive') return t(catalog, 'help.derived');
+  // solve: the unknowns found (the kept roots of a solve with a domain).
+  const solutions = last.solutions ?? [];
+  if (solutions.length > 0) return solutions.map((s) => `${s.name} = ${formatValue(s.display.value, s.display.im, s.display.unit, catalog)}`).join(', ');
   return undefined;
 }
 

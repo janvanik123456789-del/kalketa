@@ -3,6 +3,25 @@
  * result has and what to watch for. The one sentence of the function is in cs.ts (functions); the example
  * in the notation of the sheet is in the editor (functionHelp.ts), the same for every language.
  */
+/** The lines that are no functions: solve, derive, relation. */
+export const CS_STATEMENT_HELP: Readonly<Record<string, { readonly summary: string; readonly details: string }>> = {
+  solve: {
+    summary: 'Řešení rovnice nebo soustavy rovnic: solve x: k·x == F najde x, při kterém se obě strany rovnají. Neznámá je pak hodnota listu.',
+    details:
+      'Rovnice se píše s ==. Víc neznámých a rovnic se odděluje čárkou: solve (x, y): x + y == 1, x - y == 0. in a .. b omezí hledání na interval, guess x = 1 m dá první odhad (a s ním jednotku). S oborem ∈ ℝ, ℂ, ℕ, ℕ₀ nebo ℤ (tlačítko ℝ▾) a podmínkami za čárkou (solve x ∈ ℝ, x > 0: …) vypíše všechny kořeny jako na papíře, kvadratickou rovnici s diskriminantem, a ty, které nevyhoví, označí; dva kořeny jsou pak x_1 a x_2. solve w(x): … řeší diferenciální rovnici, solve y: Kruh rovnici pojmenované relace. Zapisuje se tlačítkem solve na panelu Funkce.',
+  },
+  derive: {
+    summary: 'Odvození vzorce krok po kroku: derive a == b == c ověří, že každý krok plyne z předchozího, jako by to kontroloval učitel.',
+    details:
+      'Kroky se oddělují ==; program je porovná pro obecné hodnoty, správný krok označí jako ověřený, chybný jako chybu. ≐ označí krok, který platí jen přibližně (malé úhly: sin(γ) ≐ γ). derive M := … == … pojmenuje výsledný vzorec, takže ho lze dál použít. Kroky mohou vycházet z relací nad řádkem. Zapisuje se tlačítkem a=b na panelu Funkce.',
+  },
+  relation: {
+    summary: 'Rovnice, která platí: fyzikální zákon nebo geometrický vztah, např. relation x^2 + y^2 == r^2 {eq=Kruh}.',
+    details:
+      'Na rozdíl od solve nic nepočítá ani nekontroluje; jména, která list nemá, jsou v ní obecné symboly. Vycházejí z ní kroky derive pod ní. Pojmenovaná ({eq=Kruh}) se řeší řádkem solve y: Kruh a do grafu se kreslí jako křivka: plot(Kruh, x: -6 m .. 6 m, y: -6 m .. 6 m).',
+  },
+};
+
 export const CS_FUNCTION_DETAILS: Readonly<Record<string, string>> = {
   // Matematika
   abs: 'Argument může mít jednotku, výsledek ji zachová (|−3,5 kN| = 3,5 kN). U komplexního čísla vrátí velikost |a + bj| = √(a² + b²). Velikost řady (vektoru) dá norm.',

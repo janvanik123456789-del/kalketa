@@ -4,10 +4,10 @@
  * jumps to its line.
  */
 
-import { builtinFunctions, toDecimalComma, traceStatement, type FunctionDef, type SheetResult, type TraceNode } from '@kalketa/core';
+import { toDecimalComma, traceStatement, type SheetResult, type TraceNode } from '@kalketa/core';
 import { formatDiagnostic, formatValue, t, type Catalog } from '@kalketa/i18n';
 import { useEffect, useState } from 'react';
-import { functionAtCursor, functionsOfLine, howToWrite } from '../logic/functionHelp.js';
+import { helpNamesOfLine, helpOf } from '../logic/functionHelp.js';
 
 interface Props {
   readonly result: SheetResult;
@@ -23,20 +23,18 @@ interface Props {
 }
 
 /**
- * The functions of the line being typed, the one at the cursor first; undefined when no line is edited. Followed
- * a moment after the user stops typing or moving, and the pane drawn again only when they change: typing stays
- * as quick as without it.
+ * What the help of the line being typed is about (its functions, the one at the cursor first, and its kind:
+ * solve …); undefined when no line is edited. Followed a moment after the user stops typing or moving, and the
+ * pane drawn again only when it changes: typing stays as quick as without it.
  */
-function useEditedFunctions(): readonly FunctionDef[] | undefined {
+function useEditedHelp(): readonly string[] | undefined {
   const [names, setNames] = useState<string | undefined>();
   useEffect(() => {
     let timer: number | undefined;
     const read = () => {
       const area = document.activeElement;
       if (!(area instanceof HTMLTextAreaElement) || !area.classList.contains('row-editor')) return setNames(undefined);
-      const atCursor = functionAtCursor(area.value, area.selectionStart);
-      const ofLine = functionsOfLine(area.value).filter((d) => d !== atCursor);
-      setNames([...(atCursor ? [atCursor] : []), ...ofLine].map((d) => d.name).join(' '));
+      setNames(helpNamesOfLine(area.value, area.selectionStart).join(' '));
     };
     const later = () => {
       window.clearTimeout(timer);
@@ -49,19 +47,19 @@ function useEditedFunctions(): readonly FunctionDef[] | undefined {
       for (const e of events) document.removeEventListener(e, later, true);
     };
   }, []);
-  return names === undefined ? undefined : names.split(' ').flatMap((name) => builtinFunctions.get(name) ?? []);
+  return names === undefined ? undefined : names.split(' ').filter(Boolean);
 }
 
-/** How the functions of the line are written: the one at the cursor first, while typing. */
-function HowToWrite({ defs, catalog, decimalComma }: { defs: readonly FunctionDef[]; catalog: Catalog; decimalComma: boolean }) {
-  if (defs.length === 0) return null;
+/** How the functions of the line (and the line itself: solve …) are written: the one at the cursor first, while typing. */
+function HowToWrite({ names, catalog, decimalComma }: { names: readonly string[]; catalog: Catalog; decimalComma: boolean }) {
+  const helps = names.flatMap((name) => helpOf(name, catalog, decimalComma) ?? []);
+  if (helps.length === 0) return null;
   return (
     <section className="how-to-write">
       <h3>{t(catalog, 'editor.howToWrite')}</h3>
-      {defs.slice(0, 3).map((def) => {
-        const help = howToWrite(def, catalog, decimalComma);
+      {helps.slice(0, 3).map((help) => {
         return (
-          <div key={def.name} className="how-to-write-function">
+          <div key={help.name} className="how-to-write-function">
             <code className="how-to-write-signature">{help.signature}</code>
             <p>{help.summary}</p>
             <pre className="how-to-write-example">{help.shortExample}</pre>
@@ -73,14 +71,14 @@ function HowToWrite({ defs, catalog, decimalComma }: { defs: readonly FunctionDe
 }
 
 export function Inspector({ result, statement, line = '', catalog, decimalComma, onSelect, onLayer }: Props) {
-  const functions = useEditedFunctions() ?? functionsOfLine(line);
+  const functions = useEditedHelp() ?? helpNamesOfLine(line);
   const r = statement !== undefined ? result.statements[statement] : undefined;
   if (!r || (r.statement.kind !== 'definition' && r.statement.kind !== 'display' && r.statement.kind !== 'check' && r.statement.kind !== 'invalid')) {
     return (
       <aside className="inspector">
         <h2>{t(catalog, 'editor.details')}</h2>
         {functions.length === 0 && <p className="muted">{t(catalog, 'editor.nothingSelected')}</p>}
-        <HowToWrite defs={functions} catalog={catalog} decimalComma={decimalComma} />
+        <HowToWrite names={functions} catalog={catalog} decimalComma={decimalComma} />
         <p className="help">{t(catalog, 'editor.help')}</p>
       </aside>
     );
@@ -111,7 +109,7 @@ export function Inspector({ result, statement, line = '', catalog, decimalComma,
           </ul>
         </section>
       )}
-      <HowToWrite defs={functions} catalog={catalog} decimalComma={decimalComma} />
+      <HowToWrite names={functions} catalog={catalog} decimalComma={decimalComma} />
       <p className="help">{t(catalog, 'editor.help')}</p>
     </aside>
   );

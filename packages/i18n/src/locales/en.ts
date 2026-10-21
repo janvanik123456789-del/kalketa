@@ -1,10 +1,11 @@
 import type { Catalog } from '../catalog.js';
-import { EN_FUNCTION_DETAILS } from './functionDetails.en.js';
+import { EN_FUNCTION_DETAILS, EN_STATEMENT_HELP } from './functionDetails.en.js';
 
 export const en: Catalog = {
   locale: 'en',
   name: 'English',
   functionDetails: EN_FUNCTION_DETAILS,
+  statementHelp: EN_STATEMENT_HELP,
   diagnostics: {
     'E-UNEXPECTED-CHAR': 'Unexpected character “{char}”.',
     'E-UNTERMINATED-STRING': 'The text is missing its closing quote ".',
@@ -839,6 +840,8 @@ export const en: Catalog = {
     'help.functionsFilter': 'Find a function',
     'help.functionsInsert': 'Click a function (or Enter) to insert it at the cursor.',
     'help.example': 'Example',
+    'help.statements': 'Lines of a calculation',
+    'help.derived': 'every step checked',
     'help.gives': 'Result:',
     'help.toInsert': 'Insert the function into the sheet from Insert → Function… (Shift+F3), or type it.',
     'insertFunction.title': 'Insert a function',

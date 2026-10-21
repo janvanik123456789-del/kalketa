@@ -1842,6 +1842,14 @@ async function layersWithRealInput(picture: string) {
   await pause(200);
   await clickMenu('ℕ – ');
   await typeText(': n_q^2 - n_q - 6 == 0');
+  // A solve line is explained in Details and in Help (F1) as the functions are.
+  await pause(400);
+  const solveHowTo = (await contents.executeJavaScript(`document.querySelector('.inspector .how-to-write-signature')?.textContent ?? ''`)) as string;
+  await pressKey('F1');
+  await pause(400);
+  const solveHelp = (await contents.executeJavaScript(`(document.querySelector('.function-help-text h3')?.textContent ?? '') + '|' + (document.querySelector('.function-help-value')?.textContent ?? '')`)) as string;
+  await pressKey('Escape');
+  await pause(200);
   await clickOn('.statusbar');
   await pause(500);
   await takePicture(picture.replace(/[.]png$/, '-paper.png'));
@@ -1853,6 +1861,7 @@ async function layersWithRealInput(picture: string) {
     const natural = [...document.querySelectorAll('.layer-view.active .page .row')].find((r) => r.textContent.includes('ℕ'));
     const naturalText = natural ? natural.textContent.replace(/\\s+/g, '') : '';
     if (${JSON.stringify(numberSets)} !== 'ℝ ℂ ℕ ℕ₀ ℤ') return false;
+    if (${JSON.stringify(solveHowTo)} !== 'solve x: a == b' || !${JSON.stringify(solveHelp)}.startsWith('solve x: a == b|') || !${JSON.stringify(solveHelp)}.includes('x = 4 cm')) return false;
     if (!natural || natural.classList.contains('has-error') || !naturalText.includes('=3') || !/=−2\\W*nevyhovuje/.test(naturalText)) return false;
     return !!row && !row.classList.contains('has-error') && text.includes('∈ℝ') && text.includes('−10=0') && text.includes('D=') && text.includes('=216') && text.includes('±') && text.includes('=1,07');
   })()`)) as boolean;

@@ -122,7 +122,25 @@ export const FUNCTION_EXAMPLES: Readonly<Record<string, string>> = {
   plot: 'plot(sin(x), cos(x), x: 0 .. 2·π)',
 };
 
-/** How a function is written: its signature in the user's notation, its sentence and its example. */
+/** The lines that are no functions but have their help beside them: the keyword they start with. */
+export const STATEMENTS = ['solve', 'derive', 'relation'] as const;
+export type StatementKeyword = (typeof STATEMENTS)[number];
+
+/** How each such line is written, and its example (computed by a test as the functions' ones). */
+export const STATEMENT_SYNTAX: Readonly<Record<StatementKeyword, string>> = {
+  solve: 'solve x: a == b',
+  derive: 'derive a == b == …',
+  relation: 'relation a == b {eq=…}',
+};
+export const STATEMENT_EXAMPLES: Readonly<Record<StatementKeyword, string>> = {
+  solve: 'F := 12 kN\nk := 3 kN/cm\nsolve x: k·x == F',
+  derive: 'derive (a + b)^2 == (a + b)·(a + b) == a^2 + 2·a·b + b^2',
+  relation: 'relation x^2 + y^2 == r^2 {eq=Kruh}\nx := 3 m\nr := 5 m\nsolve y ∈ ℝ, y > 0: Kruh',
+};
+
+const isStatement = (name: string): name is StatementKeyword => (STATEMENTS as readonly string[]).includes(name);
+
+/** How a function or a line is written: its signature in the user's notation, its sentence and its example. */
 export interface HowToWrite {
   readonly name: string;
   readonly signature: string;
@@ -146,6 +164,33 @@ export function howToWrite(def: FunctionDef, catalog: Catalog, decimalComma: boo
     example: notation(example),
     shortExample: notation(example.replace(/^table[^\n]*\n(?:[ \t]+\|[^\n]*\n)*/gm, '')),
   };
+}
+
+/** The help of a function or of a line (solve, derive, relation) by its name; undefined for any other name. */
+export function helpOf(name: string, catalog: Catalog, decimalComma: boolean): HowToWrite | undefined {
+  const def = builtinFunctions.get(name);
+  if (def) return howToWrite(def, catalog, decimalComma);
+  if (!isStatement(name)) return undefined;
+  const words = catalog.statementHelp[name] ?? CATALOGS['en']?.statementHelp[name];
+  const example = decimalComma ? toDecimalComma(STATEMENT_EXAMPLES[name]) : STATEMENT_EXAMPLES[name];
+  return { name, signature: STATEMENT_SYNTAX[name], summary: words?.summary ?? '', details: words?.details ?? '', example, shortExample: example };
+}
+
+/** The keyword of a line that is no function (solve, derive, relation), if it starts with one. */
+export function statementOfLine(line: string): StatementKeyword | undefined {
+  const word = /^\s*([a-z]+)\b/.exec(line)?.[1];
+  return word && isStatement(word) ? word : undefined;
+}
+
+/**
+ * What the help of a line is about, by name: the function at the cursor first (while typing), then the kind of
+ * line (solve …), then the other functions it calls.
+ */
+export function helpNamesOfLine(line: string, cursor?: number): string[] {
+  const atCursor = cursor !== undefined ? functionAtCursor(line, cursor)?.name : undefined;
+  const statement = statementOfLine(line);
+  const names = [...(atCursor ? [atCursor] : []), ...(statement ? [statement] : []), ...functionsOfLine(line).map((d) => d.name)];
+  return [...new Set(names)];
 }
 
 /** The built-in functions a line calls, in order, each once: what the Details pane explains for it. */

@@ -74,6 +74,8 @@ export interface CommandContext {
     insert(kind: 'text' | 'definition' | 'check' | 'pick' | 'pageBreak' | 'clear' | 'sheetTable'): void;
     /** Insert > Fit a curve…: the dialog of methods with a preview. */
     fitCurve(): void;
+    /** Insert > Function…: a built-in function found by name or by what it does. */
+    insertFunction(): void;
     /** Insert > Chart…: the dialog of the kind of chart. */
     insertChart(): void;
     newTable(): void;
@@ -147,6 +149,7 @@ export function buildCommands(ctx: CommandContext): Map<string, Command> {
   add('insert.canvas', 'insert', a.insertCanvas);
   add('insert.chart', 'insert', a.insertChart);
   add('insert.fit', 'insert', a.fitCurve);
+  add('insert.function', 'insert', a.insertFunction, { shortcut: 'Shift+F3' });
   add('insert.sheetTable', 'insert', () => a.insert('sheetTable'));
   add('insert.newTable', 'insert', a.newTable);
   add('insert.importTable', 'insert', a.importTable);

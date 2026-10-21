@@ -215,6 +215,17 @@ table.functions td { padding: 3px 12px 3px 4px; vertical-align: top; }
 table.functions td:first-child { white-space: nowrap; }
 table.functions tr { cursor: pointer; }
 table.functions tr:hover { background: var(--hover, rgba(0, 0, 0, 0.06)); }
+/* Help on functions: the names on the left, the chosen one described on the right. */
+.function-help { display: grid; grid-template-columns: 200px 1fr; gap: 16px; min-height: 60vh; }
+.function-help-list .functions-list { max-height: 56vh; }
+.dialog-body .function-help-name { display: block; width: 100%; min-width: 0; text-align: left; border: none; background: none; padding: 2px 6px; font: 13px Consolas, "Cascadia Mono", monospace; cursor: default; border-radius: 3px; }
+.dialog-body .function-help-name:hover { background: var(--hover, rgba(0, 0, 0, 0.06)); }
+.dialog-body .function-help-name.active { background: var(--accent-soft); }
+.function-help-text { max-height: 62vh; overflow-y: auto; line-height: 1.45; }
+.function-help-text h3 { margin: 0 0 2px; font-size: 16px; }
+.function-help-module { margin: 0 0 10px; color: var(--muted); font-size: 12px; }
+.function-help-example, .how-to-write-example { background: #f4f6f9; border: 1px solid var(--line); border-radius: 4px; padding: 6px 8px; margin: 4px 0; font: 13px Consolas, "Cascadia Mono", monospace; white-space: pre-wrap; }
+.function-help-value strong { font-weight: 600; }
 kbd { font: 12px Consolas, monospace; background: #fff; border: 1px solid #c4cad2; border-radius: 3px; padding: 0 5px; }
 .about { display: flex; gap: 16px; align-items: flex-start; max-width: 420px; }
 .notices { max-height: 65vh; overflow: auto; margin: 0; padding: 8px; background: #fff; border: 1px solid var(--line); font: 11px/1.4 Consolas, "DejaVu Sans Mono", monospace; white-space: pre-wrap; }
@@ -374,6 +385,10 @@ img.thumb { max-height: 28px; max-width: 48px; vertical-align: middle; }
 .inspector h2 { font-size: 14px; margin: 0 0 8px; }
 .inspector h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin: 14px 0 6px; }
 .inspector .muted, .muted { color: var(--muted); }
+.how-to-write-function { margin-bottom: 10px; }
+.how-to-write-function p { margin: 2px 0 4px; font-size: 13px; }
+.how-to-write-signature { font: 600 13px Consolas, "Cascadia Mono", monospace; }
+.how-to-write-example { font-size: 12px; }
 .inspector .help { margin-top: 24px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 8px; }
 ul.messages { list-style: none; padding: 0; margin: 0 0 8px; }
 ul.messages li { padding: 4px 6px; border-radius: 3px; margin-bottom: 3px; font-size: 13px; }

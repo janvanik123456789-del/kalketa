@@ -147,6 +147,14 @@ describe('toolbar layout', () => {
     expect(fromOlder).not.toContain('sym:ℂ');
   });
 
+  it('turns the help button of an older Functions toolbar into Insert → Function', () => {
+    const old = defaultLayout();
+    const stored = JSON.stringify({ ...old, items: 11, toolbars: old.toolbars.map((t) => (t.id === 'functions' ? { ...t, items: t.items.map((i) => (i === 'insert.function' ? 'help.functions' : i)) } : t)) });
+    const items = parseLayout(stored).toolbars.find((t) => t.id === 'functions')!.items;
+    expect(items.at(-1)).toBe('insert.function');
+    expect(items).not.toContain('help.functions');
+  });
+
   it('gives a layout from before the AI chat its button on the View toolbar', () => {
     const old = defaultLayout();
     const stored = JSON.stringify({ ...old, items: 2, toolbars: old.toolbars.map((t) => (t.id === 'view' ? { ...t, items: t.items.filter((i) => i !== 'view.paneChat') } : t)) });

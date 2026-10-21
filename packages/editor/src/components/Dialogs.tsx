@@ -4,8 +4,9 @@
  */
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { builtinFunctions, FUNCTION_MODULES, signature } from '@kalketa/core';
-import { CATALOGS, t, type Catalog } from '@kalketa/i18n';
+import { builtinFunctions, evaluateSheet, FUNCTION_MODULES, signature, type FunctionDef } from '@kalketa/core';
+import { CATALOGS, formatValue, t, type Catalog } from '@kalketa/i18n';
+import { FUNCTION_EXAMPLES, howToWrite } from '../logic/functionHelp.js';
 import type { SheetDocument } from '@kalketa/sheet';
 import { plainLabel, type Command, type CommandCategory } from '../commands.js';
 import { commandIcon } from '../icons.js';
@@ -506,15 +507,29 @@ export function ShortcutsDialog({ catalog, commands, onClose }: { catalog: Catal
   );
 }
 
-/** Help on the built-in functions, generated from the function registry. */
-export function FunctionsDialog({ catalog, separator, onInsert, onClose }: { catalog: Catalog; separator: string; onInsert(text: string): void; onClose(): void }) {
-  const [filter, setFilter] = useState('');
+/** The built-in functions matching what was typed in the search box (by name or by words of their sentence). */
+function matchingFunctions(catalog: Catalog, filter: string): FunctionDef[] {
   const wanted = filter.trim().toLowerCase();
-  const all = builtinFunctions.all();
-  const shown = all.filter((def) => !wanted || def.name.toLowerCase().includes(wanted) || (catalog.functions[def.name] ?? '').toLowerCase().includes(wanted));
+  const sentence = (name: string) => (catalog.functions[name] ?? CATALOGS['en']?.functions[name] ?? '').toLowerCase();
+  return builtinFunctions.all().filter((def) => !wanted || def.name.toLowerCase().includes(wanted) || sentence(def.name).includes(wanted));
+}
+
+/** Insert → Function…: a function of the registry put at the cursor, found by name or by what it does. */
+export function InsertFunctionDialog({ catalog, separator, onInsert, onClose }: { catalog: Catalog; separator: string; onInsert(name: string): void; onClose(): void }) {
+  const [filter, setFilter] = useState('');
+  const shown = matchingFunctions(catalog, filter);
   return (
-    <Dialog title={t(catalog, 'help.functionsTitle')} catalog={catalog} wide onClose={onClose}>
-      <input className="functions-filter" type="search" autoFocus placeholder={t(catalog, 'help.functionsFilter')} value={filter} onChange={(e) => setFilter(e.target.value)} />
+    <Dialog title={t(catalog, 'insertFunction.title')} catalog={catalog} wide onClose={onClose}>
+      <input
+        className="functions-filter"
+        type="search"
+        autoFocus
+        placeholder={t(catalog, 'help.functionsFilter')}
+        value={filter}
+        onChange={(e) => setFilter(e.target.value)}
+        // Enter takes the first function found.
+        onKeyDown={(e) => e.key === 'Enter' && shown[0] && (e.preventDefault(), onInsert(shown[0].name))}
+      />
       <div className="functions-list">
         {FUNCTION_MODULES.map((module) => {
           const defs = shown.filter((def) => def.module === module);
@@ -525,7 +540,7 @@ export function FunctionsDialog({ catalog, separator, onInsert, onClose }: { cat
               <table className="functions">
                 <tbody>
                   {defs.map((def) => (
-                    <tr key={def.name} onClick={() => onInsert(`${def.name}(`)} title={t(catalog, 'help.functionsInsert')}>
+                    <tr key={def.name} onClick={() => onInsert(def.name)} title={t(catalog, 'help.functionsInsert')}>
                       <td>
                         <code>{signature(def, separator)}</code>
                       </td>
@@ -541,6 +556,68 @@ export function FunctionsDialog({ catalog, separator, onInsert, onClose }: { cat
       <p className="hint">{t(catalog, 'help.functionsInsert')}</p>
     </Dialog>
   );
+}
+
+/** Help → Functions (F1): every function described, how it is written in Kalketa, an example and its value. */
+export function FunctionHelpDialog({ catalog, decimalComma, initial, onClose }: { catalog: Catalog; decimalComma: boolean; initial?: string; onClose(): void }) {
+  const [filter, setFilter] = useState('');
+  const [chosen, setChosen] = useState(initial && builtinFunctions.has(initial) ? initial : 'sqrt');
+  const shown = matchingFunctions(catalog, filter);
+  const def = builtinFunctions.get(chosen)!;
+  const help = howToWrite(def, catalog, decimalComma);
+  const value = exampleValue(FUNCTION_EXAMPLES[def.name] ?? '', catalog);
+  return (
+    <Dialog title={t(catalog, 'help.functionsTitle')} catalog={catalog} wide onClose={onClose}>
+      <div className="function-help">
+        <div className="function-help-list">
+          <input className="functions-filter" type="search" autoFocus placeholder={t(catalog, 'help.functionsFilter')} value={filter} onChange={(e) => setFilter(e.target.value)} />
+          <div className="functions-list">
+            {FUNCTION_MODULES.map((module) => {
+              const defs = shown.filter((d) => d.module === module);
+              if (defs.length === 0) return null;
+              return (
+                <section key={module}>
+                  <h4>{catalog.functionModules[module]}</h4>
+                  {defs.map((d) => (
+                    <button key={d.name} type="button" className={`function-help-name${d.name === chosen ? ' active' : ''}`} onClick={() => setChosen(d.name)}>
+                      {d.name}
+                    </button>
+                  ))}
+                </section>
+              );
+            })}
+          </div>
+        </div>
+        <article className="function-help-text">
+          <h3>
+            <code>{help.signature}</code>
+          </h3>
+          <p className="function-help-module">{catalog.functionModules[def.module]}</p>
+          <p>{help.summary}</p>
+          <p>{help.details}</p>
+          <h4>{t(catalog, 'help.example')}</h4>
+          <pre className="function-help-example">{help.example}</pre>
+          {value && (
+            <p className="function-help-value">
+              {t(catalog, 'help.gives')} <strong>{value}</strong>
+            </p>
+          )}
+          <p className="hint">{t(catalog, 'help.toInsert')}</p>
+        </article>
+      </div>
+    </Dialog>
+  );
+}
+
+/** What the last line of an example shows, in the user's notation; a chart or a function says nothing. */
+function exampleValue(example: string, catalog: Catalog): string | undefined {
+  const last = evaluateSheet(example).statements.at(-1);
+  if (!last || last.diagnostics.some((d) => d.severity === 'error')) return undefined;
+  if (last.display) return formatValue(last.display.value, last.display.im, last.display.unit, catalog);
+  if (last.displayList) return `[${last.displayList.map((d) => formatValue(d.value, d.im, '', catalog)).join(catalog.locale === 'cs' ? '; ' : ', ')}] ${last.displayList[0]?.unit ?? ''}`.trim();
+  if (last.displayMatrix) return `${last.displayMatrix.rows}×${last.displayMatrix.cols}`;
+  if (last.value?.type === 'text') return last.value.value;
+  return undefined;
 }
 
 export function AboutDialog({ catalog, onClose }: { catalog: Catalog; onClose(): void }) {

@@ -1,8 +1,10 @@
 import type { Catalog } from '../catalog.js';
+import { EN_FUNCTION_DETAILS } from './functionDetails.en.js';
 
 export const en: Catalog = {
   locale: 'en',
   name: 'English',
+  functionDetails: EN_FUNCTION_DETAILS,
   diagnostics: {
     'E-UNEXPECTED-CHAR': 'Unexpected character “{char}”.',
     'E-UNTERMINATED-STRING': 'The text is missing its closing quote ".',
@@ -835,7 +837,13 @@ export const en: Catalog = {
     'cmd.help.functions': '&Functions',
     'help.functionsTitle': 'Functions',
     'help.functionsFilter': 'Find a function',
-    'help.functionsInsert': 'Click a function to insert it at the cursor.',
+    'help.functionsInsert': 'Click a function (or Enter) to insert it at the cursor.',
+    'help.example': 'Example',
+    'help.gives': 'Result:',
+    'help.toInsert': 'Insert the function into the sheet from Insert → Function… (Shift+F3), or type it.',
+    'insertFunction.title': 'Insert a function',
+    'cmd.insert.function': '&Function…',
+    'editor.howToWrite': 'How it is written',
     'layers.moveLeft': 'Move &left',
     'layers.moveRight': 'Move &right',
     'layers.menu': 'Layer options',

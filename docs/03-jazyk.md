@@ -208,7 +208,7 @@ Od nejvyšší priority (**převzato z Calcpadu, standardní školní matematika
 
 ### 7.1 Vestavěné (F1)
 
-Funkce jsou v **registru funkcí** rozdělené do modulů. Každá funkce má v registru název, modul, parametry, počet argumentů a výpočet. Jádro se na funkci jen ptá registru, takže přidat modul (obor, později zásuvný modul) nevyžaduje zásah do jádra. Z registru vzniká i nápověda **Nápověda → Funkce (F1)**: hledání, popis v jazyce programu, kliknutím se funkce vloží na místo kurzoru.
+Funkce jsou v **registru funkcí** rozdělené do modulů. Každá funkce má v registru název, modul, parametry, počet argumentů a výpočet. Jádro se na funkci jen ptá registru, takže přidat modul (obor, později zásuvný modul) nevyžaduje zásah do jádra. Z registru vzniká i nápověda **Nápověda → Funkce (F1)**: hledání, ke každé funkci zápis v Kalketě, popis, podrobnosti (argumenty, jednotka výsledku, záludnosti) a příklad s hodnotou, kterou dá; F1 s kurzorem ve volání otevře nápovědu té funkce. Vkládá se z **Vložit → Funkce… (Shift+F3)**: hledání podle jména nebo podle toho, co funkce dělá, Enter nebo klik ji vloží na místo kurzoru. Panel **Podrobnosti** u vybraného nebo právě psaného řádku ukáže, jak se jeho funkce zapisují (zápis, věta, příklad). Příklady jsou v `packages/editor/src/logic/functionHelp.ts` a test je všechny spočítá (2026-10-21).
 
 | Modul | Funkce |
 |---|---|
@@ -223,7 +223,7 @@ Funkce jsou v **registru funkcí** rozdělené do modulů. Každá funkce má v 
 | Tabulky | `pick`, `interpolate`, `find_min`, `find_max` (kap. 8) |
 | Grafy | `plot` (7.1e) |
 
-**Lišta Funkce** (nahoře, jako palety Mathcadu) vloží zápis funkce s kurzorem tam, kde se pokračuje: ∫ `integral(‸; x: 0 .. 1)`, d/dx, ∑, matice 2×2, |x|, if, řešič (nový řádek `solve`), graf a nápověda F1. Meze a proměnnou stačí přepsat; lištu jde jako ostatní přesunout, skrýt nebo upravit (Nástroje → Přizpůsobit).
+**Lišta Funkce** (nahoře, jako palety Mathcadu) vloží zápis funkce s kurzorem tam, kde se pokračuje: ∫ `integral(‸; x: 0 .. 1)`, d/dx, ∑, matice 2×2, |x|, if, řešič (nový řádek `solve`), graf a fx (Vložit → Funkce…). Meze a proměnnou stačí přepsat; lištu jde jako ostatní přesunout, skrýt nebo upravit (Nástroje → Přizpůsobit).
 
 Počet argumentů kontroluje registr jednotně (`E-FUNC-ARITY`). `mod` a `hypot` zachovají jednotku (`mod(1250 mm, 1 m) = 250 mm`), `median` a `stdev` jednotku řady.
 

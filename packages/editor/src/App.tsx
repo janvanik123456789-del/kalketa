@@ -38,11 +38,12 @@ import { closeTab, cycleTab, fileNameOf, isDirty, newTab, openTab, type DocTab, 
 import { pageGeometry } from './logic/pages.js';
 import { pickOf, replacePickKey } from './logic/pick.js';
 import { deleteLineRanges, deleteLines, insertLineAfter, moveLines, replaceLines, segments } from './logic/segments.js';
-import { parseLayout, setVisible, templateParts, type ToolbarLayout } from './logic/toolbars.js';
+import { FUNCTION_TEMPLATES, parseLayout, setVisible, templateParts, type ToolbarLayout } from './logic/toolbars.js';
 import { createTable, importTableFile, type TableChange } from './tableActions.js';
 import { captionOf, fromFile, pictureLine, picturePath, pixelWidth, widthFor, type IncomingPicture } from './logic/pictures.js';
 import { importBlockFile } from './blockActions.js';
-import { AboutDialog, CustomizeDialog, FunctionsDialog, PropertiesDialog, SettingsDialog, ShortcutsDialog } from './components/Dialogs.js';
+import { AboutDialog, CustomizeDialog, FunctionHelpDialog, InsertFunctionDialog, PropertiesDialog, SettingsDialog, ShortcutsDialog } from './components/Dialogs.js';
+import { functionAtCursor, functionsOfLine } from './logic/functionHelp.js';
 import { FitDialog } from './components/FitDialog.js';
 import { ChartDialog } from './components/ChartDialog.js';
 import type { ChartFunction, ChartRelation, ChartSources } from './logic/chartInsert.js';
@@ -76,7 +77,7 @@ type Tab = DocTab<SheetDocument, FileRef>;
 /** Rows copied by Ctrl+C with what they use (pictures, tables), for Ctrl+V in any calculation of the window. */
 let rowClipboard: { readonly text: string; readonly files: ReadonlyMap<string, Uint8Array>; readonly tables: SheetDocument['tables'] } | undefined;
 
-type DialogKind = 'settings' | 'properties' | 'revisions' | 'customize' | 'shortcuts' | 'functions' | 'about' | 'study' | 'fit' | 'chart';
+type DialogKind = 'settings' | 'properties' | 'revisions' | 'customize' | 'shortcuts' | 'functions' | 'insertFunction' | 'about' | 'study' | 'fit' | 'chart';
 
 const MM_TO_PX = 96 / 25.4;
 const PAGE_GAP_PX = 24;
@@ -316,6 +317,8 @@ export function App() {
   const text = textOf(layer);
   const result = resultOf(layer);
   const nameOf = (l: Layer) => layerName(l, ui);
+  /** The text of the selected line of the active layer (its functions are explained in Details). */
+  const selectedLine = () => (selected !== undefined ? (text.split('\n')[(result.statements[selected]?.statement.span.line ?? 0) - 1] ?? '') : '');
   const layerTables = useMemo(() => tablesByLayer(doc.layers, doc.tables.keys()), [doc.layers, doc.tables]);
   /**
    * Space by importance: most calculations are just the sheet. A layer gets a
@@ -1054,6 +1057,8 @@ export function App() {
   const [pythonEngine, setPythonEngine] = useState<'pyodide' | 'system'>(() => (stored(PYTHON_ENGINE_KEY) === 'system' ? 'system' : 'pyodide'));
   const [pythonAskAi, setPythonAskAi] = useState(() => stored(PYTHON_ASK_AI_KEY) === 'yes');
   const [greekCapitals, setGreekCapitals] = useState(() => stored(GREEK_CAPITALS_KEY) === 'yes');
+  /** The function Help → Functions opens on (the one at the cursor when F1 was pressed). */
+  const [helpFunction, setHelpFunction] = useState<string | undefined>();
   // The conversation the chat shows, by document tab; the conversations themselves are in the sheet (AI notes).
   // Absent: the latest one; '' after "New chat": a new one with the next question.
   const [activeChat, setActiveChat] = useState<Readonly<Record<string, string>>>({});
@@ -1847,7 +1852,14 @@ export function App() {
         setAiOn(!aiOn);
       },
       shortcuts: () => setDialog('shortcuts'),
-      functions: () => setDialog('functions'),
+      // F1 opens the help on the function the cursor is in (or the first one of the selected line).
+      functions: () => {
+        const area = document.querySelector<HTMLTextAreaElement>('textarea.row-editor');
+        const line = selectedLine();
+        setHelpFunction((area ? functionAtCursor(area.value, area.selectionStart) : undefined)?.name ?? functionsOfLine(area?.value ?? line)[0]?.name);
+        setDialog('functions');
+      },
+      insertFunction: () => setDialog('insertFunction'),
       fitCurve: () => {
         setFitEdit(undefined);
         setDialog('fit');
@@ -2098,7 +2110,7 @@ export function App() {
     },
     {
       label: t(ui, 'menu.insert'),
-      items: [cmd('insert.text'), cmd('insert.definition'), cmd('insert.check'), cmd('insert.pick'), cmd('insert.pageBreak'), cmd('insert.clear'), sep, cmd('insert.picture'), cmd('insert.canvas'), cmd('insert.chart'), cmd('insert.fit'), cmd('insert.sheetTable'), cmd('insert.newTable'), cmd('insert.importTable'), cmd('insert.block'),
+      items: [cmd('insert.text'), cmd('insert.definition'), cmd('insert.check'), cmd('insert.pick'), cmd('insert.pageBreak'), cmd('insert.clear'), sep, cmd('insert.picture'), cmd('insert.canvas'), cmd('insert.function'), cmd('insert.chart'), cmd('insert.fit'), cmd('insert.sheetTable'), cmd('insert.newTable'), cmd('insert.importTable'), cmd('insert.block'),
         ...(doc.blocks.size > 0
           ? [
               {
@@ -2483,6 +2495,7 @@ export function App() {
                     <Inspector
                       result={result}
                       statement={selected}
+                      line={selectedLine()}
                       catalog={ui}
                       decimalComma={decimalComma}
                       onLayer={activate}
@@ -2728,13 +2741,15 @@ export function App() {
           }}
         />
       )}
-      {dialog === 'functions' && (
-        <FunctionsDialog
+      {dialog === 'functions' && <FunctionHelpDialog catalog={ui} decimalComma={decimalComma} {...(helpFunction ? { initial: helpFunction } : {})} onClose={() => setDialog(undefined)} />}
+      {dialog === 'insertFunction' && (
+        <InsertFunctionDialog
           catalog={ui}
           separator={decimalComma ? ';' : ','}
-          onInsert={(text) => {
+          onInsert={(name) => {
             setDialog(undefined);
-            insertSymbol(text);
+            // The functions of the toolbar with their variable written out (integral(‸, x: 0 .. 1)), the others name(‸).
+            insertTemplate(FUNCTION_TEMPLATES.find((f) => f.id === name)?.text ?? `${name}(‸)`);
           }}
           onClose={() => setDialog(undefined)}
         />

@@ -16,6 +16,8 @@ export interface Catalog {
   readonly functionModules: Readonly<Record<FunctionModuleId, string>>;
   /** One sentence per built-in function, for help. */
   readonly functions: Readonly<Record<string, string>>;
+  /** Help of each built-in function beyond its sentence: arguments, units of the result, what to watch for. */
+  readonly functionDetails: Readonly<Record<string, string>>;
   /** Translations of term codes used as parameter values. */
   readonly terms: Readonly<Record<string, string>>;
   readonly severity: Readonly<Record<Severity, string>>;
@@ -541,6 +543,12 @@ export const UI_KEYS = [
   'help.functionsTitle',
   'help.functionsFilter',
   'help.functionsInsert',
+  'help.example',
+  'help.gives',
+  'help.toInsert',
+  'insertFunction.title',
+  'cmd.insert.function',
+  'editor.howToWrite',
   'cmd.symbol',
   'cmd.greek.capitals',
   'cmd.numberSets',

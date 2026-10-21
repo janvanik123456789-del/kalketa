@@ -1,8 +1,10 @@
 import type { Catalog } from '../catalog.js';
+import { CS_FUNCTION_DETAILS } from './functionDetails.cs.js';
 
 export const cs: Catalog = {
   locale: 'cs',
   name: 'Čeština',
+  functionDetails: CS_FUNCTION_DETAILS,
   diagnostics: {
     'E-UNEXPECTED-CHAR': 'Neočekávaný znak „{char}“.',
     'E-UNTERMINATED-STRING': 'Textu chybí ukončovací uvozovky ".',
@@ -835,7 +837,13 @@ export const cs: Catalog = {
     'cmd.help.functions': '&Funkce',
     'help.functionsTitle': 'Funkce',
     'help.functionsFilter': 'Hledat funkci',
-    'help.functionsInsert': 'Kliknutím vložíte funkci na místo kurzoru.',
+    'help.functionsInsert': 'Kliknutím (nebo Enter) vložíte funkci na místo kurzoru.',
+    'help.example': 'Příklad',
+    'help.gives': 'Výsledek:',
+    'help.toInsert': 'Do listu funkci vložíte z nabídky Vložit → Funkce… (Shift+F3) nebo ji napište.',
+    'insertFunction.title': 'Vložit funkci',
+    'cmd.insert.function': '&Funkce…',
+    'editor.howToWrite': 'Jak se zapisuje',
     'layers.moveLeft': 'Posunout &vlevo',
     'layers.moveRight': 'Posunout v&pravo',
     'layers.menu': 'Možnosti vrstvy',

@@ -1055,17 +1055,30 @@ async function layersWithRealInput(picture: string) {
     await pressKey('Enter');
     await typeText(line);
   }
-  // Help on functions (F1): find hypot, click it into the line, finish the call.
+  // Insert → Function (Shift+F3): hypot found by its name, Enter puts hypot(‸) into the line, the call finished.
   await pressKey('Enter');
   await typeText('c_h := ');
-  await pressKey('F1');
+  await pressKey('F3', ['shift']);
   await pause(300);
   const listed = (await contents.executeJavaScript(`document.querySelectorAll('table.functions tr').length`)) as number;
   await typeText('hypot');
   await pause(200);
+  await takePicture(picture.replace(/[.]png$/, '-insert-function.png'));
+  await pressKey('Enter');
+  await pause(200);
+  await typeText('3 m; 4 m');
+  await pause(300);
+  // Details tell how the function at the cursor is written.
+  const howTo = (await contents.executeJavaScript(`document.querySelector('.inspector .how-to-write-signature')?.textContent ?? ''`)) as string;
+  // F1 with the cursor in the call: the help of hypot, its example and the value it gives; no inserting from there.
+  await pressKey('F1');
+  await pause(400);
+  const helpShown = (await contents.executeJavaScript(`({ head: document.querySelector('.function-help-text h3')?.textContent ?? '', value: document.querySelector('.function-help-value')?.textContent ?? '', rows: document.querySelectorAll('.function-help table.functions tr').length })`)) as { head: string; value: string; rows: number };
   await takePicture(picture.replace(/[.]png$/, '-help.png'));
-  await clickOn('table.functions tr');
-  await typeText('3 m; 4 m)');
+  await pressKey('Escape');
+  await pause(200);
+  await clickOn('textarea.row-editor');
+  await pressKey('End');
   await pressKey('Enter');
   await typeText('c_h =');
   await clickOn('.sheet-scroll');
@@ -1087,7 +1100,13 @@ async function layersWithRealInput(picture: string) {
   const matrices = userFunction.rows.some((r) => r.replace(/\s+/g, '').includes('=[0,6667;0,3333]m')) && (await contents.executeJavaScript(`!!document.querySelector('.page mtable')`)) as boolean;
   const complex = userFunction.rows.some((r) => r.replace(/\s+/g, '').includes('(27,6−36,8j)A'));
   const ownUnits = userFunction.rows.some((r) => r.replace(/\s+/g, '').includes('100EUR=2500CZK'));
-  const help = listed > 50 && userFunction.rows.some((r) => r.replace(/\s+/g, '').includes('hypot(3m;4m)=5m'));
+  const help =
+    listed > 50 &&
+    userFunction.rows.some((r) => r.replace(/\s+/g, '').includes('hypot(3m;4m)=5m')) &&
+    howTo === 'hypot(a; b; …)' &&
+    helpShown.head === 'hypot(a; b; …)' &&
+    helpShown.value.includes('5 m') &&
+    helpShown.rows === 0;
 
   // Derivations: the a=b button of the Functions toolbar starts a derive line; a right step is marked as checked, a wrong one is an error.
   // The last row by its number: a chart moved to the next page stands after it in the page, not in the sheet.

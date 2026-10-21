@@ -48,6 +48,9 @@ describe('function help', () => {
   it('describes every built-in function and module in every language', () => {
     for (const catalog of Object.values(CATALOGS)) {
       for (const def of builtinFunctions.all()) expect(catalog.functions[def.name], `${catalog.locale}: ${def.name}`).toBeTruthy();
+      for (const def of builtinFunctions.all()) expect(catalog.functionDetails[def.name], `${catalog.locale} details: ${def.name}`).toBeTruthy();
+      // No help of a function that is not there (a renamed or removed one).
+      expect(Object.keys(catalog.functionDetails).filter((name) => !builtinFunctions.has(name))).toEqual([]);
       for (const module of FUNCTION_MODULES) expect(catalog.functionModules[module], `${catalog.locale}: ${module}`).toBeTruthy();
     }
   });

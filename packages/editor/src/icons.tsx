@@ -142,10 +142,18 @@ const ICONS: Readonly<Record<string, ReactElement>> = {
       <circle {...S} cx="16" cy="5.5" r="1" />
     </>
   ),
-  'help.functions': (
+  'insert.function': (
     <>
       <path {...S} d="M8 3.5c-2 0-2 1.5-2 3v8c0 1.5-.5 2.5-2 2.5M4 9h4.5" />
       <path {...S} d="M11 8l5 6M16 8l-5 6" />
+    </>
+  ),
+  // The help on functions: fx with a question mark.
+  'help.functions': (
+    <>
+      <path {...S} d="M7 3.5c-2 0-2 1.5-2 3v8c0 1.5-.5 2.5-2 2.5M3 9h4.5" />
+      <path {...S} d="M10.5 6.5c0-1.5 1.2-2.5 2.7-2.5s2.8 1 2.8 2.4c0 2-2.7 2.1-2.7 4.1" />
+      <circle {...S} cx="13.3" cy="14.5" r=".6" />
     </>
   ),
   'insert.importTable': (

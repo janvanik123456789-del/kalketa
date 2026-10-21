@@ -70,8 +70,10 @@ const ADDED_ITEMS: readonly { readonly since: number; readonly toolbar: string; 
 const REPLACED_ITEMS: readonly { readonly since: number; readonly toolbar: string; readonly old: readonly string[]; readonly by: string }[] = [
   // ℝ and ℂ became one button with a list of the sets of numbers (ℕ, ℕ₀, ℤ too).
   { since: 11, toolbar: 'operators', old: ['sym:ℝ', 'sym:ℂ'], by: 'sym:sets' },
+  // The fx button inserts a function; help on functions is in the Help menu (F1).
+  { since: 12, toolbar: 'functions', old: ['help.functions'], by: 'insert.function' },
 ];
-export const ITEMS_VERSION = 11;
+export const ITEMS_VERSION = 12;
 
 export const SEPARATOR = '|';
 
@@ -160,7 +162,7 @@ export function defaultLayout(): ToolbarLayout {
         builtin: true,
         visible: true,
         place: dock('top', 0, 3),
-        items: [...FUNCTION_TEMPLATES.map((f) => `fn:${f.id}`), SEPARATOR, 'insert.chart', 'help.functions'],
+        items: [...FUNCTION_TEMPLATES.map((f) => `fn:${f.id}`), SEPARATOR, 'insert.chart', 'insert.function'],
       },
       { id: 'operators', builtin: true, visible: true, place: dock('left', 0, 0), items: OPERATOR_SYMBOLS.flatMap((s) => (s === '∛' ? [`sym:${s}`, 'fn:root'] : s === 'ℝ' ? [NUMBER_SETS] : s === 'ℂ' ? [] : [`sym:${s}`])) },
       { id: 'greek', builtin: true, visible: true, place: dock('left', 1, 0), items: [GREEK_CASE, ...GREEK_LETTERS.map((s) => `sym:${s}`)] },

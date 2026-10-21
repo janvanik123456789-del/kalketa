@@ -68,7 +68,7 @@ export const en: Catalog = {
     'W-FORMAT': 'Unknown line format “{item}”: for a result {decimals=0…15} or {digits=1…15}, for text and headings {size=6…48}, {font=serif|sans|mono}, {italic}, {bold}, {align=left|center|right|justify}, {color=gray|blue|red|green|#rrggbb}, on an input {slider=from..to}, on a table {across}.',
     'W-DERIVE-UNVERIFIED': 'Derivation: step {step} cannot be checked, the expression has no value for trial values.',
     'E-NO-BOUNDS': '{function} without bounds is a notation of theory and cannot be calculated. Give bounds (e.g. integral(y^2, y: 0 m .. h)) or use a value from a table.',
-    'E-SOLVE-CONDITIONS': 'The domain of the solution (∈ ℝ, ∈ ℂ) and its conditions are for one unknown and one equation (not an inequality): solve x ∈ ℝ, x > 0: a·x² + b·x + c == 0.',
+    'E-SOLVE-CONDITIONS': 'The domain of the solution (∈ ℝ, ℂ, ℕ, ℕ₀, ℤ) and its conditions are for one unknown and one equation (not an inequality): solve x ∈ ℝ, x > 0: a·x² + b·x + c == 0.',
     'E-PLOT-POINTS': 'The points of a chart are written [x; y] or row by row [x₁, y₁ | x₂, y₂], in the units of its axes (points: [x_v; y_v]).',
     'E-PLOT-AREA': 'The area under the curve is an interval from .. to in the unit of the x axis (area: x_2 .. x_1), or the name of an integral of the sheet above the chart (area: S with S := integral(y(x), x: a .. b)); the curve must have a value all over it.',
     'E-PLOT-CUT': 'A cut through the surface is written cut: {y} == 1 m or cut: {x} == 2 m: the name of an axis, == and a value inside its range.',

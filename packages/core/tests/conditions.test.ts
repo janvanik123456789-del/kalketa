@@ -40,6 +40,24 @@ describe('the conditions of a solution, as on paper', () => {
     expect((r.values.get('u') as Quantity).si).toBeCloseTo(1.0697, 3);
   });
 
+  it('keeps the whole roots in ℕ, ℕ₀ and ℤ', () => {
+    // x² − x − 6 = 0: x = 3 and x = −2.
+    const kept = (domain: string) => roots(`solve x ∈ ${domain}: x^2 - x - 6 == 0`).roots.filter((r) => r.kept).map((r) => r.re);
+    expect(kept('ℕ')).toEqual([3]);
+    expect(kept('ℤ')).toEqual([3, -2]);
+    expect(kept('N')).toEqual([3]);
+    // x² − 3x = 0: 0 is in ℕ₀, not in ℕ.
+    const zero = (domain: string) => roots(`solve x ∈ ${domain}: x^2 - 3·x == 0`).roots.filter((r) => r.kept).map((r) => r.re);
+    expect(zero('ℕ')).toEqual([3]);
+    expect(zero('ℕ₀')).toEqual([3, 0]);
+    expect(zero('ℕ_0')).toEqual([3, 0]);
+    // 2x² − 5x + 2 = 0: 2 and 0,5; a half is no whole number.
+    expect(roots('solve n ∈ ℤ: 2·n^2 - 5·n + 2 == 0').roots).toEqual([{ re: 2, im: 0, kept: true }, { re: 0.5, im: 0, kept: false }]);
+    // A length is no count: no root kept.
+    expect(roots('solve L ∈ ℕ: L^2 == 4 m^2').roots.every((r) => !r.kept)).toBe(true);
+    expect(evaluateSheet('solve x ∈ ℚ: x^2 == 4').diagnostics.map((d) => d.code)).toContain('E-SYNTAX');
+  });
+
   it('allows the domain and the conditions with one unknown and one equation only', () => {
     expect(evaluateSheet('solve (x, y) ∈ ℝ: x + y == 1, x - y == 0').diagnostics.map((d) => d.code)).toContain('E-SOLVE-CONDITIONS');
   });

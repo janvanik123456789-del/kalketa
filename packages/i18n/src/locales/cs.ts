@@ -68,7 +68,7 @@ export const cs: Catalog = {
     'W-FORMAT': 'Neznámý formát řádku „{item}“: u výsledku {decimals=0…15} nebo {digits=1…15}, u textu a nadpisu {size=6…48}, {font=serif|sans|mono}, {italic}, {bold}, {align=left|center|right|justify}, {color=gray|blue|red|green|#rrggbb}, u vstupu {slider=od..do}, u tabulky {across}.',
     'W-DERIVE-UNVERIFIED': 'Odvození: krok {step} nejde ověřit, výraz nemá pro zkusmé hodnoty žádnou hodnotu.',
     'E-NO-BOUNDS': '{function} bez mezí je zápis pro teorii a nejde spočítat. Zadejte meze (např. integral(y^2, y: 0 m .. h)), nebo použijte hodnotu z tabulky.',
-    'E-SOLVE-CONDITIONS': 'Obor řešení (∈ ℝ, ∈ ℂ) a podmínky platí pro jednu neznámou a jednu rovnici (ne nerovnici): solve x ∈ ℝ, x > 0: a·x² + b·x + c == 0.',
+    'E-SOLVE-CONDITIONS': 'Obor řešení (∈ ℝ, ℂ, ℕ, ℕ₀, ℤ) a podmínky platí pro jednu neznámou a jednu rovnici (ne nerovnici): solve x ∈ ℝ, x > 0: a·x² + b·x + c == 0.',
     'E-PLOT-POINTS': 'Body grafu se píší jako [x; y] nebo po řádcích [x₁, y₁ | x₂, y₂], v jednotkách os grafu (points: [x_v; y_v]).',
     'E-PLOT-AREA': 'Plocha pod křivkou je interval od .. do v jednotce osy x (area: x_2 .. x_1), nebo jméno integrálu z listu nad grafem (area: S, kde S := integral(y(x), x: a .. b)); křivka v něm musí mít všude hodnotu.',
     'E-PLOT-CUT': 'Řez plochou se píše cut: {y} == 1 m nebo cut: {x} == 2 m: jméno osy, == a hodnota uvnitř jejího rozsahu.',

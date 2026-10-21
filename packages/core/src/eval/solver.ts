@@ -23,8 +23,8 @@
  */
 
 import { CalcError, fail, type Span } from '../diagnostics.js';
-import type { Expr, Inequality, Statement } from '../lang/ast.js';
-import { sameDim, type Dimension } from '../units/dimension.js';
+import type { Expr, Inequality, SolveDomain, Statement } from '../lang/ast.js';
+import { isDimensionless, sameDim, type Dimension } from '../units/dimension.js';
 import { baseUnitSymbol } from '../units/display.js';
 import { DIMENSIONLESS } from '../units/dimension.js';
 import type { ResolvedUnit } from '../units/unitExpr.js';
@@ -255,8 +255,11 @@ function rootHolds(equation: SolveStatement['equations'][number], name: string, 
 /** A root found under the conditions of the statement, or why it was set aside. */
 export interface Root {
   readonly value: Quantity;
-  /** Not a solution after all: complex where only real ones count, or failing a condition (its index; the interval after them). */
-  readonly rejected?: 'complex' | number;
+  /**
+   * Not a solution after all: complex where only real ones count, not a whole number where only those count
+   * (ℕ, ℕ₀, ℤ: 'domain'), or failing a condition (its index; the interval after them).
+   */
+  readonly rejected?: 'complex' | 'domain' | number;
 }
 
 /** solve x ∈ ℝ, x > 0: … — every root, each kept or set aside, as on paper. */
@@ -351,6 +354,7 @@ export function allRoots(statement: SolveStatement, ctx: EvalContext, evaluate: 
   const conditions = statement.conditions ?? [];
   const roots = found.map((root): Root => {
     if (root.im && statement.domain !== 'complex') return { value: root, rejected: 'complex' };
+    if (!inWholeDomain(root, statement.domain)) return { value: root, rejected: 'domain' };
     if (range && (root.im || root.si < range[0]!.si || root.si > range[1]!.si)) return { value: root, rejected: conditions.length };
     const there: EvalContext = { ...ctx, warnings: [], tableReads: [], lookup: (n, span) => (n === name ? root : ctx.lookup(n, span)) };
     const failing = conditions.findIndex((condition) => {
@@ -366,6 +370,18 @@ export function allRoots(statement: SolveStatement, ctx: EvalContext, evaluate: 
     return failing >= 0 ? { value: root, rejected: failing } : { value: root };
   });
   return { roots, ...(quadratic ? { quadratic } : {}), ...(expanded ? { expanded } : {}) };
+}
+
+/**
+ * Whether a real root belongs to ℕ, ℕ₀ or ℤ (any other domain: yes): a plain number, whole within rounding
+ * (a root from a formula may come out as 2.9999999999).
+ */
+function inWholeDomain(root: Quantity, domain: SolveDomain | undefined): boolean {
+  if (domain !== 'natural' && domain !== 'natural0' && domain !== 'integer') return true;
+  if (!isDimensionless(root.dim)) return false;
+  const whole = Math.round(root.si);
+  if (Math.abs(root.si - whole) > 1e-9 * Math.max(1, Math.abs(root.si))) return false;
+  return domain === 'integer' || whole >= (domain === 'natural' ? 1 : 0);
 }
 
 /**

@@ -12,6 +12,7 @@
  */
 
 import {
+  DOMAIN_SPELLINGS,
   formatUnit,
   TABLE_TOTAL,
   toDisplay,
@@ -654,7 +655,8 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
     const comma = () => mtext(', ');
     // x ∈ ℝ, x > 0
     const said: MathNode[] = [];
-    if (s.domain) said.push(nameNode(name), mo('∈'), mi(s.domain === 'real' ? 'ℝ' : 'ℂ', true));
+    const inDomain = () => row(nameNode(name), mo('∈'), mi(DOMAIN_SPELLINGS[s.domain!][0]!, true));
+    if (s.domain) said.push(inDomain());
     conditions.forEach((c) => said.push(...(said.length > 0 ? [comma()] : []), formulaNode(c, o)));
     if (said.length > 0) out.push({ role: 'formula', op: '', rhs: row(...said) });
     const value = (q: Quantity) => {
@@ -735,12 +737,16 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
     }
     // x₁ = 1,07   x₂ = −1,87 — nevyhovuje podmínce x > 0
     const many = found.roots.length > 1;
+    // "nevyhovuje" before what is not met, spaced as the condition after it.
+    const rejectedWord = () => mtext(`  ${t(catalog, 'print.rootRejected')} `);
     found.roots.forEach((root, i) => {
       const lhs = many ? nameNode(`${name}_${i + 1}`) : nameNode(name);
       const why =
         root.rejected === undefined
           ? []
-          : root.rejected === 'complex'
+          : root.rejected === 'domain'
+            ? [rejectedWord(), inDomain()]
+            : root.rejected === 'complex'
             ? [mtext(`  ${t(catalog, 'print.rootComplex')}`)]
             : [mtext(`  ${t(catalog, 'print.rootRejected')} `), root.rejected < conditions.length ? formulaNode(conditions[root.rejected]!, o) : row(formulaNode(s.range!.low, o), mo('≤'), nameNode(name), mo('≤'), formulaNode(s.range!.high, o))];
       out.push({ role: 'result', lhs, op: '=', rhs: row(value(root.value), ...why) });

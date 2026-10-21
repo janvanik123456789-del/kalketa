@@ -49,6 +49,18 @@ export type Expr =
   | { readonly kind: 'index'; readonly object: Expr; readonly index: Expr; /** The column of a matrix item: A[i, j]. */ readonly column?: Expr; readonly span: Span };
 
 /** One equation of a solve statement: left == right, or an inequality left ≤ right. */
+/** The set the roots of "solve x ∈ …:" are taken from. */
+export type SolveDomain = 'real' | 'complex' | 'natural' | 'natural0' | 'integer';
+
+/** How each set is written after ∈ (ASCII spellings too); the first is how it is printed. */
+export const DOMAIN_SPELLINGS: Readonly<Record<SolveDomain, readonly string[]>> = {
+  real: ['ℝ', 'R'],
+  complex: ['ℂ', 'C'],
+  natural: ['ℕ', 'N'],
+  natural0: ['ℕ₀', 'ℕ_0', 'N0', 'N_0'],
+  integer: ['ℤ', 'Z'],
+};
+
 export interface Equation {
   readonly left: Expr;
   readonly right: Expr;
@@ -197,8 +209,11 @@ export type Statement =
       readonly equations: readonly Equation[];
       /** "in 0 .. 10": interval of a single unknown. */
       readonly range?: { readonly low: Expr; readonly high: Expr };
-      /** "solve x ∈ ℝ:" real roots only, "∈ ℂ" complex ones too; every root is given then, not one picked. */
-      readonly domain?: 'real' | 'complex';
+      /**
+       * "solve x ∈ ℝ:" real roots only, "∈ ℂ" complex ones too, "∈ ℕ" (1, 2, …), "∈ ℕ₀" (0, 1, …) and "∈ ℤ"
+       * whole ones only; every root is given then, not one picked.
+       */
+      readonly domain?: SolveDomain;
       /** "solve x ∈ ℝ, x > 0:" conditions a root must meet; one that does not is shown as rejected. */
       readonly conditions?: readonly Expr[];
       /** "guess I_1 = 1 A": first guesses, which also give the unknowns their units. */

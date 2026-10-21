@@ -12,7 +12,7 @@ export const CORE_VERSION = '0.1.0';
 export * from './diagnostics.js';
 export type * from './lang/ast.js';
 export type { Root, RootsFound } from './eval/solver.js';
-export { TABLE_TOTAL, TEXT_ALIGNS, TEXT_COLORS } from './lang/ast.js';
+export { DOMAIN_SPELLINGS, TABLE_TOTAL, TEXT_ALIGNS, TEXT_COLORS } from './lang/ast.js';
 export { tokenize, type Token, type TokenType, type LexOptions } from './lang/lexer.js';
 export { formatExpr } from './lang/format.js';
 export { formatPicture, formatPlacement, parse, parsePicture, parsePlacement, type ParseOptions, type ParseResult, type PictureLine, type Placement } from './lang/parser.js';

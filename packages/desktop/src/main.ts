@@ -1809,6 +1809,11 @@ async function layersWithRealInput(picture: string) {
   // The roots as printed are names: the area under the curve between them.
   await pressKey('Enter');
   await typeText('S_q := integral(y_q(x); x: x_q_2 .. x_q_1)');
+  // Whole roots only, ℕ typed as N: 3 kept, −2 set aside.
+  await pressKey('Enter');
+  await typeText('solve n_q ');
+  await clickOn('.tool-button[title="Vložit ∈"]');
+  await typeText(' N: n_q^2 - n_q - 6 == 0');
   await clickOn('.statusbar');
   await pause(500);
   await takePicture(picture.replace(/[.]png$/, '-paper.png'));
@@ -1817,6 +1822,9 @@ async function layersWithRealInput(picture: string) {
     const text = row ? row.textContent.replace(/\\s+/g, '') : '';
     const area = [...document.querySelectorAll('.layer-view.active .page .row')].find((r) => r.textContent.includes('S') && r.textContent.includes('∫'));
     if (!area || area.classList.contains('has-error') || !area.textContent.replace(/\\s+/g, '').endsWith('=−21,16')) return false;
+    const natural = [...document.querySelectorAll('.layer-view.active .page .row')].find((r) => r.textContent.includes('ℕ'));
+    const naturalText = natural ? natural.textContent.replace(/\\s+/g, '') : '';
+    if (!natural || natural.classList.contains('has-error') || !naturalText.includes('=3') || !/=−2\\W*nevyhovuje/.test(naturalText)) return false;
     return !!row && !row.classList.contains('has-error') && text.includes('∈ℝ') && text.includes('−10=0') && text.includes('D=') && text.includes('=216') && text.includes('±') && text.includes('=1,07');
   })()`)) as boolean;
   // Operators and functions show drawn icons; the condition and solve stay as text.

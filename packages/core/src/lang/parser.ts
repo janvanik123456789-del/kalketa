@@ -15,7 +15,7 @@
  */
 
 import { CalcError, diagnostic, fail, type Diagnostic, type Span } from '../diagnostics.js';
-import { TEXT_ALIGNS, TEXT_COLORS, type BinaryOperator, type Equation, type Expr, type LineFormat, type NamedArg, type Param, type Sheet, type Statement, type TextAlign, type TextColor, type UnitExpr } from './ast.js';
+import { DOMAIN_SPELLINGS, TEXT_ALIGNS, TEXT_COLORS, type SolveDomain, type BinaryOperator, type Equation, type Expr, type LineFormat, type NamedArg, type Param, type Sheet, type Statement, type TextAlign, type TextColor, type UnitExpr } from './ast.js';
 import { tokenize, type Token, type TokenType } from './lexer.js';
 
 export interface ParseOptions {
@@ -569,14 +569,13 @@ class LineParser {
     // The unknowns are names from here on, even where they spell a unit (t, s); so is the variable of a function.
     unknowns.forEach((u) => this.defined.add(u.name));
     // Conditions of the solution, as on paper: x ∈ ℝ, x > 0.
-    let domain: 'real' | 'complex' | undefined;
+    let domain: SolveDomain | undefined;
     const conditions: Expr[] = [];
     if (this.peek().type === '∈') {
       this.next();
       const set = this.expect('ident', 'ℝ');
-      if (set.text === 'ℝ' || set.text === 'R') domain = 'real';
-      else if (set.text === 'ℂ' || set.text === 'C') domain = 'complex';
-      else fail('E-SYNTAX', set.span, { expected: 'ℝ', found: set.text });
+      domain = (Object.keys(DOMAIN_SPELLINGS) as SolveDomain[]).find((d) => DOMAIN_SPELLINGS[d].includes(set.text));
+      if (!domain) fail('E-SYNTAX', set.span, { expected: 'ℝ, ℂ, ℕ, ℕ₀, ℤ', found: set.text });
     }
     while (!ode && this.peek().type === ',') {
       this.next();

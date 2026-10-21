@@ -9,6 +9,7 @@ import {
   GREEK_CAPITALS,
   GREEK_CASE,
   GREEK_LETTERS,
+  NUMBER_SETS,
   parseLayout,
   removeToolbar,
   renameToolbar,
@@ -130,6 +131,20 @@ describe('toolbar layout', () => {
     // The capitals the user had stay where they were.
     expect(items.slice(25)).toEqual(['sym:Δ', 'sym:Σ', 'sym:Φ', 'sym:Ω']);
     expect(GREEK_CAPITALS.join('')).toBe('ΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩ');
+  });
+
+  it('turns the ℝ and ℂ buttons of an older layout into the one button of the sets of numbers', () => {
+    const old = defaultLayout();
+    const before = old.toolbars.find((t) => t.id === 'operators')!.items.flatMap((i) => (i === NUMBER_SETS ? ['sym:ℝ', 'sym:ℂ'] : [i]));
+    const stored = JSON.stringify({ ...old, items: 10, toolbars: old.toolbars.map((t) => (t.id === 'operators' ? { ...t, items: before } : t)) });
+    const items = parseLayout(stored).toolbars.find((t) => t.id === 'operators')!.items;
+    expect(items).toEqual(old.toolbars.find((t) => t.id === 'operators')!.items);
+    expect(items[items.indexOf('sym:∈') + 1]).toBe(NUMBER_SETS);
+    // A layout from before ℝ and ℂ came gets the list straight away, and only once.
+    const older = JSON.stringify({ ...old, items: 8, toolbars: old.toolbars.map((t) => (t.id === 'operators' ? { ...t, items: before.filter((i) => !['sym:±', 'sym:∈', 'sym:ℝ', 'sym:ℂ'].includes(i)) } : t)) });
+    const fromOlder = parseLayout(older).toolbars.find((t) => t.id === 'operators')!.items;
+    expect(fromOlder.filter((i) => i === NUMBER_SETS)).toHaveLength(1);
+    expect(fromOlder).not.toContain('sym:ℂ');
   });
 
   it('gives a layout from before the AI chat its button on the View toolbar', () => {

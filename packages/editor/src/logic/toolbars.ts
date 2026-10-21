@@ -63,7 +63,15 @@ const ADDED_ITEMS: readonly { readonly since: number; readonly toolbar: string; 
   { since: 10, toolbar: 'greek', after: 'sym:τ', ids: ['sym:υ'] },
   { since: 10, toolbar: 'greek', after: 'sym:φ', ids: ['sym:χ'] },
 ];
-export const ITEMS_VERSION = 10;
+/**
+ * Buttons replaced on built-in toolbars: a stored layout gets the new one in the place of the first old one
+ * there, the other old ones go (each once, as ADDED_ITEMS).
+ */
+const REPLACED_ITEMS: readonly { readonly since: number; readonly toolbar: string; readonly old: readonly string[]; readonly by: string }[] = [
+  // ℝ and ℂ became one button with a list of the sets of numbers (ℕ, ℕ₀, ℤ too).
+  { since: 11, toolbar: 'operators', old: ['sym:ℝ', 'sym:ℂ'], by: 'sym:sets' },
+];
+export const ITEMS_VERSION = 11;
 
 export const SEPARATOR = '|';
 
@@ -76,7 +84,16 @@ export const GREEK_CAPITALS = GREEK_LETTERS.map((l) => l.toUpperCase());
 export const GREEK_SYMBOLS = [...GREEK_LETTERS, ...GREEK_CAPITALS];
 /** The switch of the Greek toolbar between small letters and capitals. */
 export const GREEK_CASE = 'greek.capitals';
-export const OPERATOR_SYMBOLS = [':=', '·', '÷', '≤', '≥', '≠', '≐', '±', '∈', 'ℝ', 'ℂ', '√', '∛', '²', '³', '^', '⁻¹', '°', 'Δ°C', '_', '⃗', '′', '″', '|'];
+/** One button for the sets of numbers, with a list: the symbol and the key of its words. */
+export const NUMBER_SETS = 'sym:sets';
+export const NUMBER_SET_SYMBOLS: readonly (readonly [string, string])[] = [
+  ['ℝ', 'sets.real'],
+  ['ℂ', 'sets.complex'],
+  ['ℕ', 'sets.natural'],
+  ['ℕ₀', 'sets.natural0'],
+  ['ℤ', 'sets.integer'],
+];
+export const OPERATOR_SYMBOLS =[':=', '·', '÷', '≤', '≥', '≠', '≐', '±', '∈', 'ℝ', 'ℂ', '√', '∛', '²', '³', '^', '⁻¹', '°', 'Δ°C', '_', '⃗', '′', '″', '|'];
 /** Symbols shown otherwise than inserted: ^ is a general power. */
 export const SYMBOL_GLYPHS: Readonly<Record<string, string>> = { '^': 'xⁿ', ':=': '≔', '⃗': 'a⃗' };
 
@@ -145,7 +162,7 @@ export function defaultLayout(): ToolbarLayout {
         place: dock('top', 0, 3),
         items: [...FUNCTION_TEMPLATES.map((f) => `fn:${f.id}`), SEPARATOR, 'insert.chart', 'help.functions'],
       },
-      { id: 'operators', builtin: true, visible: true, place: dock('left', 0, 0), items: OPERATOR_SYMBOLS.flatMap((s) => (s === '∛' ? [`sym:${s}`, 'fn:root'] : [`sym:${s}`])) },
+      { id: 'operators', builtin: true, visible: true, place: dock('left', 0, 0), items: OPERATOR_SYMBOLS.flatMap((s) => (s === '∛' ? [`sym:${s}`, 'fn:root'] : s === 'ℝ' ? [NUMBER_SETS] : s === 'ℂ' ? [] : [`sym:${s}`])) },
       { id: 'greek', builtin: true, visible: true, place: dock('left', 1, 0), items: [GREEK_CASE, ...GREEK_LETTERS.map((s) => `sym:${s}`)] },
     ],
   };
@@ -298,5 +315,13 @@ function withAddedItems(toolbar: ToolbarState, known: number): ToolbarState {
     const at = items.indexOf(added.after);
     items = at < 0 ? [...items, ...fresh] : [...items.slice(0, at + 1), ...fresh, ...items.slice(at + 1)];
   }
-  return items.length === toolbar.items.length ? toolbar : { ...toolbar, items };
+  let replaced = false;
+  for (const change of REPLACED_ITEMS) {
+    if (change.since <= known || change.toolbar !== toolbar.id) continue;
+    const at = items.findIndex((i) => change.old.includes(i));
+    if (at < 0) continue;
+    items = items.flatMap((i, n) => (n === at ? (items.includes(change.by) ? [] : [change.by]) : change.old.includes(i) ? [] : [i]));
+    replaced = true;
+  }
+  return items.length === toolbar.items.length && !replaced ? toolbar : { ...toolbar, items };
 }

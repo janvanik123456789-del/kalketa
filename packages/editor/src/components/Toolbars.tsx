@@ -10,6 +10,7 @@ import { useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } 
 import { t, type Catalog, type UiKey } from '@kalketa/i18n';
 import { plainLabel, type Command } from '../commands.js';
 import { commandIcon } from '../icons.js';
+import { ContextMenu } from './MenuBar.js';
 import {
   bandsOf,
   compactBands,
@@ -266,6 +267,8 @@ function FloatingToolbar({ toolbar, commands, catalog, ghost, onGrip, onColumns,
 /** Buttons in a row or column, or in a grid of `columns` (separators then take no cell). */
 function Buttons({ items, commands, columns }: { items: readonly string[]; commands: ReadonlyMap<string, Command>; columns?: number }) {
   const grid = columns !== undefined;
+  // A button with a list (the sets of numbers): the list opens beside it.
+  const [list, setList] = useState<{ choices: NonNullable<Command['choices']>; at: { x: number; y: number } } | undefined>();
   const buttons = items.map((id, i) => {
     if (id === SEPARATOR) return grid ? null : <span key={i} className="toolbar-separator" />;
     const cmd = commands.get(id);
@@ -283,16 +286,26 @@ function Buttons({ items, commands, columns }: { items: readonly string[]; comma
         disabled={!cmd.enabled}
         // Keep the focus in the line being edited, so symbols go where the caret is.
         onMouseDown={(e) => e.preventDefault()}
-        onClick={cmd.run}
+        onClick={(e) => {
+          const choices = cmd.choices;
+          if (!choices) return cmd.run();
+          const r = e.currentTarget.getBoundingClientRect();
+          // Beside the button on a toolbar at a side, below it elsewhere (the menu shifts in from the window's edge).
+          setList({ choices, at: e.currentTarget.closest('.dock-left, .dock-right') ? { x: r.right + 2, y: r.top } : { x: r.left, y: r.bottom + 2 } });
+        }}
       >
         {icon ?? cmd.glyph ?? plainLabel(cmd.label)}
       </button>
     );
   });
-  if (!grid) return <>{buttons}</>;
+  const menu = list && (
+    <ContextMenu items={list.choices.map((c) => ({ kind: 'action' as const, label: c.label, run: c.run }))} commands={commands} at={list.at} onClose={() => setList(undefined)} />
+  );
+  if (!grid) return <>{buttons}{menu}</>;
   return (
     <div className="button-grid" style={{ gridTemplateColumns: `repeat(${columns}, ${CELL_PX - 2}px)` }}>
       {buttons}
+      {menu}
     </div>
   );
 }

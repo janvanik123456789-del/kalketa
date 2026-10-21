@@ -1804,16 +1804,25 @@ async function layersWithRealInput(picture: string) {
   await typeText('solve x_q ');
   await clickOn('.tool-button[title="Vložit ∈"]');
   await typeText(' ');
-  await clickOn('.tool-button[title="Vložit ℝ"]');
+  // The sets of numbers: one button, its list beside it.
+  await clickOn('.tool-button[title^="Obor čísel"]');
+  await pause(200);
+  const numberSets = (await contents.executeJavaScript(`[...document.querySelectorAll('.context-menu .menu-label')].map((l) => l.textContent.split(' ')[0]).join(' ')`)) as string;
+  await takePicture(picture.replace(/[.]png$/, '-number-sets.png'));
+  await clickMenu('ℝ – ');
   await typeText('; x_q > 0: y_q(x_q) == 0');
   // The roots as printed are names: the area under the curve between them.
   await pressKey('Enter');
   await typeText('S_q := integral(y_q(x); x: x_q_2 .. x_q_1)');
-  // Whole roots only, ℕ typed as N: 3 kept, −2 set aside.
+  // Whole roots only, ℕ from the list: 3 kept, −2 set aside.
   await pressKey('Enter');
   await typeText('solve n_q ');
   await clickOn('.tool-button[title="Vložit ∈"]');
-  await typeText(' N: n_q^2 - n_q - 6 == 0');
+  await typeText(' ');
+  await clickOn('.tool-button[title^="Obor čísel"]');
+  await pause(200);
+  await clickMenu('ℕ – ');
+  await typeText(': n_q^2 - n_q - 6 == 0');
   await clickOn('.statusbar');
   await pause(500);
   await takePicture(picture.replace(/[.]png$/, '-paper.png'));
@@ -1824,6 +1833,7 @@ async function layersWithRealInput(picture: string) {
     if (!area || area.classList.contains('has-error') || !area.textContent.replace(/\\s+/g, '').endsWith('=−21,16')) return false;
     const natural = [...document.querySelectorAll('.layer-view.active .page .row')].find((r) => r.textContent.includes('ℕ'));
     const naturalText = natural ? natural.textContent.replace(/\\s+/g, '') : '';
+    if (${JSON.stringify(numberSets)} !== 'ℝ ℂ ℕ ℕ₀ ℤ') return false;
     if (!natural || natural.classList.contains('has-error') || !naturalText.includes('=3') || !/=−2\\W*nevyhovuje/.test(naturalText)) return false;
     return !!row && !row.classList.contains('has-error') && text.includes('∈ℝ') && text.includes('−10=0') && text.includes('D=') && text.includes('=216') && text.includes('±') && text.includes('=1,07');
   })()`)) as boolean;

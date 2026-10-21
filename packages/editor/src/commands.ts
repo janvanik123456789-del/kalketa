@@ -4,7 +4,7 @@
  */
 
 import { t, type Catalog, type UiKey } from '@kalketa/i18n';
-import { FUNCTION_TEMPLATES, GREEK_CASE, GREEK_LETTERS, GREEK_SYMBOLS, OPERATOR_SYMBOLS, OPERATOR_TEMPLATES, SYMBOL_GLYPHS } from './logic/toolbars.js';
+import { FUNCTION_TEMPLATES, GREEK_CASE, GREEK_LETTERS, GREEK_SYMBOLS, NUMBER_SETS, NUMBER_SET_SYMBOLS, OPERATOR_SYMBOLS, OPERATOR_TEMPLATES, SYMBOL_GLYPHS } from './logic/toolbars.js';
 
 export type CommandCategory = 'file' | 'edit' | 'view' | 'insert' | 'tools' | 'window' | 'help' | 'symbol';
 
@@ -20,6 +20,8 @@ export interface Command {
   readonly enabled: boolean;
   /** Toggle or radio state; undefined for plain commands. */
   readonly checked?: boolean;
+  /** A toolbar button that opens a short list to pick from (the number sets); run() does nothing then. */
+  readonly choices?: readonly { readonly label: string; run(): void }[];
   run(): void;
 }
 
@@ -164,6 +166,16 @@ export function buildCommands(ctx: CommandContext): Map<string, Command> {
   add('help.shortcuts', 'help', a.shortcuts);
   add('help.about', 'help', a.about);
 
+  // The sets of numbers a solution is taken from (solve n ∈ ℕ: …), one button with a list.
+  list.push({
+    id: NUMBER_SETS,
+    category: 'symbol',
+    label: t(c, 'cmd.numberSets'),
+    glyph: 'ℝ▾',
+    enabled: true,
+    choices: NUMBER_SET_SYMBOLS.map(([symbol, key]) => ({ label: `${symbol} – ${t(c, key as UiKey)}`, run: () => a.insertSymbol(symbol) })),
+    run: () => undefined,
+  });
   list.push({ id: GREEK_CASE, category: 'symbol', label: t(c, 'cmd.greek.capitals'), glyph: 'Αα', enabled: true, checked: ctx.greekCapitals, run: a.toggleGreekCapitals });
   for (const symbol of [...OPERATOR_SYMBOLS, ...GREEK_SYMBOLS]) {
     // A small Greek letter's button inserts its capital while the toolbar is switched to capitals.

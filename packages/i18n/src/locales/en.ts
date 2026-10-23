@@ -14,7 +14,7 @@ export const en: Catalog = {
     'E-MISSING-OPERATOR': 'Missing operator before “{found}”. Did you mean “·”?',
     'E-ASSIGN-WITH-EQUALS': 'Use “:=” to define “{name}”; “=” only shows a result.',
     'E-UNSUPPORTED': 'Not supported yet: {feature}.',
-    'W-AMBIGUOUS-UNIT': '“{name}” after a number is read as a unit, although a variable of that name exists. Write [{name}] for the unit or use “·” for the variable.',
+    'I-AMBIGUOUS-UNIT': '“{name}” after a number is a unit, although a variable has that name too; so throughout the sheet. For a multiple of the variable write “·” (2·{name}).',
     'W-BARE-UNIT': '“{name}” is not a variable here, it is read as the unit {name}. If it is a variable (time t, distance s), define it or write a function, e.g. h(t) := …; write a unit after a number (1 {name}).',
     'E-UNDEFINED': '“{name}” is not defined.',
     'E-DEFINED-LATER': '“{name}” is defined further down. Move its definition above this line.',

@@ -32,17 +32,17 @@ Posunutí jsou opačná a v obráceném poměru hmotností: těžší těleso se
 Člověk se vůči loďce posune o celou její délku směrem k přídi, vůči vodě ale jen o L − x, protože loďka mezitím odjede o x na druhou stranu. Podmínka nepohyblivého těžiště:
 
 ```kalk
-relation m_c·(x - L_l) + M·x == 0
-derive x == m_c·L_l/(M + m_c)
+relation m·(x - L) + M·x == 0
+derive x == m·L/(M + m)
 ```
 
 Výsledek nezávisí na tom, jak rychle člověk jde ani jestli se cestou zastaví: rozhoduje jen to, kde skončí. Dosazením zadaných hodnot:
 
 ```kalk
-m_c := 70 kg
+m := 70 kg
 M := 100 kg
-L_l := 2.5 m
-x := m_c·L_l/(M + m_c)
+L := 2.5 m
+x := m·L/(M + m)
 check "Posun loďky je asi 1,03 m": abs(x - 1.0294 m) ≤ 0.0001 m
 ```
 
@@ -59,7 +59,7 @@ Jiná cesta k témuž výsledku: člověk jde s proměnnou rychlostí vůči lo�
 ```python
 from math import sin, pi
 
-m_c, M, L = 70.0, 100.0, 2.5
+m, M, L = 70.0, 100.0, 2.5
 
 # The man's speed relative to the boat (towards the bow, negative x): a profile with a stop in the middle,
 # scaled so that he walks exactly the length of the boat.
@@ -71,14 +71,14 @@ total = sum(shape((i + 0.5) * dt) for i in range(n)) * dt
 x_boat, x_man_rel = 0.0, 0.0
 for i in range(n):
     u = -L / total * shape((i + 0.5) * dt)      # speed of the man relative to the boat
-    # Momentum stays zero: M·v + m_c·(v + u) = 0
-    v = -m_c * u / (M + m_c)
+    # Momentum stays zero: M·v + m·(v + u) = 0
+    v = -m * u / (M + m)
     x_boat += v * dt
     x_man_rel += u * dt
 print("the man walked", round(-x_man_rel, 6), "m on the boat; the boat moved", round(x_boat, 6), "m")
 
-x = m_c * L / (M + m_c)
+x = m * L / (M + m)
 result("x", x_boat, "m", rel=1e-6)
-result("x_T1", (M * L / 2 + m_c * L) / (M + m_c), "m")
+result("x_T1", (M * L / 2 + m * L) / (M + m), "m")
 result("s_c", L - x_boat, "m", rel=1e-6)
 ```

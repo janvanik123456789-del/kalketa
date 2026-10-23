@@ -33,7 +33,7 @@ export const DIAGNOSTIC_SEVERITY = {
   'E-MISSING-OPERATOR': 'error',
   'E-ASSIGN-WITH-EQUALS': 'error',
   'E-UNSUPPORTED': 'error',
-  'W-AMBIGUOUS-UNIT': 'warning',
+  'I-AMBIGUOUS-UNIT': 'info',
   'W-BARE-UNIT': 'warning',
 
   // Names

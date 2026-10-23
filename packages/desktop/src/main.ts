@@ -2688,6 +2688,23 @@ async function layersWithRealInput(picture: string) {
     };
   })()`)) as { errors: number; wide: number; smaller: number; roots: boolean; plusMinus: boolean };
   await takePicture(picture.replace(/[.]png$/, '-vibration.png'));
+  // A man on a boat with the symbols of the collection, a mass m and a length L: metres stay metres, one info, no warning.
+  await clickOn('.menubar-item:nth-child(1) > button');
+  await clickMenu('Vzorové příklady');
+  await clickMenu('Fyzika');
+  await clickMenu('3 Posun loďky');
+  await pause(2000);
+  const boat = (await contents.executeJavaScript(`(() => {
+    const view = document.querySelector('.layer-view.active');
+    const status = document.querySelector('.statusbar')?.textContent.replace(/\\s+/g, ' ') ?? '';
+    return {
+      errors: view.querySelectorAll('.page .row.has-error').length,
+      status,
+      shift: [...view.querySelectorAll('.page math')].some((m) => /1,029\\s*m/.test(m.textContent)),
+      charts: view.querySelectorAll('.block.chart svg.chart-svg .chart-data path').length,
+    };
+  })()`)) as { errors: number; status: string; shift: boolean; charts: number };
+  await takePicture(picture.replace(/[.]png$/, '-boat.png'));
   // Surfaces in 3D: the sample of rotational solids, a saddle and waves opens with its maps and 3D charts, no errors.
   await clickOn('.menubar-item:nth-child(1) > button');
   await clickMenu('Vzorové příklady');
@@ -2970,7 +2987,7 @@ async function layersWithRealInput(picture: string) {
   const chartDialog = { offered: offeredLine, chosen: chosenLine, preview: dialogPreview, added: chartsAfter - chartsBefore };
   const quadraticSample = {
     crank,
-    theory: { theoryTab, tankErrors, theoryChecks, pythonCheck, rowsCopy, rocket, parabola, thermistor, vibration, surfacesSample, fitDialog, chartLook, surfaceMap, surface3d, surfaceCut, chartDialog },
+    theory: { theoryTab, tankErrors, theoryChecks, pythonCheck, rowsCopy, rocket, parabola, thermistor, vibration, boat, surfacesSample, fitDialog, chartLook, surfaceMap, surface3d, surfaceCut, chartDialog },
     across,
     beam,
     slowTyping,
@@ -2979,7 +2996,7 @@ async function layersWithRealInput(picture: string) {
     after: sampleAfter,
     outOfDomain,
     english,
-    ok: !!thumb && sampleBefore.errors === 0 && sampleAfter.errors === 0 && sampleBefore.a !== '' && sampleAfter.a !== sampleBefore.a && sampleAfter.roots !== sampleBefore.roots && outOfDomain.drawn && !outOfDomain.area && outOfDomain.roots === 0 && !outOfDomain.error && outOfDomain.warned && english.head === 'Quadratic equation' && english.verdicts.length === 5 && english.verdicts.every((v) => v.endsWith('OK')) && english.errors === 0 && crank.pictures === 4 && crank.charts === 3 && crank.errors === 0 && crank.verdict.endsWith('VYHOVUJE') && slowTyping.waitingShown && slowTyping.settled && cube.pictures === 1 && cube.derived >= 5 && cube.errors === 0 && beam.pictures === 3 && beam.charts >= 4 && beam.errors === 0 && across.before && !across.after && theoryTab >= 1 && tankErrors === 0 && theoryChecks.blocks >= 4 && theoryChecks.bad === 0 && pythonCheck.rows === 4 && pythonCheck.agree === 4 && rowsCopy.marked === 6 && rowsCopy.rows === 3 && rowsCopy.picture === 1 && rowsCopy.status.startsWith('chyba: 0') && rocket.errors === 0 && rocket.charts >= 2 && parabola.errors === 0 && parabola.charts >= 2 && parabola.normal >= 2 && thermistor.errors === 0 && thermistor.charts >= 3 && vibration.errors === 0 && vibration.wide === 0 && vibration.roots && !vibration.plusMinus && surfacesSample.errors === 0 && surfacesSample.maps >= 4 && surfacesSample.solids >= 6 && surfacesSample.verdicts >= 5 && fitDialog.ok && chartLook.ok && surfaceMap.ok && surface3d.shown && surface3d.turning && surface3d.kept && surface3d.errors === 0 && surfaceCut.line && surfaceCut.panel && surfaceCut.title && chartDialog.offered === 'plot(w(x, y), x: 0 m .. a, y: 0 m .. b)' && chartDialog.chosen === 'plot(w(x, y), x: 0 m .. a, y: 0 m .. b, kind: "surface")' && chartDialog.preview && chartDialog.added === 1,
+    ok: !!thumb && sampleBefore.errors === 0 && sampleAfter.errors === 0 && sampleBefore.a !== '' && sampleAfter.a !== sampleBefore.a && sampleAfter.roots !== sampleBefore.roots && outOfDomain.drawn && !outOfDomain.area && outOfDomain.roots === 0 && !outOfDomain.error && outOfDomain.warned && english.head === 'Quadratic equation' && english.verdicts.length === 5 && english.verdicts.every((v) => v.endsWith('OK')) && english.errors === 0 && crank.pictures === 4 && crank.charts === 3 && crank.errors === 0 && crank.verdict.endsWith('VYHOVUJE') && slowTyping.waitingShown && slowTyping.settled && cube.pictures === 1 && cube.derived >= 5 && cube.errors === 0 && beam.pictures === 3 && beam.charts >= 4 && beam.errors === 0 && across.before && !across.after && theoryTab >= 1 && tankErrors === 0 && theoryChecks.blocks >= 4 && theoryChecks.bad === 0 && pythonCheck.rows === 4 && pythonCheck.agree === 4 && rowsCopy.marked === 6 && rowsCopy.rows === 3 && rowsCopy.picture === 1 && rowsCopy.status.startsWith('chyba: 0') && rocket.errors === 0 && rocket.charts >= 2 && parabola.errors === 0 && parabola.charts >= 2 && parabola.normal >= 2 && thermistor.errors === 0 && thermistor.charts >= 3 && boat.errors === 0 && /chyba: 0/.test(boat.status) && /varování: 0/.test(boat.status) && boat.shift && boat.charts >= 3 && vibration.errors === 0 && vibration.wide === 0 && vibration.roots && !vibration.plusMinus && surfacesSample.errors === 0 && surfacesSample.maps >= 4 && surfacesSample.solids >= 6 && surfacesSample.verdicts >= 5 && fitDialog.ok && chartLook.ok && surfaceMap.ok && surface3d.shown && surface3d.turning && surface3d.kept && surface3d.errors === 0 && surfaceCut.line && surfaceCut.panel && surfaceCut.title && chartDialog.offered === 'plot(w(x, y), x: 0 m .. a, y: 0 m .. b)' && chartDialog.chosen === 'plot(w(x, y), x: 0 m .. a, y: 0 m .. b, kind: "surface")' && chartDialog.preview && chartDialog.added === 1,
   };
   const userChart = { namedArea, quadOk, quadTarget, quadEnd, quadEditing, ok: namedArea === 'Integral1=27' && quadOk && quadTarget > 0 && Math.abs(quadEnd - quadTarget) < 12 };
   // Relations: a circle solved by its name, a derivation following from a relation of theory, and the circle

@@ -14,7 +14,7 @@ export const cs: Catalog = {
     'E-MISSING-OPERATOR': 'Před „{found}“ chybí operátor. Nemá tam být „·“?',
     'E-ASSIGN-WITH-EQUALS': 'Pro definici „{name}“ použijte „:=“; „=“ jen zobrazí výsledek.',
     'E-UNSUPPORTED': 'Zatím není podporováno: {feature}.',
-    'W-AMBIGUOUS-UNIT': '„{name}“ za číslem je čteno jako jednotka, i když existuje stejnojmenná proměnná. Pro jednotku napište [{name}], pro proměnnou použijte „·“.',
+    'I-AMBIGUOUS-UNIT': '„{name}“ za číslem je jednotka, i když se tak jmenuje i proměnná; platí to v celém listu. Pro násobek proměnné napište „·“ (2·{name}).',
     'W-BARE-UNIT': '„{name}“ tu není proměnná, čte se jako jednotka {name}. Je-li to proměnná (čas t, dráha s), definujte ji, nebo zapište funkci, např. h(t) := …; jednotku pište za číslem (1 {name}).',
     'E-UNDEFINED': '„{name}“ není definováno.',
     'E-DEFINED-LATER': '„{name}“ je definováno až níže. Přesuňte definici nad tento řádek.',

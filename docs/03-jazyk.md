@@ -101,7 +101,8 @@ Tohle je nejčastější zdroj chyb, proto pravidlo **přísnější než u konk
 2. Samostatně stojící název:
    - je-li definovaný jako proměnná, je to proměnná,
    - jinak je to jednotka.
-3. **Pokud je jméno za číslem zároveň definovaná proměnná** (`L := 5 m`, pak `V := 2 L`: litr, nebo L?), program ho čte jako jednotku a vydá **varování** `W-AMBIGUOUS-UNIT` přímo v místě použití. (*Calcpad to tiše přijme. U nás platí princip „nehádat potichu“.*)
+3. **Pokud je jméno za číslem zároveň definovaná proměnná** (`L := 5 m`, pak `V := 2 L`: litr, nebo L?), program ho čte jako jednotku a na prvním takovém místě v listu to oznámí **informací** `I-AMBIGUOUS-UNIT`. (*Calcpad to tiše přijme. U nás platí princip „nehádat potichu“.*)
+   *Upraveno 2026-10-23:* dřív to bylo varování na každém místě. S hmotností `m` a délkami v metrech (vzor R23) svítilo varování u každého metru, a uživatel tak musel přejmenovat nejběžnější značky (m, L). Pravidlo čtení se nemění: za číslem jednotka (i uvnitř `kN·m`), samostatně stojící jméno proměnná (`m·L`, `2·L`).
    *Upraveno při implementaci F1:* původně navržené varování už při definici (`L := 5 m`) by se objevovalo pořád, protože běžná inženýrská jména (L, A, F, T, V, h, d, t, m) jsou zároveň jednotky. Varuje se proto jen tam, kde nejednoznačnost opravdu vznikne.
 4. Vynucení jednotky: `[m]` v hranatých závorkách (**inspirace EPX**, který jednotky vždy píše do hranatých závorek). Ekvivalent Calcpadové tečky `.m`, ale čitelnější.
 
@@ -797,7 +798,7 @@ Každá diagnostika má: **kód**, **závažnost** (chyba / varování / info), 
 | `E-TABLE-EMPTY` | chybějící hodnota v tabulce |
 | `E-SOLVE` | řešič nenašel řešení |
 | `W-EXTRAPOLATION` | `lookup` mimo rozsah tabulky |
-| `W-AMBIGUOUS-UNIT` | jméno za číslem je jednotka i proměnná |
+| `I-AMBIGUOUS-UNIT` | jméno za číslem je jednotka i proměnná (jednou za list) |
 | `W-ABS-TEMP-MUL` | absolutní teplota v součinu |
 | `W-IMPLICIT-MUL` | podezřelé implicitní násobení |
 

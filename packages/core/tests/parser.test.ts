@@ -129,9 +129,12 @@ describe('parser: numbers with units', () => {
     expect(expr('m · 2')).toBe('(* [m] 2)');
   });
 
-  it('warns when a unit after a number is also a defined variable', () => {
-    expect(parseCodes('L := 5 m\nV := 2 L')).toEqual(['W-AMBIGUOUS-UNIT']);
+  it('says once, as an info, that a unit after a number is also a defined variable', () => {
+    expect(parseCodes('L := 5 m\nV := 2 L')).toEqual(['I-AMBIGUOUS-UNIT']);
     expect(parseCodes('L := 5 m\nV := 2 [L]')).toEqual([]);
+    // A mass m and lengths in metres: one info for the sheet, not a warning at every metre.
+    expect(parseCodes('m := 70 kg\nL_l := 2.5 m\nx := m·L_l\nd := 1e-9 m\nM_k := 3 kN·m')).toEqual(['I-AMBIGUOUS-UNIT']);
+    expect(expr('m·2', 'm := 10 kg')).toBe('(* m 2)');
   });
 
   it('warns when a one-letter unit stands alone among names: t meant as time would be tonnes', () => {

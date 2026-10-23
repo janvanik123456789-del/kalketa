@@ -7,7 +7,8 @@
  *
  * Units vs. variables (docs/03-jazyk.md, ch. 4.2):
  *   - A name right after a number starts a unit chain ("12 kN/m"). Inside the
- *     chain units win; if the name is also a defined variable we warn.
+ *     chain units win, also over a defined variable ("2.5 m" with a mass m);
+ *     the first such place in the sheet gets an info, not every one a warning.
  *   - A standalone name is a variable when defined above, otherwise a unit.
  *   - "[...]" always contains units.
  *   - Juxtaposed values other than number·unit and number·(...) are an error
@@ -53,6 +54,8 @@ export function parse(source: string, options: ParseOptions): ParseResult {
   const defined = new Set<string>(options.predefined ?? []);
   // The sheet's own units, known from their "unit" line on.
   const units = new Set<string>();
+  // Variables already said to be read as units after a number: said once per sheet.
+  const noted = new Set<string>();
   // A table goes in among the statements where it stands, and is a name from there on.
   const pending = [...tables];
   const tablesBefore = (offset: number) => {
@@ -76,7 +79,7 @@ export function parse(source: string, options: ParseOptions): ParseResult {
       continue;
     }
 
-    const parser = new LineParser(tokens, options, defined, diagnostics, units);
+    const parser = new LineParser(tokens, options, defined, diagnostics, units, noted);
     let statement: Statement;
     try {
       statement = parser.parseStatement();
@@ -264,6 +267,7 @@ class LineParser {
     private readonly defined: Set<string>,
     private readonly diagnostics: Diagnostic[],
     private readonly units: Set<string>,
+    private readonly noted: Set<string> = new Set(),
   ) {
     const last = tokens[tokens.length - 1]!;
     // Synthetic end-of-line token placed right after the last real token.
@@ -1056,8 +1060,9 @@ class LineParser {
     } else if (token.type === 'ident') {
       this.next();
       if (!this.isUnit(token.text)) fail('E-UNKNOWN-UNIT', token.span, { unit: token.text });
-      if (!explicit && this.defined.has(token.text)) {
-        this.diagnostics.push(diagnostic('W-AMBIGUOUS-UNIT', token.span, { name: token.text }));
+      if (!explicit && this.defined.has(token.text) && !this.noted.has(token.text)) {
+        this.noted.add(token.text);
+        this.diagnostics.push(diagnostic('I-AMBIGUOUS-UNIT', token.span, { name: token.text }));
       }
       base = { kind: 'unit-name', name: token.text, span: token.span };
     } else {

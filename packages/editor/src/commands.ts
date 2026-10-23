@@ -58,6 +58,8 @@ export interface CommandContext {
     print(): void;
     exportPdf(): void;
     example(): void;
+    /** The start screen: a new calculation, a file, a sample, a recent file. */
+    start(): void;
     exit(): void;
     undo(): void;
     redo(): void;
@@ -114,6 +116,7 @@ export function buildCommands(ctx: CommandContext): Map<string, Command> {
   add('file.print', 'file', a.print, { shortcut: 'Ctrl+P' });
   add('file.pdf', 'file', a.exportPdf, { enabled: ctx.desktop });
   add('file.example', 'file', a.example);
+  add('file.start', 'file', a.start);
   add('file.exit', 'file', a.exit, { shortcut: 'Alt+F4', enabled: ctx.desktop });
 
   add('edit.undo', 'edit', a.undo, { shortcut: 'Ctrl+Z', enabled: ctx.canUndo });

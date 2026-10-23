@@ -31,10 +31,11 @@ import { proposalEffect, type ProposalEffect } from './logic/proposalEffect.js';
 import type { NewSheetView, ProposalView } from './components/ProposalCard.js';
 import type { AnswerProposals } from './components/ChatPane.js';
 import { languageGuide, sheetContext } from './logic/aiContext.js';
-import { exampleDocument, SAMPLE_FIELDS, samples, savedSampleTitle, subfieldName, type Sample } from './samples.js';
+import { exampleDocument, SAMPLE_FIELDS, samplePicture, samples, savedSampleTitle, subfieldName, type Sample } from './samples.js';
+import { StartScreen } from './components/StartScreen.js';
 import { chooseFile, desktop, emptyDocument, fileName, fileUri, largestParts, openBytes, pickAndOpen, saveDocument, tableCache, type FileRef, type OpenedFile } from './document.js';
 import { record, redo, undo, type History } from './logic/history.js';
-import { closeTab, cycleTab, fileNameOf, isDirty, newTab, openTab, type DocTab, type Tabs } from './logic/documents.js';
+import { closeTab, cycleTab, fileNameOf, isDirty, isPristine, newTab, openTab, type DocTab, type Tabs } from './logic/documents.js';
 import { pageGeometry } from './logic/pages.js';
 import { pickOf, replacePickKey } from './logic/pick.js';
 import { deleteLineRanges, deleteLines, insertLineAfter, moveLines, replaceLines, segments } from './logic/segments.js';
@@ -191,15 +192,16 @@ export function App() {
   // Open calculations, one tab each. Everything below that belongs to one
   // document (history, file, open layers) is read from the active tab.
   const [docs, setDocs] = useState<Tabs<SheetDocument, FileRef>>(() => {
-    // Another window (Window > New window) starts empty. The first one opens again the files
-    // open when it was last closed (an empty tab waits for them); the first start shows a sample.
-    const blank = new URLSearchParams(location.search).has('blank') || (!!desktop && sessionFiles().length > 0);
+    // An empty tab first: the first window opens in it again the files open when it was last closed;
+    // otherwise the start screen stands over it (a new calculation, a file, a sample, a recent file).
     const language = initialLanguage();
-    const first = blank
-      ? newTab<SheetDocument, FileRef>(emptyDocument(t(catalogFor(language), 'editor.untitled'), language), MAIN_LAYER, undefined, true)
-      : newTab<SheetDocument, FileRef>(exampleDocument(undefined, t(catalogFor(language), 'samples.prefix')), MAIN_LAYER);
+    const first = newTab<SheetDocument, FileRef>(emptyDocument(t(catalogFor(language), 'editor.untitled'), language), MAIN_LAYER, undefined, true);
     return { tabs: [first], active: first.id };
   });
+  // The start screen: at a start of the program with no files to open again, and from File > Start screen.
+  // Another window (Window > New window) was asked for to write in: it starts with the empty calculation.
+  const [startOpen, setStartOpen] = useState(() => !new URLSearchParams(location.search).has('blank') && !(!!desktop && sessionFiles().length > 0));
+  const [sampleList] = useState(samples);
   const tab = docs.tabs.find((d) => d.id === docs.active) ?? docs.tabs[0]!;
   /** A saved calculation is called by its file name; a new one by its title. */
   const docLabel = (d: Tab) =>
@@ -814,8 +816,8 @@ export function App() {
       }
       // For startup.log of the desktop program: the files of the last session are open.
       console.info('[startup] restored');
-      // None of them is there any more: the sample, as at the first start.
-      if (paths.length > 0 && opened === 0) showRef.current({ document: exampleDocument(undefined, t(ui, 'samples.prefix')), diagnostics: [] });
+      // None of them is there any more: the start screen, as at the first start.
+      if (paths.length > 0 && opened === 0) setStartOpen(true);
       restored.current = true;
     })();
   }, []);
@@ -1827,6 +1829,7 @@ export function App() {
           if (yes) void desktop?.exportPdf({ html: printoutHtml(), suggestedName: fileName(doc) });
         }),
       example: () => openDocument(exampleDocument(undefined, t(ui, 'samples.prefix')), undefined),
+      start: () => setStartOpen(true),
       exit: () => window.close(),
       undo: () => {
         setEditing(undefined);
@@ -2041,6 +2044,7 @@ export function App() {
       items: [
         cmd('file.new'),
         cmd('file.open'),
+        cmd('file.start'),
         {
           kind: 'submenu',
           label: t(ui, 'menu.recent'),
@@ -2388,231 +2392,262 @@ export function App() {
   return (
     <div className="app">
       <MenuBar menus={menus} commands={commands} />
-      <ToolbarFrame
-        layout={toolbars}
-        commands={commands}
-        catalog={ui}
-        onLayout={changeToolbars}
-        aside={
-          !tableEditor && pane !== 'none' && (
-            <>
-              <div className="pane-divider" onMouseDown={startResize} role="separator" aria-orientation="vertical" />
-              <div className="side-pane" style={{ width: paneWidth }}>
-                {/* What the pane can show, as tabs: one click to switch, and it is clear what is there. */}
-                <nav className="pane-tabs" role="tablist" aria-label={t(ui, 'editor.pane')}>
-                  {PANE_TABS.map(([id, label]) => (
-                    <button key={id} type="button" role="tab" aria-selected={pane === id} className={`pane-tab${pane === id ? ' active' : ''}`} data-pane={id} onClick={() => choosePane(id)}>
-                      {t(ui, label).replace('&', '')}
-                    </button>
-                  ))}
-                  <span className="grow" />
-                  <button type="button" className="pane-hide" title={t(ui, 'pane.hide')} onClick={() => choosePane('none')}>
-                    ✕
-                  </button>
-                </nav>
-                <div className="pane-body">
-                  {textFormat && pane !== 'chat' && <TextProperties format={textFormat} catalog={ui} paletteRequest={paletteRequest} />}
-                  {pane === 'chat' ? (
-                    <ChatPane
-                      catalog={ui}
-                      settings={aiSettings}
-                      aiOn={aiOn}
-                      onAiOn={(on) => {
-                        if (!on) rememberConversation(chat);
-                        setAiOn(on);
-                      }}
-                      turns={chat?.turns ?? []}
-                      onTurns={(turns) => {
-                        // Kept in the AI notes of the calculation: a new conversation gets its id with its first question.
-                        const id = chat?.id ?? startedChat.current[tab.id] ?? globalThis.crypto.randomUUID();
-                        startedChat.current[tab.id] = id;
-                        const started = chat?.started ?? turns[0]?.time ?? new Date().toISOString();
-                        setActiveChat((all) => ({ ...all, [tab.id]: id }));
-                        const last = turns[turns.length - 1];
-                        changeWith((present) => {
-                          let next = withConversation(present, { id, started, provider: aiSettings.provider, ...(aiSettings.model ? { model: aiSettings.model } : {}), turns });
-                          if (last?.role !== 'assistant') return next;
-                          // Changes the answer proposes go into the journal, open, with the lines they replace as they are now.
-                          const known = new Set(entriesOf(next).map((e) => e.id));
-                          const proposed = parseProposals(last.text)
-                            .map((p, n): ChangeEntry => {
-                              const before = replacedLines(next.source, p);
-                              return {
-                                id: `${id}:${turns.length - 1}:${n + 1}`,
-                                kind: 'change',
-                                time: last.time ?? new Date().toISOString(),
-                                ...(last.model ? { model: last.model } : {}),
-                                conversation: id,
-                                from: p.from,
-                                to: p.to,
-                                ...(p.insert ? { insert: true } : {}),
-                                ...(before ? { before } : {}),
-                                after: p.lines,
-                                state: 'open',
-                              };
-                            })
-                            .filter((e) => !known.has(e.id));
-                          next = withEntries(next, proposed);
-                        // Whole new calculations the answer wrote, to open as new sheets.
-                        const knownSheets = new Set(newSheetsOf(next).map((e) => e.id));
-                        const sheets = parseNewSheets(last.text)
-                          .map((s, n): SheetEntry => ({
-                            id: `${id}:${turns.length - 1}:s${n + 1}`,
-                            kind: 'sheet',
-                            time: last.time ?? new Date().toISOString(),
-                            ...(last.model ? { model: last.model } : {}),
-                            conversation: id,
-                            title: s.title,
-                            lines: s.lines,
-                            state: 'open',
-                          }))
-                          .filter((e) => !knownSheets.has(e.id));
-                        next = withEntries(next, sheets);
-                          // The calculation keeps copies of the library sections an answer cited.
-                          return libraries.recordCited(last.text, next);
-                        }, 'ai-chat');
-                      }}
-                      proposals={(turn) => (chat ? proposalViews(entriesOf(doc).filter((e) => e.id.startsWith(`${chat.id}:${turn}:`))) : [])}
-                      onDecide={decideProposal}
-                      onReview={reviewProposal}
-                    answerProposals={answerProposals}
-                    onAcceptAll={acceptAll}
-                    onNewSheet={toNewSheet}
-                    newSheets={newSheetViews}
-                    onOpenSheet={openNewSheet}
-                    checkSheet={checkProposedSheet}
-                    {...(desktop ? { runCheck: runAnswerCheck, onCheckToSources: keepCheck } : {})}
-                    onChoice={keepChoice}
-                    onKeepNote={keepNote}
-                    noteKept={noteIsKept}
-                      onNew={() => {
-                        rememberConversation(chat);
-                        startedChat.current[tab.id] = undefined;
-                        setActiveChat((all) => ({ ...all, [tab.id]: '' }));
-                      }}
-                      libraries={libraries.entries}
-                      onLibraries={() => void libraries.refresh()}
-                      onToggleLibrary={libraries.toggle}
-                      theory={[...theorySections(doc.layers), ...libraries.theory().sections]}
-                      context={chatContext}
-                      onOpenSettings={() => setDialog('settings')}
-                    />
-                  ) : pane === 'layers' ? (
-                    <LayersPane
-                      layers={doc.layers}
-                      active={layer.id}
-                      catalog={ui}
-                      used={evaluation.used}
-                      nameOf={nameOf}
-                      open={openPanes}
-                      onActivate={activate}
-                      onOpenBeside={openBeside}
-                      onChange={setLayers}
-                      onAdd={(kind) => void newLayer(kind)}
-                      onDelete={(id) => void deleteLayer(id)}
-                      blocks={[...doc.blocks].map(([name, b]) => ({ name, version: b.version, ...(b.origin !== undefined ? { origin: b.origin } : {}) }))}
-                      onDeleteBlock={(name) => void deleteBlock(name)}
-                    />
-                  ) : pane === 'details' ? (
-                    <Inspector
-                      result={result}
-                      statement={selected}
-                      line={selectedLine()}
-                      // An option of a function changed in Details: written into the line being typed, else into the
-                      // selected line of the sheet.
-                      onLine={(next) => {
-                        const area = document.querySelector<HTMLTextAreaElement>('textarea.row-editor');
-                        if (area) {
-                          area.setRangeText(next, 0, area.value.length, 'end');
-                          area.dispatchEvent(new Event('input', { bubbles: true }));
-                          return;
-                        }
-                        const at = selected !== undefined ? result.statements[selected]?.statement.span.line : undefined;
-                        if (at !== undefined) setLayerText(layer, replaceLines(text, at, at, next), `${layer.id}:option:${at}`);
-                      }}
-                      catalog={ui}
-                      decimalComma={decimalComma}
-                      onLayer={activate}
-                      onSelect={(statement) => {
-                        setSelected(statement);
-                        const line = result.statements[statement]?.statement.span.line;
-                        document.querySelector(`.layer-view.active .row[data-line="${line}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
-                      }}
-                    />
-                  ) : (
-                    <TablesView doc={doc} catalog={ui} diagnostics={tableDiagnostics} resolveFile={resolveFile} onChange={(next) => change(next)} assign={assignTable} compact />
-                  )}
-                </div>
-              </div>
-            </>
-          )
-        }
-      >
-        <DocumentTabs
-          tabs={docs.tabs.map((d) => ({ id: d.id, title: docLabel(d), dirty: isDirty(d), ...(d.path !== undefined ? { path: d.path } : {}) }))}
-          active={tab.id}
+      <div className="app-body">
+        <ToolbarFrame
+          layout={toolbars}
+          commands={commands}
           catalog={ui}
-          onSelect={switchDocument}
-          onClose={(id) => void closeDocument(id)}
-          onNew={() => commands.get('file.new')?.run()}
-        />
-        {notice && (
-          <div className="notice" role="status" onClick={() => setNotice(undefined)}>
-            {notice}
-          </div>
-        )}
-        {tableEditor ? (
-          <TablesView doc={doc} catalog={ui} diagnostics={tableDiagnostics} resolveFile={resolveFile} onChange={(next) => change(next)} assign={assignTable} />
-        ) : (
-          <div ref={scrollRef} className="workspace">
-            {openPanes.map((id, i) => {
-              const l = layerById(id)!;
-              return (
-                <section
-                  key={`${tab.id}:${id}`}
-                  className={`layer-view${i === activeIndex ? ' active' : ''}`}
-                  data-layer={id}
-                  onMouseDownCapture={() => {
-                    if (i === activeIndex) return;
-                    setActivePane(i);
-                    leaveEditing();
-                  }}
-                >
-                  {openPanes.length > 1 && (
-                    <header className="layer-view-head">
-                      <span className="glyph">{LAYER_GLYPH[l.kind]}</span> {nameOf(l)}
-                      <span className="grow" />
-                      <button type="button" title={t(ui, 'layers.closePane')} onClick={() => closePane(i)}>
-                        ✕
+          onLayout={changeToolbars}
+          aside={
+            !tableEditor && pane !== 'none' && (
+              <>
+                <div className="pane-divider" onMouseDown={startResize} role="separator" aria-orientation="vertical" />
+                <div className="side-pane" style={{ width: paneWidth }}>
+                  {/* What the pane can show, as tabs: one click to switch, and it is clear what is there. */}
+                  <nav className="pane-tabs" role="tablist" aria-label={t(ui, 'editor.pane')}>
+                    {PANE_TABS.map(([id, label]) => (
+                      <button key={id} type="button" role="tab" aria-selected={pane === id} className={`pane-tab${pane === id ? ' active' : ''}`} data-pane={id} onClick={() => choosePane(id)}>
+                        {t(ui, label).replace('&', '')}
                       </button>
-                    </header>
-                  )}
-                  {l.locked && l.kind !== 'ai' && <div className="notice locked">{t(ui, 'layers.lockedNotice')}</div>}
-                  {!l.visible && <div className="notice">{t(ui, 'layers.hiddenNotice')}</div>}
-                  {layerContent(l, i === activeIndex)}
-                </section>
-              );
-            })}
-          </div>
-        )}
-        {!tableEditor && (doc.layers.some((l) => l.kind !== 'sheet' && (inUse(l) || openPanes.includes(l.id))) || !doc.layers[0]!.visible) && (
-          <LayerTabs
-            shown={new Set(doc.layers.filter((l) => inUse(l) || openPanes.includes(l.id)).map((l) => l.id))}
-            layers={doc.layers}
-            active={layer.id}
-            open={openPanes}
+                    ))}
+                    <span className="grow" />
+                    <button type="button" className="pane-hide" title={t(ui, 'pane.hide')} onClick={() => choosePane('none')}>
+                      ✕
+                    </button>
+                  </nav>
+                  <div className="pane-body">
+                    {textFormat && pane !== 'chat' && <TextProperties format={textFormat} catalog={ui} paletteRequest={paletteRequest} />}
+                    {pane === 'chat' ? (
+                      <ChatPane
+                        catalog={ui}
+                        settings={aiSettings}
+                        aiOn={aiOn}
+                        onAiOn={(on) => {
+                          if (!on) rememberConversation(chat);
+                          setAiOn(on);
+                        }}
+                        turns={chat?.turns ?? []}
+                        onTurns={(turns) => {
+                          // Kept in the AI notes of the calculation: a new conversation gets its id with its first question.
+                          const id = chat?.id ?? startedChat.current[tab.id] ?? globalThis.crypto.randomUUID();
+                          startedChat.current[tab.id] = id;
+                          const started = chat?.started ?? turns[0]?.time ?? new Date().toISOString();
+                          setActiveChat((all) => ({ ...all, [tab.id]: id }));
+                          const last = turns[turns.length - 1];
+                          changeWith((present) => {
+                            let next = withConversation(present, { id, started, provider: aiSettings.provider, ...(aiSettings.model ? { model: aiSettings.model } : {}), turns });
+                            if (last?.role !== 'assistant') return next;
+                            // Changes the answer proposes go into the journal, open, with the lines they replace as they are now.
+                            const known = new Set(entriesOf(next).map((e) => e.id));
+                            const proposed = parseProposals(last.text)
+                              .map((p, n): ChangeEntry => {
+                                const before = replacedLines(next.source, p);
+                                return {
+                                  id: `${id}:${turns.length - 1}:${n + 1}`,
+                                  kind: 'change',
+                                  time: last.time ?? new Date().toISOString(),
+                                  ...(last.model ? { model: last.model } : {}),
+                                  conversation: id,
+                                  from: p.from,
+                                  to: p.to,
+                                  ...(p.insert ? { insert: true } : {}),
+                                  ...(before ? { before } : {}),
+                                  after: p.lines,
+                                  state: 'open',
+                                };
+                              })
+                              .filter((e) => !known.has(e.id));
+                            next = withEntries(next, proposed);
+                          // Whole new calculations the answer wrote, to open as new sheets.
+                          const knownSheets = new Set(newSheetsOf(next).map((e) => e.id));
+                          const sheets = parseNewSheets(last.text)
+                            .map((s, n): SheetEntry => ({
+                              id: `${id}:${turns.length - 1}:s${n + 1}`,
+                              kind: 'sheet',
+                              time: last.time ?? new Date().toISOString(),
+                              ...(last.model ? { model: last.model } : {}),
+                              conversation: id,
+                              title: s.title,
+                              lines: s.lines,
+                              state: 'open',
+                            }))
+                            .filter((e) => !knownSheets.has(e.id));
+                          next = withEntries(next, sheets);
+                            // The calculation keeps copies of the library sections an answer cited.
+                            return libraries.recordCited(last.text, next);
+                          }, 'ai-chat');
+                        }}
+                        proposals={(turn) => (chat ? proposalViews(entriesOf(doc).filter((e) => e.id.startsWith(`${chat.id}:${turn}:`))) : [])}
+                        onDecide={decideProposal}
+                        onReview={reviewProposal}
+                      answerProposals={answerProposals}
+                      onAcceptAll={acceptAll}
+                      onNewSheet={toNewSheet}
+                      newSheets={newSheetViews}
+                      onOpenSheet={openNewSheet}
+                      checkSheet={checkProposedSheet}
+                      {...(desktop ? { runCheck: runAnswerCheck, onCheckToSources: keepCheck } : {})}
+                      onChoice={keepChoice}
+                      onKeepNote={keepNote}
+                      noteKept={noteIsKept}
+                        onNew={() => {
+                          rememberConversation(chat);
+                          startedChat.current[tab.id] = undefined;
+                          setActiveChat((all) => ({ ...all, [tab.id]: '' }));
+                        }}
+                        libraries={libraries.entries}
+                        onLibraries={() => void libraries.refresh()}
+                        onToggleLibrary={libraries.toggle}
+                        theory={[...theorySections(doc.layers), ...libraries.theory().sections]}
+                        context={chatContext}
+                        onOpenSettings={() => setDialog('settings')}
+                      />
+                    ) : pane === 'layers' ? (
+                      <LayersPane
+                        layers={doc.layers}
+                        active={layer.id}
+                        catalog={ui}
+                        used={evaluation.used}
+                        nameOf={nameOf}
+                        open={openPanes}
+                        onActivate={activate}
+                        onOpenBeside={openBeside}
+                        onChange={setLayers}
+                        onAdd={(kind) => void newLayer(kind)}
+                        onDelete={(id) => void deleteLayer(id)}
+                        blocks={[...doc.blocks].map(([name, b]) => ({ name, version: b.version, ...(b.origin !== undefined ? { origin: b.origin } : {}) }))}
+                        onDeleteBlock={(name) => void deleteBlock(name)}
+                      />
+                    ) : pane === 'details' ? (
+                      <Inspector
+                        result={result}
+                        statement={selected}
+                        line={selectedLine()}
+                        // An option of a function changed in Details: written into the line being typed, else into the
+                        // selected line of the sheet.
+                        onLine={(next) => {
+                          const area = document.querySelector<HTMLTextAreaElement>('textarea.row-editor');
+                          if (area) {
+                            area.setRangeText(next, 0, area.value.length, 'end');
+                            area.dispatchEvent(new Event('input', { bubbles: true }));
+                            return;
+                          }
+                          const at = selected !== undefined ? result.statements[selected]?.statement.span.line : undefined;
+                          if (at !== undefined) setLayerText(layer, replaceLines(text, at, at, next), `${layer.id}:option:${at}`);
+                        }}
+                        catalog={ui}
+                        decimalComma={decimalComma}
+                        onLayer={activate}
+                        onSelect={(statement) => {
+                          setSelected(statement);
+                          const line = result.statements[statement]?.statement.span.line;
+                          document.querySelector(`.layer-view.active .row[data-line="${line}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                        }}
+                      />
+                    ) : (
+                      <TablesView doc={doc} catalog={ui} diagnostics={tableDiagnostics} resolveFile={resolveFile} onChange={(next) => change(next)} assign={assignTable} compact />
+                    )}
+                  </div>
+                </div>
+              </>
+            )
+          }
+        >
+          <DocumentTabs
+            tabs={docs.tabs.map((d) => ({ id: d.id, title: docLabel(d), dirty: isDirty(d), ...(d.path !== undefined ? { path: d.path } : {}) }))}
+            active={tab.id}
             catalog={ui}
-            used={evaluation.used}
-            commands={commands}
-            nameOf={nameOf}
-            onActivate={activate}
-            onOpenBeside={openBeside}
-            onChange={setLayers}
-            onAdd={(kind) => void newLayer(kind)}
-            onDelete={(id) => void deleteLayer(id)}
+            onSelect={switchDocument}
+            onClose={(id) => void closeDocument(id)}
+            onNew={() => commands.get('file.new')?.run()}
           />
-        )}
-      </ToolbarFrame>
+          {notice && (
+            <div className="notice" role="status" onClick={() => setNotice(undefined)}>
+              {notice}
+            </div>
+          )}
+          {tableEditor ? (
+            <TablesView doc={doc} catalog={ui} diagnostics={tableDiagnostics} resolveFile={resolveFile} onChange={(next) => change(next)} assign={assignTable} />
+          ) : (
+            <div ref={scrollRef} className="workspace">
+              {openPanes.map((id, i) => {
+                const l = layerById(id)!;
+                return (
+                  <section
+                    key={`${tab.id}:${id}`}
+                    className={`layer-view${i === activeIndex ? ' active' : ''}`}
+                    data-layer={id}
+                    onMouseDownCapture={() => {
+                      if (i === activeIndex) return;
+                      setActivePane(i);
+                      leaveEditing();
+                    }}
+                  >
+                    {openPanes.length > 1 && (
+                      <header className="layer-view-head">
+                        <span className="glyph">{LAYER_GLYPH[l.kind]}</span> {nameOf(l)}
+                        <span className="grow" />
+                        <button type="button" title={t(ui, 'layers.closePane')} onClick={() => closePane(i)}>
+                          ✕
+                        </button>
+                      </header>
+                    )}
+                    {l.locked && l.kind !== 'ai' && <div className="notice locked">{t(ui, 'layers.lockedNotice')}</div>}
+                    {!l.visible && <div className="notice">{t(ui, 'layers.hiddenNotice')}</div>}
+                    {layerContent(l, i === activeIndex)}
+                  </section>
+                );
+              })}
+            </div>
+          )}
+          {!tableEditor && (doc.layers.some((l) => l.kind !== 'sheet' && (inUse(l) || openPanes.includes(l.id))) || !doc.layers[0]!.visible) && (
+            <LayerTabs
+              shown={new Set(doc.layers.filter((l) => inUse(l) || openPanes.includes(l.id)).map((l) => l.id))}
+              layers={doc.layers}
+              active={layer.id}
+              open={openPanes}
+              catalog={ui}
+              used={evaluation.used}
+              commands={commands}
+              nameOf={nameOf}
+              onActivate={activate}
+              onOpenBeside={openBeside}
+              onChange={setLayers}
+              onAdd={(kind) => void newLayer(kind)}
+              onDelete={(id) => void deleteLayer(id)}
+            />
+          )}
+        </ToolbarFrame>
+          {startOpen && (
+            <StartScreen
+              catalog={ui}
+              samples={sampleList}
+              picture={samplePicture}
+              recent={recent}
+              onNew={() => {
+                setStartOpen(false);
+                if (!isPristine(tab)) commands.get('file.new')?.run();
+              }}
+              onOpen={() => {
+                setStartOpen(false);
+                commands.get('file.open')?.run();
+              }}
+              onSample={(id) => {
+                setStartOpen(false);
+                openDocument(exampleDocument(id, t(ui, 'samples.prefix')), undefined);
+              }}
+              onRecent={(path) => {
+                setStartOpen(false);
+                void desktop?.openPath(path).then((file) => (file ? openBytes(file.name, file.bytes, { kind: 'path', path: file.path }).then(show) : undefined));
+              }}
+              onHelp={() => {
+                setStartOpen(false);
+                setDialog('functions');
+              }}
+              onClose={() => setStartOpen(false)}
+            />
+          )}
+      </div>
       <footer className="statusbar">
         <span className={errors > 0 ? 'bad' : ''}>
           {ui.severity.error}: {errors}

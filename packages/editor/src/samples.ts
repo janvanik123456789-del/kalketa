@@ -122,6 +122,17 @@ export function exampleDocument(id = DEFAULT_SAMPLE, prefix = 'Vzor'): SheetDocu
   return { ...base, manifest: { ...base.manifest, language: languageOf(file) }, layout, tables, files, layers };
 }
 
+/**
+ * The first picture of a sample, as its sheet shows it, for the card of the start screen: an SVG as a data URL,
+ * undefined for a sample without a picture.
+ */
+export function samplePicture(id: string): string | undefined {
+  const source = Object.entries(SAMPLE_SHEETS).find(([path]) => path.includes(`/${id}/`) && !TEST_VARIANTS.has(/([^/]+)\.cc$/.exec(path)?.[1] ?? ''))?.[1];
+  const name = /!\[[^\]]*\]\(images\/([^)\s]+\.svg)\)/.exec(source ?? '')?.[1];
+  const svg = name ? Object.entries(SAMPLE_IMAGES).find(([path]) => path.endsWith(`/${id}/images/${name}`))?.[1] : undefined;
+  return svg === undefined ? undefined : `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
 /** quadratic-equation.en → en; a sheet without a language in its name is Czech. */
 function languageOf(file: string): string {
   return /\.([a-z]{2})$/.exec(file)?.[1] ?? 'cs';

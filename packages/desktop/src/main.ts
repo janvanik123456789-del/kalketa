@@ -545,6 +545,7 @@ async function runSmokeTest(pdfPath: string): Promise<void> {
   let ok = false;
   try {
     await new Promise((resolve) => setTimeout(resolve, 500));
+    const start = await startScreenWithRealMouse(pdfPath.replace(/\.pdf$/i, '') + '-start.png');
     const state = (await smokeWindow!.webContents.executeJavaScript(`({
       bridge: typeof window.kalketaDesktop === 'object',
       rows: document.querySelectorAll('.row').length,
@@ -569,11 +570,45 @@ async function runSmokeTest(pdfPath: string): Promise<void> {
     ok =
       state.bridge && state.sideBySide && state.menus === 8 && state.toolbars > 0 && state.rows > 10 && state.summary > 0 && state.math > 0 && reshapedColumns === 3 && pdf.length > 1000 &&
       layers.deflection && layers.pickTaken.column.startsWith('→') && /mm|cm/.test(layers.pickTaken.text) && layers.newKeepsExample && layers.samplesOk && layers.derivations && layers.summaryOk && layers.definitionAtCursor && layers.sheetGridOk && layers.tableEnter && layers.solvedByFormula && layers.rootsAndExtremes && layers.userChart.ok && layers.relations.ok && layers.quadraticSample.ok && layers.saveOnClose.ok && layers.wordPrinted && layers.wordColored && layers.paletteColored && layers.wordText.focused && layers.wordText.pane && layers.wordText.bold === 'dynamiky' && !layers.wordText.shown.includes('"') && layers.wordText.align === 'center' && layers.cellMarked === 'Síla na konci' && layers.systemFont !== '' && layers.cellFont.replace(/"/g, '').startsWith(layers.systemFont) && layers.cellDeleted && layers.paperRoots && layers.tableRowAdded && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.notesPicture === 'FIGURE+img BLOCKQUOTE' && layers.notesPlaced === 'narrower centred' && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.charts && layers.functionBar && layers.revisions && layers.roots && layers.toolIcons && layers.aiSettings && layers.aiChat && layers.pdfCleanup && layers.theoryLibrary && layers.study && layers.sheetPicture.offered && layers.sheetPicture.described && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
-    console.log(JSON.stringify({ ok, ...state, reshapedColumns, layers, pdfBytes: pdf.length }));
+    ok = ok && start.shown && start.cards >= 20 && start.lead === 'R24-pruvodce-police' && start.pictures >= 12 && start.closed && start.tab === 'Vzor – Posouzení nosníku N1';
+    console.log(JSON.stringify({ ok, start, ...state, reshapedColumns, layers, pdfBytes: pdf.length }));
   } catch (err) {
     console.log(JSON.stringify({ ok: false, error: (err as Error).message, console: smokeConsole.slice(-5) }));
   }
   app.exit(ok ? 0 : 1);
+}
+
+/**
+ * The start screen of a first start: its cards of samples (the guide first, with pictures), then a click of the
+ * real mouse on the card of the beam, which opens it in the empty tab under the screen as before.
+ */
+async function startScreenWithRealMouse(picture: string): Promise<{ shown: boolean; cards: number; lead: string; pictures: number; closed: boolean; tab: string }> {
+  const contents = smokeWindow!.webContents;
+  const seen = (await contents.executeJavaScript(`(async () => {
+    await Promise.all([...document.querySelectorAll('.start-card img')].map((i) => i.decode().catch(() => undefined)));
+    const screen = document.querySelector('.start-screen');
+    const cards = [...document.querySelectorAll('.start-card')];
+    const beam = document.querySelector('.start-card[data-sample="R1-nosnik"]');
+    beam?.scrollIntoView({ block: 'center' });
+    const r = beam?.getBoundingClientRect();
+    return {
+      shown: !!screen,
+      cards: cards.length,
+      lead: document.querySelector('.start-card.lead')?.dataset.sample ?? '',
+      pictures: cards.filter((c) => c.querySelector('img')?.naturalWidth > 0).length,
+      at: r ? { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + 40) } : undefined,
+    };
+  })()`)) as { shown: boolean; cards: number; lead: string; pictures: number; at?: { x: number; y: number } };
+  await takePicture(picture);
+  if (seen.at) {
+    contents.sendInputEvent({ type: 'mouseMove', x: seen.at.x, y: seen.at.y });
+    contents.sendInputEvent({ type: 'mouseDown', x: seen.at.x, y: seen.at.y, button: 'left', clickCount: 1 });
+    contents.sendInputEvent({ type: 'mouseUp', x: seen.at.x, y: seen.at.y, button: 'left', clickCount: 1 });
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+  }
+  const after = (await contents.executeJavaScript(`({ closed: !document.querySelector('.start-screen'), tab: [...document.querySelectorAll('.doc-tab')].map((t) => t.textContent.replace(/[•✕×]/g, '').trim()).join('|') })`)) as { closed: boolean; tab: string };
+  const { at: _at, ...rest } = seen;
+  return { ...rest, ...after };
 }
 
 /**

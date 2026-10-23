@@ -122,8 +122,11 @@ export const FUNCTION_EXAMPLES: Readonly<Record<string, string>> = {
   plot: 'plot(sin(x), cos(x), x: 0 .. 2·π)',
 };
 
-/** The lines that are no functions but have their help beside them: the keyword they start with. */
-export const STATEMENTS = ['solve', 'derive', 'relation'] as const;
+/**
+ * The lines that are no functions but have their help beside them: the keyword they start with (source stands
+ * at the end of a line).
+ */
+export const STATEMENTS = ['solve', 'derive', 'relation', 'check', 'source', 'table', 'unit', 'dimension', 'input'] as const;
 export type StatementKeyword = (typeof STATEMENTS)[number];
 
 /** How each such line is written, and its example (computed by a test as the functions' ones). */
@@ -131,11 +134,23 @@ export const STATEMENT_SYNTAX: Readonly<Record<StatementKeyword, string>> = {
   solve: 'solve x: a == b',
   derive: 'derive a == b == …',
   relation: 'relation a == b {eq=…}',
+  check: 'check "…": a ≤ b',
+  source: '… source "…"',
+  table: 'table T: | x [m] | y [kN] |',
+  unit: 'unit u := 25 CZK',
+  dimension: 'dimension D',
+  input: 'input a := 5 m',
 };
 export const STATEMENT_EXAMPLES: Readonly<Record<StatementKeyword, string>> = {
   solve: 'F := 12 kN\nk := 3 kN/cm\nsolve x: k·x == F',
   derive: 'derive (a + b)^2 == (a + b)·(a + b) == a^2 + 2·a·b + b^2',
   relation: 'relation x^2 + y^2 == r^2 {eq=Kruh}\nx := 3 m\nr := 5 m\nsolve y ∈ ℝ, y > 0: Kruh',
+  check: 'σ := 193 MPa\nf_y := 235 MPa\ncheck "Ohyb": σ ≤ f_y source "EN 1993-1-1, 6.2.5"',
+  source: 'G_k := 20 kN·m\nM_Ed := 1.35·G_k source "EN 1990, 6.10"',
+  table: 'table Mereni:\n    | t [s] | T [°C] |\n    | 0 | 20.1 |\n    | 10 | 25.3 |\nT_max := max(Mereni.T)',
+  unit: 'unit ks: dimensionless\nunit EUR := 25 CZK\nc := 4 ks · 120 EUR | CZK',
+  dimension: 'dimension Body\nunit bod: Body\nunit cent := bod/100\ns := 3 bod + 50 cent',
+  input: 'input l_n := 5 m\ninput q := 12 kN/m\nM := q·l_n^2/8 | kN·m',
 };
 
 const isStatement = (name: string): name is StatementKeyword => (STATEMENTS as readonly string[]).includes(name);
@@ -176,10 +191,16 @@ export function helpOf(name: string, catalog: Catalog, decimalComma: boolean): H
   return { name, signature: STATEMENT_SYNTAX[name], summary: words?.summary ?? '', details: words?.details ?? '', example, shortExample: example };
 }
 
-/** The keyword of a line that is no function (solve, derive, relation), if it starts with one. */
+/** The keyword of a line that is no function (solve, check, table …), if it starts with one. */
 export function statementOfLine(line: string): StatementKeyword | undefined {
   const word = /^\s*([a-z]+)\b/.exec(line)?.[1];
-  return word && isStatement(word) ? word : undefined;
+  return word && word !== 'source' && isStatement(word) ? word : undefined;
+}
+
+/** Whether a line names its source: … source "EN 1990, 6.10" (outside other texts). */
+function citesSource(line: string): boolean {
+  // Texts emptied (their quotes kept), so a word source inside one does not count.
+  return /(?<![\p{L}\p{N}_])source\s+"/u.test(line.replace(/"[^"\n]*"/g, (s) => `"${' '.repeat(s.length - 2)}"`));
 }
 
 /**
@@ -189,7 +210,7 @@ export function statementOfLine(line: string): StatementKeyword | undefined {
 export function helpNamesOfLine(line: string, cursor?: number): string[] {
   const atCursor = cursor !== undefined ? functionAtCursor(line, cursor)?.name : undefined;
   const statement = statementOfLine(line);
-  const names = [...(atCursor ? [atCursor] : []), ...(statement ? [statement] : []), ...functionsOfLine(line).map((d) => d.name)];
+  const names = [...(atCursor ? [atCursor] : []), ...(statement ? [statement] : []), ...functionsOfLine(line).map((d) => d.name), ...(citesSource(line) ? ['source'] : [])];
   return [...new Set(names)];
 }
 

@@ -20,6 +20,35 @@ export const CS_STATEMENT_HELP: Readonly<Record<string, { readonly summary: stri
     details:
       'Na rozdíl od solve nic nepočítá ani nekontroluje; jména, která list nemá, jsou v ní obecné symboly. Vycházejí z ní kroky derive pod ní. Pojmenovaná ({eq=Kruh}) se řeší řádkem solve y: Kruh a do grafu se kreslí jako křivka: plot(Kruh, x: -6 m .. 6 m, y: -6 m .. 6 m).',
   },
+  check: {
+    summary: 'Posudek: podmínka, kterou výpočet musí splnit, např. check "Ohyb": σ ≤ f_y. V tisku s využitím a slovem VYHOVUJE / NEVYHOVUJE.',
+    details:
+      'Podmínka je porovnání (≤, <, ≥, >, ==), lze je spojit and / or; popis v uvozovkách je volitelný. Využití je podíl stran (σ / f_y). Za podmínkou může stát zdroj: source "EN 1993-1-1, 6.2.5". Souhrn posudků je na začátku tisku a ve stavovém řádku; podobu výsledku (VYHOVUJE, VYHOVÍ, jen ✓) určí Vlastnosti výpočtu.',
+  },
+  source: {
+    summary: 'Zdroj vzorce nebo posudku na konci řádku: M_Ed := 1.35·G_k source "EN 1990, 6.10".',
+    details: 'V tisku stojí za vzorcem v hranatých závorkách, ve stylu se sloupci v levém sloupci; kontrolor tak vidí, odkud vzorec nebo mez je. Patří k definicím i posudkům.',
+  },
+  table: {
+    summary: 'Tabulka přímo v listu: řádek table Mereni: a pod ním odsazené řádky | … |; první je záhlaví.',
+    details:
+      'Záhlaví: jméno sloupce, jednotka v [ ], formát čísel v { } ({0.0}). Ve výpočtu je Mereni.T řada v jednotce sloupce a Mereni.t[2] jedna hodnota; fungují pick, find_min, interpolate. Vzorec v záhlaví za = počítá sloupec (g_k [kN/m²] = h·ρ), Σ v buňce sečte sloupec. Klik na tabulku ji otevře jako mřížku, {across} ji vytiskne na šířku. Katalogové tabulky (profily, materiály) patří do vrstvy Data.',
+  },
+  unit: {
+    summary: 'Vlastní jednotka: unit EUR := 25 CZK (kurz, alias), unit ks: dimensionless (kusy), unit CZK: Mena (základ nové dimenze).',
+    details:
+      'S := je jednotka daná hodnotou jiných jednotek a dál se s ní počítá jako s vestavěnými (4 ks · 120 EUR | CZK). S : je to základní jednotka dimenze z řádku dimension, nebo dimensionless pro počitatelné věci. Vestavěné měny (CZK, EUR, USD …) mají každá svou dimenzi, dokud list neurčí kurz.',
+  },
+  dimension: {
+    summary: 'Nová základní dimenze (měna, body, kusy): dimension Body; její jednotky určí řádky unit pod ní.',
+    details:
+      'Veličiny různých dimenzí nejde sčítat ani porovnávat, takže list hlídá, aby se třeba body nesčítaly s korunami. Za dimension následuje unit se základní jednotkou (unit bod: Body) a případně další jednotky z ní (unit cent := bod/100).',
+  },
+  input: {
+    summary: 'Vstup bloku: input q := 12 kN/m je hodnota, kterou volání bloku může změnit; v listu samotném platí jako obyčejná definice.',
+    details:
+      'Blok (Vložit → Blok ze souboru…) je hotový výpočet uložený v listu; volá se jménem a vstupy jménem: N1 := Prosty_nosnik(L: 6 m, q: 10 kN/m), nezadané vstupy platí z bloku. Vstup musí mít stejný rozměr jako v bloku. Výsledky bloku se čtou tečkou: N1.M_max.',
+  },
 };
 
 export const CS_FUNCTION_DETAILS: Readonly<Record<string, string>> = {

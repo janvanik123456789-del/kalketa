@@ -627,6 +627,8 @@ function exampleValue(example: string, catalog: Catalog): string | undefined {
   if (last.displayMatrix) return `${last.displayMatrix.rows}×${last.displayMatrix.cols}`;
   if (last.value?.type === 'text') return last.value.value;
   if (last.statement.kind === 'derive') return t(catalog, 'help.derived');
+  // check: its verdict and how much of the limit is used.
+  if (last.check) return `${t(catalog, last.check.passed ? 'checks.passed' : 'checks.failed')}${last.check.utilization !== undefined ? ` (${Math.round(last.check.utilization * 100)} %)` : ''}`;
   // solve: the unknowns found (the kept roots of a solve with a domain).
   const solutions = last.solutions ?? [];
   if (solutions.length > 0) return solutions.map((s) => `${s.name} = ${formatValue(s.display.value, s.display.im, s.display.unit, catalog)}`).join(', ');

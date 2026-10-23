@@ -160,7 +160,8 @@ export function Inspector({ result, statement, line = '', onLine, catalog, decim
           </ul>
         </section>
       )}
-      {trace && (
+      {/* A chart has no value: no origin to show. */}
+      {trace && (trace.display || trace.value || trace.inputs.length > 0 || trace.tables.length > 0) && (
         <section>
           <h3>{t(catalog, 'editor.origin')}</h3>
           <ul className="trace">

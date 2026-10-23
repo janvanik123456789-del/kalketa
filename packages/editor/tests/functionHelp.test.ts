@@ -70,6 +70,23 @@ describe('the help of the functions', () => {
     expect(helpNamesOfLine('solve x ∈ ℝ, x > 0: sqrt(x) == 2')).toEqual(['solve', 'sqrt']);
     expect(helpNamesOfLine('solve x: sqrt(x) == 2', 'solve x: sqrt('.length)).toEqual(['sqrt', 'solve']);
     expect(helpNamesOfLine('  derive a == b')).toEqual(['derive']);
+    // The other lines: a check with its source, a table, units; source counts outside texts only.
+    expect(helpNamesOfLine('check "Ohyb": σ ≤ f_y source "EN 1993-1-1"')).toEqual(['check', 'source']);
+    expect(helpNamesOfLine('M := max(a, b) source "EN 1990"')).toEqual(['max', 'source']);
+    expect(helpNamesOfLine('"Viz source \\"x\\" v textu"')).toEqual([]);
+    expect(helpNamesOfLine('table Mereni:')).toEqual(['table']);
+    expect(helpNamesOfLine('unit EUR := 25 CZK')).toEqual(['unit']);
+    expect(helpNamesOfLine('sourceX := 2')).toEqual([]);
+    const shown = (keyword: (typeof STATEMENTS)[number]) => {
+      const last = evaluateSheet(STATEMENT_EXAMPLES[keyword]).statements.at(-1)!;
+      return last.display ? `${Number(last.display.value.toFixed(4))} ${last.display.unit}` : last.check ? `${last.check.passed} ${Math.round(last.check.utilization! * 100)}` : '';
+    };
+    expect(shown('check')).toBe('true 82');
+    expect(shown('source')).toBe('27 kN·m');
+    expect(shown('table')).toBe('25.3 °C');
+    expect(shown('unit')).toBe('12000 CZK');
+    expect(shown('dimension')).toBe('3.5 bod');
+    expect(shown('input')).toBe('37.5 kN·m');
     expect(helpOf('solved', CATALOGS['cs']!, true)).toBeUndefined();
     // What the help of solve says: a system, a first guess.
     expect(evaluateSheet('solve (x, y): x + y == 1, x - y == 0').values.get('x')).toMatchObject({ si: 0.5 });

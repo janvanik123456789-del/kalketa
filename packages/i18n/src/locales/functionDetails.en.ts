@@ -20,6 +20,35 @@ export const EN_STATEMENT_HELP: Readonly<Record<string, { readonly summary: stri
     details:
       'Unlike solve it computes and checks nothing; names the sheet has no value for are general symbols in it. derive steps below start from it. A named one ({eq=Circle}) is solved by a line solve y: Circle and drawn into a chart as a curve: plot(Circle, x: -6 m .. 6 m, y: -6 m .. 6 m).',
   },
+  check: {
+    summary: 'A check: a condition the calculation must meet, e.g. check "Bending": σ ≤ f_y. Printed with its utilization and PASSES / FAILS.',
+    details:
+      'The condition is a comparison (≤, <, ≥, >, ==), joined by and / or; the label in quotes is optional. The utilization is the ratio of the sides (σ / f_y). A source may follow the condition: source "EN 1993-1-1, 6.2.5". The checks are summed up at the start of the printout and in the status bar; Calculation properties set how the verdict reads.',
+  },
+  source: {
+    summary: 'The source of a formula or a check at the end of its line: M_Ed := 1.35·G_k source "EN 1990, 6.10".',
+    details: 'Printed after the formula in square brackets, in the style with columns in the left column; the checker sees where a formula or a limit comes from. It belongs to definitions and checks.',
+  },
+  table: {
+    summary: 'A table right in the sheet: a line table Measured: and indented lines | … | below it; the first is the header.',
+    details:
+      'Header: the name of the column, its unit in [ ], the format of numbers in { } ({0.0}). In the calculation Measured.T is a series in the unit of the column and Measured.t[2] one value; pick, find_min, interpolate work. A formula after = in the header computes the column (g_k [kN/m²] = h·ρ), Σ in a cell sums the column. A click opens the table as a grid, {across} prints it across. Catalogue tables (sections, materials) belong in the Data layer.',
+  },
+  unit: {
+    summary: 'A unit of one\'s own: unit EUR := 25 CZK (a rate, an alias), unit pcs: dimensionless (pieces), unit CZK: Money (the base of a new dimension).',
+    details:
+      'With := the unit is given by a value of other units and computes like the built-in ones (4 pcs · 120 EUR | CZK). With : it is the base unit of a dimension from a dimension line, or dimensionless for countable things. The built-in currencies (CZK, EUR, USD …) each have a dimension of their own until the sheet sets a rate.',
+  },
+  dimension: {
+    summary: 'A new base dimension (money, points, pieces): dimension Points; unit lines below set its units.',
+    details:
+      'Quantities of different dimensions can be neither added nor compared, so the sheet keeps points from being added to crowns. A dimension line is followed by a unit with the base unit (unit point: Points) and maybe more units of it (unit cent := point/100).',
+  },
+  input: {
+    summary: 'An input of a block: input q := 12 kN/m is a value a call of the block may change; in the sheet itself it is a plain definition.',
+    details:
+      'A block (Insert → Block from file…) is a finished calculation kept in the sheet; it is called by its name with its inputs by name: N1 := Simple_beam(L: 6 m, q: 10 kN/m), inputs not given keep the values of the block. An input must have the dimension it has in the block. The results of a block are read with a dot: N1.M_max.',
+  },
 };
 
 export const EN_FUNCTION_DETAILS: Readonly<Record<string, string>> = {

@@ -317,6 +317,27 @@ export function App() {
   const text = textOf(layer);
   const result = resultOf(layer);
   const nameOf = (l: Layer) => layerName(l, ui);
+  // The line opened (a click, Enter, a new line from a menu) is the one Details speak of; a new line has no
+  // statement yet, so none. Never one left selected before, which the switches of Details would rewrite.
+  useEffect(() => {
+    if (!editing) return;
+    const moved = lastOpened.current !== editing.start;
+    lastOpened.current = editing.start;
+    // A new line gets its statement once calculated, while it is still open.
+    const opened = engine.lastSource === doc.source ? result.statements.findIndex((s) => s.statement.span.line === editing.start) : -1;
+    if (opened >= 0) setSelected(opened);
+    else if (moved) setSelected(undefined);
+  }, [editing?.start, layer.id, result]);
+  // The line closed stays selected once it is calculated (a new one has its statement only then): Details keep
+  // speaking of it, and its switches can be used one after another.
+  const lastOpened = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    // Only a result of the text as it is now: in one calculated before, another line may stand at that number.
+    if (editing || lastOpened.current === undefined || engine.lastSource !== doc.source) return;
+    const closed = result.statements.findIndex((s) => s.statement.span.line === lastOpened.current);
+    lastOpened.current = undefined;
+    if (closed >= 0) setSelected(closed);
+  }, [editing, result]);
   /** The text of the selected line of the active layer (its functions are explained in Details). */
   const selectedLine = () => (selected !== undefined ? (text.split('\n')[(result.statements[selected]?.statement.span.line ?? 0) - 1] ?? '') : '');
   const layerTables = useMemo(() => tablesByLayer(doc.layers, doc.tables.keys()), [doc.layers, doc.tables]);

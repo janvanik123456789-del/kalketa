@@ -2705,6 +2705,46 @@ async function layersWithRealInput(picture: string) {
     };
   })()`)) as { errors: number; status: string; shift: boolean; charts: number };
   await takePicture(picture.replace(/[.]png$/, '-boat.png'));
+  // The guide: a shelf, its picture, a table, checks and a chart; its span lengthened by the slider of L, dragged by the
+  // mouse, until the deflection no longer holds.
+  await clickOn('.menubar-item:nth-child(1) > button');
+  await clickMenu('Vzorové příklady');
+  await clickMenu('Úvod a průvodce');
+  await clickMenu('1 Police na knihy');
+  await pause(2500);
+  const guideState = `(() => {
+    const view = document.querySelector('.layer-view.active');
+    const text = [...view.querySelectorAll('.page')].map((p) => p.textContent).join(' ');
+    const rowL = [...view.querySelectorAll('.page .row')].find((r) => r.querySelector('.input-slider') && /^\\s*\\d*\\s*L\\s*≔/.test(r.textContent));
+    return {
+      errors: view.querySelectorAll('.page .row.has-error').length,
+      pictures: [...view.querySelectorAll('.page img')].filter((i) => i.naturalWidth > 0).length,
+      charts: view.querySelectorAll('.block.chart svg.chart-svg .chart-data path').length,
+      failing: text.split('NEVYHOVUJE').length - 1,
+      span: rowL ? rowL.textContent.replace(/\\s+/g, '') : '',
+    };
+  })()`;
+  const guideBefore = (await contents.executeJavaScript(guideState)) as { errors: number; pictures: number; charts: number; failing: number; span: string };
+  const spanThumb = (await contents.executeJavaScript(`(() => {
+    const row = [...document.querySelectorAll('.layer-view.active .page .row')].find((r) => r.querySelector('.input-slider') && /^\\s*\\d*\\s*L\\s*≔/.test(r.textContent));
+    const slider = row?.querySelector('.input-slider');
+    slider?.scrollIntoView({ block: 'center' });
+    const r = slider?.querySelector('.slider-thumb')?.getBoundingClientRect();
+    const t = slider?.querySelector('.slider-track')?.getBoundingClientRect();
+    return r && t ? { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2), to: Math.round(t.left + t.width * 0.6) } : undefined;
+  })()`)) as { x: number; y: number; to: number } | undefined;
+  if (spanThumb) {
+    contents.sendInputEvent({ type: 'mouseDown', x: spanThumb.x, y: spanThumb.y, button: 'left', clickCount: 1 });
+    for (let step = 1; step <= 8; step++) {
+      contents.sendInputEvent({ type: 'mouseMove', x: Math.round(spanThumb.x + ((spanThumb.to - spanThumb.x) * step) / 8), y: spanThumb.y, button: 'left', modifiers: ['leftbuttondown'] } as Electron.MouseInputEvent);
+      await pause(150);
+    }
+    contents.sendInputEvent({ type: 'mouseUp', x: spanThumb.to, y: spanThumb.y, button: 'left', clickCount: 1 });
+    await pause(1000);
+  }
+  const guideAfter = (await contents.executeJavaScript(guideState)) as { errors: number; pictures: number; charts: number; failing: number; span: string };
+  await takePicture(picture.replace(/[.]png$/, '-guide.png'));
+  const guide = { before: guideBefore, after: guideAfter, dragged: !!spanThumb };
   // Surfaces in 3D: the sample of rotational solids, a saddle and waves opens with its maps and 3D charts, no errors.
   await clickOn('.menubar-item:nth-child(1) > button');
   await clickMenu('Vzorové příklady');
@@ -2987,7 +3027,7 @@ async function layersWithRealInput(picture: string) {
   const chartDialog = { offered: offeredLine, chosen: chosenLine, preview: dialogPreview, added: chartsAfter - chartsBefore };
   const quadraticSample = {
     crank,
-    theory: { theoryTab, tankErrors, theoryChecks, pythonCheck, rowsCopy, rocket, parabola, thermistor, vibration, boat, surfacesSample, fitDialog, chartLook, surfaceMap, surface3d, surfaceCut, chartDialog },
+    theory: { theoryTab, tankErrors, theoryChecks, pythonCheck, rowsCopy, rocket, parabola, thermistor, vibration, boat, guide, surfacesSample, fitDialog, chartLook, surfaceMap, surface3d, surfaceCut, chartDialog },
     across,
     beam,
     slowTyping,
@@ -2996,7 +3036,7 @@ async function layersWithRealInput(picture: string) {
     after: sampleAfter,
     outOfDomain,
     english,
-    ok: !!thumb && sampleBefore.errors === 0 && sampleAfter.errors === 0 && sampleBefore.a !== '' && sampleAfter.a !== sampleBefore.a && sampleAfter.roots !== sampleBefore.roots && outOfDomain.drawn && !outOfDomain.area && outOfDomain.roots === 0 && !outOfDomain.error && outOfDomain.warned && english.head === 'Quadratic equation' && english.verdicts.length === 5 && english.verdicts.every((v) => v.endsWith('OK')) && english.errors === 0 && crank.pictures === 4 && crank.charts === 3 && crank.errors === 0 && crank.verdict.endsWith('VYHOVUJE') && slowTyping.waitingShown && slowTyping.settled && cube.pictures === 1 && cube.derived >= 5 && cube.errors === 0 && beam.pictures === 3 && beam.charts >= 4 && beam.errors === 0 && across.before && !across.after && theoryTab >= 1 && tankErrors === 0 && theoryChecks.blocks >= 4 && theoryChecks.bad === 0 && pythonCheck.rows === 4 && pythonCheck.agree === 4 && rowsCopy.marked === 6 && rowsCopy.rows === 3 && rowsCopy.picture === 1 && rowsCopy.status.startsWith('chyba: 0') && rocket.errors === 0 && rocket.charts >= 2 && parabola.errors === 0 && parabola.charts >= 2 && parabola.normal >= 2 && thermistor.errors === 0 && thermistor.charts >= 3 && boat.errors === 0 && /chyba: 0/.test(boat.status) && /varování: 0/.test(boat.status) && boat.shift && boat.charts >= 3 && vibration.errors === 0 && vibration.wide === 0 && vibration.roots && !vibration.plusMinus && surfacesSample.errors === 0 && surfacesSample.maps >= 4 && surfacesSample.solids >= 6 && surfacesSample.verdicts >= 5 && fitDialog.ok && chartLook.ok && surfaceMap.ok && surface3d.shown && surface3d.turning && surface3d.kept && surface3d.errors === 0 && surfaceCut.line && surfaceCut.panel && surfaceCut.title && chartDialog.offered === 'plot(w(x, y), x: 0 m .. a, y: 0 m .. b)' && chartDialog.chosen === 'plot(w(x, y), x: 0 m .. a, y: 0 m .. b, kind: "surface")' && chartDialog.preview && chartDialog.added === 1,
+    ok: !!thumb && sampleBefore.errors === 0 && sampleAfter.errors === 0 && sampleBefore.a !== '' && sampleAfter.a !== sampleBefore.a && sampleAfter.roots !== sampleBefore.roots && outOfDomain.drawn && !outOfDomain.area && outOfDomain.roots === 0 && !outOfDomain.error && outOfDomain.warned && english.head === 'Quadratic equation' && english.verdicts.length === 5 && english.verdicts.every((v) => v.endsWith('OK')) && english.errors === 0 && crank.pictures === 4 && crank.charts === 3 && crank.errors === 0 && crank.verdict.endsWith('VYHOVUJE') && slowTyping.waitingShown && slowTyping.settled && cube.pictures === 1 && cube.derived >= 5 && cube.errors === 0 && beam.pictures === 3 && beam.charts >= 4 && beam.errors === 0 && across.before && !across.after && theoryTab >= 1 && tankErrors === 0 && theoryChecks.blocks >= 4 && theoryChecks.bad === 0 && pythonCheck.rows === 4 && pythonCheck.agree === 4 && rowsCopy.marked === 6 && rowsCopy.rows === 3 && rowsCopy.picture === 1 && rowsCopy.status.startsWith('chyba: 0') && rocket.errors === 0 && rocket.charts >= 2 && parabola.errors === 0 && parabola.charts >= 2 && parabola.normal >= 2 && thermistor.errors === 0 && thermistor.charts >= 3 && guide.dragged && guide.before.errors === 0 && guide.before.pictures >= 1 && guide.before.charts >= 1 && guide.before.failing === 0 && guide.after.errors === 0 && guide.after.failing >= 1 && guide.after.span !== guide.before.span && boat.errors === 0 && /chyba: 0/.test(boat.status) && /varování: 0/.test(boat.status) && boat.shift && boat.charts >= 3 && vibration.errors === 0 && vibration.wide === 0 && vibration.roots && !vibration.plusMinus && surfacesSample.errors === 0 && surfacesSample.maps >= 4 && surfacesSample.solids >= 6 && surfacesSample.verdicts >= 5 && fitDialog.ok && chartLook.ok && surfaceMap.ok && surface3d.shown && surface3d.turning && surface3d.kept && surface3d.errors === 0 && surfaceCut.line && surfaceCut.panel && surfaceCut.title && chartDialog.offered === 'plot(w(x, y), x: 0 m .. a, y: 0 m .. b)' && chartDialog.chosen === 'plot(w(x, y), x: 0 m .. a, y: 0 m .. b, kind: "surface")' && chartDialog.preview && chartDialog.added === 1,
   };
   const userChart = { namedArea, quadOk, quadTarget, quadEnd, quadEditing, ok: namedArea === 'Integral1=27' && quadOk && quadTarget > 0 && Math.abs(quadEnd - quadTarget) < 12 };
   // Relations: a circle solved by its name, a derivation following from a relation of theory, and the circle

@@ -35,6 +35,7 @@ Jádro je hotové, až projdou všechny bez kódu specifického pro jeden obor.
 
 | Složka | Obor | Co ověřuje |
 |---|---|---|
+| 00_Uvod_a_pruvodce/R24-pruvodce-police | průvodce | **úvodní list pro nového uživatele**: police na knihy (únosnost a průhyb prkna) a u každého oddílu tip, co Kalketa ukazuje: čísla s jednotkami a komentáři, posuvník rozpětí, dřevo z tabulky (`pick`), vzorce s dosazením, posudky se zdrojem, graf průhybu, řešič pro nejtenčí prkno, Podklady s ověřenými odvozeními a Pythonem; obrázek nakreslil pomocník na modelu Haiku |
 | 04_…/R1-nosnik | stavař | výběr profilu z tabulky, posudky, nejlehčí vyhovující profil |
 | 04_…/R20-deska-ohyb | stavař | reálný příklad (skripta ČVUT FSv, Příklady navrhování betonových konstrukcí podle EC2, př. 3): ohybová výztuž stropní desky třemi způsoby (odhad ramene, součinitele z tabulky P04 interpolací, přímý vzorec), posouzení únosnosti, výztuž za mezí kluzu, minimální výztuž, rozteče, rozdělovací výztuž; tabulky betonů (P03) a součinitelů (P04) ve vrstvě Data, **číslované oddíly jako ve skriptech** (`layout.json` vedle listu: `"headings": "numbered"`); teorie v Podkladech |
 | 03_…/05_Tepelne_vypocty/R2-vymenik-hridel | strojař | °C a rozdíly teplot, logaritmický teplotní spád, vlastní funkce, řešič pro nejmenší průměr, materiál z tabulky |

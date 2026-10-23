@@ -5,6 +5,7 @@ describe('sample calculations shipped with the program', () => {
   it('are the reference cases, named after their first heading', () => {
     const list = samples();
     expect(list.map((s) => `${s.field} ${s.id}`)).toEqual([
+      '00 R24-pruvodce-police',
       '01 R7-kvadraticka-rovnice',
       '01 R8-quadratic-equation',
       '01 R17-prolozeni-parabolou',

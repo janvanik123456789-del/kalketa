@@ -1,0 +1,51 @@
+{
+  "sheet": "pruvodce-police.cc",
+  "verifiedBy": "Samostatný výpočet: prostý nosník s rovnoměrným zatížením, M = q·L²/8, w = 5·q·L⁴/(384·E·I) s dotvarováním (1 + k_def), nejtenčí prkno z průhybu na mezi L/300; hodnoty dřeva C24 podle ČSN EN 338:2016, součinitele k_mod, γ_M, k_def podle ČSN EN 1995-1-1. Python v Podkladech počítá průhyb jinou cestou, dvojí numerickou integrací křivosti, a tloušťku půlením intervalu.",
+  "relativeTolerance": 1e-09,
+  "values": {
+    "f_md": {
+      "value": 11.076923076923077,
+      "unit": "MPa"
+    },
+    "q_k": {
+      "value": 312.84090000000003,
+      "unit": "N/m"
+    },
+    "q_d": {
+      "value": 422.33521500000006,
+      "unit": "N/m"
+    },
+    "M_d": {
+      "value": 33.78681720000001,
+      "unit": "N·m"
+    },
+    "σ_m": {
+      "value": 2.502727200000001,
+      "unit": "MPa"
+    },
+    "w": {
+      "value": 1.9974378451178458,
+      "unit": "mm"
+    },
+    "w_lim": {
+      "value": 2.666666666666667,
+      "unit": "mm"
+    },
+    "t_min": {
+      "value": 16.347098734582854,
+      "unit": "mm"
+    }
+  },
+  "checks": [
+    {
+      "label": "Ohyb prkna",
+      "passed": true,
+      "utilization": 0.22594065000000013
+    },
+    {
+      "label": "Průhyb police",
+      "passed": true,
+      "utilization": 0.7490391919191921
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "name": "Dreviny",
+  "key": "trida",
+  "columns": [
+    { "name": "trida", "type": "text" },
+    { "name": "drevo", "type": "text" },
+    { "name": "f_mk", "type": "quantity", "unit": "MPa" },
+    { "name": "E_0", "type": "quantity", "unit": "GPa" },
+    { "name": "ρ", "type": "quantity", "unit": "kg/m³" }
+  ],
+  "source": {
+    "title": "Třídy pevnosti rostlého dřeva (ČSN EN 338:2016, tab. 1 a 2): charakteristická pevnost v ohybu, střední modul pružnosti, střední hustota",
+    "retrieved": "2026-10-23",
+    "note": "Výběr tříd pro ukázku; dřevina u třídy je obvyklý příklad."
+  }
+}

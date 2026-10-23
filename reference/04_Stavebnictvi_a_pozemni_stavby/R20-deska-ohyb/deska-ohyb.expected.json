@@ -1,0 +1,103 @@
+{
+  "sheet": "deska-ohyb.cc",
+  "verifiedBy": "Příklad 3 skript ČVUT FSv Příklady navrhování betonových konstrukcí podle Eurokódu 2 (a_s,req = 605 / 565 / 565 mm²/m, Ø12/150 = 754 mm²/m, x = 20,5 mm, m_Rd = 52,7 kNm/m, ξ_bal = 0,617, m_cr = 19,3 kNm/m, a_s,rv = 121 → Ø6/200 = 141 mm²/m) a samostatný výpočet v Pythonu (ζ lineárně mezi řádky tabulky P04, ostatní čistou aritmetikou v N a mm). Skripta zaokrouhlují f_yd na 435 MPa, proto se jejich čísla liší v poslední platné číslici.",
+  "relativeTolerance": 1e-06,
+  "values": {
+    "f_cd": {
+      "value": 20.0,
+      "unit": "MPa"
+    },
+    "f_yd": {
+      "value": 434.7826086956522,
+      "unit": "MPa"
+    },
+    "ξ_bal": {
+      "value": 0.6168582375478927,
+      "unit": ""
+    },
+    "d": {
+      "value": 169.0,
+      "unit": "mm"
+    },
+    "a_s_req": {
+      "value": 604.8652202498357,
+      "unit": "mm²/m"
+    },
+    "μ": {
+      "value": 0.07002555932915513,
+      "unit": ""
+    },
+    "ζ": {
+      "value": 0.9639846644025069,
+      "unit": ""
+    },
+    "a_s_req_2": {
+      "value": 564.7171768674003,
+      "unit": "mm²/m"
+    },
+    "a_s_req_3": {
+      "value": 564.9032465918447,
+      "unit": "mm²/m"
+    },
+    "a_s_prov": {
+      "value": 753.9822368615504,
+      "unit": "mm²/m"
+    },
+    "x": {
+      "value": 20.488647740803,
+      "unit": "mm"
+    },
+    "m_Rd": {
+      "value": 52.714681499152356,
+      "unit": "kN·m/m"
+    },
+    "m_cr": {
+      "value": 19.333333333333332,
+      "unit": "kN·m/m"
+    },
+    "s_slab_max": {
+      "value": 400,
+      "unit": "mm"
+    },
+    "a_s_rv_req": {
+      "value": 120.97304404996714,
+      "unit": "mm²/m"
+    },
+    "a_s_rv": {
+      "value": 141.3716694115407,
+      "unit": "mm²/m"
+    }
+  },
+  "checks": [
+    {
+      "label": "Ohyb",
+      "passed": true,
+      "utilization": 0.7588018909047795
+    },
+    {
+      "label": "Výztuž za mezí kluzu",
+      "passed": true,
+      "utilization": 0.19653559705794343
+    },
+    {
+      "label": "Minimální výztuž",
+      "passed": true,
+      "utilization": 0.3667542472706434
+    },
+    {
+      "label": "Rozteč nosných prutů",
+      "passed": true,
+      "utilization": 0.375
+    },
+    {
+      "label": "Rozdělovací výztuž",
+      "passed": true,
+      "utilization": 0.8557092418411497
+    },
+    {
+      "label": "Rozteč rozdělovacích prutů",
+      "passed": true,
+      "utilization": 0.5
+    }
+  ]
+}

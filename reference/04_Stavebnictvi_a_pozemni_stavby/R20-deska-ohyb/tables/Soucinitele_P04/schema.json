@@ -1,0 +1,30 @@
+{
+  "name": "Soucinitele_P04",
+  "key": "μ",
+  "columns": [
+    {
+      "name": "μ",
+      "type": "quantity",
+      "unit": ""
+    },
+    {
+      "name": "ω",
+      "type": "quantity",
+      "unit": ""
+    },
+    {
+      "name": "ξ",
+      "type": "quantity",
+      "unit": ""
+    },
+    {
+      "name": "ζ",
+      "type": "quantity",
+      "unit": ""
+    }
+  ],
+  "source": {
+    "title": "Návrh obdélníkového průřezu namáhaného ohybem: momentový, poměrná výška tlačené oblasti a rameno vnitřních sil (obdélníkové rozdělení napětí, neomezené přetvoření výztuže; skripta ČVUT FSv, příloha P04)",
+    "retrieved": "2026-10-23"
+  }
+}

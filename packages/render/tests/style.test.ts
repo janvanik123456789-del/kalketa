@@ -47,6 +47,10 @@ describe('pages numbered by sections', () => {
   });
 
   it('give the printout its own pages: the sections marked, its script let in by its nonce only', () => {
+    const numbered = printHtml(evaluateSheet('# Deska\n## Zadání\nh := 200 mm\n## Návrh\n### Materiály\n### Výztuž\n## Posouzení'), { catalog: cs, registry: defaultRegistry, title: 'T', headings: 'numbered' });
+    // The title stays as it is, sections 1, 2, 3, their parts 2.1, 2.2.
+    expect([...numbered.matchAll(/<span class="section-number">([^<]+)<\/span> ([^<]+)</g)].map((m) => `${m[1]} ${m[2]}`)).toEqual(['1 Zadání', '2 Návrh', '2.1 Materiály', '2.2 Výztuž', '3 Posouzení']);
+    expect(numbered).not.toMatch(/section-number">[^<]*<\/span> Deska/);
     const html = printHtml(evaluateSheet('# Nosník\n## Zadání\nL := 5 m\n## Výpočet\nM := L·2 kN'), { catalog: cs, registry: defaultRegistry, title: 'T', pageNumbers: 'sections' });
     expect(html).toContain('<h3 data-section="1" data-section-title="Zadání">');
     const nonce = /script-src 'nonce-([0-9a-f]{32})'/.exec(html)?.[1];

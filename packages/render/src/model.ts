@@ -48,6 +48,8 @@ export interface PrintOptions {
   readonly equations?: EquationNumbers;
   /** How a check says its result: VYHOVUJE (default), VYHOVÍ, or a sign only. */
   readonly verdict?: VerdictForm;
+  /** Headings of sections numbered 1, 1.1 … or as written (default). */
+  readonly headings?: HeadingNumbers;
   /** Resolves a path inside the sheet (images/...) to a URL, e.g. a data: URI. */
   readonly resolveFile?: (path: string) => string | undefined;
   /** The editor shows everything: @hide does not hide there. */
@@ -93,6 +95,8 @@ export type PrintBlock =
       readonly position?: string;
       /** The label of the position as the sheet numbers it (1, 3a): its section of pages. */
       readonly positionLabel?: string;
+      /** The number of the section ("3.2") when the sheet numbers its headings. */
+      readonly number?: string;
     }
   | { readonly kind: 'paragraph'; readonly line: number; readonly text: string; readonly cites?: readonly string[]; readonly style?: TextStyle }
   | {
@@ -807,12 +811,33 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
     ...(options.subtitle ? { subtitle: options.subtitle } : {}),
     language: catalog.locale,
     ...(position !== 'none' && rows.length > 0 ? { summary: { position, rows, allPassed: rows.every((r) => r.passed) } } : {}),
-    blocks: numberEquations(blocks, result, options.equations ?? 'none'),
+    blocks: numberHeadings(numberEquations(blocks, result, options.equations ?? 'none'), options.headings ?? 'plain'),
     ...(beside.size > 0 ? { beside } : {}),
   };
 }
 
 export type EquationNumbers = 'none' | 'formulas' | 'results';
+
+/** Headings of sections as written (plain), or numbered as in a textbook: 1, 1.1, 1.2, 2 … */
+export type HeadingNumbers = 'plain' | 'numbered';
+
+/**
+ * Numbers of the sections, as the skripta and reports number them: the title (#) stays as it is, ## are 1, 2, 3,
+ * ### under them 1.1, 1.2 … A heading of a position keeps its own label (Pos. 1) and is not numbered.
+ */
+function numberHeadings(blocks: PrintBlock[], mode: HeadingNumbers): PrintBlock[] {
+  if (mode !== 'numbered') return blocks;
+  const counters: number[] = [];
+  return blocks.map((block) => {
+    if (block.kind !== 'heading' || block.level < 2 || block.position !== undefined) return block;
+    const depth = block.level - 1;
+    counters.length = depth;
+    for (let i = 0; i < depth - 1; i++) counters[i] ??= 0;
+    counters[depth - 1] = (counters[depth - 1] ?? 0) + 1;
+    // A ### before any ##: its section counts as 0, so it reads 0.1 rather than skipping a level.
+    return { ...block, number: counters.map((n) => n ?? 0).join('.') };
+  });
+}
 
 /** present: VYHOVUJE / NEVYHOVUJE; future: VYHOVÍ / NEVYHOVÍ (as ČVUT writes it); sign: ✓ / ✗ only. */
 export type VerdictForm = 'present' | 'future' | 'sign';

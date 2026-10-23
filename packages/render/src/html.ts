@@ -325,7 +325,7 @@ export function renderBlockHtml(block: PrintBlock, catalog: Catalog, options: Bl
   switch (block.kind) {
     case 'heading': {
       const level = Math.min(block.level + 1, 6);
-      const position = block.position ? `<span class="position">${esc(block.position)}</span> ` : '';
+      const position = block.position ? `<span class="position">${esc(block.position)}</span> ` : block.number ? `<span class="section-number">${esc(block.number)}</span> ` : '';
       return `<h${level}${styleAttribute(block.style)}${block.position ? ' class="position-head"' : ''}>${position}${textHtml(block.text)}</h${level}>`;
     }
     case 'paragraph':

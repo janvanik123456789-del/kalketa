@@ -64,6 +64,8 @@ export interface Layout {
   readonly equations?: 'none' | 'formulas' | 'results';
   /** How a check says its result: VYHOVUJE (when left out), VYHOVÍ, or a sign only. */
   readonly verdict?: 'present' | 'future' | 'sign';
+  /** Headings of sections as written (when left out), or numbered 1, 1.1 … as in skripta and reports. */
+  readonly headings?: 'plain' | 'numbered';
   /** Pages numbered through (when left out), or by sections: 2.1, 2.2, each section on a new page. */
   readonly pageNumbers?: 'continuous' | 'sections';
   /** "✓ odvození ověřeno" under derivations in the printout too (when left out), or on the screen only. */

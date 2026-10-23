@@ -15,6 +15,8 @@ const SAMPLE_TABLES = import.meta.glob<string>('../../../reference/*/**/tables/*
 const SAMPLE_IMAGES = import.meta.glob<string>('../../../reference/*/**/images/*.svg', { query: '?raw', import: 'default', eager: true });
 // Its sources layer (theory, in the Markdown of notes): podklady.md beside the sheet.
 const SAMPLE_NOTES = import.meta.glob<string>('../../../reference/*/**/podklady.md', { query: '?raw', import: 'default', eager: true });
+// How it is set, as a saved calculation keeps it (layout.json: numbered headings, equation numbers, style).
+const SAMPLE_LAYOUTS = import.meta.glob<string>('../../../reference/*/**/layout.json', { query: '?raw', import: 'default', eager: true });
 // The names of a subfield, kept beside its cases: nazev.json {"cs": "Kinematika a dynamika", "en": "Kinematics and dynamics"}.
 const SUBFIELD_NAMES = import.meta.glob<string>('../../../reference/*/*/nazev.json', { query: '?raw', import: 'default', eager: true });
 
@@ -110,7 +112,14 @@ export function exampleDocument(id = DEFAULT_SAMPLE, prefix = 'Vzor'): SheetDocu
   // Theory beside the calculation: a sources layer (Podklady), after the layers of a new sheet.
   const notes = Object.entries(SAMPLE_NOTES).find(([path]) => path.includes(`/${id}/`))?.[1];
   const layers = notes === undefined ? base.layers : [...base.layers, { id: 'sources', kind: 'sources' as const, visible: true, locked: false, appendix: false, text: notes }];
-  return { ...base, manifest: { ...base.manifest, language: languageOf(file) }, tables, files, layers };
+  let layout = base.layout;
+  const own = Object.entries(SAMPLE_LAYOUTS).find(([path]) => path.includes(`/${id}/`))?.[1];
+  try {
+    if (own) layout = { ...layout, ...(JSON.parse(own) as Partial<SheetDocument['layout']>) };
+  } catch {
+    // A layout that cannot be read: the sample is set as a new calculation.
+  }
+  return { ...base, manifest: { ...base.manifest, language: languageOf(file) }, layout, tables, files, layers };
 }
 
 /** quadratic-equation.en → en; a sheet without a language in its name is Czech. */

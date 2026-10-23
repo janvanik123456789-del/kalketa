@@ -9,7 +9,7 @@
 import type { SheetResult, UnitRegistry } from '@kalketa/core';
 import { formatDate, t, type Catalog } from '@kalketa/i18n';
 import { appendixHtml, renderBlocksHtml, renderHtml, type CalcStyle, type DerivationMarks, type PageNumbers } from './html.js';
-import { buildPrintDocument, type EquationNumbers, type VerdictForm } from './model.js';
+import { buildPrintDocument, type EquationNumbers, type HeadingNumbers, type VerdictForm } from './model.js';
 import { notesHtml } from './notes.js';
 
 export * from './math.js';
@@ -36,6 +36,8 @@ export interface PrintSettings {
   /** Equation numbers at the right (1), (2) …: none, of formulas, of every result. */
   readonly equations?: EquationNumbers;
   readonly verdict?: VerdictForm;
+  /** Headings of sections numbered 1, 1.1 … (layout.json headings), or as written. */
+  readonly headings?: HeadingNumbers;
   readonly resolveFile?: (path: string) => string | undefined;
   /** Layers printed after the sheet, in this order, as Appendix A, B, … */
   readonly appendices?: readonly PrintAppendix[];
@@ -100,6 +102,7 @@ export function printHtml(result: SheetResult, settings: PrintSettings): string 
     ...(settings.summary !== undefined ? { summary: settings.summary } : {}),
     ...(settings.equations !== undefined ? { equations: settings.equations } : {}),
     ...(settings.verdict !== undefined ? { verdict: settings.verdict } : {}),
+    ...(settings.headings !== undefined ? { headings: settings.headings } : {}),
   });
 
   // With pages by sections each appendix is one: A, B, …

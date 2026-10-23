@@ -1,0 +1,29 @@
+{
+  "name": "Betony",
+  "key": "trida",
+  "columns": [
+    {
+      "name": "trida",
+      "type": "text"
+    },
+    {
+      "name": "f_ck",
+      "type": "quantity",
+      "unit": "MPa"
+    },
+    {
+      "name": "f_cm",
+      "type": "quantity",
+      "unit": "MPa"
+    },
+    {
+      "name": "f_ctm",
+      "type": "quantity",
+      "unit": "MPa"
+    }
+  ],
+  "source": {
+    "title": "Pevnost betonu v tlaku a tahu (EN 1992-1-1; skripta ČVUT FSv, Příklady navrhování betonových konstrukcí podle Eurokódu 2, příloha P03)",
+    "retrieved": "2026-10-23"
+  }
+}

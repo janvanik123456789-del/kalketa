@@ -15,7 +15,7 @@ import type { TableRead } from '../tables/table.js';
 import { quantity, type MatrixValue, type Quantity, type Value, type VectorValue } from '../values/value.js';
 import { dateValue, isDate } from '../values/date.js';
 import { asBoolean, asComplex, asQuantity } from './coerce.js';
-import { BUILTIN_CONSTANTS, callFunction, FUNCTION_NAMES } from './functions.js';
+import { BUILTIN_CONSTANTS, callFunction, FUNCTION_NAME_SET } from './functions.js';
 import { composedHint, rootHint, unitNames, type UnitNames } from '../units/compose.js';
 import { PREFERRED_UNITS } from '../units/registry.js';
 import { callCalculus, isBindingCall } from './calculus.js';
@@ -44,6 +44,22 @@ export interface EvalContext {
 
 /** Relative tolerance for comparisons, so 0.1 + 0.2 == 0.3 holds. */
 const COMPARE_EPSILON = 1e-12;
+
+/** While above 0, products and powers compose no unit to show (see withoutShownUnits). */
+let hintsOff = 0;
+
+/**
+ * Runs f for values whose units are never shown (the points of an integral, of the search of an extreme): the
+ * numbers and dimensions are the same, only the composing of the unit to show (kN·m from kN/m · m²) is left out.
+ */
+export function withoutShownUnits<T>(f: () => T): T {
+  hintsOff++;
+  try {
+    return f();
+  } finally {
+    hintsOff--;
+  }
+}
 
 /** Longest evaluation of one line of a sheet: a line that would compute for ever fails, the window stays alive. */
 export const LINE_TIME_LIMIT_MS = 15_000;
@@ -139,7 +155,7 @@ function evaluateRaw(expr: Expr, ctx: EvalContext): Value {
       if (expr.name === 'polyval') return polyvalCall(expr, ctx, evaluate);
       if (BINDING_FUNCTIONS.has(expr.name) && (expr.name !== 'sum' || isBindingCall(expr))) return callCalculus(expr, ctx, evaluate);
       if (ctx.blocks?.has(expr.name)) return callBlock(expr, ctx);
-      if (!FUNCTION_NAMES.includes(expr.name)) return applyFunction(lookupFunction(expr, ctx), expr, ctx, evaluate);
+      if (!FUNCTION_NAME_SET.has(expr.name)) return applyFunction(lookupFunction(expr, ctx), expr, ctx, evaluate);
       const extra = expr.named[0];
       if (extra) fail('E-NAMED-ARG', extra.nameSpan, { function: expr.name, argument: extra.name, problem: 'unknown' });
       return callFunction(expr, (arg) => evaluate(arg, ctx));
@@ -335,10 +351,11 @@ function arithmetic(op: BinaryOperator, left: Value, right: Value, leftExpr: Exp
       warnOnAbsoluteTemperature(a, leftExpr.span, ctx);
       warnOnAbsoluteTemperature(b, rightExpr.span, ctx);
       // Scaling by a plain number keeps the unit: 1.35 · g_k stays in kN/m.
-      const scaled = scaledOperand(op, a, b);
-      const combined = scaled ? undefined : samePowerHint(op, a, b);
+      // Values no one sees (points of an integral) need no unit to show: composing it is most of the work.
+      const scaled = hintsOff ? undefined : scaledOperand(op, a, b);
+      const combined = scaled || hintsOff ? undefined : samePowerHint(op, a, b);
       // Different units compose: kN/m · m² = kN·m (not joules, which have the same dimension).
-      const composed = scaled || combined || !a.hint || !b.hint || a.absolute || b.absolute ? undefined : composedHint(op, a.hint, b.hint, ownNames(ctx.registry), op === '*' ? a.si * b.si : a.si / b.si);
+      const composed = hintsOff || scaled || combined || !a.hint || !b.hint || a.absolute || b.absolute ? undefined : composedHint(op, a.hint, b.hint, ownNames(ctx.registry), op === '*' ? a.si * b.si : a.si / b.si);
       const hint = keptHint(scaled) ? { hint: scaled!.hint! } : combined ? { hint: combined } : composed ? { hint: composed } : {};
       if (op === '*') return quantity(a.si * b.si, multiplyDims(a.dim, b.dim), hint);
       if (b.si === 0) fail('E-DIV-ZERO', rightExpr.span);
@@ -347,7 +364,7 @@ function arithmetic(op: BinaryOperator, left: Value, right: Value, leftExpr: Exp
     case '^': {
       if (!isDimensionless(b.dim)) fail('E-POWER-DIM', rightExpr.span, { dim: baseUnitSymbol(b.dim) });
       warnOnAbsoluteTemperature(a, leftExpr.span, ctx);
-      return quantity(a.si ** b.si, powerDim(a.dim, b.si), poweredHint(a, b.si));
+      return quantity(a.si ** b.si, powerDim(a.dim, b.si), hintsOff ? {} : poweredHint(a, b.si));
     }
     default:
       return compare(op, a, b, span);

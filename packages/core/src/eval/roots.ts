@@ -144,35 +144,87 @@ export function extremum(call: CallExpr, f: (si: number) => Quantity, low: Quant
     }
   };
   const [a, b] = low.si <= high.si ? [low.si, high.si] : [high.si, low.si];
-  const steps = 400;
-  let best = 0;
-  let bestValue = Infinity;
+  // The whole interval is scanned, so the global extreme is found, not the nearest one: 400 points when f is
+  // cheap; when one value costs more (an integral up to x), as many as fit in about a second, at least 40.
+  const started = performance.now();
+  const first = [g(a), g(b), g((a + b) / 2)];
+  const cost = (performance.now() - started) / 3;
+  const steps = Math.max(40, Math.min(400, Math.floor(SCAN_BUDGET_MS / Math.max(cost, 1e-3))));
   const points = Array.from({ length: steps + 1 }, (_, i) => a + ((b - a) * i) / steps);
-  points.forEach((x, i) => {
-    const v = g(x);
-    if (v < bestValue) [best, bestValue] = [i, v];
-  });
-  if (!Number.isFinite(bestValue)) return fail('E-SOLVE-NO-ROOT', call.span);
-  // Golden-section search between the neighbours of the best point.
-  let lo = points[Math.max(0, best - 1)]!;
-  let hi = points[Math.min(steps, best + 1)]!;
-  const ratio = (Math.sqrt(5) - 1) / 2;
-  let c = hi - ratio * (hi - lo);
-  let d = lo + ratio * (hi - lo);
-  let gc = g(c);
-  let gd = g(d);
-  for (let i = 0; i < 200 && hi - lo > 1e-13 * Math.max(Math.abs(lo), Math.abs(hi), (b - a) * 1e-3); i++) {
-    if (gc <= gd) {
-      [hi, d, gd] = [d, c, gc];
-      c = hi - ratio * (hi - lo);
-      gc = g(c);
+  const values = points.map((x, i) => (i === 0 ? first[0]! : i === steps ? first[1]! : 2 * i === steps ? first[2]! : g(x)));
+  if (!values.some(Number.isFinite)) return fail('E-SOLVE-NO-ROOT', call.span);
+  // The two lowest dips of the scan, each sharpened between its neighbours: a coarse scan may rank them wrongly.
+  const dips = values
+    .map((v, i) => ({ i, v }))
+    .filter(({ i, v }) => Number.isFinite(v) && v <= (values[i - 1] ?? Infinity) && v <= (values[i + 1] ?? Infinity))
+    .sort((p, q) => p.v - q.v)
+    .slice(0, 2);
+  let best = { x: points[dips[0]!.i]!, v: dips[0]!.v };
+  for (const dip of dips) {
+    // To 1e-8 of the interval: more than the digits shown, and no chase after noise of an f computed numerically.
+    const sharp = brentMinimum(g, points[Math.max(0, dip.i - 1)]!, points[Math.min(steps, dip.i + 1)]!, 1e-8 * (b - a || Math.abs(a) || 1));
+    if (sharp.v < best.v) best = sharp;
+    if (dip.v < best.v) best = { x: points[dip.i]!, v: dip.v };
+  }
+  return quantity(best.x, low.dim, low.hint ? { hint: low.hint } : {});
+}
+
+/** How long the scan of minimize/maximize may take when f is expensive (milliseconds). */
+const SCAN_BUDGET_MS = 1000;
+
+/**
+ * The minimum of g between lo and hi by Brent's method (parabolic steps, golden section where they fail):
+ * far fewer values of g than the golden section alone.
+ */
+function brentMinimum(g: (x: number) => number, lo: number, hi: number, tol: number): { x: number; v: number } {
+  const golden = 0.3819660112501051;
+  let [a, b] = [lo, hi];
+  let x = a + golden * (b - a);
+  let w = x;
+  let v = x;
+  let fx = g(x);
+  let fw = fx;
+  let fv = fx;
+  let d = 0;
+  let e = 0;
+  for (let i = 0; i < 100; i++) {
+    const m = (a + b) / 2;
+    const tol1 = tol + 1e-12 * Math.abs(x);
+    const tol2 = 2 * tol1;
+    if (Math.abs(x - m) <= tol2 - (b - a) / 2) break;
+    let parabolic = false;
+    if (Math.abs(e) > tol1) {
+      // A parabola through x, w and v.
+      const r = (x - w) * (fx - fv);
+      let q = (x - v) * (fx - fw);
+      let p = (x - v) * q - (x - w) * r;
+      q = 2 * (q - r);
+      if (q > 0) p = -p;
+      q = Math.abs(q);
+      if (Math.abs(p) < Math.abs(0.5 * q * e) && p > q * (a - x) && p < q * (b - x)) {
+        e = d;
+        d = p / q;
+        const u = x + d;
+        if (u - a < tol2 || b - u < tol2) d = x < m ? tol1 : -tol1;
+        parabolic = true;
+      }
+    }
+    if (!parabolic) {
+      e = (x < m ? b : a) - x;
+      d = golden * e;
+    }
+    const u = Math.abs(d) >= tol1 ? x + d : x + (d > 0 ? tol1 : -tol1);
+    const fu = g(u);
+    if (fu <= fx) {
+      if (u < x) b = x;
+      else a = x;
+      [v, fv, w, fw, x, fx] = [w, fw, x, fx, u, fu];
     } else {
-      [lo, c, gc] = [c, d, gd];
-      d = lo + ratio * (hi - lo);
-      gd = g(d);
+      if (u < x) a = u;
+      else b = u;
+      if (fu <= fw || w === x) [v, fv, w, fw] = [w, fw, u, fu];
+      else if (fu <= fv || v === x || v === w) [v, fv] = [u, fu];
     }
   }
-  const candidates = [points[best]!, (lo + hi) / 2];
-  const x = candidates.reduce((p, q) => (g(q) < g(p) ? q : p));
-  return quantity(x, low.dim, low.hint ? { hint: low.hint } : {});
+  return { x, v: fx };
 }

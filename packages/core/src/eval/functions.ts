@@ -23,6 +23,8 @@ export const FUNCTION_NAMES: readonly string[] = builtinFunctions
   .all()
   .filter((def) => def.call)
   .map((def) => def.name);
+/** The same as a set: asked at every call of a function (inside an integral, many thousand times). */
+export const FUNCTION_NAME_SET: ReadonlySet<string> = new Set(FUNCTION_NAMES);
 
 export function callFunction(call: CallExpr, evaluate: Evaluate): Value {
   return builtinFunctions.call(call, evaluate);

@@ -12,14 +12,14 @@
  * expression over the variable (as in EngineeringPaper.xyz).
  */
 
-import { diagnostic, fail, type Span } from '../diagnostics.js';
+import { CalcError, diagnostic, fail, type Span } from '../diagnostics.js';
 import type { Expr, NamedArg } from '../lang/ast.js';
 import { divideDims, isDimensionless, multiplyDims, powerDim, sameDim } from '../units/dimension.js';
 import { baseUnitSymbol } from '../units/display.js';
 import type { ResolvedUnit } from '../units/unitExpr.js';
 import { quantity, type Quantity, type Value } from '../values/value.js';
 import { asQuantity } from './coerce.js';
-import type { EvalContext } from './evaluator.js';
+import { withoutShownUnits, type EvalContext } from './evaluator.js';
 import { extremum, rootsOf } from './roots.js';
 import { withBareZero } from './zero.js';
 
@@ -29,6 +29,8 @@ type Evaluate = (expr: Expr, ctx: EvalContext) => Value;
 /** Relative accuracy aimed at by the integral. */
 const INTEGRAL_TOLERANCE = 1e-10;
 const MAX_DEPTH = 40;
+/** The narrowest part of the interval divided further around a jump of the integrand (relative to the whole). */
+const JUMP_WIDTH = 1e-9;
 const MAX_EVALUATIONS = 200_000;
 const MAX_TERMS = 1_000_000;
 
@@ -56,7 +58,9 @@ export function callCalculus(call: CallExpr, ctx: EvalContext, evaluate: Evaluat
     case 'maximize': {
       const { body, variable } = parts(call, []);
       const [low, high] = range(variable, call, ctx, evaluate);
-      return extremum(call, asFunction(body, variable.name, low, ctx, evaluate, call.span), low, high);
+      const f = asFunction(body, variable.name, low, ctx, evaluate, call.span);
+      // Only the place of the extreme is kept, in the unit of the interval: no unit of f is shown.
+      return extremum(call, (x) => withoutShownUnits(() => f(x)), low, high);
     }
     default:
       return sum(call, ctx, evaluate);
@@ -109,9 +113,20 @@ function integral(call: CallExpr, ctx: EvalContext, evaluate: Evaluate): Value {
   let evaluations = 0;
   const g = (x: number) => {
     evaluations++;
-    const value = f(x);
+    // The first point gives the unit of the result; the others only their numbers.
+    const value = sample ? withoutShownUnits(() => f(x)) : f(x);
     sample ??= value;
     return value.si;
+  };
+  /** f at an end of an interval, where the rule has no point; undefined where f has no value (1/√x at 0). */
+  const atEnd = (x: number): number | undefined => {
+    try {
+      const v = g(x);
+      return Number.isFinite(v) ? v : undefined;
+    } catch (err) {
+      if (err instanceof CalcError && err.diagnostic.code !== 'E-TIME-LIMIT') return undefined;
+      throw err;
+    }
   };
   const rule = (a: number, b: number): { kronrod: number; error: number; size: number } => {
     const centre = (a + b) / 2;
@@ -121,15 +136,29 @@ function integral(call: CallExpr, ctx: EvalContext, evaluate: Evaluate): Value {
     let gauss = WG[3]! * fc;
     // ∫|f|: how big the values are, whatever their sum (a work over a turn is nearly zero).
     let size = WGK[7]! * Math.abs(fc);
+    // The two outermost points on each side: the trend of f towards the ends.
+    const outer: number[] = [];
     for (let j = 0; j < 7; j++) {
       const dx = half * XGK[j]!;
       const [left, right] = [g(centre - dx), g(centre + dx)];
+      if (j < 2) outer.push(left, right);
       const sumPair = left + right;
       kronrod += WGK[j]! * sumPair;
       size += WGK[j]! * (Math.abs(left) + Math.abs(right));
       if (j % 2 === 1) gauss += WG[(j - 1) / 2]! * sumPair;
     }
-    return { kronrod: kronrod * half, error: Math.abs((kronrod - gauss) * half), size: Math.abs(size * half) };
+    // Between the outermost points and the ends neither rule looks: a jump there (a condition switching f just
+    // before the upper limit) is seen only by f at the ends. f there far off the trend of the two outermost
+    // points (more than ten times their own step) is a jump, and counts as an error of the size of the gap.
+    const gap = half * (1 - XGK[0]!);
+    const reach = (1 - XGK[0]!) / (XGK[0]! - XGK[1]!);
+    const jumpAt = (end: number | undefined, last: number, before: number) => {
+      if (end === undefined) return 0;
+      const off = Math.abs(end - (last + (last - before) * reach));
+      return off > 10 * Math.abs(last - before) + 1e-12 * (Math.abs(end) + Math.abs(last)) ? Math.abs(end - last) : 0;
+    };
+    const jump = Math.max(jumpAt(atEnd(a), outer[0]!, outer[2]!), jumpAt(atEnd(b), outer[1]!, outer[3]!));
+    return { kronrod: kronrod * half, error: Math.max(Math.abs((kronrod - gauss) * half), jump * gap), size: Math.abs(size * half) };
   };
   let accurate = true;
   const whole = rule(low.si, high.si);
@@ -138,6 +167,9 @@ function integral(call: CallExpr, ctx: EvalContext, evaluate: Evaluate): Value {
   const tolerance = Math.max(INTEGRAL_TOLERANCE * Math.max(Math.abs(whole.kronrod), whole.size), 1e-300);
   const adapt = (a: number, b: number, estimate: { kronrod: number; error: number; size: number }, depth: number): number => {
     if (estimate.error <= tolerance * Math.abs((b - a) / (high.si - low.si)) || estimate.error === 0) return estimate.kronrod;
+    // A jump of f (a condition switching it) never meets the criterion above, as its error shrinks only with the
+    // width: an interval this narrow adds less than the accuracy aimed at, and is not divided further.
+    if (Math.abs(b - a) <= JUMP_WIDTH * Math.abs(high.si - low.si) && estimate.error <= 4 * JUMP_WIDTH * whole.size) return estimate.kronrod;
     // Too deep or too many points: the estimate stands, with a warning.
     if (depth >= MAX_DEPTH || evaluations > MAX_EVALUATIONS) {
       accurate = false;

@@ -49,6 +49,15 @@ describe('minimize and maximize', () => {
     const { result } = last('x_min := minimize(x^4 - 2·x^2 + 0.3·x, x: -2 .. 2)');
     expect(result.value?.type === 'quantity' && result.value.si).toBeCloseTo(-1.03558, 4);
   });
+
+  it('find the extreme of an integral up to x of a function with jumps in reasonable time', () => {
+    // E grows while the work done is positive (up to π), then falls; f jumps at π and 2π.
+    const start = performance.now();
+    const { result, codes } = last('M_j(t) := if(sin(t) > 0, 3·sin(t)^2 + 1, -2)\nE(x) := integral(M_j(t), t: 0 .. x)\nx_e := maximize(E(x), x: 0 .. 2·π)');
+    expect(codes).toEqual([]);
+    expect(result.value?.type === 'quantity' && result.value.si).toBeCloseTo(Math.PI, 6);
+    expect(performance.now() - start).toBeLessThan(5000);
+  });
 });
 
 describe('systems without a good first guess', () => {

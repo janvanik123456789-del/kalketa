@@ -11,6 +11,7 @@ describe('sample calculations shipped with the program', () => {
       '01 R19-plochy-3d',
       '02 R10-stlaceni-hydrostatickym-tlakem',
       '02 R13-rychlost-z-namereneho-zrychleni',
+      '02 R23-prechazeni-po-lodce',
       '03 R9-klikovy-mechanismus',
       '03 R16-raketa',
       '03 R11-napeti-v-nosniku',

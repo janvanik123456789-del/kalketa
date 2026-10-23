@@ -1,0 +1,33 @@
+{
+  "sheet": "prechazeni-po-lodce.cc",
+  "verifiedBy": "Sbírka řešených úloh z fyziky, úloha 1136 (reseneulohy.cz/1136; původně D. Mandíková, M. Rojko, MFF UK 1994): x = m·L/(M + m) ≐ 1,03 m. Samostatně: rovnost hybností integrovaná krok po kroku pro chůzi s proměnnou rychlostí a zastávkou (Python v Podkladech), týž posun loďky.",
+  "relativeTolerance": 1e-09,
+  "values": {
+    "x": {
+      "value": 1.0294117647058822,
+      "unit": "m"
+    },
+    "x_T1": {
+      "value": 1.7647058823529411,
+      "unit": "m"
+    },
+    "x_T2": {
+      "value": 1.7647058823529411,
+      "unit": "m"
+    },
+    "s_c": {
+      "value": 1.4705882352941178,
+      "unit": "m"
+    }
+  },
+  "checks": [
+    {
+      "label": "Těžiště zůstalo na místě",
+      "passed": true
+    },
+    {
+      "label": "Posunutí člověka a loďky se vyváží",
+      "passed": true
+    }
+  ]
+}

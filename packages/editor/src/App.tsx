@@ -2496,6 +2496,18 @@ export function App() {
                       result={result}
                       statement={selected}
                       line={selectedLine()}
+                      // An option of a function changed in Details: written into the line being typed, else into the
+                      // selected line of the sheet.
+                      onLine={(next) => {
+                        const area = document.querySelector<HTMLTextAreaElement>('textarea.row-editor');
+                        if (area) {
+                          area.setRangeText(next, 0, area.value.length, 'end');
+                          area.dispatchEvent(new Event('input', { bubbles: true }));
+                          return;
+                        }
+                        const at = selected !== undefined ? result.statements[selected]?.statement.span.line : undefined;
+                        if (at !== undefined) setLayerText(layer, replaceLines(text, at, at, next), `${layer.id}:option:${at}`);
+                      }}
                       catalog={ui}
                       decimalComma={decimalComma}
                       onLayer={activate}

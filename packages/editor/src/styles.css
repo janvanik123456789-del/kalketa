@@ -387,6 +387,11 @@ img.thumb { max-height: 28px; max-width: 48px; vertical-align: middle; }
 .inspector .muted, .muted { color: var(--muted); }
 .how-to-write-function { margin-bottom: 10px; }
 .how-to-write-function p { margin: 2px 0 4px; font-size: 13px; }
+.function-options { display: flex; flex-direction: column; gap: 4px; margin: 4px 0 6px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 4px; background: #fbfcfd; font-size: 13px; }
+.function-options label { display: flex; align-items: center; gap: 6px; }
+.function-options label > span:first-child { min-width: 90px; color: var(--muted); }
+.function-options .option-flag > span { color: inherit; }
+.function-options select { flex: 1; min-width: 0; }
 .how-to-write-signature { font: 600 13px Consolas, "Cascadia Mono", monospace; }
 .how-to-write-example { font-size: 12px; }
 .inspector .help { margin-top: 24px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 8px; }

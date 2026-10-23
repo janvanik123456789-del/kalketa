@@ -1850,6 +1850,18 @@ async function layersWithRealInput(picture: string) {
   const solveHelp = (await contents.executeJavaScript(`(document.querySelector('.function-help-text h3')?.textContent ?? '') + '|' + (document.querySelector('.function-help-value')?.textContent ?? '')`)) as string;
   await pressKey('Escape');
   await pause(200);
+  // Details serve the options of the line: the set of the solve shown in a choice, the roots of a chart as a switch.
+  await clickOn('textarea.row-editor');
+  await pause(400);
+  const domainShown = (await contents.executeJavaScript(`document.querySelector('.inspector .option-domain')?.value ?? ''`)) as string;
+  await pressKey('End');
+  await pressKey('Enter');
+  await typeText('plot(x^2 - x - 6, x: -3 .. 4)');
+  await pause(400);
+  await clickOn('.inspector [data-option="plot.roots"]');
+  await pause(500);
+  await takePicture(picture.replace(/[.]png$/, '-options.png'));
+  const rootsSwitched = (await contents.executeJavaScript(`(document.querySelector('textarea.row-editor')?.value ?? '').includes('roots: true') || [...document.querySelectorAll('.layer-view.active .block.chart')].some((c) => c.textContent.includes('x = 3'))`)) as boolean;
   await clickOn('.statusbar');
   await pause(500);
   await takePicture(picture.replace(/[.]png$/, '-paper.png'));
@@ -1861,6 +1873,7 @@ async function layersWithRealInput(picture: string) {
     const natural = [...document.querySelectorAll('.layer-view.active .page .row')].find((r) => r.textContent.includes('ℕ'));
     const naturalText = natural ? natural.textContent.replace(/\\s+/g, '') : '';
     if (${JSON.stringify(numberSets)} !== 'ℝ ℂ ℕ ℕ₀ ℤ') return false;
+    if (${JSON.stringify(domainShown)} !== 'ℕ' || !${rootsSwitched}) return false;
     if (${JSON.stringify(solveHowTo)} !== 'solve x: a == b' || !${JSON.stringify(solveHelp)}.startsWith('solve x: a == b|') || !${JSON.stringify(solveHelp)}.includes('x = 4 cm')) return false;
     if (!natural || natural.classList.contains('has-error') || !naturalText.includes('=3') || !/=−2\\W*nevyhovuje/.test(naturalText)) return false;
     return !!row && !row.classList.contains('has-error') && text.includes('∈ℝ') && text.includes('−10=0') && text.includes('D=') && text.includes('=216') && text.includes('±') && text.includes('=1,07');

@@ -8,12 +8,15 @@ import { toDecimalComma, traceStatement, type SheetResult, type TraceNode } from
 import { formatDiagnostic, formatValue, t, type Catalog } from '@kalketa/i18n';
 import { useEffect, useState } from 'react';
 import { helpNamesOfLine, helpOf } from '../logic/functionHelp.js';
+import { currentOption, FUNCTION_OPTIONS, setOption, SOLVE_DOMAINS, solveDomain, withSolveDomain } from '../logic/functionOptions.js';
 
 interface Props {
   readonly result: SheetResult;
   readonly statement: number | undefined;
   /** The text of the selected line: its functions are explained. */
   readonly line?: string;
+  /** Rewrites the line being typed, else the selected one (an option of its function changed); none: no switches. */
+  onLine?(text: string): void;
   readonly catalog: Catalog;
   /** Formulas are shown in the user's notation (50,5). */
   readonly decimalComma: boolean;
@@ -27,58 +30,114 @@ interface Props {
  * solve …); undefined when no line is edited. Followed a moment after the user stops typing or moving, and the
  * pane drawn again only when it changes: typing stays as quick as without it.
  */
-function useEditedHelp(): readonly string[] | undefined {
-  const [names, setNames] = useState<string | undefined>();
+function useEditedHelp(): { readonly names: readonly string[]; readonly text: string } | undefined {
+  const [edited, setEdited] = useState<{ names: string; text: string } | undefined>();
   useEffect(() => {
     let timer: number | undefined;
     const read = () => {
       const area = document.activeElement;
-      if (!(area instanceof HTMLTextAreaElement) || !area.classList.contains('row-editor')) return setNames(undefined);
-      setNames(helpNamesOfLine(area.value, area.selectionStart).join(' '));
+      if (!(area instanceof HTMLTextAreaElement) || !area.classList.contains('row-editor')) return setEdited(undefined);
+      const names = helpNamesOfLine(area.value, area.selectionStart).join(' ');
+      setEdited((old) => (old?.names === names && old.text === area.value ? old : { names, text: area.value }));
     };
     const later = () => {
       window.clearTimeout(timer);
       timer = window.setTimeout(read, 150);
     };
-    const events = ['keyup', 'click', 'focusin', 'focusout'] as const;
+    const events = ['keyup', 'click', 'focusin', 'focusout', 'input'] as const;
     for (const e of events) document.addEventListener(e, later, true);
     return () => {
       window.clearTimeout(timer);
       for (const e of events) document.removeEventListener(e, later, true);
     };
   }, []);
-  return names === undefined ? undefined : names.split(' ').filter(Boolean);
+  return edited && { names: edited.names.split(' ').filter(Boolean), text: edited.text };
 }
 
-/** How the functions of the line (and the line itself: solve …) are written: the one at the cursor first, while typing. */
-function HowToWrite({ names, catalog, decimalComma }: { names: readonly string[]; catalog: Catalog; decimalComma: boolean }) {
+/**
+ * How the functions of the line (and the line itself: solve …) are written: the one at the cursor first, while
+ * typing. Of the selected line (`edit` given) their options too, as switches that rewrite it.
+ */
+function HowToWrite({ names, catalog, decimalComma, edit }: { names: readonly string[]; catalog: Catalog; decimalComma: boolean; edit?: { line: string; onLine(text: string): void } }) {
   const helps = names.flatMap((name) => helpOf(name, catalog, decimalComma) ?? []);
   if (helps.length === 0) return null;
   return (
     <section className="how-to-write">
       <h3>{t(catalog, 'editor.howToWrite')}</h3>
-      {helps.slice(0, 3).map((help) => {
-        return (
-          <div key={help.name} className="how-to-write-function">
-            <code className="how-to-write-signature">{help.signature}</code>
-            <p>{help.summary}</p>
-            <pre className="how-to-write-example">{help.shortExample}</pre>
-          </div>
-        );
-      })}
+      {helps.slice(0, 3).map((help) => (
+        <div key={help.name} className="how-to-write-function">
+          <code className="how-to-write-signature">{help.signature}</code>
+          <p>{help.summary}</p>
+          {edit && <Options name={help.name} catalog={catalog} {...edit} />}
+          <pre className="how-to-write-example">{help.shortExample}</pre>
+        </div>
+      ))}
     </section>
   );
 }
 
-export function Inspector({ result, statement, line = '', catalog, decimalComma, onSelect, onLayer }: Props) {
-  const functions = useEditedHelp() ?? helpNamesOfLine(line);
+/** The options of a function of the selected line (or the set of its solve), each change written into the line. */
+function Options({ name, catalog, line, onLine }: { name: string; catalog: Catalog; line: string; onLine(text: string): void }) {
+  if (name === 'solve') {
+    const domain = solveDomain(line);
+    if (domain === undefined) return null;
+    return (
+      <div className="function-options">
+        <label>
+          <span>{t(catalog, 'opt.domain')}</span>
+          <select className="option-domain" value={domain} onChange={(e) => onLine(withSolveDomain(line, e.target.value))}>
+            {SOLVE_DOMAINS.map((d) => (
+              <option key={d.value} value={d.value}>
+                {d.value ? `${d.value} – ${t(catalog, d.label)}` : t(catalog, d.label)}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+    );
+  }
+  const options = FUNCTION_OPTIONS[name];
+  if (!options) return null;
+  return (
+    <div className="function-options">
+      {options.map((option) =>
+        option.kind === 'flag' ? (
+          <label key={option.name} className="option-flag">
+            <input type="checkbox" data-option={`${name}.${option.name}`} checked={currentOption(line, name, option) === 'true'} onChange={(e) => onLine(setOption(line, name, option, e.target.checked ? 'true' : 'false'))} />
+            <span>{t(catalog, option.label)}</span>
+          </label>
+        ) : (
+          <label key={option.name}>
+            <span>{t(catalog, option.label)}</span>
+            <select data-option={`${name}.${option.name}`} value={currentOption(line, name, option)} onChange={(e) => onLine(setOption(line, name, option, e.target.value))}>
+              {/* A value written that the list does not offer (poly7) stays chosen. */}
+              {!option.values.some((v) => v.value === currentOption(line, name, option)) && <option value={currentOption(line, name, option)}>{currentOption(line, name, option)}</option>}
+              {option.values.map((v) => (
+                <option key={v.value} value={v.value}>
+                  {t(catalog, v.label)}
+                </option>
+              ))}
+            </select>
+          </label>
+        ),
+      )}
+    </div>
+  );
+}
+
+export function Inspector({ result, statement, line = '', onLine, catalog, decimalComma, onSelect, onLayer }: Props) {
+  const typed = useEditedHelp();
+  const functions = typed?.names ?? helpNamesOfLine(line);
+  // The switches act on the line being typed (its text in the editor) or on the selected one.
+  const current = typed?.text ?? line;
+  const edit = onLine && current ? { line: current, onLine } : undefined;
   const r = statement !== undefined ? result.statements[statement] : undefined;
   if (!r || (r.statement.kind !== 'definition' && r.statement.kind !== 'display' && r.statement.kind !== 'check' && r.statement.kind !== 'invalid')) {
     return (
       <aside className="inspector">
         <h2>{t(catalog, 'editor.details')}</h2>
         {functions.length === 0 && <p className="muted">{t(catalog, 'editor.nothingSelected')}</p>}
-        <HowToWrite names={functions} catalog={catalog} decimalComma={decimalComma} />
+        <HowToWrite names={functions} catalog={catalog} decimalComma={decimalComma} {...(edit ? { edit } : {})} />
         <p className="help">{t(catalog, 'editor.help')}</p>
       </aside>
     );
@@ -109,7 +168,7 @@ export function Inspector({ result, statement, line = '', catalog, decimalComma,
           </ul>
         </section>
       )}
-      <HowToWrite names={functions} catalog={catalog} decimalComma={decimalComma} />
+      <HowToWrite names={functions} catalog={catalog} decimalComma={decimalComma} {...(edit ? { edit } : {})} />
       <p className="help">{t(catalog, 'editor.help')}</p>
     </aside>
   );

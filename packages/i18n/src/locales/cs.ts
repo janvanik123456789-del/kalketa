@@ -88,6 +88,7 @@ export const cs: Catalog = {
     'E-FIT-FORM': 'fit se zapisuje jako fit(y, x: řada, kind: "linear"): y jsou naměřené hodnoty, x řada stejně dlouhá.',
     'E-FIT-KIND': 'Druh proložení „{kind}“ neznám. Možné: {kinds}.',
     'E-FIT-POINTS': 'Na toto proložení je potřeba aspoň {needed} bodů, je jich {found}.',
+    'E-FIT-FORM-SIZE': 'Vlastní tvar křivky (form: […]) může mít nejvýš {most} funkcí.',
     'E-POLYFIT-DEGREE': 'Stupeň polynomu v polyfit(x, y, n) musí být celé číslo 1 až {most}.',
     'E-INTERP-METHOD': 'Metodu „{method}“ neznám. Možné: {methods}.',
     'E-INTERP-POINTS': 'Interpolace potřebuje aspoň dva body a stejně dlouhé řady x a y (x má {x}, y má {y}).',

@@ -88,6 +88,7 @@ export const en: Catalog = {
     'E-FIT-FORM': 'fit is written fit(y, x: series, kind: "linear"): y the measured values, x a series as long.',
     'E-FIT-KIND': 'Unknown kind of fit "{kind}". Possible: {kinds}.',
     'E-FIT-POINTS': 'This fit needs at least {needed} points, there are {found}.',
+    'E-FIT-FORM-SIZE': 'A form of the curve of one\'s own (form: […]) takes at most {most} functions.',
     'E-POLYFIT-DEGREE': 'The degree in polyfit(x, y, n) must be a whole number from 1 to {most}.',
     'E-INTERP-METHOD': 'Unknown method "{method}". Possible: {methods}.',
     'E-INTERP-POINTS': 'Interpolation needs at least two points and series x and y of one length (x has {x}, y has {y}).',

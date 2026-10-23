@@ -112,6 +112,7 @@ export const DIAGNOSTIC_SEVERITY = {
   'E-FIT-FORM': 'error',
   'E-FIT-KIND': 'error',
   'E-FIT-POINTS': 'error',
+  'E-FIT-FORM-SIZE': 'error',
   'E-POLYFIT-DEGREE': 'error',
   'E-INTERP-METHOD': 'error',
   'E-INTERP-POINTS': 'error',

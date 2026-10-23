@@ -59,6 +59,27 @@ describe('fit: a curve through measured points', () => {
     expect(lines.at(-2)).toBe('T_fit(t) 20,39 °C+0,459 Δ°C/s·t');
   });
 
+  it('fits a form of one\'s own, as linfit in Mathcad: the combination of its functions, each coefficient in its unit', () => {
+    // y = 2 + 3·t + 0.5·sin(t) exactly, t in s: the coefficients come back, the print shows the equation.
+    const t = [0, 1, 2, 3, 4, 5];
+    const rows = t.map((x) => `    | ${x} | ${(2 + 3 * x + 0.5 * Math.sin(x)).toFixed(10)} |`).join('\n');
+    const sheet = evaluateSheet(`table D:\n    | t [s] | y [m] |\n${rows}\nω := 1 rad/s\nY := fit(D.y, x: D.t, form: [1, t, sin(ω·t)])\nY_7 := Y(7 s)`);
+    expect(sheet.diagnostics).toEqual([]);
+    const fitted = sheet.statements.at(-2)!.value;
+    const c = fitted?.type === 'function' ? fitted.fit!.coefficients.map((k) => Number(k.value.si.toFixed(6))) : [];
+    expect(c).toEqual([2, 3, 0.5]);
+    expect(fitted?.type === 'function' && fitted.fit!.r2).toBeCloseTo(1, 9);
+    expect(sheet.statements.at(-1)!.display!.value).toBeCloseTo(2 + 21 + 0.5 * Math.sin(7), 6);
+    expect(sheet.statements.at(-1)!.display!.unit).toBe('m');
+    const block = buildPrintDocument(sheet, { catalog: cs, registry: defaultRegistry, digits: 4, title: 'Y' }).blocks.at(-2)!;
+    const lines = block.kind === 'equation' ? block.lines.map((l) => `${l.lhs ? toText(l.lhs) : ''} ${toText(l.rhs)}`.replace(/\s+/g, ' ').trim()) : [];
+    // The names of the sheet in the functions put in too.
+    expect(lines[1]).toBe('Y(t) 2 m+3 m/s·t+0,5 m·sin(1 rad/s·t)');
+    // Too many functions; form and kind together.
+    expect(evaluateSheet(`table D:\n    | t [s] | y [m] |\n${rows}\nY := fit(D.y, x: D.t, form: [1, t, t^2, t^3, t^4, t^5, t^6, t^7, t^8, t^9, t^10])`).diagnostics.map((d) => d.code)).toContain('E-FIT-FORM-SIZE');
+    expect(evaluateSheet(`table D:\n    | t [s] | y [m] |\n${rows}\nY := fit(D.y, x: D.t, kind: "exp", form: [1, t])`).diagnostics.map((d) => d.code)).toContain('E-NAMED-ARG');
+  });
+
   it('writes out the kinds fitted on logarithms as a straight line of ln, then back: a = e^b₀', () => {
     const points = 'table Body:\n    | x | y |\n    | 1 | 2.7 |\n    | 2 | 7.4 |\n    | 3 | 20.1 |\n    | 4 | 54.6 |\n';
     const steps = (kind: string) => {

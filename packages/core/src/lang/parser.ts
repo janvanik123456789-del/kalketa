@@ -882,7 +882,11 @@ class LineParser {
       const named: NamedArg[] = [];
       // integral(3·t², t: 0 s .. 2 s): the variable is named after the expression that uses it, so look
       // ahead for it; inside the call it is a name, not a unit (t would be tonnes), as after solve t:.
-      const bound = BINDING_FUNCTIONS.has(name) ? this.namesAhead().filter((n) => !this.defined.has(n) && !BINDING_OPTIONS.has(n)) : [];
+      const bound = BINDING_FUNCTIONS.has(name)
+        ? this.namesAhead().filter((n) => !this.defined.has(n) && !BINDING_OPTIONS.has(n))
+        : name === 'fit'
+          ? this.formVariableAhead().filter((n) => !this.defined.has(n))
+          : [];
       bound.forEach((n) => this.defined.add(n));
       if (this.peek().type !== ')') {
         do {
@@ -1114,6 +1118,32 @@ class LineParser {
       else if (depth === 0 && token.type === 'ident' && this.tokens[i - 1]?.type === ',' && this.tokens[i + 1]?.type === ')') names.push(token.text);
     }
     return names;
+  }
+
+  /**
+   * fit(T, x: Mereni.t, form: [1, t, sin(t)]): the functions of the form are written in the name of the column
+   * of x (t), a name there, not a unit (t would be tonnes). Nothing without a form.
+   */
+  private formVariableAhead(): string[] {
+    let depth = 0;
+    let inX = false;
+    let last: string | undefined;
+    let form = false;
+    for (let i = this.pos; i < this.tokens.length; i++) {
+      const token = this.tokens[i]!;
+      if (token.type === '(' || token.type === '[') depth++;
+      else if (token.type === ')' || token.type === ']') {
+        if (depth === 0) break;
+        depth--;
+      } else if (token.type === 'newline' && depth === 0) break;
+      else if (depth === 0 && token.type === ',') inX = false;
+      else if (depth === 0 && token.type === 'ident' && this.tokens[i + 1]?.type === ':') {
+        inX = token.text === 'x';
+        form ||= token.text === 'form';
+        i++;
+      } else if (inX && token.type === 'ident') last = token.text;
+    }
+    return form && last ? [last] : [];
   }
 
   private peek(ahead = 0): Token {

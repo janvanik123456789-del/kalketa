@@ -21,13 +21,19 @@ import { baseUnitSymbol } from '../units/display.js';
 import type { ResolvedUnit } from '../units/unitExpr.js';
 import { quantity, type FunctionValue, type Quantity, type Value } from '../values/value.js';
 import type { EvalContext } from './evaluator.js';
+import { asQuantity } from './coerce.js';
 import { applyFunction } from './userFunctions.js';
 
 type Evaluate = (expr: Expr, ctx: EvalContext) => Value;
 type CallExpr = Extract<Expr, { kind: 'call' }>;
 
-/** Kinds of curve by name; a polynomial of degree 2 … 10 is poly2 … poly10, one of degree 1 is linear. */
-export type FitKind = 'linear' | 'exp' | 'power' | 'log' | `poly${number}`;
+/**
+ * Kinds of curve by name; a polynomial of degree 2 … 10 is poly2 … poly10, one of degree 1 is linear.
+ * "form": a combination of functions of the user's own (form: [1, t, sin(t)]), as linfit in Mathcad.
+ */
+export type FitKind = 'linear' | 'exp' | 'power' | 'log' | `poly${number}` | 'form';
+/** The most functions of a form of one's own. */
+const MAX_FORM = 10;
 /** The highest degree of a polynomial fitted (higher ones swing between the points and lose digits). */
 export const MAX_DEGREE = 10;
 const KIND_LIST = `linear, poly2 … poly${MAX_DEGREE}, exp, power, log`;
@@ -87,9 +93,15 @@ const COEFFICIENT = '\u0000c';
 export function fitCall(call: CallExpr, ctx: EvalContext, evaluate: Evaluate): FunctionValue {
   const xArg = call.named.find((n) => n.name === 'x');
   const kindArg = call.named.find((n) => n.name === 'kind');
-  const extra = call.named.find((n) => n.name !== 'x' && n.name !== 'kind' && n.name !== 'steps');
+  const formArg = call.named.find((n) => n.name === 'form');
+  const extra = call.named.find((n) => n.name !== 'x' && n.name !== 'kind' && n.name !== 'steps' && n.name !== 'form');
   if (extra) fail('E-NAMED-ARG', extra.nameSpan, { function: 'fit', argument: extra.name, problem: 'unknown' });
   if (call.args.length !== 1 || !xArg) return fail('E-FIT-FORM', call.span);
+  // A form of one's own instead of a kind: the curve is the combination of its functions that fits best.
+  if (formArg) {
+    if (kindArg) fail('E-NAMED-ARG', kindArg.nameSpan, { function: 'fit', argument: 'kind', problem: 'unknown' });
+    return fitForm(call, call.args[0]!, xArg.value, formArg.value, ctx, evaluate);
+  }
   const kindValue = kindArg ? evaluate(kindArg.value, ctx) : { type: 'text' as const, value: 'linear' };
   const kind = kindValue.type === 'text' ? fitKindOf(kindValue.value) : undefined;
   if (!kind) return fail('E-FIT-KIND', kindArg?.value.span ?? call.span, { kind: kindValue.type === 'text' ? kindValue.value : '', kinds: KIND_LIST });
@@ -277,6 +289,77 @@ function fitPoints(call: CallExpr, yExpr: Expr, xExpr: Expr, kind: FitKind, exac
         : {}),
     };
   }
+}
+
+/**
+ * fit(y, x: series, form: [f₁(x), f₂(x), …]): the combination c₁·f₁ + c₂·f₂ + … nearest to the points (least
+ * squares; the functions are written in the name of the column of x, t in fit(T, x: Mereni.t, form: [1, t, sin(t)])).
+ * Each coefficient gets the unit that makes its term one of y.
+ */
+function fitForm(call: CallExpr, yExpr: Expr, xExpr: Expr, formExpr: Expr, ctx: EvalContext, evaluate: Evaluate): FunctionValue {
+  const functions = formExpr.kind === 'vector' ? formExpr.items : [formExpr];
+  if (functions.length > MAX_FORM) fail('E-FIT-FORM-SIZE', formExpr.span, { most: MAX_FORM });
+  const ys = series(evaluate(yExpr, ctx), yExpr.span);
+  const xs = series(evaluate(xExpr, ctx), xExpr.span);
+  if (xs.length !== ys.length) fail('E-PLOT-LENGTH', call.span, {});
+  if (xs.length < functions.length + 1) fail('E-FIT-POINTS', call.span, { needed: functions.length + 1, found: xs.length });
+  const other = ys.find((q) => !sameDim(q.dim, ys[0]!.dim));
+  if (other) fail('E-UNIT-MISMATCH', call.span, { operator: ',', left: baseUnitSymbol(ys[0]!.dim), right: baseUnitSymbol(other.dim) });
+  const param = xExpr.kind === 'member' ? xExpr.name : xExpr.kind === 'variable' ? xExpr.name : 'x';
+  // Every function at every point, the name of x standing for its value there.
+  const at = (point: Quantity): EvalContext => ({ ...ctx, lookup: (name, span) => (name === param ? point : ctx.lookup(name, span)) });
+  const values = xs.map((point) => functions.map((f) => asQuantity(evaluate(f, at(point)), f.span)));
+  functions.forEach((f, j) => {
+    const differs = values.find((row) => !sameDim(row[j]!.dim, values[0]![j]!.dim));
+    if (differs) fail('E-UNIT-MISMATCH', f.span, { operator: ',', left: baseUnitSymbol(values[0]![j]!.dim), right: baseUnitSymbol(differs[j]!.dim) });
+  });
+  const yv = ys.map((q) => q.si);
+  const a = leastSquares(values.map((row) => row.map((q) => q.si)), yv, call);
+  const y0 = ys[0]!;
+  // c_j in the unit that makes c_j·f_j one of y: the unit of y where f_j is a plain number (1, sin(t)); of an
+  // absolute temperature the constant term is one too, the others differences (°C, Δ°C).
+  const isOne = (f: Expr) => f.kind === 'number' && f.value === 1 && !f.unit;
+  const coefficients = a.map((v, j) => {
+    const dim = divideDims(y0.dim, values[0]![j]!.dim);
+    const plain = Object.keys(values[0]![j]!.dim).length === 0;
+    if (plain && isOne(functions[j]!) && y0.absolute) return quantity(v, dim, { absolute: true, ...(y0.hint ? { hint: y0.hint } : {}) });
+    const hint = plain ? (y0.absolute ? deltaOf(y0.hint) : y0.hint) : undefined;
+    return quantity(v, dim, hint ? { hint } : {});
+  });
+  const span = call.span;
+  const c = (j: number): Expr => ({ kind: 'variable', name: `${COEFFICIENT}${j}`, span });
+  // c₀ alone for the function 1, c_j·f_j for the others.
+  const term = (f: Expr, j: number): Expr => (isOne(f) ? c(j) : { kind: 'binary', operator: '*', left: c(j), right: f, span });
+  const body = functions.slice(1).reduce<Expr>((sum, f, j) => ({ kind: 'binary', operator: '+', left: sum, right: term(f, j + 1), span }), term(functions[0]!, 0));
+  const captured = new Map<string, Value>(coefficients.map((q, j) => [`${COEFFICIENT}${j}`, q]));
+  // Of the functions, the sheet's names they read (E, ω) stay as defined where fit was called.
+  const fitted: FunctionValue = { type: 'function', name: 'fit', params: [param], body, captured: capturedNames(functions, param, ctx, captured) };
+  const predicted = values.map((row) => row.reduce((s, q, j) => s + a[j]! * q.si, 0));
+  const mean = yv.reduce((s, v) => s + v, 0) / yv.length;
+  const total = yv.reduce((s, v) => s + (v - mean) ** 2, 0);
+  const residual = yv.reduce((s, v, i) => s + (v - predicted[i]!) ** 2, 0);
+  const fit: FitInfo = { kind: 'form', param, coefficients: coefficients.map((value, j) => ({ name: `${COEFFICIENT}${j}`, value })), r2: total > 0 ? 1 - residual / total : 1, points: xs.length };
+  return { ...fitted, fit };
+}
+
+/** The values of the names the functions of a form read besides x, put beside the coefficients. */
+function capturedNames(functions: readonly Expr[], param: string, ctx: EvalContext, into: Map<string, Value>): Map<string, Value> {
+  const visit = (e: Expr): void => {
+    // Names of values (E, ω) and functions of the sheet (g(t)); built-in functions are not looked up.
+    if ((e.kind === 'variable' || e.kind === 'call') && e.name !== param && !into.has(e.name)) {
+      try {
+        into.set(e.name, ctx.lookup(e.name, e.span));
+      } catch {
+        // A constant (π) or a name the call already failed on.
+      }
+    }
+    for (const value of Object.values(e)) {
+      if (Array.isArray(value)) value.forEach((v) => v && typeof v === 'object' && 'kind' in v && visit(v as Expr));
+      else if (value && typeof value === 'object' && 'kind' in value) visit(value as Expr);
+    }
+  };
+  functions.forEach(visit);
+  return into;
 }
 
 function predict(kind: FitKind, c: readonly number[], x: number, unit: number): number {

@@ -2981,16 +2981,19 @@ async function layersWithRealInput(picture: string) {
   await clickOn('.sheet-scroll');
   await pause(800);
   const relationChart = '.layer-view.active .block.chart svg.chart-svg';
-  const circleAt = (await contents.executeJavaScript(`(() => {
+  const measureCircle = async () => (await contents.executeJavaScript(`(() => {
     const curve = document.querySelector('${relationChart} .chart-data path');
     if (!curve) return undefined;
     curve.scrollIntoView({ block: 'center' });
     const b = curve.getBoundingClientRect();
     return { x: Math.round(b.left + b.width * 0.75), y: Math.round(b.top + b.height * 0.3), width: Math.round(b.width), height: Math.round(b.height) };
   })()`)) as { x: number; y: number; width: number; height: number } | undefined;
+  let circleAt = await measureCircle();
   if (circleAt) {
-    // Into the chart and on over it, as a hand moves: the first move only enters it.
+    // Into the chart and on over it, as a hand moves: the first move only enters it. Measured again before
+    // each move, since the window may still settle (on Linux the tab rows wrap a moment later).
     for (const step of [-20, -10, 0]) {
+      circleAt = (await measureCircle()) ?? circleAt;
       contents.sendInputEvent({ type: 'mouseMove', x: circleAt.x + step, y: circleAt.y });
       await pause(150);
     }

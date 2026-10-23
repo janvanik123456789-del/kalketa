@@ -1,0 +1,87 @@
+{
+  "sheet": "ztraty-v-potrubi.cc",
+  "verifiedBy": "Cvičení 11 Mechaniky tekutin I (ZČU v Plzni, Ing. M. Klimko): příklad 4 (Re = 51 000, λ = 0,021, e_z = 14,52 J/kg, w_t = 20,37 m/s, e_č = 251,42 J/kg, P = 301,7 W, P_p = 615,72 W; ve výčtu součinitelů překlep 0,5 místo 0,8, výsledek je s 0,8) a příklad 1 (w_A = 5,66 m/s, w_B = 3,26 m/s, Q_B = 0,23 m³/s, Re_B = 859 402, ε/D = 0,000867 při λ_A = λ_B). Samostatný výpočet v Pythonu: Colebrookova rovnice iterací pevného bodu, průtok delší větví iterací rychlosti.",
+  "relativeTolerance": 1e-06,
+  "values": {
+    "w": {
+      "value": 1.6976527263135504,
+      "unit": "m/s"
+    },
+    "Re": {
+      "value": 50929.58178940651,
+      "unit": ""
+    },
+    "λ": {
+      "value": 0.021061725455322165,
+      "unit": ""
+    },
+    "λ_C": {
+      "value": 0.020805846583270973,
+      "unit": ""
+    },
+    "e_z": {
+      "value": 14.48893312583523,
+      "unit": "J/kg"
+    },
+    "w_t": {
+      "value": 20.3718327157626,
+      "unit": "m/s"
+    },
+    "e_č": {
+      "value": 251.42471722534293,
+      "unit": "J/kg"
+    },
+    "P": {
+      "value": 301.7096606704115,
+      "unit": "W"
+    },
+    "P_p": {
+      "value": 615.7340013681867,
+      "unit": "W"
+    },
+    "w_A": {
+      "value": 5.6588424210451675,
+      "unit": "m/s"
+    },
+    "w_B_0": {
+      "value": 3.2671341950921007,
+      "unit": "m/s"
+    },
+    "Q_B_0": {
+      "value": 0.23094010767585027,
+      "unit": "m³/s"
+    },
+    "Re_A": {
+      "value": 1491786.22698906,
+      "unit": ""
+    },
+    "Re_B_0": {
+      "value": 861283.1797255098,
+      "unit": ""
+    },
+    "λ_drsne": {
+      "value": 0.01896894174215906,
+      "unit": ""
+    },
+    "λ_A": {
+      "value": 0.019200415662806277,
+      "unit": ""
+    },
+    "w_B": {
+      "value": 3.253197153007116,
+      "unit": "m/s"
+    },
+    "λ_B": {
+      "value": 0.019365281298373047,
+      "unit": ""
+    },
+    "Q_B": {
+      "value": 0.2299549562227437,
+      "unit": "m³/s"
+    },
+    "Δp": {
+      "value": 1024.7421057477077,
+      "unit": "kPa"
+    }
+  }
+}

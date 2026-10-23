@@ -57,9 +57,29 @@ describe('fit: a curve through measured points', () => {
     expect(lines.some((l) => l.includes('4·') && l.includes('60 s'))).toBe(true);
     expect(lines).toContain('0,459 Δ°C/s');
     expect(lines.at(-2)).toBe('T_fit(t) 20,39 °C+0,459 Δ°C/s·t');
-    // Kinds fitted on logarithms: the result only, and a word why.
-    const codes = evaluateSheet(`${MEASURED}P := fit(Mereni.T, x: Mereni.t, kind: "exp", steps: true)`).diagnostics.map((d) => d.code);
-    expect(codes).toEqual(['W-FIT-STEPS']);
+  });
+
+  it('writes out the kinds fitted on logarithms as a straight line of ln, then back: a = e^b₀', () => {
+    const points = 'table Body:\n    | x | y |\n    | 1 | 2.7 |\n    | 2 | 7.4 |\n    | 3 | 20.1 |\n    | 4 | 54.6 |\n';
+    const steps = (kind: string) => {
+      const sheet = evaluateSheet(`${points}P := fit(Body.y, x: Body.x, kind: "${kind}", steps: true)`);
+      expect(sheet.diagnostics).toEqual([]);
+      const block = buildPrintDocument(sheet, { catalog: cs, registry: defaultRegistry, digits: 4, title: 'P' }).blocks.at(-1)!;
+      return block.kind === 'equation' ? block.lines.map((l) => `${l.lhs ? toText(l.lhs) : ''} ${l.op ?? ''} ${toText(l.rhs)}`.replace(/\s+/g, ' ').trim()) : [];
+    };
+    const exp = steps('exp');
+    expect(exp).toContain('ln(y) = b_0+b_1·x');
+    expect(exp.some((l) => l.startsWith('∑x·ln(y)'))).toBe(true);
+    expect(exp).toContain('a = exp(b_0)');
+    const power = steps('power');
+    expect(power).toContain('ln(y) = b_0+b_1·ln(x)');
+    expect(power.some((l) => l.startsWith('∑(ln(x))^2 ='))).toBe(true);
+    // The line found, then a = e^b₀ with its value: the coefficient of the curve.
+    expect(power.indexOf('a = exp(b_0)')).toBeGreaterThan(power.findIndex((l) => l.startsWith('b_0 =')));
+    expect(power[power.indexOf('a = exp(b_0)') + 1]).toBe('2,276');
+    const log = steps('log');
+    expect(log).toContain('y = b_0+b_1·ln(x)');
+    expect(log.some((l) => l.startsWith('a ='))).toBe(false);
   });
 
   it('writes out a polynomial by its normal equations: the sums, the system in letters and in numbers, the coefficients', () => {

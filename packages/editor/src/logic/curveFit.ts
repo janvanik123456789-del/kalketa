@@ -69,7 +69,8 @@ export function fits(method: FitMethod, x: FitSeries, y: FitSeries, degree = 2):
 
 /** Methods that can write their steps out (the least squares of a line and a polynomial). */
 export function hasSteps(method: FitMethod): boolean {
-  return method === 'line' || method === 'poly';
+  // The curves fitted by least squares; those on logarithms as a straight line of ln x, ln y.
+  return APPROXIMATE.includes(method);
 }
 
 /** The numeric series the sheet offers: columns of its tables and series of numbers, in sheet order. */

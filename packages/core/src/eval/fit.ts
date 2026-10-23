@@ -72,6 +72,12 @@ export interface FitInfo {
     readonly powers: readonly Quantity[];
     /** Σx^k·y for k = 0 … degree (k = 0 is Σy). */
     readonly withY: readonly Quantity[];
+    /**
+     * The kinds fitted on logarithms, made a straight line first: ln y = b₀ + b₁·x (exp), ln y = b₀ + b₁·ln x
+     * (power), y = b₀ + b₁·ln x (log). Which of x and y are taken as ln (of their value in their own unit), and
+     * the line found; the sums above are then those of ln x and ln y.
+     */
+    readonly linearized?: { readonly x: boolean; readonly y: boolean; readonly b0: Quantity; readonly b1: Quantity };
   };
 }
 
@@ -138,9 +144,8 @@ function fitPoints(call: CallExpr, yExpr: Expr, xExpr: Expr, kind: FitKind, exac
   const stepsValue = stepsArg ? evaluate(stepsArg.value, ctx) : undefined;
   if (stepsValue && stepsValue.type !== 'boolean') return fail('E-TYPE', stepsArg!.value.span, { expected: 'boolean', found: stepsValue.type });
   const steps = stepsValue?.type === 'boolean' && stepsValue.value;
-  // The method written out is that of a line or a polynomial; the kinds fitted on logarithms give their result only.
+  // The method written out is that of a line or a polynomial; the kinds fitted on logarithms as a line of ln.
   const degree = degreeOf(kind);
-  if (steps && degree === undefined) ctx.warnings.push(diagnostic('W-FIT-STEPS', stepsArg!.value.span, { kind }));
   const ys = series(evaluate(yExpr, ctx), yExpr.span);
   const xs = series(evaluate(xExpr, ctx), xExpr.span);
   if (xs.length !== ys.length) fail('E-PLOT-LENGTH', call.span, {});
@@ -220,28 +225,58 @@ function fitPoints(call: CallExpr, yExpr: Expr, xExpr: Expr, kind: FitKind, exac
   const yName = yExpr.kind === 'member' ? yExpr.name : yExpr.kind === 'variable' ? yExpr.name : 'y';
   const sum = (values: readonly number[]) => values.reduce((s, v) => s + v, 0);
   const fit: FitInfo = {
-    kind,
-    param,
-    coefficients: coefficients.map((value, i) => ({ name: `${COEFFICIENT}${i}`, value })),
-    r2: total > 0 ? 1 - residual / total : 1,
-    points: xv.length,
-    ...(zero ? { zero } : {}),
-    ...(steps && degree !== undefined
-      ? {
-          steps: {
-            x: param,
-            y: yName,
-            powers: Array.from({ length: 2 * degree + 1 }, (_, k) =>
-              quantity(sum(xv.map((x) => x ** k)), powerDim(x0.dim, k), k === 1 && xHint ? { hint: xHint } : {}),
-            ),
-            withY: Array.from({ length: degree + 1 }, (_, k) =>
-              quantity(sum(xv.map((x, i) => x ** k * yv[i]!)), multiplyDims(powerDim(x0.dim, k), y0.dim), k === 0 && yHint ? { hint: yHint } : {}),
-            ),
-          },
-        }
-      : {}),
+    ...fitBase(),
+    ...(steps && degree === undefined ? { steps: linearSteps() } : {}),
   };
   return { ...fitted, fit };
+
+  /** The steps of a kind fitted on logarithms: the sums of ln x and ln y (in their own units) and the line. */
+  function linearSteps(): NonNullable<FitInfo['steps']> {
+    const lnX = kind !== 'exp';
+    const lnY = kind !== 'log';
+    const yUnit = y0.hint?.factor ?? 1;
+    const X = lnX ? xv.map((x) => Math.log(x / xUnit.si)) : xv;
+    const Y = lnY ? yv.map((y) => Math.log(y / yUnit)) : yv;
+    const xDim = (k: number) => (lnX ? DIMENSIONLESS : powerDim(x0.dim, k));
+    const yDim = lnY ? DIMENSIONLESS : y0.dim;
+    const powers = [0, 1, 2].map((k) => quantity(sum(X.map((x) => x ** k)), xDim(k), k === 1 && !lnX && xHint ? { hint: xHint } : {}));
+    const withY = [0, 1].map((k) => quantity(sum(X.map((x, i) => x ** k * Y[i]!)), multiplyDims(xDim(k), yDim), k === 0 && !lnY && yHint ? { hint: yHint } : {}));
+    const [n, sx, sxx, sy, sxy] = [X.length, powers[1]!.si, powers[2]!.si, withY[0]!.si, withY[1]!.si];
+    const b1 = (n * sxy - sx * sy) / (n * sxx - sx * sx);
+    const b0 = (sy - b1 * sx) / n;
+    return {
+      x: param,
+      y: yName,
+      powers,
+      withY,
+      linearized: { x: lnX, y: lnY, b0: lnY ? quantity(b0) : coefficients[0]!, b1: coefficients[1]! },
+    };
+  }
+
+  function fitBase(): FitInfo {
+    return {
+      kind,
+      param,
+      coefficients: coefficients.map((value, i) => ({ name: `${COEFFICIENT}${i}`, value })),
+      r2: total > 0 ? 1 - residual / total : 1,
+      points: xv.length,
+      ...(zero ? { zero } : {}),
+      ...(steps && degree !== undefined
+        ? {
+            steps: {
+              x: param,
+              y: yName,
+              powers: Array.from({ length: 2 * degree + 1 }, (_, k) =>
+                quantity(sum(xv.map((x) => x ** k)), powerDim(x0.dim, k), k === 1 && xHint ? { hint: xHint } : {}),
+              ),
+              withY: Array.from({ length: degree + 1 }, (_, k) =>
+                quantity(sum(xv.map((x, i) => x ** k * yv[i]!)), multiplyDims(powerDim(x0.dim, k), y0.dim), k === 0 && yHint ? { hint: yHint } : {}),
+              ),
+            },
+          }
+        : {}),
+    };
+  }
 }
 
 function predict(kind: FitKind, c: readonly number[], x: number, unit: number): number {

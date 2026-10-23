@@ -81,7 +81,6 @@ export const en: Catalog = {
     'E-PLUS-MINUS': 'The sign ± gives two numbers (a + b and a − b); a series or a matrix cannot be joined so.',
     'E-SOLVE-ROOTS': 'The equation has more positive solutions for {name} ({roots}). Pick one by an interval, e.g. solve {name}: … in 0 m .. 1 m.',
     'E-ROOTS-POLYNOMIAL': 'roots: the expression is no polynomial in {name} (degree {max} at most, whole powers, division only by what has no {name}).',
-    'W-FIT-STEPS': 'fit writes out the least squares method (steps: true) for a straight line and polynomials (linear, poly2, poly3); "{kind}" is fitted on logarithms, it shows the result only.',
     'E-SOLVE-RELATION': '"{name}" is no name of a relation. Write the relation on a line of its own and name it: relation x^2 + y^2 == r^2 {eq=Circle}; then solve y: Circle.',
     'E-PLOT-IMPLICIT': 'An implicit curve (an equation in a chart) needs the range of both axes: plot(x^2 + y^2 == 25, x: -6 .. 6, y: -6 .. 6). Both sides of the equation must have the same unit.',
     'E-SOLVE-INEQUALITY': 'solve takes an inequality (≤, ≥, <, >) for one unknown and one inequality only.',

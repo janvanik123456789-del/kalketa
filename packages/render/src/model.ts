@@ -583,7 +583,10 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
     const bin = (operator: '+' | '-' | '*' | '/' | '^', left: Expr, right: Expr): Expr => ({ kind: 'binary', operator, left, right, span: at });
     const num = (value: number): Expr => ({ kind: 'number', value, span: at });
     const sum = (e: Expr): Expr => ({ kind: 'call', name: 'sum', args: [e], named: [], span: at });
-    const [x, y, n] = [v(steps.x), v(steps.y), v('n')];
+    // A kind fitted on logarithms is a straight line of ln x and/or ln y: its sums are those of the logarithms.
+    const line = steps.linearized;
+    const ln = (e: Expr): Expr => ({ kind: 'call', name: 'ln', args: [e], named: [], span: at });
+    const [x, y, n] = [line?.x ? ln(v(steps.x)) : v(steps.x), line?.y ? ln(v(steps.y)) : v(steps.y), v('n')];
     // Σx^k (k = 0 is n) and Σx^k·y, as written: Σx, Σx², Σy, Σx·y.
     const xPower = (k: number): Expr => (k === 1 ? x : bin('^', x, num(k)));
     const powers = steps.powers.map((_, k) => (k === 0 ? n : sum(xPower(k))));
@@ -624,8 +627,18 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
       const [sx, sxx, sy, sxy] = [powers[1]!, powers[2]!, withY[0]!, withY[1]!];
       const slope = bin('/', bin('-', bin('*', n, sxy), bin('*', sx, sy)), bin('-', bin('*', n, sxx), bin('^', sx, num(2))));
       const intercept = bin('/', bin('-', sy, bin('*', b[1]!, sx)), n);
-      const [c0, c1] = [fit.coefficients[0]!.value, fit.coefficients[1]!.value];
+      const [c0, c1] = line ? [line.b0, line.b1] : [fit.coefficients[0]!.value, fit.coefficients[1]!.value];
+      // ln y = b₀ + b₁·x: the curve as a straight line, said first; of exp and power, a = e^b₀ after it.
+      const linear: EquationLine[] = line ? [{ role: 'formula', lhs: formulaNode(y, o), op: '=', rhs: formulaNode(bin('+', b[0]!, bin('*', b[1]!, x)), o) }] : [];
+      const back: EquationLine[] =
+        line?.y
+          ? [
+              { role: 'formula', lhs: nameNode('a'), op: '=', rhs: formulaNode({ kind: 'call', name: 'exp', args: [b[0]!], named: [], span: at }, o) },
+              { role: 'result', rhs: value(fit.coefficients[0]!.value) },
+            ]
+          : [];
       const lines: EquationLine[] = [
+        ...linear,
         ...given,
         { role: 'formula', lhs: nameNode('b_1'), op: '=', rhs: formulaNode(slope, o) },
         ...(mode.substitution ? [{ role: 'substitution' as const, rhs: filled(slope) }] : []),
@@ -633,6 +646,7 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
         { role: 'formula', lhs: nameNode('b_0'), op: '=', rhs: formulaNode(intercept, o) },
         ...(mode.substitution ? [{ role: 'substitution' as const, rhs: filled(intercept, new Map([['b_1', c1]])) }] : []),
         { role: 'result', rhs: value(c0) },
+        ...back,
       ];
       return { lines };
     }

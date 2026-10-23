@@ -107,7 +107,6 @@ export const DIAGNOSTIC_SEVERITY = {
   'E-ROOTS-POLYNOMIAL': 'error',
   'E-SOLVE-INEQUALITY': 'error',
   'E-SOLVE-RELATION': 'error',
-  'W-FIT-STEPS': 'warning',
   'E-PLOT-IMPLICIT': 'error',
   'E-SOLVE-SIDE': 'error',
   'E-FIT-FORM': 'error',

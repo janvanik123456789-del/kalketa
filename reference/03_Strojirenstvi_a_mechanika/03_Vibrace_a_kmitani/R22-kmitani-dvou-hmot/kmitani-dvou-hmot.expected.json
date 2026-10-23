@@ -1,0 +1,35 @@
+{
+  "sheet": "kmitani-dvou-hmot.cc",
+  "verifiedBy": "Zadání: University of Iowa, 53/58:153 Fundamentals of Vibration, přednáška 4 (S. Xiao): m1 = 9, m2 = 1, k1 = 38, k2 = 2, k3 = 3, počáteční výchylka [1, 0]. Řešení ve zdroji jen v grafech, proto samostatně: kořeny charakteristické rovnice ručně (Ω = 4 a 49/9 s⁻², ω = 2 a 7/3 rad/s, tvary 2 a −4,5) a v Pythonu z kvadratické rovnice.",
+  "relativeTolerance": 1e-06,
+  "values": {
+    "ω_1": {
+      "value": 2.0,
+      "unit": "rad/s"
+    },
+    "ω_2": {
+      "value": 2.3333333333333335,
+      "unit": "rad/s"
+    },
+    "f_1": {
+      "value": 0.3183098861837907,
+      "unit": "Hz"
+    },
+    "f_2": {
+      "value": 0.37136153388108917,
+      "unit": "Hz"
+    },
+    "r_1": {
+      "value": 2.0,
+      "unit": ""
+    },
+    "r_2": {
+      "value": -4.5,
+      "unit": ""
+    },
+    "T_r": {
+      "value": 18.84955592153875,
+      "unit": "s"
+    }
+  }
+}

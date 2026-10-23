@@ -10,6 +10,7 @@
 import { t, type Catalog } from '@kalketa/i18n';
 import { esc, mn, nameNode, sup, toMathML, VECTOR_ARROW, type MathNode } from './math.js';
 import { NOTES_CSS } from './notes.js';
+import { fitWideEquations } from './fit.js';
 import { PAGED_SCRIPT, PRINT_MARGINS, pagedCss, paperSize, sheetSections, type PagedConfig, type Section } from './paged.js';
 
 /** A nonce for the script of a printout: only a script carrying it runs there. */
@@ -168,6 +169,7 @@ ${body}
 ${doc.summary?.position === 'bottom' ? summary : ''}
 ${(options.appendices ?? []).join('\n')}`;
   if (!paged) {
+    // Its one script makes equations wider than the page smaller (fit.ts).
     return `<!doctype html>
 <html lang="${esc(doc.language)}">
 <head>
@@ -180,6 +182,7 @@ ${stylesheet(doc, options)}${hiddenMarks(options)}
 </head>
 <body>
 ${content}
+<script data-kalketa="fit">(${fitWideEquations.toString()})(document);</script>
 </body>
 </html>`;
   }

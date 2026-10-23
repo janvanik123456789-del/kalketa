@@ -683,7 +683,7 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
     };
     const substituted = (expr: Expr, extra?: (e: Expr) => Substituted | undefined) => {
       const sub = substitution(result, quantityNode, o);
-      return formulaNode(expr, formulaOptions((e) => extra?.(e) ?? sub(e)));
+      return formulaNode(expr, formulaOptions((e) => extra?.(e) ?? putCoefficients(e) ?? sub(e)));
     };
     // y(x) = 0 written out: a·x² + b·x + c = 0, then with the numbers: 5·x² + 4·x − 10 = 0 (the unknown stays).
     if (found.expanded) {
@@ -715,6 +715,23 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
       if (mode.substitution && toText(numbers) !== toText(general)) out.push({ role: 'formula', op: '', rhs: numbers });
     }
     const q = found.quadratic;
+    // Coefficients written as formulas, (k₁ + k₂)·(−m₂) − m₁·(k₂ + k₃): worked out first, as on paper, a = …,
+    // b = …, c = …, then D, the roots and the vertex by a, b, c with their values; written out there they run off the page.
+    const simple = (e: Expr): boolean => e.kind === 'number' || e.kind === 'variable' || (e.kind === 'unary' && simple(e.operand));
+    const worked = q && !q.pure && ![q.a, q.b, q.c].every(simple) ? (['a', 'b', 'c'] as const).map((n) => ({ n, expr: { kind: 'variable', name: n, span: s.span } as Expr, value: q.values[n] })) : undefined;
+    const coef = worked ? { a: worked[0]!.expr, b: worked[1]!.expr, c: worked[2]!.expr } : q;
+    // Put in, a, b and c of the steps are their values, never a value of the sheet with the same name.
+    const putCoefficients = (e: Expr): Substituted | undefined => {
+      const w = worked?.find((x) => x.expr === e);
+      return w ? { node: value(w.value), negative: w.value.si < 0, hasUnit: !!w.value.hint || Object.keys(w.value.dim).length > 0 } : undefined;
+    };
+    worked?.forEach(({ n, value: v }) => {
+      const e = q![n];
+      out.push({ role: 'formula', lhs: mi(n), op: '=', rhs: formulaNode(e, o) });
+      const filled = substituted(e);
+      if (mode.substitution && toText(filled) !== toText(formulaNode(e, o))) out.push({ role: 'substitution', rhs: filled });
+      out.push({ role: 'result', rhs: value(v) });
+    });
     // x² + y² = r² for y: y₁,₂ = ±√(r² − x²) = ±√(5² − 3²), no discriminant and no vertex of a parabola.
     if (q?.pure) {
       const complex = found.roots.length > 0 && found.roots.every((r) => r.rejected === 'complex');
@@ -732,7 +749,7 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
       const bin = (operator: '-' | '*' | '/' | '^' | '±', left: Expr, right: Expr): Expr => ({ kind: 'binary', operator, left, right, span: at });
       const num = (v: number): Expr => ({ kind: 'number', value: v, span: at });
       // D = b² − 4·a·c = 4² − 4·5·10 = −184
-      const dExpr = bin('-', bin('^', q.b, num(2)), bin('*', bin('*', num(4), q.a), q.c));
+      const dExpr = bin('-', bin('^', coef!.b, num(2)), bin('*', bin('*', num(4), coef!.a), coef!.c));
       out.push({ role: 'formula', lhs: mi('D'), op: '=', rhs: formulaNode(dExpr, o) });
       const dIn = substituted(dExpr);
       if (mode.substitution && toText(dIn) !== toText(formulaNode(dExpr, o))) out.push({ role: 'substitution', rhs: dIn });
@@ -744,8 +761,8 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
       }
       // x₁,₂ = (−b ± √D)/(2·a) = (−4 ± √216)/(2·5)
       const d: Expr = { kind: 'variable', name: 'D', span: at };
-      const minusB: Expr = { kind: 'unary', operator: '-', operand: q.b, span: at };
-      const twoA = bin('*', num(2), q.a);
+      const minusB: Expr = { kind: 'unary', operator: '-', operand: coef!.b, span: at };
+      const twoA = bin('*', num(2), coef!.a);
       const formula = bin('/', bin('±', minusB, { kind: 'call', name: 'sqrt', args: [d], named: [], span: at }), twoA);
       const pair = found.roots.length === 1 ? nameNode(name) : nameNode(`${name}_1_2`);
       out.push({ role: 'formula', lhs: pair, op: '=', rhs: formulaNode(formula, o) });
@@ -775,14 +792,16 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
       if (kept.length === 0) out.push({ role: 'result', lead: '⇒', op: '', rhs: mtext(t(catalog, 'print.noRootKept')) });
       else out.push({ role: 'result', lead: '⇒', lhs: nameNode(name), op: '=', rhs: kept.length === 1 ? value(kept[0]!.value) : row(mo('['), ...kept.flatMap((r, i) => [...(i > 0 ? [mo(o.argumentSeparator)] : []), value(r.value)]), mo(']')) });
     }
-    // The vertex of the parabola: V = [−b/(2·a); −D/(4·a)] = [−2/(2·(−2)); −84/(4·(−2))] = [0,5; 10,5].
-    if (q && !q.pure) {
+    // The vertex of the parabola: V = [−b/(2·a); −D/(4·a)] = [−2/(2·(−2)); −84/(4·(−2))] = [0,5; 10,5]. Of a parabola
+    // in a plain x only: of Ω in s⁻² (a characteristic equation) it says nothing.
+    const plainUnknown = found.roots.length > 0 && Object.keys(found.roots[0]!.value.dim).length === 0;
+    if (q && !q.pure && plainUnknown) {
       const at = s.span;
       const num = (v: number): Expr => ({ kind: 'number', value: v, span: at });
       const d: Expr = { kind: 'variable', name: 'D', span: at };
-      const minusB: Expr = { kind: 'unary', operator: '-', operand: q.b, span: at };
-      const vx: Expr = { kind: 'binary', operator: '/', left: minusB, right: { kind: 'binary', operator: '*', left: num(2), right: q.a, span: at }, span: at };
-      const vy: Expr = { kind: 'binary', operator: '/', left: { kind: 'unary', operator: '-', operand: d, span: at }, right: { kind: 'binary', operator: '*', left: num(4), right: q.a, span: at }, span: at };
+      const minusB: Expr = { kind: 'unary', operator: '-', operand: coef!.b, span: at };
+      const vx: Expr = { kind: 'binary', operator: '/', left: minusB, right: { kind: 'binary', operator: '*', left: num(2), right: coef!.a, span: at }, span: at };
+      const vy: Expr = { kind: 'binary', operator: '/', left: { kind: 'unary', operator: '-', operand: d, span: at }, right: { kind: 'binary', operator: '*', left: num(4), right: coef!.a, span: at }, span: at };
       const pair = (x: MathNode, y: MathNode) => row(mo('['), x, mo(o.argumentSeparator), y, mo(']'));
       const dValue: Substituted = { node: value(q.discriminant), negative: q.discriminant.si < 0, hasUnit: false };
       out.push({ role: 'formula', lhs: mi('V'), op: '=', rhs: pair(formulaNode(vx, o), formulaNode(vy, o)) });

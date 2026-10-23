@@ -7,6 +7,7 @@
  * page with its head and its number. The editor uses the same sections.
  */
 
+import { fitWideEquations } from './fit.js';
 import type { PrintBlock } from './model.js';
 
 /** A section of the printout: its label (2, 3a, A) and its title for the page head. */
@@ -82,6 +83,8 @@ export const PAGED_SCRIPT = `(async () => {
   const flow = document.getElementById('flow');
   const cfg = JSON.parse(flow.dataset.pagedFlow);
   await Promise.all([...document.images].map((i) => (i.decode ? i.decode().catch(() => undefined) : undefined)));
+  // Equations wider than the page made smaller first, so they are measured as printed.
+  (${fitWideEquations.toString()})(flow);
   const mm = (() => { const probe = document.createElement('div'); probe.style.height = '100mm'; document.body.appendChild(probe); const px = probe.getBoundingClientRect().height / 100; probe.remove(); return px; })();
   const body = (cfg.height - cfg.margin.top - cfg.margin.bottom) * mm;
   // Containers whose parts go on pages one by one: the calculation, an appendix, the notes of one.

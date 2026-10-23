@@ -35,6 +35,17 @@ describe('solve in print', () => {
     ]);
   });
 
+  it('writes the coefficients of a quadratic without "+ −" and "·−", its roots in the unit of the condition', () => {
+    const sheet = evaluateSheet(
+      ['m_1 := 9 kg', 'm_2 := 1 kg', 'k_1 := 38 N/m', 'k_2 := 2 N/m', 'k_3 := 3 N/m', 'solve Ω ∈ ℝ, Ω > 0 s^-2: (k_1 + k_2 - m_1·Ω)·(k_2 + k_3 - m_2·Ω) - k_2^2 == 0'].join('\n'),
+    );
+    const solve = buildPrintDocument(sheet, { catalog: cs, registry: defaultRegistry, digits: 4, title: 'T' }).blocks.at(-1)!;
+    const lines = solve.kind === 'equation' ? solve.lines.map((l) => toText(l.rhs)) : [];
+    expect(lines.some((l) => /\+−|·−/.test(l))).toBe(false);
+    const roots = solve.kind === 'equation' ? solve.lines.filter((l) => l.role === 'result' && l.lhs && /Ω_[12]/.test(toText(l.lhs))).map((l) => toText(l.rhs).replace(/\s/g, ' ')) : [];
+    expect(roots).toEqual(['5,444 s⁻²', '4 s⁻²']);
+  });
+
   it('uses "=" even where definitions use "≔"', () => {
     const html = renderBlockHtml(block, cs, { defineOperator: '≔' });
     expect(html).not.toContain('≔');

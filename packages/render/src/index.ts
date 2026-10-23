@@ -16,6 +16,7 @@ export * from './math.js';
 export { formulaNode, hasSubstitutableParts, type FormulaOptions } from './formula.js';
 export * from './model.js';
 export { pageLabels, sheetSections, type Section } from './paged.js';
+export { fitWideEquations } from './fit.js';
 export { renderHtml, renderBlockHtml, renderBlocksHtml, columnsHead, sideGroupHtml, renderSummary, appendixHtml, isInput, textHtml, BLOCK_CSS, TEXT_FONT_FAMILIES, TEXT_COLOR_VALUES, textFontCss, textColorCss, type HtmlOptions, type BlockHtmlOptions, type CalcStyle, type DerivationMarks } from './html.js';
 export { figureDescription, figurePlace, figureStyle, withFigurePlace, type FigurePlace, isAiNote, kalkConfirmed, kalkFormula, kalkLines, notesHtml, notesImages, NOTES_CSS, type KalkLine, type NotesOptions } from './notes.js';
 

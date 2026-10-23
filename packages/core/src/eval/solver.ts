@@ -271,6 +271,8 @@ export interface RootsFound {
     readonly b: Expr;
     readonly c: Expr;
     readonly discriminant: Quantity;
+    /** The values of a, b and c, for a print that works them out first when they are written as formulas. */
+    readonly values: { readonly a: Quantity; readonly b: Quantity; readonly c: Quantity };
     readonly vertex: { readonly x: Quantity; readonly y: Quantity };
     /**
      * Without the term in x (a·x² + c = 0, x² + y² = r² for y): solved as on paper without the
@@ -313,7 +315,7 @@ export function allRoots(statement: SolveStatement, ctx: EvalContext, evaluate: 
     const vertex = { x: value(bin('/', { kind: 'unary', operator: '-', operand: q.b, span: at }, bin('*', num(2), q.a))), y: value(bin('-', q.c, bin('/', bb, bin('*', num(4), q.a)))) };
     // No term in x: x² = S, x = ±√S, the root as the equation gives it.
     const pure = q.b.kind === 'number' && q.b.value === 0 && !q.b.unit ? isolate(left, right, name)?.[0] : undefined;
-    quadratic = { ...q, discriminant, vertex, ...(pure ? { pure } : {}) };
+    quadratic = { ...q, discriminant, values: { a, b: value(q.b), c: value(q.c) }, vertex, ...(pure ? { pure } : {}) };
     const twoA = bin('*', num(2), q.a);
     const minusB: Expr = { kind: 'unary', operator: '-', operand: q.b, span: at };
     if (!discriminant.im && discriminant.si >= 0) {
@@ -352,6 +354,18 @@ export function allRoots(statement: SolveStatement, ctx: EvalContext, evaluate: 
   // The interval is a condition too: low ≤ x ≤ high.
   const range = statement.range ? [value(statement.range.low), value(statement.range.high)].sort((p, r) => p.si - r.si) : undefined;
   const conditions = statement.conditions ?? [];
+  // A unit the unknown is compared with (Ω > 0 s^-2, x in 0 m .. 5 m) is the unit of its roots, not one
+  // made up from the coefficients (N/(kg·m)).
+  const stated = [...(range ?? []), ...conditions.flatMap((c) => (c.kind === 'binary' ? [c.left, c.right] : [])).filter((e) => !(e.kind === 'variable' && e.name === name)).flatMap((e) => {
+    try {
+      const v = evaluate(e, { ...ctx, warnings: [], tableReads: [] });
+      return v.type === 'quantity' ? [v] : [];
+    } catch (err) {
+      if (err instanceof CalcError) return [];
+      throw err;
+    }
+  })].find((v) => v.hint && found.length > 0 && sameDim(v.dim, found[0]!.dim));
+  if (stated?.hint) found = found.map((r) => (sameDim(r.dim, stated.dim) ? quantity(r.si, r.dim, { ...(r.im ? { im: r.im } : {}), hint: stated.hint! }) : r));
   const roots = found.map((root): Root => {
     if (root.im && statement.domain !== 'complex') return { value: root, rejected: 'complex' };
     if (!inWholeDomain(root, statement.domain)) return { value: root, rejected: 'domain' };

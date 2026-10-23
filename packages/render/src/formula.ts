@@ -180,6 +180,11 @@ function render(expr: Expr, o: FormulaOptions): Rendered {
         const positive = withoutLeadingMinus(expr.left);
         if (positive) return { node: row(mo('−'), frac(render(positive, o).node, render(expr.right, o).node)), prec: 6, negative: true };
       }
+      // a + −b·c as on paper, a − b·c (the solver's coefficients are built so); a − −b is a + b.
+      if (expr.operator === '+' || expr.operator === '-') {
+        const positive = withoutLeadingMinus(expr.right);
+        if (positive) return renderBinary(expr.operator === '+' ? '-' : '+', render(expr.left, o), render(positive, o));
+      }
       return renderBinary(expr.operator, render(expr.left, o), render(expr.right, o));
     case 'call':
       return renderCall(expr, o);
@@ -222,7 +227,8 @@ function renderBinary(op: BinaryOperator, left: Rendered, right: Rendered): Rend
     case '^':
       return { node: sup(wrap(left, left.prec < ATOM), right.node), prec };
     case '*':
-      return { node: row(wrap(left, left.prec < prec), mo('·'), wrap(right, right.prec < prec || !!right.negative)), prec };
+      // −m₁·(−m₂) starts with a minus: after another factor it goes in parentheses, 2·(−m₁·(−m₂)).
+      return { node: row(wrap(left, left.prec < prec), mo('·'), wrap(right, right.prec < prec || !!right.negative)), prec, ...(left.negative ? { negative: true } : {}) };
     case '+':
     case '-':
     case '±':

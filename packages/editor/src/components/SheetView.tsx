@@ -8,7 +8,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type 
 import { formatExpr, formatPicture, fromDecimalComma, parsePicture, TEXT_ALIGNS, TEXT_COLORS, toDecimalComma, type SheetResult, type Statement, type StatementResult } from '@kalketa/core';
 import { formatDate, formatNumber, t, type Catalog, type UiKey } from '@kalketa/i18n';
 import { chartSvg as drawChart, DEFAULT_VIEW, labelParts, surfaceAt, viewText, xPosition, xValueAt, yPosition } from '@kalketa/chart';
-import { columnsHead, isInput, pageLabels, renderBlockHtml, renderSummary, sheetSections, type CalcStyle, type PrintBlock, type PrintDocument, type Section } from '@kalketa/render';
+import { columnsHead, fitWideEquations, isInput, pageLabels, renderBlockHtml, renderSummary, sheetSections, type CalcStyle, type PrintBlock, type PrintDocument, type Section } from '@kalketa/render';
 import { isCanvasPath } from '@kalketa/canvas';
 import { paginate, type PageGeometry } from '../logic/pages.js';
 import { segments, type Segment } from '../logic/segments.js';
@@ -379,6 +379,8 @@ export function SheetView(props: Props) {
     const root = container.current;
     const body = root?.querySelector<HTMLElement>('.page-body');
     if (!root || !body) return;
+    // Equations wider than the page made smaller to fit it, before they are measured.
+    fitWideEquations(root);
     const measured = [...root.querySelectorAll<HTMLElement>('[data-item]')];
     // How far each item pushes the flow down on its page: rows beside a wrapped picture push nothing until they pass its bottom.
     let reached = 0;

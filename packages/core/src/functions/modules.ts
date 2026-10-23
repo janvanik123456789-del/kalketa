@@ -9,8 +9,11 @@ import { fail } from '../diagnostics.js';
 import { isDimensionless, powerDim, sameDim } from '../units/dimension.js';
 import { baseUnitSymbol } from '../units/display.js';
 import { civilFromDays, dateValue, daysFromCivil, daysOf, isDate, isValidDay } from '../values/date.js';
-import { quantity, type Quantity } from '../values/value.js';
-import { asBoolean } from '../eval/coerce.js';
+import { quantity, type Quantity, type Value } from '../values/value.js';
+import { asBoolean, asQuantity } from '../eval/coerce.js';
+import { compare } from '../eval/evaluator.js';
+import { withBareZero } from '../eval/zero.js';
+import type { Expr } from '../lang/ast.js';
 import type { Args, FunctionDef, FunctionModuleId } from './registry.js';
 
 /** A function of one plain number, with an optional domain. */
@@ -489,10 +492,60 @@ export const LOGIC: readonly FunctionDef[] = [
     module: 'logic',
     params: 'condition, then, else',
     arity: [3, 3],
-    // Only the chosen branch is evaluated.
-    call: (a) => (asBoolean(a.value(0), a.expr(0).span) ? a.value(1) : a.value(2)),
+    call: (a) => {
+      const condition = conditionOf(a, a.expr(0));
+      // Only the chosen branch is evaluated.
+      if (typeof condition === 'boolean') return condition ? a.value(1) : a.value(2);
+      // A condition over a series (x > 0 m for a series x): item by item, each from its own branch.
+      const [then, otherwise] = [a.value(1), a.value(2)];
+      const item = (v: Value, i: number, index: number): Quantity => {
+        if (v.type !== 'vector') return asQuantity(v, a.expr(index).span);
+        if (v.items.length !== condition.length) fail('E-VECTOR-LENGTH', a.expr(index).span, { left: condition.length, right: v.items.length });
+        return v.items[i]!;
+      };
+      const items = condition.map((holds, i) => (holds ? item(then, i, 1) : item(otherwise, i, 2)));
+      if (items.some((q) => !sameDim(q.dim, items[0]!.dim))) fail('E-UNIT-MISMATCH', a.call.span, { operator: 'if', left: baseUnitSymbol(items[0]!.dim), right: baseUnitSymbol(items.find((q) => !sameDim(q.dim, items[0]!.dim))!.dim) });
+      return { type: 'vector', items };
+    },
   },
 ];
+
+/**
+ * The condition of if(): one truth value, or one per item where a series is compared (x > 0 m, a < b and
+ * b < c, not …). A comparison of plain numbers stays as it was.
+ */
+function conditionOf(a: Args, expr: Expr): boolean | boolean[] {
+  if (expr.kind === 'unary' && expr.operator === 'not') {
+    const inner = conditionOf(a, expr.operand);
+    return typeof inner === 'boolean' ? !inner : inner.map((x) => !x);
+  }
+  if (expr.kind === 'binary' && (expr.operator === 'and' || expr.operator === 'or')) {
+    const left = conditionOf(a, expr.left);
+    // Short-circuit as before, unless a series is in play.
+    if (typeof left === 'boolean' && (expr.operator === 'and' ? !left : left)) return left;
+    const right = conditionOf(a, expr.right);
+    if (typeof left === 'boolean' && typeof right === 'boolean') return expr.operator === 'and' ? left && right : left || right;
+    const n = typeof left === 'boolean' ? (right as boolean[]).length : left.length;
+    if (typeof right !== 'boolean' && right.length !== n) fail('E-VECTOR-LENGTH', expr.span, { left: n, right: right.length });
+    const at = (c: boolean | boolean[], i: number) => (typeof c === 'boolean' ? c : c[i]!);
+    return Array.from({ length: n }, (_, i) => (expr.operator === 'and' ? at(left, i) && at(right, i) : at(left, i) || at(right, i)));
+  }
+  if (expr.kind === 'binary' && COMPARISONS.has(expr.operator)) {
+    const [left, right] = [a.evaluate(expr.left), a.evaluate(expr.right)];
+    if (left.type === 'vector' || right.type === 'vector') {
+      const n = left.type === 'vector' ? left.items.length : (right as Extract<Value, { type: 'vector' }>).items.length;
+      if (left.type === 'vector' && right.type === 'vector' && right.items.length !== n) fail('E-VECTOR-LENGTH', expr.span, { left: n, right: right.items.length });
+      const at = (v: Value, side: Expr, i: number) => (v.type === 'vector' ? v.items[i]! : asQuantity(v, side.span));
+      return Array.from({ length: n }, (_, i) => {
+        const [p, q] = withBareZero(at(left, expr.left, i), at(right, expr.right, i), expr.left, expr.right);
+        return asBoolean(compare(expr.operator, p, q, expr.span), expr.span);
+      });
+    }
+  }
+  return asBoolean(a.evaluate(expr), expr.span);
+}
+
+const COMPARISONS: ReadonlySet<string> = new Set(['==', '!=', '<', '<=', '>', '>=']);
 
 /** Functions with a variable of their own: evaluated by eval/calculus.ts (sum is listed with series). */
 export const CALCULUS: readonly FunctionDef[] = [

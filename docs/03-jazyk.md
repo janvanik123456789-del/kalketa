@@ -466,6 +466,8 @@ M := N1.M_max                    ' 45 kN·m
 k := if(λ ≤ 0.2, 1.0, 0.8)
 ```
 
+Porovnává-li podmínka **řadu**, platí po prvcích (2026-10-23): `if(x > 0 m, x, 0 m)` dá řadu, v níž je každý prvek z větve, kterou jeho porovnání vybralo; větev řada dává svůj prvek (stejná délka), číslo samo sebe. Podmínky lze spojit `and`, `or`, `not`. S obyčejnou podmínkou se počítá jen vybraná větev jako dřív.
+
 Plnohodnotné větvení a cykly (Calcpad `#if`, `#for`) **nejsou** v první verzi záměrně.
 *Proč:* technický výpočet má být čitelný shora dolů. Složitější logika patří do tabulek, řešiče nebo zásuvných modulů.
 

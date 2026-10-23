@@ -113,7 +113,7 @@ export const EN_FUNCTION_DETAILS: Readonly<Record<string, string>> = {
   month: 'The month (1–12) as a number.',
   year: 'The year as a number.',
   // Logic
-  if: 'A conditional value: when the condition holds the result is then, otherwise else. The condition is a comparison (<, ≤, ==, ≠ …), joined by and / or. Both branches should have one unit.',
+  if: 'A conditional value: when the condition holds the result is then, otherwise else. The condition is a comparison (<, ≤, ==, ≠ …), joined by and / or. Both branches should have one unit. When the condition compares a series (x > 0 m for a series x), it holds item by item: the result is a series and each item comes from then or else (of a series of the same length its item, of a number that number), e.g. the positive part of a series if(x > 0 m, x, 0 m).',
   // Tables
   filter: 'Gives a table of only the rows that meet the condition; in where, r is the row tried and r.column its value. The result can go on into max, sum or find_min.',
   find_max: 'Finds the row with the largest value of the column by among the rows that meet where (r is the row tried). Another column of the row is read with a dot: find_max(…).A.',

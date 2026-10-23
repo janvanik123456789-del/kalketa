@@ -22,6 +22,27 @@ describe('user functions', () => {
     expectValue('sq(x) := x²\npouzij(g, x) := g(x)\npouzij(sq, 3)', 9, '');
   });
 
+  it('take if() item by item when its condition compares a series', () => {
+    const items = (source: string) => {
+      const r = evaluateSheet(source);
+      expect(r.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+      const v = r.statements.at(-1)!;
+      return v.displayList?.map((d) => `${Number(d.value.toFixed(6))} ${d.unit}`.trim());
+    };
+    // Only the positive part of a series; the other branch a number.
+    expect(items('x := [-2, 0, 3] m\ny := if(x > 0 m, x, 0 m)')).toEqual(['0 m', '0 m', '3 m']);
+    // A zero without a unit takes the unit of the series, as in a sum.
+    expect(items('x := [-2, 0, 3] m\ny := if(x > 0, 1, -1)')).toEqual(['-1', '-1', '1']);
+    expect(items('x := [-2, 0.5, 3] m\ny := if(x > -1 m and x < 2 m, 1, 0)')).toEqual(['0', '1', '0']);
+    expect(items('x := [-2, 0.5, 3] m\ny := if(not(x > 0 m) or x > 2 m, 1, 0)')).toEqual(['1', '0', '1']);
+    // Two series compared item by item; branches taken from series of the same length.
+    expect(items('a := [1, 5, 3]\nb := [2, 4, 3]\nm := if(a >= b, a, b)')).toEqual(['2', '5', '3']);
+    // A plain condition still evaluates only its branch.
+    expect(evaluateSheet('y := if(1 > 0, 1, 1/0)').diagnostics).toEqual([]);
+    expect(codes('a := [1, 2, 3]\nb := [1, 2]\nm := if(a > 1, b, 0)')).toContain('E-VECTOR-LENGTH');
+    expect(codes('a := [1, 2, 3]\nm := if(a > 1, 1 m, 0 s)')).toContain('E-UNIT-MISMATCH');
+  });
+
   it('work with if() and several fields', () => {
     expectValue('k(λ) := if(λ ≤ 0.2, 1, 0.8)\nk(0.5)', 0.8, '');
     // Electrician: voltage drop of a copper cable.

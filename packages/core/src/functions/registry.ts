@@ -56,6 +56,11 @@ export class Args {
     return this.evaluateArg(this.expr(index));
   }
 
+  /** Any part of an argument (the sides of a comparison in if()). */
+  evaluate(expr: Expr): Value {
+    return this.evaluateArg(expr);
+  }
+
   /** A real number with a unit. */
   quantity(index: number): Quantity {
     return asQuantity(this.value(index), this.expr(index).span);

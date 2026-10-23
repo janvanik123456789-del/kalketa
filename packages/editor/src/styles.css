@@ -846,3 +846,16 @@ button.icon:hover { color: var(--accent); }
 .start-recent-row:hover { background: var(--accent-soft); }
 .start-recent-name { font-weight: 500; min-width: 220px; }
 .start-recent-folder { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* The "/" menu of an empty line: what can be put in, with an example of each. */
+/* Its normal size on pages zoomed out or in (--zoom of .pages). */
+.insert-menu { zoom: calc(1 / var(--zoom, 1)); position: absolute; z-index: 40; width: 380px; max-height: 360px; overflow-y: auto; margin-top: 4px; background: #fff; border: 1px solid var(--line); border-radius: 9px; box-shadow: 0 10px 28px rgba(20, 30, 50, 0.18); padding: 5px; font: 13px/1.35 "Segoe UI", Arial, sans-serif; }
+.insert-menu-title { font-size: 11px; color: var(--muted); padding: 3px 8px 5px; }
+.insert-menu-empty { color: var(--muted); padding: 6px 8px; }
+.insert-choice { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 6px; cursor: pointer; }
+.insert-choice.active { background: var(--accent-soft); }
+.insert-icon { width: 30px; height: 26px; flex: none; border: 1px solid var(--line); border-radius: 6px; background: #fff; display: flex; align-items: center; justify-content: center; font: 13px "Cambria", "Times New Roman", serif; }
+.insert-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.insert-label { font-weight: 600; }
+.insert-example { color: var(--muted); font: 11px Consolas, "Courier New", monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.insert-key { color: var(--muted); font-size: 11px; }

@@ -563,6 +563,7 @@ async function runSmokeTest(pdfPath: string): Promise<void> {
     })`)) as { bridge: boolean; rows: number; summary: number; math: number; errors: string; menus: number; toolbars: number; language: string; sideBySide: boolean };
     const reshapedColumns = await reshapeWithRealMouse();
     const layers = await layersWithRealInput(pdfPath.replace(/\.pdf$/i, '') + '-layers.png');
+    const insertMenu = await insertMenuWithRealKeys(pdfPath.replace(/\.pdf$/i, '') + '-insert-menu.png');
     const printer = await printWindow('<!doctype html><meta charset="utf-8"><h1>Kalketa</h1><math><mfrac><mi>a</mi><mn>2</mn></mfrac></math>');
     const pdf = await printer.webContents.printToPDF({ preferCSSPageSize: true });
     printer.destroy();
@@ -570,8 +571,8 @@ async function runSmokeTest(pdfPath: string): Promise<void> {
     ok =
       state.bridge && state.sideBySide && state.menus === 8 && state.toolbars > 0 && state.rows > 10 && state.summary > 0 && state.math > 0 && reshapedColumns === 3 && pdf.length > 1000 &&
       layers.deflection && layers.pickTaken.column.startsWith('→') && /mm|cm/.test(layers.pickTaken.text) && layers.newKeepsExample && layers.samplesOk && layers.derivations && layers.summaryOk && layers.definitionAtCursor && layers.sheetGridOk && layers.tableEnter && layers.solvedByFormula && layers.rootsAndExtremes && layers.userChart.ok && layers.relations.ok && layers.quadraticSample.ok && layers.saveOnClose.ok && layers.wordPrinted && layers.wordColored && layers.paletteColored && layers.wordText.focused && layers.wordText.pane && layers.wordText.bold === 'dynamiky' && !layers.wordText.shown.includes('"') && layers.wordText.align === 'center' && layers.cellMarked === 'Síla na konci' && layers.systemFont !== '' && layers.cellFont.replace(/"/g, '').startsWith(layers.systemFont) && layers.cellDeleted && layers.paperRoots && layers.tableRowAdded && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.notesPicture === 'FIGURE+img BLOCKQUOTE' && layers.notesPlaced === 'narrower centred' && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.charts && layers.functionBar && layers.revisions && layers.roots && layers.toolIcons && layers.aiSettings && layers.aiChat && layers.pdfCleanup && layers.theoryLibrary && layers.study && layers.sheetPicture.offered && layers.sheetPicture.described && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
-    ok = ok && start.shown && start.cards >= 20 && start.lead === 'R24-pruvodce-police' && start.pictures >= 12 && start.closed && start.tab === 'Vzor – Posouzení nosníku N1';
-    console.log(JSON.stringify({ ok, start, ...state, reshapedColumns, layers, pdfBytes: pdf.length }));
+    ok = ok && insertMenu.ok && start.shown && start.cards >= 20 && start.lead === 'R24-pruvodce-police' && start.pictures >= 12 && start.closed && start.tab === 'Vzor – Posouzení nosníku N1';
+    console.log(JSON.stringify({ ok, start, insertMenu, ...state, reshapedColumns, layers, pdfBytes: pdf.length }));
   } catch (err) {
     console.log(JSON.stringify({ ok: false, error: (err as Error).message, console: smokeConsole.slice(-5) }));
   }
@@ -609,6 +610,45 @@ async function startScreenWithRealMouse(picture: string): Promise<{ shown: boole
   const after = (await contents.executeJavaScript(`({ closed: !document.querySelector('.start-screen'), tab: [...document.querySelectorAll('.doc-tab')].map((t) => t.textContent.replace(/[•✕×]/g, '').trim()).join('|') })`)) as { closed: boolean; tab: string };
   const { at: _at, ...rest } = seen;
   return { ...rest, ...after };
+}
+
+/**
+ * The "/" menu with real keys, in a calculation of its own: all it offers, narrowed by "pos", a check written by
+ * Enter with the cursor between its quotes; then "/graf" and Enter open the chart dialog, Esc closes it.
+ */
+async function insertMenuWithRealKeys(picture: string): Promise<{ all: number; pos: string; line: string; chart: boolean; ok: boolean }> {
+  const contents = smokeWindow!.webContents;
+  await clickOn('.doc-tab-new');
+  await pause(500);
+  await clickOn('.layer-view.active .page .row[data-line="1"]');
+  await pressKey('End');
+  await pressKey('Enter');
+  await typeText('/');
+  await pause(200);
+  const slashAll = (await contents.executeJavaScript(`document.querySelectorAll('.insert-menu .insert-choice').length`)) as number;
+  await typeText('pos');
+  await pause(200);
+  const slashPos = (await contents.executeJavaScript(`[...document.querySelectorAll('.insert-menu .insert-choice')].map((c) => c.dataset.insert).join(' ')`)) as string;
+  await takePicture(picture);
+  await pressKey('Enter');
+  await typeText('Kladný kořen');
+  await pressKey('End');
+  await typeText('x > 0');
+  const slashLine = (await contents.executeJavaScript(`document.querySelector('textarea.row-editor')?.value ?? ''`)) as string;
+  await pressKey('Enter');
+  await typeText('/graf');
+  await pause(200);
+  await pressKey('Enter');
+  await pause(500);
+  const slashChart = (await contents.executeJavaScript(`!!document.querySelector('.chart-dialog')`)) as boolean;
+  await pressKey('Escape');
+  await pause(300);
+  // The line of "/graf" is empty again: Backspace takes it away, as any empty line.
+  if (await contents.executeJavaScript(`!!document.querySelector('textarea.row-editor')`)) {
+    await clickOn('textarea.row-editor');
+    await pressKey('Backspace');
+  }
+  return { all: slashAll, pos: slashPos, line: slashLine, chart: slashChart, ok: slashAll >= 15 && slashPos === 'check position' && slashLine === 'check "Kladný kořen": x > 0' && slashChart };
 }
 
 /**

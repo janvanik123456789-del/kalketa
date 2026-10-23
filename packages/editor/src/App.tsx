@@ -33,6 +33,7 @@ import type { AnswerProposals } from './components/ChatPane.js';
 import { languageGuide, sheetContext } from './logic/aiContext.js';
 import { exampleDocument, SAMPLE_FIELDS, samplePicture, samples, savedSampleTitle, subfieldName, type Sample } from './samples.js';
 import { StartScreen } from './components/StartScreen.js';
+import type { InsertChoice } from './components/InsertMenu.js';
 import { chooseFile, desktop, emptyDocument, fileName, fileUri, largestParts, openBytes, pickAndOpen, saveDocument, tableCache, type FileRef, type OpenedFile } from './document.js';
 import { record, redo, undo, type History } from './logic/history.js';
 import { closeTab, cycleTab, fileNameOf, isDirty, isPristine, newTab, openTab, type DocTab, type Tabs } from './logic/documents.js';
@@ -1416,6 +1417,45 @@ export function App() {
     }
   };
 
+  // The "/" menu of an empty line: lines to write (‸ is the cursor) and actions of the program.
+  const insertChoices: InsertChoice[] = [
+    { id: 'definition', icon: '≔', label: t(ui, 'insertMenu.definition'), example: 'M_Ed := q·L²/8', template: '‸ := ', keywords: 'definition value formula hodnota vzorec' },
+    { id: 'check', icon: '✓', label: t(ui, 'insertMenu.check'), example: 'check "Ohyb": σ ≤ f_y', template: 'check "‸": ', keywords: 'check kontrola podmínka condition' },
+    { id: 'solve', icon: 'x=?', label: t(ui, 'insertMenu.solve'), example: 'solve L: M_Ed == q·L²/8', template: 'solve ‸: ', keywords: 'solve equation rovnice' },
+    { id: 'sheetTable', icon: '▦', label: t(ui, 'insertMenu.sheetTable'), example: 'table Body: | x [m] | y [kN] |', keywords: 'table tabulka' },
+    { id: 'position', icon: 'Pos', label: t(ui, 'insertMenu.position'), example: '## Sloup S1 {pos}', template: '## ‸ {pos}', keywords: 'position pozice' },
+    { id: 'heading', icon: 'H', label: t(ui, 'insertMenu.heading'), example: '## Zatížení', template: '## ‸', keywords: 'heading section oddíl' },
+    { id: 'text', icon: '¶', label: t(ui, 'insertMenu.text'), example: '"Komentář k výpočtu"', template: '"‸"', keywords: 'text comment komentář poznámka' },
+    { id: 'chart', icon: '∿', label: t(ui, 'insertMenu.chart'), example: 'plot(M(x), x: 0 m .. L)', keywords: 'chart plot graf' },
+    { id: 'picture', icon: '▣', label: t(ui, 'insertMenu.picture'), example: '![Schéma](images/schema.png)', keywords: 'picture image obrázek' },
+    { id: 'canvas', icon: '✎', label: t(ui, 'insertMenu.canvas'), example: t(ui, 'insertMenu.canvasExample'), keywords: 'canvas sketch drawing plátno náčrt' },
+    { id: 'function', icon: 'f(x)', label: t(ui, 'insertMenu.function'), example: 'interpolate(…), integral(…)', keywords: 'function funkce' },
+    { id: 'fit', icon: '≈', label: t(ui, 'insertMenu.fit'), example: 'fit(Body.y, x: Body.x, kind: "poly2")', keywords: 'fit curve proložení křivka' },
+    { id: 'pick', icon: '→', label: t(ui, 'insertMenu.pick'), example: 'profil := pick(Profily, "IPE 200")', keywords: 'pick row table řádek tabulka výběr' },
+    { id: 'relation', icon: '⇔', label: t(ui, 'insertMenu.relation'), example: 'relation F == m·a', template: 'relation ‸ == ', keywords: 'relation vztah' },
+    { id: 'derive', icon: '⊢', label: t(ui, 'insertMenu.derive'), example: 'derive x == m·L/(M + m)', template: 'derive ‸ == ', keywords: 'derive derivation odvození' },
+    { id: 'pageBreak', icon: '↵', label: t(ui, 'insertMenu.pageBreak'), example: '@page', template: '@page‸', keywords: 'page break stránka strana' },
+  ];
+  const insertAction = (choice: InsertChoice) => {
+    switch (choice.id) {
+      case 'sheetTable':
+        return insert('sheetTable');
+      case 'pick':
+        return insert('pick');
+      case 'chart':
+        return setDialog('chart');
+      case 'picture':
+        return void insertPictureFile();
+      case 'canvas':
+        return insertCanvas();
+      case 'function':
+        return setDialog('insertFunction');
+      case 'fit':
+        return commands.get('insert.fit')?.run();
+    }
+  };
+  const insertMenu = { title: t(ui, 'insertMenu.title'), empty: t(ui, 'insertMenu.empty'), choices: insertChoices, onAction: insertAction };
+
   // A check in Python from the sources: run where the settings say (Python of the computer only when
   // the user lets it, each time), its results set beside the values of the sheet.
   /** The words of the question the program asks before Python of the computer runs a script. */
@@ -2318,6 +2358,7 @@ export function App() {
           printCatalog={printCatalog}
           {...(footer && l.kind === 'sheet' ? { footer } : {})}
           editing={active ? editing : undefined}
+          insertMenu={insertMenu}
           selected={active ? selected : undefined}
           {...(active ? { selectAll } : {})}
           resolveFile={resolveFile}

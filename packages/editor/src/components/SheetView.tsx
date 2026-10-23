@@ -26,6 +26,7 @@ import { parseSheetTable } from '../logic/sheetTableEdit.js';
 import { ContextMenu, type MenuItem } from './MenuBar.js';
 import { ask } from './Ask.js';
 import type { Command } from '../commands.js';
+import { InsertMenu, insertQuery, matchingChoices, type InsertChoice } from './InsertMenu.js';
 
 export interface EditRange {
   readonly start: number;
@@ -35,6 +36,8 @@ export interface EditRange {
 }
 
 interface Props {
+  /** The menu of "/" at the start of a line being edited. */
+  readonly insertMenu?: InsertMenuSetup;
   readonly source: string;
   readonly result: SheetResult;
   readonly print: PrintDocument;
@@ -1314,6 +1317,7 @@ export function SheetView(props: Props) {
               }}
               onMove={(d) => move(seg, d)}
               onDone={() => props.onEdit(undefined)}
+              insert={props.insertMenu}
             />
           ) : null}
           {block?.kind === 'picture' ? (
@@ -1916,9 +1920,19 @@ interface RowEditorProps {
   onDeleteEmpty(): void;
   onMove(direction: -1 | 1): void;
   onDone(): void;
+  /** The menu of "/" at the start of a line: what can be put in. */
+  readonly insert?: InsertMenuSetup | undefined;
 }
 
-function RowEditor({ seg, initialCursor, decimalComma, result, onChange, onEnter, onTab, onDeleteEmpty, onMove, onDone }: RowEditorProps) {
+/** What the "/" menu offers and how the program does the choices that are not a line to write. */
+export interface InsertMenuSetup {
+  readonly title: string;
+  readonly empty: string;
+  readonly choices: readonly InsertChoice[];
+  onAction(choice: InsertChoice): void;
+}
+
+function RowEditor({ seg, initialCursor, decimalComma, result, onChange, onEnter, onTab, onDeleteEmpty, onMove, onDone, insert }: RowEditorProps) {
   // The line is edited in the user's notation (50,5) and stored in file notation (50.5).
   // What the user types is kept as typed: converting it back on every keystroke
   // would turn a half-typed "55," into "55;" before the next digit arrives.
@@ -1958,10 +1972,47 @@ function RowEditor({ seg, initialCursor, decimalComma, result, onChange, onEnter
     }
   });
 
+  // "/" at the start of a line: the insert menu, narrowed by the letters after it; Esc leaves the line as typed.
+  const [menuAt, setMenuAt] = useState(0);
+  const [dismissed, setDismissed] = useState<string | undefined>();
+  const query = insert && !shown.includes('\n') ? insertQuery(shown) : undefined;
+  const choices = insert && query !== undefined && dismissed !== shown ? matchingChoices(insert.choices, query) : undefined;
+  const active = choices ? Math.max(0, Math.min(menuAt, choices.length - 1)) : 0;
+  const choose = (choice: InsertChoice) => {
+    if (choice.template !== undefined) {
+      const at = choice.template.indexOf('‸');
+      const text = choice.template.replace('‸', '');
+      pendingCursor.current = at < 0 ? text.length : at;
+      store(toShown(text));
+    } else {
+      store('');
+      insert?.onAction(choice);
+    }
+  };
+
   const definedElsewhere = (name: string) => result.statements.some((r) => r.statement.kind === 'definition' && r.statement.name === name && (r.statement.span.line < seg.start || r.statement.span.line > seg.end));
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     const area = e.currentTarget;
+    if (choices) {
+      const step = e.key === 'ArrowDown' ? 1 : e.key === 'ArrowUp' ? -1 : 0;
+      if (step !== 0 && choices.length > 0) {
+        e.preventDefault();
+        setMenuAt((active + step + choices.length) % choices.length);
+        return;
+      }
+      if ((e.key === 'Enter' || e.key === 'Tab') && !e.shiftKey && choices.length > 0) {
+        e.preventDefault();
+        choose(choices[active]!);
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setDismissed(shown);
+        store(shown);
+        return;
+      }
+    }
     const atStart = area.selectionStart === 0 && area.selectionEnd === 0;
     const atEnd = area.selectionStart === area.value.length;
     if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey) {
@@ -1990,22 +2041,28 @@ function RowEditor({ seg, initialCursor, decimalComma, result, onChange, onEnter
   };
 
   return (
-    <textarea
-      ref={ref}
-      className="row-editor"
-      spellCheck={false}
-      rows={1}
-      value={shown}
-      onChange={(e) => {
-        // A single "=" just typed (by keyboard, paste or dictation) may become ":=".
-        const area = e.target;
-        const at = area.selectionStart - 1;
-        const typedEquals = area.value.length === shown.length + 1 && area.value[at] === '=' && area.value.slice(0, at) + area.value.slice(at + 1) === shown;
-        const edit = typedEquals ? defineShortcut(shown, at, definedElsewhere) : undefined;
-        if (edit) pendingCursor.current = edit.cursor;
-        store(edit ? edit.text : area.value);
-      }}
-      onKeyDown={onKeyDown}
-    />
+    <>
+      <textarea
+        ref={ref}
+        className="row-editor"
+        spellCheck={false}
+        rows={1}
+        value={shown}
+        onChange={(e) => {
+          // A single "=" just typed (by keyboard, paste or dictation) may become ":=".
+          const area = e.target;
+          const at = area.selectionStart - 1;
+          const typedEquals = area.value.length === shown.length + 1 && area.value[at] === '=' && area.value.slice(0, at) + area.value.slice(at + 1) === shown;
+          const edit = typedEquals ? defineShortcut(shown, at, definedElsewhere) : undefined;
+          if (edit) pendingCursor.current = edit.cursor;
+          setMenuAt(0);
+          // "/" and letters only ask the menu: kept in the line here, not in the sheet (it would be an error there).
+          if (insert && !area.value.includes('\n') && insertQuery(area.value) !== undefined && dismissed !== area.value) return setShown(area.value);
+          store(edit ? edit.text : area.value);
+        }}
+        onKeyDown={onKeyDown}
+      />
+      {choices && insert && <InsertMenu title={insert.title} empty={insert.empty} choices={choices} active={active} onChoose={choose} onHover={setMenuAt} />}
+    </>
   );
 }

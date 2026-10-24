@@ -75,3 +75,69 @@ export function withLineFormat(text: string, format: LineFormatChoice): string {
   if (format && 'digits' in format) next.set('digits', String(format.digits));
   return withLineAttributes(text, next);
 }
+
+/** The parts of a line's first line: its formula, the unit after "|", the source, the attributes and the comment. */
+interface LineParts {
+  readonly body: string;
+  readonly target?: string;
+  readonly source?: string;
+  readonly tail: string;
+}
+
+/** Where the last "|" outside brackets and strings stands (the unit of the result), -1 when there is none. */
+function targetAt(code: string): number {
+  let depth = 0;
+  let inString = false;
+  let found = -1;
+  for (let i = 0; i < code.length; i++) {
+    const c = code[i]!;
+    if (c === '"') inString = !inString;
+    else if (inString) continue;
+    else if (c === '(' || c === '[') depth++;
+    else if (c === ')' || c === ']') depth--;
+    else if (c === '|' && depth === 0) found = i;
+  }
+  return found;
+}
+
+function partsOf(first: string): LineParts {
+  const at = commentAt(first);
+  const code = first.slice(0, at);
+  const attributes = ATTRIBUTES.exec(code)?.[0] ?? '';
+  let body = code.slice(0, code.length - attributes.length).replace(/\s+$/, '');
+  const source = /\s+source\s+"([^"]*)"\s*$/.exec(body);
+  if (source) body = body.slice(0, source.index);
+  const bar = targetAt(body);
+  const target = bar >= 0 ? body.slice(bar + 1).trim() : undefined;
+  if (bar >= 0) body = body.slice(0, bar).replace(/\s+$/, '');
+  return { body, ...(target ? { target } : {}), ...(source ? { source: source[1]! } : {}), tail: `${attributes.replace(/\s+$/, '')}${first.slice(at) ? `  ${first.slice(at)}` : ''}` };
+}
+
+function joined(p: LineParts): string {
+  return `${p.body}${p.target ? ` | ${p.target}` : ''}${p.source !== undefined ? ` source "${p.source}"` : ''}${p.tail}`;
+}
+
+/** The unit the result of a line is shown in (after "|"), undefined when the calculation chooses it. */
+export function lineTargetOf(text: string): string | undefined {
+  return partsOf(text.split('\n')[0]!).target;
+}
+
+/** The line with the unit of its result set, or taken away (undefined): the calculation chooses it then. */
+export function withLineTarget(text: string, unit: string | undefined): string {
+  const [first, ...rest] = text.split('\n');
+  const p = partsOf(first!);
+  return [joined({ body: p.body, ...(unit ? { target: unit } : {}), ...(p.source !== undefined ? { source: p.source } : {}), tail: p.tail }), ...rest].join('\n');
+}
+
+/** The source of a line (source "EN 1990, 6.10"), undefined when it has none. */
+export function lineSourceOf(text: string): string | undefined {
+  return partsOf(text.split('\n')[0]!).source;
+}
+
+/** The line with its source set, or taken away (undefined or empty); a double quote in it becomes ”. */
+export function withLineSource(text: string, source: string | undefined): string {
+  const [first, ...rest] = text.split('\n');
+  const p = partsOf(first!);
+  const clean = source?.trim().replace(/"/g, '”');
+  return [joined({ body: p.body, ...(p.target ? { target: p.target } : {}), ...(clean ? { source: clean } : {}), tail: p.tail }), ...rest].join('\n');
+}

@@ -859,3 +859,14 @@ button.icon:hover { color: var(--accent); }
 .insert-label { font-weight: 600; }
 .insert-example { color: var(--muted); font: 11px Consolas, "Courier New", monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .insert-key { color: var(--muted); font-size: 11px; }
+
+/* The floating toolbar of the line being edited: above it, at its normal size on zoomed pages. */
+.row.editing > .content { position: relative; }
+.row-toolbar-wrap { zoom: calc(1 / var(--zoom, 1)); position: absolute; bottom: 100%; left: 0; padding-bottom: 4px; z-index: 35; display: none; }
+.row.editing:hover .row-toolbar-wrap { display: block; }
+.row-toolbar { display: flex; align-items: center; gap: 2px; padding: 3px; background: #fff; border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 4px 14px rgba(20, 30, 50, 0.14); font: 12px/1.2 "Segoe UI", Arial, sans-serif; white-space: nowrap; }
+.row-toolbar button { height: 26px; padding: 0 8px; border: none; background: none; border-radius: 5px; color: var(--ink); cursor: pointer; }
+.row-toolbar button:hover { background: var(--accent-soft); }
+.row-toolbar button.on { background: #eef2fb; color: var(--accent); }
+.row-toolbar button.more { width: 26px; padding: 0; color: var(--muted); }
+.row-toolbar-sep { width: 1px; height: 18px; background: var(--line); margin: 0 2px; }

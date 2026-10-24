@@ -564,6 +564,7 @@ async function runSmokeTest(pdfPath: string): Promise<void> {
     const reshapedColumns = await reshapeWithRealMouse();
     const layers = await layersWithRealInput(pdfPath.replace(/\.pdf$/i, '') + '-layers.png');
     const insertMenu = await insertMenuWithRealKeys(pdfPath.replace(/\.pdf$/i, '') + '-insert-menu.png');
+    const rowTools = await rowToolbarWithRealMouse(pdfPath.replace(/\.pdf$/i, '') + '-row-toolbar.png');
     const printer = await printWindow('<!doctype html><meta charset="utf-8"><h1>Kalketa</h1><math><mfrac><mi>a</mi><mn>2</mn></mfrac></math>');
     const pdf = await printer.webContents.printToPDF({ preferCSSPageSize: true });
     printer.destroy();
@@ -571,8 +572,8 @@ async function runSmokeTest(pdfPath: string): Promise<void> {
     ok =
       state.bridge && state.sideBySide && state.menus === 8 && state.toolbars > 0 && state.rows > 10 && state.summary > 0 && state.math > 0 && reshapedColumns === 3 && pdf.length > 1000 &&
       layers.deflection && layers.pickTaken.column.startsWith('→') && /mm|cm/.test(layers.pickTaken.text) && layers.newKeepsExample && layers.samplesOk && layers.derivations && layers.summaryOk && layers.definitionAtCursor && layers.sheetGridOk && layers.tableEnter && layers.solvedByFormula && layers.rootsAndExtremes && layers.userChart.ok && layers.relations.ok && layers.quadraticSample.ok && layers.saveOnClose.ok && layers.wordPrinted && layers.wordColored && layers.paletteColored && layers.wordText.focused && layers.wordText.pane && layers.wordText.bold === 'dynamiky' && !layers.wordText.shown.includes('"') && layers.wordText.align === 'center' && layers.cellMarked === 'Síla na konci' && layers.systemFont !== '' && layers.cellFont.replace(/"/g, '').startsWith(layers.systemFont) && layers.cellDeleted && layers.paperRoots && layers.tableRowAdded && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.notesPicture === 'FIGURE+img BLOCKQUOTE' && layers.notesPlaced === 'narrower centred' && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.charts && layers.functionBar && layers.revisions && layers.roots && layers.toolIcons && layers.aiSettings && layers.aiChat && layers.pdfCleanup && layers.theoryLibrary && layers.study && layers.sheetPicture.offered && layers.sheetPicture.described && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
-    ok = ok && insertMenu.ok && start.shown && start.cards >= 20 && start.lead === 'R24-pruvodce-police' && start.pictures >= 12 && start.closed && start.tab === 'Vzor – Posouzení nosníku N1';
-    console.log(JSON.stringify({ ok, start, insertMenu, ...state, reshapedColumns, layers, pdfBytes: pdf.length }));
+    ok = ok && insertMenu.ok && rowTools.ok && start.shown && start.cards >= 20 && start.lead === 'R24-pruvodce-police' && start.pictures >= 12 && start.closed && start.tab === 'Vzor – Posouzení nosníku N1';
+    console.log(JSON.stringify({ ok, start, insertMenu, rowTools, ...state, reshapedColumns, layers, pdfBytes: pdf.length }));
   } catch (err) {
     console.log(JSON.stringify({ ok: false, error: (err as Error).message, console: smokeConsole.slice(-5) }));
   }
@@ -649,6 +650,52 @@ async function insertMenuWithRealKeys(picture: string): Promise<{ all: number; p
     await pressKey('Backspace');
   }
   return { all: slashAll, pos: slashPos, line: slashLine, chart: slashChart, ok: slashAll >= 15 && slashPos === 'check position' && slashLine === 'check "Kladný kořen": x > 0' && slashChart };
+}
+
+/**
+ * The floating toolbar of the line being edited, with the real mouse: a moment typed, its unit chosen (N·mm),
+ * two decimal places, an equation number and a source; the cursor stays in the line all the while.
+ */
+async function rowToolbarWithRealMouse(picture: string): Promise<{ hidden: boolean; tools: string; line: string; focused: boolean; ok: boolean }> {
+  const contents = smokeWindow!.webContents;
+  // The toolbar shows while the pointer is over the line: the hand goes there first, as a person's does.
+  const hover = async () => {
+    const at = (await contents.executeJavaScript(`(() => { const r = document.querySelector('textarea.row-editor')?.getBoundingClientRect(); return r ? { x: Math.round(r.left + 20), y: Math.round(r.top + r.height / 2) } : undefined; })()`)) as { x: number; y: number } | undefined;
+    if (at) contents.sendInputEvent({ type: 'mouseMove', ...at });
+    await pause(150);
+  };
+  await contents.executeJavaScript(`document.querySelectorAll('#smoke-last-row').forEach((e) => e.removeAttribute('id')); [...document.querySelectorAll('.layer-view.active .page .row[data-line]')].sort((a, b) => Number(a.dataset.line) - Number(b.dataset.line)).at(-1).id = 'smoke-last-row'`);
+  await clickOn('#smoke-last-row');
+  await pressKey('End');
+  await pressKey('Enter');
+  await typeText('M_t := 54.321 kN·m');
+  await pause(500);
+  const hidden = (await contents.executeJavaScript(`getComputedStyle(document.querySelector('.row.editing .row-toolbar-wrap')).display === 'none'`)) as boolean;
+  await hover();
+  const tools = (await contents.executeJavaScript(`[...document.querySelectorAll('.row.editing .row-toolbar button')].map((b) => b.dataset.rowTool).join(' ')`)) as string;
+  await takePicture(picture);
+  await hover();
+  await clickOn('.row.editing .row-toolbar [data-row-tool="unit"]');
+  await pause(200);
+  await clickMenu('N·mm');
+  await pause(300);
+  await hover();
+  await clickOn('.row.editing .row-toolbar [data-row-tool="precision"]');
+  await pause(200);
+  await clickMenu('Výsledek na 2');
+  await pause(300);
+  await hover();
+  await clickOn('.row.editing .row-toolbar [data-row-tool="number"]');
+  await pause(300);
+  await hover();
+  await clickOn('.row.editing .row-toolbar [data-row-tool="source"]');
+  await pause(300);
+  await typeText('EN 1990, 6.10');
+  await pressKey('Enter');
+  await pause(400);
+  const after = (await contents.executeJavaScript(`({ line: document.querySelector('textarea.row-editor')?.value ?? '', focused: document.activeElement?.classList.contains('row-editor') ?? false })`)) as { line: string; focused: boolean };
+  const ok = hidden && tools === 'precision unit number source more' && after.focused && after.line === 'M_t := 54,321 kN·m | N·mm source "EN 1990, 6.10" {decimals=2 eq}';
+  return { hidden, tools, ...after, ok };
 }
 
 /**

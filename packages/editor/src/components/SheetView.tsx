@@ -12,7 +12,7 @@ import { columnsHead, fitWideEquations, isInput, pageLabels, renderBlockHtml, re
 import { isCanvasPath } from '@kalketa/canvas';
 import { paginate, type PageGeometry } from '../logic/pages.js';
 import { segments, type Segment } from '../logic/segments.js';
-import { lineAttributesOf, lineFormatOf, withLineAttribute, withLineAttributes, withLineFormat, type LineFormatChoice } from '../logic/lineFormat.js';
+import { lineAttributesOf, lineFormatOf, lineSourceOf, lineTargetOf, withLineAttribute, withLineAttributes, withLineFormat, withLineSource, withLineTarget, type LineFormatChoice } from '../logic/lineFormat.js';
 import { defineShortcut } from '../logic/shortcuts.js';
 import { pickOf } from '../logic/pick.js';
 import { nearestOnCurve, seriesAt } from '../logic/chartPoint.js';
@@ -27,6 +27,8 @@ import { ContextMenu, type MenuItem } from './MenuBar.js';
 import { ask } from './Ask.js';
 import type { Command } from '../commands.js';
 import { InsertMenu, insertQuery, matchingChoices, type InsertChoice } from './InsertMenu.js';
+import { RowToolbar } from './RowToolbar.js';
+import { unitChoices } from '../logic/unitChoices.js';
 
 export interface EditRange {
   readonly start: number;
@@ -124,12 +126,12 @@ const NO_COMMANDS: ReadonlyMap<string, Command> = new Map<string, Command>();
 type RowChange = (change: (text: string) => string) => void;
 
 /**
- * The menu of a row with a result: to how many decimal places it is shown, here and in every
- * substitution below, each choice with the result as it would look. Only the display changes;
- * the calculation goes on with the exact value. Significant digits ({digits=3}) stay a matter
- * of the text: the menu shows them only on a line that has them.
+ * The precision of a result (the menu of its row and the floating toolbar): to how many decimal places
+ * it is shown, here and in every substitution below, each choice with the result as it would look. Only
+ * the display changes; the calculation goes on with the exact value. Significant digits ({digits=3})
+ * stay a matter of the text: the menu shows them only on a line that has them.
  */
-function formatMenuItems(seg: Segment, catalog: Catalog, change: RowChange, shown?: (decimals: number) => string, numbered?: boolean): MenuItem[] {
+function precisionMenuItems(seg: Segment, catalog: Catalog, change: RowChange, shown?: (decimals: number) => string): MenuItem[] {
   const current = lineFormatOf(seg.text);
   const rounded = lineAttributesOf(seg.text).has('rounded');
   const choose = (format: LineFormatChoice) => change((text) => withLineFormat(text, format));
@@ -156,6 +158,13 @@ function formatMenuItems(seg: Segment, catalog: Catalog, change: RowChange, show
       enabled: current !== undefined,
       run: () => change((text) => withLineAttribute(text, 'rounded', rounded ? undefined : '')),
     },
+  ];
+}
+
+/** The menu of the right button of a row with a result: its precision, its equation number, a cell beside. */
+function formatMenuItems(seg: Segment, catalog: Catalog, change: RowChange, shown?: (decimals: number) => string, numbered?: boolean): MenuItem[] {
+  return [
+    ...precisionMenuItems(seg, catalog, change, shown),
     { kind: 'separator' },
     {
       // Against the setting of the sheet: {eq} numbers this line, {noeq} leaves it without.
@@ -240,6 +249,8 @@ export function SheetView(props: Props) {
   if (rawAt !== undefined && editing?.start !== rawAt) setRawAt(undefined);
   // A solve line expressed by a formula also offers that formula as a definition of its own.
   const [summaryMenu, setSummaryMenu] = useState<{ x: number; y: number } | undefined>();
+  // A menu of the floating toolbar of the line being edited (its precision or unit).
+  const [toolMenu, setToolMenu] = useState<{ items: readonly MenuItem[]; at: { x: number; y: number } } | undefined>();
   const [formatMenu, setFormatMenu] = useState<{ seg: Segment; at: { x: number; y: number }; text?: boolean; table?: boolean; solveLine?: string } | undefined>();
   // Where a dragged picture would land: a line across the page body.
   const [dropMark, setDropMark] = useState<{ x: number; y: number; width: number } | undefined>();
@@ -1049,6 +1060,17 @@ export function SheetView(props: Props) {
           onClose={() => setFormatMenu(undefined)}
         />
       )}
+      {toolMenu && (
+        <ContextMenu
+          items={toolMenu.items}
+          commands={NO_COMMANDS}
+          at={toolMenu.at}
+          onClose={() => {
+            setToolMenu(undefined);
+            document.querySelector<HTMLTextAreaElement>('textarea.row-editor')?.focus();
+          }}
+        />
+      )}
       {aiMenu && (
         <ContextMenu
           items={[
@@ -1153,6 +1175,56 @@ export function SheetView(props: Props) {
   /** The cells of a table of the sheet to edit as a grid, unless it was asked for as text. */
   function gridOf(seg: Segment, statement: Statement | undefined) {
     return statement?.kind === 'table' && gridAt === seg.start ? parseSheetTable(seg.text) : undefined;
+  }
+
+  /**
+   * The floating toolbar of the line being edited: the precision and the unit of its result (each with the
+   * value as it would show), its equation number, its source and the whole menu of the line. A check has
+   * the source and the menu only.
+   */
+  function rowToolbar(seg: Segment, statement: SheetResult['statements'][number] | undefined, numbered: boolean) {
+    const ui = props.uiCatalog;
+    const change: RowChange = (f) => props.onReplace(seg.start, seg.end, f(seg.text));
+    const value = statement?.value?.type === 'quantity' && statement.statement.kind !== 'check' ? statement.value : undefined;
+    const display = value ? statement?.display : undefined;
+    const number = (n: number, decimals?: number) => formatNumber(n, props.printCatalog, decimals === undefined ? { digits: 4 } : { decimals }).replace('-', '−');
+    const shown = display && !display.im && Number.isFinite(display.value) ? (n: number) => `${number(display.value, n)}${display.unit ? ` ${display.unit}` : ''}` : undefined;
+    const format = lineFormatOf(seg.text);
+    const precision = format === undefined ? t(ui, 'rowTools.precision') : 'decimals' in format ? t(ui, `rowTools.places.${Math.min(format.decimals, 4)}` as UiKey) : t(ui, 'rowTools.digits', { n: String(format.digits) });
+    const target = lineTargetOf(seg.text);
+    const units = value ? unitChoices(value) : [];
+    const unitItems: MenuItem[] =
+      units.length === 0
+        ? []
+        : [
+            { kind: 'action', label: t(ui, 'rowTools.unitAuto'), checked: target === undefined, run: () => change((text) => withLineTarget(text, undefined)) },
+            { kind: 'separator' },
+            ...units.map((u): MenuItem => ({ kind: 'action', label: `${u.unit}   (${number(u.value)} ${u.unit})`, checked: target === u.unit, run: () => change((text) => withLineTarget(text, u.unit)) })),
+          ];
+    const source = lineSourceOf(seg.text);
+    return (
+      <RowToolbar
+        {...(value ? { precision } : {})}
+        precisionItems={precisionMenuItems(seg, ui, change, shown)}
+        {...(value ? { unit: target ?? (display?.unit || t(ui, 'rowTools.noUnit')) } : {})}
+        unitItems={unitItems}
+        {...(value
+          ? { number: { label: t(ui, 'rowTools.number'), on: numbered, toggle: () => change((text) => withLineAttribute(withLineAttribute(text, numbered ? 'eq' : 'noeq', undefined), numbered ? 'noeq' : 'eq', '')) } }
+          : {})}
+        source={{
+          label: source ? `${t(ui, 'rowTools.sourceShort')} ${source.length > 24 ? `${source.slice(0, 23)}…` : source}` : t(ui, 'rowTools.source'),
+          ...(source ? { title: source } : {}),
+          ask: () =>
+            void ask(t(ui, 'rowTools.sourceAsk'), source ?? '').then((answer) => {
+              if (answer !== undefined) change((text) => withLineSource(text, answer));
+              // Back to the line being edited, as after a menu of the toolbar.
+              document.querySelector<HTMLTextAreaElement>('textarea.row-editor')?.focus();
+            }),
+        }}
+        more={{ title: t(ui, 'rowTools.more'), open: (at) => setFormatMenu({ seg, at }) }}
+        onMenu={(items, at) => setToolMenu({ items, at })}
+      />
+    );
   }
 
   function rowItem(seg: Segment, measured = true) {
@@ -1276,6 +1348,7 @@ export function SheetView(props: Props) {
           {seg.start}
         </span>
         <div className="content">
+          {isEditing && !textLine && !gridOf(seg, statement?.statement) && (block?.kind === 'equation' || block?.kind === 'check') && rowToolbar(seg, statement, block.kind === 'equation' && block.number !== undefined)}
           {isEditing && gridOf(seg, statement?.statement) ? (
             <SheetTableGrid
               table={gridOf(seg, statement?.statement)!}

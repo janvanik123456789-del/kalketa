@@ -755,6 +755,12 @@ async function clickOn(selector: string, modifiers: Array<'control' | 'shift'> =
 
 /** Clicks the row of an open menu (the deepest one first) whose label starts with `label`. */
 async function clickMenu(label: string): Promise<void> {
+  // A menu just opened may take a moment to appear (more on Linux): looked for again for up to a second.
+  for (let tries = 0; tries < 10; tries++) {
+    const shown = (await smokeWindow!.webContents.executeJavaScript(`[...document.querySelectorAll('.menu-panel .menu-row .menu-label')].some((l) => l.textContent.trim().startsWith(${JSON.stringify(label)}))`)) as boolean;
+    if (shown) break;
+    await pause(100);
+  }
   const found = (await smokeWindow!.webContents.executeJavaScript(`(() => {
     document.querySelectorAll('[data-smoke]').forEach((e) => e.removeAttribute('data-smoke'));
     const rows = [...document.querySelectorAll('.menu-panel .menu-row')].reverse();
@@ -2881,13 +2887,18 @@ async function layersWithRealInput(picture: string) {
   })()`)) as { outline: number; failingSection: string; checksHead: string };
   await contents.executeJavaScript(`[...document.querySelectorAll('.navigator .nav-item')].find((i) => i.textContent.includes('Průhyb police'))?.setAttribute('id', 'smoke-nav-check')`);
   await clickOn('#smoke-nav-check');
-  await pause(900);
-  const navJumped = (await contents.executeJavaScript(`(() => {
+  // The sheet scrolls smoothly (slower on Linux): the row is waited for until it is in view.
+  const inView = `(() => {
     const row = document.querySelector('.layer-view.active .row.selected');
     const view = document.querySelector('.layer-view.active .sheet-scroll')?.getBoundingClientRect();
     const box = row?.getBoundingClientRect();
     return !!row && row.textContent.includes('Průhyb police') && !!view && box.top >= view.top && box.bottom <= view.bottom;
-  })()`)) as boolean;
+  })()`;
+  let navJumped = false;
+  for (let waited = 0; waited < 3000 && !navJumped; waited += 200) {
+    await pause(200);
+    navJumped = (await contents.executeJavaScript(inView)) as boolean;
+  }
   await takePicture(picture.replace(/[.]png$/, '-navigation.png'));
   await clickOn('.pane-tab[data-pane="details"]');
   const navigation = { ...navSeen, jumped: navJumped, ok: navSeen.outline === 7 && navSeen.failingSection === 'Průhyb' && navSeen.checksHead === 'Posudky · 1 z 2 vyhovuje' && navJumped };
@@ -3216,15 +3227,16 @@ async function layersWithRealInput(picture: string) {
     return { x: Math.round(b.left + b.width * 0.75), y: Math.round(b.top + b.height * 0.3), width: Math.round(b.width), height: Math.round(b.height) };
   })()`)) as { x: number; y: number; width: number; height: number } | undefined;
   let circleAt = await measureCircle();
-  if (circleAt) {
-    // Into the chart and on over it, as a hand moves: the first move only enters it. Measured again before
-    // each move, since the window may still settle (on Linux the tab rows wrap a moment later).
+  // Into the chart and on over it, as a hand moves: the first move only enters it. Measured again before each
+  // move and tried again until the tip shows, since the window may still settle (on Linux the tabs wrap later).
+  for (let attempt = 0; circleAt && attempt < 4; attempt++) {
     for (const step of [-20, -10, 0]) {
       circleAt = (await measureCircle()) ?? circleAt;
       contents.sendInputEvent({ type: 'mouseMove', x: circleAt.x + step, y: circleAt.y });
       await pause(150);
     }
     await pause(300);
+    if (await contents.executeJavaScript(`!!document.querySelector('.layer-view.active .chart-tooltip')?.textContent.trim()`)) break;
   }
   const relations = (await contents.executeJavaScript(`(() => {
     const rows = [...document.querySelectorAll('.layer-view.active .page .row')];

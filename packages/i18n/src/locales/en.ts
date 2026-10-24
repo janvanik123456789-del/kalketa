@@ -423,6 +423,7 @@ export const en: Catalog = {
     'samples.field.99': 'Advanced and special methods',
     'cmd.file.example': 'E&xample: beam',
     'cmd.file.start': 'Star&t screen',
+    'props.previewNote': 'Preview of the first page · changes with each choice',
     'controls.layout': 'Layout',
     'controls.layoutClassic': 'Classic: menu and toolbars',
     'controls.layoutRibbon': 'Ribbon',

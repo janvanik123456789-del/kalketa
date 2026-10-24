@@ -3,7 +3,7 @@
  * toolbars, Keyboard shortcuts, Functions, About.
  */
 
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Controls } from '../logic/controls.js';
 import { builtinFunctions, evaluateSheet, FUNCTION_MODULES, signature, type FunctionDef } from '@kalketa/core';
 import { CATALOGS, formatValue, t, type Catalog } from '@kalketa/i18n';
@@ -32,7 +32,7 @@ interface DialogProps {
   readonly children: ReactNode;
   readonly wide?: boolean;
   /** "huge": nearly the whole window, for showing a page. */
-  readonly size?: 'huge';
+  readonly size?: 'huge' | 'preview';
   onClose(): void;
   /** OK button; without it the dialog only has Close. */
   onOk?(): void;
@@ -235,137 +235,176 @@ export function SettingsDialog({
 
 // ---------------------------------------------------------------------------
 
-export function PropertiesDialog({ catalog, doc, onApply, onClose }: { catalog: Catalog; doc: SheetDocument; onApply(doc: SheetDocument): void; onClose(): void }) {
+/** The size of a sheet of paper on the screen (CSS px), as chosen. */
+function paperPx(layout: SheetDocument['layout']): { width: number; height: number } {
+  const [w, h] = layout.paper === 'A3' ? [297, 420] : layout.paper === 'Letter' ? [215.9, 279.4] : [210, 297];
+  const px = (mm: number) => Math.round((mm * 96) / 25.4);
+  return layout.orientation === 'landscape' ? { width: px(h), height: px(w) } : { width: px(w), height: px(h) };
+}
+
+/** Width of the preview of the first page in the properties (px). */
+const PREVIEW_WIDTH = 430;
+
+/**
+ * Properties of the calculation, with the first page of its printout beside them: each choice shows at once,
+ * as it will print (the preview of 11. 10.: matters of the printout are chosen by what they do).
+ */
+export function PropertiesDialog({ catalog, doc, preview, onApply, onClose }: { catalog: Catalog; doc: SheetDocument; preview?: (draft: SheetDocument) => string; onApply(doc: SheetDocument): void; onClose(): void }) {
   const [title, setTitle] = useState(doc.manifest.title);
   const [author, setAuthor] = useState(doc.manifest.author ?? '');
   const [language, setLanguage] = useState(doc.manifest.language ?? catalog.locale);
   const [layout, setLayout] = useState(doc.layout);
 
-  const apply = () => {
+  const draft = useMemo((): SheetDocument => {
     const { author: _old, ...manifest } = doc.manifest;
-    onApply({
+    return {
       ...doc,
       manifest: { ...manifest, title: title.trim() || doc.manifest.title, language, ...(author.trim() ? { author: author.trim() } : {}) },
       layout: { ...layout, digits: Math.max(1, Math.min(15, Math.round(layout.digits) || 4)) },
-    });
+    };
+  }, [doc, title, author, language, layout]);
+  // The printout of the draft, a moment after the last change (typing a title does not redraw at each key).
+  const [shown, setShown] = useState(() => preview?.(draft));
+  useEffect(() => {
+    if (!preview) return;
+    const timer = window.setTimeout(() => setShown(preview(draft)), 150);
+    return () => window.clearTimeout(timer);
+  }, [draft]);
+  const paper = paperPx(draft.layout);
+  const scale = PREVIEW_WIDTH / paper.width;
+
+  const apply = () => {
+    onApply(draft);
     onClose();
   };
 
   return (
-    <Dialog title={t(catalog, 'props.title')} catalog={catalog} onClose={onClose} onOk={apply}>
-      <label className="field">
-        <span>{t(catalog, 'props.docTitle')}</span>
-        <input value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
-      </label>
-      <label className="field">
-        <span>{t(catalog, 'props.author')}</span>
-        <input value={author} onChange={(e) => setAuthor(e.target.value)} />
-      </label>
-      <label className="field">
-        <span>{t(catalog, 'props.printLanguage')}</span>
-        <select value={language} onChange={(e) => setLanguage(e.target.value)}>
-          {Object.values(CATALOGS).map((c) => (
-            <option key={c.locale} value={c.locale}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="field">
-        <span>{t(catalog, 'props.paper')}</span>
-        <select value={layout.paper} onChange={(e) => setLayout({ ...layout, paper: e.target.value as typeof layout.paper })}>
-          {(['A4', 'A3', 'Letter'] as const).map((p) => (
-            <option key={p}>{p}</option>
-          ))}
-        </select>
-      </label>
-      <label className="field">
-        <span>{t(catalog, 'props.orientation')}</span>
-        <select value={layout.orientation} onChange={(e) => setLayout({ ...layout, orientation: e.target.value as typeof layout.orientation })}>
-          <option value="portrait">{t(catalog, 'props.portrait')}</option>
-          <option value="landscape">{t(catalog, 'props.landscape')}</option>
-        </select>
-      </label>
-      <label className="field">
-        <span>{t(catalog, 'props.style')}</span>
-        <select className="props-style" value={layout.style ?? 'airy'} onChange={(e) => setLayout({ ...layout, style: e.target.value as 'compact' | 'airy' | 'book' | 'columns' })}>
-          <option value="compact">{t(catalog, 'props.styleCompact')}</option>
-          <option value="airy">{t(catalog, 'props.styleAiry')}</option>
-          <option value="book">{t(catalog, 'props.styleBook')}</option>
-          <option value="columns">{t(catalog, 'props.styleColumns')}</option>
-        </select>
-      </label>
-      <label className="field">
-        <span>{t(catalog, 'props.digits')}</span>
-        <input type="number" min={1} max={15} value={layout.digits} onChange={(e) => setLayout({ ...layout, digits: Number(e.target.value) })} />
-      </label>
-      <label className="field">
-        <span>{t(catalog, 'props.equations')}</span>
-        <select className="props-equations" value={layout.equations ?? (layout.style === 'book' ? 'formulas' : 'none')} onChange={(e) => setLayout({ ...layout, equations: e.target.value as 'none' | 'formulas' | 'results' })}>
-          {(['none', 'formulas', 'results'] as const).map((p) => (
-            <option key={p} value={p}>
-              {t(catalog, `equations.${p}`)}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="field">
-        <span>{t(catalog, 'props.verdict')}</span>
-        <select className="props-verdict" value={layout.verdict ?? 'present'} onChange={(e) => setLayout({ ...layout, verdict: e.target.value as 'present' | 'future' | 'sign' })}>
-          {(['present', 'future', 'sign'] as const).map((p) => (
-            <option key={p} value={p}>
-              {t(catalog, `verdict.${p}`)}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="field">
-        <span>{t(catalog, 'props.headings')}</span>
-        <select className="props-headings" value={layout.headings ?? 'plain'} onChange={(e) => setLayout({ ...layout, headings: e.target.value === 'numbered' ? 'numbered' : 'plain' })}>
-          <option value="plain">{t(catalog, 'props.headingsPlain')}</option>
-          <option value="numbered">{t(catalog, 'props.headingsNumbered')}</option>
-        </select>
-      </label>
-      <label className="field">
-        <span>{t(catalog, 'props.derivations')}</span>
-        <select className="props-derivations" value={layout.derivations ?? 'printed'} onChange={(e) => setLayout({ ...layout, derivations: e.target.value as 'printed' | 'screen' })}>
-          <option value="printed">{t(catalog, 'props.derivationsPrinted')}</option>
-          <option value="screen">{t(catalog, 'props.derivationsScreen')}</option>
-        </select>
-      </label>
-      <label className="field">
-        <span>{t(catalog, 'props.detail')}</span>
-        <select
-          className="props-detail"
-          value={layout.detail ?? ''}
-          onChange={(e) => {
-            const { detail: _, ...rest } = layout;
-            setLayout(e.target.value ? { ...rest, detail: e.target.value as 'brief' | 'paper' | 'teaching' } : rest);
-          }}
-        >
-          <option value="">{t(catalog, 'props.detailAsk')}</option>
-          <option value="brief">{t(catalog, 'props.detailBrief')}</option>
-          <option value="paper">{t(catalog, 'props.detailPaper')}</option>
-          <option value="teaching">{t(catalog, 'props.detailTeaching')}</option>
-        </select>
-      </label>
-      <label className="field">
-        <span>{t(catalog, 'props.pageNumbers')}</span>
-        <select className="props-pages" value={layout.pageNumbers ?? 'continuous'} onChange={(e) => setLayout({ ...layout, pageNumbers: e.target.value as 'continuous' | 'sections' })}>
-          <option value="continuous">{t(catalog, 'props.pagesContinuous')}</option>
-          <option value="sections">{t(catalog, 'props.pagesSections')}</option>
-        </select>
-      </label>
-      <label className="field">
-        <span>{t(catalog, 'props.summary')}</span>
-        <select className="props-summary" value={layout.summary ?? 'top'} onChange={(e) => setLayout({ ...layout, summary: e.target.value as 'top' | 'bottom' | 'none' })}>
-          {(['top', 'bottom', 'none'] as const).map((p) => (
-            <option key={p} value={p}>
-              {t(catalog, `summary.${p}`)}
-            </option>
-          ))}
-        </select>
-      </label>
+    <Dialog title={t(catalog, 'props.title')} catalog={catalog} onClose={onClose} onOk={apply} {...(preview ? { size: 'preview' as const } : {})}>
+      <div className="props-layout">
+        {shown !== undefined && (
+          <div className="props-preview">
+            <div className="props-preview-note">{t(catalog, 'props.previewNote')}</div>
+            <div className="props-preview-sheet" style={{ width: PREVIEW_WIDTH, height: Math.round(paper.height * scale) }}>
+              <iframe className="props-preview-frame" title={t(catalog, 'props.previewNote')} sandbox="" scrolling="no" srcDoc={shown} style={{ width: paper.width, height: paper.height, transform: `scale(${scale})` }} />
+            </div>
+          </div>
+        )}
+        <div className="props-fields">
+          <label className="field">
+            <span>{t(catalog, 'props.docTitle')}</span>
+            <input value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
+          </label>
+          <label className="field">
+            <span>{t(catalog, 'props.author')}</span>
+            <input value={author} onChange={(e) => setAuthor(e.target.value)} />
+          </label>
+          <label className="field">
+            <span>{t(catalog, 'props.printLanguage')}</span>
+            <select value={language} onChange={(e) => setLanguage(e.target.value)}>
+              {Object.values(CATALOGS).map((c) => (
+                <option key={c.locale} value={c.locale}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            <span>{t(catalog, 'props.paper')}</span>
+            <select value={layout.paper} onChange={(e) => setLayout({ ...layout, paper: e.target.value as typeof layout.paper })}>
+              {(['A4', 'A3', 'Letter'] as const).map((p) => (
+                <option key={p}>{p}</option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            <span>{t(catalog, 'props.orientation')}</span>
+            <select value={layout.orientation} onChange={(e) => setLayout({ ...layout, orientation: e.target.value as typeof layout.orientation })}>
+              <option value="portrait">{t(catalog, 'props.portrait')}</option>
+              <option value="landscape">{t(catalog, 'props.landscape')}</option>
+            </select>
+          </label>
+          <label className="field">
+            <span>{t(catalog, 'props.style')}</span>
+            <select className="props-style" value={layout.style ?? 'airy'} onChange={(e) => setLayout({ ...layout, style: e.target.value as 'compact' | 'airy' | 'book' | 'columns' })}>
+              <option value="compact">{t(catalog, 'props.styleCompact')}</option>
+              <option value="airy">{t(catalog, 'props.styleAiry')}</option>
+              <option value="book">{t(catalog, 'props.styleBook')}</option>
+              <option value="columns">{t(catalog, 'props.styleColumns')}</option>
+            </select>
+          </label>
+          <label className="field">
+            <span>{t(catalog, 'props.digits')}</span>
+            <input type="number" min={1} max={15} value={layout.digits} onChange={(e) => setLayout({ ...layout, digits: Number(e.target.value) })} />
+          </label>
+          <label className="field">
+            <span>{t(catalog, 'props.equations')}</span>
+            <select className="props-equations" value={layout.equations ?? (layout.style === 'book' ? 'formulas' : 'none')} onChange={(e) => setLayout({ ...layout, equations: e.target.value as 'none' | 'formulas' | 'results' })}>
+              {(['none', 'formulas', 'results'] as const).map((p) => (
+                <option key={p} value={p}>
+                  {t(catalog, `equations.${p}`)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            <span>{t(catalog, 'props.verdict')}</span>
+            <select className="props-verdict" value={layout.verdict ?? 'present'} onChange={(e) => setLayout({ ...layout, verdict: e.target.value as 'present' | 'future' | 'sign' })}>
+              {(['present', 'future', 'sign'] as const).map((p) => (
+                <option key={p} value={p}>
+                  {t(catalog, `verdict.${p}`)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            <span>{t(catalog, 'props.headings')}</span>
+            <select className="props-headings" value={layout.headings ?? 'plain'} onChange={(e) => setLayout({ ...layout, headings: e.target.value === 'numbered' ? 'numbered' : 'plain' })}>
+              <option value="plain">{t(catalog, 'props.headingsPlain')}</option>
+              <option value="numbered">{t(catalog, 'props.headingsNumbered')}</option>
+            </select>
+          </label>
+          <label className="field">
+            <span>{t(catalog, 'props.derivations')}</span>
+            <select className="props-derivations" value={layout.derivations ?? 'printed'} onChange={(e) => setLayout({ ...layout, derivations: e.target.value as 'printed' | 'screen' })}>
+              <option value="printed">{t(catalog, 'props.derivationsPrinted')}</option>
+              <option value="screen">{t(catalog, 'props.derivationsScreen')}</option>
+            </select>
+          </label>
+          <label className="field">
+            <span>{t(catalog, 'props.detail')}</span>
+            <select
+              className="props-detail"
+              value={layout.detail ?? ''}
+              onChange={(e) => {
+                const { detail: _, ...rest } = layout;
+                setLayout(e.target.value ? { ...rest, detail: e.target.value as 'brief' | 'paper' | 'teaching' } : rest);
+              }}
+            >
+              <option value="">{t(catalog, 'props.detailAsk')}</option>
+              <option value="brief">{t(catalog, 'props.detailBrief')}</option>
+              <option value="paper">{t(catalog, 'props.detailPaper')}</option>
+              <option value="teaching">{t(catalog, 'props.detailTeaching')}</option>
+            </select>
+          </label>
+          <label className="field">
+            <span>{t(catalog, 'props.pageNumbers')}</span>
+            <select className="props-pages" value={layout.pageNumbers ?? 'continuous'} onChange={(e) => setLayout({ ...layout, pageNumbers: e.target.value as 'continuous' | 'sections' })}>
+              <option value="continuous">{t(catalog, 'props.pagesContinuous')}</option>
+              <option value="sections">{t(catalog, 'props.pagesSections')}</option>
+            </select>
+          </label>
+          <label className="field">
+            <span>{t(catalog, 'props.summary')}</span>
+            <select className="props-summary" value={layout.summary ?? 'top'} onChange={(e) => setLayout({ ...layout, summary: e.target.value as 'top' | 'bottom' | 'none' })}>
+              {(['top', 'bottom', 'none'] as const).map((p) => (
+                <option key={p} value={p}>
+                  {t(catalog, `summary.${p}`)}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      </div>
     </Dialog>
   );
 }

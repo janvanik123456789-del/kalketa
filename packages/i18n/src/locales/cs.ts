@@ -423,6 +423,7 @@ export const cs: Catalog = {
     'samples.field.99': 'Pokročilé a speciální metody',
     'cmd.file.example': 'U&kázka: nosník',
     'cmd.file.start': '&Úvodní obrazovka',
+    'props.previewNote': 'Náhled první strany · mění se hned s volbou',
     'controls.layout': 'Rozložení',
     'controls.layoutClassic': 'Klasické: menu a panely nástrojů',
     'controls.layoutRibbon': 'Pás karet',

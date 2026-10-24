@@ -949,3 +949,13 @@ button.icon:hover { color: var(--accent); }
 .app[data-theme='dark'] .ribbon-button { color: #dde2ea; }
 .app[data-theme='dark'] .ribbon-button:hover:not(:disabled) { background: #364050; border-color: #4a5466; }
 .app[data-theme='dark'] .ribbon-button:disabled { color: #5d6573; }
+
+/* Properties of the calculation with the first page of the printout beside them (it changes with each choice). */
+.dialog.preview { width: min(1060px, 96vw); }
+.props-layout { display: flex; gap: 22px; align-items: flex-start; }
+.props-preview { flex: none; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px; background: #e6e9ee; border-radius: 6px; max-height: 76vh; overflow: auto; }
+.props-preview-note { font-size: 12px; color: #3b4352; }
+.props-preview-sheet { position: relative; overflow: hidden; background: #fff; box-shadow: 0 6px 18px rgba(20, 30, 50, 0.12); }
+.props-preview-frame { position: absolute; left: 0; top: 0; border: none; background: #fff; transform-origin: 0 0; pointer-events: none; }
+.props-fields { flex: 1; min-width: 320px; max-height: 76vh; overflow-y: auto; overflow-x: hidden; }
+.props-fields .field :is(select, input) { width: 100%; min-width: 0; box-sizing: border-box; }

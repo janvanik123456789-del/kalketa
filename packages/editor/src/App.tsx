@@ -924,29 +924,36 @@ export function App() {
     );
     return { ...appendix, text: aiProtocol(printCatalog, { text: appendix.text, sources, entries: entriesOf(doc) }) };
   };
-  const printoutHtml = () =>
-    printHtml(evaluation.main, {
-      catalog: printCatalog,
+  /**
+   * The printout of the calculation; of another state of it too (the properties being chosen, for their preview),
+   * then without its appendices: the preview shows the first page.
+   */
+  const printoutHtml = (d: SheetDocument = doc, preview = false) => {
+    const catalog = d === doc ? printCatalog : catalogFor(d.manifest.language ?? language);
+    const head = d === doc ? headRight : [d.manifest.author?.trim(), formatDate(Math.floor(Date.parse(d.manifest.modified) / 86_400_000), catalog)].filter(Boolean).join(' · ');
+    return printHtml(evaluation.main, {
+      catalog,
       registry: defaultRegistry,
-      title: /^[ \t]*#(?!#)[ \t]*(.+?)[ \t]*$/m.exec(doc.source)?.[1] ?? doc.manifest.title,
-      digits: doc.layout.digits,
-      paper: doc.layout.paper,
-      orientation: doc.layout.orientation,
+      title: /^[ \t]*#(?!#)[ \t]*(.+?)[ \t]*$/m.exec(d.source)?.[1] ?? d.manifest.title,
+      digits: d.layout.digits,
+      paper: d.layout.paper,
+      orientation: d.layout.orientation,
       resolveFile,
-      ...(doc.manifest.author ? { subtitle: doc.manifest.author } : {}),
-      appendices: [...appendixLayers(doc.layers, evaluation, (l) => layerName(l, printCatalog)).map(withAiProtocol), ...blockAppendices(evaluation.main)],
+      ...(d.manifest.author ? { subtitle: d.manifest.author } : {}),
+      appendices: preview ? [] : [...appendixLayers(d.layers, evaluation, (l) => layerName(l, catalog)).map(withAiProtocol), ...blockAppendices(evaluation.main)],
       ...(footer ? { footer } : {}),
-      headRight,
+      headRight: head,
       aiLines: unreviewedAiLines(),
-      style: doc.layout.style ?? 'airy',
-      ...(doc.layout.chartStyle ? { chartStyle: doc.layout.chartStyle } : {}),
-      ...(doc.layout.summary ? { summary: doc.layout.summary } : {}),
-      ...(equationNumbers(doc.layout) ? { equations: equationNumbers(doc.layout)! } : {}),
-      ...(doc.layout.verdict ? { verdict: doc.layout.verdict } : {}),
-      ...(doc.layout.headings ? { headings: doc.layout.headings } : {}),
-      ...(doc.layout.pageNumbers ? { pageNumbers: doc.layout.pageNumbers } : {}),
-      ...(doc.layout.derivations ? { derivations: doc.layout.derivations } : {}),
+      style: d.layout.style ?? 'airy',
+      ...(d.layout.chartStyle ? { chartStyle: d.layout.chartStyle } : {}),
+      ...(d.layout.summary ? { summary: d.layout.summary } : {}),
+      ...(equationNumbers(d.layout) ? { equations: equationNumbers(d.layout)! } : {}),
+      ...(d.layout.verdict ? { verdict: d.layout.verdict } : {}),
+      ...(d.layout.headings ? { headings: d.layout.headings } : {}),
+      ...(d.layout.pageNumbers ? { pageNumbers: d.layout.pageNumbers } : {}),
+      ...(d.layout.derivations ? { derivations: d.layout.derivations } : {}),
     });
+  };
   /** Unreviewed AI lines: the user is asked first; they print marked, with a notice. */
   const confirmAiPrint = async () => unreviewedAiLines().size === 0 || (await askConfirm(t(ui, 'print.aiConfirm')));
 
@@ -2858,7 +2865,7 @@ export function App() {
           onClose={() => setReread(undefined)}
         />
       )}
-      {dialog === 'properties' && <PropertiesDialog catalog={ui} doc={doc} onApply={(next) => change(next)} onClose={() => setDialog(undefined)} />}
+      {dialog === 'properties' && <PropertiesDialog catalog={ui} doc={doc} preview={(draft) => printoutHtml(draft, true)} onApply={(next) => change(next)} onClose={() => setDialog(undefined)} />}
       {dialog === 'customize' && <CustomizeDialog catalog={ui} layout={toolbars} commands={commands} onApply={changeToolbars} onClose={() => setDialog(undefined)} />}
       {dialog === 'shortcuts' && <ShortcutsDialog catalog={ui} commands={commands} onClose={() => setDialog(undefined)} />}
       {canvasEdit?.mode === 'window' && canvasEditor(canvasEdit.path, 'window')}

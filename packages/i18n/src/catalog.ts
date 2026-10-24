@@ -150,6 +150,7 @@ export const UI_KEYS = [
   'cmd.file.pdf',
   'cmd.file.example',
   'cmd.file.start',
+  'props.previewNote',
   'controls.layout',
   'controls.layoutClassic',
   'controls.layoutRibbon',

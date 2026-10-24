@@ -972,13 +972,20 @@ async function layersWithRealInput(picture: string) {
       // The value changes a moment later: read too soon, one more arrow would go past it.
       await pause(250);
     }
+    // The preview of the first page beside the choices shows the book style before OK (formulas centred).
+    if (style === 'book') {
+      await pause(500);
+      propsPreview = (await contents.executeJavaScript(`({ shown: !!document.querySelector('.dialog .props-preview-frame'), book: document.querySelector('.dialog .props-preview-frame')?.getAttribute('srcdoc')?.includes('block equation book') ?? false })`)) as { shown: boolean; book: boolean };
+      await takePicture(picture.replace(/[.]png$/, '-properties.png'));
+    }
     // Arrows on a closed select change its value; Enter may close the dialog with it already.
     if ((await contents.executeJavaScript(`!!document.querySelector('.dialog-buttons button.default')`)) as boolean) await clickOn('.dialog-buttons button.default');
     await pause(400);
     return order[from]!;
   };
+  let propsPreview = { shown: false, book: false };
   const styleBefore = await chooseStyle('book');
-  const bookStyle = (await contents.executeJavaScript(`!!document.querySelector('.layer-view.active .block.equation.book') && !!document.querySelector('.layer-view.active .eq-number')`)) as boolean;
+  const bookStyle = propsPreview.shown && propsPreview.book && ((await contents.executeJavaScript(`!!document.querySelector('.layer-view.active .block.equation.book') && !!document.querySelector('.layer-view.active .eq-number')`)) as boolean);
   await takePicture(picture.replace(/[.]png$/, '-book.png'));
   // With columns: the sources on the left, the results and verdicts on the right, the columns named on the page.
   await chooseStyle('columns');

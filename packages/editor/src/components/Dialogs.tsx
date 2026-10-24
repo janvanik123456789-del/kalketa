@@ -210,6 +210,13 @@ export function SettingsDialog({
       <div className="controls-settings">
         <h4>{t(catalog, 'controls.section')}</h4>
         <label className="field">
+          <span>{t(catalog, 'controls.layout')}</span>
+          <select data-control="layout" value={controlsDraft.layout} onChange={(e) => setControlsDraft({ ...controlsDraft, layout: e.target.value === 'ribbon' ? 'ribbon' : 'classic' })}>
+            <option value="classic">{t(catalog, 'controls.layoutClassic')}</option>
+            <option value="ribbon">{t(catalog, 'controls.layoutRibbon')}</option>
+          </select>
+        </label>
+        <label className="field">
           <span>{t(catalog, 'controls.theme')}</span>
           <select data-control="theme" value={controlsDraft.theme} onChange={(e) => setControlsDraft({ ...controlsDraft, theme: e.target.value === 'dark' ? 'dark' : 'light' })}>
             <option value="light">{t(catalog, 'controls.themeLight')}</option>

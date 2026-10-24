@@ -33,6 +33,7 @@ import type { AnswerProposals } from './components/ChatPane.js';
 import { languageGuide, sheetContext } from './logic/aiContext.js';
 import { exampleDocument, SAMPLE_FIELDS, samplePicture, samples, savedSampleTitle, subfieldName, type Sample } from './samples.js';
 import { StartScreen } from './components/StartScreen.js';
+import { Ribbon } from './components/Ribbon.js';
 import { CONTROLS_KEY, readControls } from './logic/controls.js';
 import { NavigatorPane, type CheckItem, type OutlineItem, type ProblemItem } from './components/NavigatorPane.js';
 import type { InsertChoice } from './components/InsertMenu.js';
@@ -95,6 +96,8 @@ const SESSION_KEY = 'kalketa.session';
 const RECENT_LIMIT = 8;
 const SIZE_LIMIT_KEY = 'kalketa.sizeLimitMb';
 const CANVAS_MODE_KEY = 'kalketa.canvasMode';
+/** The ribbon shows only its tabs. */
+const RIBBON_COLLAPSED_KEY = 'kalketa.ribbonCollapsed';
 const PYTHON_ENGINE_KEY = 'kalketa.pythonEngine';
 const PYTHON_ASK_AI_KEY = 'kalketa.pythonAskAi';
 const GREEK_CAPITALS_KEY = 'kalketa.greekCapitals';
@@ -207,6 +210,7 @@ export function App() {
   const [controls, setControls] = useState(() => readControls(stored(CONTROLS_KEY)));
   const [startOpen, setStartOpen] = useState(() => controls.startScreen && !new URLSearchParams(location.search).has('blank') && !(!!desktop && sessionFiles().length > 0));
   const [sampleList] = useState(samples);
+  const [ribbonCollapsed, setRibbonCollapsed] = useState(() => stored(RIBBON_COLLAPSED_KEY) === 'yes');
   const tab = docs.tabs.find((d) => d.id === docs.active) ?? docs.tabs[0]!;
   /** A saved calculation is called by its file name; a new one by its title. */
   const docLabel = (d: Tab) =>
@@ -2480,10 +2484,24 @@ export function App() {
 
   return (
     <div className="app" data-theme={controls.theme}>
-      <MenuBar menus={menus} commands={commands} />
+      {controls.layout === 'ribbon' ? (
+        <Ribbon
+          menus={menus}
+          commands={commands}
+          catalog={ui}
+          collapsed={ribbonCollapsed}
+          onCollapse={(collapsed) => {
+            setRibbonCollapsed(collapsed);
+            remember(RIBBON_COLLAPSED_KEY, collapsed ? 'yes' : 'no');
+          }}
+        />
+      ) : (
+        <MenuBar menus={menus} commands={commands} />
+      )}
       <div className="app-body">
         <ToolbarFrame
           layout={toolbars}
+          hideTop={controls.layout === 'ribbon'}
           commands={commands}
           catalog={ui}
           onLayout={changeToolbars}

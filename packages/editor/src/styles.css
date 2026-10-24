@@ -922,3 +922,30 @@ button.icon:hover { color: var(--accent); }
 .app[data-theme='dark'] .layer-view { border-left-color: #394150; }
 .app[data-theme='dark'] .statusbar .bad { color: #f28b82; }
 .app[data-theme='dark'] .statusbar .warn { color: #f2c46d; }
+
+/* The ribbon (Settings > Controls > Layout): the menus as tabs, their groups of large and small buttons. */
+.ribbon { flex: none; background: var(--toolbar); border-bottom: 1px solid var(--line); user-select: none; font-size: 13px; }
+.ribbon-tabs { display: flex; align-items: flex-end; gap: 2px; padding: 3px 8px 0; }
+.ribbon-tabs .grow { flex: 1; }
+.ribbon-tab { border: 1px solid transparent; border-bottom: none; border-radius: 4px 4px 0 0; background: none; padding: 4px 12px; cursor: pointer; color: inherit; margin-bottom: -1px; }
+.ribbon-tab:hover { background: var(--accent-soft); }
+.ribbon-tab.active { background: #fff; border-color: var(--line); color: var(--accent); font-weight: 600; }
+.ribbon-collapse { border: none; background: none; padding: 2px 8px; cursor: pointer; color: var(--muted); }
+.ribbon-panel { display: flex; align-items: stretch; gap: 0; padding: 4px 6px; background: #fff; border-top: 1px solid var(--line); min-height: 78px; overflow-x: auto; }
+.ribbon-group { display: flex; flex-wrap: wrap; flex-direction: column; align-content: flex-start; gap: 1px 2px; max-height: 90px; padding: 0 8px; border-right: 1px solid #e3e6ea; }
+.ribbon-group:last-child { border-right: none; }
+.ribbon-button { border: 1px solid transparent; background: none; border-radius: 4px; cursor: pointer; color: var(--ink); text-align: left; }
+.ribbon-button:hover:not(:disabled) { background: var(--accent-soft); border-color: #c9d6ee; }
+.ribbon-button:disabled { color: #b0b6be; cursor: default; }
+.ribbon-button.checked { background: var(--accent-soft); border-color: var(--accent); }
+.ribbon-button.large { width: 72px; min-height: 74px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 4px; padding: 6px 2px 2px; text-align: center; font-size: 11.5px; line-height: 1.15; }
+.ribbon-button.large .icon { width: 26px; height: 26px; flex: none; }
+.ribbon-button.small { height: 24px; padding: 0 8px; font-size: 12px; white-space: nowrap; }
+.app[data-theme='dark'] .ribbon { background: #20252e; border-color: #2e3440; color: #c4cad4; }
+.app[data-theme='dark'] .ribbon-tab:hover { background: #2f3644; }
+.app[data-theme='dark'] .ribbon-tab.active { background: #2a303b; border-color: #394150; color: #fff; }
+.app[data-theme='dark'] .ribbon-panel { background: #2a303b; border-color: #394150; }
+.app[data-theme='dark'] .ribbon-group { border-right-color: #394150; }
+.app[data-theme='dark'] .ribbon-button { color: #dde2ea; }
+.app[data-theme='dark'] .ribbon-button:hover:not(:disabled) { background: #364050; border-color: #4a5466; }
+.app[data-theme='dark'] .ribbon-button:disabled { color: #5d6573; }

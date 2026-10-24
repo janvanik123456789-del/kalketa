@@ -703,7 +703,7 @@ async function rowToolbarWithRealMouse(picture: string): Promise<{ hidden: boole
  * Settings > Controls with the real mouse: the "/" menu switched off, "/" typed on an empty line shows nothing
  * (the slash stays as typed); switched on again, kept in the settings of the program.
  */
-async function controlsWithRealInput(picture: string): Promise<{ menuOff: boolean; slashKept: string; stored: string; dark: { menubar: string; page: string }; ok: boolean }> {
+async function controlsWithRealInput(picture: string): Promise<{ menuOff: boolean; slashKept: string; stored: string; dark: { menubar: string; page: string }; ribbon: Record<string, unknown>; ok: boolean }> {
   const contents = smokeWindow!.webContents;
   const setInsertMenu = async () => {
     await clickOn('.menubar-item:nth-child(6) > button');
@@ -743,7 +743,45 @@ async function controlsWithRealInput(picture: string): Promise<{ menuOff: boolea
   await takePicture(picture);
   await setTheme('Up');
   const light = (await contents.executeJavaScript(`document.querySelector('.app')?.dataset.theme ?? ''`)) as string;
-  return { menuOff, slashKept, stored, dark, ok: menuOff && slashKept === '/' && stored.includes('"insertMenu":true') && dark.menubar === 'rgb(32, 37, 46)' && dark.page === 'rgb(255, 255, 255)' && light === 'light' };
+  // The ribbon: chosen in the settings, the menu bar and the toolbars at the top give way to it; Navigation from
+  // its View tab by the mouse; collapsed and opened again by a tab; back to the menu from its Tools tab.
+  const ribbonTab = async (label: string) => {
+    await contents.executeJavaScript(`[...document.querySelectorAll('.ribbon-tab')].find((b) => b.textContent.trim() === ${JSON.stringify(label)})?.setAttribute('id', 'smoke-ribbon-tab')`);
+    await clickOn('#smoke-ribbon-tab');
+    await contents.executeJavaScript(`document.getElementById('smoke-ribbon-tab')?.removeAttribute('id')`);
+    await pause(200);
+  };
+  await clickOn('.menubar-item:nth-child(6) > button');
+  await clickMenu('Nastavení');
+  await pause(400);
+  await clickOn('.controls-settings label.field:has(select[data-control="layout"]) > span');
+  await pressKey('Down');
+  await clickOn('.dialog-buttons button.default');
+  await pause(500);
+  const ribbonShown = (await contents.executeJavaScript(`({ ribbon: !!document.querySelector('.ribbon'), menubar: !!document.querySelector('.menubar'), top: !!document.querySelector('.dock-top'), tabs: document.querySelectorAll('.ribbon-tab').length, large: document.querySelectorAll('.ribbon-button.large').length })`)) as { ribbon: boolean; menubar: boolean; top: boolean; tabs: number; large: number };
+  await ribbonTab('Zobrazení');
+  await contents.executeJavaScript(`[...document.querySelectorAll('.ribbon-button.small')].find((b) => b.textContent.startsWith('Boční panel'))?.setAttribute('id', 'smoke-ribbon-pane')`);
+  await clickOn('#smoke-ribbon-pane');
+  await clickMenu('Navigace');
+  await pause(300);
+  const navFromRibbon = (await contents.executeJavaScript(`document.querySelector('.pane-tab.active')?.dataset.pane ?? ''`)) as string;
+  await takePicture(picture.replace(/[.]png$/, '-ribbon.png'));
+  await clickOn('.ribbon-collapse');
+  await pause(200);
+  const collapsed = !(await contents.executeJavaScript(`!!document.querySelector('.ribbon-panel')`));
+  await ribbonTab('Vložit');
+  const reopened = (await contents.executeJavaScript(`!!document.querySelector('.ribbon-panel [data-command="insert.chart"]')`)) as boolean;
+  await ribbonTab('Nástroje');
+  await clickOn('.ribbon-button[data-command="tools.settings"]');
+  await pause(400);
+  await clickOn('.controls-settings label.field:has(select[data-control="layout"]) > span');
+  await pressKey('Up');
+  await clickOn('.dialog-buttons button.default');
+  await pause(500);
+  await clickOn('.pane-tab[data-pane="details"]');
+  const classicAgain = (await contents.executeJavaScript(`!!document.querySelector('.menubar') && !document.querySelector('.ribbon')`)) as boolean;
+  const ribbon = { ...ribbonShown, navFromRibbon, collapsed, reopened, classicAgain, ok: ribbonShown.ribbon && !ribbonShown.menubar && !ribbonShown.top && ribbonShown.tabs === 8 && ribbonShown.large >= 5 && navFromRibbon === 'nav' && collapsed && reopened && classicAgain };
+  return { menuOff, slashKept, stored, dark, ribbon, ok: menuOff && slashKept === '/' && stored.includes('"insertMenu":true') && dark.menubar === 'rgb(32, 37, 46)' && dark.page === 'rgb(255, 255, 255)' && light === 'light' && ribbon.ok };
 }
 
 /**

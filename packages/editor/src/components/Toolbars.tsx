@@ -46,6 +46,8 @@ export interface ToolbarFrameProps {
   readonly children: ReactNode;
   /** Shown to the right of the right dock (the side panel), so side toolbars hug the sheet. */
   readonly aside?: ReactNode;
+  /** The ribbon stands in for the toolbars at the top: they are not shown. */
+  readonly hideTop?: boolean;
 }
 
 const DOCK_SNAP_PX = 40;
@@ -54,7 +56,7 @@ const CELL_PX = 30;
 /** Floating toolbars start as a grid of at most this many columns. */
 const DEFAULT_FLOAT_COLUMNS = 8;
 
-export function ToolbarFrame({ layout, commands, catalog, onLayout, children, aside }: ToolbarFrameProps) {
+export function ToolbarFrame({ layout, commands, catalog, onLayout, children, aside, hideTop }: ToolbarFrameProps) {
   const [drag, setDrag] = useState<Drag | undefined>();
   const docks = { top: useRef<HTMLDivElement>(null), bottom: useRef<HTMLDivElement>(null), left: useRef<HTMLDivElement>(null), right: useRef<HTMLDivElement>(null) };
 
@@ -141,7 +143,7 @@ export function ToolbarFrame({ layout, commands, catalog, onLayout, children, as
   const dragged = drag ? layout.toolbars.find((tb) => tb.id === drag.id) : undefined;
   return (
     <div className="toolbar-frame">
-      {renderDock('top')}
+      {!hideTop && renderDock('top')}
       <div className="toolbar-middle">
         {renderDock('left')}
         <div className="toolbar-center">{children}</div>

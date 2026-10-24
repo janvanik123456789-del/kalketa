@@ -909,6 +909,9 @@ button.icon:hover { color: var(--accent); }
 .app[data-theme='dark'] .sheet-scroll { background: #2b313c; }
 .app[data-theme='dark'] .doc-tab { background: #2a303b; border-color: #394150; color: #c4cad4; }
 .app[data-theme='dark'] .doc-tab.active { background: #2b313c; border-color: #4a5466; border-bottom-color: #2b313c; color: #fff; }
+/* The name of a tab is a button, which keeps its own black unless told to take the colour of its tab. */
+.app[data-theme='dark'] .doc-tab-title { color: inherit; }
+.app[data-theme='dark'] .layer-view.active .layer-view-head { color: #fff; }
 .app[data-theme='dark'] :is(.doc-tab-close, .doc-tab-new) { color: #aeb5c0; }
 .app[data-theme='dark'] :is(.doc-tab-close:hover, .doc-tab-new:hover) { background: #364050; border-color: #4a5466; color: #fff; }
 .app[data-theme='dark'] .pane-tab { color: #aeb5c0; }

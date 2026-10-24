@@ -704,7 +704,7 @@ async function rowToolbarWithRealMouse(picture: string): Promise<{ hidden: boole
  * Settings > Controls with the real mouse: the "/" menu switched off, "/" typed on an empty line shows nothing
  * (the slash stays as typed); switched on again, kept in the settings of the program.
  */
-async function controlsWithRealInput(picture: string): Promise<{ menuOff: boolean; slashKept: string; stored: string; dark: { menubar: string; page: string }; ribbon: Record<string, unknown>; ok: boolean }> {
+async function controlsWithRealInput(picture: string): Promise<{ menuOff: boolean; slashKept: string; stored: string; dark: { menubar: string; page: string; tabName: string }; ribbon: Record<string, unknown>; ok: boolean }> {
   const contents = smokeWindow!.webContents;
   const setInsertMenu = async () => {
     await clickOn('.menubar-item:nth-child(6) > button');
@@ -740,7 +740,7 @@ async function controlsWithRealInput(picture: string): Promise<{ menuOff: boolea
     await pause(400);
   };
   await setTheme('Down');
-  const dark = (await contents.executeJavaScript(`({ menubar: getComputedStyle(document.querySelector('.menubar')).backgroundColor, page: getComputedStyle(document.querySelector('.layer-view.active .page')).backgroundColor })`)) as { menubar: string; page: string };
+  const dark = (await contents.executeJavaScript(`({ menubar: getComputedStyle(document.querySelector('.menubar')).backgroundColor, page: getComputedStyle(document.querySelector('.layer-view.active .page')).backgroundColor, tabName: getComputedStyle(document.querySelector('.doc-tab.active .doc-tab-title')).color })`)) as { menubar: string; page: string; tabName: string };
   await takePicture(picture);
   await setTheme('Up');
   const light = (await contents.executeJavaScript(`document.querySelector('.app')?.dataset.theme ?? ''`)) as string;
@@ -782,7 +782,7 @@ async function controlsWithRealInput(picture: string): Promise<{ menuOff: boolea
   await clickOn('.pane-tab[data-pane="details"]');
   const classicAgain = (await contents.executeJavaScript(`!!document.querySelector('.menubar') && !document.querySelector('.ribbon')`)) as boolean;
   const ribbon = { ...ribbonShown, navFromRibbon, collapsed, reopened, classicAgain, ok: ribbonShown.ribbon && !ribbonShown.menubar && !ribbonShown.top && ribbonShown.tabs === 8 && ribbonShown.large >= 5 && navFromRibbon === 'nav' && collapsed && reopened && classicAgain };
-  return { menuOff, slashKept, stored, dark, ribbon, ok: menuOff && slashKept === '/' && stored.includes('"insertMenu":true') && dark.menubar === 'rgb(32, 37, 46)' && dark.page === 'rgb(255, 255, 255)' && light === 'light' && ribbon.ok };
+  return { menuOff, slashKept, stored, dark, ribbon, ok: menuOff && slashKept === '/' && stored.includes('"insertMenu":true') && dark.menubar === 'rgb(32, 37, 46)' && dark.page === 'rgb(255, 255, 255)' && dark.tabName === 'rgb(255, 255, 255)' && light === 'light' && ribbon.ok };
 }
 
 /**

@@ -870,3 +870,26 @@ button.icon:hover { color: var(--accent); }
 .row-toolbar button.on { background: #eef2fb; color: var(--accent); }
 .row-toolbar button.more { width: 26px; padding: 0; color: var(--muted); }
 .row-toolbar-sep { width: 1px; height: 18px; background: var(--line); margin: 0 2px; }
+
+/* Navigation of the calculation (a tab of the side pane): outline, checks, problems; a click goes to the row. */
+.navigator { padding: 10px 12px; }
+.navigator h3 { margin: 14px 0 6px; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.navigator h3:first-child { margin-top: 2px; }
+.nav-list { list-style: none; margin: 0; padding: 0; }
+.nav-item { display: flex; align-items: baseline; gap: 6px; width: 100%; padding: 4px 6px; border: none; border-radius: 4px; background: none; text-align: left; cursor: pointer; color: var(--ink); }
+.nav-item:hover { background: var(--accent-soft); }
+.nav-item.level-2 { font-weight: 600; }
+.nav-item.level-3 { padding-left: 18px; }
+.nav-item.level-4 { padding-left: 30px; }
+.nav-text { flex: 1; min-width: 0; }
+.nav-pos, .nav-number { color: var(--muted); font-weight: 500; font-size: 12px; }
+.nav-state { flex: none; font-weight: 600; }
+.nav-state.ok { color: #1e7a46; }
+.nav-state.fail { color: var(--bad); }
+.nav-state.open { color: var(--muted); }
+.nav-util { flex: none; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.nav-item.problem.error .nav-state { color: var(--bad); }
+.nav-item.problem.warning .nav-state { color: #b26a00; }
+.nav-item.problem.info .nav-state { color: var(--accent); }
+.nav-line { color: var(--muted); font-size: 12px; }
+.nav-empty { margin: 2px 6px; color: var(--muted); font-size: 12px; }

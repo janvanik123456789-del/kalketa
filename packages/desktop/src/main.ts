@@ -2866,7 +2866,32 @@ async function layersWithRealInput(picture: string) {
   }
   const guideAfter = (await contents.executeJavaScript(guideState)) as { errors: number; pictures: number; charts: number; failing: number; span: string };
   await takePicture(picture.replace(/[.]png$/, '-guide.png'));
-  const guide = { before: guideBefore, after: guideAfter, dragged: !!spanThumb };
+  // Navigation of the guide with its span too long: the outline with the failing section, the checks counted,
+  // a click on the failing check goes to its row and selects it.
+  await clickOn('.pane-tab[data-pane="nav"]');
+  await pause(300);
+  const navSeen = (await contents.executeJavaScript(`(() => {
+    const nav = document.querySelector('.navigator');
+    const items = [...(nav?.querySelectorAll('.nav-list') ?? [])];
+    return {
+      outline: items[0]?.querySelectorAll('.nav-item').length ?? 0,
+      failingSection: [...(items[0]?.querySelectorAll('.nav-item') ?? [])].find((i) => i.querySelector('.nav-state.fail'))?.querySelector('.nav-text')?.textContent ?? '',
+      checksHead: nav?.querySelectorAll('h3')[1]?.textContent ?? '',
+    };
+  })()`)) as { outline: number; failingSection: string; checksHead: string };
+  await contents.executeJavaScript(`[...document.querySelectorAll('.navigator .nav-item')].find((i) => i.textContent.includes('Průhyb police'))?.setAttribute('id', 'smoke-nav-check')`);
+  await clickOn('#smoke-nav-check');
+  await pause(900);
+  const navJumped = (await contents.executeJavaScript(`(() => {
+    const row = document.querySelector('.layer-view.active .row.selected');
+    const view = document.querySelector('.layer-view.active .sheet-scroll')?.getBoundingClientRect();
+    const box = row?.getBoundingClientRect();
+    return !!row && row.textContent.includes('Průhyb police') && !!view && box.top >= view.top && box.bottom <= view.bottom;
+  })()`)) as boolean;
+  await takePicture(picture.replace(/[.]png$/, '-navigation.png'));
+  await clickOn('.pane-tab[data-pane="details"]');
+  const navigation = { ...navSeen, jumped: navJumped, ok: navSeen.outline === 7 && navSeen.failingSection === 'Průhyb' && navSeen.checksHead === 'Posudky · 1 z 2 vyhovuje' && navJumped };
+  const guide = { before: guideBefore, after: guideAfter, dragged: !!spanThumb, navigation };
   // Surfaces in 3D: the sample of rotational solids, a saddle and waves opens with its maps and 3D charts, no errors.
   await clickOn('.menubar-item:nth-child(1) > button');
   await clickMenu('Vzorové příklady');
@@ -3158,7 +3183,7 @@ async function layersWithRealInput(picture: string) {
     after: sampleAfter,
     outOfDomain,
     english,
-    ok: !!thumb && sampleBefore.errors === 0 && sampleAfter.errors === 0 && sampleBefore.a !== '' && sampleAfter.a !== sampleBefore.a && sampleAfter.roots !== sampleBefore.roots && outOfDomain.drawn && !outOfDomain.area && outOfDomain.roots === 0 && !outOfDomain.error && outOfDomain.warned && english.head === 'Quadratic equation' && english.verdicts.length === 5 && english.verdicts.every((v) => v.endsWith('OK')) && english.errors === 0 && crank.pictures === 4 && crank.charts === 3 && crank.errors === 0 && crank.verdict.endsWith('VYHOVUJE') && slowTyping.waitingShown && slowTyping.settled && cube.pictures === 1 && cube.derived >= 5 && cube.errors === 0 && beam.pictures === 3 && beam.charts >= 4 && beam.errors === 0 && across.before && !across.after && theoryTab >= 1 && tankErrors === 0 && theoryChecks.blocks >= 4 && theoryChecks.bad === 0 && pythonCheck.rows === 4 && pythonCheck.agree === 4 && rowsCopy.marked === 6 && rowsCopy.rows === 3 && rowsCopy.picture === 1 && rowsCopy.status.startsWith('chyba: 0') && rocket.errors === 0 && rocket.charts >= 2 && parabola.errors === 0 && parabola.charts >= 2 && parabola.normal >= 2 && thermistor.errors === 0 && thermistor.charts >= 3 && guide.dragged && guide.before.errors === 0 && guide.before.pictures >= 1 && guide.before.charts >= 1 && guide.before.failing === 0 && guide.after.errors === 0 && guide.after.failing >= 1 && guide.after.span !== guide.before.span && boat.errors === 0 && /chyba: 0/.test(boat.status) && /varování: 0/.test(boat.status) && boat.shift && boat.charts >= 3 && vibration.errors === 0 && vibration.wide === 0 && vibration.roots && !vibration.plusMinus && surfacesSample.errors === 0 && surfacesSample.maps >= 4 && surfacesSample.solids >= 6 && surfacesSample.verdicts >= 5 && fitDialog.ok && chartLook.ok && surfaceMap.ok && surface3d.shown && surface3d.turning && surface3d.kept && surface3d.errors === 0 && surfaceCut.line && surfaceCut.panel && surfaceCut.title && chartDialog.offered === 'plot(w(x, y), x: 0 m .. a, y: 0 m .. b)' && chartDialog.chosen === 'plot(w(x, y), x: 0 m .. a, y: 0 m .. b, kind: "surface")' && chartDialog.preview && chartDialog.added === 1,
+    ok: !!thumb && sampleBefore.errors === 0 && sampleAfter.errors === 0 && sampleBefore.a !== '' && sampleAfter.a !== sampleBefore.a && sampleAfter.roots !== sampleBefore.roots && outOfDomain.drawn && !outOfDomain.area && outOfDomain.roots === 0 && !outOfDomain.error && outOfDomain.warned && english.head === 'Quadratic equation' && english.verdicts.length === 5 && english.verdicts.every((v) => v.endsWith('OK')) && english.errors === 0 && crank.pictures === 4 && crank.charts === 3 && crank.errors === 0 && crank.verdict.endsWith('VYHOVUJE') && slowTyping.waitingShown && slowTyping.settled && cube.pictures === 1 && cube.derived >= 5 && cube.errors === 0 && beam.pictures === 3 && beam.charts >= 4 && beam.errors === 0 && across.before && !across.after && theoryTab >= 1 && tankErrors === 0 && theoryChecks.blocks >= 4 && theoryChecks.bad === 0 && pythonCheck.rows === 4 && pythonCheck.agree === 4 && rowsCopy.marked === 6 && rowsCopy.rows === 3 && rowsCopy.picture === 1 && rowsCopy.status.startsWith('chyba: 0') && rocket.errors === 0 && rocket.charts >= 2 && parabola.errors === 0 && parabola.charts >= 2 && parabola.normal >= 2 && thermistor.errors === 0 && thermistor.charts >= 3 && guide.dragged && guide.navigation.ok && guide.before.errors === 0 && guide.before.pictures >= 1 && guide.before.charts >= 1 && guide.before.failing === 0 && guide.after.errors === 0 && guide.after.failing >= 1 && guide.after.span !== guide.before.span && boat.errors === 0 && /chyba: 0/.test(boat.status) && /varování: 0/.test(boat.status) && boat.shift && boat.charts >= 3 && vibration.errors === 0 && vibration.wide === 0 && vibration.roots && !vibration.plusMinus && surfacesSample.errors === 0 && surfacesSample.maps >= 4 && surfacesSample.solids >= 6 && surfacesSample.verdicts >= 5 && fitDialog.ok && chartLook.ok && surfaceMap.ok && surface3d.shown && surface3d.turning && surface3d.kept && surface3d.errors === 0 && surfaceCut.line && surfaceCut.panel && surfaceCut.title && chartDialog.offered === 'plot(w(x, y), x: 0 m .. a, y: 0 m .. b)' && chartDialog.chosen === 'plot(w(x, y), x: 0 m .. a, y: 0 m .. b, kind: "surface")' && chartDialog.preview && chartDialog.added === 1,
   };
   const userChart = { namedArea, quadOk, quadTarget, quadEnd, quadEditing, ok: namedArea === 'Integral1=27' && quadOk && quadTarget > 0 && Math.abs(quadEnd - quadTarget) < 12 };
   // Relations: a circle solved by its name, a derivation following from a relation of theory, and the circle
@@ -4014,7 +4039,7 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
     thinkingCut.includes('Odpověď hned.') && thinkingCut.includes('bez přemýšlení') &&
     together.allButton === 'Přijmout vše (2)' && together.acceptedAll === 2 && together.undoneAll === 0 &&
     together.copy.tab.includes('(upravená kopie)') && together.copy.rows === 2 && together.copy.marked === 2 && together.copy.badges === 2 && together.original.rows === 0 && together.original.state === 2 &&
-    paneTabs === 'Podrobnosti *Tabulky Vrstvy AI|tables' && thoughtFolded && thought === 'Nejdřív zkontroluji průhyb na řádku 12.'
+    paneTabs === 'Podrobnosti Navigace *Tabulky Vrstvy AI|tables' && thoughtFolded && thought === 'Nejdřív zkontroluji průhyb na řádku 12.'
   );
 }
 

@@ -32,7 +32,7 @@ export interface CommandContext {
   readonly canUndo: boolean;
   readonly canRedo: boolean;
   readonly zoomChoice: string;
-  readonly pane: 'details' | 'tables' | 'layers' | 'chat' | 'none';
+  readonly pane: 'details' | 'nav' | 'tables' | 'layers' | 'chat' | 'none';
   readonly tableEditor: boolean;
   /** The AI is switched on for this run of the program (never at start). */
   readonly aiOn: boolean;
@@ -70,7 +70,7 @@ export interface CommandContext {
     selectAll(): void;
     setZoom(choice: string): void;
     zoomBy(direction: 1 | -1): void;
-    setPane(pane: 'details' | 'tables' | 'layers' | 'chat' | 'none'): void;
+    setPane(pane: 'details' | 'nav' | 'tables' | 'layers' | 'chat' | 'none'): void;
     toggleTableEditor(): void;
     customize(): void;
     insert(kind: 'text' | 'definition' | 'check' | 'pick' | 'pageBreak' | 'clear' | 'sheetTable'): void;
@@ -135,6 +135,7 @@ export function buildCommands(ctx: CommandContext): Map<string, Command> {
   add('view.zoomOut', 'view', () => a.zoomBy(-1), { shortcut: 'Ctrl+-' });
   add('view.zoom100', 'view', () => a.setZoom('1'), { shortcut: 'Ctrl+0', checked: ctx.zoomChoice === '1' });
   add('view.paneDetails', 'view', () => a.setPane('details'), { checked: ctx.pane === 'details' });
+  add('view.paneNav', 'view', () => a.setPane('nav'), { checked: ctx.pane === 'nav' });
   add('view.paneTables', 'view', () => a.setPane('tables'), { checked: ctx.pane === 'tables' });
   add('view.paneLayers', 'view', () => a.setPane('layers'), { checked: ctx.pane === 'layers' });
   add('view.paneChat', 'view', () => a.setPane('chat'), { checked: ctx.pane === 'chat' });

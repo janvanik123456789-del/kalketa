@@ -33,6 +33,7 @@ import type { AnswerProposals } from './components/ChatPane.js';
 import { languageGuide, sheetContext } from './logic/aiContext.js';
 import { exampleDocument, SAMPLE_FIELDS, samplePicture, samples, savedSampleTitle, subfieldName, type Sample } from './samples.js';
 import { StartScreen } from './components/StartScreen.js';
+import { NavigatorPane, type CheckItem, type OutlineItem, type ProblemItem } from './components/NavigatorPane.js';
 import type { InsertChoice } from './components/InsertMenu.js';
 import { chooseFile, desktop, emptyDocument, fileName, fileUri, largestParts, openBytes, pickAndOpen, saveDocument, tableCache, type FileRef, type OpenedFile } from './document.js';
 import { record, redo, undo, type History } from './logic/history.js';
@@ -67,10 +68,11 @@ import { SheetView, type EditRange } from './components/SheetView.js';
 import { TablesView } from './components/TablesView.js';
 import { ToolbarFrame, toolbarName } from './components/Toolbars.js';
 
-type Pane = 'details' | 'tables' | 'layers' | 'chat' | 'none';
+type Pane = 'details' | 'nav' | 'tables' | 'layers' | 'chat' | 'none';
 /** The side pane's tabs and their labels. */
 const PANE_TABS: readonly (readonly [Exclude<Pane, 'none'>, Parameters<typeof t>[1]])[] = [
   ['details', 'cmd.view.paneDetails'],
+  ['nav', 'pane.navTab'],
   ['tables', 'cmd.view.paneTables'],
   ['layers', 'cmd.view.paneLayers'],
   ['chat', 'pane.chatTab'],
@@ -242,7 +244,7 @@ export function App() {
   const [zoomChoice, setZoomChoice] = useState(() => stored('kalketa.zoom') ?? 'fit2');
   // The layer tabs do what the Layers panel did, so the panel no longer opens by itself at start.
   // The chat pane is not opened at start: the AI is off until the user switches it on.
-  const [pane, setPane] = useState<Pane>(() => (['details', 'tables', 'none'].includes(stored('kalketa.pane') ?? '') ? (stored('kalketa.pane') as Pane) : stored('kalketa.pane') === 'layers' ? 'none' : 'details'));
+  const [pane, setPane] = useState<Pane>(() => (['details', 'nav', 'tables', 'none'].includes(stored('kalketa.pane') ?? '') ? (stored('kalketa.pane') as Pane) : stored('kalketa.pane') === 'layers' ? 'none' : 'details'));
   // Switched on by the user for this run of the program only: until then nothing is sent to any server.
   const [aiOn, setAiOn] = useState(false);
   const [paneWidth, setPaneWidth] = useState(() => Number(stored('kalketa.paneWidth')) || 380);
@@ -1023,6 +1025,48 @@ export function App() {
     row.classList.add('just-inserted');
     window.setTimeout(() => row.classList.remove('just-inserted'), 1600);
   });
+
+  /**
+   * Navigation (a tab of the side pane): the outline of the sheet shown, by its headings and positions with the
+   * state of their checks, its checks and its problems. A click scrolls to the row and selects it.
+   */
+  const navigation = () => {
+    const print = prints.get(layer.id);
+    const checks: CheckItem[] = result.checks.map((c) => {
+      const line = result.statements[c.statement]!.statement.span.line;
+      return {
+        line,
+        label: c.label ?? `${t(printCatalog, 'checks.check')} ${line}`,
+        passed: c.passed,
+        evaluated: result.statements[c.statement]!.check !== undefined,
+        ...(c.utilization !== undefined ? { utilization: `${formatNumber(c.utilization * 100, ui, { digits: 3 })} %` } : {}),
+      };
+    });
+    const headings = (print?.blocks ?? []).flatMap((b) => (b.kind === 'heading' && b.level >= 2 ? [b] : []));
+    const outline: OutlineItem[] = headings.map((h, i) => {
+      // Its part of the sheet: up to the next heading of its level or above.
+      const end = headings.slice(i + 1).find((n) => n.level <= h.level)?.line ?? Number.POSITIVE_INFINITY;
+      const own = checks.filter((c) => c.line > h.line && c.line < end);
+      const state = own.length === 0 ? undefined : own.some((c) => c.evaluated && !c.passed) ? 'fail' : own.every((c) => c.evaluated) ? 'ok' : 'open';
+      return { line: h.line, level: h.level, text: h.text, ...(h.number ? { number: h.number } : {}), ...(h.position ? { position: h.position } : {}), ...(state ? { state } : {}) };
+    });
+    const problems: ProblemItem[] = result.diagnostics
+      .filter((d) => d.code !== 'I-DEPENDENCY-FAILED')
+      .map((d) => ({ line: d.span.line, severity: d.severity, text: formatDiagnostic(d, ui) }))
+      .sort((a, b) => a.line - b.line);
+    return { outline, checks, problems };
+  };
+  /** Scrolls to the row of a line of the sheet shown (the row it is in) and selects it, briefly marked. */
+  const jumpToLine = (line: number) => {
+    const row = [...layerRows(layer.id)].reverse().find((r) => Number(r.dataset['line']) <= line);
+    if (!row) return;
+    const start = Number(row.dataset['line']);
+    const index = result.statements.findIndex((s) => s.statement.span.line === start);
+    if (index >= 0) setSelected(index);
+    row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    row.classList.add('just-inserted');
+    window.setTimeout(() => row.classList.remove('just-inserted'), 1600);
+  };
 
   const layerRows = (layerId: string) => [...document.querySelectorAll<HTMLElement>(`.layer-view[data-layer="${layerId}"] .row[data-line]`)];
   /** Last line of the row that starts at `row` (a statement may span several lines). */
@@ -2148,7 +2192,7 @@ export function App() {
         cmd('view.zoomOut'),
         cmd('view.zoom100'),
         sep,
-        { kind: 'submenu', label: t(ui, 'menu.pane'), items: [cmd('view.paneDetails'), cmd('view.paneTables'), cmd('view.paneLayers'), cmd('view.paneChat'), cmd('view.paneNone')] },
+        { kind: 'submenu', label: t(ui, 'menu.pane'), items: [cmd('view.paneDetails'), cmd('view.paneNav'), cmd('view.paneTables'), cmd('view.paneLayers'), cmd('view.paneChat'), cmd('view.paneNone')] },
         cmd('view.tableEditor'),
         {
           kind: 'submenu',
@@ -2559,6 +2603,8 @@ export function App() {
                         blocks={[...doc.blocks].map(([name, b]) => ({ name, version: b.version, ...(b.origin !== undefined ? { origin: b.origin } : {}) }))}
                         onDeleteBlock={(name) => void deleteBlock(name)}
                       />
+                    ) : pane === 'nav' ? (
+                      <NavigatorPane catalog={ui} {...navigation()} onJump={jumpToLine} />
                     ) : pane === 'details' ? (
                       <Inspector
                         result={result}

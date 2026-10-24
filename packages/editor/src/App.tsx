@@ -33,6 +33,7 @@ import type { AnswerProposals } from './components/ChatPane.js';
 import { languageGuide, sheetContext } from './logic/aiContext.js';
 import { exampleDocument, SAMPLE_FIELDS, samplePicture, samples, savedSampleTitle, subfieldName, type Sample } from './samples.js';
 import { StartScreen } from './components/StartScreen.js';
+import { CONTROLS_KEY, readControls } from './logic/controls.js';
 import { NavigatorPane, type CheckItem, type OutlineItem, type ProblemItem } from './components/NavigatorPane.js';
 import type { InsertChoice } from './components/InsertMenu.js';
 import { chooseFile, desktop, emptyDocument, fileName, fileUri, largestParts, openBytes, pickAndOpen, saveDocument, tableCache, type FileRef, type OpenedFile } from './document.js';
@@ -203,7 +204,8 @@ export function App() {
   });
   // The start screen: at a start of the program with no files to open again, and from File > Start screen.
   // Another window (Window > New window) was asked for to write in: it starts with the empty calculation.
-  const [startOpen, setStartOpen] = useState(() => !new URLSearchParams(location.search).has('blank') && !(!!desktop && sessionFiles().length > 0));
+  const [controls, setControls] = useState(() => readControls(stored(CONTROLS_KEY)));
+  const [startOpen, setStartOpen] = useState(() => controls.startScreen && !new URLSearchParams(location.search).has('blank') && !(!!desktop && sessionFiles().length > 0));
   const [sampleList] = useState(samples);
   const tab = docs.tabs.find((d) => d.id === docs.active) ?? docs.tabs[0]!;
   /** A saved calculation is called by its file name; a new one by its title. */
@@ -2402,7 +2404,9 @@ export function App() {
           printCatalog={printCatalog}
           {...(footer && l.kind === 'sheet' ? { footer } : {})}
           editing={active ? editing : undefined}
-          insertMenu={insertMenu}
+          {...(controls.insertMenu ? { insertMenu } : {})}
+          rowToolbar={controls.rowToolbar}
+          autoDefine={controls.autoDefine}
           selected={active ? selected : undefined}
           {...(active ? { selectAll } : {})}
           resolveFile={resolveFile}
@@ -2781,7 +2785,10 @@ export function App() {
           pythonAskAi={pythonAskAi}
           ai={aiSettings}
           aiOn={aiOn}
+          controls={controls}
           onApply={(next) => {
+            setControls(next.controls);
+            remember(CONTROLS_KEY, JSON.stringify(next.controls));
             setAiSettings(next.ai);
             remember(AI_SETTINGS_KEY, JSON.stringify(next.ai));
             if (next.aiKey && desktop) void desktop.aiSetKey({ provider: next.ai.provider, ...next.aiKey });

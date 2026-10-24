@@ -565,6 +565,7 @@ async function runSmokeTest(pdfPath: string): Promise<void> {
     const layers = await layersWithRealInput(pdfPath.replace(/\.pdf$/i, '') + '-layers.png');
     const insertMenu = await insertMenuWithRealKeys(pdfPath.replace(/\.pdf$/i, '') + '-insert-menu.png');
     const rowTools = await rowToolbarWithRealMouse(pdfPath.replace(/\.pdf$/i, '') + '-row-toolbar.png');
+    const controls = await controlsWithRealInput();
     const printer = await printWindow('<!doctype html><meta charset="utf-8"><h1>Kalketa</h1><math><mfrac><mi>a</mi><mn>2</mn></mfrac></math>');
     const pdf = await printer.webContents.printToPDF({ preferCSSPageSize: true });
     printer.destroy();
@@ -572,8 +573,8 @@ async function runSmokeTest(pdfPath: string): Promise<void> {
     ok =
       state.bridge && state.sideBySide && state.menus === 8 && state.toolbars > 0 && state.rows > 10 && state.summary > 0 && state.math > 0 && reshapedColumns === 3 && pdf.length > 1000 &&
       layers.deflection && layers.pickTaken.column.startsWith('→') && /mm|cm/.test(layers.pickTaken.text) && layers.newKeepsExample && layers.samplesOk && layers.derivations && layers.summaryOk && layers.definitionAtCursor && layers.sheetGridOk && layers.tableEnter && layers.solvedByFormula && layers.rootsAndExtremes && layers.userChart.ok && layers.relations.ok && layers.quadraticSample.ok && layers.saveOnClose.ok && layers.wordPrinted && layers.wordColored && layers.paletteColored && layers.wordText.focused && layers.wordText.pane && layers.wordText.bold === 'dynamiky' && !layers.wordText.shown.includes('"') && layers.wordText.align === 'center' && layers.cellMarked === 'Síla na konci' && layers.systemFont !== '' && layers.cellFont.replace(/"/g, '').startsWith(layers.systemFont) && layers.cellDeleted && layers.paperRoots && layers.tableRowAdded && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.notesPicture === 'FIGURE+img BLOCKQUOTE' && layers.notesPlaced === 'narrower centred' && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.charts && layers.functionBar && layers.revisions && layers.roots && layers.toolIcons && layers.aiSettings && layers.aiChat && layers.pdfCleanup && layers.theoryLibrary && layers.study && layers.sheetPicture.offered && layers.sheetPicture.described && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
-    ok = ok && insertMenu.ok && rowTools.ok && start.shown && start.cards >= 20 && start.lead === 'R24-pruvodce-police' && start.pictures >= 12 && start.closed && start.tab === 'Vzor – Posouzení nosníku N1';
-    console.log(JSON.stringify({ ok, start, insertMenu, rowTools, ...state, reshapedColumns, layers, pdfBytes: pdf.length }));
+    ok = ok && insertMenu.ok && rowTools.ok && controls.ok && start.shown && start.cards >= 20 && start.lead === 'R24-pruvodce-police' && start.pictures >= 12 && start.closed && start.tab === 'Vzor – Posouzení nosníku N1';
+    console.log(JSON.stringify({ ok, start, insertMenu, rowTools, controls, ...state, reshapedColumns, layers, pdfBytes: pdf.length }));
   } catch (err) {
     console.log(JSON.stringify({ ok: false, error: (err as Error).message, console: smokeConsole.slice(-5) }));
   }
@@ -696,6 +697,38 @@ async function rowToolbarWithRealMouse(picture: string): Promise<{ hidden: boole
   const after = (await contents.executeJavaScript(`({ line: document.querySelector('textarea.row-editor')?.value ?? '', focused: document.activeElement?.classList.contains('row-editor') ?? false })`)) as { line: string; focused: boolean };
   const ok = hidden && tools === 'precision unit number source more' && after.focused && after.line === 'M_t := 54,321 kN·m | N·mm source "EN 1990, 6.10" {decimals=2 eq}';
   return { hidden, tools, ...after, ok };
+}
+
+/**
+ * Settings > Controls with the real mouse: the "/" menu switched off, "/" typed on an empty line shows nothing
+ * (the slash stays as typed); switched on again, kept in the settings of the program.
+ */
+async function controlsWithRealInput(): Promise<{ menuOff: boolean; slashKept: string; stored: string; ok: boolean }> {
+  const contents = smokeWindow!.webContents;
+  const setInsertMenu = async () => {
+    await clickOn('.menubar-item:nth-child(6) > button');
+    await clickMenu('Nastavení');
+    await pause(400);
+    await clickOn('input[data-control="insertMenu"]');
+    await clickOn('.dialog-buttons button.default');
+    await pause(400);
+  };
+  await setInsertMenu();
+  // A click on the last row, the line still open: the cursor goes back into it (not only by a click in its text).
+  await contents.executeJavaScript(`document.querySelectorAll('#smoke-last-row').forEach((e) => e.removeAttribute('id')); [...document.querySelectorAll('.layer-view.active .page .row[data-line]')].sort((a, b) => Number(a.dataset.line) - Number(b.dataset.line)).at(-1).id = 'smoke-last-row'`);
+  await clickOn('#smoke-last-row');
+  await pressKey('End');
+  await pressKey('Enter');
+  await typeText('/');
+  await pause(300);
+  const menuOff = !(await contents.executeJavaScript(`!!document.querySelector('.insert-menu')`));
+  const slashKept = (await contents.executeJavaScript(`document.querySelector('textarea.row-editor')?.value ?? ''`)) as string;
+  await pressKey('Backspace');
+  await pressKey('Backspace');
+  await clickOn('.sheet-scroll');
+  await setInsertMenu();
+  const stored = (await contents.executeJavaScript(`localStorage.getItem('kalketa.controls') ?? ''`)) as string;
+  return { menuOff, slashKept, stored, ok: menuOff && slashKept === '/' && stored.includes('"insertMenu":true') };
 }
 
 /**

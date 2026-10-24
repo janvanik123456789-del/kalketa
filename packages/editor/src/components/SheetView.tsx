@@ -40,6 +40,10 @@ export interface EditRange {
 interface Props {
   /** The menu of "/" at the start of a line being edited. */
   readonly insertMenu?: InsertMenuSetup;
+  /** The floating toolbar above the line being edited (Settings > Controls); on unless false. */
+  readonly rowToolbar?: boolean;
+  /** "=" after a new name becomes ":=" (Settings > Controls); on unless false. */
+  readonly autoDefine?: boolean;
   readonly source: string;
   readonly result: SheetResult;
   readonly print: PrintDocument;
@@ -1266,6 +1270,13 @@ export function SheetView(props: Props) {
             dragMark(seg);
             return;
           }
+          // A press on the open line outside its text (its result, its margin) takes the cursor back into it.
+          const lineText = isEditing ? (e.currentTarget as HTMLElement).querySelector<HTMLTextAreaElement>('textarea.row-editor') : null;
+          if (lineText && !figure && !(e.target as HTMLElement).isContentEditable && !(e.target as HTMLElement).closest('textarea, [contenteditable], .pick-control, .row-toolbar-wrap, .insert-menu, input, select, button')) {
+            e.preventDefault();
+            lineText.focus();
+            return;
+          }
           if ((isEditing && !figure) || (e.target as HTMLElement).closest('.pick-control')) return;
           e.preventDefault();
           // The right button on a marked row keeps the marks: its menu works on all of them.
@@ -1348,7 +1359,7 @@ export function SheetView(props: Props) {
           {seg.start}
         </span>
         <div className="content">
-          {isEditing && !textLine && !gridOf(seg, statement?.statement) && (block?.kind === 'equation' || block?.kind === 'check') && rowToolbar(seg, statement, block.kind === 'equation' && block.number !== undefined)}
+          {isEditing && props.rowToolbar !== false && !textLine && !gridOf(seg, statement?.statement) && (block?.kind === 'equation' || block?.kind === 'check') && rowToolbar(seg, statement, block.kind === 'equation' && block.number !== undefined)}
           {isEditing && gridOf(seg, statement?.statement) ? (
             <SheetTableGrid
               table={gridOf(seg, statement?.statement)!}
@@ -1391,6 +1402,7 @@ export function SheetView(props: Props) {
               onMove={(d) => move(seg, d)}
               onDone={() => props.onEdit(undefined)}
               insert={props.insertMenu}
+              autoDefine={props.autoDefine !== false}
             />
           ) : null}
           {block?.kind === 'picture' ? (
@@ -1995,6 +2007,8 @@ interface RowEditorProps {
   onDone(): void;
   /** The menu of "/" at the start of a line: what can be put in. */
   readonly insert?: InsertMenuSetup | undefined;
+  /** "=" after a new name becomes ":=". */
+  readonly autoDefine: boolean;
 }
 
 /** What the "/" menu offers and how the program does the choices that are not a line to write. */
@@ -2005,7 +2019,7 @@ export interface InsertMenuSetup {
   onAction(choice: InsertChoice): void;
 }
 
-function RowEditor({ seg, initialCursor, decimalComma, result, onChange, onEnter, onTab, onDeleteEmpty, onMove, onDone, insert }: RowEditorProps) {
+function RowEditor({ seg, initialCursor, decimalComma, result, onChange, onEnter, onTab, onDeleteEmpty, onMove, onDone, insert, autoDefine }: RowEditorProps) {
   // The line is edited in the user's notation (50,5) and stored in file notation (50.5).
   // What the user types is kept as typed: converting it back on every keystroke
   // would turn a half-typed "55," into "55;" before the next digit arrives.
@@ -2126,7 +2140,7 @@ function RowEditor({ seg, initialCursor, decimalComma, result, onChange, onEnter
           const area = e.target;
           const at = area.selectionStart - 1;
           const typedEquals = area.value.length === shown.length + 1 && area.value[at] === '=' && area.value.slice(0, at) + area.value.slice(at + 1) === shown;
-          const edit = typedEquals ? defineShortcut(shown, at, definedElsewhere) : undefined;
+          const edit = typedEquals && autoDefine ? defineShortcut(shown, at, definedElsewhere) : undefined;
           if (edit) pendingCursor.current = edit.cursor;
           setMenuAt(0);
           // "/" and letters only ask the menu: kept in the line here, not in the sheet (it would be an error there).

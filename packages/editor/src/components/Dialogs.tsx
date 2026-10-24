@@ -4,6 +4,7 @@
  */
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import type { Controls } from '../logic/controls.js';
 import { builtinFunctions, evaluateSheet, FUNCTION_MODULES, signature, type FunctionDef } from '@kalketa/core';
 import { CATALOGS, formatValue, t, type Catalog } from '@kalketa/i18n';
 import { FUNCTION_EXAMPLES, helpOf, STATEMENT_EXAMPLES, STATEMENTS, type StatementKeyword } from '../logic/functionHelp.js';
@@ -108,6 +109,7 @@ export interface Settings {
   /** Checks the AI writes run only after the user agrees to each (Python of the computer always asks). */
   readonly pythonAskAi: boolean;
   readonly ai: AiSettings;
+  readonly controls: Controls;
   /** A newly typed API key, handed to the desktop application on OK. */
   readonly aiKey?: { readonly key: string; readonly remember: boolean };
 }
@@ -121,6 +123,7 @@ export function SettingsDialog({
   pythonAskAi,
   ai,
   aiOn = true,
+  controls,
   onApply,
   onClose,
 }: {
@@ -133,6 +136,7 @@ export function SettingsDialog({
   ai: AiSettings;
   /** The AI is switched on for this run: only then may the dialog look for servers by itself. */
   aiOn?: boolean;
+  controls: Controls;
   onApply(settings: Settings): void;
   onClose(): void;
 }) {
@@ -142,6 +146,15 @@ export function SettingsDialog({
   const [pythonEngine, setPythonEngine] = useState(python);
   const [askAi, setAskAi] = useState(pythonAskAi);
   const [aiDraft, setAiDraft] = useState<AiDraft>({ settings: ai, key: '', remember: true });
+  const [controlsDraft, setControlsDraft] = useState(controls);
+  const control = (key: keyof Controls, label: string) => (
+    <label className="field">
+      <span />
+      <span>
+        <input type="checkbox" data-control={key} checked={controlsDraft[key]} onChange={(e) => setControlsDraft({ ...controlsDraft, [key]: e.target.checked })} /> {label}
+      </span>
+    </label>
+  );
   const apply = () => {
     const mb = Number(limit.replace(',', '.'));
     onApply({
@@ -151,6 +164,7 @@ export function SettingsDialog({
       python: pythonEngine,
       pythonAskAi: askAi,
       ai: aiDraft.settings,
+      controls: controlsDraft,
       ...(aiDraft.key.trim() ? { aiKey: { key: aiDraft.key, remember: aiDraft.remember } } : {}),
     });
     onClose();
@@ -192,6 +206,14 @@ export function SettingsDialog({
           <input type="checkbox" className="python-ask-ai" checked={askAi} onChange={(e) => setAskAi(e.target.checked)} /> {t(catalog, 'settings.pythonAskAi')}
         </span>
       </label>
+      {/* Matters of taste in how the program is used. */}
+      <div className="controls-settings">
+        <h4>{t(catalog, 'controls.section')}</h4>
+        {control('startScreen', t(catalog, 'controls.startScreen'))}
+        {control('rowToolbar', t(catalog, 'controls.rowToolbar'))}
+        {control('insertMenu', t(catalog, 'controls.insertMenu'))}
+        {control('autoDefine', t(catalog, 'controls.autoDefine'))}
+      </div>
       <AiSettingsSection catalog={catalog} draft={aiDraft} onChange={setAiDraft} aiOn={aiOn} />
     </Dialog>
   );

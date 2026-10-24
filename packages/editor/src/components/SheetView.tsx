@@ -4,7 +4,7 @@
  * every keystroke.
  */
 
-import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { formatExpr, formatPicture, fromDecimalComma, parsePicture, TEXT_ALIGNS, TEXT_COLORS, toDecimalComma, type SheetResult, type Statement, type StatementResult } from '@kalketa/core';
 import { formatDate, formatNumber, t, type Catalog, type UiKey } from '@kalketa/i18n';
 import { chartSvg as drawChart, DEFAULT_VIEW, labelParts, surfaceAt, viewText, xPosition, xValueAt, yPosition } from '@kalketa/chart';
@@ -28,6 +28,10 @@ import { ask } from './Ask.js';
 import type { Command } from '../commands.js';
 import { InsertMenu, insertQuery, matchingChoices, type InsertChoice } from './InsertMenu.js';
 import { RowToolbar } from './RowToolbar.js';
+import { CompletionList } from './CompletionList.js';
+import { autocorrect, completionsFor, wordToComplete, type Completion } from '../logic/shortcuts.js';
+import { helpOf } from '../logic/functionHelp.js';
+import { builtinFunctions } from '@kalketa/core';
 import { unitChoices } from '../logic/unitChoices.js';
 
 export interface EditRange {
@@ -44,6 +48,10 @@ interface Props {
   readonly rowToolbar?: boolean;
   /** "=" after a new name becomes ":=" (Settings > Controls); on unless false. */
   readonly autoDefine?: boolean;
+  /** Corrections while typing: "<=" ≤, "*" ·, "alpha" α (Settings > Controls); on unless false. */
+  readonly autocorrect?: boolean;
+  /** Suggestions of names and functions under the line being typed (Settings > Controls); on unless false. */
+  readonly autocomplete?: boolean;
   readonly source: string;
   readonly result: SheetResult;
   readonly print: PrintDocument;
@@ -985,6 +993,9 @@ export function SheetView(props: Props) {
     return [...items, { kind: 'separator' }, { kind: 'action', label: t(props.uiCatalog, 'cells.delete'), run: () => { props.onDelete(seg.start, seg.end); props.onEdit(undefined); } }];
   };
 
+  // What completion offers: the values of the sheet (with their value and line) and the built-in functions.
+  const completionList = useMemoCompletions(result, props.uiCatalog, props.decimalComma);
+
   return (
     <>
       {/* Outside the zoomed pages, so the menu has its normal size and sits at the pointer. */}
@@ -1403,6 +1414,9 @@ export function SheetView(props: Props) {
               onDone={() => props.onEdit(undefined)}
               insert={props.insertMenu}
               autoDefine={props.autoDefine !== false}
+              autocorrect={props.autocorrect !== false}
+              completions={props.autocomplete === false ? undefined : completionList}
+              completionTitle={t(props.uiCatalog, 'complete.title')}
             />
           ) : null}
           {block?.kind === 'picture' ? (
@@ -1993,6 +2007,23 @@ function PickFor(props: { statement: Statement; result: SheetResult; catalog: Ca
   );
 }
 
+/** The suggestions of completion for a result of the sheet: its values (with value and line), then the functions. */
+function useMemoCompletions(result: SheetResult, catalog: Catalog, decimalComma: boolean): readonly Completion[] {
+  return useMemo(() => {
+    const values: Completion[] = result.statements.flatMap((r): Completion[] => {
+      if (r.statement.kind !== 'definition') return [];
+      const d = r.display;
+      const detail = d && !d.im && Number.isFinite(d.value) ? `${formatNumber(d.value, catalog, { digits: 4 }).replace('-', '−')}${d.unit ? ` ${d.unit}` : ''}` : '';
+      return [{ name: r.statement.name, kind: 'value', detail, note: t(catalog, 'complete.line', { n: String(r.statement.span.line) }) }];
+    });
+    const functions: Completion[] = builtinFunctions.all().map((def) => {
+      const help = helpOf(def.name, catalog, decimalComma);
+      return { name: def.name, kind: 'function', detail: help?.signature ?? `${def.name}(…)`, ...(help?.summary ? { note: help.summary } : {}) };
+    });
+    return [...values, ...functions];
+  }, [result, catalog, decimalComma]);
+}
+
 interface RowEditorProps {
   readonly seg: Segment;
   readonly initialCursor: number | undefined;
@@ -2009,6 +2040,10 @@ interface RowEditorProps {
   readonly insert?: InsertMenuSetup | undefined;
   /** "=" after a new name becomes ":=". */
   readonly autoDefine: boolean;
+  readonly autocorrect: boolean;
+  /** The names and functions offered while typing; undefined: no suggestions. */
+  readonly completions?: readonly Completion[] | undefined;
+  readonly completionTitle: string;
 }
 
 /** What the "/" menu offers and how the program does the choices that are not a line to write. */
@@ -2019,7 +2054,7 @@ export interface InsertMenuSetup {
   onAction(choice: InsertChoice): void;
 }
 
-function RowEditor({ seg, initialCursor, decimalComma, result, onChange, onEnter, onTab, onDeleteEmpty, onMove, onDone, insert, autoDefine }: RowEditorProps) {
+function RowEditor({ seg, initialCursor, decimalComma, result, onChange, onEnter, onTab, onDeleteEmpty, onMove, onDone, insert, autoDefine, autocorrect: correct, completions, completionTitle }: RowEditorProps) {
   // The line is edited in the user's notation (50,5) and stored in file notation (50.5).
   // What the user types is kept as typed: converting it back on every keystroke
   // would turn a half-typed "55," into "55;" before the next digit arrives.
@@ -2065,6 +2100,22 @@ function RowEditor({ seg, initialCursor, decimalComma, result, onChange, onEnter
   const query = insert && !shown.includes('\n') ? insertQuery(shown) : undefined;
   const choices = insert && query !== undefined && dismissed !== shown ? matchingChoices(insert.choices, query) : undefined;
   const active = choices ? Math.max(0, Math.min(menuAt, choices.length - 1)) : 0;
+  // Completion: the word at the cursor, its suggestions; Esc closes them for that word.
+  const [cursorAt, setCursorAt] = useState<number | undefined>();
+  const [completeAt, setCompleteAt] = useState(0);
+  const [quiet, setQuiet] = useState<string | undefined>();
+  const word = completions && cursorAt !== undefined && !choices ? wordToComplete(shown, cursorAt) : undefined;
+  const suggested = word && quiet !== `${word.from}:${word.word}` ? completionsFor(completions!, word.word) : [];
+  const activeSuggestion = Math.max(0, Math.min(completeAt, suggested.length - 1));
+  const complete = (c: Completion) => {
+    if (!word) return;
+    const call = c.kind === 'function' ? `${c.name}()` : c.name;
+    const text = shown.slice(0, word.from) + call + shown.slice(cursorAt);
+    pendingCursor.current = word.from + call.length - (c.kind === 'function' ? 1 : 0);
+    setCursorAt(pendingCursor.current);
+    store(text);
+  };
+
   const choose = (choice: InsertChoice) => {
     if (choice.template !== undefined) {
       const at = choice.template.indexOf('‸');
@@ -2081,6 +2132,24 @@ function RowEditor({ seg, initialCursor, decimalComma, result, onChange, onEnter
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     const area = e.currentTarget;
+    if (suggested.length > 0) {
+      const step = e.key === 'ArrowDown' ? 1 : e.key === 'ArrowUp' ? -1 : 0;
+      if (step !== 0) {
+        e.preventDefault();
+        setCompleteAt((activeSuggestion + step + suggested.length) % suggested.length);
+        return;
+      }
+      if (e.key === 'Tab' && !e.shiftKey) {
+        e.preventDefault();
+        complete(suggested[activeSuggestion]!);
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        if (word) setQuiet(`${word.from}:${word.word}`);
+        return;
+      }
+    }
     if (choices) {
       const step = e.key === 'ArrowDown' ? 1 : e.key === 'ArrowUp' ? -1 : 0;
       if (step !== 0 && choices.length > 0) {
@@ -2140,15 +2209,24 @@ function RowEditor({ seg, initialCursor, decimalComma, result, onChange, onEnter
           const area = e.target;
           const at = area.selectionStart - 1;
           const typedEquals = area.value.length === shown.length + 1 && area.value[at] === '=' && area.value.slice(0, at) + area.value.slice(at + 1) === shown;
-          const edit = typedEquals && autoDefine ? defineShortcut(shown, at, definedElsewhere) : undefined;
+          const typedOne = area.value.length === shown.length + 1;
+          const edit = typedEquals && autoDefine ? defineShortcut(shown, at, definedElsewhere) : typedOne && correct ? autocorrect(area.value, area.selectionStart, definedElsewhere) : undefined;
           if (edit) pendingCursor.current = edit.cursor;
+          setCursorAt(edit ? edit.cursor : area.selectionStart);
+          setCompleteAt(0);
           setMenuAt(0);
           // "/" and letters only ask the menu: kept in the line here, not in the sheet (it would be an error there).
           if (insert && !area.value.includes('\n') && insertQuery(area.value) !== undefined && dismissed !== area.value) return setShown(area.value);
           store(edit ? edit.text : area.value);
         }}
         onKeyDown={onKeyDown}
+        // Suggestions while typing only: a cursor moved by a key or a click puts them away.
+        onSelect={(e) => {
+          if (e.currentTarget.selectionStart !== cursorAt || e.currentTarget.selectionEnd !== cursorAt) setCursorAt(undefined);
+        }}
+        onBlur={() => setCursorAt(undefined)}
       />
+      {suggested.length > 0 && <CompletionList title={completionTitle} items={suggested} active={activeSuggestion} onChoose={complete} onHover={setCompleteAt} />}
       {choices && insert && <InsertMenu title={insert.title} empty={insert.empty} choices={choices} active={active} onChoose={choose} onHover={setMenuAt} />}
     </>
   );

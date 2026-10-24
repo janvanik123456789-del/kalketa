@@ -566,6 +566,7 @@ async function runSmokeTest(pdfPath: string): Promise<void> {
     const insertMenu = await insertMenuWithRealKeys(pdfPath.replace(/\.pdf$/i, '') + '-insert-menu.png');
     const rowTools = await rowToolbarWithRealMouse(pdfPath.replace(/\.pdf$/i, '') + '-row-toolbar.png');
     const controls = await controlsWithRealInput(pdfPath.replace(/\.pdf$/i, '') + '-dark.png');
+    const typing = await typingWithRealKeys(pdfPath.replace(/\.pdf$/i, '') + '-completion.png');
     const printer = await printWindow('<!doctype html><meta charset="utf-8"><h1>Kalketa</h1><math><mfrac><mi>a</mi><mn>2</mn></mfrac></math>');
     const pdf = await printer.webContents.printToPDF({ preferCSSPageSize: true });
     printer.destroy();
@@ -573,8 +574,8 @@ async function runSmokeTest(pdfPath: string): Promise<void> {
     ok =
       state.bridge && state.sideBySide && state.menus === 8 && state.toolbars > 0 && state.rows > 10 && state.summary > 0 && state.math > 0 && reshapedColumns === 3 && pdf.length > 1000 &&
       layers.deflection && layers.pickTaken.column.startsWith('→') && /mm|cm/.test(layers.pickTaken.text) && layers.newKeepsExample && layers.samplesOk && layers.derivations && layers.summaryOk && layers.definitionAtCursor && layers.sheetGridOk && layers.tableEnter && layers.solvedByFormula && layers.rootsAndExtremes && layers.userChart.ok && layers.relations.ok && layers.quadraticSample.ok && layers.saveOnClose.ok && layers.wordPrinted && layers.wordColored && layers.paletteColored && layers.wordText.focused && layers.wordText.pane && layers.wordText.bold === 'dynamiky' && !layers.wordText.shown.includes('"') && layers.wordText.align === 'center' && layers.cellMarked === 'Síla na konci' && layers.systemFont !== '' && layers.cellFont.replace(/"/g, '').startsWith(layers.systemFont) && layers.cellDeleted && layers.paperRoots && layers.tableRowAdded && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.notesPicture === 'FIGURE+img BLOCKQUOTE' && layers.notesPlaced === 'narrower centred' && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.charts && layers.functionBar && layers.revisions && layers.roots && layers.toolIcons && layers.aiSettings && layers.aiChat && layers.pdfCleanup && layers.theoryLibrary && layers.study && layers.sheetPicture.offered && layers.sheetPicture.described && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
-    ok = ok && insertMenu.ok && rowTools.ok && controls.ok && start.shown && start.cards >= 20 && start.lead === 'R24-pruvodce-police' && start.pictures >= 12 && start.closed && start.tab === 'Vzor – Posouzení nosníku N1';
-    console.log(JSON.stringify({ ok, start, insertMenu, rowTools, controls, ...state, reshapedColumns, layers, pdfBytes: pdf.length }));
+    ok = ok && insertMenu.ok && rowTools.ok && controls.ok && typing.ok && start.shown && start.cards >= 20 && start.lead === 'R24-pruvodce-police' && start.pictures >= 12 && start.closed && start.tab === 'Vzor – Posouzení nosníku N1';
+    console.log(JSON.stringify({ ok, start, insertMenu, rowTools, controls, typing, ...state, reshapedColumns, layers, pdfBytes: pdf.length }));
   } catch (err) {
     console.log(JSON.stringify({ ok: false, error: (err as Error).message, console: smokeConsole.slice(-5) }));
   }
@@ -782,6 +783,26 @@ async function controlsWithRealInput(picture: string): Promise<{ menuOff: boolea
   const classicAgain = (await contents.executeJavaScript(`!!document.querySelector('.menubar') && !document.querySelector('.ribbon')`)) as boolean;
   const ribbon = { ...ribbonShown, navFromRibbon, collapsed, reopened, classicAgain, ok: ribbonShown.ribbon && !ribbonShown.menubar && !ribbonShown.top && ribbonShown.tabs === 8 && ribbonShown.large >= 5 && navFromRibbon === 'nav' && collapsed && reopened && classicAgain };
   return { menuOff, slashKept, stored, dark, ribbon, ok: menuOff && slashKept === '/' && stored.includes('"insertMenu":true') && dark.menubar === 'rgb(32, 37, 46)' && dark.page === 'rgb(255, 255, 255)' && light === 'light' && ribbon.ok };
+}
+
+/**
+ * Typing with the real keys: "alpha" and "*" corrected as typed (α, ·), then "M_" offered as M_t of the sheet
+ * with its value, Tab completing it.
+ */
+async function typingWithRealKeys(picture: string): Promise<{ offered: string; line: string; ok: boolean }> {
+  const contents = smokeWindow!.webContents;
+  await contents.executeJavaScript(`document.querySelectorAll('#smoke-last-row').forEach((e) => e.removeAttribute('id')); [...document.querySelectorAll('.layer-view.active .page .row[data-line]')].sort((a, b) => Number(a.dataset.line) - Number(b.dataset.line)).at(-1).id = 'smoke-last-row'`);
+  await clickOn('#smoke-last-row');
+  await pressKey('End');
+  await pressKey('Enter');
+  await typeText('k_t := alpha*M_');
+  await pause(300);
+  const offered = (await contents.executeJavaScript(`[...document.querySelectorAll('.completion-list .completion')].map((c) => c.textContent.replace(/\\s+/g, ' ').trim()).join(' | ')`)) as string;
+  await takePicture(picture);
+  await pressKey('Tab');
+  await pause(200);
+  const line = (await contents.executeJavaScript(`document.querySelector('textarea.row-editor')?.value ?? ''`)) as string;
+  return { offered, line, ok: /^xM_t54/.test(offered) && line === 'k_t := α·M_t' };
 }
 
 /**

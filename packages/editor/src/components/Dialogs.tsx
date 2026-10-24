@@ -147,7 +147,7 @@ export function SettingsDialog({
   const [askAi, setAskAi] = useState(pythonAskAi);
   const [aiDraft, setAiDraft] = useState<AiDraft>({ settings: ai, key: '', remember: true });
   const [controlsDraft, setControlsDraft] = useState(controls);
-  const control = (key: 'startScreen' | 'rowToolbar' | 'insertMenu' | 'autoDefine', label: string) => (
+  const control = (key: 'startScreen' | 'rowToolbar' | 'insertMenu' | 'autoDefine' | 'autocorrect' | 'autocomplete', label: string) => (
     <label className="field">
       <span />
       <span>
@@ -227,6 +227,8 @@ export function SettingsDialog({
         {control('rowToolbar', t(catalog, 'controls.rowToolbar'))}
         {control('insertMenu', t(catalog, 'controls.insertMenu'))}
         {control('autoDefine', t(catalog, 'controls.autoDefine'))}
+        {control('autocorrect', t(catalog, 'controls.autocorrect'))}
+        {control('autocomplete', t(catalog, 'controls.autocomplete'))}
       </div>
       <AiSettingsSection catalog={catalog} draft={aiDraft} onChange={setAiDraft} aiOn={aiOn} />
     </Dialog>

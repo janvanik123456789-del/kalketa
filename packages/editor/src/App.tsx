@@ -2418,6 +2418,8 @@ export function App() {
           {...(controls.insertMenu ? { insertMenu } : {})}
           rowToolbar={controls.rowToolbar}
           autoDefine={controls.autoDefine}
+          autocorrect={controls.autocorrect}
+          autocomplete={controls.autocomplete}
           selected={active ? selected : undefined}
           {...(active ? { selectAll } : {})}
           resolveFile={resolveFile}

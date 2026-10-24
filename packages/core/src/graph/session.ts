@@ -784,7 +784,9 @@ function evaluateCheck(statement: Extract<Statement, { kind: 'check' }>, ctx: Ev
     const right = asComplex(evaluate(expr.right, ctx), expr.right.span);
     if (left.im || right.im) throw new CalcError(diagnostic('E-COMPLEX-ORDER', expr.span, { operator: expr.operator }));
     const passed = asBoolean(compare(expr.operator, left, right, expr.span), expr.span);
-    const utilization = utilizationOf(expr.operator, left, right);
+    // "abs(a − b) ≤ tolerance" says two values agree: met or not, a ratio to the tolerance means nothing.
+    const agreement = expr.left.kind === 'call' && expr.left.name === 'abs' && expr.left.args[0]?.kind === 'binary' && expr.left.args[0].operator === '-';
+    const utilization = agreement ? undefined : utilizationOf(expr.operator, left, right);
     return { ...info, passed, operator: expr.operator, left, right, ...(utilization !== undefined ? { utilization } : {}) };
   }
   return { ...info, passed: asBoolean(evaluate(expr, ctx), expr.span) };

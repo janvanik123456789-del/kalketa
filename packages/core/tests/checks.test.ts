@@ -35,6 +35,12 @@ describe('check statements', () => {
     expect(result.checks.every((c) => c.passed)).toBe(true);
   });
 
+  it('gives no utilization for an agreement within a tolerance: abs(a − b) ≤ tol is met or not', () => {
+    const result = evaluateSheet('a := 1.7647 m\nb := 1.76470001 m\ncheck "Shoda": abs(a - b) ≤ 1e-6 m\ncheck "Mez": abs(a) ≤ 2 m');
+    expect(result.checks.map((c) => c.utilization)).toEqual([undefined, expect.closeTo(0.88235, 4)]);
+    expect(result.checks.every((c) => c.passed)).toBe(true);
+  });
+
   it('a failed check is not an error of the sheet', () => {
     const result = evaluateSheet('check "x": 2 m ≤ 1 m');
     expect(result.diagnostics).toEqual([]);

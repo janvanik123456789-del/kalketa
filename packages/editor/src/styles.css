@@ -894,3 +894,31 @@ button.icon:hover { color: var(--accent); }
 .nav-item.problem.info .nav-state { color: var(--accent); }
 .nav-line { color: var(--muted); font-size: 12px; }
 .nav-empty { margin: 2px 6px; color: var(--muted); font-size: 12px; }
+
+/* The dark frame (Settings > Controls > Frame): menu, toolbars, tabs and status bar dark around white pages.
+   Named part by part, not by the shared colours, which the pages, dialogs and the side pane keep light. */
+.app[data-theme='dark'] { background: #1b1f26; }
+.app[data-theme='dark'] :is(.menubar, .dock, .statusbar, .doc-tabs, .pane-tabs, .layer-tabs, .layer-view-head) { background: #20252e; border-color: #2e3440; color: #c4cad4; }
+.app[data-theme='dark'] .menubar-item > button { color: #dde2ea; }
+.app[data-theme='dark'] :is(.menubar-item > button:hover, .menubar-item.open > button) { background: #2f3644; }
+.app[data-theme='dark'] .toolbar-box { background: #2a303b; border-color: #394150; }
+.app[data-theme='dark'] .tool-button { color: #d5dae2; }
+.app[data-theme='dark'] .tool-button:hover:not(:disabled) { background: #364050; border-color: #4a5466; }
+.app[data-theme='dark'] .tool-button:disabled { color: #5d6573; }
+.app[data-theme='dark'] .tool-button.checked { background: #2f4a78; border-color: #5b8ce0; }
+.app[data-theme='dark'] .sheet-scroll { background: #2b313c; }
+.app[data-theme='dark'] .doc-tab { background: #2a303b; border-color: #394150; color: #c4cad4; }
+.app[data-theme='dark'] .doc-tab.active { background: #2b313c; border-color: #4a5466; border-bottom-color: #2b313c; color: #fff; }
+.app[data-theme='dark'] :is(.doc-tab-close, .doc-tab-new) { color: #aeb5c0; }
+.app[data-theme='dark'] :is(.doc-tab-close:hover, .doc-tab-new:hover) { background: #364050; border-color: #4a5466; color: #fff; }
+.app[data-theme='dark'] .pane-tab { color: #aeb5c0; }
+.app[data-theme='dark'] .pane-tab:hover { background: #2f3644; }
+.app[data-theme='dark'] .pane-tab.active { background: #fbfcfd; border-color: #fbfcfd; color: #1d232b; }
+.app[data-theme='dark'] .pane-hide { color: #aeb5c0; }
+.app[data-theme='dark'] .pane-divider { background: #2e3440; }
+.app[data-theme='dark'] .layer-tab { background: #2a303b; border-color: #394150; color: #c4cad4; }
+.app[data-theme='dark'] :is(.layer-tab:hover, .layer-tab.open) { background: #364050; }
+.app[data-theme='dark'] .layer-tab.active { background: #2b313c; border-color: #4a5466; color: #fff; }
+.app[data-theme='dark'] .layer-view { border-left-color: #394150; }
+.app[data-theme='dark'] .statusbar .bad { color: #f28b82; }
+.app[data-theme='dark'] .statusbar .warn { color: #f2c46d; }

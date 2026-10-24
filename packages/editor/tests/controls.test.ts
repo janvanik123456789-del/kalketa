@@ -6,5 +6,7 @@ describe('the controls of the program (Settings > Controls)', () => {
     expect(readControls(null)).toEqual(DEFAULT_CONTROLS);
     expect(readControls('nonsense')).toEqual(DEFAULT_CONTROLS);
     expect(readControls('{"insertMenu":false,"startScreen":"no"}')).toEqual({ ...DEFAULT_CONTROLS, insertMenu: false });
+    expect(readControls('{"theme":"dark"}').theme).toBe('dark');
+    expect(readControls('{"theme":"purple"}').theme).toBe('light');
   });
 });

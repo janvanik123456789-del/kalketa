@@ -565,7 +565,7 @@ async function runSmokeTest(pdfPath: string): Promise<void> {
     const layers = await layersWithRealInput(pdfPath.replace(/\.pdf$/i, '') + '-layers.png');
     const insertMenu = await insertMenuWithRealKeys(pdfPath.replace(/\.pdf$/i, '') + '-insert-menu.png');
     const rowTools = await rowToolbarWithRealMouse(pdfPath.replace(/\.pdf$/i, '') + '-row-toolbar.png');
-    const controls = await controlsWithRealInput();
+    const controls = await controlsWithRealInput(pdfPath.replace(/\.pdf$/i, '') + '-dark.png');
     const printer = await printWindow('<!doctype html><meta charset="utf-8"><h1>Kalketa</h1><math><mfrac><mi>a</mi><mn>2</mn></mfrac></math>');
     const pdf = await printer.webContents.printToPDF({ preferCSSPageSize: true });
     printer.destroy();
@@ -703,7 +703,7 @@ async function rowToolbarWithRealMouse(picture: string): Promise<{ hidden: boole
  * Settings > Controls with the real mouse: the "/" menu switched off, "/" typed on an empty line shows nothing
  * (the slash stays as typed); switched on again, kept in the settings of the program.
  */
-async function controlsWithRealInput(): Promise<{ menuOff: boolean; slashKept: string; stored: string; ok: boolean }> {
+async function controlsWithRealInput(picture: string): Promise<{ menuOff: boolean; slashKept: string; stored: string; dark: { menubar: string; page: string }; ok: boolean }> {
   const contents = smokeWindow!.webContents;
   const setInsertMenu = async () => {
     await clickOn('.menubar-item:nth-child(6) > button');
@@ -728,7 +728,22 @@ async function controlsWithRealInput(): Promise<{ menuOff: boolean; slashKept: s
   await clickOn('.sheet-scroll');
   await setInsertMenu();
   const stored = (await contents.executeJavaScript(`localStorage.getItem('kalketa.controls') ?? ''`)) as string;
-  return { menuOff, slashKept, stored, ok: menuOff && slashKept === '/' && stored.includes('"insertMenu":true') };
+  // The dark frame: chosen by the keyboard in its list, the menu bar dark, the page white; then light again.
+  const setTheme = async (key: 'Down' | 'Up') => {
+    await clickOn('.menubar-item:nth-child(6) > button');
+    await clickMenu('Nastavení');
+    await pause(400);
+    await clickOn('.controls-settings label.field:has(select[data-control="theme"]) > span');
+    await pressKey(key);
+    await clickOn('.dialog-buttons button.default');
+    await pause(400);
+  };
+  await setTheme('Down');
+  const dark = (await contents.executeJavaScript(`({ menubar: getComputedStyle(document.querySelector('.menubar')).backgroundColor, page: getComputedStyle(document.querySelector('.layer-view.active .page')).backgroundColor })`)) as { menubar: string; page: string };
+  await takePicture(picture);
+  await setTheme('Up');
+  const light = (await contents.executeJavaScript(`document.querySelector('.app')?.dataset.theme ?? ''`)) as string;
+  return { menuOff, slashKept, stored, dark, ok: menuOff && slashKept === '/' && stored.includes('"insertMenu":true') && dark.menubar === 'rgb(32, 37, 46)' && dark.page === 'rgb(255, 255, 255)' && light === 'light' };
 }
 
 /**

@@ -2479,7 +2479,7 @@ export function App() {
   const failedChecks = checks.filter((c) => !c.passed).length;
 
   return (
-    <div className="app">
+    <div className="app" data-theme={controls.theme}>
       <MenuBar menus={menus} commands={commands} />
       <div className="app-body">
         <ToolbarFrame

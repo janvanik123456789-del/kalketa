@@ -147,7 +147,7 @@ export function SettingsDialog({
   const [askAi, setAskAi] = useState(pythonAskAi);
   const [aiDraft, setAiDraft] = useState<AiDraft>({ settings: ai, key: '', remember: true });
   const [controlsDraft, setControlsDraft] = useState(controls);
-  const control = (key: keyof Controls, label: string) => (
+  const control = (key: 'startScreen' | 'rowToolbar' | 'insertMenu' | 'autoDefine', label: string) => (
     <label className="field">
       <span />
       <span>
@@ -209,6 +209,13 @@ export function SettingsDialog({
       {/* Matters of taste in how the program is used. */}
       <div className="controls-settings">
         <h4>{t(catalog, 'controls.section')}</h4>
+        <label className="field">
+          <span>{t(catalog, 'controls.theme')}</span>
+          <select data-control="theme" value={controlsDraft.theme} onChange={(e) => setControlsDraft({ ...controlsDraft, theme: e.target.value === 'dark' ? 'dark' : 'light' })}>
+            <option value="light">{t(catalog, 'controls.themeLight')}</option>
+            <option value="dark">{t(catalog, 'controls.themeDark')}</option>
+          </select>
+        </label>
         {control('startScreen', t(catalog, 'controls.startScreen'))}
         {control('rowToolbar', t(catalog, 'controls.rowToolbar'))}
         {control('insertMenu', t(catalog, 'controls.insertMenu'))}

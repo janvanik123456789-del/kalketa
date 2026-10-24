@@ -5,6 +5,10 @@ import { codes, expectValue } from './helpers.js';
 describe('temperature', () => {
   it('stores °C as an absolute temperature and shows it back in °C', () => {
     expectValue('T := 20 °C\nT', 20, '°C');
+    // A minus before a temperature belongs to it: −15 °C, not the opposite of 15 °C (−288,15 K).
+    expectValue('t_e := -15 °C\nt_e', -15, '°C');
+    expectValue('t_e := -15 °C\nt_i := 20 °C\nt_i - t_e', 35, 'Δ°C');
+    expectValue('-5 Δ°C', -5, 'Δ°C');
     expectValue('20 °C | K', 293.15, 'K');
     expectValue('68 °F | °C', 20, '°C');
   });

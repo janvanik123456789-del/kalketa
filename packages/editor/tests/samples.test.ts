@@ -28,6 +28,7 @@ describe('sample calculations shipped with the program', () => {
       '05 R18-termistor-interpolace',
       '06 R6-fve',
       '07 R3-roztok',
+      '11 R25-ztrata-vetranim',
       '16 R5-fotovoltaika',
     ]);
     expect(list.find((s) => s.id === 'R1-nosnik')!.title).toBe('Posouzení nosníku N1');

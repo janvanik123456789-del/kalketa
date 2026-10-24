@@ -1,0 +1,53 @@
+{
+  "sheet": "ztrata-vetranim.cc",
+  "verifiedBy": "V. Zmrhal, J. Boháč: Tepelná ztráta větráním podle ČSN EN 12831-1, Vytápění, větrání, instalace 2/2021 (ČVUT v Praze), příklad rodinného domu: tab. 3 (V_inf,add = 14,4 m³/h, t_rec = 13 °C), tab. 5 (341 + 318 + 67 = 725 W), místnost 1.01 (113 + 129 = 243 W). Samostatně v Pythonu (Podklady) z tabulek 1 až 4; plochy obálek místností dopočtené z tab. 4, součet 360,1 m² proti 359,9 m² zdroje.",
+  "relativeTolerance": 1e-09,
+  "values": {
+    "V_inf": {
+      "value": 14.360009999999999,
+      "unit": "m³/h"
+    },
+    "t_rec": {
+      "value": 13.0,
+      "unit": "°C"
+    },
+    "Q_env1": {
+      "value": 113.2706736,
+      "unit": "W"
+    },
+    "Q_sup1": {
+      "value": 129.36,
+      "unit": "W"
+    },
+    "Q_env": {
+      "value": 341.02395936,
+      "unit": "W"
+    },
+    "Q_sup": {
+      "value": 317.52000000000004,
+      "unit": "W"
+    },
+    "Q_tr": {
+      "value": 67.2,
+      "unit": "W"
+    },
+    "Q_V": {
+      "value": 725.7439593600001,
+      "unit": "W"
+    },
+    "Q_sup0": {
+      "value": 1587.6,
+      "unit": "W"
+    }
+  },
+  "checks": [
+    {
+      "label": "Souhlas se zdrojem (725 W)",
+      "passed": true
+    },
+    {
+      "label": "Rovnotlaké větrání",
+      "passed": true
+    }
+  ]
+}

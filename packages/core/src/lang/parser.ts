@@ -33,6 +33,8 @@ export interface ParseResult {
 
 const KEYWORDS = new Set(['and', 'or', 'not', 'true', 'false', 'check', 'source', 'solve', 'in', 'guess', 'dimension', 'unit', 'input', 'derive', 'relation']);
 const UNSUPPORTED_STATEMENTS: Readonly<Record<string, string>> = {};
+/** Units of an absolute temperature, as written: a minus before such a number belongs to it. */
+const ABSOLUTE_TEMPERATURES: ReadonlySet<string> = new Set(['°C', '°F', '℃', '℉', 'degC', 'degF']);
 /** "unit ks: dimensionless" (also "unit ks: 1"). */
 export const DIMENSIONLESS_NAME = 'dimensionless';
 /** Keywords that may follow a complete expression. */
@@ -772,6 +774,10 @@ class LineParser {
     if (type === '-' || type === '+' || type === '±') {
       const op = this.next();
       const operand = this.parseUnary();
+      // "-15 °C" is a temperature of −15 °C, not the opposite of 15 °C (−288,15 K): the minus belongs to the number.
+      if (type === '-' && operand.kind === 'number' && operand.unit?.kind === 'unit-name' && ABSOLUTE_TEMPERATURES.has(operand.unit.name)) {
+        return { ...operand, value: -operand.value, span: spanOf(op, operand) };
+      }
       return { kind: 'unary', operator: type, operand, span: spanOf(op, operand) };
     }
     return this.parsePower();

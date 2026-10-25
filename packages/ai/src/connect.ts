@@ -170,8 +170,10 @@ function finished(text: string, model: string, atLimit: boolean): ChatResult {
   return { ok: true, text, model, ...(atLimit ? { truncated: true } : {}) };
 }
 
-/** Claude models that take the effort setting and the server-side fallback after a refusal. */
-const CURRENT_CLAUDE = new Set(['claude-fable-5-1', 'claude-opus-5-5', 'claude-opus-5', 'claude-sonnet-5-5']);
+/** Claude models that take the effort setting. */
+const CURRENT_CLAUDE = new Set(['claude-fable-5-1', 'claude-opus-5-5', 'claude-opus-5', 'claude-sonnet-5-5', 'claude-haiku-5-5']);
+/** Of those, the ones the API answers with a fallback model after a refusal (Haiku has none). */
+const WITH_FALLBACK = new Set(['claude-fable-5-1', 'claude-opus-5-5', 'claude-opus-5', 'claude-sonnet-5-5']);
 
 /** A conversation turn: the answer streams in through onText. */
 export async function chat(request: ChatRequest, transport: Transport = {}): Promise<ChatResult> {
@@ -181,6 +183,7 @@ export async function chat(request: ChatRequest, transport: Transport = {}): Pro
   if (!request.apiKey?.trim()) return { ok: false, problem: 'noKey' };
   const client = new Anthropic({ apiKey: request.apiKey.trim(), authToken: null, maxRetries: 1 });
   const current = CURRENT_CLAUDE.has(request.model);
+  const fallback = WITH_FALLBACK.has(request.model);
   try {
     const stream = client.beta.messages.stream(
       {
@@ -189,7 +192,8 @@ export async function chat(request: ChatRequest, transport: Transport = {}): Pro
         system: request.system,
         messages: request.turns.map((t) => ({ role: t.role, content: t.text })),
         // A conversation needs no deep thinking unless the user asks for it; on a refusal the API answers with a fallback model.
-        ...(current ? { output_config: { effort: request.effort === 'none' ? 'low' : (request.effort ?? 'medium') }, betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' as const } : {}),
+        ...(current ? { output_config: { effort: request.effort === 'none' ? 'low' : (request.effort ?? 'medium') } } : {}),
+        ...(fallback ? { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' as const } : {}),
       },
       request.signal ? { signal: request.signal } : {},
     );

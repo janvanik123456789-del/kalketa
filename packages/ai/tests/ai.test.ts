@@ -31,7 +31,7 @@ describe('company rules', () => {
 
   it('limit providers and models', () => {
     expect(applyPolicy(claude, parseAiPolicy({ allowedProviders: ['local'] }))).toEqual(DEFAULT_AI_SETTINGS);
-    expect(applyPolicy(claude, parseAiPolicy({ allowedModels: ['claude-haiku-4-5'] }))).toEqual(DEFAULT_AI_SETTINGS);
+    expect(applyPolicy(claude, parseAiPolicy({ allowedModels: ['claude-haiku-5-5'] }))).toEqual(DEFAULT_AI_SETTINGS);
     expect(applyPolicy(claude, parseAiPolicy({ allowedProviders: ['anthropic'], instructions: 'Eurocodes' }))).toEqual(claude);
   });
 

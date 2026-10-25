@@ -1,5 +1,7 @@
 # Kalketa
 
+[![Tests](https://github.com/janvanik123456789-del/kalketa/actions/workflows/tests.yml/badge.svg)](https://github.com/janvanik123456789-del/kalketa/actions/workflows/tests.yml)
+
 **Engineering calculations that can be checked.** Kalketa is a desktop calculator for engineers in the spirit of Mathcad: you write the calculation as text, with units, and it prints as a classic technical report: formula, numbers put in, result, check. Tables, pictures, sources and theory belong to the calculation file, not to the program.
 
 [Česky](README.cs.md) · [Download](https://github.com/janvanik123456789-del/kalketa/releases) · MIT licence

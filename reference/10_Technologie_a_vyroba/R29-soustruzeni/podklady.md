@@ -37,23 +37,3 @@ check "půl minuty": abs(t_m - 30 s) ≤ 0.001 s
 Trvanlivost T je čas řezání, po kterém se ostří otupí natolik, že se musí přeostřit nebo vyměnit. Za tu dobu se obrobí T/t_m součástí. Destička ze slinutého karbidu má víc využitelných hran (zde čtyři), po otupení se otočí, a teprve po všech hranách se vymění.
 
 Trvanlivost silně klesá s řeznou rychlostí (Taylorův vztah v_c·T^m = konst.). Vyšší rychlost tedy zkrátí strojní čas, ale spotřebuje víc ostří. Řezné podmínky v tabulkách proto hledají kompromis mezi náklady na stroj a na nástroje.
-
-## Kontrola v Pythonu
-
-```python
-from math import pi, floor, ceil
-D, l, l_n, n_s, f = 72, 138, 5, 350, 0.18
-for name, v, T, z in (("RO", 45, 60, 1), ("SK", 155, 45, 4)):
-    n = 1000 * v / (pi * D)
-    t_m = (l + l_n) / (n * f)
-    p = floor(z * T / t_m)
-    k = ceil(n_s / p)
-    print(name, round(n), "1/min,", round(t_m, 3), "min,", p, "parts per tool,", k, "tools,", k - 1, "changes")
-result("n", n, "min⁻¹")
-result("L", l + l_n, "mm")
-result("t_m", t_m, "min")
-result("t_s", n_s * t_m / 60, "h")
-result("p", p, "")
-result("k", k, "")
-result("k_v", k - 1, "")
-```

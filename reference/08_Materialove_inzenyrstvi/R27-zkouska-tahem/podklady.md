@@ -40,24 +40,3 @@ check "L_0 je asi pět průměrů": abs(L_0 - 5·d_0) ≤ 0.1 mm
 **Resilience** je energie pružné deformace v jednotce objemu, plocha pod přímkou tahového diagramu do meze kluzu: U_r = R_e²/(2·E). **Tahová houževnatost** je plocha pod celým diagramem až do lomu; bez záznamu diagramu se odhadne jako průměr meze kluzu a pevnosti krát tažnost. Jednotka MPa = MJ/m³.
 
 **Míra deformačního zpevnění** R_m/R_p0,2 říká, o kolik materiál zpevní plastickou deformací. Konstrukční oceli mají 1,3 až 1,6, vysokopevné oceli blíž k 1.
-
-## Kontrola v Pythonu
-
-```python
-from math import pi, sqrt
-d0, F02, Fm, Fu, du, E = 9.95, 17.21e3, 25.75e3, 17.39e3, 5.28, 210e3
-S0 = pi * d0**2 / 4
-Su = pi * du**2 / 4
-Rp, Rm = F02 / S0, Fm / S0
-A565 = (68.5 - 50) / 50
-result("S_0", S0, "mm²")
-result("R_p02", Rp, "MPa")
-result("R_m", Rm, "MPa")
-result("Z", (S0 - Su) / S0 * 100, "%")
-result("A_565", A565 * 100, "%")
-result("A_100", (128 - 100) / 100 * 100, "%")
-result("σ_u", Fu / Su, "MPa")
-result("U_r", Rp**2 / (2 * E), "MJ/m³")
-result("U_t", (Rp + Rm) / 2 * A565, "MJ/m³")
-result("n_z", Rm / Rp, "")
-```

@@ -115,8 +115,13 @@ describe.each(notes)('$name/podklady.md', ({ path }) => {
     expect(evaluateSheet(block).diagnostics.filter((d) => d.severity !== 'info')).toEqual([]);
   });
 
-  // A check in Python beside the theory (```python): run in the built-in Python, every result agrees with the sheet.
-  const scripts = [...readFileSync(path, 'utf8').matchAll(/```python\r?\n([\s\S]*?)```/g)].map((m) => m[1]!);
+  // The check in Python beside the theory (kontrola.md, ```python): run in the built-in Python, every result agrees with the sheet.
+  // Theory only: the check in Python is a layer of its own (kontrola.md).
+  it('holds no check in Python', () => {
+    expect(readFileSync(path, 'utf8')).not.toContain('```python');
+  });
+  const checkPath = join(dirname(path), 'kontrola.md');
+  const scripts = existsSync(checkPath) ? [...readFileSync(checkPath, 'utf8').matchAll(/```python\r?\n([\s\S]*?)```/g)].map((m) => m[1]!) : [];
   it.each(scripts.map((script, i) => [i + 1, script] as const))('check in Python %i agrees with the sheet', async (_, script) => {
     const dir = dirname(path);
     const expected = JSON.parse(readFileSync(join(dir, readdirSync(dir).find((f) => f.endsWith('.expected.json'))!), 'utf8')) as Expected;

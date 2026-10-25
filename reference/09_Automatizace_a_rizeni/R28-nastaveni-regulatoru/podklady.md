@@ -39,17 +39,3 @@ check "derivační konstanta z časového tvaru": abs(K_d - 0.075·K_c·T_c) ≤
 Tabulka zdroje má pro PID trochu menší proporcionální zesílení (0,59 místo 0,6) a k němu integrační násobek 1,18 a derivační 0,075. Derivační násobek je tedy stejný jako v klasické tabulce.
 
 Nastavení podle Zieglera a Nicholse je dost „ostré“: přechodový děj má překmit kolem 25 % a odezva tlumí jednu periodu na čtvrtinu. Pro klidnější regulaci se zesílení dál zmenšuje (např. pravidla Tyreuse a Luybena).
-
-## Kontrola v Pythonu
-
-```python
-Kc, Tc = 0.43, 21 / 4
-rules = {"P": (0.50, 0, 0), "PI": (0.45, 0.54, 0), "PD": (0.80, 0, 0.075), "PID": (0.59, 1.18, 0.075)}
-for name, (a_p, a_i, a_d) in rules.items():
-    print(name, round(a_p * Kc, 4), round(a_i * Kc / Tc, 4), round(a_d * Kc * Tc, 4))
-a_p, a_i, a_d = rules["PID"]
-result("T_c", Tc, "s")
-result("K_p", a_p * Kc, "")
-result("K_i", a_i * Kc / Tc, "s⁻¹")
-result("K_d", a_d * Kc * Tc, "s")
-```

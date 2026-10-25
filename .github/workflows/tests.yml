@@ -40,8 +40,6 @@ jobs:
     name: Smoke test (Linux, real input)
     runs-on: ubuntu-latest
     timeout-minutes: 40
-    env:
-      TMPDIR: ${{ runner.temp }}/kalketa-smoke
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -51,7 +49,10 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y xvfb fonts-dejavu-core
       - run: npm ci --no-audit --no-fund
       - run: node scripts/pyodide-packages.mjs
-      - run: mkdir -p "$TMPDIR"
+      # The smoke results (screenshots, result.json) in a folder of their own, kept on a failure.
+      - run: |
+          mkdir -p "$RUNNER_TEMP/kalketa-smoke"
+          echo "TMPDIR=$RUNNER_TEMP/kalketa-smoke" >> "$GITHUB_ENV"
       - run: npm run build:desktop
       - run: xvfb-run -a -s "-screen 0 1920x1080x24" node scripts/smoke.mjs
       # Screenshots and result.json of the run, to see what went wrong.

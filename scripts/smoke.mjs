@@ -292,7 +292,10 @@ if (!result.ok && process.env.GITHUB_ACTIONS) {
   walk(result, '');
   console.log(`::error title=Smoke test::${result.error ?? ''} false or empty: ${suspects.slice(0, 200).join(' ')}`);
   // The whole result too, for the values behind a check (what a line held, how long typing took).
-  console.log(`::notice title=Smoke result::${JSON.stringify(result).replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A').slice(0, 60000)}`);
+  // An annotation holds about 4 000 characters: the values of the checks that failed only on GitHub first.
+  const pick = (path) => path.split('.').reduce((v, k) => (v == null ? undefined : v[k]), result);
+  const values = Object.fromEntries(['layers.cubeLine', 'layers.rootLine', 'layers.quadraticSample.slowTyping'].map((p) => [p, pick(p)]));
+  console.log(`::notice title=Smoke values::${JSON.stringify(values).replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A').slice(0, 3800)}`);
 }
 console.log(`smoke: screenshots and PDF in ${out}`);
 process.exit(result.ok ? 0 : 1);

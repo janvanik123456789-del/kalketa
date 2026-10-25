@@ -4469,7 +4469,8 @@ if (process.platform === 'linux') {
 /** VMware, VirtualBox, QEMU/KVM, Hyper-V, Parallels: by the vendor of the system the firmware reports. */
 function virtualMachine(): boolean {
   try {
-    const vendor = ['sys_vendor', 'product_name'].map((f) => readFileSync(`/sys/class/dmi/id/${f}`, 'utf8')).join(' ');
+    // Each file ends with a line break: trimmed, "Microsoft Corporation" and "Virtual Machine" meet as one phrase.
+    const vendor = ['sys_vendor', 'product_name'].map((f) => readFileSync(`/sys/class/dmi/id/${f}`, 'utf8').trim()).join(' ');
     return /vmware|virtualbox|innotek|qemu|kvm|bochs|parallels|microsoft corporation virtual|hyper-v/i.test(vendor);
   } catch {
     return false;

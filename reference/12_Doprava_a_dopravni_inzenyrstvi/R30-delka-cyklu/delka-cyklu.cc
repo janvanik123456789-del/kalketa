@@ -1,5 +1,6 @@
 # Optimální délka cyklu světelné signalizace (Webster)
 "Podle příkladu Cycle Length Determination z NIATT Traffic Signal Timing Lab Manual (National Institute for Advanced Transportation Technology, University of Idaho). Křižovatka je řízená ve třech fázích. Pro každou fázi známe poměr kritické intenzity k saturovanému toku a mezičas. Délku cyklu určíme Websterovým vzorcem, který dává nejmenší zdržení vozidel. Rozdělení zelené na fáze je náš doplněk podle Websterovy zásady stejného stupně saturace. Obrázek je vlastní."
+"Zdroj: https://www.webpages.uidaho.edu/niatt_labmanual/Chapters/signaltimingdesign/exampleproblems/CycleLengthDetermination.htm"
 
 ## Zadání
 "Fáze: y je poměr kritické intenzity a saturovaného toku, I mezičas mezi koncem zelené jedné fáze a začátkem další."

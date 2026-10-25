@@ -1,5 +1,6 @@
 # Tlakové ztráty v potrubí: příkon čerpadla a průtok paralelní větví
 "Podle cvičení 11 předmětu Mechanika tekutin I (ZČU v Plzni, Katedra konstruování strojů, Ing. M. Klimko), příklady 4 a 1. Nejdřív příkon čerpadla zahradního rozprašovače: voda se nasává sacím košem z nádrže, vede hladkým potrubím přes koleno a vystřikuje dvanácti dírkami trysky 3 m nad hladinou. Pak dvě paralelní větve vodovodu: jakým průtokem teče delší větev, když kratší teče 0,4 m³/s. Součinitel tření se počítá Blasiovým vztahem jako ve cvičení i Colebrookovou rovnicí, kterou Kalketa řeší jako rovnici. Teorie je ve vrstvě Podklady."
+"Zdroj: http://home.zcu.cz/~kovarikp/MT/cviceni/cviceni_MT_11.pdf"
 
 ## Příkon čerpadla rozprašovače
 D := 30 mm                  ' světlost potrubí

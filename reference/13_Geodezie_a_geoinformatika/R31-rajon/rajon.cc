@@ -1,5 +1,6 @@
 # Výpočet rajónu: souřadnice nového bodu v S-JTSK
 "Podle vzorového výpočtu Souřadnicové výpočty – výpočet rajónu (Přírodovědecká fakulta Univerzity Karlovy). Na daném bodě 517 byl teodolitem změřen vodorovný směr na daný bod 518 (orientace) a na nový bod 550 a délka k němu. Souřadnice bodu 550 určíme ze směrníku orientace, vrcholového úhlu a délky. V S-JTSK míří osa X k jihu a osa Y k západu, úhly se měří v gradech (gon, pravý úhel je 100 gon). Náčrt je vlastní."
+"Zdroj: https://natur.cuni.cz/data/nodes/6155/rajon_vzorovy_vypocet.pdf"
 
 ## Zadání
 Y_517 := 668249.55 m

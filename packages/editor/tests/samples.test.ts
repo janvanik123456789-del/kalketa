@@ -21,7 +21,7 @@ describe('sample calculations shipped with the program', () => {
       '03 R14-sila-vody-na-hraz',
       '03 R15-vytok-z-nadrze',
       '03 R21-ztraty-v-potrubi',
-      '03 R2-vymenik-hridel',
+      '03 R2-vymenik-tepla',
       '04 R1-nosnik',
       '04 R20-deska-ohyb',
       '05 R4-kabel',

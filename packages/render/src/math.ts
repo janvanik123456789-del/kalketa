@@ -29,7 +29,9 @@ export type MathNode =
   | { readonly k: 'underover'; readonly b: MathNode; readonly u: MathNode; readonly o: MathNode }
   | { readonly k: 'paren'; readonly c: MathNode }
   /** A vector: an arrow over the name with its index, p⃗₁. */
-  | { readonly k: 'vec'; readonly b: MathNode };
+  | { readonly k: 'vec'; readonly b: MathNode }
+  /** A bar over a name: the arithmetic mean t̄. */
+  | { readonly k: 'bar'; readonly b: MathNode };
 
 export const mi = (t: string, normal = false): MathNode => (normal ? { k: 'i', t, normal } : { k: 'i', t });
 export const mn = (t: string): MathNode => ({ k: 'n', t });
@@ -47,6 +49,7 @@ export const table = (rows: readonly (readonly MathNode[])[]): MathNode => ({ k:
 export const underover = (b: MathNode, u: MathNode, o: MathNode): MathNode => ({ k: 'underover', b, u, o });
 export const paren = (c: MathNode): MathNode => ({ k: 'paren', c });
 export const vec = (b: MathNode): MathNode => ({ k: 'vec', b });
+export const bar = (b: MathNode): MathNode => ({ k: 'bar', b });
 
 /** The combining arrow written after a letter of a name (p⃗_1): the name is a vector. */
 export const VECTOR_ARROW = '⃗';
@@ -103,6 +106,8 @@ function ml(node: MathNode): string {
       return `<mrow><mo>(</mo>${ml(node.c)}<mo>)</mo></mrow>`;
     case 'vec':
       return `<mover>${ml(node.b)}<mo stretchy="false">→</mo></mover>`;
+    case 'bar':
+      return `<mover accent="true">${ml(node.b)}<mo stretchy="false">¯</mo></mover>`;
   }
 }
 
@@ -136,6 +141,8 @@ export function toText(node: MathNode): string {
       return `(${toText(node.c)})`;
     case 'vec':
       return `vec(${toText(node.b)})`;
+    case 'bar':
+      return `${toText(node.b)}\u0304`;
   }
 }
 

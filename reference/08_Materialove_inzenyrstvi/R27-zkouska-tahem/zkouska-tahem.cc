@@ -1,5 +1,6 @@
 # Vyhodnocení zkoušky tahem oceli 11 458
 "Podle cvičení 4 předmětu Mezní stavy materiálu (VUT v Brně, Ústav materiálových věd a inženýrství, Vlach a kol.), příklad 2. Válcová zkušební tyč ze oceli 11 458 se závitovými hlavami se přetrhla v tahovém stroji. Ze zaznamenaných sil a z rozměrů tyče před zkouškou a po ní určíme smluvní mez kluzu, mez pevnosti, zúžení, tažnost, tahovou houževnatost, resilienci a míru deformačního zpevnění. Zdroj výsledky neuvádí; všechny jsou ověřené samostatně v Pythonu. Obrázek je vlastní."
+"Zdroj: https://imse.fme.vutbr.cz/wp-content/themes/umvi_website/assets/materials/winter/6MS/Cviceni/04-Plasticka.pdf"
 
 ## Zadání
 d_0 := 9.95 mm                ' průměr měrné části tyče

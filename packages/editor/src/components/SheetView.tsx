@@ -1279,6 +1279,8 @@ export function SheetView(props: Props) {
         }
         data-line={seg.start}
         onMouseDown={(e) => {
+          // A web address in the text opens in the browser, not the line.
+          if (e.button === 0 && !isEditing && (e.target as HTMLElement).closest('a[href]')) return;
           // A click on a picture or a chart selects it and offers what can be done with it; the text of the line opens from the menu or by a double click.
           const figure = (block?.kind === 'picture' || block?.kind === 'chart') && !(e.target as HTMLElement).closest('textarea') ? (e.target as HTMLElement).closest('figure') : null;
           // Even from its open line the picture or the chart can be taken and moved.

@@ -1,5 +1,6 @@
 # Raketa: největší spotřeba paliva při přetížení 7 g, doba hoření a konečná rychlost
 "Podle úlohy 2311 Sbírky řešených úloh z fyziky (reseneulohy.cz/2311; původně Mandíková, Rojko: Soubor úloh z mechaniky, MFF UK 1994). Raketa o hmotnosti 2 t nese 12 t paliva, motor vypouští spaliny rychlostí 5000 km/h vzhledem k raketě. Posádka snese nejvýš zrychlení 7 g. Jaká je největší sekundová spotřeba paliva, jak dlouho při ní motor hoří a jakou rychlost raketa nakonec získá? Raketa startuje svisle, odpor vzduchu zanedbáváme a tíhové zrychlení bereme stálé. Teorie (Meščerského a Ciolkovského rovnice) je ve vrstvě Podklady. Obrázek a grafy jsou vlastní."
+"Zdroj: https://reseneulohy.cz/2311"
 
 ## Zápis
 M_r := 2 t                ' hmotnost rakety bez paliva

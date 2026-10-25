@@ -410,7 +410,7 @@ Jádro je hotové teprve tehdy, když projdou **všechny referenční výpočty 
 | # | Obor | Výpočet | Co ověřuje |
 |---|---|---|---|
 | R1 | Stavař | Prostý nosník: ohyb, smyk, průhyb | výběr z tabulky, obrázky k řádkům, podmínky a využití, hledání nejlehčího profilu, tisk |
-| R2 | Strojař | Tepelná bilance výměníku + pevnost hřídele | °C vs. K (jednotky s posunem), tabulka materiálů, vložené bloky |
+| R2 | Strojař | Délka výměníku tepla, protiproud a souproud (od 2026-10-25 reálný příklad místo dřívějšího výměníku s hřídelí) | °C vs. K (jednotky s posunem), logaritmický teplotní rozdíl, varianty výpočtu |
 | R3 | Chemik | Příprava roztoku + chemická rovnováha | mol konkrétní látky, tabulka látek, řešič rovnic |
 | R4 | Elektrikář | Dimenzování kabelu + úbytek napětí | interpolace v tabulce s korekčními součiniteli, komplexní impedance, hledání nejmenšího průřezu |
 | R5 | Ekonom | Návratnost fotovoltaiky (NPV, IRR) | měna, kurz k datu, řady po letech, procenta, řešič pro IRR |

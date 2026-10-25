@@ -1,5 +1,6 @@
 # Napětí na průřezu nosníku
 "Podle úlohy 2159 Sbírky řešených úloh z fyziky (reseneulohy.cz/2159). Ocelový nosník délky 5 m je v první čtvrtině délky zatížen svisle dolů silou 10 kN a ve dvou třetinách délky silou 20 kN, na koncích je podepřen. Při kterém z obdélníkových průřezů 0,1 × 0,2 m a 0,2 × 0,1 m se nosník prohne víc? Pro ten průřez určete průběh napětí v první třetině délky. Vlastní tíhu zanedbáváme. Obrázky a grafy jsou vlastní."
+"Zdroj: https://reseneulohy.cz/2159"
 
 ## Zápis
 l := 5 m              ' délka nosníku

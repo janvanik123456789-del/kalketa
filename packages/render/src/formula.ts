@@ -8,7 +8,7 @@
 
 import type { BinaryOperator, Expr, UnitExpr } from '@kalketa/core';
 import { formatUnit } from '@kalketa/core';
-import { frac, mi, mn, mo, mtext, mu, nameNode, nroot, paren, row, sqrt, sub, sup, type MathNode, subsup, underover, table } from './math.js';
+import { bar, frac, mi, mn, mo, mtext, mu, nameNode, nroot, paren, row, sqrt, sub, sup, type MathNode, subsup, underover, table } from './math.js';
 
 export interface FormulaOptions {
   /** Formats a number literal written in the sheet (full precision, locale separators). */
@@ -108,7 +108,7 @@ export function hasSubstitutableParts(expr: Expr): boolean {
     case 'binary':
       return hasSubstitutableParts(expr.left) || hasSubstitutableParts(expr.right);
     case 'call':
-      return expr.args.some(hasSubstitutableParts) || expr.named.some((n) => hasSubstitutableParts(n.value));
+      return SUBSTITUTED_CALLS.has(expr.name) || expr.args.some(hasSubstitutableParts) || expr.named.some((n) => hasSubstitutableParts(n.value));
     case 'range':
       return hasSubstitutableParts(expr.low) || hasSubstitutableParts(expr.high);
     case 'vector':
@@ -120,7 +120,14 @@ export function hasSubstitutableParts(expr: Expr): boolean {
 
 const PRIMES = ['', '′', '″', '‴', '⁗'];
 
+/** Statistics of a series of the sheet: with the numbers put in, their value stands for them (t̄ = 18,62 s). */
+export const SUBSTITUTED_CALLS: ReadonlySet<string> = new Set(['mean', 'stdev', 'median', 'len']);
+
 function render(expr: Expr, o: FormulaOptions): Rendered {
+  if (expr.kind === 'call' && SUBSTITUTED_CALLS.has(expr.name)) {
+    const value = o.substitute?.(expr);
+    if (value) return { node: value.node, prec: value.negative ? 3.5 : value.hasUnit ? 6 : ATOM, negative: value.negative };
+  }
   if (expr.kind === 'variable' || expr.kind === 'member') {
     const value = o.substitute?.(expr);
     if (value) return { node: value.node, prec: value.negative ? 3.5 : value.hasUnit ? 6 : ATOM, negative: value.negative };
@@ -246,6 +253,17 @@ function renderCall(expr: Extract<Expr, { kind: 'call' }>, o: FormulaOptions): R
   if (expr.name === 'cbrt' && args.length === 1) return { node: nroot(args[0]!, mn('3')), prec: ATOM };
   if (expr.name === 'root' && args.length === 2 && expr.named.length === 0) return { node: nroot(args[0]!, args[1]!), prec: ATOM };
   if (expr.name === 'abs' && args.length === 1) return { node: row(mo('|'), args[0]!, mo('|')), prec: ATOM };
+  // The mean and standard deviation of a series as on paper: t̄ and s_t for mean(t_i) and stdev(t_i).
+  const series = expr.args.length === 1 && expr.named.length === 0 && expr.args[0]!.kind === 'variable' ? expr.args[0].name : undefined;
+  if (series && (expr.name === 'mean' || expr.name === 'stdev')) {
+    // t_i is the i-th item: the mean is t̄; another index stays under the bar (x̄_A).
+    const at = series.indexOf('_');
+    const base = at > 0 ? series.slice(0, at) : series;
+    const index = at > 0 ? series.slice(at + 1) : undefined;
+    if (expr.name === 'stdev') return { node: sub(mi('s'), nameNode(index && index !== 'i' ? series : base)), prec: ATOM };
+    const over = bar(nameNode(base));
+    return { node: index && index !== 'i' ? sub(over, nameNode(index)) : over, prec: ATOM };
+  }
   const parts: MathNode[] = [];
   args.forEach((a, i) => {
     if (i > 0) parts.push(mo(o.argumentSeparator));

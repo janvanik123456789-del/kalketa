@@ -1,5 +1,6 @@
 # Prodloužení drátu vlastní tíhou
 "Podle úlohy 2091 Sbírky řešených úloh z fyziky (reseneulohy.cz/2091; původně Mandíková, Rojko: Soubor úloh z mechaniky, MFF UK 1994). Železný drát stálého průřezu dlouhý 200 m visí volně. O kolik se prodlouží vlastní tíhou? Deformace je pružná. Obrázek a grafy jsou vlastní."
+"Zdroj: https://reseneulohy.cz/2091"
 
 ## Zápis
 l := 200 m            ' délka drátu

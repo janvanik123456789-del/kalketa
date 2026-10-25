@@ -1,5 +1,6 @@
 # Hrubování válcové plochy: nůž z rychlořezné oceli, nebo destička ze slinutého karbidu
 "Podle Malé zbierky príkladov z technológie obrábania (E. Čirčová, P. Ižol, TU v Košiciach, 2004), příklad 1. Na sérii 350 součástí se vnějším podélným soustružením hrubuje válcová plocha. Lze použít nůž z rychlořezné oceli (RO) nebo držák s vyměnitelnou destičkou ze slinutého karbidu (SK). Pro oba nástroje určíme otáčky vřetena, strojní čas na jednu součást a počet ostří pro celou sérii. Každý nástroj je jedna varianta výpočtu. Řezné podmínky jsou ze zdroje (obrobitelnost 14b), obrázek je vlastní."
+"Zdroj: https://web.archive.org/web/2023/https://www.sjf.tuke.sk/ktmappv/images/E_materialy/priklady_obrabanie.pdf (kopie ve webovém archivu; na stránkách univerzity už soubor není)"
 
 ## Zadání
 D := 72 mm                    ' průměr polotovaru

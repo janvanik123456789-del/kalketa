@@ -114,6 +114,8 @@ let smokeWindow: BrowserWindow | undefined;
 }
 
 const smokeTest = process.env['KALKETA_SMOKE_TEST'];
+/** Web addresses the smoke test clicked, instead of opening them in the browser. */
+const openedLinks: string[] = [];
 /** The smoke test's export to PDF: where it goes, and the page numbers the printout laid out. */
 const smokePdf: { path?: string | undefined; pages?: string[] | undefined } = {};
 /** The smoke test saves a new file where it says, without the dialog, and answers the question on closing a window. */
@@ -215,7 +217,9 @@ function createWindow(options: { blank?: boolean } = {}): BrowserWindow {
 
   // The window only ever shows the editor; links open in the system browser.
   win.webContents.setWindowOpenHandler(({ url }) => {
-    if (/^https?:\/\//.test(url)) void shell.openExternal(url);
+    // The smoke test only notes the address it clicked; it opens no browser.
+    if (smokeTest) openedLinks.push(url);
+    else if (/^https?:\/\//.test(url)) void shell.openExternal(url);
     return { action: 'deny' };
   });
   win.webContents.on('will-navigate', (event) => event.preventDefault());
@@ -3030,6 +3034,16 @@ async function layersWithRealInput(picture: string) {
     });
   }
   await takePicture(picture.replace(/[.]png$/, '-field-samples.png'));
+  // The last one, measurement uncertainty: the mean written t̄ as on paper, with its value put in, not mean(t_i).
+  const meanAsOnPaper = (await contents.executeJavaScript(`(() => {
+    const maths = [...document.querySelectorAll('.layer-view.active .page math')].map((m) => m.textContent.replace(/\\s+/g, ''));
+    return maths.some((t) => t.includes('t¯')) && maths.some((t) => t.includes('18,62s')) && !maths.some((t) => t.includes('mean('));
+  })()`)) as boolean;
+  // The source of the sample is a link: clicked by the mouse it goes to the browser, the line stays closed.
+  await contents.executeJavaScript(`document.querySelector('.layer-view.active .page a[href^="https://www.fs.cvut.cz"]')?.setAttribute('id', 'smoke-source-link')`);
+  await clickOn('#smoke-source-link');
+  await pause(500);
+  const sourceLink = { opened: openedLinks.at(-1) ?? '', lineClosed: (await contents.executeJavaScript(`!document.querySelector('.layer-view.active textarea.row-editor')`)) as boolean };
   // The guide: a shelf, its picture, a table, checks and a chart; its span lengthened by the slider of L, dragged by the
   // mouse, until the deflection no longer holds.
   await clickOn('.menubar-item:nth-child(1) > button');
@@ -3382,7 +3396,7 @@ async function layersWithRealInput(picture: string) {
   const chartDialog = { offered: offeredLine, chosen: chosenLine, preview: dialogPreview, added: chartsAfter - chartsBefore };
   const quadraticSample = {
     crank,
-    theory: { theoryTab, tankErrors, theoryChecks, pythonCheck, rowsCopy, rocket, parabola, thermistor, vibration, exactRoots, boat, guide, heatLoss, variants, fieldSamples, surfacesSample, fitDialog, chartLook, surfaceMap, surface3d, surfaceCut, chartDialog },
+    theory: { theoryTab, tankErrors, theoryChecks, pythonCheck, rowsCopy, rocket, parabola, thermistor, vibration, exactRoots, boat, guide, heatLoss, variants, fieldSamples, meanAsOnPaper, sourceLink, surfacesSample, fitDialog, chartLook, surfaceMap, surface3d, surfaceCut, chartDialog },
     across,
     beam,
     slowTyping,
@@ -3391,7 +3405,7 @@ async function layersWithRealInput(picture: string) {
     after: sampleAfter,
     outOfDomain,
     english,
-    ok: !!thumb && sampleBefore.errors === 0 && sampleAfter.errors === 0 && sampleBefore.a !== '' && sampleAfter.a !== sampleBefore.a && sampleAfter.roots !== sampleBefore.roots && outOfDomain.drawn && !outOfDomain.area && outOfDomain.roots === 0 && !outOfDomain.error && outOfDomain.warned && english.head === 'Quadratic equation' && english.verdicts.length === 5 && english.verdicts.every((v) => v.endsWith('OK')) && english.errors === 0 && crank.pictures === 4 && crank.charts === 3 && crank.errors === 0 && crank.verdict.endsWith('VYHOVUJE') && slowTyping.waitingShown && slowTyping.settled && cube.pictures === 1 && cube.derived >= 5 && cube.errors === 0 && beam.pictures === 3 && beam.charts >= 4 && beam.errors === 0 && across.before && !across.after && theoryTab >= 1 && tankErrors === 0 && theoryChecks.blocks >= 4 && theoryChecks.bad === 0 && pythonCheck.rows === 4 && pythonCheck.agree === 4 && rowsCopy.marked === 6 && rowsCopy.rows === 3 && rowsCopy.picture === 1 && rowsCopy.status.startsWith('chyba: 0') && rocket.errors === 0 && rocket.charts >= 2 && parabola.errors === 0 && parabola.charts >= 2 && parabola.normal >= 2 && thermistor.errors === 0 && thermistor.charts >= 3 && heatLoss.errors === 0 && heatLoss.table && heatLoss.fits && heatLoss.total && heatLoss.outside && variants.before.errors === 0 && variants.before.picture && variants.before.chosen.join() === "50mm,50mm" && /50mm/.test(variants.before.note) && variants.before.total.includes("237,5") && variants.after.errors === 0 && variants.after.chosen.join() === "20mm,20mm" && /20mm/.test(variants.after.note) && variants.after.total.includes("282,3") && fieldSamples.length === 8 && fieldSamples.every((s) => s.errors === 0 && s.pictures >= 1 && s.blocks > 10) && guide.dragged && guide.navigation.ok && guide.before.errors === 0 && guide.before.pictures >= 1 && guide.before.charts >= 1 && guide.before.failing === 0 && guide.after.errors === 0 && guide.after.failing >= 1 && guide.after.span !== guide.before.span && boat.errors === 0 && /chyba: 0/.test(boat.status) && /varování: 0/.test(boat.status) && boat.shift && boat.charts >= 3 && vibration.errors === 0 && vibration.wide === 0 && vibration.roots && !vibration.plusMinus && exactRoots && surfacesSample.errors === 0 && surfacesSample.maps >= 4 && surfacesSample.solids >= 6 && surfacesSample.verdicts >= 5 && fitDialog.ok && chartLook.ok && surfaceMap.ok && surface3d.shown && surface3d.turning && surface3d.kept && surface3d.errors === 0 && surfaceCut.line && surfaceCut.panel && surfaceCut.title && chartDialog.offered === 'plot(w(x, y), x: 0 m .. a, y: 0 m .. b)' && chartDialog.chosen === 'plot(w(x, y), x: 0 m .. a, y: 0 m .. b, kind: "surface")' && chartDialog.preview && chartDialog.added === 1,
+    ok: !!thumb && sampleBefore.errors === 0 && sampleAfter.errors === 0 && sampleBefore.a !== '' && sampleAfter.a !== sampleBefore.a && sampleAfter.roots !== sampleBefore.roots && outOfDomain.drawn && !outOfDomain.area && outOfDomain.roots === 0 && !outOfDomain.error && outOfDomain.warned && english.head === 'Quadratic equation' && english.verdicts.length === 5 && english.verdicts.every((v) => v.endsWith('OK')) && english.errors === 0 && crank.pictures === 4 && crank.charts === 3 && crank.errors === 0 && crank.verdict.endsWith('VYHOVUJE') && slowTyping.waitingShown && slowTyping.settled && cube.pictures === 1 && cube.derived >= 5 && cube.errors === 0 && beam.pictures === 3 && beam.charts >= 4 && beam.errors === 0 && across.before && !across.after && theoryTab >= 1 && tankErrors === 0 && theoryChecks.blocks >= 4 && theoryChecks.bad === 0 && pythonCheck.rows === 4 && pythonCheck.agree === 4 && rowsCopy.marked === 6 && rowsCopy.rows === 3 && rowsCopy.picture === 1 && rowsCopy.status.startsWith('chyba: 0') && rocket.errors === 0 && rocket.charts >= 2 && parabola.errors === 0 && parabola.charts >= 2 && parabola.normal >= 2 && thermistor.errors === 0 && thermistor.charts >= 3 && heatLoss.errors === 0 && heatLoss.table && heatLoss.fits && heatLoss.total && heatLoss.outside && variants.before.errors === 0 && variants.before.picture && variants.before.chosen.join() === "50mm,50mm" && /50mm/.test(variants.before.note) && variants.before.total.includes("237,5") && variants.after.errors === 0 && variants.after.chosen.join() === "20mm,20mm" && /20mm/.test(variants.after.note) && variants.after.total.includes("282,3") && fieldSamples.length === 8 && fieldSamples.every((s) => s.errors === 0 && s.pictures >= 1 && s.blocks > 10) && meanAsOnPaper && sourceLink.opened === 'https://www.fs.cvut.cz/content/files/12102/2024nejistotypriklady.pdf' && sourceLink.lineClosed && guide.dragged && guide.navigation.ok && guide.before.errors === 0 && guide.before.pictures >= 1 && guide.before.charts >= 1 && guide.before.failing === 0 && guide.after.errors === 0 && guide.after.failing >= 1 && guide.after.span !== guide.before.span && boat.errors === 0 && /chyba: 0/.test(boat.status) && /varování: 0/.test(boat.status) && boat.shift && boat.charts >= 3 && vibration.errors === 0 && vibration.wide === 0 && vibration.roots && !vibration.plusMinus && exactRoots && surfacesSample.errors === 0 && surfacesSample.maps >= 4 && surfacesSample.solids >= 6 && surfacesSample.verdicts >= 5 && fitDialog.ok && chartLook.ok && surfaceMap.ok && surface3d.shown && surface3d.turning && surface3d.kept && surface3d.errors === 0 && surfaceCut.line && surfaceCut.panel && surfaceCut.title && chartDialog.offered === 'plot(w(x, y), x: 0 m .. a, y: 0 m .. b)' && chartDialog.chosen === 'plot(w(x, y), x: 0 m .. a, y: 0 m .. b, kind: "surface")' && chartDialog.preview && chartDialog.added === 1,
   };
   const userChart = { namedArea, quadOk, quadTarget, quadEnd, quadEditing, ok: namedArea === 'Integral1=27' && quadOk && quadTarget > 0 && Math.abs(quadEnd - quadTarget) < 12 };
   // Relations: a circle solved by its name, a derivation following from a relation of theory, and the circle

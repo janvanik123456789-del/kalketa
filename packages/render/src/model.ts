@@ -1095,6 +1095,11 @@ function substitution(result: SheetResult, quantityNode: (q: Quantity, name?: st
   };
   return (expr: Expr): Substituted | undefined => {
     if (expr.kind === 'variable') return wrap(result.values.get(expr.name), expr.name);
+    // mean(t_i) with the numbers put in: the mean itself, 18,62 s (the series is too long to write out).
+    if (expr.kind === 'call' && expr.args.length === 1 && expr.args[0]!.kind === 'variable') {
+      const series = result.values.get(expr.args[0].name);
+      if (series?.type === 'vector') return wrap(seriesStatistic(expr.name, series.items));
+    }
     if (expr.kind === 'member' && expr.object.kind === 'variable') {
       const object = result.values.get(expr.object.name);
       if (object?.type !== 'row') return undefined;
@@ -1103,6 +1108,31 @@ function substitution(result: SheetResult, quantityNode: (q: Quantity, name?: st
     }
     return undefined;
   };
+}
+
+/** The mean, sample standard deviation, median or count of a series of quantities of one dimension. */
+function seriesStatistic(name: string, items: readonly Value[]): Quantity | undefined {
+  const quantities = items.filter((v): v is Quantity => v.type === 'quantity' && !v.im && !v.absolute);
+  if (quantities.length !== items.length || quantities.length === 0) return undefined;
+  const first = quantities[0]!;
+  const keep = (si: number): Quantity => ({ type: 'quantity', si, dim: first.dim, ...(first.hint ? { hint: first.hint } : {}) });
+  const values = quantities.map((q) => q.si);
+  const mean = values.reduce((s, v) => s + v, 0) / values.length;
+  switch (name) {
+    case 'len':
+      return { type: 'quantity', si: values.length, dim: {} };
+    case 'mean':
+      return keep(mean);
+    case 'stdev':
+      return values.length < 2 ? undefined : keep(Math.sqrt(values.reduce((s, v) => s + (v - mean) ** 2, 0) / (values.length - 1)));
+    case 'median': {
+      const sorted = [...values].sort((a, b) => a - b);
+      const mid = Math.floor(sorted.length / 2);
+      return keep(sorted.length % 2 ? sorted[mid]! : (sorted[mid - 1]! + sorted[mid]!) / 2);
+    }
+    default:
+      return undefined;
+  }
 }
 
 /** Names this statement takes from auxiliary calculation layers, with their source. */

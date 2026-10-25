@@ -1,5 +1,6 @@
 # Síly, moment a setrvačník klikového mechanismu
 "Podle článku J. Škorpík: Základní rovnice klikového mechanismu parního motoru, Transformační technologie, kap. 31 (www.transformacni-technologie.cz/31.html). Rozměry motoru a průběh tlaku páry článek neuvádí (jsou v placených přílohách); hodnoty níže jsou předpoklad pro ukázku, nahraďte je svými. Obrázky jsou vlastní, kreslené podle vzorců článku. Vše v jednotkách SI: otáčky v s⁻¹, úhly v radiánech."
+"Zdroj: https://www.transformacni-technologie.cz/31.html"
 
 ## Zadání
 ![Klikový mechanismus: poloha pístu x od horní úvratě, ojnice o, klika r, pootočení hřídele φ, úhel ojnice γ](images/mechanismus.svg){width=90%}

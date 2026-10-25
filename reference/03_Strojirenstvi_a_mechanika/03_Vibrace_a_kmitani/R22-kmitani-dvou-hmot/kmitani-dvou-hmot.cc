@@ -1,5 +1,6 @@
 # Vlastní frekvence, tvary kmitů a volné kmitání soustavy dvou hmot
 "Podle příkladů přednášky 4 předmětu 53/58:153 Fundamentals of Vibration (University of Iowa, S. Xiao). Dvě hmoty na přímce, mezi stěnami spojené třemi pružinami: stěna – k_1 – m_1 – k_2 – m_2 – k_3 – stěna. Úloha: vlastní frekvence a tvary kmitů, pak volné kmitání, když první hmotu vychýlíme o 1 a pustíme. Zdroj neuvádí jednotky; bereme kilogramy, newtony na metr a metry. Řešení ve zdroji je jen v obrázcích, proto je ověřené samostatně (vlastní čísla v Pythonu i ručně z kvadratické rovnice). Teorie je ve vrstvě Podklady."
+"Zdroj: https://user.engineering.uiowa.edu/~sxiao/class/058-153/lecture-4.pdf"
 
 ## Zadání
 m_1 := 9 kg

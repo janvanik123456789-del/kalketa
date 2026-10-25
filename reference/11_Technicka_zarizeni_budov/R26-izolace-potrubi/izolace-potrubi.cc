@@ -1,5 +1,6 @@
 # Optimální tloušťka izolace potrubí ústředního vytápění
 "Podle příkladu 1 ze stanoviska SEI Jsou předepisované hodnoty součinitelů prostupu tepla pro určení tloušťky izolace závazné? (TZB-info). Ocelové potrubí DN 40 ústředního vytápění v technickém podlaží bytového domu v Mělníku, izolační pouzdra z minerální vlny s hliníkovou fólií. Výrobce dodává pět tlouštěk; každá je jedna varianta výpočtu. Optimální je ta, u které je nejmenší součet ceny izolace a ceny tepla, které potrubím uteče za posuzované období dvou let. Řez potrubím je vlastní."
+"Zdroj: https://www.tzb-info.cz/4564-stanovisko-sei-jsou-predepisovane-hodnoty-soucinitelu-prostupu-tepla-pro-urceni-tloustky-izolace-zavazne"
 
 ## Zadání
 d := 48.3 mm                  ' vnější průměr potrubí DN 40

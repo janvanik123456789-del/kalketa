@@ -1,5 +1,6 @@
 # Tepelná ztráta větráním rodinného domu s rekuperací podle ČSN EN 12831-1
 "Podle příkladu z článku V. Zmrhal, J. Boháč: Tepelná ztráta větráním podle ČSN EN 12831-1 (Vytápění, větrání, instalace 2/2021, ČVUT v Praze). Přízemní rodinný dům na okraji Prahy, čtyřčlenná rodina, nucené rovnotlaké větrání jednotkou se zpětným získáváním tepla (ZZT). Spočítáme tepelnou ztrátu větráním každé místnosti univerzálním postupem normy: větráním obálkou budovy (infiltrace), nuceným větráním (vzduch za rekuperací je chladnější než místnost) a převodem vzduchu (koupelna vytápěná na 24 °C nasává vzduch z okolních místností). Schéma je vlastní, teorie je ve vrstvě Podklady."
+"Zdroj: http://users.fs.cvut.cz/~zmrhavla/Publikace/2021/Zmrhal_02_2021.pdf"
 
 ## Zadání
 t_e := -15 °C                 ' venkovní výpočtová teplota, Praha (ČSN EN 12831-1, NA.1)

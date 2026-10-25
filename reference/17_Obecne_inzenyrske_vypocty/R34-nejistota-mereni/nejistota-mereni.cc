@@ -1,5 +1,6 @@
 # Nejistota měření: doba kyvu kyvadla a průřez drátu
 "Podle sbírky Chyby a nejistoty měření – příklady (Z. Budinská, ČVUT v Praze, Fakulta strojní), řešené příklady 1 a 4. Nejdřív doba kyvu torzního kyvadla z opakovaného měření stopkami: nejistota typu A ze rozptylu měření, typu B z přesnosti stopek a jejich kombinace. Pak průřez drátu z jednoho měření mikrometrem: jak se nejistota průměru přenese do plochy. Obrázek je vlastní."
+"Zdroj: https://www.fs.cvut.cz/content/files/12102/2024nejistotypriklady.pdf"
 
 ## Doba kyvu torzního kyvadla (příklad 1)
 "Mechanickými stopkami se pětkrát odečetl čas po čtvrtém kmitu, tedy po osmi kyvech:"

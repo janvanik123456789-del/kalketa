@@ -1,5 +1,6 @@
 # Síla a moment vody na svislou stěnu hráze
 "Podle úlohy 1152 Sbírky řešených úloh z fyziky (reseneulohy.cz/1152; původně Halpern: Schaum's 3000 Solved Problems in Physics). Voda u hráze přehrady sahá do výšky h, hráz je dlouhá l. Určete výslednou sílu F, kterou voda tlačí hráz vodorovně, její moment M k bodu O na patě hráze a výšku H nad patou, v níž by síla F měla moment M. Úloha je obecná; pro představu dosazujeme hráz vysokou 30 m a dlouhou 100 m (předpoklad). Obrázek a grafy jsou vlastní."
+"Zdroj: https://reseneulohy.cz/1152"
 
 ## Zápis
 h := 30 m             ' výška vody u hráze (předpoklad)

@@ -1,5 +1,6 @@
 # Návrh a posouzení ohybové výztuže stropní desky
 "Podle příkladu 3 skript Příklady navrhování betonových konstrukcí podle Eurokódu 2 (ČVUT v Praze, Fakulta stavební; EN 1992-1-1 druhé generace). Jednosměrně pnutá stropní deska tloušťky 200 mm, návrhový ohybový moment při spodních vláknech od lineárně pružné analýzy, beton C30/37 třídy vývoje pevnosti CR, ocel B500B. Počítá se na pruh desky široký 1 m, proto jsou moment a plocha výztuže vztažené na metr šířky. Teorie (pevnost betonu, obdélníkové rozdělení napětí, tři způsoby návrhu, konstrukční zásady) je ve vrstvě Podklady."
+"Zdroj: https://people.fsv.cvut.cz/~bilypet1/vyuka/Skripta/P%c5%99%c3%adklady%20navrhov%c3%a1n%c3%ad%20BK%20EC2_2G.pdf"
 
 ## Zadání
 h := 200 mm                ' tloušťka desky

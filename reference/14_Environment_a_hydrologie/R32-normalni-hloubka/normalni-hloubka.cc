@@ -1,5 +1,6 @@
 # Drsnost a normální hloubka v lichoběžníkovém korytě (Manning)
 "Podle skript Fluid Mechanics, kapitola 8 Open Channel Flow (University of Mustansiriyah), řešené příklady 3 a 4. Lichoběžníkovým korytem se šířkou dna 8 m a svahy 1 : 1,5 teče 56 m³/s, sklon dna je 0,0009. Nejdřív z hloubky 2 m, naměřené při tomto průtoku, určíme Manningův součinitel drsnosti. Pak pro drsnost 0,017 najdeme normální hloubku, při které je proudění rovnoměrné. Průřez je nakreslený vlastní."
+"Zdroj: https://www.uomus.edu.iq/img/lectures21/MUCLecture_2024_41752170.pdf"
 
 ## Zadání
 b := 8 m                      ' šířka dna

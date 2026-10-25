@@ -1,5 +1,6 @@
 # Nastavení regulátoru metodou kritického zesílení (Ziegler–Nichols)
 "Podle stránky Ziegler–Nichols method na picuino.com (C. F. Pardo Martín), příklad metody kritického zesílení: regulace teploty simulované pece. Regulátor se nejdřív nastaví jako čistě proporcionální a jeho zesílení se zvyšuje, dokud regulovaná teplota nezačne kmitat se stálou amplitudou. Z tohoto kritického zesílení a periody kmitů dají pravidla tabulky konstanty regulátorů P, PI, PD a PID. Každý typ regulátoru je jedna varianta výpočtu, srovnání je na konci. Schéma regulační smyčky je vlastní."
+"Zdroj: https://www.picuino.com/en/control-ziegler-nichols.html"
 
 ## Zkouška na mezi stability
 "Při K_p = 0,40 se kmity utlumily, při 0,45 rostly. Trvalé kmitání nastalo při zesílení 0,43 a čtyři periody kmitů trvaly 21 s."

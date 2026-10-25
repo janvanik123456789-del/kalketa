@@ -93,7 +93,22 @@ function styleAttribute(style: TextStyle | undefined): string {
  * in Markdown; everything else is plain text.
  */
 export function textHtml(text: string): string {
-  return colored(emphasis(namesInText(text)));
+  return colored(emphasis(linked(text)));
+}
+
+/** A web address, written out (https://…) or as in Markdown ([the source](https://…)); a full stop or comma after it is not part of it. */
+const LINK = /\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s<>"]*[^\s<>".,;:!?)])/g;
+
+/** Web addresses as links, which open in the browser; the text around them with its names typeset. */
+function linked(text: string): string {
+  let out = '';
+  let last = 0;
+  for (const m of text.matchAll(LINK)) {
+    const url = m[2] ?? m[3]!;
+    out += namesInText(text.slice(last, m.index)) + `<a href="${esc(url)}" target="_blank" rel="noopener">${esc(m[1] ?? url)}</a>`;
+    last = m.index! + m[0].length;
+  }
+  return out + namesInText(text.slice(last));
 }
 
 /** {red}words{/}: a part of the text in a colour of its own (of the colours a text line has). */

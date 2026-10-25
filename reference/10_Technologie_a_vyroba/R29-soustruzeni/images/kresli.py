@@ -55,18 +55,32 @@ def drawing():
 
     # Workpiece: uncut part (full radius 50 px) from the chuck to the step at x 380,
     # turned part (radius 40 px) from the step to the free right end at x 560.
-    b.append(f'<path d="M86 100 L380 100 L380 110 L560 110 L560 190 L380 190 L380 200 L86 200 Z" fill="{WORK}" stroke="none"/>')
-    b.append(f'<rect x="381" y="111" width="178" height="78" fill="{TURNED}"/>')
-    b.append(f'<path d="M86 100 L380 100 L380 110 L560 110 L560 190 L380 190 L380 200 L86 200 Z" fill="none" stroke="{INK}" stroke-width="1.4" stroke-linejoin="round"/>')
+    body = 'M74 100 L380 100 L380 110 L560 110 L560 190 L380 190 L380 200 L74 200 Z'
+    b.append(f'<path d="{body}" fill="{WORK}" stroke="none"/>')
+    # The turned surface a little lighter, with fine turning marks.
+    b.append(f'<rect x="381" y="111" width="178" height="78" fill="#f8fafb"/>')
+    for x in range(390, 560, 8):
+        b.append(line(x, 111, x - 3, 189, '#d5dbe1', 0.6))
+    b.append(f'<path d="{body}" fill="none" stroke="{INK}" stroke-width="1.4" stroke-linejoin="round"/>')
 
-    # Axis of rotation (dash-dot).
-    b.append(line(40, 150, 600, 150, DIM, 1.0, '10 3 2 3'))
+    # Axis of rotation (dash-dot), through the chuck too.
+    b.append(line(4, 150, 600, 150, DIM, 1.0, '10 3 2 3'))
 
-    # Chuck body and grey jaws gripping the left end.
-    b.append(f'<rect x="30" y="84" width="56" height="132" fill="{CHUCK}" stroke="{INK}" stroke-width="1.2"/>')
-    b.append(f'<rect x="78" y="92" width="18" height="20" fill="{JAW}" stroke="{INK}" stroke-width="1"/>')
-    b.append(f'<rect x="78" y="188" width="18" height="20" fill="{JAW}" stroke="{INK}" stroke-width="1"/>')
-    b.append(note(58, 232, 'sklíčidlo', 10, 'middle', INK))
+    # Three-jaw chuck in side view: spindle, body with its front face, two of the jaws gripping the workpiece.
+    b.append(f'<rect x="6" y="122" width="18" height="56" fill="{CHUCK}" stroke="{INK}" stroke-width="1.1"/>')
+    b.append(f'<rect x="22" y="52" width="46" height="196" rx="7" fill="{CHUCK}" stroke="{INK}" stroke-width="1.2"/>')
+    b.append(f'<rect x="60" y="58" width="10" height="184" rx="2" fill="#a3abb3" stroke="{INK}" stroke-width="1"/>')
+    for top in (True, False):
+        k = 1 if top else -1
+        y0 = 150 - k * 50   # gripping face on the workpiece surface
+        # A stepped jaw: wide at the body, narrow where it holds the workpiece.
+        pts = [(70, y0 - k * 34), (106, y0 - k * 34), (106, y0 - k * 16), (96, y0 - k * 16), (96, y0), (70, y0)]
+        b.append('<polygon points="' + ' '.join(f'{x},{y}' for x, y in pts) + f'" fill="{JAW}" stroke="{INK}" stroke-width="1"/>')
+        # Teeth on the gripping face.
+        for x in range(74, 96, 5):
+            b.append(line(x, y0 - k * 2.5, x + 2.5, y0, INK, 0.6))
+    b.append(line(4, 150, 600, 150, DIM, 1.0, '10 3 2 3'))
+    b.append(note(45, 268, 'sklíčidlo', 10, 'middle', INK))
 
     # Workpiece diameter D (vertical dimension in the left part).
     b.append(dim(118, 100, 118, 200))
@@ -81,14 +95,15 @@ def drawing():
     b.append(note(233, 90, 'neobrobeno', 10, 'middle', DIM))
     b.append(note(475, 100, 'obrobeno', 10, 'middle', DIM))
 
-    # Turning tool below the workpiece: insert with its tip at the step, shank to the right.
-    b.append(f'<polygon points="380,200 394,200 394,214" fill="{INSERT}" stroke="{INK}" stroke-width="1"/>')
-    b.append(f'<rect x="394" y="200" width="96" height="26" fill="{SHANK}"/>')
-    b.append(note(496, 216, 'nůž', 10, 'start', INK))
+    # Turning tool in front of the workpiece (below in the drawing), its shank square to the axis.
+    # The tip cuts at the step; the main cutting edge faces the chuck, the way the tool feeds.
+    b.append(f'<polygon points="380,190 380,216 410,216" fill="{INSERT}" stroke="{INK}" stroke-width="1"/>')
+    b.append(f'<polygon points="374,216 418,216 418,262 374,262" fill="{SHANK}" stroke="{INK}" stroke-width="1"/>')
+    b.append(note(426, 244, 'nůž', 10, 'start', INK))
 
-    # Feed f (blue arrow moving left, under the tool).
-    b.append(arrow(460, 248, 400, 248, BLUE, 1.6))
-    b.append(var(430, 264, 'f', '', 15, 'middle', BLUE))
+    # Feed f: the tool moves along the axis towards the chuck.
+    b.append(arrow(366, 238, 316, 238, BLUE, 1.6))
+    b.append(var(341, 230, 'f', '', 15, 'middle', BLUE))
 
     # Rotation n (red arc around the axis at the free end, arrow pointing down).
     t = radians(60)

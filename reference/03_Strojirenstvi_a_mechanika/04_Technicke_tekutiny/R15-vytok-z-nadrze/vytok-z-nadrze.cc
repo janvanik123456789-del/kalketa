@@ -1,5 +1,6 @@
 # Výtok vody z nádrže a doba jejího vyprázdnění
 "Podle úlohy 1154 Sbírky řešených úloh z fyziky (reseneulohy.cz/1154; původně Halpern: Schaum's 3000 Solved Problems in Physics). Válcová nádrž o poloměru 0,9 m stojí na podstavci vysokém 6 m a je do výšky 3 m naplněna vodou. U dna je otvor se zátkou o ploše 6,3 cm². Jakou rychlostí dopadne proud vody na zem, když zátku vyndáme, a za jak dlouho se nádrž vyprázdní? Teorie (Bernoulliho rovnice, rovnice kontinuity, Torricelliho vzorec) je ve vrstvě Podklady. Obrázek a grafy jsou vlastní."
+"Zdroj: https://reseneulohy.cz/1154"
 
 ## Zápis
 r := 0.9 m            ' poloměr nádrže

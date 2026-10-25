@@ -1,0 +1,35 @@
+{
+  "sheet": "vymenik-tepla.cc",
+  "verifiedBy": "ME302 Heat Transfer, Examples HXRs (Rose-Hulman Institute of Technology), ručně psané řešení: Q = 302 000 W, t_h2 = 125 °C; protiproud ΔT_ln = 92 °C, A = 5,13 m², L = 109 m; souproud ΔT_ln = 83,7 °C, A = 5,64 m², L = 120 m (zdroj zaokrouhluje t_h2 a Q). Samostatně v Pythonu (Podklady) pro obě uspořádání.",
+  "relativeTolerance": 1e-09,
+  "values": {
+    "Q": {
+      "value": 301.608,
+      "unit": "kW"
+    },
+    "t_h2": {
+      "value": 125.26853984339014,
+      "unit": "°C"
+    },
+    "ΔT_A": {
+      "value": 80,
+      "unit": "K"
+    },
+    "ΔT_B": {
+      "value": 105.26853984339014,
+      "unit": "K"
+    },
+    "ΔT_ln": {
+      "value": 92.05700189988345,
+      "unit": "K"
+    },
+    "A": {
+      "value": 5.119246665370673,
+      "unit": "m²"
+    },
+    "L": {
+      "value": 108.63378822672593,
+      "unit": "m"
+    }
+  }
+}

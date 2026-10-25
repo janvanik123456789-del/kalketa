@@ -1,5 +1,6 @@
 # Posun loďky, když člověk přejde ze zádi na příď
 "Podle úlohy 1136 Sbírky řešených úloh z fyziky (reseneulohy.cz/1136; původně D. Mandíková, M. Rojko: Soubor úloh z mechaniky pro studium učitelství, MFF UK 1994). Člověk o hmotnosti 70 kg přejde ze zádi na příď loďky, která je dlouhá 2,5 m a váží 100 kg. O kolik se loďka posune? Odpor vody a naklonění loďky zanedbáme. Obrázek je vlastní."
+"Zdroj: https://reseneulohy.cz/1136"
 
 ## Zápis
 m := 70 kg            ' hmotnost člověka

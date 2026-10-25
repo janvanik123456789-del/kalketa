@@ -1,5 +1,6 @@
 # Farmakokinetika: jednokompartmentový model po nitrožilní dávce
 "Podle Case Study 5 předmětu PHA 5127 (University of Florida, College of Pharmacy, 2006, s řešením). Po jednorázové nitrožilní dávce 300 mg a v jiném pokusu 750 mg se v krevní plazmě změřily koncentrace léčiva ve 2., 13. a 24. hodině. Určíme eliminační konstantu, biologický poločas, distribuční objem, clearance a plochu pod křivkou AUC. Pak ověříme, že se léčivo v tomto rozsahu dávek chová lineárně. Obrázek je vlastní."
+"Zdroj: https://cop-main-a2-new.sites.medinfo.ufl.edu/files/2013/01/2006-CS5-5127-SOL.pdf"
 
 ## Zadání
 table Mereni:

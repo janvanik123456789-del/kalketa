@@ -2041,10 +2041,13 @@ async function layersWithRealInput(picture: string) {
   await pressKey('End');
   await pressKey('Enter');
   await clickOn('.tool-button[title="Vložit ∛"]');
+  // The button writes into the line on its next frame: typing waits for it, as a person does (a slower machine lost keys).
+  await pause(300);
   await typeText('27 =');
   const cubeLine = (await contents.executeJavaScript(`document.querySelector('textarea.row-editor')?.value ?? ''`)) as string;
   await pressKey('Enter');
   await clickOn('.tool-button[title^="n-tá odmocnina"]');
+  await pause(300);
   await typeText('16');
   await pressKey('End');
   await pressKey('Backspace');

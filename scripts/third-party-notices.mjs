@@ -67,7 +67,15 @@ const wheels = existsSync(WHEELS)
         return `${head}\n${'-'.repeat(head.length)}\n${readFileSync(join(WHEELS, f), 'utf8').trim()}`;
       })
   : [];
+// The program's own licence first: whoever reads the notices learns what they may do with Kalketa itself.
+const own = readFileSync(join(ROOT, 'LICENSE'), 'utf8').trim();
 const text = [
+  'Kalketa',
+  '=======',
+  '',
+  own,
+  '',
+  '',
   'Third-party software in this program',
   '====================================',
   '',

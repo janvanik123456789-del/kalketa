@@ -167,6 +167,8 @@ function render(expr: Expr, o: FormulaOptions): Rendered {
       if (expr.object.kind === 'variable' && (o.recordNames?.has(expr.object.name) || o.qualifiedMembers?.has(expr.name))) {
         return { node: row(nameNode(expr.name), paren(nameNode(expr.object.name))), prec: ATOM };
       }
+      // A column of a row found here (find_min(T, by: N).pouzdro): the search is the formula, not the name alone.
+      if (expr.object.kind === 'call') return { node: row(render(expr.object, o).node, mo('.'), nameNode(expr.name)), prec: ATOM };
       // Printed as the column name: profil.W_y -> W_y.
       return { node: nameNode(expr.name), prec: ATOM };
     case 'unary': {

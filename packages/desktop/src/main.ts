@@ -2593,7 +2593,7 @@ async function layersWithRealInput(picture: string) {
   await clickOn('[data-about="notices"]');
   await pause(800);
   const notices = (await contents.executeJavaScript(`document.querySelector('.notices')?.textContent ?? ''`)) as string;
-  const licences = notices.includes('react ') && notices.includes('exceljs 4') && notices.includes('fflate') && notices.includes('electron') && notices.includes('Permission is hereby granted');
+  const licences = notices.includes('react ') && notices.includes('Copyright (c) 2026 Jan Vaník') && !notices.includes('exceljs') && !notices.includes('not stated by the package') && notices.includes('fflate') && notices.includes('electron') && notices.includes('Permission is hereby granted');
   await takePicture(picture.replace(/[.]png$/, '-licences.png'));
   await takePicture(picture.replace(/[.]png$/, '-licences.png'));
   await pressKey('Escape');

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Kalketa as a standalone desktop application (Electron).",
-  "author": "Kalketa",
+  "author": "Jan Vaník",
   "type": "module",
   "main": "dist/main.js",
   "scripts": {
@@ -110,5 +110,6 @@
     "@kalketa/ai": "*",
     "pdfjs-dist": "^6.4.299",
     "pyodide": "314.0.7"
-  }
+  },
+  "license": "MIT"
 }

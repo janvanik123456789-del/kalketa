@@ -5,3 +5,5 @@ coverage/
 release/
 .claude/settings.local.json
 packages/desktop/pyodide-packages/
+# Session hand-over notes: local, with paths of this machine
+HANDOFF.md

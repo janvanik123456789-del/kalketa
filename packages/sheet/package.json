@@ -14,7 +14,10 @@
   },
   "dependencies": {
     "@kalketa/core": "*",
-    "exceljs": "^4.4.0",
     "fflate": "^0.8.3"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "exceljs": "^4.4.0"
   }
 }

@@ -13,5 +13,6 @@
     "@kalketa/sheet": "*",
     "@kalketa/render": "*",
     "@kalketa/canvas": "*"
-  }
+  },
+  "license": "MIT"
 }

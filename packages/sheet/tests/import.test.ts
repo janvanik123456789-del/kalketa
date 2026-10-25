@@ -95,6 +95,24 @@ describe('Excel', () => {
     expect(sheet!.images[0]).toMatchObject({ row: 2, extension: 'png' });
   });
 
+  it('reads dates, rich text, booleans and special characters as Excel shows them', async () => {
+    const wb = new ExcelJS.Workbook();
+    const sheet = wb.addWorksheet('Ruzne & <jine>');
+    sheet.addRow(['datum', 'text', 'ano', 'cislo']);
+    sheet.addRow([new Date(Date.UTC(2026, 9, 25)), { richText: [{ text: 'tučně ', font: { bold: true } }, { text: 'a & <ne>' }] }, true, 0.1]);
+    sheet.getCell('A2').numFmt = 'd.m.yyyy';
+    sheet.addRow([]);
+    sheet.getCell('D4').value = -1.5e-7;
+    const [read] = await readWorkbook(new Uint8Array(await wb.xlsx.writeBuffer()));
+    expect(read!.name).toBe('Ruzne & <jine>');
+    expect(read!.rows).toEqual([
+      ['datum', 'text', 'ano', 'cislo'],
+      ['2026-10-25', 'tučně a & <ne>', 'true', '0.1'],
+      ['', '', '', ''],
+      ['', '', '', '-1.5e-7'],
+    ]);
+  });
+
   it('imports pictures as images of the matching records', async () => {
     const [sheet] = await readWorkbook(await workbook());
     const imported = importTable(sheet!.rows, { name: 'Profily', registry, images: sheet!.images });

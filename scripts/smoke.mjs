@@ -277,5 +277,16 @@ const failed = Object.entries({ ...result, ...result.layers })
   .filter(([key, value]) => key !== 'ok' && typeof value === 'boolean' && value === passWhenFalse.has(key))
   .map(([key]) => key);
 console.log(result.ok ? 'smoke: OK' : `smoke: FAILED ${result.error ?? (failed.join(', ') || 'see the counts in main.ts')}`);
+// On GitHub the log needs a sign-in, an annotation does not: every check that came out false or empty,
+// by its path in result.json (some are meant to be false; the list is for finding the one that is not).
+if (!result.ok && process.env.GITHUB_ACTIONS) {
+  const suspects = [];
+  const walk = (value, path) => {
+    if (value === false || value === '' || value === 0) suspects.push(path);
+    else if (value && typeof value === 'object') for (const [key, inner] of Object.entries(value)) walk(inner, path ? `${path}.${key}` : key);
+  };
+  walk(result, '');
+  console.log(`::error title=Smoke test::${result.error ?? ''} false or empty: ${suspects.slice(0, 200).join(' ')}`);
+}
 console.log(`smoke: screenshots and PDF in ${out}`);
 process.exit(result.ok ? 0 : 1);

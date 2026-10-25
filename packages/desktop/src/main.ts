@@ -849,6 +849,20 @@ const smokeConsole: string[] = [];
 // pipeline like the user's mouse and keyboard.
 const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/**
+ * Waits until the line being edited has focus and holds the text given, as a person waits to see it before
+ * typing on (up to five seconds): on a slow machine a new line opens later than a fixed pause.
+ */
+async function lineReady(contents: Electron.WebContents, holds: string): Promise<void> {
+  for (let waited = 0; waited < 5000; waited += 100) {
+    const ready = (await contents.executeJavaScript(
+      `(() => { const area = document.querySelector('textarea.row-editor'); return !!area && document.activeElement === area && area.value.includes(${JSON.stringify(holds)}); })()`,
+    )) as boolean;
+    if (ready) return;
+    await pause(100);
+  }
+}
+
 async function clickOn(selector: string, modifiers: Array<'control' | 'shift'> = [], button: 'left' | 'right' = 'left'): Promise<void> {
   const contents = smokeWindow!.webContents;
   const point = (await contents.executeJavaScript(`(() => {
@@ -2041,13 +2055,13 @@ async function layersWithRealInput(picture: string) {
   await pressKey('End');
   await pressKey('Enter');
   await clickOn('.tool-button[title="Vložit ∛"]');
-  // The button writes into the line on its next frame: typing waits for it, as a person does (a slower machine lost keys).
-  await pause(300);
+  // Typing waits for the line to show what the button wrote (on GitHub's slower runner keys were lost).
+  await lineReady(contents, '∛');
   await typeText('27 =');
   const cubeLine = (await contents.executeJavaScript(`document.querySelector('textarea.row-editor')?.value ?? ''`)) as string;
   await pressKey('Enter');
   await clickOn('.tool-button[title^="n-tá odmocnina"]');
-  await pause(300);
+  await lineReady(contents, 'root(');
   await typeText('16');
   await pressKey('End');
   await pressKey('Backspace');

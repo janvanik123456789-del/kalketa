@@ -401,7 +401,7 @@ ${checkLines(block.lines)}
     }
     case 'datatable':
       return `<section class="block datatable" data-line="${block.line}">
-${block.across ? acrossTableHtml(block, block.name) : dataTableHtml(block, block.name)}${messages(block.messages)}
+${block.across ? acrossTableHtml(block, block.name) : dataTableHtml(block, block.name)}${block.note ? `<div class="variant-note">${esc(block.note)}</div>` : ''}${messages(block.messages)}
 </section>`;
     case 'error':
       return `<section class="block error" data-line="${block.line}">
@@ -416,7 +416,7 @@ function dataTableHtml(table: TableRows & { readonly totals?: readonly number[] 
     .map((c) => `<th${c.numeric ? ' class="num"' : ''}>${toMathML(nameNode(c.name))}${c.unit ? ` <span class="unit">[${esc(c.unit)}]</span>` : ''}${c.formula ? `<div class="formula">= ${toMathML(c.formula)}</div>` : ''}</th>`)
     .join('');
   const body = table.rows
-    .map((row, n) => `<tr${table.totals?.includes(n) ? ' class="total"' : ''}>${row.map((cell, i) => `<td${table.columns[i]?.numeric ? ' class="num"' : ''}>${esc(cell)}</td>`).join('')}</tr>`)
+    .map((row, n) => `<tr${table.totals?.includes(n) ? ' class="total"' : n === table.chosen ? ' class="chosen"' : ''}>${row.map((cell, i) => `<td${table.columns[i]?.numeric ? ' class="num"' : ''}>${esc(cell)}</td>`).join('')}</tr>`)
     .join('\n');
   return `<table class="data-table">${caption ? `<caption>${esc(caption)}</caption>` : ''}<thead><tr>${head}</tr></thead>
 <tbody>
@@ -631,6 +631,9 @@ table.data-table.across td { padding: 0.6mm 2mm; }
 table.data-table .unit { font-weight: 400; }
 table.data-table th .formula { font-weight: 400; font-size: 8.5pt; color: #444; }
 table.data-table tr.total td { font-weight: 600; border-top: 0.6pt solid #333; }
+/* The variant the sheet goes on with. */
+table.data-table tr.chosen td { font-weight: 600; background: rgba(0, 0, 0, 0.06); }
+.variant-note { font-size: 9.5pt; margin: -1mm 0 2mm; }
 table.eq td { padding: 0.6mm 1.2mm; vertical-align: middle; }
 td.lhs { text-align: right; min-width: 14mm; }
 td.op { text-align: center; width: 4mm; }

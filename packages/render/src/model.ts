@@ -12,6 +12,7 @@
  */
 
 import {
+  COMPARE_FUNCTION,
   DOMAIN_SPELLINGS,
   formatUnit,
   TABLE_TOTAL,
@@ -83,6 +84,8 @@ export interface Message {
 export interface TableRows {
   readonly columns: readonly { readonly name: string; readonly unit?: string; readonly numeric: boolean; /** A calculated column: its formula. */ readonly formula?: MathNode }[];
   readonly rows: readonly (readonly string[])[];
+  /** The row of the variant the sheet calculates with, set apart. */
+  readonly chosen?: number;
 }
 
 export type PrintBlock =
@@ -215,6 +218,9 @@ export type PrintBlock =
       readonly totals?: readonly number[];
       /** Set across ({across}): each column on a row, the values side by side. */
       readonly across?: boolean;
+      /** Of a table of variants: the row of the variant chosen, and the sentence saying so below the table. */
+      readonly chosen?: number;
+      readonly note?: string;
       readonly messages: readonly Message[];
     }
   | { readonly kind: 'page-break' }
@@ -394,11 +400,29 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
           const values = row.some((cell) => cell !== '') ? table?.rows[data++] : undefined;
           return row.map((cell, i) => (s.columns[i]?.formula && cell.trim() === '' ? (shown(values?.[i], i) ?? '') : cellText(cell, s.columns[i]?.format, columns[i]?.numeric ?? false, decimalSign)));
         });
-        blocks.push({ kind: 'datatable', line: s.span.line, name: s.name, columns, rows, ...(totals.length > 0 ? { totals } : {}), ...(s.format?.across ? { across: true } : {}), messages });
+        // Variants: the row the sheet goes on with, said below the table.
+        const chosen = r.variant ? s.rows.map((row, n) => (row.some((cell) => cell !== '') ? n : -1)).filter((n) => n >= 0)[r.variant.row] : undefined;
+        const variant = chosen !== undefined && r.variant ? { chosen, note: t(catalog, 'print.variantChosen', { variant: r.variant.key }) } : {};
+        blocks.push({ kind: 'datatable', line: s.span.line, name: s.name, columns, rows, ...(totals.length > 0 ? { totals } : {}), ...(s.format?.across ? { across: true } : {}), ...variant, messages });
         break;
       }
       case 'definition':
       case 'display': {
+        // compare(Varianty, W, σ): the table of the variants side by side, the chosen one set apart.
+        if (s.expr.kind === 'call' && s.expr.name === COMPARE_FUNCTION && !(s.kind === 'definition' && s.params)) {
+          const table = r.value?.type === 'table' ? r.value.table : undefined;
+          const tableName = s.expr.args[0]?.kind === 'variable' ? s.expr.args[0].name : '';
+          const heading: EquationLine = { role: 'formula', ...(s.kind === 'definition' ? { lhs: nameNode(s.name) } : {}), op: s.kind === 'definition' ? ':' : '', rhs: mtext(t(catalog, 'print.compare', { table: tableName })) };
+          blocks.push({
+            kind: 'equation',
+            line: s.span.line,
+            lines: [heading],
+            ...(s.comment ? { comment: s.comment } : {}),
+            ...(table ? { table: { ...tableRows(table, numberFormat({ digits: 4 })), ...(r.variant ? { chosen: r.variant.row } : {}) } } : {}),
+            messages,
+          });
+          break;
+        }
         if (r.plot && s.kind === 'display' && s.expr.kind === 'call') {
           const label = r.plot.title ? t(catalog, 'print.figure', { n: String(++figures) }) : undefined;
           blocks.push(chartBlock(r.plot, s.expr, s.span.line, formulaOptions(), (v) => numberFormat({ digits: 4 })(v).replace('-', '−'), dateFormat, label, s.comment, messages, options.chartStyle, (at) => t(options.catalog, 'print.cut', { at })));
@@ -948,6 +972,8 @@ function tableRows(table: Extract<Value, { type: 'table' }>['table'], format: (v
     if (!cell) return '';
     if (cell.type === 'quantity') return format(cell.hint ? (cell.si - (cell.hint.offset ?? 0)) / cell.hint.factor : cell.si).replace('-', '−');
     if (cell.type === 'text') return cell.value;
+    // The checks of a variant (the column ✓): a mark, as the summary of checks writes it.
+    if (cell.type === 'boolean') return cell.value ? '✓' : '✗';
     return '';
   };
   return { columns, rows: table.rows.map((row) => row.map(text)) };

@@ -144,6 +144,8 @@ export const CS_FUNCTION_DETAILS: Readonly<Record<string, string>> = {
   // Logika
   if: 'Podmíněná hodnota: je-li podmínka splněna, výsledek je then, jinak else. Podmínka je porovnání (<, ≤, ==, ≠ …), lze je spojit and / or. Obě větve mají mít stejnou jednotku. Porovnává-li podmínka řadu (x > 0 m pro řadu x), platí po prvcích: výsledek je řada a každý prvek se vezme z then nebo z else (z řady stejné délky její prvek, z čísla to číslo), např. kladná část řady if(x > 0 m, x, 0 m).',
   // Tabulky
+  compare:
+    'Porovná varianty výpočtu. Tabulka variant (table Varianty: {variants=B}) má v prvním sloupci jména variant a v dalších sloupcích vstupy listu (b [mm], h [mm]); list počítá se zvolenou variantou (=B, bez ní s první). compare(Varianty, W, σ) spočítá list pro každou variantu a vrátí tabulku zadaných hodnot, s největším využitím η_max a výsledkem posudků ✓; zvolená varianta je v tisku zvýrazněná.',
   filter: 'Vrátí tabulku jen s řádky, které splňují podmínku; ve where je r zkoušený řádek a r.sloupec jeho hodnota. Výsledek lze dál použít v max, sum nebo find_min.',
   find_max: 'Najde řádek s největší hodnotou sloupce by mezi řádky, které splňují where (r je zkoušený řádek). Hodnota jiného sloupce řádku se čte tečkou: find_max(…).A.',
   find_min: 'Najde řádek s nejmenší hodnotou sloupce by mezi řádky, které splňují where (r je zkoušený řádek). Typicky nejlehčí profil, který vyhoví: find_min(Profily, by: A, where: r.W_y ≥ W_pot).',

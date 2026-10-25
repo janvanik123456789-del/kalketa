@@ -26,7 +26,7 @@ import { fitCall, polyfitCall, polyvalCall } from './fit.js';
 import { withBareZero } from './zero.js';
 import { BINDING_FUNCTIONS } from '../lang/parser.js';
 import { asMatrix, at, inverseOf, matrix, normalized } from '../functions/linear.js';
-import { callTableFunction, memberOf, TABLE_FUNCTIONS } from './tables.js';
+import { callTableFunction, COMPARE_FUNCTION, memberOf, TABLE_FUNCTIONS } from './tables.js';
 import { applyFunction, lookupFunction } from './userFunctions.js';
 import { primeName } from './ode.js';
 import type { BlockCaller, BlockInput } from './blocks.js';
@@ -152,6 +152,8 @@ function evaluateRaw(expr: Expr, ctx: EvalContext): Value {
       // integral(f(x), x: a .. b), derivative(f(x), x: a), sum(f(k), k: 1 .. n): a variable of their own.
       // A chart is a line of its own: plot(M(x), x: 0 m .. L).
       if (expr.name === PLOT_FUNCTION) fail('E-PLOT-PLACE', expr.span, {});
+      // A comparison of variants calculates the whole sheet again for each: a line of its own too.
+      if (expr.name === COMPARE_FUNCTION) fail('E-COMPARE-PLACE', expr.span, {});
       // Σ and ∫ without bounds are a notation of theory: no value to calculate.
       if (isUnboundedCall(expr)) fail('E-NO-BOUNDS', expr.span, { function: expr.name });
       // fit(y, x: series, kind: "linear"): a curve through measured points, as a function.

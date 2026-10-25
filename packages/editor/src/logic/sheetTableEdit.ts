@@ -75,3 +75,34 @@ export function cellShown(cell: string, decimalComma: boolean): string {
 export function cellWritten(cell: string, decimalComma: boolean): string {
   return decimalComma ? cell.replace(/(\d),(\d)/g, '$1.$2') : cell;
 }
+
+/** The marks after the head of a table in the sheet: set across, variants of the calculation (the variant chosen). */
+export interface TableMarks {
+  readonly across: boolean;
+  readonly variants?: true | string | undefined;
+}
+
+export function tableMarksOf(text: string): TableMarks {
+  const words = (/^\s*table[^\n{]*:\s*\{([^}\n]*)\}/.exec(text)?.[1] ?? '').split(/\s+/).filter(Boolean);
+  const variants = words.map((w) => /^variants(?:=(.+))?$/.exec(w)).find((m) => m);
+  return { across: words.includes('across'), ...(variants ? { variants: variants[1] ?? true } : {}) };
+}
+
+/** The table with these marks after its head; other marks and the rows as they are. */
+export function withTableMarks(text: string, marks: TableMarks): string {
+  const [head = '', ...rest] = text.split('\n');
+  const written = /\{([^}]*)\}\s*$/.exec(head)?.[1] ?? '';
+  const others = written.split(/\s+/).filter((w) => w && w !== 'across' && !/^variants(=.+)?$/.test(w));
+  const words = [...(marks.across ? ['across'] : []), ...(marks.variants === undefined ? [] : [marks.variants === true ? 'variants' : `variants=${marks.variants}`]), ...others];
+  const plain = head.replace(/\s*\{[^}]*\}\s*$/, '');
+  return [words.length > 0 ? `${plain} {${words.join(' ')}}` : plain, ...rest].join('\n');
+}
+
+/** The names of the variants: the first cells of the rows below the header. */
+export function variantKeysOf(text: string): string[] {
+  return text
+    .split('\n')
+    .slice(2)
+    .map((line) => line.split('|')[1]?.trim() ?? '')
+    .filter((key) => key !== '');
+}

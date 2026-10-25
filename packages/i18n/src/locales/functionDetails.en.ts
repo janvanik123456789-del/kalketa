@@ -144,6 +144,8 @@ export const EN_FUNCTION_DETAILS: Readonly<Record<string, string>> = {
   // Logic
   if: 'A conditional value: when the condition holds the result is then, otherwise else. The condition is a comparison (<, ≤, ==, ≠ …), joined by and / or. Both branches should have one unit. When the condition compares a series (x > 0 m for a series x), it holds item by item: the result is a series and each item comes from then or else (of a series of the same length its item, of a number that number), e.g. the positive part of a series if(x > 0 m, x, 0 m).',
   // Tables
+  compare:
+    'Compares variants of the calculation. A table of variants (table Variants: {variants=B}) names the variants in its first column and holds inputs of the sheet in the others (b [mm], h [mm]); the sheet calculates with the variant chosen (=B, without it the first). compare(Variants, W, σ) calculates the sheet for each variant and gives a table of the values named, with the largest utilization η_max and the result of the checks ✓; the chosen variant is marked in print.',
   filter: 'Gives a table of only the rows that meet the condition; in where, r is the row tried and r.column its value. The result can go on into max, sum or find_min.',
   find_max: 'Finds the row with the largest value of the column by among the rows that meet where (r is the row tried). Another column of the row is read with a dot: find_max(…).A.',
   find_min: 'Finds the row with the smallest value of the column by among the rows that meet where (r is the row tried). Typically the lightest section that passes: find_min(Profiles, by: A, where: r.W_y ≥ W_req).',

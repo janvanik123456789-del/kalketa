@@ -572,4 +572,6 @@ export const TABLES: readonly FunctionDef[] = [
   { name: 'find_min', module: 'tables', params: 'T, by: column, where: condition', arity: [1, 1] },
   { name: 'find_max', module: 'tables', params: 'T, by: column, where: condition', arity: [1, 1] },
   { name: 'filter', module: 'tables', params: 'T, where: condition', arity: [1, 1] },
+  // Calculated by the session: the sheet again for each variant (graph/session.ts).
+  { name: 'compare', module: 'tables', params: 'Variants, name, …', arity: [2, 32] },
 ];

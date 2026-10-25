@@ -29,6 +29,9 @@ export const ROW_VARIABLE = 'r';
 
 export const TABLE_FUNCTIONS: ReadonlySet<string> = new Set(['pick', 'interpolate', 'find_min', 'find_max', 'filter']);
 
+/** compare(Varianty, M, σ): the sheet calculated for each variant, a table of the values named (graph/session.ts). */
+export const COMPARE_FUNCTION = 'compare';
+
 const EPSILON = 1e-12;
 
 export function callTableFunction(call: CallExpr, ctx: EvalContext, evaluate: Evaluate): Value {

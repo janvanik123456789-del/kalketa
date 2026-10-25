@@ -127,6 +127,12 @@ export interface LineFormat {
   readonly slider?: { readonly low: number; readonly high: number; readonly step?: number };
   /** Of a table in the sheet (table Pavlik: {across}): set across, a column of the data on each row, the values side by side. */
   readonly across?: boolean;
+  /**
+   * Of a table in the sheet (table Varianty: {variants=B}): variants of the calculation, one on each row, the first
+   * column naming them. The other columns define names of the sheet with the values of the variant chosen (the
+   * first without =B); compare(Varianty, M, σ) calculates the sheet for each one.
+   */
+  readonly variants?: true | string;
 }
 
 /**

@@ -114,6 +114,7 @@ export const FUNCTION_EXAMPLES: Readonly<Record<string, string>> = {
   month: 'month(2026-10-21)',
   year: 'year(2026-10-21)',
   if: 'F := 12 kN\nγ := if(F > 10 kN, 1.5, 1.35)',
+  compare: 'table Varianty: {variants=B}\n    | varianta | b [mm] | h [mm] |\n    | A        | 200    | 300    |\n    | B        | 250    | 400    |\nM := 120 kN·m\nσ := M/(b·h^2/6) | MPa\ncheck σ ≤ 20 MPa\ncompare(Varianty, σ)',
   filter: `${PROFILES}max(filter(Profily, where: r.A < 30 cm²).W_y)`,
   find_max: `${PROFILES}find_max(Profily, by: W_y, where: r.A < 30 cm²).profil`,
   find_min: `${PROFILES}W_pot := 150 cm³\nfind_min(Profily, by: A, where: r.W_y >= W_pot).profil`,

@@ -1,0 +1,35 @@
+{
+  "sheet": "izolace-potrubi.cc",
+  "verifiedBy": "Příklad 1 ze stanoviska SEI na TZB-info (článek 4564, příloha 004564_vypocet_priklad1.pdf): t_m = 47,83 °C, C_ts = 1,4760 Kč/kWh, U_o = 0,3463 W/(m·K) a q = 13,10 W/m pro 20 mm, celkové náklady 282,30 / 263,90 / 254,70 / 241,20 / 237,50 Kč/m pro 20 až 50 mm. Samostatně v Pythonu pro všech pět tlouštěk (Podklady); zdroj píše u 20 mm D = 0,0683 m, ale jeho U_o odpovídá D = d + 2·20 mm = 0,0883 m.",
+  "relativeTolerance": 1e-09,
+  "values": {
+    "t_m": {
+      "value": 47.83333333333333,
+      "unit": "°C"
+    },
+    "C_ts": {
+      "value": 1.4760000000000002,
+      "unit": "Kč/kWh"
+    },
+    "D": {
+      "value": 148.3,
+      "unit": "mm"
+    },
+    "U_o": {
+      "value": 0.20351906796460234,
+      "unit": "W/(m·K)"
+    },
+    "q": {
+      "value": 7.699804737994121,
+      "unit": "W/m"
+    },
+    "N_p": {
+      "value": 119.46795277095225,
+      "unit": "Kč/m"
+    },
+    "N": {
+      "value": 237.46795277095225,
+      "unit": "Kč/m"
+    }
+  }
+}

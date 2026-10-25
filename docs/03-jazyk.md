@@ -603,6 +603,30 @@ N := Pos2.A + Pos1.A
 - Poslední pozice svá jména drží až do konce listu, takže je vidí i ostatní vrstvy a živé hodnoty plátna.
 - **Číslování stran po oddílech (2026-10-11):** Vlastnosti výpočtu → Číslování stran → Po oddílech. Každá pozice (bez pozic nadpis nejvyšší opakované úrovně, např. `##`) a každá příloha začne na nové straně; strany pozice 2 jsou Strana 2.1, 2.2 (v závorce pořadí v celém tisku), přílohy A.1, A.2, strany před prvním oddílem 1, 2. V záhlaví je vedle názvu listu i název oddílu (Pos. 2 Průvlak).
 
+### 8.6 Varianty výpočtu (2026-10-25)
+
+Více variant téhož výpočtu (průřezy, materiály, rozpětí) v jednom listu: varianty jsou řádky tabulky, list počítá se zvolenou a `compare` je porovná vedle sebe.
+
+```text
+table Varianty: {variants=B}
+    | varianta | b [mm] | h [mm] |
+    | A        | 200    | 300    |
+    | B        | 250    | 400    |
+    | C        | 300    | 500    |
+M := 120 kN·m
+W := b·h^2/6 | mm^3
+σ := M/W | MPa
+check "Ohyb": σ ≤ 20 MPa
+porovnani := compare(Varianty, W, σ)
+```
+
+- `{variants}` za hlavičkou tabulky z ní dělá tabulku variant. První sloupec jmenuje varianty, ostatní sloupce jsou **vstupy listu**: `b` a `h` mají hodnotu ze zvoleného řádku a jinde v listu se už nedefinují (to je `E-REDEFINED`). Zvolená varianta je `{variants=B}`, bez `=B` první řádek. Neznámá varianta je `E-VARIANT-UNKNOWN`.
+- Celý list (text, dosazení, posudky) se tiskne pro zvolenou variantu. V tisku je její řádek tabulky zvýrazněný a pod tabulkou věta „Výpočet pokračuje s variantou B.“
+- `compare(Varianty, W, σ)` spočítá list znovu pro každou variantu a vytiskne tabulku: varianta, zadané hodnoty, největší využití posudků `η_max` a `✓` / `✗`, zda vyhoví všechny posudky. Řádek zvolené varianty je zvýrazněný. Jména mohou být kdekoli v listu, i pod řádkem `compare`. Varianta, kterou nejde spočítat celou, má prázdné buňky a varování `W-COMPARE-FAILED`.
+- `compare` je samostatný řádek (definice nebo jen výraz). Ve výrazu je to `E-COMPARE-PLACE`, první argument musí být tabulka variant (`E-COMPARE-TABLE`), ostatní jména hodnot (`E-COMPARE-ARG`). Výsledkem je tabulka, takže `porovnani.σ` je řada a funguje `find_min(porovnani, by: σ, …)`.
+- V editoru pravé tlačítko na tabulce → **Varianty výpočtu (sloupce jsou vstupy)** a **Počítat s variantou A / B / C**. Přepočet je přírůstkový: každá varianta má svůj výpočet a při změně se přepočítá jen to, co se změnilo.
+- *Proč ne více listů nebo vrstev:* kontrolor vidí v jednom tisku jak zvolenou variantu se všemi kroky, tak srovnání ostatních. Varianty, které se liší jen čísly, nepotřebují kopii celého výpočtu.
+
 ## 9. Řešič rovnic (F8)
 
 ```text

@@ -22,7 +22,7 @@ import { PickControl } from './PickControl.js';
 import { TextRowEditor, type TextFormat } from './TextRowEditor.js';
 import { parseTextLine } from '../logic/textLine.js';
 import { SheetTableGrid } from './SheetTableGrid.js';
-import { parseSheetTable } from '../logic/sheetTableEdit.js';
+import { parseSheetTable, tableMarksOf, variantKeysOf, withTableMarks, type TableMarks } from '../logic/sheetTableEdit.js';
 import { ContextMenu, type MenuItem } from './MenuBar.js';
 import { ask } from './Ask.js';
 import type { Command } from '../commands.js';
@@ -1033,14 +1033,18 @@ export function SheetView(props: Props) {
             };
             if (formatMenu.table) {
               const seg = formatMenu.seg;
-              const across = /^\s*table[^\n]*:\s*\{[^}\n]*\bacross\b/.test(seg.text);
-              // The head line with {across} or without it; the rows as they are.
-              const setAcross = (on: boolean) => {
-                const [head = '', ...rest] = seg.text.split('\n');
-                const plain = head.replace(/\s*\{[^}]*\}\s*$/, '');
-                props.onReplace(seg.start, seg.end, [on ? `${plain} {across}` : plain, ...rest].join('\n'));
-              };
-              return [{ kind: 'action', label: t(props.uiCatalog, 'table.across'), checked: across, run: () => setAcross(!across) }];
+              const marks = tableMarksOf(seg.text);
+              const set = (next: TableMarks) => props.onReplace(seg.start, seg.end, withTableMarks(seg.text, next));
+              const ui = props.uiCatalog;
+              const keys = marks.variants !== undefined ? variantKeysOf(seg.text) : [];
+              const chosen = marks.variants === true ? keys[0] : marks.variants;
+              return [
+                { kind: 'action', label: t(ui, 'table.across'), checked: marks.across, run: () => set({ ...marks, across: !marks.across }) },
+                // Variants of the calculation: the columns are inputs of the sheet, one row the variant calculated.
+                { kind: 'action', label: t(ui, 'table.variants'), checked: marks.variants !== undefined, run: () => set({ ...marks, variants: marks.variants === undefined ? true : undefined }) },
+                ...(keys.length > 0 ? [{ kind: 'separator' } as MenuItem] : []),
+                ...keys.map((key, n): MenuItem => ({ kind: 'action', label: t(ui, 'table.variantChoose', { variant: key }), checked: key === chosen, run: () => set({ ...marks, variants: n === 0 ? true : key }) })),
+              ];
             }
             if (formatMenu.text) {
               const seg = formatMenu.seg;

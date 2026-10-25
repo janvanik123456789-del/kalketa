@@ -64,6 +64,8 @@ export function parse(source: string, options: ParseOptions): ParseResult {
     while (pending[0] && pending[0].statement.span.offset < offset) {
       const table = pending.shift()!;
       defined.add(table.statement.name);
+      // A table of variants defines its columns but the first as names: h is a height there, not an hour.
+      if (table.statement.kind === 'table' && table.statement.format?.variants !== undefined) for (const column of table.statement.columns.slice(1)) defined.add(column.name);
       statements.push(table.statement);
     }
   };
@@ -157,11 +159,13 @@ function sheetTables(source: string, options: ParseOptions): { tables: { stateme
     }
     const nameAt = lines[i]!.indexOf(head[1]!, 5);
     const span: Span = { offset: starts[i]!, length: starts[end]! + lines[end]!.replace(/\r$/, '').length - starts[i]!, line: i + 1, column: 1 };
-    // table Pavlik: {across} — set across in print.
+    // table Pavlik: {across} — set across in print; table Varianty: {variants=B} — variants of the calculation.
     const words = (head[2] ?? '').split(/\s+/).filter(Boolean);
-    for (const word of words) if (word !== 'across') diagnostics.push(diagnostic('W-FORMAT', lineSpan(i), { item: word }));
+    const variants = words.map((word) => /^variants(?:=(.+))?$/.exec(word)).find((m) => m);
+    for (const word of words) if (word !== 'across' && !/^variants(=.+)?$/.test(word)) diagnostics.push(diagnostic('W-FORMAT', lineSpan(i), { item: word }));
+    const tableFormat: LineFormat = { ...(words.includes('across') ? { across: true } : {}), ...(variants ? { variants: variants[1] ?? (true as const) } : {}) };
     tables.push({
-      statement: { kind: 'table', name: head[1]!, nameSpan: { offset: starts[i]! + nameAt, length: head[1]!.length, line: i + 1, column: nameAt + 1 }, columns, rows, span, ...(words.includes('across') ? { format: { across: true } } : {}) },
+      statement: { kind: 'table', name: head[1]!, nameSpan: { offset: starts[i]! + nameAt, length: head[1]!.length, line: i + 1, column: nameAt + 1 }, columns, rows, span, ...(Object.keys(tableFormat).length > 0 ? { format: tableFormat } : {}) },
       diagnostics,
     });
     for (let n = i; n <= end; n++) blank.add(n);

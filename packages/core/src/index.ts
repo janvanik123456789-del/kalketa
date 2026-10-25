@@ -31,6 +31,6 @@ export * from './graph/session.js';
 export * from './graph/compare.js';
 export { isPlotCall, MAX_PLOT_SERIES, type PlotKind, type PlotResult, type PlotSeries, type PlotSurface } from './eval/plot.js';
 export * from './tables/table.js';
-export { TABLE_FUNCTIONS, ROW_VARIABLE } from './eval/tables.js';
+export { TABLE_FUNCTIONS, ROW_VARIABLE, COMPARE_FUNCTION } from './eval/tables.js';
 export * from './provenance/trace.js';
 export { toDecimalComma, fromDecimalComma } from './lang/notation.js';

@@ -29,6 +29,7 @@ describe('sample calculations shipped with the program', () => {
       '06 R6-fve',
       '07 R3-roztok',
       '11 R25-ztrata-vetranim',
+      '11 R26-izolace-potrubi',
       '16 R5-fotovoltaika',
     ]);
     expect(list.find((s) => s.id === 'R1-nosnik')!.title).toBe('Posouzení nosníku N1');

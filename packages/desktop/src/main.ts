@@ -2060,11 +2060,11 @@ async function layersWithRealInput(picture: string) {
   await typeText('27 =');
   const cubeLine = (await contents.executeJavaScript(`document.querySelector('textarea.row-editor')?.value ?? ''`)) as string;
   await pressKey('Enter');
-  await contents.executeJavaScript('window.__kalketaOutsideEdits = []');
+  await contents.executeJavaScript('window.__kalketaOutsideEdits = []; window.__kalketaTemplate = []');
   await clickOn('.tool-button[title^="n-tá odmocnina"]');
   await lineReady(contents, 'root(');
   // Where the line and its cursor are at each step: on GitHub's runner the 16 did not land in the template.
-  const lineState = `(() => { const a = document.querySelector('textarea.row-editor'); return (a ? a.value + ' @' + a.selectionStart + (document.activeElement === a ? '' : ' (no focus: ' + (document.activeElement?.tagName ?? '') + ')') : 'no line') + ' outside: ' + (window.__kalketaOutsideEdits ?? []).join(' | '); })()`;
+  const lineState = `(() => { const a = document.querySelector('textarea.row-editor'); return (a ? a.value + ' @' + a.selectionStart + (document.activeElement === a ? '' : ' (no focus: ' + (document.activeElement?.tagName ?? '') + ')') : 'no line') + ' outside: ' + (window.__kalketaOutsideEdits ?? []).join(' | ') + ' template: ' + (window.__kalketaTemplate ?? []).join(' | '); })()`;
   const rootSteps: string[] = [(await contents.executeJavaScript(lineState)) as string];
   await typeText('16');
   rootSteps.push((await contents.executeJavaScript(lineState)) as string);

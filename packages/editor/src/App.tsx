@@ -1834,11 +1834,17 @@ export function App() {
       // it ended up at the end of the line on a slower machine, and what was typed next went there.
       const at = start + cursor;
       area.setSelectionRange(at, at);
+      // For the smoke test: where the cursor went (a slower machine put it at the end).
+      const w = window as { __kalketaTemplate?: string[] };
+      w.__kalketaTemplate = [...(w.__kalketaTemplate ?? []), `in line ${JSON.stringify(area.value)} @${area.selectionStart} want ${at}`];
       // Again only where it jumped to the end: a key already typed in the template keeps its place.
       requestAnimationFrame(() => {
+        w.__kalketaTemplate = [...(w.__kalketaTemplate ?? []), `frame @${area.selectionStart} connected ${area.isConnected}`];
         if (area.selectionStart === area.value.length && at < area.value.length && area.value.includes(shown)) area.setSelectionRange(at, at);
       });
     } else {
+      const w = window as { __kalketaTemplate?: string[] };
+      w.__kalketaTemplate = [...(w.__kalketaTemplate ?? []), `new line, cursor ${cursor}`];
       insertLine(source, cursor);
     }
   };

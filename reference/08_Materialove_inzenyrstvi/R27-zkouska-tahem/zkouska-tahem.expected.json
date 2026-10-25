@@ -1,0 +1,51 @@
+{
+  "sheet": "zkouska-tahem.cc",
+  "verifiedBy": "Zdroj (VUT v Brně, ÚMVI, Mezní stavy materiálu, cvičení 4, příklad 2) výsledky neuvádí; samostatně v Pythonu (Podklady) z naměřených sil a rozměrů: R_p0,2 = F/S_0, R_m, Z, A_5,65 z rysek 50 mm a A z rysek 100 mm, resilience s E = 210 GPa (naše volba), houževnatost (R_p + R_m)/2·A.",
+  "relativeTolerance": 1e-09,
+  "values": {
+    "S_0": {
+      "value": 77.75638167175586,
+      "unit": "mm²"
+    },
+    "R_p02": {
+      "value": 221.3323154959941,
+      "unit": "MPa"
+    },
+    "R_m": {
+      "value": 331.16252899603995,
+      "unit": "MPa"
+    },
+    "Z": {
+      "value": 71.84071109315421,
+      "unit": "%"
+    },
+    "L_0": {
+      "value": 49.82146218164042,
+      "unit": "mm"
+    },
+    "A_565": {
+      "value": 37.0,
+      "unit": "%"
+    },
+    "A_100": {
+      "value": 28.0,
+      "unit": "%"
+    },
+    "σ_u": {
+      "value": 794.2218951928545,
+      "unit": "MPa"
+    },
+    "U_r": {
+      "value": 0.11663808067337683,
+      "unit": "MJ/m³"
+    },
+    "U_t": {
+      "value": 102.2115462310263,
+      "unit": "MJ/m³"
+    },
+    "n_z": {
+      "value": 1.4962231260894827,
+      "unit": ""
+    }
+  }
+}

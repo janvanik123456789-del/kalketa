@@ -1090,9 +1090,22 @@ class LineParser {
         unit = { kind: 'unit-pow', base: unit, exponent: token.value, span: spanOf(unit, token) };
       } else if (token.type === '^') {
         this.next();
+        // A fraction in brackets: the s/m^(1/3) of Manning's coefficient.
+        const bracket = this.peek().type === '(' ? (this.next(), true) : false;
         const negative = this.peek().type === '-' ? (this.next(), true) : false;
         const exp = this.expect('number', 'exponent');
-        unit = { kind: 'unit-pow', base: unit, exponent: negative ? -exp.value : exp.value, span: spanOf(unit, exp) };
+        let value = negative ? -exp.value : exp.value;
+        let last: Token = exp;
+        if (bracket) {
+          if (this.peek().type === '/') {
+            this.next();
+            const below = this.expect('number', 'exponent');
+            if (below.value === 0) fail('E-SYNTAX', below.span, { expected: 'exponent', found: '0' });
+            value /= below.value;
+          }
+          last = this.expect(')', ')');
+        }
+        unit = { kind: 'unit-pow', base: unit, exponent: value, span: spanOf(unit, last) };
       } else {
         return unit;
       }

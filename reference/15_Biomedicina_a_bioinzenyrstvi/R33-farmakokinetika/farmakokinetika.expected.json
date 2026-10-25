@@ -1,0 +1,53 @@
+{
+  "sheet": "farmakokinetika.cc",
+  "verifiedBy": "PHA 5127, Answers Case Study 5 (University of Florida, 2006): k_e = 0,126 h⁻¹, c_0 = 39,53 a 98,82 mg/L, V_d = 7,59 L, CL = 0,96 L/h, AUC lichoběžníky 349,48 a 873,71 mg·h/L, D/CL 312,5 a 781,25 mg·h/L (z CL zaokrouhlené na 0,96). Samostatně v Pythonu (Podklady).",
+  "relativeTolerance": 1e-09,
+  "values": {
+    "k_e": {
+      "value": 0.12602676010180824,
+      "unit": "h⁻¹"
+    },
+    "t_12": {
+      "value": 5.5,
+      "unit": "h"
+    },
+    "c_0": {
+      "value": 39.52634566684974,
+      "unit": "mg/L"
+    },
+    "V_d": {
+      "value": 7.589874422709568,
+      "unit": "L"
+    },
+    "CL": {
+      "value": 0.9565272830736691,
+      "unit": "L/h"
+    },
+    "AUC": {
+      "value": 313.634545829149,
+      "unit": "mg·h/L"
+    },
+    "AUC_l": {
+      "value": 349.48120529863724,
+      "unit": "mg·h/L"
+    },
+    "AUC_2": {
+      "value": 784.0863645728724,
+      "unit": "mg·h/L"
+    }
+  },
+  "checks": [
+    {
+      "label": "Eliminační konstanta nezávisí na dávce",
+      "passed": true
+    },
+    {
+      "label": "Clearance nezávisí na dávce",
+      "passed": true
+    },
+    {
+      "label": "AUC roste úměrně dávce (2,5×)",
+      "passed": true
+    }
+  ]
+}

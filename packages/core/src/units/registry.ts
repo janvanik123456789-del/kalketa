@@ -143,6 +143,8 @@ const BUILT_IN: readonly UnitDef[] = [
   // Dimensionless
   { symbol: 'rad', factor: 1, dim: DIMENSIONLESS, prefixable: true },
   { symbol: '°', factor: Math.PI / 180, dim: DIMENSIONLESS },
+  // Grads of geodesy: a right angle is 100 gon (the S-JTSK bearings).
+  { symbol: 'gon', factor: Math.PI / 200, dim: DIMENSIONLESS },
   { symbol: '%', factor: 1e-2, dim: DIMENSIONLESS },
   { symbol: '‰', factor: 1e-3, dim: DIMENSIONLESS },
   { symbol: 'ppm', factor: 1e-6, dim: DIMENSIONLESS },

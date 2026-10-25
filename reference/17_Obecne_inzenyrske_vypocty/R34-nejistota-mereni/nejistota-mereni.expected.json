@@ -1,0 +1,35 @@
+{
+  "sheet": "nejistota-mereni.cc",
+  "verifiedBy": "Z. Budinská: Chyby a nejistoty měření – příklady (ČVUT v Praze, FS), příklad 1: T = 2,3275 s, u_A = 0,0032 s, u_B = 0,022 s, výsledek (2,328 ± 0,023) s; příklad 4: S = 0,5153 mm², u_rS = 1,4 %, u_S = 0,0074 mm². Samostatně v Pythonu (Podklady).",
+  "relativeTolerance": 1e-09,
+  "values": {
+    "T_k": {
+      "value": 2.3274999999999997,
+      "unit": "s"
+    },
+    "u_A": {
+      "value": 0.0031868871959954397,
+      "unit": "s"
+    },
+    "u_B": {
+      "value": 0.021650635094610966,
+      "unit": "s"
+    },
+    "u_c": {
+      "value": 0.02188392675001449,
+      "unit": "s"
+    },
+    "S_d": {
+      "value": 0.5152997350050659,
+      "unit": "mm²"
+    },
+    "u_rS": {
+      "value": 1.4255562202212981,
+      "unit": "%"
+    },
+    "u_S": {
+      "value": 0.007345887425148583,
+      "unit": "mm²"
+    }
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "sheet": "rajon.cc",
+  "verifiedBy": "Vzorový výpočet rajónu (Přírodovědecká fakulta UK): σ = 18,5460 gon, ω = 107,2204 gon, α = 125,7664 gon, Y_550 = 668 512,86 m, X_550 = 1 118 895,51 m. Samostatně v Pythonu (Podklady).",
+  "relativeTolerance": 1e-09,
+  "values": {
+    "σ": {
+      "value": 18.546040825135506,
+      "unit": "gon"
+    },
+    "ω": {
+      "value": 107.22020000000002,
+      "unit": "gon"
+    },
+    "α": {
+      "value": 125.76624082513553,
+      "unit": "gon"
+    },
+    "Y_550": {
+      "value": 668512.8567635444,
+      "unit": "m"
+    },
+    "X_550": {
+      "value": 1118895.513055131,
+      "unit": "m"
+    }
+  },
+  "checks": [
+    {
+      "label": "Souřadnice jako ve zdroji (668 512,86; 1 118 895,51)",
+      "passed": true
+    }
+  ]
+}

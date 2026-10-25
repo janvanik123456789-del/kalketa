@@ -1,0 +1,37 @@
+{
+  "sheet": "delka-cyklu.cc",
+  "verifiedBy": "NIATT Traffic Signal Timing Lab Manual (University of Idaho), příklad Cycle Length Determination: L = 17 s, Σy = 0,619, optimální cyklus 80 s, pro nulové poměry 31 s. Rozdělení zelené (náš doplněk) samostatně v Pythonu (Podklady).",
+  "relativeTolerance": 1e-09,
+  "values": {
+    "L_z": {
+      "value": 17.0,
+      "unit": "s"
+    },
+    "Y": {
+      "value": 0.619,
+      "unit": ""
+    },
+    "C_o": {
+      "value": 80.05249343832021,
+      "unit": "s"
+    },
+    "C_n": {
+      "value": 80.0,
+      "unit": "s"
+    },
+    "C_min": {
+      "value": 30.5,
+      "unit": "s"
+    },
+    "X": {
+      "value": 0.786031746031746,
+      "unit": ""
+    }
+  },
+  "checks": [
+    {
+      "label": "Zelené a mezičasy vyplní cyklus",
+      "passed": true
+    }
+  ]
+}

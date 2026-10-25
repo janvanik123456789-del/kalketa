@@ -39,7 +39,8 @@ export function multiplyDims(a: Dimension, b: Dimension): Dimension {
   const known = row?.get(b);
   if (known) return known;
   const out: Record<string, number> = { ...a };
-  for (const key in b) out[key] = (out[key] ?? 0) + b[key]!;
+  // Rounded as in powerDim: m^(2/3)·m^(1/3) is m, and m²·m^(2/3)/m³ the same m^(-1/3) as written.
+  for (const key in b) out[key] = Math.round(((out[key] ?? 0) + b[key]!) * 1e9) / 1e9;
   const product = dim(out);
   if (!row) products.set(a, (row = new WeakMap()));
   row.set(b, product);
@@ -104,6 +105,10 @@ const SUPERSCRIPT_DIGITS: Readonly<Record<string, string>> = {
 /** Exponent as superscript; 1 is omitted. Non-integers use "^x". */
 export function superscript(exp: number): string {
   if (exp === 1) return '';
-  if (!Number.isInteger(exp)) return `^${exp}`;
+  if (!Number.isInteger(exp)) {
+    // A fraction as it is written and read back: m^(1/3), m^(-2/3).
+    for (let q = 2; q <= 12; q++) if (Math.abs(exp * q - Math.round(exp * q)) < 1e-9) return `^(${Math.round(exp * q)}/${q})`;
+    return `^${exp}`;
+  }
   return [...String(exp)].map((ch) => SUPERSCRIPT_DIGITS[ch] ?? ch).join('');
 }

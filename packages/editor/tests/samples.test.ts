@@ -28,9 +28,17 @@ describe('sample calculations shipped with the program', () => {
       '05 R18-termistor-interpolace',
       '06 R6-fve',
       '07 R3-roztok',
+      '08 R27-zkouska-tahem',
+      '09 R28-nastaveni-regulatoru',
+      '10 R29-soustruzeni',
       '11 R25-ztrata-vetranim',
       '11 R26-izolace-potrubi',
+      '12 R30-delka-cyklu',
+      '13 R31-rajon',
+      '14 R32-normalni-hloubka',
+      '15 R33-farmakokinetika',
       '16 R5-fotovoltaika',
+      '17 R34-nejistota-mereni',
     ]);
     expect(list.find((s) => s.id === 'R1-nosnik')!.title).toBe('Posouzení nosníku N1');
     // A field split into parts: the part with its names (cs, en); a case right in its field has none.

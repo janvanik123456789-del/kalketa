@@ -1,0 +1,23 @@
+{
+  "sheet": "nastaveni-regulatoru.cc",
+  "verifiedBy": "Příklad metody kritického zesílení na picuino.com (Ziegler–Nichols method): K_c = 0,43, T_c = 21/4 s, tabulka P 0,215; PI 0,195 a 0,044; PD 0,344 a 0,169; PID 0,254, 0,096 a 0,169. Samostatně v Pythonu (Podklady) pro všechny čtyři typy; rozdíly ve třetí platné číslici jsou zaokrouhlení periody na 5,3 s ve zdroji.",
+  "relativeTolerance": 1e-09,
+  "values": {
+    "T_c": {
+      "value": 5.25,
+      "unit": "s"
+    },
+    "K_p": {
+      "value": 0.2537,
+      "unit": ""
+    },
+    "K_i": {
+      "value": 0.09664761904761904,
+      "unit": "s⁻¹"
+    },
+    "K_d": {
+      "value": 0.1693125,
+      "unit": "s"
+    }
+  }
+}

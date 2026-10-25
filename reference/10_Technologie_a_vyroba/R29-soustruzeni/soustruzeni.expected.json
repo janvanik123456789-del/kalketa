@@ -1,0 +1,35 @@
+{
+  "sheet": "soustruzeni.cc",
+  "verifiedBy": "E. Čirčová, P. Ižol: Malá zbierka príkladov z technológie obrábania (TU v Košiciach, 2004), příklad 1: RO 199 min⁻¹, 3,99 ≐ 4 min, 15 ks na ostří, 23 přeostření; SK 685 min⁻¹, 1,2 min, 150 ks na destičku, 3 destičky, 2 výměny. Samostatně v Pythonu (Podklady) pro oba nástroje; zdroj počítá se zaokrouhleným časem, proto má u SK 150 místo 155 součástí.",
+  "relativeTolerance": 1e-09,
+  "values": {
+    "n": {
+      "value": 685.2504494234382,
+      "unit": "min⁻¹"
+    },
+    "L": {
+      "value": 143.0,
+      "unit": "mm"
+    },
+    "t_m": {
+      "value": 1.1593490308731367,
+      "unit": "min"
+    },
+    "t_s": {
+      "value": 6.762869346759964,
+      "unit": "h"
+    },
+    "p": {
+      "value": 155.0,
+      "unit": ""
+    },
+    "k": {
+      "value": 3.0,
+      "unit": ""
+    },
+    "k_v": {
+      "value": 2.0,
+      "unit": ""
+    }
+  }
+}

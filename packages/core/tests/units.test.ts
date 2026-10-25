@@ -117,7 +117,7 @@ describe('quantities', () => {
     expectValue('A_kruh(d) := π·d²/4\nA_kruh(20 mm)', Math.PI * 100, 'mm²');
     expectValue('(2 kN/m)^2', 4, '(kN/m)²');
     expectValue('L := 5 m\nL^-1', 0.2, 'm⁻¹');
-    expectValue('L := 5 m\nL^0.5', Math.sqrt(5), 'm^0.5');
+    expectValue('L := 5 m\nL^0.5', Math.sqrt(5), 'm^(1/2)');
   });
 
   it('keeps the unit when multiplying powers of it: a rod given in mm has its volume in mm³', () => {

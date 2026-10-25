@@ -135,7 +135,7 @@ Nejčastější past jednotkových systémů. Pravidla (**převzato z Calcpadu +
 ### 4.5 Bezrozměrné a zvláštní dimenze
 
 - `%`, `‰`, `ppm` jsou bezrozměrné násobitele (`21 % = 0.21`).
-- **Úhel je bezrozměrný** podle SI (`rad = 1`, `° = π/180`). `sin(30°)` funguje, `sin(30)` je v radiánech.
+- **Úhel je bezrozměrný** podle SI (`rad = 1`, `° = π/180`). `sin(30°)` funguje, `sin(30)` je v radiánech. Geodetické grady: `gon = π/200` (pravý úhel je 100 gon; směrníky v S-JTSK, 2026-10-25).
   *Upraveno při implementaci F1:* Calcpad dává úhlu vlastní dimenzi, aby se nemíchal s procenty. To ale rozbije běžné vzorce jako `v = ω·r` (vyšlo by m·rad/s místo m/s). Záměna úhlu s procentem je vzácnější než tyto vzorce.
 - **Vlastní základní dimenze** (kap. 4.6).
 

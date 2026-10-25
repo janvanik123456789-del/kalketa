@@ -294,7 +294,7 @@ if (!result.ok && process.env.GITHUB_ACTIONS) {
   // The whole result too, for the values behind a check (what a line held, how long typing took).
   // An annotation holds about 4 000 characters: the values of the checks that failed only on GitHub first.
   const pick = (path) => path.split('.').reduce((v, k) => (v == null ? undefined : v[k]), result);
-  const values = Object.fromEntries(['layers.cubeLine', 'layers.rootLine', 'layers.quadraticSample.slowTyping'].map((p) => [p, pick(p)]));
+  const values = Object.fromEntries(['layers.cubeLine', 'layers.rootLine', 'layers.rootSteps'].map((p) => [p, pick(p)]));
   console.log(`::notice title=Smoke values::${JSON.stringify(values).replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A').slice(0, 3800)}`);
 }
 console.log(`smoke: screenshots and PDF in ${out}`);

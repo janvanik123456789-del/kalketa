@@ -2062,11 +2062,16 @@ async function layersWithRealInput(picture: string) {
   await pressKey('Enter');
   await clickOn('.tool-button[title^="n-tá odmocnina"]');
   await lineReady(contents, 'root(');
+  // Where the line and its cursor are at each step: on GitHub's runner the 16 did not land in the template.
+  const lineState = `(() => { const a = document.querySelector('textarea.row-editor'); return a ? a.value + ' @' + a.selectionStart + (document.activeElement === a ? '' : ' (no focus: ' + (document.activeElement?.tagName ?? '') + ')') : 'no line'; })()`;
+  const rootSteps: string[] = [(await contents.executeJavaScript(lineState)) as string];
   await typeText('16');
+  rootSteps.push((await contents.executeJavaScript(lineState)) as string);
   await pressKey('End');
   await pressKey('Backspace');
   await pressKey('Backspace');
   await typeText('4) =');
+  rootSteps.push((await contents.executeJavaScript(lineState)) as string);
   const rootLine = (await contents.executeJavaScript(`document.querySelector('textarea.row-editor')?.value ?? ''`)) as string;
   await clickOn('.statusbar');
   await pause(500);
@@ -3540,7 +3545,7 @@ async function layersWithRealInput(picture: string) {
   // The folder of the file saved last is where the open and save dialogs start next time.
   const folderKept = lastFolder() === dirname(resolve(tabFile));
   const saveOnClose = { closeButtons, keptOnCancel, savedOnClose, windowSaved, folderKept, ok: closeButtons.join('|') === 'Uložit|Neukládat|Zrušit' && keptOnCancel && savedOnClose && windowSaved && folderKept };
-  return { ...state, pickTaken, deflection, derivations, summaryOk, summaryOpens, summaryAtEnd, bookStyle, verdictFuture, verdictBack, pageHead, definitionAtCursor, solveFormatted, sheetGridOk, sheetGrid, tableEnter, tableEnterAt, lastRowEnter, draggedRows, selectedAll, bothFormatted, roundedOn, equationNumber, solvedByFormula, rootsAndExtremes, wordText, wordColored, paletteColored, wordPrinted, cellMarked, cellFont, systemFont, cellDeleted, paperRoots, tableRowAdded, chartSteps, samplesOk, sampleTab, newKeepsExample, citations, notesPicture, notesPlaced, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, toolIcons, aiSettings, aiChat, pdfCleanup, theoryLibrary, study, sheetPicture, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, placedFree, strictPlaced, canvasOk, besideText, pictures, blocksOk, userChart, quadraticSample, saveOnClose, relations: relationsOk };
+  return { ...state, pickTaken, deflection, derivations, summaryOk, summaryOpens, summaryAtEnd, bookStyle, verdictFuture, verdictBack, pageHead, definitionAtCursor, solveFormatted, sheetGridOk, sheetGrid, tableEnter, tableEnterAt, lastRowEnter, draggedRows, selectedAll, bothFormatted, roundedOn, equationNumber, solvedByFormula, rootsAndExtremes, wordText, wordColored, paletteColored, wordPrinted, cellMarked, cellFont, systemFont, cellDeleted, paperRoots, tableRowAdded, chartSteps, samplesOk, sampleTab, newKeepsExample, citations, notesPicture, notesPlaced, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, rootSteps, toolIcons, aiSettings, aiChat, pdfCleanup, theoryLibrary, study, sheetPicture, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, placedFree, strictPlaced, canvasOk, besideText, pictures, blocksOk, userChart, quadraticSample, saveOnClose, relations: relationsOk };
 }
 
 /** The tidied sources saved as a library (.kalkt) and attached in the chat: the model cites it by its key. */
@@ -4482,6 +4487,9 @@ if (process.platform === 'linux') {
   if (!app.commandLine.hasSwitch('ozone-platform')) app.commandLine.appendSwitch('ozone-platform', 'x11');
   if (virtualMachine()) app.disableHardwareAcceleration();
 }
+// Drawing without the GPU on request (KALKETA_SOFTWARE_RENDERING=1): a way out where the GPU misbehaves,
+// and the way to see the program as it runs in a virtual machine.
+if (process.env['KALKETA_SOFTWARE_RENDERING'] === '1') app.disableHardwareAcceleration();
 
 /** VMware, VirtualBox, QEMU/KVM, Hyper-V, Parallels: by the vendor of the system the firmware reports. */
 function virtualMachine(): boolean {

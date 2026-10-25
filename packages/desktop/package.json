@@ -83,7 +83,7 @@
     "deb": {
       "packageName": "kalketa",
       "artifactName": "kalketa_${version}_${arch}.${ext}",
-      "maintainer": "Kalketa <kalketa@kalketa.local>",
+      "maintainer": "Jan Vaník <347867514+janvanik123456789-del@users.noreply.github.com>",
       "packageCategory": "science"
     },
     "linux": {

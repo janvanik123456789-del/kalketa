@@ -2068,6 +2068,9 @@ export interface InsertMenuSetup {
   onAction(choice: InsertChoice): void;
 }
 
+/** Where the cursor was in the line being edited: a row editor made anew for the same line puts it back there. */
+let lastCaret: { readonly line: number; readonly text: string; readonly at: number } | undefined;
+
 function RowEditor({ seg, initialCursor, decimalComma, result, onChange, onEnter, onTab, onDeleteEmpty, onMove, onDone, insert, autoDefine, autocorrect: correct, completions, completionTitle }: RowEditorProps) {
   // The line is edited in the user's notation (50,5) and stored in file notation (50.5).
   // What the user types is kept as typed: converting it back on every keystroke
@@ -2082,9 +2085,6 @@ function RowEditor({ seg, initialCursor, decimalComma, result, onChange, onEnter
   };
   // A change from outside (not typed here) replaces the draft.
   if (seg.text !== lastStored.current) {
-    // Counted for the smoke test: on a slow machine a late answer of the sheet may come here (diagnosis).
-    const w = window as { __kalketaOutsideEdits?: string[] };
-    w.__kalketaOutsideEdits = [...(w.__kalketaOutsideEdits ?? []).slice(-5), `${JSON.stringify(lastStored.current)}→${JSON.stringify(seg.text)}`];
     lastStored.current = seg.text;
     setShown(toShown(seg.text));
   }
@@ -2096,8 +2096,16 @@ function RowEditor({ seg, initialCursor, decimalComma, result, onChange, onEnter
     const area = ref.current;
     if (!area) return;
     area.focus();
-    const at = Math.min(initialCursor ?? area.value.length, area.value.length);
+    // The editor of the same line made anew (a late recalculation redraws the row) keeps the cursor where it was;
+    // a line opened afresh starts at the cursor asked for, else at its end.
+    const kept = lastCaret && lastCaret.line === seg.start && lastCaret.text === area.value ? lastCaret.at : undefined;
+    const at = Math.min(initialCursor ?? kept ?? area.value.length, area.value.length);
     area.setSelectionRange(at, at);
+    const remember = () => {
+      if (document.activeElement === area) lastCaret = { line: seg.start, text: area.value, at: area.selectionStart };
+    };
+    document.addEventListener('selectionchange', remember);
+    return () => document.removeEventListener('selectionchange', remember);
   }, []);
 
   useLayoutEffect(() => {

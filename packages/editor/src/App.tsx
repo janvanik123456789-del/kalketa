@@ -1830,21 +1830,9 @@ export function App() {
       area.focus();
       area.setRangeText(shown, start, area.selectionEnd, 'end');
       area.dispatchEvent(new Event('input', { bubbles: true }));
-      // The cursor inside the template after the line is updated, and again once it is drawn: set before,
-      // it ended up at the end of the line on a slower machine, and what was typed next went there.
-      const at = start + cursor;
-      area.setSelectionRange(at, at);
-      // For the smoke test: where the cursor went (a slower machine put it at the end).
-      const w = window as { __kalketaTemplate?: string[] };
-      w.__kalketaTemplate = [...(w.__kalketaTemplate ?? []), `in line ${JSON.stringify(area.value)} @${area.selectionStart} want ${at}`];
-      // Again only where it jumped to the end: a key already typed in the template keeps its place.
-      requestAnimationFrame(() => {
-        w.__kalketaTemplate = [...(w.__kalketaTemplate ?? []), `frame @${area.selectionStart} connected ${area.isConnected}`];
-        if (area.selectionStart === area.value.length && at < area.value.length && area.value.includes(shown)) area.setSelectionRange(at, at);
-      });
+      // The cursor inside the template, after the line is updated (the line's editor keeps it if it is made anew).
+      area.setSelectionRange(start + cursor, start + cursor);
     } else {
-      const w = window as { __kalketaTemplate?: string[] };
-      w.__kalketaTemplate = [...(w.__kalketaTemplate ?? []), `new line, cursor ${cursor}`];
       insertLine(source, cursor);
     }
   };

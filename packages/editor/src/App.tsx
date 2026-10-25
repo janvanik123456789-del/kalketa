@@ -1829,8 +1829,15 @@ export function App() {
       const start = area.selectionStart;
       area.focus();
       area.setRangeText(shown, start, area.selectionEnd, 'end');
-      area.setSelectionRange(start + cursor, start + cursor);
       area.dispatchEvent(new Event('input', { bubbles: true }));
+      // The cursor inside the template after the line is updated, and again once it is drawn: set before,
+      // it ended up at the end of the line on a slower machine, and what was typed next went there.
+      const at = start + cursor;
+      area.setSelectionRange(at, at);
+      // Again only where it jumped to the end: a key already typed in the template keeps its place.
+      requestAnimationFrame(() => {
+        if (area.selectionStart === area.value.length && at < area.value.length && area.value.includes(shown)) area.setSelectionRange(at, at);
+      });
     } else {
       insertLine(source, cursor);
     }

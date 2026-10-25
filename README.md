@@ -2,7 +2,7 @@
 
 **Engineering calculations that can be checked.** Kalketa is a desktop calculator for engineers in the spirit of Mathcad: you write the calculation as text, with units, and it prints as a classic technical report: formula, numbers put in, result, check. Tables, pictures, sources and theory belong to the calculation file, not to the program.
 
-[Česky](README.cs.md) · [Download](https://github.com/OWNER/kalketa/releases) · MIT licence
+[Česky](README.cs.md) · [Download](https://github.com/janvanik123456789-del/kalketa/releases) · MIT licence
 
 ![Start screen with the sample calculations](docs/images/start.png)
 
@@ -24,7 +24,7 @@
 
 ## Download
 
-Windows (installer or portable `.exe`) and Linux (`.AppImage`, which runs without installing, or `.deb`) builds are on the [Releases](https://github.com/OWNER/kalketa/releases) page. The program speaks Czech and English.
+Windows (installer or portable `.exe`) and Linux (`.AppImage`, which runs without installing, or `.deb`) builds are on the [Releases](https://github.com/janvanik123456789-del/kalketa/releases) page. The program speaks Czech and English.
 
 ## Build from source
 

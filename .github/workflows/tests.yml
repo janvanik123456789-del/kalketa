@@ -25,8 +25,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -41,8 +41,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -53,11 +53,16 @@ jobs:
       - run: |
           mkdir -p "$RUNNER_TEMP/kalketa-smoke"
           echo "TMPDIR=$RUNNER_TEMP/kalketa-smoke" >> "$GITHUB_ENV"
+      # Electron's sandbox on the runner: its helper must belong to root, and Ubuntu's AppArmor must let it make namespaces.
+      - run: |
+          sudo chown root:root node_modules/electron/dist/chrome-sandbox
+          sudo chmod 4755 node_modules/electron/dist/chrome-sandbox
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
       - run: npm run build:desktop
       - run: xvfb-run -a -s "-screen 0 1920x1080x24" node scripts/smoke.mjs
       # Screenshots and result.json of the run, to see what went wrong.
       - if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: smoke-screenshots
           path: ${{ runner.temp }}/kalketa-smoke

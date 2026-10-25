@@ -258,15 +258,19 @@ delete env.ANTHROPIC_API_KEY;
 delete env.ANTHROPIC_AUTH_TOKEN;
 delete env.ELECTRON_RUN_AS_NODE;
 const packaged = process.env.KALKETA_SMOKE_EXE;
-const child = spawn(packaged ?? electron, packaged ? [] : [desktop], { env, stdio: ['ignore', 'pipe', 'ignore'] });
+const child = spawn(packaged ?? electron, packaged ? [] : [desktop], { env, stdio: ['ignore', 'pipe', 'pipe'] });
 let stdout = '';
+let stderr = '';
 child.stdout.on('data', (chunk) => (stdout += chunk));
+// Kept for a report on GitHub, where a program that does not start says why only here.
+child.stderr.on('data', (chunk) => (stderr = (stderr + chunk).slice(-4000)));
 await new Promise((done) => child.on('close', done));
 fakeApi.close();
 
 const line = stdout.split(/\r?\n/).find((l) => l.startsWith('{') && l.includes('"ok"'));
 if (!line) {
   console.error('smoke: the app printed no result');
+  if (process.env.GITHUB_ACTIONS) console.log(`::error title=Smoke test::the app printed no result. ${stderr.replace(/\r?\n/g, ' | ')}`);
   process.exit(1);
 }
 const result = JSON.parse(line);

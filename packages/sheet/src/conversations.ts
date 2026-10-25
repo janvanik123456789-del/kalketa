@@ -44,6 +44,8 @@ export interface Conversation {
   readonly turns: readonly ConversationTurn[];
   /** How many of its turns the sheet's memory already takes in (the memory was updated after them). */
   readonly remembered?: number;
+  /** It makes a new calculation from its intent (questions, outline, then the sheet). */
+  readonly intent?: boolean;
 }
 
 function path(layerId: string): string {

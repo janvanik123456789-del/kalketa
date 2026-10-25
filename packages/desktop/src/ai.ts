@@ -42,6 +42,8 @@ interface ChatAsk {
   readonly turns: readonly ChatTurn[];
   /** The sheet's memory from earlier conversations (ch. 9.7). */
   readonly memory?: string;
+  /** A new calculation from its intent: questions, outline, then the sheet (ch. 9.3). */
+  readonly intent?: boolean;
 }
 
 /** Answers being written, so the editor can stop one. */
@@ -192,6 +194,7 @@ export function registerAiBridge(fromEditor: (event: IpcMainInvokeEvent) => unkn
       ...(ask.python === true ? { python: { numpy: pyodideHasNumpy(app.isPackaged ? process.resourcesPath : undefined) } } : {}),
       query: asked,
       cited,
+      ...(ask.intent === true ? { intent: true } : {}),
     });
     const turns = ask.turns.map((t) => ({ role: t.role, text: t.text }));
     const effort = memory ? 'low' : AI_EFFORTS.find((e) => e === ask.effort);

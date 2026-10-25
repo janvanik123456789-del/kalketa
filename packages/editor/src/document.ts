@@ -170,6 +170,8 @@ export interface AiChatAsk {
   readonly turns: readonly { readonly role: 'user' | 'assistant'; readonly text: string; readonly theory?: { readonly sent: readonly string[]; readonly total: number } }[];
   /** The sheet's memory from earlier conversations. */
   readonly memory?: string;
+  /** A new calculation from its intent: the model asks, agrees an outline, then writes the sheet. */
+  readonly intent?: boolean;
 }
 
 export interface AiKeyState {

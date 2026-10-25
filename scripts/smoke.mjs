@@ -122,6 +122,23 @@ const fakeApi = createServer((request, response) => {
         think();
         return;
       }
+      // A new calculation from its intent: questions first, then an outline, then the whole sheet replacing the empty one,
+      // by the number of the user's turns; only when the briefing says so.
+      if (system.includes('starts a new calculation from its intent')) {
+        const lf = String.fromCharCode(10);
+        const fence = '`'.repeat(3);
+        const asked = body.messages.filter((m) => m.role === 'user').length;
+        const lines = [...system.matchAll(/^ *(\d+) \| /gm)].map((m) => Number(m[1]));
+        const text =
+          asked === 1
+            ? `záměr: otázky.${lf}1. Ocel S235? 2. Profil z tabulky IPE?`
+            : asked === 2
+              ? `záměr: osnova.${lf}1. Zadání 2. Ohybový moment 3. Posudek ohybu. Souhlasíte?`
+              : `záměr: list.${lf}${lf}${fence}change 1-${Math.max(1, ...lines)}${lf}# Prostý nosník se silou uprostřed${lf}"Předmět výpočtu: prostý nosník 4 m se silou 2 kN uprostřed, posouzení ohybu."${lf}F := 2 kN${lf}L := 4 m${lf}M := F·L/4${lf}${fence}${lf}`;
+        response.write(event({ model: 'local-smoke-7b', choices: [{ delta: { content: text } }] }));
+        response.end(event('[DONE]'));
+        return;
+      }
       // "Napiš nový…": a whole new calculation, and how many other open sheets the briefing had.
       if (question.startsWith('Napiš nový')) {
         const lf = String.fromCharCode(10);

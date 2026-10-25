@@ -86,6 +86,8 @@ export interface ChatPaneProps {
   /** Puts a note the model proposed into its layer; whether it is there already. */
   onKeepNote?(note: NoteBlock): void;
   noteKept?(note: NoteBlock): boolean;
+  /** The conversation makes a new calculation from its intent (questions, outline, then the sheet). */
+  readonly intent?: boolean;
 }
 
 /** How many times in a row the model gets the results of its checks back when they disagree. */
@@ -100,7 +102,7 @@ export interface AnswerProposals {
   readonly effect?: ProposalEffect;
 }
 
-export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTurns, context, onOpenSettings, onNew, libraries = [], onLibraries, onToggleLibrary, proposals, onDecide, onReview, answerProposals, onAcceptAll, onNewSheet, newSheets, onOpenSheet, runCheck, checkSheet, onCheckToSources, onChoice, onKeepNote, noteKept }: ChatPaneProps) {
+export function ChatPane({ catalog, settings, aiOn, onAiOn, intent, turns, theory, onTurns, context, onOpenSettings, onNew, libraries = [], onLibraries, onToggleLibrary, proposals, onDecide, onReview, answerProposals, onAcceptAll, onNewSheet, newSheets, onOpenSheet, runCheck, checkSheet, onCheckToSources, onChoice, onKeepNote, noteKept }: ChatPaneProps) {
   const [libraryMenu, setLibraryMenu] = useState(false);
   // The menu of libraries closes like any menu: a click anywhere else, or Esc.
   useEffect(() => {
@@ -304,6 +306,7 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTur
         turns: asked,
         ...(memory ? { memory } : {}),
         ...(runCheck ? { python: true } : {}),
+        ...(intent ? { intent: true } : {}),
       });
       // An answer the length limit cut keeps a note saying so; no answer at all is not kept, the user is told why.
       if (result.ok)
@@ -499,7 +502,7 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, turns, theory, onTur
           className="chat-input"
           rows={3}
           value={draft}
-          placeholder={t(catalog, 'chat.placeholder')}
+          placeholder={t(catalog, intent && turns.length === 0 ? 'chat.intentPlaceholder' : 'chat.placeholder')}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {
             // Enter sends, Shift+Enter starts a new line.

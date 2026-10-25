@@ -19,6 +19,8 @@ export interface StartScreenProps {
   readonly onSample: (id: string) => void;
   readonly onRecent: (path: string) => void;
   readonly onHelp: () => void;
+  /** A new calculation from its intent, with the AI. */
+  readonly onIntent?: () => void;
   readonly onClose: () => void;
 }
 
@@ -68,6 +70,11 @@ export function StartScreen(props: StartScreenProps) {
         <button type="button" className="start-action" data-start="open" onClick={props.onOpen}>
           {t(catalog, 'start.open')}
         </button>
+        {props.onIntent && (
+          <button type="button" className="start-action" data-start="intent" onClick={props.onIntent}>
+            {t(catalog, 'start.intent')}
+          </button>
+        )}
         <span className="grow" />
         <button type="button" className="start-link" onClick={props.onHelp}>
           {t(catalog, 'start.help')}

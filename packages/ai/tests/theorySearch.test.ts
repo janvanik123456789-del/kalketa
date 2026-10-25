@@ -41,3 +41,13 @@ describe('finding the theory for a question', () => {
     expect(prepared.text).not.toContain('Průhyb nosníků se omezuje');
   });
 });
+
+describe('a new calculation from its intent', () => {
+  it('tells the model to ask first, agree an outline, and write the sheet only then', () => {
+    const plain = prepareBriefing({ language: 'cs', sheet: { title: 'N1', source: '# N1' } }).text;
+    const intent = prepareBriefing({ language: 'cs', sheet: { title: 'N1', source: '# N1' }, intent: true }).text;
+    expect(plain).not.toContain('starts a new calculation from its intent');
+    expect(intent).toContain('starts a new calculation from its intent');
+    expect(intent).toContain('Předmět výpočtu:');
+  });
+});

@@ -42,7 +42,19 @@ export interface BriefingInput {
   readonly cited?: readonly string[];
   /** The sheet's memory from earlier conversations (ch. 9.7). */
   readonly memory?: string;
+  /** The conversation starts a new calculation from its intent (ch. 9.3): questions, outline, then the sheet. */
+  readonly intent?: boolean;
 }
+
+/**
+ * How a calculation is made from its intent (docs/01-filozofie.md, ch. 9.3): the model asks first, then agrees
+ * an outline, and writes the sheet only when the user agrees; nothing is filled in silently.
+ */
+export const INTENT_RULES = `This conversation starts a new calculation from its intent. Work in steps, one step per answer, and write no sheet before the last one:
+1. Questions: ask what the calculation needs and the intent does not say (loads, materials, dimensions, the standard, what is to be checked), at most five, numbered. For each, offer a sensible default with where it comes from, so the user can just confirm it.
+2. Outline: when the questions are answered, propose the sections in order, what each computes, the checks with their standards, and the tables of data it needs with their sources. Ask the user to confirm or change it.
+3. Sheet: only when the user confirms the outline, write the whole calculation into this sheet as one change block that replaces all its lines. Start with its title as a level-one heading, then a text line stating the subject of the calculation in the user's words (in Czech it begins "Předmět výpočtu:"), then the inputs, each assumption with a comment.
+If the user asks to skip a step, skip it.`;
 
 /** The briefing, and which theory sections it carries. */
 export interface PreparedBriefing {
@@ -123,6 +135,7 @@ ${sheet.theory!.filter((s) => s.id).map((s) => `[${s.id}] ${s.title}`).join('\n'
 - Point at lines by their numbers. The program computes; do not recalculate results by hand unless asked.
 - Answer in ${languageName(input.language)}, briefly and to the point. Keep identifiers, units and formulas as they are written in the sheet.
 - Lines of the sheet are given with their numbers; the findings and computed results refer to those numbers.${input.python ? `\n${pythonRule(input.python.numpy)}` : ''}`,
+    input.intent ? INTENT_RULES : '',
     writingRules(sheet.detail),
     input.languageGuide ? `Calculation language:\n${input.languageGuide}` : '',
     `The sheet "${sheet.title}" (read-only for you):\n${numbered(sheet.source)}`,

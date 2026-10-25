@@ -3922,6 +3922,7 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
   let pythonChat = { checks: 0, first: '', last: '', answers: 0, told: '', keep: 0, tables: 0, kept: false, askedFirst: false, declined: false, copyWithoutAi: false };
   let sheetCheck = { checks: 0, report: '', answers: '' };
   let answerBlocks = { choiceButtons: '', levelAnswer: '', noteButton: '', noteAfter: '' };
+  let intentFlow = { placeholder: '', answers: [] as string[], sheet: '', ok: false };
   let thinkingCut = '';
   let together = { allButton: '', acceptedAll: 0, undoneAll: -1, copy: { tab: '', rows: 0, marked: 0, badges: 0 }, original: { rows: -1, state: 0 } };
   let proposal = { card: '', accepted: false, state: '', undone: false, journal: '', marked: '', reviewed: false, markedAgain: false, printAsks: '', printClosed: false };
@@ -4146,6 +4147,29 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
       await pause(300);
     }
     if (await contents.executeJavaScript(`!!document.querySelector('.layer-tab[data-layer="main"]')`)) await clickOn('.layer-tab[data-layer="main"]');
+    // A new calculation from its intent (Tools): an empty sheet and a conversation in which the model asks first,
+    // then proposes an outline, and writes the sheet only when the user agrees; accepted, it states its subject.
+    const tabBeforeIntent = (await contents.executeJavaScript(`[...document.querySelectorAll('.doc-tab')].findIndex((t) => t.classList.contains('active'))`)) as number;
+    await clickOn('.menubar-item:nth-child(6) > button');
+    await clickMenu('Nový výpočet ze záměru');
+    await pause(800);
+    const placeholder = (await contents.executeJavaScript(`document.querySelector('.chat-input')?.placeholder ?? ''`)) as string;
+    const answered = `document.querySelectorAll('.chat-pane .chat-turn.assistant:not(.writing)').length`;
+    for (const said of ['Prostý nosník 4 m se silou 2 kN uprostřed, posoudit ohyb.', 'Ano, podle návrhu.', 'Souhlasím s osnovou.']) {
+      const before = (await contents.executeJavaScript(answered)) as number;
+      await clickOn('.chat-input');
+      await typeText(said);
+      await pressKey('Enter');
+      for (let i = 0; i < 60 && ((await contents.executeJavaScript(answered)) as number) <= before; i++) await pause(150);
+    }
+    const answers = (await contents.executeJavaScript(`[...document.querySelectorAll('.chat-pane .chat-turn.assistant:not(.writing)')].map((t) => t.textContent.slice(0, 40))`)) as string[];
+    await takePicture(picture.replace(/[.]png$/, '-ai-intent.png'));
+    if (await contents.executeJavaScript(`!!document.querySelector('.chat-pane .proposal-accept')`)) await clickOn('.chat-pane .proposal-accept');
+    await pause(500);
+    const sheet = (await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .page .row')].map((r) => r.textContent.replace(/\\s+/g, ' ').trim()).filter(Boolean).slice(0, 3).join(' | ')`)) as string;
+    intentFlow = { placeholder, answers, sheet, ok: placeholder.startsWith('Popište, co chcete spočítat') && answers.length === 3 && answers[0]!.startsWith('záměr: otázky') && answers[1]!.startsWith('záměr: osnova') && answers[2]!.startsWith('záměr: list') && sheet.includes('Předmět výpočtu') };
+    await clickOn(`.doc-tab:nth-child(${tabBeforeIntent + 1}) .doc-tab-title`);
+    await pause(400);
   }
   // The side pane's tabs switch what it shows with one click.
   await clickOn('.pane-tab[data-pane="tables"]');
@@ -4157,7 +4181,7 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
   await clickMenu('Boční panel');
   await clickMenu(back);
   await pause(300);
-  await writeFile(picture.replace(/[.]png$/, '-ai-chat.json'), JSON.stringify({ pasted, unpasted, typed, theory, offered, quietWhileOff, head, shown, cutOff, cleared, aiTab, layerShown, kept, resumed, proposal, together, newSheet, pythonChat, sheetCheck, answerBlocks, paneTabs, thoughtFolded, thought }, null, 2));
+  await writeFile(picture.replace(/[.]png$/, '-ai-chat.json'), JSON.stringify({ pasted, unpasted, typed, theory, offered, quietWhileOff, head, shown, cutOff, cleared, aiTab, layerShown, kept, resumed, proposal, together, newSheet, pythonChat, sheetCheck, answerBlocks, paneTabs, thoughtFolded, thought, intentFlow }, null, 2));
   return (
     pasted === 'Klopení je ztráta stability ohýbaného nosníku. Vloženo ze schránky.' && unpasted === 'Klopení je ztráta stability ohýbaného nosníku.' &&
     typed === 'H2:Klopení|P:Klopení je ztráta stability ohýbaného nosníku.' && theory.heading === 'Klopení' && /^T\d+$/.test(theory.badge) &&
@@ -4182,6 +4206,7 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
     newSheet.opened.tab.startsWith('Nosník se silou') && newSheet.opened.marked >= 3 && newSheet.opened.errors.startsWith('chyba: 0') && newSheet.state.startsWith('Otevřeno jako „Nosník se silou“') &&
     pythonChat.checks === 2 && pythonChat.answers === 2 && pythonChat.told.includes('python: ano') && pythonChat.first.includes('✗') && pythonChat.last.includes('✓') && !pythonChat.last.includes('✗') && pythonChat.keep === 2 && pythonChat.tables === 2 && pythonChat.kept && pythonChat.askedFirst && pythonChat.declined && pythonChat.copyWithoutAi &&
     sheetCheck.checks === 1 && sheetCheck.report.includes('Kontrola navrženého listu') && sheetCheck.report.includes('„smoke_d“ už je definováno') && sheetCheck.report.includes('t_v2 == t_v') && sheetCheck.report.includes('777') && sheetCheck.report.includes('Smoke dost dlouhé') && sheetCheck.answers === 'zdvojeno: první|zdvojeno: opraveno' &&
+    intentFlow.ok &&
     answerBlocks.choiceButtons === 'Stručně: vzorec, dosazení, výsledek|Jako na papíře: vztahy, odvození krok po kroku|Výukově: navíc vysvětlení a ověření v Pythonu' && answerBlocks.levelAnswer.includes('úroveň: paper') && answerBlocks.noteButton === 'Vložit do Poznámek AI' && answerBlocks.noteAfter === 'Vloženo' &&
     thinkingCut.includes('Odpověď hned.') && thinkingCut.includes('bez přemýšlení') &&
     together.allButton === 'Přijmout vše (2)' && together.acceptedAll === 2 && together.undoneAll === 0 &&

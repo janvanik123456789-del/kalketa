@@ -210,6 +210,8 @@ export function App() {
   const [controls, setControls] = useState(() => readControls(stored(CONTROLS_KEY)));
   const [startOpen, setStartOpen] = useState(() => controls.startScreen && !new URLSearchParams(location.search).has('blank') && !(!!desktop && sessionFiles().length > 0));
   const [sampleList] = useState(samples);
+  // A new calculation from its intent: asked for ('pending'), then the tab whose next conversation it is.
+  const [intentFor, setIntentFor] = useState<number | 'pending' | undefined>();
   const [ribbonCollapsed, setRibbonCollapsed] = useState(() => stored(RIBBON_COLLAPSED_KEY) === 'yes');
   const tab = docs.tabs.find((d) => d.id === docs.active) ?? docs.tabs[0]!;
   /** A saved calculation is called by its file name; a new one by its title. */
@@ -1069,6 +1071,25 @@ export function App() {
       .sort((a, b) => a.line - b.line);
     return { outline, checks, problems };
   };
+  /**
+   * A new calculation from its intent (Tools, the start screen): an empty sheet, the AI pane, and a conversation
+   * in which the model asks first, agrees an outline, then writes the sheet (docs/01-filozofie.md, ch. 9.3).
+   */
+  const startIntent = () => {
+    setStartOpen(false);
+    if (!isPristine(tab)) commands.get('file.new')?.run();
+    setIntentFor('pending');
+    choosePane('chat');
+  };
+  // The intent belongs to the empty sheet it was asked in, once that is the active tab.
+  useEffect(() => {
+    if (intentFor === 'pending' && isPristine(tab)) {
+      startedChat.current[tab.id] = undefined;
+      setActiveChat((all) => ({ ...all, [tab.id]: '' }));
+      setIntentFor(tab.id);
+    }
+  }, [intentFor, tab.id]);
+
   /** Scrolls to the row of a line of the sheet shown (the row it is in) and selects it, briefly marked. */
   const jumpToLine = (line: number) => {
     const row = [...layerRows(layer.id)].reverse().find((r) => Number(r.dataset['line']) <= line);
@@ -1965,6 +1986,7 @@ export function App() {
       addLayer: (kind) => void newLayer(kind),
       insertBlock: () => void insertBlock(),
       settings: () => setDialog('settings'),
+      intent: () => startIntent(),
       study: () => {
         void libraries.refresh();
         setDialog('study');
@@ -2304,7 +2326,7 @@ export function App() {
         ];
       })(),
     },
-    { label: t(ui, 'menu.tools'), items: [cmd('tools.ai'), cmd('tools.study'), cmd('tools.settings')] },
+    { label: t(ui, 'menu.tools'), items: [cmd('tools.ai'), cmd('tools.intent'), cmd('tools.study'), cmd('tools.settings')] },
     {
       label: t(ui, 'menu.window'),
       items: [
@@ -2536,6 +2558,7 @@ export function App() {
                     {pane === 'chat' ? (
                       <ChatPane
                         catalog={ui}
+                        intent={chat?.intent ?? intentFor === tab.id}
                         settings={aiSettings}
                         aiOn={aiOn}
                         onAiOn={(on) => {
@@ -2551,7 +2574,7 @@ export function App() {
                           setActiveChat((all) => ({ ...all, [tab.id]: id }));
                           const last = turns[turns.length - 1];
                           changeWith((present) => {
-                            let next = withConversation(present, { id, started, provider: aiSettings.provider, ...(aiSettings.model ? { model: aiSettings.model } : {}), turns });
+                            let next = withConversation(present, { id, started, provider: aiSettings.provider, ...(aiSettings.model ? { model: aiSettings.model } : {}), ...(chat?.intent || intentFor === tab.id ? { intent: true } : {}), turns });
                             if (last?.role !== 'assistant') return next;
                             // Changes the answer proposes go into the journal, open, with the lines they replace as they are now.
                             const known = new Set(entriesOf(next).map((e) => e.id));
@@ -2608,6 +2631,7 @@ export function App() {
                       noteKept={noteIsKept}
                         onNew={() => {
                           rememberConversation(chat);
+                          if (intentFor === tab.id) setIntentFor(undefined);
                           startedChat.current[tab.id] = undefined;
                           setActiveChat((all) => ({ ...all, [tab.id]: '' }));
                         }}
@@ -2762,6 +2786,7 @@ export function App() {
                 setStartOpen(false);
                 setDialog('functions');
               }}
+              onIntent={startIntent}
               onClose={() => setStartOpen(false)}
             />
           )}

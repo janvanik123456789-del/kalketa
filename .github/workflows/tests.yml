@@ -55,8 +55,9 @@ jobs:
           echo "TMPDIR=$RUNNER_TEMP/kalketa-smoke" >> "$GITHUB_ENV"
       # Electron's sandbox on the runner: its helper must belong to root, and Ubuntu's AppArmor must let it make namespaces.
       - run: |
-          sudo chown root:root node_modules/electron/dist/chrome-sandbox
-          sudo chmod 4755 node_modules/electron/dist/chrome-sandbox
+          sandbox="$(dirname "$(node -p "require.resolve('electron/package.json', { paths: ['packages/desktop'] })")")/dist/chrome-sandbox"
+          sudo chown root:root "$sandbox"
+          sudo chmod 4755 "$sandbox"
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
       - run: npm run build:desktop
       - run: xvfb-run -a -s "-screen 0 1920x1080x24" node scripts/smoke.mjs

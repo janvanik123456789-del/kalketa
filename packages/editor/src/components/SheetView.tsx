@@ -2105,7 +2105,11 @@ function RowEditor({ seg, initialCursor, decimalComma, result, onChange, onEnter
       if (document.activeElement === area) lastCaret = { line: seg.start, text: area.value, at: area.selectionStart };
     };
     document.addEventListener('selectionchange', remember);
-    return () => document.removeEventListener('selectionchange', remember);
+    return () => {
+      document.removeEventListener('selectionchange', remember);
+      // Taken also as the editor goes: a cursor set just before (a template inserted) has had no event yet.
+      lastCaret = { line: seg.start, text: area.value, at: area.selectionStart };
+    };
   }, []);
 
   useLayoutEffect(() => {

@@ -17,7 +17,7 @@
     "electron": "^44.4.5",
     "electron-builder": "^26.15.3"
   },
-  "homepage": "https://kalketa.local",
+  "homepage": "https://github.com/janvanik123456789-del/kalketa",
   "desktopName": "kalketa.desktop",
   "build": {
     "appId": "cz.kalketa.desktop",

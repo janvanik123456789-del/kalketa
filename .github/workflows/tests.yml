@@ -53,6 +53,8 @@ jobs:
       - run: |
           mkdir -p "$RUNNER_TEMP/kalketa-smoke"
           echo "TMPDIR=$RUNNER_TEMP/kalketa-smoke" >> "$GITHUB_ENV"
+      # Electron fetches its program on first use; the smoke test needs it now.
+      - run: node node_modules/electron/install.js
       # Electron's sandbox on the runner: its helper must belong to root, and Ubuntu's AppArmor must let it make namespaces.
       - run: |
           sandbox="$(dirname "$(node -p "require.resolve('electron/package.json', { paths: ['packages/desktop'] })")")/dist/chrome-sandbox"

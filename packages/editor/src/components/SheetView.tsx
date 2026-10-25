@@ -2082,6 +2082,9 @@ function RowEditor({ seg, initialCursor, decimalComma, result, onChange, onEnter
   };
   // A change from outside (not typed here) replaces the draft.
   if (seg.text !== lastStored.current) {
+    // Counted for the smoke test: on a slow machine a late answer of the sheet may come here (diagnosis).
+    const w = window as { __kalketaOutsideEdits?: string[] };
+    w.__kalketaOutsideEdits = [...(w.__kalketaOutsideEdits ?? []).slice(-5), `${JSON.stringify(lastStored.current)}→${JSON.stringify(seg.text)}`];
     lastStored.current = seg.text;
     setShown(toShown(seg.text));
   }

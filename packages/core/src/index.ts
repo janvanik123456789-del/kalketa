@@ -23,6 +23,7 @@ export { civilFromDays, DATE_UNIT, parseDate } from './values/date.js';
 export { resolveUnit, formatUnit, type ResolvedUnit } from './units/unitExpr.js';
 export { toDisplay, inUnit, baseUnitSymbol, type DisplayValue } from './units/display.js';
 export * from './values/value.js';
+export { worthShowing, toNumber as exactToNumber, type Exact } from './values/exact.js';
 export { evaluate, LINE_TIME_LIMIT_MS, withTimeLimit, type EvalContext } from './eval/evaluator.js';
 export { FUNCTION_NAMES, BUILTIN_CONSTANTS, builtinFunctions } from './eval/functions.js';
 export { FUNCTION_MODULES, FunctionRegistry, signature, type FunctionDef, type FunctionModuleId } from './functions/registry.js';

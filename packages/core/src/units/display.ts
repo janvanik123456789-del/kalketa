@@ -10,6 +10,7 @@ import { dimKey, isDimensionless, sameDim, superscript, type Dimension } from '.
 import { PREFERRED_UNITS, type UnitRegistry } from './registry.js';
 import type { ResolvedUnit } from './unitExpr.js';
 import type { Quantity } from '../values/value.js';
+import { divide, fromNumber, subtract, toNumber, worthShowing, type Exact } from '../values/exact.js';
 
 export interface DisplayValue {
   /** Magnitude in `unit`. */
@@ -18,6 +19,8 @@ export interface DisplayValue {
   readonly unit: string;
   /** Imaginary part in `unit`, for complex values. */
   readonly im?: number;
+  /** The value in `unit` exactly (49/9, 13·√2/2), where the calculation kept it and it says more than the number. */
+  readonly exact?: Exact;
 }
 
 const BASE_SYMBOLS: Readonly<Record<string, string>> = {
@@ -35,18 +38,37 @@ export function toDisplay(q: Quantity, registry: UnitRegistry, target?: Resolved
   return scaled(q, 1, baseUnitSymbol(q.dim, registry.baseSymbols()));
 }
 
-function scaled(q: Quantity, factor: number, unit: string): DisplayValue {
-  return { value: q.si / factor, unit, ...(q.im ? { im: q.im / factor } : {}) };
+function scaled(q: Quantity, factor: number, unit: string, exactFactor?: Exact, offset?: number): DisplayValue {
+  const value = q.si / factor;
+  return { value, unit, ...(q.im ? { im: q.im / factor } : {}), ...exactIn(q, value, exactFactor ?? fromNumber(factor), offset) };
+}
+
+/**
+ * The exact form in the unit shown, where it is one and agrees with the number (a form carried along by mistake
+ * through an operation that changed the number is never shown).
+ */
+function exactIn(q: Quantity, value: number, factor: Exact | undefined, offset?: number): { exact?: Exact } {
+  if (!q.exact || !factor || q.im) return {};
+  const shifted = offset === undefined ? q.exact : (() => {
+    const o = fromNumber(offset);
+    return o ? subtract(q.exact!, o) : undefined;
+  })();
+  const exact = shifted && divide(shifted, factor);
+  if (!exact || !worthShowing(exact)) return {};
+  return Math.abs(toNumber(exact) - value) <= 1e-9 * Math.max(1, Math.abs(value)) ? { exact } : {};
 }
 
 /** Converts to a unit; absolute temperatures honour the zero-point shift. */
 export function inUnit(q: Quantity, unit: ResolvedUnit): DisplayValue {
   if (unit.offset !== undefined) {
-    if (q.absolute) return { value: (q.si - unit.offset) / unit.factor, unit: unit.symbol };
+    if (q.absolute) {
+      const value = (q.si - unit.offset) / unit.factor;
+      return { value, unit: unit.symbol, ...exactIn(q, value, unit.exact ?? fromNumber(unit.factor), unit.offset) };
+    }
     // A temperature difference shown in °C is a Δ°C.
-    return { value: q.si / unit.factor, unit: unit.delta ?? unit.symbol };
+    return scaled(q, unit.factor, unit.delta ?? unit.symbol, unit.exact);
   }
-  return scaled(q, unit.factor, unit.symbol);
+  return scaled(q, unit.factor, unit.symbol, unit.exact);
 }
 
 /** "kg·m²/s³" from a dimension; `own` names a sheet's own dimensions (Mena -> CZK). */

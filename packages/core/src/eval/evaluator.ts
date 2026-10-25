@@ -6,6 +6,7 @@
  */
 
 import { diagnostic, fail, type Diagnostic, type Span } from '../diagnostics.js';
+import * as X from '../values/exact.js';
 import type { BinaryOperator, Expr } from '../lang/ast.js';
 import { isDimensionless, multiplyDims, divideDims, powerDim, sameDim, superscript } from '../units/dimension.js';
 import { baseUnitSymbol } from '../units/display.js';
@@ -103,17 +104,22 @@ function evaluateRaw(expr: Expr, ctx: EvalContext): Value {
         if (unit?.offset !== undefined) fail('E-COMPLEX-ARG', expr.span);
         return quantity(0, unit?.dim, { im: expr.value * (unit?.factor ?? 1), ...(unit ? { hint: unit } : {}) });
       }
-      if (!expr.unit) return quantity(expr.value);
+      // The number as written, exactly (0.1 is 1/10): only where values are shown, not at points of an integral.
+      const written = hintsOff ? undefined : X.fromNumber(expr.value);
+      if (!expr.unit) return quantity(expr.value, undefined, written ? { exact: written } : {});
       const unit = resolveUnit(expr.unit, ctx.registry);
+      const scaled = written && unit.exact ? X.multiply(written, unit.exact) : undefined;
       if (unit.offset !== undefined) {
-        return quantity(expr.value * unit.factor + unit.offset, unit.dim, { absolute: true, hint: unit });
+        const offset = X.fromNumber(unit.offset);
+        const exact = scaled && offset ? X.add(scaled, offset) : undefined;
+        return quantity(expr.value * unit.factor + unit.offset, unit.dim, { absolute: true, hint: unit, ...(exact ? { exact } : {}) });
       }
-      return quantity(expr.value * unit.factor, unit.dim, { hint: unit });
+      return quantity(expr.value * unit.factor, unit.dim, { hint: unit, ...(scaled ? { exact: scaled } : {}) });
     }
     case 'unit': {
       // A standalone unit is a scale factor; °C here means a difference.
       const unit = resolveUnit(expr.unit, ctx.registry);
-      return quantity(unit.factor, unit.dim, { hint: withoutOffset(unit) });
+      return quantity(unit.factor, unit.dim, { hint: withoutOffset(unit), ...(unit.exact ? { exact: unit.exact } : {}) });
     }
     case 'string':
       return { type: 'text', value: expr.value };
@@ -129,7 +135,7 @@ function evaluateRaw(expr: Expr, ctx: EvalContext): Value {
     case 'unary': {
       const operand = evaluate(expr.operand, ctx);
       if (expr.operator === 'not') return { type: 'boolean', value: !asBoolean(operand, expr.operand.span) };
-      const negate = (q: Quantity): Quantity => ({ ...q, si: -q.si, ...(q.im ? { im: -q.im } : {}) });
+      const negate = (q: Quantity): Quantity => ({ ...q, si: -q.si, ...(q.im ? { im: -q.im } : {}), ...(q.exact ? { exact: X.negate(q.exact) } : {}) });
       if (operand.type === 'vector' || operand.type === 'matrix') {
         if (expr.operator === '±') fail('E-PLUS-MINUS', expr.span);
       }
@@ -357,14 +363,20 @@ function arithmetic(op: BinaryOperator, left: Value, right: Value, leftExpr: Exp
       // Different units compose: kN/m · m² = kN·m (not joules, which have the same dimension).
       const composed = hintsOff || scaled || combined || !a.hint || !b.hint || a.absolute || b.absolute ? undefined : composedHint(op, a.hint, b.hint, ownNames(ctx.registry), op === '*' ? a.si * b.si : a.si / b.si);
       const hint = keptHint(scaled) ? { hint: scaled!.hint! } : combined ? { hint: combined } : composed ? { hint: composed } : {};
-      if (op === '*') return quantity(a.si * b.si, multiplyDims(a.dim, b.dim), hint);
+      // Exactly as well, where both are exact (absolute temperatures are no fractions of anything).
+      const exactly = a.exact && b.exact && !a.absolute && !b.absolute ? (op === '*' ? X.multiply(a.exact, b.exact) : X.divide(a.exact, b.exact)) : undefined;
+      const exact = exactly ? { exact: exactly } : {};
+      if (op === '*') return quantity(a.si * b.si, multiplyDims(a.dim, b.dim), { ...hint, ...exact });
       if (b.si === 0) fail('E-DIV-ZERO', rightExpr.span);
-      return quantity(a.si / b.si, divideDims(a.dim, b.dim), hint);
+      return quantity(a.si / b.si, divideDims(a.dim, b.dim), { ...hint, ...exact });
     }
     case '^': {
       if (!isDimensionless(b.dim)) fail('E-POWER-DIM', rightExpr.span, { dim: baseUnitSymbol(b.dim) });
       warnOnAbsoluteTemperature(a, leftExpr.span, ctx);
-      return quantity(a.si ** b.si, powerDim(a.dim, b.si), hintsOff ? {} : poweredHint(a, b.si));
+      // A whole power, or ^0.5 as a square root, keeps the exact form.
+      const half = b.exact && b.exact.num === 1n && b.exact.den === 2n && b.exact.root === 1n;
+      const exactly = a.exact && !a.absolute && b.exact ? (half ? X.squareRoot(a.exact) : b.exact.den === 1n && b.exact.root === 1n ? X.power(a.exact, Number(b.exact.num)) : undefined) : undefined;
+      return quantity(a.si ** b.si, powerDim(a.dim, b.si), { ...(hintsOff ? {} : poweredHint(a, b.si)), ...(exactly ? { exact: exactly } : {}) });
     }
     default:
       return compare(op, a, b, span);
@@ -462,21 +474,23 @@ function addSubtract(op: '+' | '-', a: Quantity, b: Quantity, span: Span): Quant
     fail('E-UNIT-MISMATCH', span, { operator: op, left: baseUnitSymbol(a.dim), right: baseUnitSymbol(b.dim) });
   }
   const si = op === '+' ? a.si + b.si : a.si - b.si;
+  const sum = a.exact && b.exact ? (op === '+' ? X.add(a.exact, b.exact) : X.subtract(a.exact, b.exact)) : undefined;
+  const exact = sum ? { exact: sum } : {};
 
   // Absolute temperatures: T + T is meaningless, T - T is a difference.
   if (a.absolute && b.absolute) {
     if (op === '+') fail('E-ABS-TEMP', span);
-    return quantity(si, a.dim, deltaHint(a.hint));
+    return quantity(si, a.dim, { ...deltaHint(a.hint), ...exact });
   }
   if (a.absolute || b.absolute) {
     if (op === '-' && b.absolute) fail('E-ABS-TEMP', span);
     const abs = a.absolute ? a : b;
-    return quantity(si, a.dim, { absolute: true, ...(abs.hint ? { hint: abs.hint } : {}) });
+    return quantity(si, a.dim, { absolute: true, ...(abs.hint ? { hint: abs.hint } : {}), ...exact });
   }
 
   // Keep the unit of the first operand that has one (Calcpad: 1.23 m + 35 cm = 1.58 m).
   const hint = a.hint ?? b.hint;
-  return quantity(si, a.dim, hint ? { hint } : {});
+  return quantity(si, a.dim, { ...(hint ? { hint } : {}), ...exact });
 }
 
 /** A whole power keeps the unit: (20 mm)² is 400 mm², (2 kN/m)² is 4 (kN/m)². */

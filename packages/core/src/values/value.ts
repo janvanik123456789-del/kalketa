@@ -13,6 +13,7 @@ import type { Expr } from '../lang/ast.js';
 import type { Cell, Table } from '../tables/table.js';
 import { DIMENSIONLESS, dimKey, type Dimension } from '../units/dimension.js';
 import type { ResolvedUnit } from '../units/unitExpr.js';
+import type { Exact } from './exact.js';
 
 export interface Quantity {
   readonly type: 'quantity';
@@ -25,6 +26,8 @@ export interface Quantity {
   readonly hint?: ResolvedUnit;
   /** Imaginary part in coherent SI units, for complex values (impedance 3 + 4j Ω). */
   readonly im?: number;
+  /** The exact form of `si` where the calculation could keep it (49/9, 13·√2/2); see values/exact.ts. */
+  readonly exact?: Exact;
 }
 
 export interface BooleanValue {
@@ -113,7 +116,7 @@ export interface MatrixValue {
 
 export type Value = Quantity | BooleanValue | TextValue | TableValue | RowValue | FunctionValue | RecordValue | VectorValue | MatrixValue;
 
-export function quantity(si: number, dim: Dimension = DIMENSIONLESS, extra: Partial<Pick<Quantity, 'absolute' | 'hint' | 'im'>> = {}): Quantity {
+export function quantity(si: number, dim: Dimension = DIMENSIONLESS, extra: Partial<Pick<Quantity, 'absolute' | 'hint' | 'im' | 'exact'>> = {}): Quantity {
   return {
     type: 'quantity',
     si,
@@ -121,6 +124,7 @@ export function quantity(si: number, dim: Dimension = DIMENSIONLESS, extra: Part
     ...(extra.absolute ? { absolute: true } : {}),
     ...(extra.hint ? { hint: extra.hint } : {}),
     ...(extra.im ? { im: extra.im } : {}),
+    ...(extra.exact && !extra.im ? { exact: extra.exact } : {}),
   };
 }
 

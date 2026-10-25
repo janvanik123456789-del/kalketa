@@ -365,7 +365,7 @@ export function allRoots(statement: SolveStatement, ctx: EvalContext, evaluate: 
       throw err;
     }
   })].find((v) => v.hint && found.length > 0 && sameDim(v.dim, found[0]!.dim));
-  if (stated?.hint) found = found.map((r) => (sameDim(r.dim, stated.dim) ? quantity(r.si, r.dim, { ...(r.im ? { im: r.im } : {}), hint: stated.hint! }) : r));
+  if (stated?.hint) found = found.map((r) => (sameDim(r.dim, stated.dim) ? quantity(r.si, r.dim, { ...(r.im ? { im: r.im } : {}), ...(r.exact ? { exact: r.exact } : {}), hint: stated.hint! }) : r));
   const roots = found.map((root): Root => {
     if (root.im && statement.domain !== 'complex') return { value: root, rejected: 'complex' };
     if (!inWholeDomain(root, statement.domain)) return { value: root, rejected: 'domain' };

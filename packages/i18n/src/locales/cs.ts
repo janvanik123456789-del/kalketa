@@ -1126,6 +1126,7 @@ export const cs: Catalog = {
     'format.places.3': 'Výsledek na 3 desetinná místa',
     'format.places.4': 'Výsledek na 4 desetinná místa',
     'format.rounded': 'Počítat dále se zaokrouhlenou hodnotou',
+    'format.exact': 'Přesně: zlomky a odmocniny (49/9 ≐ 5,444)',
     'format.digitsWritten': 'Zapsáno v textu řádku: {n} platné číslice',
     'solve.toDefinition': 'Vložit vzorec jako definici',
     'solve.expressedFrom': 'vyjádřeno z',

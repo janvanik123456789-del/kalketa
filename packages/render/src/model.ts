@@ -17,6 +17,7 @@ import {
   TABLE_TOTAL,
   toDisplay,
   type Diagnostic,
+  type Exact,
   type Expr,
   type LineFormat,
   type TextFont,
@@ -33,7 +34,7 @@ import {
 import { chartLayout, chartSvg, cutChart, parseChartLook, withLook, type ChartLayout, type ChartLook, type ChartSpec } from '@kalketa/chart';
 import { formatDate, formatDiagnostic, formatNumber, t, type Catalog, type NumberFormatOptions } from '@kalketa/i18n';
 import { formulaNode, hasSubstitutableParts, THIN_SPACE, type FormulaOptions, type Substituted } from './formula.js';
-import { mi, mn, mo, mtext, mu, nameNode, paren, row, sup, toText, type MathNode, table } from './math.js';
+import { frac, mi, mn, mo, mtext, mu, nameNode, paren, row, sqrt, sup, toText, type MathNode, table } from './math.js';
 
 export interface PrintOptions {
   readonly catalog: Catalog;
@@ -248,6 +249,8 @@ interface Mode {
   resultOnly: boolean;
   hidden: boolean;
   digits: number;
+  /** @exact: results also as fractions and roots where they are exact; @noexact ends it. */
+  exact: boolean;
 }
 
 /** How a text line looks, {size=12 italic font=serif}: only what the line sets. */
@@ -275,7 +278,7 @@ function textStyle(format: LineFormat | undefined): TextStyle | undefined {
 
 export function buildPrintDocument(result: SheetResult, options: PrintOptions): PrintDocument {
   const { catalog } = options;
-  const mode: Mode = { substitution: true, resultOnly: false, hidden: false, digits: options.digits };
+  const mode: Mode = { substitution: true, resultOnly: false, hidden: false, digits: options.digits, exact: false };
   const blocks: PrintBlock[] = [];
   // Lines written beside the one above them: cells of its row.
   const beside = new Set(result.statements.flatMap((r) => (r.statement.format?.beside ? [r.statement.span.line] : [])));
@@ -320,6 +323,8 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
     if (s.format && (s.kind === 'definition' || s.kind === 'invalid') && s.name) formats.set(s.name, spec);
     // The unknowns of a solve line are shown below as the line shows them.
     if (s.format && s.kind === 'solve') for (const u of s.unknowns) formats.set(u.name, spec);
+    // Results also as fractions and roots: the line asks ({exact}) or the sheet does from @exact on.
+    const lineMode: Mode = s.format?.exact && !mode.exact ? { ...mode, exact: true } : mode;
     const quantityNode = (q: Quantity, name?: string) => {
       const shown = toDisplay(q, options.registry);
       return valueNode(shown.value, shown.unit, numberFormat((name && formats.get(name)) || spec), shown.im, dateFormat);
@@ -437,7 +442,7 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
         // A user function shows as "A_kruh(d) = π·d²/4": its parameters have no values to substitute.
         const params = s.kind === 'definition' ? s.params : undefined;
         const lhs = s.kind !== 'definition' ? undefined : params ? functionHead(s.name, params, formulaOptions().argumentSeparator) : nameNode(s.name);
-        const valueLines = equationLines(r, s.expr, lhs, params ? { ...mode, substitution: false } : mode, formulaOptions, substitute, numberFormat(spec));
+        const valueLines = equationLines(r, s.expr, lhs, params ? { ...lineMode, substitution: false } : lineMode, formulaOptions, substitute, numberFormat(spec));
         // y := a == b == c: every member, then the substitution and the result of the last one.
         const chain = s.kind === 'definition' ? s.derivation : undefined;
         const lines = chain
@@ -449,7 +454,7 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
                   : { role: 'formula', rhs: formulaNode(m, formulaOptions()), ...(s.kind === 'definition' && s.approx?.includes(i - 1) ? { op: '≐' } : {}) },
               ),
               // A function has no values for its parameters: its derivation ends in its formula.
-              ...(isGiven(s.expr) || params ? [] : equationLines(r, s.expr, undefined, mode, formulaOptions, substitute, numberFormat(spec)).filter((l, i) => !(i === 0 && l.role === 'formula'))),
+              ...(isGiven(s.expr) || params ? [] : equationLines(r, s.expr, undefined, lineMode, formulaOptions, substitute, numberFormat(spec)).filter((l, i) => !(i === 0 && l.role === 'formula'))),
             ]
           : valueLines;
         const derived = !!r.derivation && r.derivation.every((step) => step.ok);
@@ -516,7 +521,7 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
           lines.push({ role: 'result', lhs: head, op: '', rhs: mtext(t(catalog, 'print.odeSolved', { order: String(r.ode.order), steps: String(r.ode.steps) })), lead: '⇒' });
         }
         for (const found of r.solutions ?? []) {
-          const value = valueNode(found.display.value, found.display.unit, numberFormat(spec), found.display.im, dateFormat);
+          const value = valueNode(found.display.value, found.display.unit, numberFormat(spec), found.display.im, dateFormat, lineMode.exact ? found.display.exact : undefined);
           // A formula of numbers only (x² + 2·x = 8) says nothing the result does not.
           if (!found.formula || !readsNames(found.formula)) {
             lines.push({ role: 'result', lhs: nameNode(found.name), op: sign(found.relation), rhs: value, ...(found.relation ? { lead: '⇒' } : {}) });
@@ -679,7 +684,7 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
     if (said.length > 0) out.push({ role: 'formula', op: '', rhs: row(...said) });
     const value = (q: Quantity) => {
       const d = toDisplay(q, options.registry);
-      return valueNode(d.value, d.unit, numberFormat(spec), d.im, dateFormat);
+      return valueNode(d.value, d.unit, numberFormat(spec), d.im, dateFormat, mode.exact || s.format?.exact ? d.exact : undefined);
     };
     const substituted = (expr: Expr, extra?: (e: Expr) => Substituted | undefined) => {
       const sub = substitution(result, quantityNode, o);
@@ -1004,7 +1009,7 @@ function equationLines(
   format: (value: number) => string,
 ): EquationLine[] {
   const withLhs = (line: Omit<EquationLine, 'lhs'>, first: boolean): EquationLine => (first && lhs ? { ...line, lhs } : line);
-  const result = resultNode(r, format, formulaOptions().booleans, formulaOptions().argumentSeparator, formulaOptions().date);
+  const result = resultNode(r, format, formulaOptions().booleans, formulaOptions().argumentSeparator, formulaOptions().date, mode.exact);
   // A value written out (5 m, [4, -2 | -2, 4] kN/m) is shown once, not as a formula and again as its result.
   const given = isGiven(expr) || expr.kind === 'string' || expr.kind === 'boolean' || expr.kind === 'date';
 
@@ -1038,9 +1043,10 @@ function resultNode(
   booleans: FormulaOptions['booleans'],
   separator = ',',
   date?: (days: number) => string,
+  exact = false,
 ): MathNode | undefined {
   if (r.status !== 'ok' || !r.value) return undefined;
-  if (r.display) return valueNode(r.display.value, r.display.unit, format, r.display.im, date);
+  if (r.display) return valueNode(r.display.value, r.display.unit, format, r.display.im, date, exact ? r.display.exact : undefined);
   if (r.displayList) return seriesNode(r.displayList, format, separator, date);
   if (r.displayMatrix) return matrixNode(r.displayMatrix, format);
   if (r.value.type === 'boolean') return mtext(r.value.value ? booleans.true : booleans.false);
@@ -1141,6 +1147,12 @@ function applyDirective(name: string, args: string, mode: Mode, blocks: PrintBlo
       if (Number.isInteger(n) && n >= 1 && n <= 15) mode.digits = n;
       break;
     }
+    case 'exact':
+      mode.exact = true;
+      break;
+    case 'noexact':
+      mode.exact = false;
+      break;
     case 'page':
       blocks.push({ kind: 'page-break' });
       break;
@@ -1150,8 +1162,11 @@ function applyDirective(name: string, args: string, mode: Mode, blocks: PrintBlo
   }
 }
 
-/** "37,5 kN·m"; scientific numbers become mantissa · 10^exponent. */
-export function valueNode(value: number, unit: string, format: (value: number) => string, im?: number, date?: (days: number) => string): MathNode {
+/**
+ * "37,5 kN·m"; scientific numbers become mantissa · 10^exponent. With the exact form the fraction or root comes
+ * first and the number after ≐, as a book writes it: 49/9 s⁻² ≐ 5,444 s⁻².
+ */
+export function valueNode(value: number, unit: string, format: (value: number) => string, im?: number, date?: (days: number) => string, exact?: Exact): MathNode {
   // A date: "29. 9. 2026".
   if (unit === 'date') return mtext(date ? date(value) : isoDate(value));
   const numberNode = (x: number): MathNode => {
@@ -1159,12 +1174,26 @@ export function valueNode(value: number, unit: string, format: (value: number) =
     const e = /^(.*)E(-?\d+)$/.exec(text);
     return e ? row(mn(e[1]!.replace('-', '−')), mo('·'), sup(mn('10'), mn(e[2]!.replace('-', '−')))) : mn(text.replace('-', '−'));
   };
+  if (exact && !im) {
+    const withUnit = (node: MathNode) => (unit ? row(node, THIN_SPACE, mu(unit)) : node);
+    return row(withUnit(exactNode(exact)), mo('≐'), withUnit(numberNode(value)));
+  }
   if (!im) return unit ? row(numberNode(value), THIN_SPACE, mu(unit)) : numberNode(value);
   // A complex value: "(3 + 4j) Ω"; the imaginary unit is j.
   const imaginary = row(numberNode(Math.abs(im)), mi('j'));
   const complex = value === 0 ? (im < 0 ? row(mo('−'), imaginary) : imaginary) : row(numberNode(value), mo(im < 0 ? '−' : '+'), imaginary);
   if (!unit) return complex;
   return row(value === 0 ? complex : paren(complex), THIN_SPACE, mu(unit));
+}
+
+/** 49/9, 2√3, √2/2, −13√2/2: a fraction of a whole number times a root. */
+function exactNode(e: Exact): MathNode {
+  const negative = e.num < 0n;
+  const num = negative ? -e.num : e.num;
+  const root = e.root === 1n ? undefined : sqrt(mn(String(e.root)));
+  const top = !root ? mn(String(num)) : num === 1n ? root : row(mn(String(num)), root);
+  const node = e.den === 1n ? top : frac(top, mn(String(e.den)));
+  return negative ? row(mo('−'), node) : node;
 }
 
 function isoDate(days: number): string {

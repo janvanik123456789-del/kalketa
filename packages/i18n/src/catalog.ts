@@ -395,6 +395,7 @@ export const UI_KEYS = [
   'format.places.4',
   'format.digitsWritten',
   'format.rounded',
+  'format.exact',
   'solve.toDefinition',
   'solve.expressedFrom',
   'chart.fullWidth',

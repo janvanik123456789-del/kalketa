@@ -1126,6 +1126,7 @@ export const en: Catalog = {
     'format.places.3': 'Result to 3 decimal places',
     'format.places.4': 'Result to 4 decimal places',
     'format.rounded': 'Calculate on with the rounded value',
+    'format.exact': 'Exactly: fractions and roots (49/9 ≐ 5.444)',
     'format.digitsWritten': 'Written in the line: {n} significant digits',
     'solve.toDefinition': 'Put the formula in as a definition',
     'solve.expressedFrom': 'expressed from',

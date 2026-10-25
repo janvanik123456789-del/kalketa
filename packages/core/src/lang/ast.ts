@@ -111,6 +111,8 @@ export interface LineFormat {
   readonly color?: TextColor;
   /** The rows below calculate with the value as shown ({decimals=2 rounded}), not the exact one. */
   readonly rounded?: boolean;
+  /** The result also as a fraction or root where the calculation kept it exact: 49/9 s⁻² ≐ 5,444 s⁻². */
+  readonly exact?: boolean;
   /** The equation number of the line: {eq} numbered, {eq=hooke} numbered and named for (#hooke) in text, {noeq} never. */
   readonly eq?: true | string;
   readonly noeq?: boolean;

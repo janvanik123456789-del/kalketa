@@ -8,6 +8,7 @@
  */
 
 import { fail } from '../diagnostics.js';
+import { divide as exactDivide, fromNumber, multiply as exactMultiply, power as exactPower, type Exact } from '../values/exact.js';
 import type { UnitExpr } from '../lang/ast.js';
 import { DIMENSIONLESS, divideDims, isDimensionless, multiplyDims, powerDim, superscript, type Dimension } from './dimension.js';
 import { canonicalUnitSymbol, type UnitDef, type UnitRegistry } from './registry.js';
@@ -25,48 +26,55 @@ export interface ResolvedUnit {
    * the same unit keep it (mm² · mm = mm³).
    */
   readonly power?: { readonly symbol: string; readonly exponent: number; readonly factor: number; readonly dim: Dimension };
+  /** The factor as an exact fraction where it is one (m³/h is 1/3600 m³/s); see values/exact.ts. */
+  readonly exact?: Exact;
 }
 
 export function resolveUnit(expr: UnitExpr, registry: UnitRegistry): ResolvedUnit {
   if (expr.kind === 'unit-name') {
     const def = lookup(expr.name, expr, registry);
+    const exact = fromNumber(def.factor);
     return {
       symbol: def.symbol,
       factor: def.factor,
       dim: def.dim,
+      ...(exact ? { exact } : {}),
       ...(def.offset !== undefined ? { offset: def.offset } : {}),
       ...(def.delta !== undefined ? { delta: def.delta } : {}),
       ...(def.offset === undefined && !isDimensionless(def.dim) ? { power: { symbol: def.symbol, exponent: 1, factor: def.factor, dim: def.dim } } : {}),
     };
   }
-  const { factor, dim } = scaleOf(expr, registry);
+  const { factor, dim, exact } = scaleOf(expr, registry);
+  const own = exact ? { exact } : {};
   // mm², cm³: remember the unit and its power.
   if (expr.kind === 'unit-pow' && expr.base.kind === 'unit-name') {
     const unit = resolveUnit(expr.base, registry);
-    if (unit.power) return { symbol: formatUnit(expr), factor, dim, power: { ...unit.power, exponent: expr.exponent } };
+    if (unit.power) return { symbol: formatUnit(expr), factor, dim, power: { ...unit.power, exponent: expr.exponent }, ...own };
   }
-  return { symbol: formatUnit(expr), factor, dim };
+  return { symbol: formatUnit(expr), factor, dim, ...own };
 }
 
-function scaleOf(expr: UnitExpr, registry: UnitRegistry): { factor: number; dim: Dimension } {
+/** The factor and dimension of a unit expression, and the factor exactly where it is a fraction. */
+function scaleOf(expr: UnitExpr, registry: UnitRegistry): { factor: number; dim: Dimension; exact?: Exact | undefined } {
   switch (expr.kind) {
     case 'unit-one':
-      return { factor: 1, dim: DIMENSIONLESS };
+      return { factor: 1, dim: DIMENSIONLESS, exact: fromNumber(1) };
     case 'unit-name': {
       const def = lookup(expr.name, expr, registry);
-      return { factor: def.factor, dim: def.dim };
+      return { factor: def.factor, dim: def.dim, exact: fromNumber(def.factor) };
     }
     case 'unit-mul':
     case 'unit-div': {
       const a = scaleOf(expr.left, registry);
       const b = scaleOf(expr.right, registry);
+      const exact = a.exact && b.exact ? (expr.kind === 'unit-mul' ? exactMultiply(a.exact, b.exact) : exactDivide(a.exact, b.exact)) : undefined;
       return expr.kind === 'unit-mul'
-        ? { factor: a.factor * b.factor, dim: multiplyDims(a.dim, b.dim) }
-        : { factor: a.factor / b.factor, dim: divideDims(a.dim, b.dim) };
+        ? { factor: a.factor * b.factor, dim: multiplyDims(a.dim, b.dim), exact }
+        : { factor: a.factor / b.factor, dim: divideDims(a.dim, b.dim), exact };
     }
     case 'unit-pow': {
       const base = scaleOf(expr.base, registry);
-      return { factor: base.factor ** expr.exponent, dim: powerDim(base.dim, expr.exponent) };
+      return { factor: base.factor ** expr.exponent, dim: powerDim(base.dim, expr.exponent), exact: base.exact && exactPower(base.exact, expr.exponent) };
     }
   }
 }

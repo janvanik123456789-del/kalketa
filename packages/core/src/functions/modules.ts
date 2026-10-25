@@ -5,6 +5,7 @@
  */
 
 import { rootHint } from '../units/compose.js';
+import { squareRoot } from '../values/exact.js';
 import { fail } from '../diagnostics.js';
 import { isDimensionless, powerDim, sameDim } from '../units/dimension.js';
 import { baseUnitSymbol } from '../units/display.js';
@@ -53,7 +54,9 @@ export const MATH: readonly FunctionDef[] = [
       if (x.si < 0) a.domain(0);
       // √mm² = mm: the root of the unit, where it is one.
       const hint = rootHint(x.hint, 2);
-      return quantity(Math.sqrt(x.si), powerDim(x.dim, 0.5), hint ? { hint } : {});
+      // √169 = 13, √(1/2) = √2/2: the exact form where the value has one.
+      const exact = x.exact && !x.absolute ? squareRoot(x.exact) : undefined;
+      return quantity(Math.sqrt(x.si), powerDim(x.dim, 0.5), { ...(hint ? { hint } : {}), ...(exact ? { exact } : {}) });
     },
   },
   {

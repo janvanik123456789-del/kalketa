@@ -146,6 +146,7 @@ type RowChange = (change: (text: string) => string) => void;
 function precisionMenuItems(seg: Segment, catalog: Catalog, change: RowChange, shown?: (decimals: number) => string): MenuItem[] {
   const current = lineFormatOf(seg.text);
   const rounded = lineAttributesOf(seg.text).has('rounded');
+  const exact = lineAttributesOf(seg.text).has('exact');
   const choose = (format: LineFormatChoice) => change((text) => withLineFormat(text, format));
   const preview = (n: number) => (shown ? `  (${shown(n)})` : '');
   return [
@@ -169,6 +170,13 @@ function precisionMenuItems(seg: Segment, catalog: Catalog, change: RowChange, s
       checked: rounded,
       enabled: current !== undefined,
       run: () => change((text) => withLineAttribute(text, 'rounded', rounded ? undefined : '')),
+    },
+    {
+      // The fraction or root beside the number, where the calculation kept it exact (shown otherwise as before).
+      kind: 'action',
+      label: t(catalog, 'format.exact'),
+      checked: exact,
+      run: () => change((text) => withLineAttribute(text, 'exact', exact ? undefined : '')),
     },
   ];
 }

@@ -32,6 +32,22 @@ describe('solve with one unknown in an interval', () => {
 });
 
 describe('solve a system', () => {
+  it('takes "== 0" without a unit and finds the root of equations against zero (canonical equations of the force method)', () => {
+    const source = [
+      'δ_10 := 0.4177 mm',
+      'δ_11 := 0.01838 mm/kN',
+      'δ_20 := -64.06 mm',
+      'δ_22 := 6.684 mm/kN',
+      'solve (X_1, X_2): δ_10 + δ_11·X_1 == 0, δ_20 + δ_22·X_2 == 0 guess X_1 = 1 kN, X_2 = 1 kN',
+    ].join('\n');
+    expect(codes(source)).toEqual([]);
+    expect(si(source, 'X_1')! / 1000).toBeCloseTo(-0.4177 / 0.01838, 6);
+    expect(si(source, 'X_2')! / 1000).toBeCloseTo(64.06 / 6.684, 6);
+    // One unknown against zero, and a forgotten unit written as a number other than zero is still caught.
+    expect(si('k := 2 N/m\nsolve x: k·x - 6 N == 0 guess x = 1 m', 'x')).toBeCloseTo(3, 9);
+    expect(codes('k := 2 N/m\nsolve x: k·x - 6 N == 1 guess x = 1 m')).toEqual(['E-UNIT-MISMATCH']);
+  });
+
   it('finds the loop currents of a circuit, with units from the guesses', () => {
     const source = [
       'U_1 := 10 V',

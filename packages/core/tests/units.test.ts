@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { baseUnitSymbol, defaultRegistry, dim, dimKey, multiplyDims, powerDim, sameDim } from '../src/index.js';
+import { baseUnitSymbol, defaultRegistry, evaluateSheet, dim, dimKey, multiplyDims, powerDim, sameDim } from '../src/index.js';
 import { codes, expectValue } from './helpers.js';
 
 describe('dimensions', () => {
@@ -182,5 +182,19 @@ describe('units of products compose', () => {
     expectValue('d := 20 mm\nL := 0.5 m\nd·L', 0.01, 'm²');
     // Energy that is energy: a target unit says so.
     expectValue('P := 2 kW\nt := 3 h\nP·t | kWh', 6, 'kWh');
+  });
+});
+
+describe('units of products as engineers write them', () => {
+  it('put a length or a time last, whatever the order of the factors', () => {
+    const shown = (source: string, name: string) => {
+      const d = evaluateSheet(source).statements.find((r) => r.statement.kind === 'definition' && r.statement.name === name)?.display;
+      return d ? `${d.value} ${d.unit}` : '';
+    };
+    const sheet = 'L := 2 m\nF := 3 kN\nt := 2 s\nP := 2 kW\nM := L·F\nI := t·F\nW := t·P\nq := F/L';
+    expect(shown(sheet, 'M')).toBe('6 kN·m');
+    expect(shown(sheet, 'I')).toBe('6 kN·s');
+    expect(shown(sheet, 'W')).toBe('4 kW·s');
+    expect(shown(sheet, 'q')).toBe('1.5 kN/m');
   });
 });

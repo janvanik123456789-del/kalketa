@@ -117,7 +117,15 @@ function composeUnit(op: '*' | '/', a: ResolvedUnit, b: ResolvedUnit, units: Uni
     if (length) return { unit: length, byValue: false };
   }
   if (terms.size > 3) return none;
-  return { unit: { symbol: formatTerms(terms), factor, dim }, byValue: false };
+  // As engineers write them: a length or a time last (L·F in kN·m, F·t in N·s, P·t in kW·h), whatever the order of the factors.
+  const length = units.dimOf('m');
+  const time = units.dimOf('s');
+  const last = (name: string) => {
+    const d = units.dimOf(name);
+    return d !== undefined && ((length !== undefined && sameDim(d, length)) || (time !== undefined && sameDim(d, time))) ? 1 : 0;
+  };
+  const ordered = new Map([...terms].sort(([x], [y]) => last(x) - last(y)));
+  return { unit: { symbol: formatTerms(ordered), factor, dim }, byValue: false };
 }
 
 /**

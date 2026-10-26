@@ -31,6 +31,7 @@ import type { ResolvedUnit } from '../units/unitExpr.js';
 import { quantity, type Quantity, type Value } from '../values/value.js';
 import { asQuantity } from './coerce.js';
 import type { EvalContext } from './evaluator.js';
+import { isBareZero, withBareZero } from './zero.js';
 import { isolate, quadraticOf } from './isolate.js';
 import { substitute } from './derive.js';
 import { differentiate } from './differentiate.js';
@@ -146,13 +147,16 @@ function solveEquations(statement: SolveStatement, ctx: EvalContext, evaluate: E
     const r: number[] = [];
     const scale: number[] = [];
     for (const eq of equations) {
-      const left = asQuantity(evaluate(eq.left, inner), eq.left.span);
-      const right = asQuantity(evaluate(eq.right, inner), eq.right.span);
+      // "δ_10 + δ_11·X_1 == 0": a zero written without a unit is one of the other side's.
+      const [left, right] = withBareZero(asQuantity(evaluate(eq.left, inner), eq.left.span), asQuantity(evaluate(eq.right, inner), eq.right.span), eq.left, eq.right);
       if (!sameDim(left.dim, right.dim)) {
         fail('E-UNIT-MISMATCH', eq.span, { operator: '==', left: baseUnitSymbol(left.dim), right: baseUnitSymbol(right.dim) });
       }
       r.push(left.si - right.si);
-      scale.push(Math.max(Math.abs(left.si), Math.abs(right.si), Number.MIN_VALUE));
+      // Against a zero ("δ_10 + δ_11·X_1 == 0") the side itself goes to zero at the root: its terms tell how small is small.
+      const zero = isBareZero(eq.right) ? eq.left : isBareZero(eq.left) ? eq.right : undefined;
+      const terms = zero ? termsOf(zero).reduce((sum, term) => sum + Math.abs(asQuantity(evaluate(term, inner), term.span).si), 0) : 0;
+      scale.push(Math.max(Math.abs(left.si), Math.abs(right.si), terms, Number.MIN_VALUE));
     }
     return { r, scale };
   };
@@ -239,8 +243,7 @@ function rootHolds(equation: SolveStatement['equations'][number], name: string, 
   const quiet: EvalContext = { ...ctx, warnings: [], tableReads: [] };
   const sides = (v: Quantity) => {
     const at: EvalContext = { ...quiet, lookup: (n, span) => (n === name ? v : ctx.lookup(n, span)) };
-    const left = asQuantity(evaluate(equation.left, at), equation.left.span);
-    const right = asQuantity(evaluate(equation.right, at), equation.right.span);
+    const [left, right] = withBareZero(asQuantity(evaluate(equation.left, at), equation.left.span), asQuantity(evaluate(equation.right, at), equation.right.span), equation.left, equation.right);
     if (!sameDim(left.dim, right.dim)) fail('E-UNIT-MISMATCH', equation.span, { operator: '==', left: baseUnitSymbol(left.dim), right: baseUnitSymbol(right.dim) });
     return { d: Math.hypot(left.si - right.si, (left.im ?? 0) - (right.im ?? 0)), scale: Math.max(Math.hypot(left.si, left.im ?? 0), Math.hypot(right.si, right.im ?? 0)) };
   };
@@ -570,6 +573,13 @@ function newton(start: number[], residuals: (x: readonly number[]) => { r: numbe
   }
   if (converged(current)) return x;
   return fail('E-SOLVE-NO-CONVERGENCE', span);
+}
+
+/** The terms of a sum or difference ("δ_10 + δ_11·X_1" → δ_10, δ_11·X_1); one term otherwise. */
+function termsOf(e: Expr): Expr[] {
+  if (e.kind === 'binary' && (e.operator === '+' || e.operator === '-')) return [...termsOf(e.left), ...termsOf(e.right)];
+  if (e.kind === 'unary' && (e.operator === '-' || e.operator === '+')) return termsOf(e.operand);
+  return [e];
 }
 
 function converged({ r, scale }: { r: number[]; scale: number[] }): boolean {

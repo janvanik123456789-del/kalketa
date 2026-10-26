@@ -648,6 +648,7 @@ solve (I_1, I_2):
 *Upřesněno při implementaci F8:*
 - Rovnice soustavy stojí na odsazených řádcích pod `solve` (v editoru Shift+Enter), nebo na jednom řádku oddělené čárkou (česky středníkem): `solve (x; y): x² + y² == 25; y == x + 1 guess x = 1; y = 1`.
 - Neznámá dostane jednotku z intervalu (`in 0 s .. 10 s`) nebo z odhadu (`guess I_1 = 1 A`). Bez nich je bezrozměrná a začíná na 1.
+- **Rovnice proti nule:** `solve (X_1, X_2): δ_10 + δ_11·X_1 == 0, …` – nula zapsaná bez jednotky má jednotku druhé strany (jako v součtu a porovnání); jiné číslo bez jednotky je dál chyba `E-UNIT-MISMATCH` (2026-10-26).
 - **Jednotka výsledku:** `solve M_b: Trimoment | kN·m` ukáže neznámou v kN·m (z rovnice by moment vyšel v J) a v té jednotce se dosazuje i do řádků pod ním; jednotka jiné dimenze je chyba `E-TARGET-UNIT` (2026-10-26).
 - Neznámé jsou od řádku `solve` obyčejné hodnoty listu (i když se píší jako jednotka, např. `t`). Nad ním je použít nejde (E-DEFINED-LATER) a nesmí být definované dřív (E-REDEFINED).
 - Když konce intervalu nemají opačné znaménko, řešič hledá změnu znaménka uvnitř intervalu (najde kořen nejblíž dolní mezi). Body, kde rovnice nemá hodnotu (dělení nulou, mimo definiční obor), přeskočí.

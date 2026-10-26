@@ -23,6 +23,7 @@ import { baseUnitSymbol } from '../units/display.js';
 import { quantity, type FunctionValue, type Quantity, type Value } from '../values/value.js';
 import { asQuantity } from './coerce.js';
 import type { EvalContext } from './evaluator.js';
+import { withBareZero } from './zero.js';
 
 type SolveStatement = Extract<Statement, { kind: 'solve' }>;
 type Evaluate = (expr: Expr, ctx: EvalContext) => Value;
@@ -132,8 +133,8 @@ export function solveOde(statement: SolveStatement, ctx: EvalContext, evaluate: 
           return ctx.lookup(asked, span);
         },
       };
-      const left = asQuantity(evaluate(equation.left, inner), equation.left.span);
-      const right = asQuantity(evaluate(equation.right, inner), equation.right.span);
+      // "m·w″ + k·w == 0": a zero written without a unit is one of the other side's.
+      const [left, right] = withBareZero(asQuantity(evaluate(equation.left, inner), equation.left.span), asQuantity(evaluate(equation.right, inner), equation.right.span), equation.left, equation.right);
       if (!sameDim(left.dim, right.dim)) fail('E-UNIT-MISMATCH', equation.span, { operator: '==', left: baseUnitSymbol(left.dim), right: baseUnitSymbol(right.dim) });
       return quantity(left.si - right.si, left.dim);
     };

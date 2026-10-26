@@ -842,7 +842,7 @@ class LineParser {
         const close = this.expect(')', ')');
         // A unit right after a group: "(3 + 4j) Ω". A name defined above stays a name.
         const next = this.peek();
-        if (!this.freeNames && next.type === 'ident' && !KEYWORDS.has(next.text) && !this.defined.has(next.text) && this.isUnit(next.text)) {
+        if (!this.freeNames && next.type === 'ident' && (!KEYWORDS.has(next.text) || this.inchHere()) && !this.defined.has(next.text) && this.isUnit(next.text)) {
           const unit = this.parseUnitChain();
           const factor: Expr = { kind: 'unit', unit, span: unit.span };
           return { kind: 'binary', operator: '*', left: inner, right: factor, span: spanOf(token, unit) };
@@ -966,7 +966,7 @@ class LineParser {
     const close = this.expect(']', ']');
     const vector: Expr = rows.length > 1 ? { kind: 'matrix', rows, span: spanOf(open, close) } : { kind: 'vector', items: rows[0]!, span: spanOf(open, close) };
     const next = this.peek();
-    if (next.type === 'ident' && !KEYWORDS.has(next.text) && !this.defined.has(next.text) && this.isUnit(next.text)) {
+    if (next.type === 'ident' && (!KEYWORDS.has(next.text) || this.inchHere()) && !this.defined.has(next.text) && this.isUnit(next.text)) {
       const unit = this.parseUnitChain();
       return { kind: 'binary', operator: '*', left: vector, right: { kind: 'unit', unit, span: unit.span }, span: spanOf(open, unit) };
     }
@@ -981,7 +981,7 @@ class LineParser {
       const unit = this.parseBracketUnit();
       return { kind: 'number', value: token.value, unit, span: spanOf(token, unit), ...(token.imaginary ? { imaginary: true } : {}) };
     }
-    if (next.type === 'ident' && !KEYWORDS.has(next.text)) {
+    if (next.type === 'ident' && (!KEYWORDS.has(next.text) || this.inchHere())) {
       if (!this.isUnit(next.text)) {
         if (this.defined.has(next.text)) fail('E-MISSING-OPERATOR', next.span, { found: next.text });
         fail('E-UNKNOWN-UNIT', next.span, { unit: next.text });
@@ -1129,6 +1129,19 @@ class LineParser {
   private startsOperand(token: Token): boolean {
     if (token.type === 'ident') return !CONTINUATION_KEYWORDS.has(token.text);
     return token.type === 'number' || token.type === '(' || token.type === '[' || token.type === '√' || token.type === '∛' || token.type === 'string' || token.type === 'date';
+  }
+
+  /**
+   * "in" after a value is the inch (1 in, 0.5 in), unless a range follows it on the line: the interval
+   * of a solve (… == 8 in 0 .. 10).
+   */
+  private inchHere(): boolean {
+    if (!this.isKeyword('in')) return false;
+    for (let i = 1; ; i++) {
+      const token = this.peek(i);
+      if (token.type === 'newline' || token.type === 'eof') return true;
+      if (token.type === '..') return false;
+    }
   }
 
   private isKeyword(word: string): boolean {

@@ -254,6 +254,11 @@ describe('US customary units of American handbooks', () => {
     expect(v('P')).toBeCloseTo(745.69987, 4);
     expect(v('V')).toBeCloseTo(3.785411784e-3, 12);
     expect(v('σ')).toBeCloseTo(6.894757e6, 0);
+    // "in" after a value is the inch, unless the interval of a solve follows.
+    const inch = evaluateSheet(['a := 2 in', 'b := (1 + 2) in', 'c := [1, 2] in', 'solve x: x^2 == 8 in 0 .. 10'].join(nl));
+    expect(inch.diagnostics).toEqual([]);
+    expect((inch.values.get('b') as { si: number }).si).toBeCloseTo(3 * 0.0254, 12);
+    expect((inch.values.get('x') as { si: number }).si).toBeCloseTo(Math.sqrt(8), 9);
     // psi with an index is still ψ: psi_2 is ψ_2.
     expect(r.values.has('ψ_2')).toBe(true);
   });

@@ -135,6 +135,11 @@ describe('worked examples and captions', () => {
     expect(cleaned).toContain('### Problem 2 Diameter of pipe to give a given discharge\n\nRequired');
     expect(cleaned).toContain('### Example 1\n\nA pipe 3 inches diameter 200 ft. long connects two tanks, the difference of level is 10 feet.');
     expect(cleanPdfText('Příklad č. 2:\nVodní potrubí se náhle rozšiřuje.').text).toBe('## Příklad 2\n\nVodní potrubí se náhle rozšiřuje.\n');
+    // Numbered by chapter: "Příklad IV-5:", "Příklad 9.1.", "Aufgabe 2.3:".
+    expect(cleanPdfText('Příklad IV-5: V daném obvodu vypočtěte proud.').text).toBe('## Příklad IV-5\n\nV daném obvodu vypočtěte proud.\n');
+    expect(cleanPdfText('Aufgabe 2.3:\nDas Verschlußorgan verhindert das Eindringen.').text).toContain('## Aufgabe 2.3\n\n');
+    // A numbered task is a sentence of many words, not a title.
+    expect(cleanPdfText('4.13 Pro daný obvod formulujte rovnici metodou uzlových napětí a vypočtěte').text).not.toMatch(/^#/);
   });
 
   it('take a formula of a math font mapped to wrong letters for a suspect formula', () => {

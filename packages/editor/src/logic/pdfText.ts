@@ -60,8 +60,10 @@ const NUMBERED_FORMULA = /\(\d{1,3}\)\s*$/;
 const EXISTING_HEADING = /^(#{1,3})\s+(.*?)(\s*\{#T\d+\})?\s*$/;
 // A caption with its number, or without one ("Obr.: Model konstrukce a zatížení").
 const CAPTION = /^(Obr\.|Obrázek|Fig\.|Figure)\s*(\d+|:)/i;
+// What a task asks the reader to do: a title never says it ("Vypočtěte", "určete", "Find", "Berechnen Sie").
+const TASK = /(^|\s)(vypočt[ěe]te|vypočítejte|určete|stanovte|formulujte|nakreslete|vykreslete|odvoďte|zjistěte|navrhněte|posuďte|dokažte|řešte|find|calculate|determine|compute|berechnen|bestimmen|ermitteln)(\s|$|[.,:])/iu;
 // A worked example starting: "Příklad 1", "Problem 2. Diameter of pipe…", "Example 1. A pipe 3 inches…".
-const EXAMPLE = /^(Příklad|Úloha|Řešený příklad|Example|Problem|Exercise|Aufgabe|Beispiel)\s+(?:(?:č|No|Nr)\.\s*)?(\d{1,3}[a-z]?)\s*[.:)]?\s*(.*)$/iu;
+const EXAMPLE = /^(Příklad|Úloha|Řešený příklad|Example|Problem|Exercise|Aufgabe|Beispiel)\s+(?:(?:č|No|Nr)\.\s*)?((?:[IVXL]{1,4}-)?\d{1,3}(?:\.\d{1,3})?[a-z]?)\s*[.:)]?\s*(.*)$/iu;
 
 /** A token of a spaced-out word: one or two letters. */
 const SHORT = /^\p{L}{1,2}$/u;
@@ -273,7 +275,7 @@ export function cleanPdfText(notes: string): PdfCleanup {
       if (example) {
         const rest = example[3]!.trim();
         // A title is a short sentence of its own ("Diameter of pipe to give a given discharge."); a line running on is the statement.
-        const titled = rest.length <= 70 && /^\p{Lu}.*\.$/u.test(rest) && !/\.\s/.test(rest);
+        const titled = rest.length <= 70 && /^\p{Lu}.*\.$/u.test(rest) && !/\.\s/.test(rest) && !TASK.test(rest);
         const level = Math.min(3, (lastLevel ?? 1) + 1);
         stats.headings++;
         pieces.push({ kind: 'heading', text: `${'#'.repeat(level)} ${example[1]} ${example[2]}${titled ? ` ${rest.replace(/\.$/, '')}` : ''}` });
@@ -281,7 +283,8 @@ export function cleanPdfText(notes: string): PdfCleanup {
         continue;
       }
       const title = NUMBERED_TITLE.exec(line);
-      if (title && block.split('\n').length === 1) {
+      // A numbered task ("4.13 Pro daný obvod formulujte rovnici … a vypočtěte") is no title: it tells what to do.
+      if (title && block.split('\n').length === 1 && !TASK.test(title[2]!)) {
         stats.headings++;
         lastLevel = levels(title[1]!, title[2]!);
         pieces.push({ kind: 'heading', text: `${'#'.repeat(lastLevel)} ${line}` });

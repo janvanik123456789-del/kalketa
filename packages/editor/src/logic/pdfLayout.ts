@@ -163,14 +163,21 @@ function runningKey(text: string): string {
  * is one too. They are left out of each page's lines.
  */
 export function withoutRunningLines(pages: readonly { readonly lines: readonly LayoutLine[]; readonly height: number }[]): LayoutLine[][] {
-  const atEdge = (line: LayoutLine, height: number) => line.bottom <= height * RUNNING_EDGE || line.top >= height * (1 - RUNNING_EDGE);
-  const edges = pages.map((page) => [...new Set(page.lines.filter((l) => atEdge(l, page.height)).map((l) => runningKey(l.text)))]);
+  // At the edge and set apart from the text (a gap of more than half a line; lines of text are 1–2 pt apart): the first
+  // line of a page's text is no running head, nor the only line of a page.
+  const atEdge = (line: LayoutLine, height: number, lines: readonly LayoutLine[]) => {
+    const top = line.bottom <= height * RUNNING_EDGE;
+    if (!top && line.top < height * (1 - RUNNING_EDGE)) return false;
+    const gaps = lines.filter((o) => o !== line).map((o) => (top ? o.top - line.bottom : line.top - o.bottom)).filter((g) => g > -1);
+    return gaps.length > 0 && Math.min(...gaps) >= 0.6 * (line.bottom - line.top);
+  };
+  const edges = pages.map((page) => [...new Set(page.lines.filter((l) => atEdge(l, page.height, page.lines)).map((l) => runningKey(l.text)))]);
   const needed = Math.max(2, Math.ceil(pages.length / 2));
   // On how many pages the line comes back; read from a scan, a letter or two of it may differ ("FLOW THEOUGH PIPES").
   const pagesWith = (key: string) => edges.filter((keys) => keys.some((other) => alike(key, other))).length;
   return pages.map((page) =>
     page.lines.filter((line) => {
-      if (!atEdge(line, page.height)) return true;
+      if (!atEdge(line, page.height, page.lines)) return true;
       const key = runningKey(line.text);
       return !(/^[-–—\s#]*$/.test(key) || pagesWith(key) >= needed);
     }),

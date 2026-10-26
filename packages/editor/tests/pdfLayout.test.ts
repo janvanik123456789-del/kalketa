@@ -123,6 +123,12 @@ describe('running heads and feet', () => {
     expect(texts(withoutRunningLines(pages))).toEqual([['If d is the unknown'], ['Let Q be the number'], ['The hydraulic gradient'], ['Taking f as .0082']]);
   });
 
+  it('keep the first line of the text, which comes back on every page but stands close to the lines below it', () => {
+    const pages = [1, 2, 3].map((n) => of([line(30, `Strana ${n}. Tah a tlak prutu`), line(43, 'vyvolávají normálové napětí.')]));
+    expect(texts(withoutRunningLines(pages))[0]).toEqual(['Strana 1. Tah a tlak prutu', 'vyvolávají normálové napětí.']);
+    expect(texts(withoutRunningLines([1, 2].map((n) => of([line(30, `Strana ${n}.`)]))))).toEqual([['Strana 1.'], ['Strana 2.']]);
+  });
+
   it('keep a line at the edge that is on one page only, and everything in the middle', () => {
     const pages = [of([line(30, 'Kapitola 7 Nosníky'), line(400, 'Text')]), of([line(30, 'Jiný nadpis'), line(400, 'Text')])];
     expect(texts(withoutRunningLines(pages))).toEqual([['Kapitola 7 Nosníky', 'Text'], ['Jiný nadpis', 'Text']]);

@@ -65,6 +65,7 @@ export const EN_FUNCTION_DETAILS: Readonly<Record<string, string>> = {
   log10: 'The common logarithm of a plain positive number, e.g. for decibels 10·log10(P / P_0).',
   max: 'Takes single values and series (a table column too). All must have the same unit; the result is in the unit of the first value.',
   min: 'Takes single values and series (a table column too). All must have the same unit; the result is in the unit of the first value.',
+  parallel: 'Written as the operator R_1 ∥ R_2 (∥ binds like a product: R_2 ∥ (R_1 + R_3) with brackets), or parallel(a, b, …) for more items. All must have one unit; impedances may be complex. A zero resistance (a short) is outside the domain.',
   mod: 'The remainder of a/b with the sign of b (mod(−7, 3) = 2). a and b may have one unit, e.g. mod(370°, 360°) = 10°.',
   root: 'The n-th root for a whole n ≥ 2. An odd root of a negative number is negative, an even one is an error. The unit is rooted where it can be. The same as the ⁿ√ button.',
   round: 'Without the second argument to a whole number, with it to n decimal places. It rounds the value used further; for showing only, {decimals=2} after the line is enough.',
@@ -93,7 +94,7 @@ export const EN_FUNCTION_DETAILS: Readonly<Record<string, string>> = {
   integral: 'The definite integral of an expression by a named variable between a .. b. The limits may have units; the result has the unit of f times the unit of x (e.g. kN/m · m = kN). Computed numerically to about 10 significant digits.',
   maximize: 'Gives the x where f is largest in the interval a .. b (not the value of f). The maximum itself is then f(x_max). It finds the global maximum in the interval, at its ends too.',
   minimize: 'Gives the x where f is smallest in the interval a .. b (not the value of f). The minimum itself is then f(x_min). It finds the global minimum in the interval, at its ends too.',
-  polyfit: 'The polynomial of degree n fitted to the points x, y by least squares, as in MATLAB and NumPy. The result is a function P(x) with units and the printout shows its equation. At least n + 1 points are needed.',
+  polyfit: 'The polynomial of degree n fitted to the points x, y by least squares, as in MATLAB and NumPy. The result is a function P(x) with units and the printout shows its equation; its coefficients are P[1], P[2], … from the highest power, as in MATLAB (for a line P[1] is the slope). At least n + 1 points are needed.',
   polyval: 'The value of a polynomial at a point or a series of points. P is a function from polyfit, or a series of coefficients from the highest power as in MATLAB: [1, 0, −2] is x² − 2.',
   roots: 'Every root of the polynomial p in the variable x, complex ones too, as a series. For other equations than polynomials use a solve x: … line (with the domain ∈ ℝ and conditions).',
   // Matrices and vectors
@@ -148,6 +149,7 @@ export const EN_FUNCTION_DETAILS: Readonly<Record<string, string>> = {
   // Dates
   date: 'A date of year, month and day. A date can also be written directly: 2026-10-21. Days can be added to a date (+ 30 d).',
   day: 'The day of the month (1–31) as a number.',
+  days360: 'Days from start to end as banks count them: 30 days a month, 360 a year. Without a third argument the European 30E/360 basis (a 31st counts as the 30th), "30A/360" the American one (the 31st of the end only when the start is the 30th or 31st). Excel DAYS360 defaults to the American. Interest is then i·n/(360 d).',
   month: 'The month (1–12) as a number.',
   year: 'The year as a number.',
   // Logic

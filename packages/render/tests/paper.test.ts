@@ -135,3 +135,11 @@ describe('amounts of money', () => {
   });
 });
 
+describe('resistances in parallel', () => {
+  it('are written R_1 ∥ R_2, brackets kept where needed', () => {
+    const nl = String.fromCharCode(10);
+    const block = equation(['R_1 := 2 kΩ', 'R_2 := 500 Ω', 'R_3 := 3 kΩ', 'R := R_2 ∥ (R_1 + R_3)'].join(nl))!;
+    expect(plain(toText(block.lines[0]!.rhs))).toContain('R_2∥(R_1+R_3)');
+    expect(blockLatex(block)).toContain('\parallel');
+  });
+});

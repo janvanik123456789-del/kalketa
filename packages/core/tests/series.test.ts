@@ -115,3 +115,12 @@ describe('finance', () => {
     expect(codes('payback([-1000, 100, 100])')).toEqual(['E-NO-PAYBACK']);
   });
 });
+
+describe('functions of one plain number on a series', () => {
+  it('are taken item by item', () => {
+    expect(list('t := [0, 1, 2] s\nexp(-t/(1 s)) =').map((d) => d.value)).toEqual([1, Math.exp(-1), Math.exp(-2)]);
+    expectValue('f(t, τ) := 1 - exp(-t/τ)\nsum(f([1, 2] s, 1 s))', 2 - Math.exp(-1) - Math.exp(-2), '');
+    expect(codes('ln([1, 0])')).toEqual(['E-DOMAIN']);
+    expect(codes('sin([1, 2] m)')).toEqual(['E-FUNC-ARG-DIM']);
+  });
+});

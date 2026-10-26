@@ -393,6 +393,8 @@ function quotientHint(y: ResolvedUnit | undefined, x: ResolvedUnit | undefined, 
     for (const [name, e] of tx) terms.set(name, (terms.get(name) ?? 0) - k * e);
     for (const [name, e] of terms) if (e === 0) terms.delete(name);
     if (terms.size > 0) symbol = formatTerms(terms);
+    // The units cancel (a correction in Δ°C per Δ°C, K per K): the slope is a plain number.
+    else if (y) return undefined;
   }
   const dim = divideDims(y?.dim ?? DIMENSIONLESS, powerDim(x.dim, k));
   return { symbol, factor: (y?.factor ?? 1) / x.factor ** k, dim };

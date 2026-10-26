@@ -264,3 +264,40 @@ describe('US customary units of American handbooks', () => {
   });
 });
 
+
+describe('units of chemistry and of American handbooks', () => {
+  it('have the molar unit M of concentrations with its prefixes, a sheet name M kept', () => {
+    expectValue('0.1 mM | μM', 100, 'μM');
+    expectValue('2 mol/dm^3 | M', 2, 'M');
+    expectValue('M := 10 kN·m\n2·M', 20, 'kN·m');
+  });
+
+  it('of American handbooks include the hour written hr', () => {
+    expectValue('0.8 Btu/(hr·ft·°F) | W/(m·K)', (0.8 * 1055.05585262) / 3600 / 0.3048 / (5 / 9), 'W/(m·K)');
+  });
+
+  it('of an amount in cm³ or dm³ show in mol/l, in m³ as written', () => {
+    expectValue('n := 0.5 mol\nn/(250 cm^3)', 2, 'mol/l');
+    expectValue('ρ := 1.2 g/cm^3\nM_r := 36.461 g/mol\n0.36·ρ/M_r', (0.36 * 1.2) / 36.461 * 1000, 'mol/l');
+    expectValue('n := 0.5 mmol\nn/(2 l)', 0.25, 'mmol/l');
+    expectValue('n := 2 mol\nn/(4 m^3)', 0.5, 'mol/m³');
+  });
+});
+
+describe('temperatures and their differences as books write them', () => {
+  it('take a reciprocal unit after a number: 12e-6 1/°C, 50 1/s, 3 1/(m·s)', () => {
+    expectValue('12e-6 1/K', 12e-6, '1/K');
+    expectValue('50 1/s', 50, '1/s');
+    expectValue('3 1/(m·s)', 3, '1/(m·s)');
+    expect(codes('n := 5\nn 1')).toEqual(['E-MISSING-OPERATOR']);
+  });
+
+  it('read ΔT := 50 °C as a difference, so α·ΔT is no product of an absolute temperature', () => {
+    expectValue('ΔT := 50 °C\nΔT', 50, 'Δ°C');
+    expectValue('ΔT := -5 °F\nΔT | K', -25 / 9, 'K');
+    expectValue('α := 10e-6 1/°C\nΔT := 50 °C\nα·ΔT', 5e-4, '');
+    expect(codes('α := 10e-6 1/°C\nΔT := 50 °C\nα·ΔT')).toEqual([]);
+    // Any other name keeps the absolute temperature.
+    expectValue('T := 50 °C\nT', 50, '°C');
+  });
+});

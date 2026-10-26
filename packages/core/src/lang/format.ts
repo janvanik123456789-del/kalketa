@@ -69,6 +69,12 @@ function written(expr: Expr): { text: string; priority: number } {
       return { text: spaced ? `${leftText} ${sign} ${rightText}` : `${leftText}${sign}${rightText}`, priority: own };
     }
     case 'call': {
+      // R_1 ∥ R_2 as written, at the priority of a product; the right side keeps its brackets (a ∥ (b ∥ c)).
+      if (expr.name === 'parallel' && expr.args.length === 2 && expr.named.length === 0) {
+        const own = PRIORITY['*']!;
+        const [left, right] = expr.args.map(written) as [{ text: string; priority: number }, { text: string; priority: number }];
+        return { text: `${left.priority < own ? `(${left.text})` : left.text} ∥ ${right.priority <= own ? `(${right.text})` : right.text}`, priority: own };
+      }
       const args = [...expr.args.map(formatExpr), ...expr.named.map((n) => `${n.name}: ${formatExpr(n.value)}`)];
       return { text: `${expr.name}(${args.join(', ')})`, priority: ATOM };
     }
@@ -94,4 +100,12 @@ function written(expr: Expr): { text: string; priority: number } {
 function atom(expr: Expr): string {
   const w = written(expr);
   return w.priority < ATOM ? `(${w.text})` : w.text;
+}
+
+/** The decimal places of a number written in the sheet (6.5452 g: 4, 0.1230: 4, 1500: 0); none for 97.9e-6 or a calculated value. */
+export function writtenPlaces(source: string, expr: Expr): number | undefined {
+  const number = expr.kind === 'unary' && expr.operator === '-' ? expr.operand : expr;
+  if (number.kind !== 'number' || number.imaginary) return undefined;
+  const m = /^\s*\d*(?:\.(\d+))?(?![\d.eE])/.exec(source.slice(number.span.offset, number.span.offset + number.span.length));
+  return m ? (m[1]?.length ?? 0) : undefined;
 }

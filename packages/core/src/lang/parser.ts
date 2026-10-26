@@ -258,6 +258,15 @@ export function spanOf(first: { span: Span }, last: { span: Span }): Span {
   return { offset: a.offset, length: b.offset + b.length - a.offset, line: a.line, column: a.column };
 }
 
+/** 50 °C, −5 °F as a difference of temperatures: 50 Δ°C, −5 Δ°F; anything else as it is. */
+function asDifference(expr: Expr): Expr {
+  if (expr.kind === 'unary' && expr.operator === '-') return { ...expr, operand: asDifference(expr.operand) };
+  if (expr.kind === 'number' && expr.unit?.kind === 'unit-name' && (expr.unit.name === '°C' || expr.unit.name === '°F')) {
+    return { ...expr, unit: { ...expr.unit, name: `Δ${expr.unit.name}` } };
+  }
+  return expr;
+}
+
 class LineParser {
   private pos = 0;
   private readonly end: Token;
@@ -496,6 +505,8 @@ class LineParser {
       added.forEach((name) => this.defined.delete(name));
     }
     this.defined.add(nameToken.text);
+    // ΔT := 50 °C: a name of a difference given in degrees is a difference of temperatures (50 Δ°C), as books write it.
+    if (!params && nameToken.text.startsWith('Δ')) expr = asDifference(expr);
     const source = this.parseSource();
     this.expectEnd();
     return {
@@ -772,6 +783,13 @@ class LineParser {
         left = this.binary(type, left, this.parseUnary());
         continue;
       }
+      // R_1 ∥ R_2: in parallel, as a call of parallel() (written back as R_1 ∥ R_2).
+      if (type === '∥') {
+        this.next();
+        const right = this.parseUnary();
+        left = { kind: 'call', name: 'parallel', args: [left, right], named: [], span: spanOf(left, right) };
+        continue;
+      }
       if (this.startsOperand(this.peek())) {
         fail('E-MISSING-OPERATOR', this.peek().span, { found: this.peek().text });
       }
@@ -979,6 +997,12 @@ class LineParser {
     const next = this.peek();
     if (next.type === '[') {
       const unit = this.parseBracketUnit();
+      return { kind: 'number', value: token.value, unit, span: spanOf(token, unit), ...(token.imaginary ? { imaginary: true } : {}) };
+    }
+    // 12e-6 1/°C, 50 1/s: a reciprocal unit as books write it (two numbers side by side are no product otherwise).
+    const over = this.peek(2);
+    if (next.type === 'number' && next.value === 1 && !next.imaginary && this.peek(1).type === '/' && ((over.type === 'ident' && this.isUnit(over.text) && !this.defined.has(over.text)) || over.type === '(')) {
+      const unit = this.parseUnitChain();
       return { kind: 'number', value: token.value, unit, span: spanOf(token, unit), ...(token.imaginary ? { imaginary: true } : {}) };
     }
     if (next.type === 'ident' && (!KEYWORDS.has(next.text) || this.inchHere())) {

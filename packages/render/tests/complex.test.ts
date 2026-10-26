@@ -23,5 +23,8 @@ describe('complex values in print', () => {
     expect(formatValue(27.6, -36.8, 'A', cs)).toBe('(27,6 − 36,8j) A');
     expect(formatValue(0, 5, 'Ω', cs)).toBe('5j Ω');
     expect(formatValue(3, 4, '', cs)).toBe('3 + 4j');
+    // A degree of angle stands right after the number, a degree Celsius after a space.
+    expect(formatValue(120, undefined, '°', cs)).toBe('120°');
+    expect(formatValue(20, undefined, '°C', cs)).toBe('20 °C');
   });
 });

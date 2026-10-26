@@ -92,6 +92,8 @@ const BUILT_IN: readonly UnitDef[] = [
   { symbol: 'gal', factor: 3.785411784e-3, dim: VOLUME },
   { symbol: 'min', factor: 60, dim: T },
   { symbol: 'h', factor: 3600, dim: T },
+  // The hour as American handbooks write it (Btu/hr-ft-°F).
+  { symbol: 'hr', factor: 3600, dim: T },
   { symbol: 'd', factor: 86400, dim: T },
   { symbol: 'wk', factor: 7 * 86400, dim: T },
   // Year: 365.25 days (the Julian year). Not "a": that is too common a name (side, acceleration).
@@ -141,6 +143,8 @@ const BUILT_IN: readonly UnitDef[] = [
   { symbol: 'Gy', factor: 1, dim: DOSE, prefixable: true },
   { symbol: 'Sv', factor: 1, dim: DOSE, prefixable: true },
   { symbol: 'kat', factor: 1, dim: CATALYTIC, prefixable: true },
+  // Molarity of chemistry and biochemistry: 1 M = 1 mol/l (0,1 mM, 5 μM). A name M defined by the sheet (a moment) stays its own.
+  { symbol: 'M', factor: 1e3, dim: dim({ N: 1, L: -3 }), prefixable: true },
 
   // Currencies: each is a dimension of its own, so 5 CZK + 2 EUR is an error
   // until the sheet gives a rate ("unit EUR := 24.7 CZK" or a rate from a table).

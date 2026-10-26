@@ -81,3 +81,16 @@ describe('date columns of tables', () => {
     expect(built.diagnostics.map((d) => d.code)).toEqual(['E-TABLE-CELL']);
   });
 });
+
+describe('days as banks count them', () => {
+  it('are 30 a month and 360 a year, European or American', () => {
+    // VŠE 1BP310: from 20 March to 31 December 2022 by 30E/360 are 280 days.
+    expectValue('days360(2022-03-20, 2022-12-31)', 280, 'd');
+    // Excel DAYS360(15.1.2022; 31.3.2022; TRUE) = 75, FALSE = 76.
+    expectValue('days360(2022-01-15, 2022-03-31)', 75, 'd');
+    expectValue('days360(2022-01-15, 2022-03-31, "30A/360")', 76, 'd');
+    expectValue('days360(2022-01-30, 2022-03-31, "30A/360")', 60, 'd');
+    expect(codes('days360(2022-01-15, 2022-03-31, "ACT")')).toEqual(['E-DAY-BASIS']);
+    expect(codes('days360(5, 2022-03-31)')).toEqual(['E-TYPE']);
+  });
+});

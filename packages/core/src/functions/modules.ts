@@ -7,7 +7,7 @@
 import { rootHint } from '../units/compose.js';
 import { squareRoot } from '../values/exact.js';
 import { fail } from '../diagnostics.js';
-import { isDimensionless, powerDim, sameDim } from '../units/dimension.js';
+import { dim, isDimensionless, powerDim, sameDim } from '../units/dimension.js';
 import { baseUnitSymbol } from '../units/display.js';
 import { civilFromDays, dateValue, daysFromCivil, daysOf, isDate, isValidDay } from '../values/date.js';
 import { quantity, type Quantity, type Value } from '../values/value.js';
@@ -18,7 +18,7 @@ import type { Expr } from '../lang/ast.js';
 import type { Args, FunctionDef, FunctionModuleId } from './registry.js';
 import { normalCdf, normalQuantile, studentCdf, studentQuantile } from './distributions.js';
 
-/** A function of one plain number, with an optional domain. */
+/** A function of one plain number, with an optional domain; on a series it is taken item by item (exp(-t/τ) for the times t). */
 function plain(name: string, module: FunctionModuleId, f: (x: number) => number, domain?: (x: number) => boolean): FunctionDef {
   return {
     name,
@@ -26,9 +26,14 @@ function plain(name: string, module: FunctionModuleId, f: (x: number) => number,
     params: 'x',
     arity: [1, 1],
     call: (a) => {
-      const x = a.number(0);
-      if (domain && !domain(x)) a.domain(0);
-      return quantity(f(x));
+      const value = a.value(0);
+      const one = (q: Quantity): Quantity => {
+        if (!isDimensionless(q.dim)) fail('E-FUNC-ARG-DIM', a.expr(0).span, { function: a.name, dim: baseUnitSymbol(q.dim) });
+        if (domain && !domain(q.si)) a.domain(0);
+        return quantity(f(q.si));
+      };
+      if (value.type === 'vector') return { type: 'vector', items: value.items.map(one) };
+      return one(asQuantity(value, a.expr(0).span));
     },
   };
 }
@@ -122,6 +127,31 @@ export const MATH: readonly FunctionDef[] = [
     call: (a) => {
       const values = a.sameDimension();
       return quantity(Math.hypot(...values.map((q) => q.si)), values[0]!.dim, keepUnit(values[0]));
+    },
+  },
+  {
+    // Resistances or impedances in parallel, written R_1 ∥ R_2: 1/(1/R_1 + 1/R_2).
+    name: 'parallel',
+    module: 'math',
+    params: 'a, b, …',
+    arity: [2, Infinity],
+    call: (a) => {
+      const values = Array.from({ length: a.count }, (_, i) => a.complex(i));
+      values.forEach((q, i) => {
+        if (!sameDim(q.dim, values[0]!.dim)) fail('E-UNIT-MISMATCH', a.expr(i).span, { operator: '∥', left: baseUnitSymbol(values[0]!.dim), right: baseUnitSymbol(q.dim) });
+        if (q.si === 0 && !q.im) a.domain(i);
+      });
+      // The sum of the reciprocals, complex: 1/(x + jy) = (x − jy)/(x² + y²).
+      let re = 0;
+      let im = 0;
+      for (const q of values) {
+        const size = q.si * q.si + (q.im ?? 0) * (q.im ?? 0);
+        re += q.si / size;
+        im -= (q.im ?? 0) / size;
+      }
+      const size = re * re + im * im;
+      if (size === 0) a.domain();
+      return quantity(re / size, values[0]!.dim, { ...keepUnit(values[0]), im: -im / size });
     },
   },
   {
@@ -631,6 +661,30 @@ export const DATES: readonly FunctionDef[] = [
       },
     }),
   ),
+  {
+    // Days between two dates as banks count them: months of 30 days, the year of 360 (DAYS360 of Excel, days360 of MATLAB).
+    name: 'days360',
+    module: 'dates',
+    params: 'start, end, basis',
+    arity: [2, 3],
+    call: (a) => {
+      const [start, end] = [0, 1].map((i) => {
+        const q = a.quantity(i);
+        if (!isDate(q)) fail('E-TYPE', a.expr(i).span, { expected: 'date', found: 'number' });
+        return civilFromDays(daysOf(q));
+      }) as [ReturnType<typeof civilFromDays>, ReturnType<typeof civilFromDays>];
+      const basisValue = a.count > 2 ? a.value(2) : undefined;
+      if (basisValue && basisValue.type !== 'text') fail('E-TYPE', a.expr(2).span, { expected: 'text', found: basisValue.type === 'quantity' ? 'number' : basisValue.type });
+      const basis = basisValue?.type === 'text' ? basisValue.value.replace(/\s+/g, '').toUpperCase() : '30E/360';
+      if (basis !== '30E/360' && basis !== '30A/360') fail('E-DAY-BASIS', a.expr(2).span, { basis: basisValue?.type === 'text' ? basisValue.value : '', bases: '30E/360, 30A/360' });
+      // 30E/360 (European, as Czech banks and textbooks): a 31st counts as the 30th, at both ends.
+      // 30A/360 (American, bond basis): the end's 31st counts as the 30th only where the start is the 30th or 31st.
+      const d1 = Math.min(start.day, 30);
+      const d2 = basis === '30E/360' || d1 === 30 ? Math.min(end.day, 30) : end.day;
+      const days = 360 * (end.year - start.year) + 30 * (end.month - start.month) + d2 - d1;
+      return quantity(days * 86_400, dim({ T: 1 }), { hint: { symbol: 'd', factor: 86_400, dim: dim({ T: 1 }) } });
+    },
+  },
 ];
 
 // ---------------------------------------------------------------------------

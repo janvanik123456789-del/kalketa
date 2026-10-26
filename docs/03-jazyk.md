@@ -127,11 +127,13 @@ Nejčastější past jednotkových systémů. Pravidla (**převzato z Calcpadu +
 
 - `°C`, `°F` jsou **absolutní teploty** s posunem nuly.
 - `Δ°C`, `Δ°F` (ASCII `delta_degC`) jsou **teplotní rozdíly** bez posunu. `1 Δ°C = 1 K`.
-- `°R` (Rankine) je termodynamická teplota ve stupních Fahrenheita od absolutní nuly, jako `K` bez posunu. Pro staré učebnice a americké příručky dále `lbm`, `oz`, `yd`, `mi`, `gal` (americký), `kip`, `ksi`, `inHg`, `Btu`, `hp` (2026-10-26); samotné `psi` je jednotka tlaku, `psi_1` je dál ψ₁.
+- `°R` (Rankine) je termodynamická teplota ve stupních Fahrenheita od absolutní nuly, jako `K` bez posunu. Pro staré učebnice a americké příručky dále `lbm`, `oz`, `yd`, `mi`, `gal` (americký), `kip`, `ksi`, `inHg`, `Btu`, `hp`, `hr` (hodina, Btu/(hr·ft·°F)) (2026-10-26); samotné `psi` je jednotka tlaku, `psi_1` je dál ψ₁.
 - `T₂ - T₁` dvou absolutních teplot dává **rozdíl** (v K, zobrazitelný v `Δ°C`).
 - Sčítání dvou absolutních teplot je **chyba** s vysvětlením.
 - Násobení absolutní teploty (např. `p·V = n·R·T` s `T := 20 °C`) je fyzikálně správné, počítá se v kelvinech. Program ale vydá **varování**, protože častěji jde o záměnu s rozdílem. (*Upraveno při implementaci F1, původně navrženo jako chyba.*)
 - `4180 J/(kg·K)` · `60 K` funguje. `4180 J/(kg·°C)` se v jednotce interpretuje jako rozdíl, tedy `J/(kg·Δ°C)`.
+- **Jméno rozdílu (2026-10-26):** `ΔT := 50 °C` (jméno začíná `Δ`, hodnota je číslo ve `°C` nebo `°F`) je rozdíl `50 Δ°C`, jak to píšou učebnice; `α_T·ΔT` pak není součin absolutní teploty. Jiné jméno (`T := 50 °C`) zůstává absolutní teplotou.
+- **Převrácená jednotka za číslem (2026-10-26):** `12e-6 1/°C`, `50 1/s`, `3 1/(m·s)` jako v knihách (vedle sebe dvě čísla jinak součin nejsou).
 
 ### 4.5 Bezrozměrné a zvláštní dimenze
 
@@ -167,6 +169,8 @@ unit kNm := kN·m                 ' odvozená jednotka (alias)
 
 Mol je v jádru obyčejný mol. Rozlišení „mol NaCl vs. mol H₂O“ se neřeší dimenzí, ale **tabulkou látek** (molární hmotnost jako sloupec). Jádro tím zůstane oborově neutrální.
 
+**Molarita (2026-10-26):** jednotka `M` = mol/l s předponami (`0,1 mM`, `5 μM`); jméno `M`, které list definuje (moment), zůstává jménem. Látkové množství dělené objemem v cm³ nebo dm³ se ukáže v `mol/l` (ne `mol/cm³`); `mmol/l` a `mol/m³` zůstávají, jak jsou zapsané.
+
 ---
 
 ## 5. Operátory a priority
@@ -179,7 +183,7 @@ Od nejvyšší priority (**převzato z Calcpadu, standardní školní matematika
 | 2 | `^` (mocnina) | **zprava** (`2^3^2 = 2^9`) |
 | 3 | unární `-`, `+`, `±` | — |
 | 4 | implicitní násobení číslo·jednotka (`5 m`) | — |
-| 5 | `*`, `·`, `/`, `÷` | zleva |
+| 5 | `*`, `·`, `/`, `÷`, `∥` (paralelní spojení: `R_1 ∥ R_2` = `1/(1/R_1 + 1/R_2)`, i komplexní impedance; zapisuje se jako funkce `parallel(a, b, …)`, 2026-10-26) | zleva |
 | 6 | `+`, `-`, `±` (obě hodnoty: `a ± b` = `[a + b; a − b]`, 2026-10-12) | zleva |
 | 7 | `<`, `≤`, `>`, `≥`, `==`, `≠` | — |
 | 8 | `not` | — |

@@ -65,6 +65,7 @@ export const CS_FUNCTION_DETAILS: Readonly<Record<string, string>> = {
   log10: 'Dekadický logaritmus bezrozměrného kladného čísla, např. pro decibely 10·log10(P / P_0).',
   max: 'Bere jednotlivé hodnoty i řady (také sloupec tabulky). Všechny musí mít stejnou jednotku; výsledek je v jednotce první hodnoty.',
   min: 'Bere jednotlivé hodnoty i řady (také sloupec tabulky). Všechny musí mít stejnou jednotku; výsledek je v jednotce první hodnoty.',
+  parallel: 'Píše se jako operátor R_1 ∥ R_2 (∥ se váže jako násobení, R_2 ∥ (R_1 + R_3) se závorkou), nebo parallel(a, b, …) pro víc prvků. Všechny musí mít stejnou jednotku; impedance mohou být komplexní. Nulový odpor ve zkratu dává chybu mimo definiční obor.',
   mod: 'Zbytek po dělení a/b; výsledek má znaménko b (mod(−7, 3) = 2). a a b mohou mít stejnou jednotku, např. mod(370°, 360°) = 10°.',
   root: 'n-tá odmocnina pro celé n ≥ 2. Lichá odmocnina záporného čísla je záporná, sudá je chyba. Jednotka se odmocní, jde-li to. Stejné jako tlačítko ⁿ√.',
   round: 'Bez druhého argumentu na celé číslo, s ním na n desetinných míst. Zaokrouhluje hodnotu ve výpočtu; jen pro zobrazení stačí {decimals=2} za řádkem.',
@@ -93,7 +94,7 @@ export const CS_FUNCTION_DETAILS: Readonly<Record<string, string>> = {
   integral: 'Určitý integrál výrazu podle pojmenované proměnné v mezích a .. b. Meze mohou mít jednotky; výsledek má jednotku f krát jednotku x (např. kN/m · m = kN). Počítá se numericky s přesností na zhruba 10 platných číslic.',
   maximize: 'Vrátí hodnotu x, v níž je f v intervalu a .. b největší (ne hodnotu f). Maximum samo je pak f(x_max). Hledá globální maximum v intervalu, i na jeho okraji.',
   minimize: 'Vrátí hodnotu x, v níž je f v intervalu a .. b nejmenší (ne hodnotu f). Minimum samo je pak f(x_min). Hledá globální minimum v intervalu, i na jeho okraji.',
-  polyfit: 'Koeficienty polynomu stupně n proloženého body x, y metodou nejmenších čtverců, jako v MATLABu a NumPy. Výsledek je funkce P(x) s jednotkami a tisk ukáže její rovnici. Bodů musí být aspoň n + 1.',
+  polyfit: 'Koeficienty polynomu stupně n proloženého body x, y metodou nejmenších čtverců, jako v MATLABu a NumPy. Výsledek je funkce P(x) s jednotkami a tisk ukáže její rovnici; její koeficienty jsou P[1], P[2], … od nejvyšší mocniny jako v MATLABu (u přímky P[1] je sklon). Bodů musí být aspoň n + 1.',
   polyval: 'Hodnota polynomu v bodě nebo v řadě bodů. P může být funkce z polyfit, nebo řada koeficientů od nejvyšší mocniny jako v MATLABu: [1, 0, −2] je x² − 2.',
   roots: 'Všechny kořeny mnohočlenu ve výrazu p v proměnné x, i komplexní, jako řada. Pro jiné rovnice než mnohočleny použijte řádek solve x: … (s oborem ∈ ℝ a podmínkami).',
   // Matice a vektory
@@ -148,6 +149,7 @@ export const CS_FUNCTION_DETAILS: Readonly<Record<string, string>> = {
   // Data
   date: 'Datum z roku, měsíce a dne. Datum jde napsat i přímo: 2026-10-21. K datu lze přičíst dny (+ 30 d).',
   day: 'Den v měsíci (1–31) jako číslo.',
+  days360: 'Počet dní od start do end, jak je počítají banky: měsíc má 30 dní, rok 360. Bez třetího argumentu evropský standard 30E/360 (české učebnice a banky: 31. den se počítá jako 30.), "30A/360" je americký (31. den konce jen tehdy, začíná-li se 30. nebo 31.). Excel DAYS360 má výchozí americký. Úrok pak i·n/(360 d).',
   month: 'Měsíc (1–12) jako číslo.',
   year: 'Rok jako číslo.',
   // Logika

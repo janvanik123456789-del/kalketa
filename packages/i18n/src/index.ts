@@ -62,7 +62,13 @@ export function formatValue(value: number, im: number | undefined, unit: string,
   if (unit === 'date') return formatDate(value, catalog);
   const number = im ? complexText(value, im, (x) => formatNumber(x, catalog, options)) : formatNumber(value, catalog, options);
   if (!unit) return number;
-  return im && value !== 0 ? `(${number}) ${unit}` : `${number} ${unit}`;
+  const gap = unitGap(unit);
+  return im && value !== 0 ? `(${number})${gap}${unit}` : `${number}${gap}${unit}`;
+}
+
+/** What stands between a number and its unit: a space ("20 °C", "5 m"), none before a degree, minute or second of angle ("120°"). */
+export function unitGap(unit: string): string {
+  return /^[°′″]$/.test(unit) ? '' : ' ';
 }
 
 /** A calendar day given as days from 1970-01-01: "29. 9. 2026" in Czech, "9/29/2026" in English. */

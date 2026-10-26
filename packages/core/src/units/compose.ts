@@ -104,6 +104,12 @@ function composeUnit(op: '*' | '/', a: ResolvedUnit, b: ResolvedUnit, units: Uni
   const dim = op === '*' ? multiplyDims(a.dim, b.dim) : divideDims(a.dim, b.dim);
   if (terms.size === 0 || isDimensionless(dim)) return none;
   const factor = op === '*' ? a.factor * b.factor : a.factor / b.factor;
+  // An amount in a volume of cm³ or dm³ (a solution, a sample) as chemistry writes it: mol/l, not mol/cm³.
+  const metre = units.dimOf('m');
+  const litre = units.dimOf('l');
+  if (litre && sameDim(dim, divideDims(units.dimOf('mol') ?? dim, litre)) && [...terms].some(([name, e]) => e === -3 && name !== 'm' && metre && sameDim(units.dimOf(name) ?? dim, metre))) {
+    return { unit: { symbol: 'mol/l', factor: 1e3, dim }, byValue: false };
+  }
   const dims = [...terms.keys()].map((name) => units.dimOf(name));
   // Two units of one kind (m and cm in kN·m/cm³): no scale of the calculation to keep.
   const mixed = dims.some((d, i) => !d || dims.some((e, j) => j > i && e && sameDim(d, e)));

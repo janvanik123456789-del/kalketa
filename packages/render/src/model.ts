@@ -31,9 +31,10 @@ import {
   type StatementResult,
   type UnitRegistry,
   type Value,
+  writtenPlaces,
 } from '@kalketa/core';
 import { chartLayout, chartSvg, cutChart, parseChartLook, withLook, type ChartLayout, type ChartLook, type ChartSpec } from '@kalketa/chart';
-import { formatDate, formatDiagnostic, formatNumber, t, type Catalog, type NumberFormatOptions } from '@kalketa/i18n';
+import { formatDate, formatDiagnostic, formatNumber, t, unitGap, type Catalog, type NumberFormatOptions } from '@kalketa/i18n';
 import { formulaNode, hasSubstitutableParts, THIN_SPACE, type FormulaOptions, type Substituted } from './formula.js';
 import { boxed, frac, mi, mn, mo, mtext, mu, nameNode, paren, row, sqrt, sup, toText, type MathNode, table } from './math.js';
 
@@ -1046,14 +1047,6 @@ function readsNames(expr: Expr): boolean {
 }
 
 /** Numbers written out: 5, -2, 12 kN/m, and series and matrices of them, with a unit after the brackets. */
-/** The decimal places of a number written in the sheet (6.5452 g: 4, 0.1230: 4, 1500: 0); none for 97.9e-6 or a calculated value. */
-function writtenPlaces(source: string, expr: Expr): number | undefined {
-  const number = expr.kind === 'unary' && expr.operator === '-' ? expr.operand : expr;
-  if (number.kind !== 'number' || number.imaginary) return undefined;
-  const m = /^\s*\d*(?:\.(\d+))?(?![\d.eE])/.exec(source.slice(number.span.offset, number.span.offset + number.span.length));
-  return m ? (m[1]?.length ?? 0) : undefined;
-}
-
 function isGiven(expr: Expr): boolean {
   switch (expr.kind) {
     case 'number':
@@ -1290,21 +1283,26 @@ export function valueNode(value: number, unit: string, format: (value: number, u
     return e ? row(mn(e[1]!.replace('-', '−')), mo('·'), sup(mn('10'), mn(e[2]!.replace('-', '−')))) : mn(text.replace('-', '−'));
   };
   if (exact && !im) {
-    const withUnit = (node: MathNode) => (unit ? row(node, THIN_SPACE, mu(unit)) : node);
+    const withUnit = (node: MathNode) => (unit ? row(node, ...unitAfter(unit)) : node);
     return row(withUnit(exactNode(exact)), mo('≐'), withUnit(numberNode(value)));
   }
   // In polar form: the size with its unit, then the angle in degrees (146,6 mA ∠ 58,37°); a real value too (120 V ∠ 0°).
   if (polar) {
     const size = Math.hypot(value, im ?? 0);
     const angle = (Math.atan2(im ?? 0, value) * 180) / Math.PI;
-    return row(unit ? row(numberNode(size), THIN_SPACE, mu(unit)) : numberNode(size), mo('∠'), numberNode(Math.abs(angle) < 1e-12 ? 0 : angle), mo('°'));
+    return row(unit ? row(numberNode(size), ...unitAfter(unit)) : numberNode(size), mo('∠'), numberNode(Math.abs(angle) < 1e-12 ? 0 : angle), mo('°'));
   }
-  if (!im) return unit ? row(numberNode(value), THIN_SPACE, mu(unit)) : numberNode(value);
+  if (!im) return unit ? row(numberNode(value), ...unitAfter(unit)) : numberNode(value);
   // A complex value: "(3 + 4j) Ω"; the imaginary unit is j.
   const imaginary = row(numberNode(Math.abs(im)), mi('j'));
   const complex = value === 0 ? (im < 0 ? row(mo('−'), imaginary) : imaginary) : row(numberNode(value), mo(im < 0 ? '−' : '+'), imaginary);
   if (!unit) return complex;
-  return row(value === 0 ? complex : paren(complex), THIN_SPACE, mu(unit));
+  return row(value === 0 ? complex : paren(complex), ...unitAfter(unit));
+}
+
+/** The unit after a number, with a thin space before it unless it is a degree of angle ("120°"). */
+function unitAfter(unit: string): MathNode[] {
+  return unitGap(unit) ? [THIN_SPACE, mu(unit)] : [mu(unit)];
 }
 
 /** 49/9, 2√3, √2/2, −13√2/2: a fraction of a whole number times a root. */
@@ -1335,7 +1333,7 @@ function seriesNode(items: readonly { value: number; unit: string; im?: number }
     parts.push(item ? valueNode(item.value, shared ? '' : item.unit, format, item.im, date) : mo('…'));
   });
   const count = items.length > SERIES_SHOWN ? [THIN_SPACE, mtext(`(${items.length})`)] : [];
-  return row(mo('['), ...parts, mo(']'), ...(shared && unit ? [THIN_SPACE, mu(unit)] : []), ...count);
+  return row(mo('['), ...parts, mo(']'), ...(shared && unit ? unitAfter(unit) : []), ...count);
 }
 
 const SERIES_SHOWN = 12;
@@ -1350,7 +1348,7 @@ function matrixNode(m: { rows: number; cols: number; items: readonly { value: nu
       return valueNode(item.value, shared ? '' : item.unit, format, item.im);
     }),
   );
-  return row(mo('['), table(cells), mo(']'), ...(shared && unit ? [THIN_SPACE, mu(unit)] : []));
+  return row(mo('['), table(cells), mo(']'), ...(shared && unit ? unitAfter(unit) : []));
 }
 
 /** "A_kruh(d)" or "σ(M; W)". */

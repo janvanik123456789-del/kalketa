@@ -22,7 +22,7 @@ import { PREFERRED_UNITS } from '../units/registry.js';
 import { callCalculus, isBindingCall } from './calculus.js';
 import { PLOT_FUNCTION } from './plot.js';
 import { isUnboundedCall } from './derive.js';
-import { fitCall, polyfitCall, polyvalCall } from './fit.js';
+import { degreeOf, fitCall, polyfitCall, polyvalCall } from './fit.js';
 import { isBareZero, withBareZero, zeroLike } from './zero.js';
 import { BINDING_FUNCTIONS } from '../lang/parser.js';
 import { asMatrix, at, inverseOf, matrix, normalized } from '../functions/linear.js';
@@ -192,12 +192,15 @@ function evaluateRaw(expr: Expr, ctx: EvalContext): Value {
         return at(object, position(expr.index, object.rows), position(expr.column, object.cols));
       }
       if (expr.column) fail('E-TYPE', expr.object.span, { expected: 'matrix', found: object.type === 'quantity' ? 'number' : object.type });
-      if (object.type !== 'vector') return fail('E-TYPE', expr.object.span, { expected: 'vector', found: object.type === 'quantity' ? 'number' : object.type });
+      // p := polyfit(x, y, 1): p[1] is the slope, as in MATLAB the coefficients from the highest power down.
+      const polynomial = object.type === 'function' && object.fit && degreeOf(object.fit.kind) !== undefined && !object.fit.zero ? object.fit.coefficients.map((c) => c.value).reverse() : undefined;
+      if (object.type !== 'vector' && !polynomial) return fail('E-TYPE', expr.object.span, { expected: 'vector', found: object.type === 'quantity' ? 'number' : object.type });
+      const items = polynomial ?? (object as VectorValue).items;
       const index = asQuantity(evaluate(expr.index, ctx), expr.index.span);
-      if (!isDimensionless(index.dim) || !Number.isInteger(index.si) || index.si < 1 || index.si > object.items.length) {
-        fail('E-INDEX', expr.index.span, { index: index.si, length: object.items.length });
+      if (!isDimensionless(index.dim) || !Number.isInteger(index.si) || index.si < 1 || index.si > items.length) {
+        fail('E-INDEX', expr.index.span, { index: index.si, length: items.length });
       }
-      return object.items[index.si - 1]!;
+      return items[index.si - 1]!;
     }
   }
 }

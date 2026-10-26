@@ -5,7 +5,7 @@
 
 import { useEffect, useState } from 'react';
 import { compareSheets, defaultRegistry, type ComparedValue, type CheckState, type SheetComparison, type SheetResult } from '@kalketa/core';
-import { formatDate, formatNumber, t, type Catalog } from '@kalketa/i18n';
+import { formatDate, formatNumber, t, unitGap, type Catalog } from '@kalketa/i18n';
 import { evaluateDocument, matchHash, nextRevisionLabel, REVISION_LABEL, revisionDocument, shortHash, type Revision, type RevisionState, type SheetDocument } from '@kalketa/sheet';
 import { Dialog } from './Dialogs.js';
 import { askConfirm } from './Ask.js';
@@ -165,7 +165,7 @@ function ComparisonView({ comparison, catalog, digits }: { comparison: SheetComp
       case 'quantity': {
         if (v.display.unit === 'date') return formatDate(v.display.value, catalog);
         const n = formatNumber(v.display.value, catalog, { digits }).replace('-', '−');
-        return v.display.unit ? `${n} ${v.display.unit}` : n;
+        return v.display.unit ? `${n}${unitGap(v.display.unit)}${v.display.unit}` : n;
       }
       case 'text':
         return v.text;

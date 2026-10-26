@@ -5,7 +5,9 @@
 import {
   defaultRegistry,
   toDisplay,
+  writtenPlaces,
   type CheckResult,
+  type FunctionValue,
   type Quantity,
   type SheetResult,
   type Statement,
@@ -17,6 +19,8 @@ import { formatDiagnostic, formatNumber, formatValue as formatQuantityValue, t, 
 export interface ReportOptions {
   readonly catalog: Catalog;
   readonly digits?: number;
+  /** Decimal places instead of significant digits (a value as written). */
+  readonly decimals?: number;
 }
 
 const OPERATOR_SYMBOLS: Readonly<Record<string, string>> = { '<': '<', '<=': '≤', '>': '>', '>=': '≥' };
@@ -56,10 +60,12 @@ function formatStatement(r: StatementResult, result: SheetResult, options: Repor
         // A user function: its definition as written.
         return result.source.slice(s.span.offset, s.span.offset + s.span.length).replace(/\s*'.*$/, '');
       }
+      // A fitted curve: its equation with the numbers found and R², as the printout shows it.
+      if (s.kind === 'definition' && r.value?.type === 'function' && r.value.fit) return `${s.name}(${r.value.fit.param}) = ${fitText(r.value.fit, options)}   R² = ${formatNumber(r.value.fit.r2, options.catalog, { digits: 4 })}`;
       const label = s.kind === 'definition' ? `${s.name} = ` : '';
       // A chart: the line as written (it is drawn in the printout), not a "?".
       if (r.plot) return `${result.source.slice(s.span.offset, s.span.offset + s.span.length).replace(/\s*'.*$/, '')}   [${t(options.catalog, 'cli.chart', { n: String(r.plot.series.length) })}]`;
-      return label + formatValue(r, options) + (s.comment ? `   ' ${s.comment}` : '');
+      return label + formatValue(r, options, result.source) + (s.comment ? `   ' ${s.comment}` : '');
     }
     case 'check': {
       const condition = result.source.slice(s.expr.span.offset, s.expr.span.offset + s.expr.span.length);
@@ -80,12 +86,34 @@ function formatStatement(r: StatementResult, result: SheetResult, options: Repor
           })
           .join('   ');
       }
+      // A differential equation: its solution is a function, said how it was found.
+      if (s.ode && r.ode && s.unknowns[0]) return `${s.unknowns[0].name}(${s.ode.variable}) ⇒ ${t(options.catalog, 'print.odeSolved', { order: String(r.ode.order), steps: String(r.ode.steps) })}`;
       return r.solutions ? r.solutions.map((found) => `${found.name} = ${formatDisplay(found.display.value, found.display.unit, options, found.display.im)}`).join('   ') : '?';
     case 'invalid':
       return '?';
     default:
       return undefined;
   }
+}
+
+/** A polynomial from its highest power down (2,05·x − 0,06667); another curve as its coefficients. */
+function fitText(fit: NonNullable<FunctionValue['fit']>, options: ReportOptions): string {
+  const value = (q: Quantity) => {
+    const d = toDisplay(q, defaultRegistry);
+    return formatDisplay(Math.abs(d.value), d.unit, options);
+  };
+  if (fit.kind === 'linear' || fit.kind.startsWith('poly')) {
+    const x = fit.zero ? `(${fit.param} − ${formatQuantity(fit.zero, options)})` : fit.param;
+    return fit.coefficients
+      .map((c, i) => ({ q: c.value, power: i }))
+      .reverse()
+      .map(({ q, power }, k) => {
+        const term = `${value(q)}${power === 0 ? '' : `·${x}${power > 1 ? `^${power}` : ''}`}`;
+        return k === 0 ? `${q.si < 0 ? '−' : ''}${term}` : `${q.si < 0 ? ' − ' : ' + '}${term}`;
+      })
+      .join('');
+  }
+  return fit.coefficients.map((c, i) => `b${i} = ${formatQuantity(c.value, options)}`).join('; ');
 }
 
 function formatCheckValues(check: CheckResult, options: ReportOptions): string {
@@ -158,13 +186,18 @@ export function formatTrace(node: TraceNode, options: ReportOptions): string {
   return lines.join('\n');
 }
 
-function formatValue(r: StatementResult, options: ReportOptions): string {
+function formatValue(r: StatementResult, options: ReportOptions, source: string): string {
   // {polar}: the size with its unit and the angle, 146.6 mA ∠ 58.37°.
   if (r.display && r.statement.format?.polar) {
     const angle = (Math.atan2(r.display.im ?? 0, r.display.value) * 180) / Math.PI;
-    return `${formatDisplay(Math.hypot(r.display.value, r.display.im ?? 0), r.display.unit, options)} ∠ ${formatDisplay(Math.abs(angle) < 1e-12 ? 0 : angle, '°', options).replace(' °', '°')}`;
+    return `${formatDisplay(Math.hypot(r.display.value, r.display.im ?? 0), r.display.unit, options)} ∠ ${formatDisplay(Math.abs(angle) < 1e-12 ? 0 : angle, '°', options)}`;
   }
-  if (r.display) return formatDisplay(r.display.value, r.display.unit, options, r.display.im);
+  if (r.display) {
+    // A value as written (M := 39.997 g/mol) keeps its places, as in the printout.
+    const s = r.statement;
+    const written = s.format?.decimals ?? (s.kind === 'definition' && !s.target && s.format?.digits === undefined ? writtenPlaces(source, s.expr) : undefined);
+    return formatDisplay(r.display.value, r.display.unit, written === undefined ? options : { ...options, decimals: written }, r.display.im);
+  }
   if (r.value?.type === 'boolean') return options.catalog.terms[String(r.value.value)] ?? String(r.value.value);
   if (r.value?.type === 'text') return JSON.stringify(r.value.value);
   if (r.value?.type === 'row') return `${r.value.label}   (${r.value.table.name})`;
@@ -198,7 +231,7 @@ function formatQuantity(q: Quantity, options: ReportOptions): string {
 function formatDisplay(value: number, unit: string, options: ReportOptions, im?: number): string {
   // An amount of money keeps its whole part: 643 212 USD.
   const whole = !!unit && !!defaultRegistry.resolve(unit)?.currency;
-  return formatQuantityValue(value, im, unit, options.catalog, { ...(options.digits !== undefined ? { digits: options.digits } : {}), ...(whole ? { whole } : {}) });
+  return formatQuantityValue(value, im, unit, options.catalog, { ...(options.decimals !== undefined ? { decimals: options.decimals } : options.digits !== undefined ? { digits: options.digits } : {}), ...(whole ? { whole } : {}) });
 }
 
 function formatPercent(ratio: number, options: ReportOptions): string {

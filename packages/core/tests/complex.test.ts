@@ -94,3 +94,13 @@ describe('a unit after parentheses', () => {
     expect(codes('m := 2\n(1 + 2) m')).toContain('E-MISSING-OPERATOR');
   });
 });
+
+describe('impedances in parallel', () => {
+  it('are complex', () => {
+    // 10 Ω ∥ −10j Ω = 5 − 5j Ω
+    const z = last('10 Ω ∥ (-10j Ω)').display!;
+    expect(z.unit).toBe('Ω');
+    expect(z.value).toBeCloseTo(5, 12);
+    expect(z.im).toBeCloseTo(-5, 12);
+  });
+});

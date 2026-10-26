@@ -669,6 +669,7 @@ export const UI_KEYS = [
   'cmd.define',
   'cmd.vector',
   'cmd.rounded',
+  'cmd.parallel',
   'cmd.prime',
   'cmd.prime2',
   'cmd.power',

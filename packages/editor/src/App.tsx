@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { defaultRegistry, formatPicture, parsePicture, rowLabel, TEXT_COLORS, toDecimalComma, type Diagnostic, type Expr, type Statement } from '@kalketa/core';
-import { catalogFor, CATALOGS, formatDate, formatDiagnostic, formatNumber, t, type Catalog, type UiKey } from '@kalketa/i18n';
+import { catalogFor, CATALOGS, formatDate, formatDiagnostic, formatNumber, t, unitGap, type Catalog, type UiKey } from '@kalketa/i18n';
 import { buildPrintDocument, printHtml, renderBlockHtml, revisionFooter, type PrintAppendix, type PrintBlock } from '@kalketa/render';
 import { emptyScene, readScene, writeScene, type CanvasScene } from '@kalketa/canvas';
 import { CanvasEditor } from '@kalketa/canvas/editor';
@@ -1605,8 +1605,8 @@ export function App() {
     const number = (v: number) => formatNumber(v, ui, { digits: 6 }).replace('-', '−');
     const rows = compareWithSheet(results, sheet).map((c) => ({
       name: c.name,
-      ...(c.kalketa ? { kalketa: `${number(c.kalketa.value)} ${c.kalketa.unit}`.trim() } : {}),
-      python: `${number(c.python.value)} ${c.python.unit}`.trim(),
+      ...(c.kalketa ? { kalketa: `${number(c.kalketa.value)}${unitGap(c.kalketa.unit)}${c.kalketa.unit}`.trim() } : {}),
+      python: `${number(c.python.value)}${unitGap(c.python.unit)}${c.python.unit}`.trim(),
       ...(c.difference !== undefined ? { difference: c.difference } : {}),
       state: c.state,
       ...(isRoundResult(c.python.value) ? { round: true } : {}),

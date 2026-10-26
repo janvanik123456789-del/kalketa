@@ -95,7 +95,7 @@ export const NUMBER_SET_SYMBOLS: readonly (readonly [string, string])[] = [
   ['ℕ₀', 'sets.natural0'],
   ['ℤ', 'sets.integer'],
 ];
-export const OPERATOR_SYMBOLS =[':=', '·', '÷', '≤', '≥', '≠', '≐', '±', '∈', 'ℝ', 'ℂ', '√', '∛', '²', '³', '^', '⁻¹', '°', 'Δ°C', '_', '⃗', '′', '″', '|'];
+export const OPERATOR_SYMBOLS =[':=', '·', '÷', '≤', '≥', '≠', '≐', '±', '∥', '∈', 'ℝ', 'ℂ', '√', '∛', '²', '³', '^', '⁻¹', '°', 'Δ°C', '_', '⃗', '′', '″', '|'];
 /** Symbols shown otherwise than inserted: ^ is a general power. */
 export const SYMBOL_GLYPHS: Readonly<Record<string, string>> = { '^': 'xⁿ', ':=': '≔', '⃗': 'a⃗' };
 

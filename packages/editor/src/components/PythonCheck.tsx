@@ -5,7 +5,7 @@
  */
 
 import { createContext, useContext, useState } from 'react';
-import { formatNumber, t, type Catalog, type UiKey } from '@kalketa/i18n';
+import { formatNumber, t, unitGap, type Catalog, type UiKey } from '@kalketa/i18n';
 import type { PythonComparison, PythonRun } from '@kalketa/sheet';
 
 /** A run of a script and its results set beside the sheet; undefined when the user did not let it run. */
@@ -61,8 +61,8 @@ export function PythonPanel({ code, catalog }: { code: string; catalog: Catalog 
             {last.comparisons.map((c, i) => (
               <tr key={i} className={c.state}>
                 <td>{c.name}</td>
-                <td>{c.kalketa ? `${number(c.kalketa.value)} ${c.kalketa.unit}` : '–'}</td>
-                <td>{`${number(c.python.value)} ${c.python.unit}`}</td>
+                <td>{c.kalketa ? `${number(c.kalketa.value)}${unitGap(c.kalketa.unit)}${c.kalketa.unit}` : '–'}</td>
+                <td>{`${number(c.python.value)}${unitGap(c.python.unit)}${c.python.unit}`}</td>
                 <td>{c.difference !== undefined ? `${formatNumber(c.difference * 100, catalog, { digits: 2 })} %` : ''}</td>
                 <td title={say(`python.state.${c.state}` as UiKey)}>{c.state === 'agree' ? '✓' : '✗'}</td>
               </tr>

@@ -82,6 +82,15 @@ r := P(2.5)`);
     expect(higher.value).toHaveLength(1);
   });
 
+  it('give the coefficients by index from the highest power, as MATLAB', () => {
+    const p3 = [0.19999999999999896, -1.5214285714285611, 4.678571428571395, -1.1999999999999595];
+    close(last(`${MEASURED}P := polyfit(X, Y, 3)\nr := [P[1], P[2], P[3], P[4]]`).value, p3);
+    expect(last(`${MEASURED}P := polyfit(X, Y, 1)\nr := P[3]`).codes).toEqual(['E-INDEX']);
+    // A slope of kelvin per kelvin is a plain number.
+    const slope = evaluateSheet('x := [1, 2, 3] K\ny := [2, 4, 6.1] K\nP := polyfit(x, y, 1)\nk := P[1]').statements.at(-1)!;
+    expect(slope.display?.unit).toBe('');
+  });
+
   it('polyval takes coefficients from the highest power, as MATLAB', () => {
     close(last('r := polyval([1, 0, -2], 3)').value, [7]);
     close(last('r := polyval([2, 1], [0, 1, 2])').value, [1, 3, 5]);

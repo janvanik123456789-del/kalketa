@@ -14,7 +14,7 @@ const GREEK: Readonly<Record<string, string>> = {
 };
 
 const SYMBOLS: Readonly<Record<string, string>> = {
-  '·': '\\cdot', '−': '-', '≤': '\\le', '≥': '\\ge', '≠': '\\ne', '±': '\\pm', '≐': '\\doteq', '≈': '\\approx', '→': '\\to', '⇒': '\\Rightarrow',
+  '·': '\\cdot', '−': '-', '≤': '\\le', '≥': '\\ge', '≠': '\\ne', '±': '\\pm', '∥': '\\parallel', '≐': '\\doteq', '≈': '\\approx', '→': '\\to', '⇒': '\\Rightarrow',
   '∧': '\\land', '∨': '\\lor', '∞': '\\infty', '∫': '\\int', '∑': '\\sum', '∏': '\\prod', '∂': '\\partial', '°': '^{\\circ}', '%': '\\%', '‰': '‰',
   '∈': '\\in', '∉': '\\notin', 'ℝ': '\\mathbb{R}', 'ℂ': '\\mathbb{C}', 'ℕ': '\\mathbb{N}', 'ℤ': '\\mathbb{Z}', '√': '\\surd', '∛': '\\sqrt[3]{}',
   '{': '\\{', '}': '\\}', '#': '\\#', '&': '\\&', '$': '\\$', '_': '\\_', '…': '\\ldots', '⌊': '\\lfloor', '⌋': '\\rfloor', '⌈': '\\lceil', '⌉': '\\rceil', '|': '|',

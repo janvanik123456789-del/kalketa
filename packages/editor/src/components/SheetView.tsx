@@ -6,7 +6,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { formatExpr, formatPicture, fromDecimalComma, parsePicture, TEXT_ALIGNS, TEXT_COLORS, toDecimalComma, type SheetResult, type Statement, type StatementResult } from '@kalketa/core';
-import { formatDate, formatNumber, t, type Catalog, type UiKey } from '@kalketa/i18n';
+import { formatDate, formatNumber, t, unitGap, type Catalog, type UiKey } from '@kalketa/i18n';
 import { chartSvg as drawChart, DEFAULT_VIEW, labelParts, surfaceAt, viewText, xPosition, xValueAt, yPosition } from '@kalketa/chart';
 import { blockLatex, columnsHead, fitWideEquations, isInput, pageLabels, renderBlockHtml, renderSummary, sheetSections, type CalcStyle, type PrintBlock, type PrintDocument, type Section } from '@kalketa/render';
 import { isCanvasPath } from '@kalketa/canvas';
@@ -1247,7 +1247,7 @@ export function SheetView(props: Props) {
         : [
             { kind: 'action', label: t(ui, 'rowTools.unitAuto'), checked: target === undefined, run: () => change((text) => withLineTarget(text, undefined)) },
             { kind: 'separator' },
-            ...units.map((u): MenuItem => ({ kind: 'action', label: `${u.unit}   (${number(u.value)} ${u.unit})`, checked: target === u.unit, run: () => change((text) => withLineTarget(text, u.unit)) })),
+            ...units.map((u): MenuItem => ({ kind: 'action', label: `${u.unit}   (${number(u.value)}${unitGap(u.unit)}${u.unit})`, checked: target === u.unit, run: () => change((text) => withLineTarget(text, u.unit)) })),
           ];
     const source = lineSourceOf(seg.text);
     return (
@@ -1599,7 +1599,7 @@ function writtenNumber(value: number, step?: number): string {
 function chartX(chart: Extract<PrintBlock, { kind: 'chart' }>, x: number): string {
   const step = 10 ** Math.floor(Math.log10((chart.layout.x.max - chart.layout.x.min) / 200));
   const n = writtenNumber(Math.round(x / step) * step, step);
-  return chart.xUnit ? `${n} ${chart.xUnit}` : n;
+  return chart.xUnit ? `${n}${unitGap(chart.xUnit)}${chart.xUnit}` : n;
 }
 
 function ChartBlock({ block, catalog, onResize, onOption, sliders, editable }: { block: Extract<PrintBlock, { kind: 'chart' }>; catalog: Catalog; onResize(width: number, ratio?: number): void; onOption(name: string, value: string | undefined): void; sliders?: ReactNode; /** A curve that opens to be edited by a click (a fitted one). */ editable?(series: number): boolean }) {

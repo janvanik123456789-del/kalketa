@@ -137,6 +137,11 @@ describe('math and statistics functions', () => {
     expectValue('sign(-4 kN)', -1, '');
     expectValue('factorial(5)', 120, '');
     expectValue('hypot(3 m, 4 m)', 5, 'm');
+    expectValue('2 kΩ ∥ 3 kΩ', 1.2, 'kΩ');
+    expectValue('parallel(2 Ω, 3 Ω, 6 Ω)', 1, 'Ω');
+    expectValue('R := 500 Ω\nR ∥ (2 kΩ + 3 kΩ) | Ω', 5000 / 11, 'Ω');
+    expect(codes('2 Ω ∥ 0 Ω')).toEqual(['E-DOMAIN']);
+    expect(codes('2 Ω ∥ 3 m')).toEqual(['E-UNIT-MISMATCH']);
     expect(codes('log(8, 1)')).toEqual(['E-DOMAIN']);
     expect(codes('factorial(2.5)')).toEqual(['E-DOMAIN']);
     expect(codes('mod(5 m, 2 s)')).toEqual(['E-UNIT-MISMATCH']);

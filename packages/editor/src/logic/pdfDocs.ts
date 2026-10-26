@@ -39,7 +39,7 @@ export function loadPdf(path: string, sheetPath?: string): Promise<PdfDocument> 
 }
 
 /** The lines of a page with their boxes, and where it draws pictures; page coordinates at scale 1, y downwards. */
-export async function pageContent(page: PdfPage): Promise<{ lines: LayoutLine[]; pictures: Box[]; drawn: Box[]; width: number; height: number }> {
+export async function pageContent(page: PdfPage): Promise<{ lines: LayoutLine[]; parts: TextPart[]; pictures: Box[]; drawn: Box[]; width: number; height: number }> {
   const lib = await library();
   const viewport = page.getViewport({ scale: 1 });
   // The drawing operations first: they load the page's fonts, whose names tell a Symbol font.
@@ -71,7 +71,9 @@ export async function pageContent(page: PdfPage): Promise<{ lines: LayoutLine[];
     if (text.trim()) (open.includes(true) ? artifacts : parts).push({ x, right: x + (item.width ?? 0), y, size, text });
   }
   // A PDF that marks most of its text so is taken as if it marked none: no content is lost.
-  const lines = linesOf(artifacts.length > parts.length ? [...parts, ...artifacts] : parts);
+  // The pieces of text the lines are made of, for the pages taken together (a navigation panel on each of them).
+  const text = artifacts.length > parts.length ? [...parts, ...artifacts] : parts;
+  const lines = linesOf(text);
 
   // Pictures: where the drawing operations paint an image, through the transforms that place it.
   const { OPS, Util } = lib;
@@ -132,7 +134,7 @@ export async function pageContent(page: PdfPage): Promise<{ lines: LayoutLine[];
       if (op !== OPS.endPath && bounds && bounds.length >= 4 && [0, 1, 2, 3].every((k) => Number.isFinite(bounds[k]!)) && !decorating()) drawn.push(onPage(bounds[0]!, bounds[1]!, bounds[2]!, bounds[3]!));
     }
   }
-  return { lines, pictures, drawn, width: viewport.width, height: viewport.height };
+  return { lines, parts: text, pictures, drawn, width: viewport.width, height: viewport.height };
 }
 
 /**

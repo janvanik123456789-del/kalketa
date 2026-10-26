@@ -198,6 +198,46 @@ function alike(a: string, b: string): boolean {
   return row[b.length]! <= Math.max(a.length, b.length) / 4;
 }
 
+/** How far (points) a piece may stand from where it stood on another page and still be the same piece. */
+const SAME_PLACE = 2;
+
+/**
+ * Pieces of text that stand on most pages at the same place with the same text, numbers aside, and
+ * outside the column of the page's other text: the navigation panel of an interactive PDF ("Obsah",
+ * "80 . strana ze 102", "Zavřít dokument" at the right edge of every page). They are left out of each
+ * page before its lines are made, so none of them gets into a line of the text beside it. A heading
+ * of a table repeated on the pages stands in the column of the text and stays.
+ */
+export function withoutRunningParts(pages: readonly { readonly parts: readonly TextPart[] }[]): TextPart[][] {
+  if (pages.length < 2) return pages.map((p) => [...p.parts]);
+  const needed = Math.max(2, Math.ceil(pages.length / 2));
+  const key = (p: TextPart) => runningKey(p.text);
+  const repeated = (part: TextPart) =>
+    pages.filter((page) => page.parts.some((o) => Math.abs(o.x - part.x) <= SAME_PLACE && Math.abs(o.y - part.y) <= SAME_PLACE && key(o) === key(part))).length >= needed;
+  return pages.map((page) => {
+    const running = page.parts.filter(repeated);
+    const others = page.parts.filter((p) => !running.includes(p));
+    if (running.length === 0 || others.length === 0) return [...page.parts];
+    // The column of the page's own text: a running piece inside it is text that happens to repeat.
+    const left = Math.min(...others.map((p) => p.x));
+    const right = Math.max(...others.map((p) => p.right));
+    return page.parts.filter((p) => !running.includes(p) || (p.x < right && p.right > left));
+  });
+}
+
+/**
+ * Drawings and images at the same place on most pages (the buttons of a navigation panel, a logo): decoration.
+ * A picture over most of the page (a scanned page) stays: it tells the page is a scan.
+ */
+export function withoutRunningBoxes(pages: readonly { readonly boxes: readonly Box[]; readonly width: number; readonly height: number }[]): Box[][] {
+  if (pages.length < 2) return pages.map((p) => [...p.boxes]);
+  const needed = Math.max(2, Math.ceil(pages.length / 2));
+  const same = (a: Box, b: Box) => [a.top - b.top, a.bottom - b.bottom, a.left - b.left, a.right - b.right].every((d) => Math.abs(d) <= SAME_PLACE);
+  return pages.map((page) =>
+    page.boxes.filter((box) => area(box) > 0.25 * page.width * page.height || pages.filter((other) => other.boxes.some((o) => same(o, box))).length < needed),
+  );
+}
+
 /** A line of text keeps where it is (`box`): its part of the page can be read again (pdfReread.ts). */
 export type LayoutItem = { readonly kind: 'text'; readonly text: string; readonly box?: Box } | { readonly kind: 'cut'; readonly box: Box; readonly why: 'picture' | 'formula' };
 

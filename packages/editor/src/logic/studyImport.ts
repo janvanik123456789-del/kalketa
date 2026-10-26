@@ -7,7 +7,7 @@
  */
 import { selectedPages, studyNotes, type StudyContent, type StudySettings } from '@kalketa/sheet';
 import { joinSpacedLetters } from './pdfText.js';
-import { pageLayout, withoutRunningLines } from './pdfLayout.js';
+import { linesOf, pageLayout, withoutRunningBoxes, withoutRunningLines, withoutRunningParts } from './pdfLayout.js';
 import { cutOut, loadPdf, pageContent } from './pdfDocs.js';
 import { picturePath } from './pictures.js';
 
@@ -48,9 +48,16 @@ export async function studyImport(
     const page = await doc.getPage(p);
     contents.push({ page, ...(await pageContent(page)) });
   }
-  const kept = withoutRunningLines(contents);
+  // What every page repeats at the same place (a navigation panel, its buttons) goes first, then the lines are
+  // made of the rest, then running heads and feet go.
+  const parts = withoutRunningParts(contents);
+  const drawings = withoutRunningBoxes(contents.map((c) => ({ boxes: c.drawn, width: c.width, height: c.height })));
+  const pictureBoxes = withoutRunningBoxes(contents.map((c) => ({ boxes: c.pictures, width: c.width, height: c.height })));
+  const kept = withoutRunningLines(contents.map((c, i) => ({ lines: parts[i]!.length === c.parts.length ? c.lines : linesOf(parts[i]!), height: c.height })));
   for (const [n, p] of pages.entries()) {
-    const { page, pictures: images, drawn, width, height } = contents[n]!;
+    const { page, width, height } = contents[n]!;
+    const images = pictureBoxes[n]!;
+    const drawn = drawings[n]!;
     const lines = kept[n]!;
     const label = file.content.labels?.[p - 1] ?? String(p);
     const blocks: string[] = [];

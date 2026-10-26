@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decoration, inkBounds, linesOf, pageLayout, withoutRunningLines, type LayoutLine, type TextPart } from '../src/logic/pdfLayout.js';
+import { decoration, inkBounds, linesOf, pageLayout, withoutRunningBoxes, withoutRunningLines, withoutRunningParts, type LayoutLine, type TextPart } from '../src/logic/pdfLayout.js';
 import { formulaOrScraps } from '../src/logic/pdfText.js';
 
 const page = { width: 595, height: 842 };
@@ -134,3 +134,35 @@ describe('running heads and feet', () => {
     expect(texts(withoutRunningLines(pages))).toEqual([['Kapitola 7 Nosníky', 'Text'], ['Jiný nadpis', 'Text']]);
   });
 });
+
+describe('a navigation panel of an interactive PDF', () => {
+  const part = (x: number, y: number, text: string, width = 40): TextPart => ({ x, right: x + width, y, size: 10, text });
+  // The panel at the right edge of each page, the text of the page in its column on the left.
+  const page = (n: number, text: string[]) => ({
+    parts: [
+      ...text.map((t, i) => part(70, 100 + 14 * i, t, 380)),
+      part(522.8, 228.1, 'Obsah', 19.5),
+      part(505.3, 250.2, String(n), 7.7),
+      part(513, 250.2, '. strana ze 102', 46.9),
+      part(506.8, 393.8, 'Zavřít dokument', 51.6),
+      // A heading of a table repeated on each page, in the column of the text: it stays.
+      part(70, 300, 'Tabulka 5.1 (pokračování)', 200),
+    ],
+  });
+
+  it('is left out where it comes back at the same place, out of the column of the text', () => {
+    const pages = [page(80, ['Jaká je prav-', 'děpodobnost narození dívky']), page(81, ['Vzhledem k tomu, že tento výpočet']), page(82, ['Poissonovo rozdělení'])];
+    const kept = withoutRunningParts(pages).map((p) => p.map((q) => q.text));
+    expect(kept[0]).toEqual(['Jaká je prav-', 'děpodobnost narození dívky', 'Tabulka 5.1 (pokračování)']);
+    expect(kept[1]).toEqual(['Vzhledem k tomu, že tento výpočet', 'Tabulka 5.1 (pokračování)']);
+  });
+
+  it('takes its buttons, drawn at the same place on each page, for decoration; a scanned page stays', () => {
+    const button = { top: 260, bottom: 275, left: 505, right: 560 };
+    const scan = { top: 0, bottom: 450, left: 0, right: 576 };
+    const figure = (top: number) => ({ top, bottom: top + 100, left: 100, right: 300 });
+    const pages = [figure(50), figure(200), figure(120)].map((f) => ({ boxes: [button, scan, f], width: 576, height: 450 }));
+    expect(withoutRunningBoxes(pages)).toEqual(pages.map((p) => [scan, p.boxes[2]]));
+  });
+});
+

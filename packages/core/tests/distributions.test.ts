@@ -56,3 +56,14 @@ describe('principal stresses', () => {
   });
 });
 
+describe('zeros without a unit in matrices and series', () => {
+  it('take the unit of the other items when they share one, as on paper', () => {
+    const nl = String.fromCharCode(10);
+    const sheet = ['B := [0, 0, 1 m | 0, 1 m, 0]', 'C := B + [1 m, 2 m, 3 m | 4 m, 5 m, 6 m]', 'v := [0, 2 m, 5 m]', 'w := v + [1 m, 1 m, 1 m]'].join(nl);
+    expect(codes(sheet)).toEqual([]);
+    // Among items of different units a zero stays plain: [1 m, 0 | 0, 1].
+    expect(codes('K := [1 m, 0 | 0, 1]')).toEqual([]);
+    expect(codes('v := [1, 2 m]')).toEqual(['E-UNIT-MISMATCH']);
+  });
+});
+

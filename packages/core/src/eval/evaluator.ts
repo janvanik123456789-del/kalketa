@@ -23,7 +23,7 @@ import { callCalculus, isBindingCall } from './calculus.js';
 import { PLOT_FUNCTION } from './plot.js';
 import { isUnboundedCall } from './derive.js';
 import { fitCall, polyfitCall, polyvalCall } from './fit.js';
-import { withBareZero } from './zero.js';
+import { isBareZero, withBareZero, zeroLike } from './zero.js';
 import { BINDING_FUNCTIONS } from '../lang/parser.js';
 import { asMatrix, at, inverseOf, matrix, normalized } from '../functions/linear.js';
 import { callTableFunction, COMPARE_FUNCTION, memberOf, TABLE_FUNCTIONS } from './tables.js';
@@ -210,21 +210,35 @@ function matrixOf(expr: Extract<Expr, { kind: 'matrix' }>, ctx: EvalContext): Ma
     if (row.length !== cols) fail('E-MATRIX-SHAPE', expr.span, { operator: '|', left: String(cols), right: String(row.length) });
     for (const item of row) items.push(asQuantity(evaluate(item, ctx), item.span));
   }
-  return matrix(expr.rows.length, cols, items);
+  return matrix(expr.rows.length, cols, withBareZeros(items, expr.rows.flat()));
+}
+
+/**
+ * Zeros written without a unit among items of one unit take it, as on paper: [0, 1 m | 1 m, 0].
+ * Among items of different units (a stiffness matrix) a zero stays as written.
+ */
+function withBareZeros(items: Quantity[], exprs: readonly Expr[]): Quantity[] {
+  const bare = items.map((q, i) => q.si === 0 && !q.im && isDimensionless(q.dim) && !!exprs[i] && isBareZero(exprs[i]!));
+  const others = items.filter((_, i) => !bare[i]);
+  if (!bare.some(Boolean) || others.length === 0 || others.some((q) => !sameDim(q.dim, others[0]!.dim)) || isDimensionless(others[0]!.dim)) return items;
+  return items.map((q, i) => (bare[i] ? zeroLike(others[0]!) : q));
 }
 
 /** [a, b, c]: all items of one dimension; a series among them is spread. */
 function vectorOf(expr: Extract<Expr, { kind: 'vector' }>, ctx: EvalContext): VectorValue {
+  const evaluated = expr.items.map((item) => evaluate(item, ctx));
+  // [0, 2 m, 5 m]: a zero without a unit is one of the others.
+  const single = evaluated.every((v) => v.type !== 'vector') ? withBareZeros(evaluated.map((v, i) => asQuantity(v, expr.items[i]!.span)), expr.items) : undefined;
   const items: Quantity[] = [];
-  for (const item of expr.items) {
-    const value = evaluate(item, ctx);
-    const parts = value.type === 'vector' ? value.items : [asQuantity(value, item.span)];
+  expr.items.forEach((item, i) => {
+    const value = evaluated[i]!;
+    const parts = single ? [single[i]!] : value.type === 'vector' ? value.items : [asQuantity(value, item.span)];
     for (const q of parts) {
       const first = items[0];
       if (first && !sameDim(first.dim, q.dim)) fail('E-UNIT-MISMATCH', item.span, { operator: ',', left: baseUnitSymbol(first.dim), right: baseUnitSymbol(q.dim) });
       items.push(q);
     }
-  }
+  });
   return { type: 'vector', items };
 }
 

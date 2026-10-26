@@ -131,6 +131,10 @@ export const CS_FUNCTION_DETAILS: Readonly<Record<string, string>> = {
   mean: 'Aritmetický průměr řady nebo sloupce tabulky, v jejich jednotce.',
   median: 'Prostřední hodnota seřazené řady; u sudého počtu průměr dvou prostředních. Méně citlivá na odlehlé hodnoty než průměr.',
   stdev: 'Výběrová směrodatná odchylka √(Σ(x − x̄)² / (n − 1)), v jednotce dat. Potřebuje aspoň dvě hodnoty.',
+  normcdf: 'Pravděpodobnost, že normovaná normální veličina nepřekročí x; x je bezrozměrné (hodnotu převeďte: (x − μ)/σ).',
+  norminv: 'Hodnota, kterou normovaná normální veličina nepřekročí s pravděpodobností p (0 < p < 1); 95 % oboustranně: norminv(0,975) = 1,960. Pro N(μ, σ): μ + σ·norminv(p).',
+  tcdf: 'Pravděpodobnost, že veličina se Studentovým rozdělením s ν stupni volnosti nepřekročí t; ν nemusí být celé (Welchův–Satterthwaiteův vzorec).',
+  tinv: 'Kvantil Studentova rozdělení (0 < p < 1, ν > 0), jako tinv v MATLABu a T.INV v Excelu. Koeficient rozšíření pro 95 % z n měření: k = tinv(0,975; n − 1), pro n = 22 je k = 2,080 (GUM, NIST TN 1900).',
   // Finance
   irr: 'Úroková míra, při níž je čistá současná hodnota toků CF nulová. První tok bývá záporný (investice), další kladné. Výsledek je podíl (0,089); v procentech ho ukáže | % za řádkem.',
   npv: 'Součet toků CF diskontovaných sazbou rate: první tok je dnes, k-tý se dělí (1 + rate)^(k − 1). Sazba za období, např. 5 %.',

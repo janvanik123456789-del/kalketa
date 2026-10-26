@@ -131,6 +131,10 @@ export const EN_FUNCTION_DETAILS: Readonly<Record<string, string>> = {
   mean: 'The arithmetic mean of a series or a table column, in their unit.',
   median: 'The middle value of the sorted series; of an even count, the mean of the two middle ones. Less sensitive to outliers than the mean.',
   stdev: 'The sample standard deviation √(Σ(x − x̄)² / (n − 1)), in the unit of the data. Needs at least two values.',
+  normcdf: 'The probability that a standard normal quantity is at most x; x is a plain number (convert a value: (x − μ)/σ).',
+  norminv: 'The value a standard normal quantity stays below with probability p (0 < p < 1); 95 % two-sided: norminv(0.975) = 1.960. For N(μ, σ): μ + σ·norminv(p).',
+  tcdf: "The probability that a quantity with Student's t distribution of ν degrees of freedom is at most t; ν need not be whole (Welch–Satterthwaite).",
+  tinv: "The quantile of Student's t (0 < p < 1, ν > 0), as tinv in MATLAB and T.INV in Excel. The coverage factor for 95 % from n measurements: k = tinv(0.975, n − 1), for n = 22 k = 2.080 (GUM, NIST TN 1900).",
   // Finance
   irr: 'The rate at which the net present value of the cash flows CF is zero. The first flow is usually negative (the investment), the others positive. The result is a fraction (0.089); | % after the line shows it in per cent.',
   npv: 'The sum of the cash flows CF discounted at rate: the first flow is today, the k-th is divided by (1 + rate)^(k − 1). The rate per period, e.g. 5 %.',

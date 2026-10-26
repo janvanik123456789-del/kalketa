@@ -217,7 +217,7 @@ Funkce jsou v **registru funkcí** rozdělené do modulů. Každá funkce má v 
 | Goniometrické a hyperbolické | `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `atan2(y, x)`, `sinh`, `cosh`, `tanh`, `asinh`, `acosh`, `atanh` |
 | Komplexní čísla | `re`, `im`, `conj`, `arg`, `polar(r, φ)` (7.1a) |
 | Řady | `range`, `sum`, `len`, `cumsum` (7.1b) |
-| Statistika | `mean`, `median`, `stdev` (výběrová, n − 1) |
+| Statistika | `mean`, `median`, `stdev` (výběrová, n − 1); rozdělení jako v MATLABu: `normcdf(x)`, `norminv(p)`, `tcdf(t, ν)`, `tinv(p, ν)` – koeficient rozšíření pro 95 % z n měření `k := tinv(0.975, n - 1)` (2026-10-26). Průměr a medián teplot ve °C jsou teplotou, směrodatná odchylka rozdílem; řada `[20, 25] °C` jsou teploty jako `20 °C` |
 | Finance | `npv`, `irr`, `pmt`, `payback` (7.1b) |
 | Data | `date`, `year`, `month`, `day` (7.1b) |
 | Logika | `if(podmínka, a, b)` (7.3) |

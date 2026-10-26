@@ -243,6 +243,15 @@ function evaluateBinary(op: BinaryOperator, leftExpr: Expr, rightExpr: Expr, spa
     const both = [evaluateBinary('+', leftExpr, rightExpr, span, ctx), evaluateBinary('-', leftExpr, rightExpr, span, ctx)];
     return { type: 'vector', items: both.map((v) => (v.type === 'quantity' ? v : fail('E-PLUS-MINUS', span))) };
   }
+  // [20, 25] °C: readings of a thermometer, absolute temperatures as 20 °C is (a lone °C elsewhere is a difference).
+  if (op === '*' && leftExpr.kind === 'vector' && rightExpr.kind === 'unit') {
+    const unit = resolveUnit(rightExpr.unit, ctx.registry);
+    const offset = unit.offset;
+    const items = offset === undefined ? undefined : vectorOf(leftExpr, ctx).items;
+    if (offset !== undefined && items && items.every((q) => isDimensionless(q.dim) && !q.im && !q.hint)) {
+      return { type: 'vector', items: items.map((q) => quantity(q.si * unit.factor + offset, unit.dim, { absolute: true, hint: unit })) };
+    }
+  }
   if (op === 'and' || op === 'or') {
     // Short-circuit like most languages.
     const left = asBoolean(evaluate(leftExpr, ctx), leftExpr.span);

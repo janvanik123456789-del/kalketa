@@ -16,6 +16,7 @@ import { compare } from '../eval/evaluator.js';
 import { withBareZero } from '../eval/zero.js';
 import type { Expr } from '../lang/ast.js';
 import type { Args, FunctionDef, FunctionModuleId } from './registry.js';
+import { normalCdf, normalQuantile, studentCdf, studentQuantile } from './distributions.js';
 
 /** A function of one plain number, with an optional domain. */
 function plain(name: string, module: FunctionModuleId, f: (x: number) => number, domain?: (x: number) => boolean): FunctionDef {
@@ -34,6 +35,8 @@ function plain(name: string, module: FunctionModuleId, f: (x: number) => number,
 
 /** The first argument's unit kept on a result of the same dimension. */
 const keepUnit = (q: Quantity | undefined) => (q?.hint ? { hint: q.hint } : {});
+/** The unit of a value in the middle of a series, and whether it is an absolute temperature (the mean of 25 °C and 27 °C is 26 °C). */
+const keepPlace = (items: readonly Quantity[]) => ({ ...keepUnit(items[0]), ...(items.length > 0 && items.every((q) => q.absolute) ? { absolute: true } : {}) });
 
 // ---------------------------------------------------------------------------
 
@@ -341,7 +344,7 @@ export const STATISTICS: readonly FunctionDef[] = [
     call: (a) => {
       const items = a.series(0);
       if (items.length === 0) a.domain();
-      return quantity(items.reduce((s, q) => s + q.si, 0) / items.length, items[0]!.dim, keepUnit(items[0]));
+      return quantity(items.reduce((s, q) => s + q.si, 0) / items.length, items[0]!.dim, keepPlace(items));
     },
   },
   {
@@ -355,7 +358,7 @@ export const STATISTICS: readonly FunctionDef[] = [
       const sorted = items.map((q) => q.si).sort((x, y) => x - y);
       const mid = Math.floor(sorted.length / 2);
       const value = sorted.length % 2 ? sorted[mid]! : (sorted[mid - 1]! + sorted[mid]!) / 2;
-      return quantity(value, items[0]!.dim, keepUnit(items[0]));
+      return quantity(value, items[0]!.dim, keepPlace(items));
     },
   },
   {
@@ -370,6 +373,52 @@ export const STATISTICS: readonly FunctionDef[] = [
       const mean = items.reduce((s, q) => s + q.si, 0) / items.length;
       const variance = items.reduce((s, q) => s + (q.si - mean) ** 2, 0) / (items.length - 1);
       return quantity(Math.sqrt(variance), items[0]!.dim, keepUnit(items[0]));
+    },
+  },
+  {
+    // P(X ≤ x) of the standard normal distribution.
+    name: 'normcdf',
+    module: 'statistics',
+    params: 'x',
+    arity: [1, 1],
+    call: (a) => quantity(normalCdf(a.number(0))),
+  },
+  {
+    // The p-quantile of the standard normal distribution: norminv(0.975) = 1.960.
+    name: 'norminv',
+    module: 'statistics',
+    params: 'p',
+    arity: [1, 1],
+    call: (a) => {
+      const p = a.number(0);
+      if (!(p > 0 && p < 1)) a.domain(0);
+      return quantity(normalQuantile(p));
+    },
+  },
+  {
+    // P(T ≤ t) of Student's t distribution with ν degrees of freedom.
+    name: 'tcdf',
+    module: 'statistics',
+    params: 't, ν',
+    arity: [2, 2],
+    call: (a) => {
+      const nu = a.number(1);
+      if (!(nu > 0)) a.domain(1);
+      return quantity(studentCdf(a.number(0), nu));
+    },
+  },
+  {
+    // The p-quantile of Student's t: the coverage factor for 95 % and 21 degrees of freedom, tinv(0.975, 21) = 2.080.
+    name: 'tinv',
+    module: 'statistics',
+    params: 'p, ν',
+    arity: [2, 2],
+    call: (a) => {
+      const p = a.number(0);
+      const nu = a.number(1);
+      if (!(p > 0 && p < 1)) a.domain(0);
+      if (!(nu > 0)) a.domain(1);
+      return quantity(studentQuantile(p, nu));
     },
   },
 ];

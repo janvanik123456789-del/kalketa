@@ -421,7 +421,104 @@ export const STATISTICS: readonly FunctionDef[] = [
       return quantity(studentQuantile(p, nu));
     },
   },
+  {
+    // The number of ways to choose k of n: nchoosek(8, 3) = 56.
+    name: 'nchoosek',
+    module: 'statistics',
+    params: 'n, k',
+    arity: [2, 2],
+    call: (a) => {
+      const n = wholeNumber(a, 0);
+      const k = wholeNumber(a, 1);
+      if (k > n) a.domain(1);
+      return quantity(choose(n, k));
+    },
+  },
+  {
+    // P(X = k) of the binomial distribution Bi(n; p).
+    name: 'binopdf',
+    module: 'statistics',
+    params: 'k, n, p',
+    arity: [3, 3],
+    call: (a) => {
+      const [k, n, p] = binomialArgs(a);
+      return quantity(k > n ? 0 : choose(n, k) * p ** k * (1 - p) ** (n - k));
+    },
+  },
+  {
+    // P(X ≤ k) of the binomial distribution Bi(n; p).
+    name: 'binocdf',
+    module: 'statistics',
+    params: 'k, n, p',
+    arity: [3, 3],
+    call: (a) => {
+      const [k, n, p] = binomialArgs(a);
+      let sum = 0;
+      for (let i = 0; i <= Math.min(k, n); i++) sum += choose(n, i) * p ** i * (1 - p) ** (n - i);
+      return quantity(Math.min(1, sum));
+    },
+  },
+  {
+    // P(X = k) of the Poisson distribution Po(λ).
+    name: 'poisspdf',
+    module: 'statistics',
+    params: 'k, λ',
+    arity: [2, 2],
+    call: (a) => {
+      const k = wholeNumber(a, 0);
+      const lambda = a.number(1);
+      if (!(lambda >= 0)) a.domain(1);
+      return quantity(poisson(k, lambda));
+    },
+  },
+  {
+    // P(X ≤ k) of the Poisson distribution Po(λ).
+    name: 'poisscdf',
+    module: 'statistics',
+    params: 'k, λ',
+    arity: [2, 2],
+    call: (a) => {
+      const k = wholeNumber(a, 0);
+      const lambda = a.number(1);
+      if (!(lambda >= 0)) a.domain(1);
+      let sum = 0;
+      for (let i = 0; i <= k; i++) sum += poisson(i, lambda);
+      return quantity(Math.min(1, sum));
+    },
+  },
 ];
+
+/** A whole number 0 or more as argument `index` (a count: k, n). */
+function wholeNumber(a: Args, index: number): number {
+  const n = a.number(index);
+  if (!Number.isInteger(n) || n < 0 || n > 1e9) a.domain(index);
+  return n;
+}
+
+/** n over k, exactly while it fits (products of small fractions, no factorials that overflow). */
+function choose(n: number, k: number): number {
+  const m = Math.min(k, n - k);
+  let result = 1;
+  for (let i = 1; i <= m; i++) result = (result * (n - m + i)) / i;
+  return result > 2 ** 53 ? result : Math.round(result);
+}
+
+/** k, n and p of a binomial distribution: counts and a probability from 0 to 1. */
+function binomialArgs(a: Args): [number, number, number] {
+  const k = wholeNumber(a, 0);
+  const n = wholeNumber(a, 1);
+  const p = a.number(2);
+  if (!(p >= 0 && p <= 1)) a.domain(2);
+  return [k, n, p];
+}
+
+/** λ^k·e^(−λ)/k!, through logarithms so a large k does not overflow. */
+function poisson(k: number, lambda: number): number {
+  if (lambda === 0) return k === 0 ? 1 : 0;
+  let logFactorial = 0;
+  for (let i = 2; i <= k; i++) logFactorial += Math.log(i);
+  return Math.exp(k * Math.log(lambda) - lambda - logFactorial);
+}
 
 // ---------------------------------------------------------------------------
 

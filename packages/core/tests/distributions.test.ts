@@ -67,3 +67,22 @@ describe('zeros without a unit in matrices and series', () => {
   });
 });
 
+describe('discrete distributions', () => {
+  it('give counts and probabilities as SciPy does (VŠB příklad 5.1)', () => {
+    // scipy.special.comb(8, 3), stats.binom.pmf(3, 8, 0.49), binom.cdf(2, 8, 0.49), poisson.pmf(2, 1.5), poisson.cdf(2, 1.5)
+    expect(value('c := nchoosek(8, 3)', 'c')).toBe(56);
+    expect(value('c := nchoosek(60, 30)', 'c')).toBe(118264581564861424);
+    expect(value('p := binopdf(3, 8, 0.49)', 'p')).toBeCloseTo(0.22731450422743438, 14);
+    expect(value('p := binocdf(2, 8, 0.49)', 'p')).toBeCloseTo(0.1580516166573621, 14);
+    expect(value('p := poisspdf(2, 1.5)', 'p')).toBeCloseTo(0.25102143016698353, 14);
+    expect(value('p := poisscdf(2, 1.5)', 'p')).toBeCloseTo(0.8088468305380585, 14);
+    expect(value('p := poisspdf(150, 100)', 'p')).toBeCloseTo(6.511160468786359e-7, 18);
+  });
+
+  it('take only whole counts and probabilities from 0 to 1', () => {
+    expect(codes('c := nchoosek(3, 5)')).toEqual(['E-DOMAIN']);
+    expect(codes('c := nchoosek(8.5, 3)')).toEqual(['E-DOMAIN']);
+    expect(codes('p := binopdf(3, 8, 1.2)')).toEqual(['E-DOMAIN']);
+  });
+});
+

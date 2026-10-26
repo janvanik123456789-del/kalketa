@@ -135,6 +135,11 @@ export const EN_FUNCTION_DETAILS: Readonly<Record<string, string>> = {
   norminv: 'The value a standard normal quantity stays below with probability p (0 < p < 1); 95 % two-sided: norminv(0.975) = 1.960. For N(μ, σ): μ + σ·norminv(p).',
   tcdf: "The probability that a quantity with Student's t distribution of ν degrees of freedom is at most t; ν need not be whole (Welch–Satterthwaite).",
   tinv: "The quantile of Student's t (0 < p < 1, ν > 0), as tinv in MATLAB and T.INV in Excel. The coverage factor for 95 % from n measurements: k = tinv(0.975, n − 1), for n = 22 k = 2.080 (GUM, NIST TN 1900).",
+  nchoosek: 'n!/(k!·(n − k)!) for whole 0 ≤ k ≤ n, as nchoosek in MATLAB and COMBIN in Excel; printed as (n over k). Computed as a product, not from factorials, so large n are fine.',
+  binopdf: 'The probability of exactly k successes in n independent trials of success probability p: (n over k)·p^k·(1 − p)^(n − k), as binopdf in MATLAB and BINOM.DIST(k, n, p, FALSE) in Excel.',
+  binocdf: 'The probability of at most k successes in n trials; “more than k” is 1 − binocdf(k, n, p).',
+  poisspdf: 'The probability of exactly k events when λ happen on average (failures in a time, particles per second): λ^k·e^(−λ)/k!.',
+  poisscdf: 'The probability of at most k events at the mean λ.',
   // Finance
   irr: 'The rate at which the net present value of the cash flows CF is zero. The first flow is usually negative (the investment), the others positive. The result is a fraction (0.089); | % after the line shows it in per cent.',
   npv: 'The sum of the cash flows CF discounted at rate: the first flow is today, the k-th is divided by (1 + rate)^(k − 1). The rate per period, e.g. 5 %.',

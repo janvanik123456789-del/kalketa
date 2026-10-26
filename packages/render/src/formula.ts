@@ -262,6 +262,9 @@ function renderCall(expr: Extract<Expr, { kind: 'call' }>, o: FormulaOptions): R
   if (expr.name === 'cbrt' && args.length === 1) return { node: nroot(args[0]!, mn('3')), prec: ATOM };
   if (expr.name === 'root' && args.length === 2 && expr.named.length === 0) return { node: nroot(args[0]!, args[1]!), prec: ATOM };
   if (expr.name === 'abs' && args.length === 1) return { node: row(mo('|'), args[0]!, mo('|')), prec: ATOM };
+  // n! and the number of ways to choose k of n as on paper: (n over k).
+  if (expr.name === 'factorial' && args.length === 1) return { node: row(wrap(render(expr.args[0]!, o), render(expr.args[0]!, o).prec < ATOM), mo('!')), prec: ATOM };
+  if (expr.name === 'nchoosek' && args.length === 2) return { node: paren(table([[args[0]!], [args[1]!]])), prec: ATOM };
   if (expr.name === 'floor' && args.length === 1) return { node: row(mo('⌊'), args[0]!, mo('⌋')), prec: ATOM };
   if (expr.name === 'ceil' && args.length === 1) return { node: row(mo('⌈'), args[0]!, mo('⌉')), prec: ATOM };
   // if(c, a, b) as on paper: a for c, b otherwise, under one brace; an if in the last branch adds its rows.
@@ -299,8 +302,9 @@ function renderCall(expr: Extract<Expr, { kind: 'call' }>, o: FormulaOptions): R
   const name = o.textNames?.has(expr.name)
     ? mtext(expr.name.replaceAll('_', ' '))
     : expr.name.includes('_')
-      ? sub(mi(expr.name.split('_')[0]!, true), mi(expr.name.split('_').slice(1).join(','), true))
-      : mi(expr.name, true);
+      ? sub(mi(expr.name.split('_')[0]!, [...expr.name.split('_')[0]!].length > 1), mi(expr.name.split('_').slice(1).join(','), true))
+      : // A function of one letter (the sheet's P(k), f(x)) is italic as in its definition; sin, ln upright.
+        mi(expr.name, [...expr.name].length > 1);
   return { node: row(name, paren(row(...parts))), prec: ATOM };
 }
 

@@ -135,6 +135,11 @@ export const CS_FUNCTION_DETAILS: Readonly<Record<string, string>> = {
   norminv: 'Hodnota, kterou normovaná normální veličina nepřekročí s pravděpodobností p (0 < p < 1); 95 % oboustranně: norminv(0,975) = 1,960. Pro N(μ, σ): μ + σ·norminv(p).',
   tcdf: 'Pravděpodobnost, že veličina se Studentovým rozdělením s ν stupni volnosti nepřekročí t; ν nemusí být celé (Welchův–Satterthwaiteův vzorec).',
   tinv: 'Kvantil Studentova rozdělení (0 < p < 1, ν > 0), jako tinv v MATLABu a T.INV v Excelu. Koeficient rozšíření pro 95 % z n měření: k = tinv(0,975; n − 1), pro n = 22 je k = 2,080 (GUM, NIST TN 1900).',
+  nchoosek: 'n!/(k!·(n − k)!) pro celá 0 ≤ k ≤ n, jako nchoosek v MATLABu a KOMBINACE v Excelu; tiskne se jako (n nad k). Počítá se součinem, ne faktoriály, takže stačí i na velká n.',
+  binopdf: 'Pravděpodobnost právě k úspěchů z n nezávislých pokusů s pravděpodobností úspěchu p: (n nad k)·p^k·(1 − p)^(n − k), jako binopdf v MATLABu a BINOM.DIST(k; n; p; NEPRAVDA) v Excelu.',
+  binocdf: 'Pravděpodobnost nejvýš k úspěchů z n pokusů; „více než k“ je 1 − binocdf(k; n; p).',
+  poisspdf: 'Pravděpodobnost právě k jevů, je-li jich v průměru λ (poruchy za dobu, částice za sekundu): λ^k·e^(−λ)/k!.',
+  poisscdf: 'Pravděpodobnost nejvýš k jevů při průměru λ.',
   // Finance
   irr: 'Úroková míra, při níž je čistá současná hodnota toků CF nulová. První tok bývá záporný (investice), další kladné. Výsledek je podíl (0,089); v procentech ho ukáže | % za řádkem.',
   npv: 'Součet toků CF diskontovaných sazbou rate: první tok je dnes, k-tý se dělí (1 + rate)^(k − 1). Sazba za období, např. 5 %.',

@@ -115,3 +115,15 @@ describe('values as written and read from tables', () => {
   });
 });
 
+describe('counting as on paper', () => {
+  it('print n!, (n over k) and a function of one letter in italics', () => {
+    const nl = String.fromCharCode(10);
+    const block = equation(['n := 8', 'P(k) := nchoosek(n, k)·0.5^n', 'c := factorial(n)/factorial(3) + P(3)'].join(nl))!;
+    const ml = toMathML(block.lines[0]!.rhs);
+    expect(ml).toContain('<mi>n</mi><mo>!</mo>');
+    expect(ml).toContain('<mi>P</mi>');
+    const head = equation(['n := 8', 'C := nchoosek(n, 3)'].join(nl))!;
+    expect(toMathML(head.lines[0]!.rhs)).toContain('<mrow><mo>(</mo><mtable><mtr><mtd><mi>n</mi></mtd></mtr><mtr><mtd><mn>3</mn></mtd></mtr></mtable><mo>)</mo></mrow>');
+  });
+});
+

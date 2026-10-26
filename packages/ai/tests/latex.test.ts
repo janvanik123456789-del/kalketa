@@ -15,6 +15,8 @@ describe('LaTeX read by KaTeX', () => {
     expect(latexLine('x_{1,2} = \\frac{-b \\pm \\sqrt{b^{2}-4ac}}{2a}')).toBe('x_1_2 = (-b ± sqrt(b^2 - 4·a·c))/(2·a)');
     expect(latexLine('(a+b)(c+d) + 2(x)')).toBe('(a + b)·(c + d) + 2·(x)');
     expect(latexLine('\\varepsilon = \\epsilon')).toBe('ε = ε');
+    // A dot, two dots, a hat stay over the letter as the name writes them; a bar is left out.
+    expect(latexLine('\\dot{x} + \\ddot{x}_{0} + \\hat{y} + \\bar{z}')).toBe('x\u0307 + x\u0308_0 + y\u0302 + z');
   });
 
   it('gives up where the calculation has no such form, or TeX cannot read it', () => {

@@ -113,6 +113,8 @@ export interface LineFormat {
   readonly rounded?: boolean;
   /** The result also as a fraction or root where the calculation kept it exact: 49/9 s⁻² ≐ 5,444 s⁻². */
   readonly exact?: boolean;
+  /** The result in a frame ({box}), as the final result is marked on paper. */
+  readonly box?: boolean;
   /** The equation number of the line: {eq} numbered, {eq=hooke} numbered and named for (#hooke) in text, {noeq} never. */
   readonly eq?: true | string;
   readonly noeq?: boolean;

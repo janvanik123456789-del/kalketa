@@ -35,7 +35,7 @@ import {
 import { chartLayout, chartSvg, cutChart, parseChartLook, withLook, type ChartLayout, type ChartLook, type ChartSpec } from '@kalketa/chart';
 import { formatDate, formatDiagnostic, formatNumber, t, type Catalog, type NumberFormatOptions } from '@kalketa/i18n';
 import { formulaNode, hasSubstitutableParts, THIN_SPACE, type FormulaOptions, type Substituted } from './formula.js';
-import { frac, mi, mn, mo, mtext, mu, nameNode, paren, row, sqrt, sup, toText, type MathNode, table } from './math.js';
+import { boxed, frac, mi, mn, mo, mtext, mu, nameNode, paren, row, sqrt, sup, toText, type MathNode, table } from './math.js';
 
 export interface PrintOptions {
   readonly catalog: Catalog;
@@ -307,6 +307,7 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
     literal: numberFormat({ digits: 15 }),
     argumentSeparator: decimalComma ? ';' : ',',
     booleans: { true: catalog.terms['true'] ?? 'true', false: catalog.terms['false'] ?? 'false' },
+    conditionWords: { if: catalog.terms['cases.if'] ?? 'if', otherwise: catalog.terms['cases.otherwise'] ?? 'otherwise' },
     ...(substitute ? { substitute } : {}),
   });
 
@@ -859,9 +860,20 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
     ...(options.subtitle ? { subtitle: options.subtitle } : {}),
     language: catalog.locale,
     ...(position !== 'none' && rows.length > 0 ? { summary: { position, rows, allPassed: rows.every((r) => r.passed) } } : {}),
-    blocks: numberHeadings(numberEquations(blocks, result, options.equations ?? 'none'), options.headings ?? 'plain'),
+    blocks: numberHeadings(numberEquations(framed(blocks, result), result, options.equations ?? 'none'), options.headings ?? 'plain'),
     ...(beside.size > 0 ? { beside } : {}),
   };
+}
+
+/** The results of lines marked {box} in a frame: the last result of the line, as on paper. */
+function framed(blocks: readonly PrintBlock[], result: SheetResult): PrintBlock[] {
+  const lines = new Set(result.statements.flatMap((r) => (r.statement.format?.box ? [r.statement.span.line] : [])));
+  if (lines.size === 0) return [...blocks];
+  return blocks.map((block) => {
+    if (block.kind !== 'equation' || !lines.has(block.line)) return block;
+    const last = block.lines.map((l) => l.role).lastIndexOf('result');
+    return last < 0 ? block : { ...block, lines: block.lines.map((l, i) => (i === last ? { ...l, rhs: boxed(l.rhs) } : l)) };
+  });
 }
 
 export type EquationNumbers = 'none' | 'formulas' | 'results';

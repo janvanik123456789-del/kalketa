@@ -57,6 +57,8 @@ const OPERATORS: Readonly<Record<string, string>> = {
 const RELATIONS = new Set(['=', '≤', '≥', '<', '>', '≠', '≐', ':']);
 /** Function names as TeX prints them, as the language has them. */
 const FUNCTIONS: Readonly<Record<string, string>> = { log: 'log10', lg: 'log10', arctg: 'atan', arcsin: 'asin', arccos: 'acos', arctan: 'atan', cotg: 'cot' };
+/** Marks TeX sets over a letter, as the combining characters a name writes after it. */
+const MARKS: Readonly<Record<string, string>> = { '˙': '̇', '¨': '̈', '^': '̂', 'ˆ': '̂', '~': '̃', '˜': '̃' };
 /** Variant letters of TeX, the letters the language has. */
 const LETTERS: Readonly<Record<string, string>> = { 'ϵ': 'ε', 'ϕ': 'φ', 'ϑ': 'θ', 'ϱ': 'ρ', 'ς': 'σ', 'ϖ': 'π' };
 
@@ -149,9 +151,11 @@ function nodeText(node: TreeNode): string {
     case 'msubsup':
       return power({ type: 'msub', children: [c[0]!, c[1]!] }, c[2]!);
     case 'mover': {
-      // An arrow over a name makes it a vector (F⃗); a bar, a dot or a hat over it is left out.
+      // An arrow over a name makes it a vector (F⃗); a dot, two dots, a hat or a tilde stays over its letter (ẋ),
+      // as the name is written; a bar over it is left out.
       const mark = textOf(c[1]!);
-      return mark === '⃗' || mark === '→' ? `${nodeText(c[0]!)}⃗` : nodeText(c[0]!);
+      const combining = MARKS[mark];
+      return mark === '⃗' || mark === '→' ? `${nodeText(c[0]!)}⃗` : combining && /^\p{L}$/u.test(nodeText(c[0]!)) ? `${nodeText(c[0]!)}${combining}` : nodeText(c[0]!);
     }
     case 'mstyle':
     case 'mpadded':

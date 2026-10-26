@@ -654,6 +654,8 @@ td.lhs { text-align: right; min-width: 14mm; }
 td.op { text-align: center; width: 4mm; }
 td.note { padding-left: 6mm; color: #555; font-size: 9pt; }
 tr.result td.rhs math { font-weight: bold; }
+mrow.boxed { border: 1px solid currentColor; padding: 0.15em 0.35em; }
+mtable.cases mtd { text-align: left; padding: 0.1em 0.6em 0.1em 0; }
 .comment::before { content: "— "; }
 .selection .row-image { float: right; max-height: 28mm; max-width: 45mm; margin: 0 0 2mm 4mm; }
 .selection .table-ref, .condition { color: #444; font-size: 9pt; }

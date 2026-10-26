@@ -8,7 +8,7 @@
 
 import type { BinaryOperator, Expr, UnitExpr } from '@kalketa/core';
 import { formatUnit } from '@kalketa/core';
-import { bar, frac, mi, mn, mo, mtext, mu, nameNode, nroot, paren, row, sqrt, sub, sup, type MathNode, subsup, underover, table } from './math.js';
+import { bar, cases, frac, mi, mn, mo, mtext, mu, nameNode, nroot, paren, row, sqrt, sub, sup, type MathNode, subsup, underover, table } from './math.js';
 
 export interface FormulaOptions {
   /** Formats a number literal written in the sheet (full precision, locale separators). */
@@ -16,6 +16,8 @@ export interface FormulaOptions {
   /** Separator of function arguments: "," or ";" when the decimal separator is ",". */
   readonly argumentSeparator: string;
   readonly booleans: { readonly true: string; readonly false: string };
+  /** The words of a value by a condition: "pro" and "jinak" (if(c, a, b) under a brace); English without them. */
+  readonly conditionWords?: { readonly if: string; readonly otherwise: string };
   /** Value to print instead of a variable or column; undefined keeps the symbol. */
   readonly substitute?: (expr: Expr) => Substituted | undefined;
   /** Names set as plain text, not as math symbols: blocks ("Prosty_nosnik" as "Prosty nosnik"). */
@@ -255,6 +257,20 @@ function renderCall(expr: Extract<Expr, { kind: 'call' }>, o: FormulaOptions): R
   if (expr.name === 'cbrt' && args.length === 1) return { node: nroot(args[0]!, mn('3')), prec: ATOM };
   if (expr.name === 'root' && args.length === 2 && expr.named.length === 0) return { node: nroot(args[0]!, args[1]!), prec: ATOM };
   if (expr.name === 'abs' && args.length === 1) return { node: row(mo('|'), args[0]!, mo('|')), prec: ATOM };
+  if (expr.name === 'floor' && args.length === 1) return { node: row(mo('⌊'), args[0]!, mo('⌋')), prec: ATOM };
+  if (expr.name === 'ceil' && args.length === 1) return { node: row(mo('⌈'), args[0]!, mo('⌉')), prec: ATOM };
+  // if(c, a, b) as on paper: a for c, b otherwise, under one brace; an if in the last branch adds its rows.
+  if (expr.name === 'if' && expr.args.length === 3 && expr.named.length === 0) {
+    const words = o.conditionWords ?? { if: 'if', otherwise: 'otherwise' };
+    const rows: (readonly [MathNode, MathNode])[] = [];
+    let at: Expr = expr;
+    while (at.kind === 'call' && at.name === 'if' && at.args.length === 3 && at.named.length === 0) {
+      rows.push([render(at.args[1]!, o).node, row(mtext(`${words.if} `), render(at.args[0]!, o).node)]);
+      at = at.args[2]!;
+    }
+    rows.push([render(at, o).node, mtext(words.otherwise)]);
+    return { node: cases(rows), prec: ATOM };
+  }
   // The mean and standard deviation of a series as on paper: t̄ and s_t for mean(t_i) and stdev(t_i).
   const series = expr.args.length === 1 && expr.named.length === 0 && expr.args[0]!.kind === 'variable' ? expr.args[0].name : undefined;
   if (series && (expr.name === 'mean' || expr.name === 'stdev')) {

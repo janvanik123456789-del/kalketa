@@ -61,6 +61,8 @@ export const UI_KEYS = [
   'print.compare',
   'print.variantChosen',
   'cells.beside',
+  'result.box',
+  'result.copyLatex',
   'cells.alone',
   'cells.delete',
   'pick.hint',

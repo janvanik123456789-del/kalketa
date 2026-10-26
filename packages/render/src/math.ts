@@ -31,7 +31,13 @@ export type MathNode =
   /** A vector: an arrow over the name with its index, p⃗₁. */
   | { readonly k: 'vec'; readonly b: MathNode }
   /** A bar over a name: the arithmetic mean t̄. */
-  | { readonly k: 'bar'; readonly b: MathNode };
+  | { readonly k: 'bar'; readonly b: MathNode }
+  /** A mark over a letter: the dot of a time derivative (ẋ), two dots (ẍ), a hat (x̂), a tilde (x̃). */
+  | { readonly k: 'accent'; readonly b: MathNode; readonly a: string }
+  /** Values by conditions, under one brace: a for c, b otherwise (if(c, a, b) as on paper). */
+  | { readonly k: 'cases'; readonly rows: readonly (readonly [MathNode, MathNode])[] }
+  /** A result in a frame, as it is marked on paper. */
+  | { readonly k: 'boxed'; readonly c: MathNode };
 
 export const mi = (t: string, normal = false): MathNode => (normal ? { k: 'i', t, normal } : { k: 'i', t });
 export const mn = (t: string): MathNode => ({ k: 'n', t });
@@ -50,6 +56,12 @@ export const underover = (b: MathNode, u: MathNode, o: MathNode): MathNode => ({
 export const paren = (c: MathNode): MathNode => ({ k: 'paren', c });
 export const vec = (b: MathNode): MathNode => ({ k: 'vec', b });
 export const bar = (b: MathNode): MathNode => ({ k: 'bar', b });
+export const accent = (b: MathNode, a: string): MathNode => ({ k: 'accent', b, a });
+export const cases = (rows: readonly (readonly [MathNode, MathNode])[]): MathNode => ({ k: 'cases', rows });
+export const boxed = (c: MathNode): MathNode => ({ k: 'boxed', c });
+
+/** Combining marks written after the letter of a name, and the marks set over it. */
+export const ACCENTS: Readonly<Record<string, string>> = { '̇': '˙', '̈': '¨', '̂': '^', '̃': '~' };
 
 /** The combining arrow written after a letter of a name (p⃗_1): the name is a vector. */
 export const VECTOR_ARROW = '⃗';
@@ -63,8 +75,12 @@ export function nameNode(name: string): MathNode {
   if (name.includes(VECTOR_ARROW)) return vec(nameNode(name.replaceAll(VECTOR_ARROW, '')));
   const at = name.indexOf('_');
   const part = (text: string): MathNode => (/^\d+$/.test(text) ? mn(text) : mi(text, [...text].length > 1));
-  if (at <= 0 || at === name.length - 1) return part(name);
-  return sub(part(name.slice(0, at)), part(name.slice(at + 1).replaceAll('_', ',')));
+  // A dot, two dots, a hat or a tilde after the letter of the name (ẋ, also as one character): set over it.
+  const letters = [...(at > 0 ? name.slice(0, at) : name).normalize('NFD')];
+  const mark = letters.length === 2 ? ACCENTS[letters[1]!] : undefined;
+  const base = mark ? accent(mi(letters[0]!), mark) : undefined;
+  if (at <= 0 || at === name.length - 1) return base ?? part(name);
+  return sub(base ?? part(name.slice(0, at)), part(name.slice(at + 1).replaceAll('_', ',')));
 }
 
 export function toMathML(node: MathNode, display: 'block' | 'inline' = 'inline'): string {
@@ -108,6 +124,12 @@ function ml(node: MathNode): string {
       return `<mover>${ml(node.b)}<mo stretchy="false">→</mo></mover>`;
     case 'bar':
       return `<mover accent="true">${ml(node.b)}<mo stretchy="false">¯</mo></mover>`;
+    case 'accent':
+      return `<mover accent="true">${ml(node.b)}<mo stretchy="false">${esc(node.a)}</mo></mover>`;
+    case 'cases':
+      return `<mrow><mo stretchy="true">{</mo><mtable class="cases">${node.rows.map(([v, c]) => `<mtr><mtd>${ml(v)}</mtd><mtd>${ml(c)}</mtd></mtr>`).join('')}</mtable></mrow>`;
+    case 'boxed':
+      return `<mrow class="boxed">${ml(node.c)}</mrow>`;
   }
 }
 
@@ -143,6 +165,12 @@ export function toText(node: MathNode): string {
       return `vec(${toText(node.b)})`;
     case 'bar':
       return `${toText(node.b)}\u0304`;
+    case 'accent':
+      return `${toText(node.b)}${Object.keys(ACCENTS).find((k) => ACCENTS[k] === node.a) ?? ''}`;
+    case 'cases':
+      return `{ ${node.rows.map(([v, c]) => `${toText(v)} ${toText(c)}`).join('; ')} }`;
+    case 'boxed':
+      return `[${toText(node.c)}]`;
   }
 }
 

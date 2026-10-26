@@ -8,7 +8,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEve
 import { formatExpr, formatPicture, fromDecimalComma, parsePicture, TEXT_ALIGNS, TEXT_COLORS, toDecimalComma, type SheetResult, type Statement, type StatementResult } from '@kalketa/core';
 import { formatDate, formatNumber, t, type Catalog, type UiKey } from '@kalketa/i18n';
 import { chartSvg as drawChart, DEFAULT_VIEW, labelParts, surfaceAt, viewText, xPosition, xValueAt, yPosition } from '@kalketa/chart';
-import { columnsHead, fitWideEquations, isInput, pageLabels, renderBlockHtml, renderSummary, sheetSections, type CalcStyle, type PrintBlock, type PrintDocument, type Section } from '@kalketa/render';
+import { blockLatex, columnsHead, fitWideEquations, isInput, pageLabels, renderBlockHtml, renderSummary, sheetSections, type CalcStyle, type PrintBlock, type PrintDocument, type Section } from '@kalketa/render';
 import { isCanvasPath } from '@kalketa/canvas';
 import { paginate, type PageGeometry } from '../logic/pages.js';
 import { segments, type Segment } from '../logic/segments.js';
@@ -182,9 +182,14 @@ function precisionMenuItems(seg: Segment, catalog: Catalog, change: RowChange, s
 }
 
 /** The menu of the right button of a row with a result: its precision, its equation number, a cell beside. */
-function formatMenuItems(seg: Segment, catalog: Catalog, change: RowChange, shown?: (decimals: number) => string, numbered?: boolean): MenuItem[] {
+function formatMenuItems(seg: Segment, catalog: Catalog, change: RowChange, shown?: (decimals: number) => string, numbered?: boolean, latex?: string): MenuItem[] {
+  const box = lineAttributesOf(seg.text).has('box');
   return [
     ...precisionMenuItems(seg, catalog, change, shown),
+    { kind: 'separator' },
+    // The final result marked as on paper; the formula as LaTeX for Word or a thesis.
+    { kind: 'action', label: t(catalog, 'result.box'), checked: box, run: () => change((text) => withLineAttribute(text, 'box', box ? undefined : '')) },
+    ...(latex ? [{ kind: 'action' as const, label: t(catalog, 'result.copyLatex'), run: () => copyText(latex) }] : []),
     { kind: 'separator' },
     {
       // Against the setting of the sheet: {eq} numbers this line, {noeq} leaves it without.
@@ -205,6 +210,19 @@ function formatMenuItems(seg: Segment, catalog: Catalog, change: RowChange, show
     { kind: 'separator' },
     cellItem(seg, catalog, change),
   ];
+}
+
+/** Text to the clipboard from a menu: by the copy command (it needs no focus of the window), else by the clipboard API. */
+function copyText(text: string): void {
+  const put = (e: ClipboardEvent) => {
+    e.clipboardData?.setData('text/plain', text);
+    e.preventDefault();
+    e.stopImmediatePropagation();
+  };
+  document.addEventListener('copy', put, { capture: true });
+  const copied = document.execCommand('copy');
+  document.removeEventListener('copy', put, { capture: true });
+  if (!copied) void navigator.clipboard.writeText(text);
 }
 
 /** A row put beside the one above it as a cell of its row, or back on a row of its own. */
@@ -1076,7 +1094,7 @@ export function SheetView(props: Props) {
             const display = row?.display ?? row?.solutions?.[0]?.display;
             const shown = display && !display.im && Number.isFinite(display.value) ? (n: number) => `${formatNumber(display.value, props.printCatalog, { decimals: n }).replace('-', '−')}${display.unit ? ` ${display.unit}` : ''}` : undefined;
             const own = blockByLine.get(formatMenu.seg.start);
-            const items = [...formatMenuItems(formatMenu.seg, props.uiCatalog, change, shown, own?.kind === 'equation' && own.number !== undefined), ...sliderItems(formatMenu.seg)];
+            const items = [...formatMenuItems(formatMenu.seg, props.uiCatalog, change, shown, own?.kind === 'equation' && own.number !== undefined, own ? blockLatex(own) : undefined), ...sliderItems(formatMenu.seg)];
             const solveLine = formatMenu.solveLine;
             return solveLine
               ? [{ kind: 'action' as const, label: t(props.uiCatalog, 'solve.toDefinition'), run: () => props.onReplace(formatMenu.seg.start, formatMenu.seg.end, solveLine) }, { kind: 'separator' as const }, ...items]

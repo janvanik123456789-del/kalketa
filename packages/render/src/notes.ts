@@ -231,8 +231,10 @@ const KALK_OPTIONS: FormulaOptions = { literal: (v) => String(v), argumentSepara
 
 /** Numbers as the user's language writes them (0,6 in Czech), when it is known. */
 function kalkOptions(catalog?: Catalog): FormulaOptions {
-  if (!catalog || !formatNumber(1.5, catalog).includes(',')) return KALK_OPTIONS;
-  return { ...KALK_OPTIONS, literal: (v) => formatNumber(v, catalog, { digits: 15 }), argumentSeparator: ';' };
+  if (!catalog) return KALK_OPTIONS;
+  const words = { conditionWords: { if: catalog.terms['cases.if'] ?? 'if', otherwise: catalog.terms['cases.otherwise'] ?? 'otherwise' } };
+  if (!formatNumber(1.5, catalog).includes(',')) return { ...KALK_OPTIONS, ...words };
+  return { ...KALK_OPTIONS, ...words, literal: (v) => formatNumber(v, catalog, { digits: 15 }), argumentSeparator: ';' };
 }
 
 /** A line written with decimal commas, as the book prints it (0,6·σ_Kt), read as the language has it. */

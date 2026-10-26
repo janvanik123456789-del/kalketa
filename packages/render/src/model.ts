@@ -296,7 +296,9 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
   // Lines written beside the one above them: cells of its row.
   const beside = new Set(result.statements.flatMap((r) => (r.statement.format?.beside ? [r.statement.span.line] : [])));
   const decimalComma = formatNumber(1.5, catalog).includes(',');
-  const numberFormat = (spec: NumberFormatOptions) => (value: number) => formatNumber(value, catalog, spec);
+  // Shown in a currency (USD, Kč), an amount keeps its whole part: 643 212 USD.
+  const money = (unit: string | undefined) => !!unit && !!options.registry.resolve(unit)?.currency;
+  const numberFormat = (spec: NumberFormatOptions) => (value: number, unit?: string) => formatNumber(value, catalog, money(unit) ? { ...spec, whole: true } : spec);
   // How each name was shown on its own line ({decimals=2}): so it is shown in every substitution below.
   const formats = new Map<string, NumberFormatOptions>();
   // Columns of the sheet's tables with a format of their numbers ({0.000}): a value read from them is put in so ("Prvky.A").
@@ -1279,11 +1281,11 @@ function applyDirective(name: string, args: string, mode: Mode, blocks: PrintBlo
  * "37,5 kN·m"; scientific numbers become mantissa · 10^exponent. With the exact form the fraction or root comes
  * first and the number after ≐, as a book writes it: 49/9 s⁻² ≐ 5,444 s⁻².
  */
-export function valueNode(value: number, unit: string, format: (value: number) => string, im?: number, date?: (days: number) => string, exact?: Exact, polar = false): MathNode {
+export function valueNode(value: number, unit: string, format: (value: number, unit?: string) => string, im?: number, date?: (days: number) => string, exact?: Exact, polar = false): MathNode {
   // A date: "29. 9. 2026".
   if (unit === 'date') return mtext(date ? date(value) : isoDate(value));
   const numberNode = (x: number): MathNode => {
-    const text = format(x);
+    const text = format(x, unit);
     const e = /^(.*)E(-?\d+)$/.exec(text);
     return e ? row(mn(e[1]!.replace('-', '−')), mo('·'), sup(mn('10'), mn(e[2]!.replace('-', '−')))) : mn(text.replace('-', '−'));
   };

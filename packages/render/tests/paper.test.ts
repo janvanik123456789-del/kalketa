@@ -127,3 +127,11 @@ describe('counting as on paper', () => {
   });
 });
 
+describe('amounts of money', () => {
+  it('keep their whole part, however few digits a value shows; a price per unit as usual', () => {
+    const nl = String.fromCharCode(10);
+    const results = blocks(['LCC := 643221.4 USD·1', 'S := 1234567890 CZK·1', 'c := 0.123456 USD/kWh·1', 'L := 643221.4 m·1'].join(nl)).flatMap((b) => (b.kind === 'equation' ? [plain(toText(b.lines.at(-1)!.rhs))] : []));
+    expect(results).toEqual(['643 221 USD', '1 234 567 890 CZK', '0,1235 USD/kWh', '643 200 m']);
+  });
+});
+

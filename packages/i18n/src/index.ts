@@ -46,6 +46,8 @@ export interface NumberFormatOptions {
    * or too large for them is written with an exponent and as many significant digits.
    */
   readonly decimals?: number;
+  /** Money: the whole part is never rounded (643 212 USD, not 643 200), however few significant digits are asked. */
+  readonly whole?: boolean;
 }
 
 /**
@@ -82,9 +84,10 @@ export function formatNumber(value: number, catalog: Catalog, options: NumberFor
 }
 
 function formatSigned(value: number, catalog: Catalog, options: NumberFormatOptions): string {
-  const digits = options.digits ?? 4;
   const abs = Math.abs(value);
-  const scientific = abs !== 0 && (abs >= 1e9 || abs < 1e-4);
+  const places = abs >= 1 ? Math.floor(Math.log10(abs)) + 1 : 0;
+  const digits = options.whole && abs < 1e15 ? Math.max(options.digits ?? 4, places) : (options.digits ?? 4);
+  const scientific = abs !== 0 && ((abs >= 1e9 && !(options.whole && abs < 1e15)) || abs < 1e-4);
   const decimals = options.decimals;
   if (decimals !== undefined && !scientific && (abs === 0 || abs >= 10 ** -decimals / 2)) {
     return new Intl.NumberFormat(catalog.locale, { minimumFractionDigits: decimals, maximumFractionDigits: decimals }).format(value);

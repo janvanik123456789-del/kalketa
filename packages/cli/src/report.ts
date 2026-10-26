@@ -196,7 +196,9 @@ function formatQuantity(q: Quantity, options: ReportOptions): string {
 }
 
 function formatDisplay(value: number, unit: string, options: ReportOptions, im?: number): string {
-  return formatQuantityValue(value, im, unit, options.catalog, options.digits !== undefined ? { digits: options.digits } : {});
+  // An amount of money keeps its whole part: 643 212 USD.
+  const whole = !!unit && !!defaultRegistry.resolve(unit)?.currency;
+  return formatQuantityValue(value, im, unit, options.catalog, { ...(options.digits !== undefined ? { digits: options.digits } : {}), ...(whole ? { whole } : {}) });
 }
 
 function formatPercent(ratio: number, options: ReportOptions): string {

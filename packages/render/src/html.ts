@@ -57,7 +57,7 @@ export type PageNumbers = 'continuous' | 'sections';
 export type CalcStyle = 'compact' | 'airy' | 'book' | 'columns';
 
 // A name with an index, a vector arrow or a power in text, written as in a formula: σ_Kt, S_min, p⃗_1, d^2.
-const TEXT_NAME = /(\p{L}[\p{L}\p{N}\p{M}]*)(_[\p{L}\p{N}\p{M}_]*[\p{L}\p{N}\p{M}])?(\^-?[\p{L}\p{N}]+)?/gu;
+const TEXT_NAME = /(\p{L}[\p{L}\p{N}\p{M}]*)(_[\p{L}\p{N}\p{M}_∞]*[\p{L}\p{N}\p{M}∞])?(\^-?[\p{L}\p{N}]+)?/gu;
 
 /** Fonts by kind, as the printout and every machine have some of each. */
 export const TEXT_FONT_FAMILIES = { serif: '"Cambria", "Times New Roman", serif', sans: '"Calibri", "Arial", sans-serif', mono: '"Consolas", "Courier New", monospace' } as const;

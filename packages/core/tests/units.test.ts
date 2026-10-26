@@ -198,3 +198,19 @@ describe('units of products as engineers write them', () => {
     expect(shown(sheet, 'q')).toBe('1.5 kN/m');
   });
 });
+
+describe('names and checks as on paper', () => {
+  it('take ∞ in a name after its first letter (λ_∞, T_∞)', () => {
+    const r = evaluateSheet('λ_∞ := 0.019\nT_∞ := 20 °C\nδ := λ_∞·2');
+    expect(r.diagnostics).toEqual([]);
+    expect((r.values.get('δ') as { si: number }).si).toBeCloseTo(0.038, 12);
+  });
+
+  it('show both sides of a check in one unit: a ratio against 2 % in %', () => {
+    const r = evaluateSheet('a := 0.23\nb := 0.231\ncheck "Shoda": abs(a - b)/b ≤ 2 %');
+    const check = r.statements.at(-1)!.check!;
+    expect(check.left?.hint?.symbol).toBe('%');
+    expect(check.passed).toBe(true);
+  });
+});
+

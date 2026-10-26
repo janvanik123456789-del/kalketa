@@ -913,8 +913,13 @@ function evaluateCheck(statement: Extract<Statement, { kind: 'check' }>, ctx: Ev
   };
   const expr = statement.expr;
   if (expr.kind === 'binary' && CHECK_OPERATORS.has(expr.operator)) {
-    const left = asComplex(evaluate(expr.left, ctx), expr.left.span);
-    const right = asComplex(evaluate(expr.right, ctx), expr.right.span);
+    let left = asComplex(evaluate(expr.left, ctx), expr.left.span);
+    let right = asComplex(evaluate(expr.right, ctx), expr.right.span);
+    // Both sides shown in one unit: a ratio against "2 %" as 0,43 %, not 0,0043.
+    if (sameDim(left.dim, right.dim) && !left.absolute && !right.absolute) {
+      if (!left.hint && right.hint) left = { ...left, hint: right.hint };
+      else if (left.hint && !right.hint) right = { ...right, hint: left.hint };
+    }
     if (left.im || right.im) throw new CalcError(diagnostic('E-COMPLEX-ORDER', expr.span, { operator: expr.operator }));
     const passed = asBoolean(compare(expr.operator, left, right, expr.span), expr.span);
     // "abs(a − b) ≤ tolerance" says two values agree: met or not, a ratio to the tolerance means nothing.

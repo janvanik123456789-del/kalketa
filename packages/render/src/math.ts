@@ -79,8 +79,11 @@ export function nameNode(name: string): MathNode {
   const letters = [...(at > 0 ? name.slice(0, at) : name).normalize('NFD')];
   const mark = letters.length === 2 ? ACCENTS[letters[1]!] : undefined;
   const base = mark ? accent(mi(letters[0]!), mark) : undefined;
-  if (at <= 0 || at === name.length - 1) return base ?? part(name);
-  return sub(base ?? part(name.slice(0, at)), part(name.slice(at + 1).replaceAll('_', ',')));
+  // A difference of one quantity, as on paper: Δ upright, the quantity italic (Δp, Δt_h).
+  const head = at > 0 ? name.slice(0, at) : name;
+  const delta = /^Δ\p{L}$/u.test(head) ? row(mi('Δ', true), mi(head.slice(1))) : undefined;
+  if (at <= 0 || at === name.length - 1) return base ?? delta ?? part(name);
+  return sub(base ?? delta ?? part(head), part(name.slice(at + 1).replaceAll('_', ',')));
 }
 
 export function toMathML(node: MathNode, display: 'block' | 'inline' = 'inline'): string {

@@ -495,7 +495,7 @@ function marks(text: string): string {
   let html = esc(text).replace(/\\([\\`*[\]|#>_!-])/g, (_, c: string) => `&#${c.charCodeAt(0)};`);
   html = html.replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, (_, label: string, url: string) => `<a href="${url}">${label}</a>`);
   // σ_Kt: the index of the letter set below, as in a formula (not inside a link, whose address may hold "_").
-  html = html.split(/(<a [^>]*>.*?<\/a>)/).map((part) => (part.startsWith('<a ') ? part : part.replace(/(\p{L})_([\p{L}\p{N}]+(?:[,_][\p{L}\p{N}]+)*)/gu, (_, letter: string, index: string) => `${letter}<sub>${index.replace(/_/g, ',')}</sub>`))).join('');
+  html = html.split(/(<a [^>]*>.*?<\/a>)/).map((part) => (part.startsWith('<a ') ? part : part.replace(/(\p{L})_([\p{L}\p{N}∞]+(?:[,_][\p{L}\p{N}∞]+)*)/gu, (_, letter: string, index: string) => `${letter}<sub>${index.replace(/_/g, ',')}</sub>`))).join('');
   html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
   html = html.replace(/(^|[^*])\*([^*]+)\*/g, '$1<em>$2</em>');
   return html;

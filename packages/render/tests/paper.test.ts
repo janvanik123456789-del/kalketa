@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import katex from 'katex';
 import { defaultRegistry, evaluateSheet } from '@kalketa/core';
 import { catalogFor } from '@kalketa/i18n';
-import { blockLatex, buildPrintDocument, renderBlockHtml, toMathML, toText, type PrintBlock } from '../src/index.js';
+import { blockLatex, buildPrintDocument, nameNode, renderBlockHtml, toMathML, toText, type PrintBlock } from '../src/index.js';
 
 const cs = catalogFor('cs');
 const plain = (text: string) => text.replace(/\s+/g, ' ');
@@ -82,3 +82,12 @@ describe('a solve by a relation', () => {
     expect(hidden.kind === 'equation' && toText(hidden.lines[0]!.lhs!)).toBe('y');
   });
 });
+
+describe('names of differences', () => {
+  it('set Δ upright and the quantity italic (Δp, Δt_h); a longer name stays upright', () => {
+    expect(toMathML(nameNode('Δp'))).toContain('<mrow><mi mathvariant="normal">Δ</mi><mi>p</mi></mrow>');
+    expect(toMathML(nameNode('Δt_h'))).toContain('<msub><mrow><mi mathvariant="normal">Δ</mi><mi>t</mi></mrow><mi>h</mi></msub>');
+    expect(toMathML(nameNode('Δab'))).toContain('<mi mathvariant="normal">Δab</mi>');
+  });
+});
+

@@ -54,8 +54,8 @@ const isDigit = (ch: string | undefined): boolean => ch !== undefined && ch >= '
 const PRIMES: Readonly<Record<string, number>> = { '′': 1, '″': 2, '‴': 3, '⁗': 4 };
 
 const isIdentStart = (ch: string): boolean => /[\p{L}°%‰€$£¥]/u.test(ch);
-// Superscript digits are not part of a name (L² is L squared), subscripts are (T₁).
-const isIdentPart = (ch: string): boolean => /[\p{L}\p{Nd}\p{M}_°₀-₉]/u.test(ch);
+// Superscript digits are not part of a name (L² is L squared), subscripts are (T₁), and so is ∞ (λ_∞, T_∞).
+const isIdentPart = (ch: string): boolean => /[\p{L}\p{Nd}\p{M}_°₀-₉∞]/u.test(ch);
 
 export interface LexOptions {
   /**

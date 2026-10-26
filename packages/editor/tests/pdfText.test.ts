@@ -134,6 +134,13 @@ describe('worked examples and captions', () => {
     expect(cleaned).toContain('### Příklad 1\n\n1 kg plynu');
     expect(cleaned).toContain('### Problem 2 Diameter of pipe to give a given discharge\n\nRequired');
     expect(cleaned).toContain('### Example 1\n\nA pipe 3 inches diameter 200 ft. long connects two tanks, the difference of level is 10 feet.');
+    expect(cleanPdfText('Příklad č. 2:\nVodní potrubí se náhle rozšiřuje.').text).toBe('## Příklad 2\n\nVodní potrubí se náhle rozšiřuje.\n');
+  });
+
+  it('take a formula of a math font mapped to wrong letters for a suspect formula', () => {
+    const garbled = 'ܸ ஺ ݓ = ஺ ܵ∙ ஺ ݓ → ஺ ܸ = 5,66 ݉ ݏ';
+    expect(cleanPdfText(['Ze znalosti průtoku určíme rychlost:', garbled].join('\n')).suspects).toEqual([{ text: garbled, kind: 'formula' }]);
+    expect(cleanPdfText('Napětí σ = 120 MPa, λ = 0,02, Δp = 5 kPa.').suspects).toEqual([]);
   });
 
   it('take "Obr.: …" without a number for a caption, not a part of the paragraph', () => {

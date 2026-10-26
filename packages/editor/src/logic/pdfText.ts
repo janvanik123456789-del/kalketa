@@ -61,7 +61,7 @@ const EXISTING_HEADING = /^(#{1,3})\s+(.*?)(\s*\{#T\d+\})?\s*$/;
 // A caption with its number, or without one ("Obr.: Model konstrukce a zatížení").
 const CAPTION = /^(Obr\.|Obrázek|Fig\.|Figure)\s*(\d+|:)/i;
 // A worked example starting: "Příklad 1", "Problem 2. Diameter of pipe…", "Example 1. A pipe 3 inches…".
-const EXAMPLE = /^(Příklad|Úloha|Řešený příklad|Example|Problem|Exercise|Aufgabe|Beispiel)\s+(\d{1,3}[a-z]?)\s*[.:)]?\s*(.*)$/iu;
+const EXAMPLE = /^(Příklad|Úloha|Řešený příklad|Example|Problem|Exercise|Aufgabe|Beispiel)\s+(?:(?:č|No|Nr)\.\s*)?(\d{1,3}[a-z]?)\s*[.:)]?\s*(.*)$/iu;
 
 /** A token of a spaced-out word: one or two letters. */
 const SHORT = /^\p{L}{1,2}$/u;
@@ -146,8 +146,19 @@ export function formulaOrScraps(line: string): 'formula' | 'scraps' | undefined 
   const text = line.trim();
   const realWords = text.split(/\s+/).filter((w) => /\p{L}{3,}/u.test(w)).length;
   if (NUMBERED_FORMULA.test(text) && text.length <= 60 && realWords <= 3) return 'formula';
+  if (wrongScript(text)) return 'formula';
   if (looksLikeScraps(line)) return 'scraps';
   return undefined;
+}
+
+/**
+ * Letters of a script no engineering text is written in (Syriac, Tamil, Thaana…): a formula whose
+ * math font the PDF maps to wrong characters ("ܸ ݓ ஺ ܵ ݌" from Word's equations). A picture of it is right.
+ */
+const WRONG_SCRIPT = /[\p{Script=Syriac}\p{Script=Thaana}\p{Script=Tamil}\p{Script=Telugu}\p{Script=Malayalam}\p{Script=Sinhala}\p{Script=Tibetan}\p{Script=Arabic}]/gu;
+
+export function wrongScript(line: string): boolean {
+  return (line.match(WRONG_SCRIPT) ?? []).length >= 2;
 }
 
 /** A line made of scraps (single letters, symbols): what is left of a figure. */
@@ -229,7 +240,7 @@ export function cleanPdfText(notes: string): PdfCleanup {
         continue;
       }
       // A formula a scan's text layer garbled ("t ui'^\*¥ ^«^°''^*y", "''=6-oSr7=^-«««"): a picture of it is better.
-      if (ocrNoise(raw)) {
+      if (ocrNoise(raw) || wrongScript(raw)) {
         suspects.push({ text: raw.trim(), kind: 'formula' });
         pieces.push({ kind: 'keep', text: `${SUSPECT}${raw.trim()}` });
         continue;

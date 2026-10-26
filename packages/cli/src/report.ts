@@ -57,6 +57,8 @@ function formatStatement(r: StatementResult, result: SheetResult, options: Repor
         return result.source.slice(s.span.offset, s.span.offset + s.span.length).replace(/\s*'.*$/, '');
       }
       const label = s.kind === 'definition' ? `${s.name} = ` : '';
+      // A chart: the line as written (it is drawn in the printout), not a "?".
+      if (r.plot) return `${result.source.slice(s.span.offset, s.span.offset + s.span.length).replace(/\s*'.*$/, '')}   [${t(options.catalog, 'cli.chart', { n: String(r.plot.series.length) })}]`;
       return label + formatValue(r, options) + (s.comment ? `   ' ${s.comment}` : '');
     }
     case 'check': {

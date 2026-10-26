@@ -1099,6 +1099,7 @@ export const en: Catalog = {
     'equations.name': 'Name the equation for a reference from text…',
     'result.box': 'Result in a frame',
     'result.polar': 'Polar form (146.6 mA ∠ 58.37°)',
+    'cli.chart': 'chart ({n} curves), drawn in the printout',
     'result.copyLatex': 'Copy as LaTeX (for Word, a thesis)',
     'equations.nameAsk': 'Name of the equation; refer to it in text as (#name)',
     'kalk.cutout': 'cut-out of the PDF',

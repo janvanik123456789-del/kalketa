@@ -64,6 +64,7 @@ export const UI_KEYS = [
   'cells.beside',
   'result.box',
   'result.polar',
+  'cli.chart',
   'result.copyLatex',
   'cells.alone',
   'cells.delete',

@@ -1099,6 +1099,7 @@ export const cs: Catalog = {
     'equations.name': 'Pojmenovat rovnici pro odkaz z textu…',
     'result.box': 'Výsledek v rámečku',
     'result.polar': 'Polární tvar (146,6 mA ∠ 58,37°)',
+    'cli.chart': 'graf (křivek: {n}), nakreslí ho tisk',
     'result.copyLatex': 'Kopírovat jako LaTeX (pro Word, diplomku)',
     'equations.nameAsk': 'Jméno rovnice; v textu se na ni odkážete (#jméno)',
     'kalk.cutout': 'výřez z PDF',

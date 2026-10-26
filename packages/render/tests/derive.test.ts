@@ -27,13 +27,13 @@ describe('derivations in print', () => {
     expect(html('relation x^2 + y^2 == r^2\nderive y^2 == r^2 - x^2')).toContain('✓ odvození ověřeno, plyne ze vztahu výše</div>');
   });
 
-  it('print a solve by the name of a relation with the equation of the relation', () => {
+  it('print a solve by the name of a relation printed above by its number, not the equation again', () => {
     const out = html('relation x^2 + y^2 == r^2 {eq=Kruh}\nx := 3\nr := 5\nsolve y ∈ ℝ, y > 0: Kruh');
     const solve = out.slice(out.indexOf('data-line="4"'));
     expect(solve).not.toContain('Kruh');
     const text = solve.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
     // No term in y: as on paper, y = ±√(r² − x²), without the discriminant or a vertex of a parabola.
-    expect(text).toContain('x 2 + y 2 = r 2 y ∈ ℝ , y &gt; 0 y 1,2 = ± r 2 − x 2 = ± 5 2 − 3 2 y 1 = 4');
+    expect(text).toContain('Z rovnice (1): y ∈ ℝ , y &gt; 0 y 1,2 = ± r 2 − x 2 = ± 5 2 − 3 2 y 1 = 4');
     expect(text).not.toContain('D =');
     expect(text).not.toContain('V =');
     expect(html('solve x ∈ ℝ: x^2 + 4 == 0')).toContain('druhá mocnina nemůže být záporná');

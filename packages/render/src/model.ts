@@ -146,6 +146,11 @@ export type PrintBlock =
        * as its number "(3)" when numbered, else its name ({eq=Kruh}), else "" (a relation without a name).
        */
       readonly follows?: readonly string[];
+      /**
+       * solve M_b: Trimoment — the relation solved, printed above: named by its number "(1)" instead of
+       * being written again (its name where it has no number).
+       */
+      readonly from?: readonly string[];
       /** Where the formula comes from (source "EN 1990, 6.10"). */
       readonly source?: string;
       /** The rows of a table it works out (filter), printed under it. */
@@ -525,7 +530,11 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
           const own = eq.named === undefined ? undefined : result.sheet.statements.find((o) => o.kind === 'derive' && o.relation && o.format?.eq === eq.named);
           return own?.kind === 'derive' ? { ...eq, left: own.members[0]!, right: own.members[1]! } : eq;
         };
-        const lines: EquationLine[] = s.equations.map(named).map((eq) => ({ role: 'formula', lhs: formulaNode(eq.left, formulaOptions()), op: sign(eq.relation), rhs: formulaNode(eq.right, formulaOptions()) }));
+        // A relation printed above is named, not written again: "Z rovnice (1):".
+        const printedAbove = (eq: (typeof s.equations)[number]) =>
+          eq.named !== undefined && result.sheet.statements.some((o) => o.kind === 'derive' && o.relation && o.format?.eq === eq.named && blocks.some((b) => b.kind === 'equation' && b.line === o.span.line));
+        const from = s.equations.every(printedAbove) ? s.equations.map((eq) => eq.named!) : undefined;
+        const lines: EquationLine[] = from ? [] : s.equations.map(named).map((eq) => ({ role: 'formula', lhs: formulaNode(eq.left, formulaOptions()), op: sign(eq.relation), rhs: formulaNode(eq.right, formulaOptions()) }));
         // The interval decides which root is found: "0 ≤ x ≤ 10".
         if (s.range && s.unknowns[0]) {
           // Of a differential equation the interval is its variable's: 0 ≤ x ≤ L.
@@ -537,7 +546,7 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
         // Under its conditions (x ∈ ℝ, x > 0) the solution is worked out as on paper.
         if (r.roots && s.unknowns[0]) {
           lines.push(...rootLines(s, r.roots, s.unknowns[0].name, spec, quantityNode));
-          blocks.push({ kind: 'equation', line: s.span.line, lines, ...(s.comment ? { comment: s.comment } : {}), messages });
+          blocks.push({ kind: 'equation', line: s.span.line, lines, ...(from ? { from } : {}), ...(s.comment ? { comment: s.comment } : {}), messages });
           break;
         }
         // Its solution is a function: said how it was found, read below as w(x), w′(x).
@@ -559,7 +568,7 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
           if (mode.substitution && toText(substituted) !== toText(formula)) lines.push({ role: 'substitution', rhs: substituted });
           lines.push({ role: 'result', rhs: value });
         }
-        blocks.push({ kind: 'equation', line: s.span.line, lines, ...(s.comment ? { comment: s.comment } : {}), messages });
+        blocks.push({ kind: 'equation', line: s.span.line, lines, ...(from ? { from } : {}), ...(s.comment ? { comment: s.comment } : {}), messages });
         break;
       }
       case 'check': {
@@ -938,7 +947,11 @@ function numberEquations(blocks: PrintBlock[], result: SheetResult, mode: Equati
     const n = byLine.get(Number(line));
     return n === undefined ? '' : `(${n})`;
   };
-  const withRelations = numbered.map((block) => (block.kind === 'equation' && block.follows ? { ...block, follows: block.follows.map(relationNumber) } : block));
+  const withRelations = numbered.map((block) =>
+    block.kind === 'equation' && (block.follows || block.from)
+      ? { ...block, ...(block.follows ? { follows: block.follows.map(relationNumber) } : {}), ...(block.from ? { from: block.from.map(relationNumber) } : {}) }
+      : block,
+  );
   if (names.size === 0) return withRelations;
   // (#hooke) in text and headings: the number of the equation so named; an unknown name stays visible.
   const refer = (text: string) => text.replace(/\(#([\p{L}_][\p{L}\p{N}_]*)\)/gu, (whole, name: string) => (names.has(name) ? `(${names.get(name)})` : whole));

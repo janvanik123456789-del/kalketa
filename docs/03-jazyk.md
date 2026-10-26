@@ -648,6 +648,7 @@ solve (I_1, I_2):
 *Upřesněno při implementaci F8:*
 - Rovnice soustavy stojí na odsazených řádcích pod `solve` (v editoru Shift+Enter), nebo na jednom řádku oddělené čárkou (česky středníkem): `solve (x; y): x² + y² == 25; y == x + 1 guess x = 1; y = 1`.
 - Neznámá dostane jednotku z intervalu (`in 0 s .. 10 s`) nebo z odhadu (`guess I_1 = 1 A`). Bez nich je bezrozměrná a začíná na 1.
+- **Jednotka výsledku:** `solve M_b: Trimoment | kN·m` ukáže neznámou v kN·m (z rovnice by moment vyšel v J) a v té jednotce se dosazuje i do řádků pod ním; jednotka jiné dimenze je chyba `E-TARGET-UNIT` (2026-10-26).
 - Neznámé jsou od řádku `solve` obyčejné hodnoty listu (i když se píší jako jednotka, např. `t`). Nad ním je použít nejde (E-DEFINED-LATER) a nesmí být definované dřív (E-REDEFINED).
 - Když konce intervalu nemají opačné znaménko, řešič hledá změnu znaménka uvnitř intervalu (najde kořen nejblíž dolní mezi). Body, kde rovnice nemá hodnotu (dělení nulou, mimo definiční obor), přeskočí.
 - Chyby: jiný počet rovnic než neznámých (E-SOLVE-COUNT), bez kořene v intervalu (E-SOLVE-NO-ROOT), Newton nekonverguje (E-SOLVE-NO-CONVERGENCE, zkuste jiný odhad), rovnice na sobě závisí (E-SOLVE-SINGULAR), strany rovnice s jinou jednotkou (E-UNIT-MISMATCH).
@@ -725,7 +726,7 @@ plot(Kruh, x: -6 .. 6, y: -6 .. 6)                      ' kružnice
 
 - **Vztah** je rovnice, která platí podle teorie nebo zadání: není to totožnost (to je `derive`), definice (`:=`) ani porovnání (holý řádek `a == b` dává pravda/nepravda a tak zůstává). Program ho neověřuje; jména bez hodnoty jsou značky teorie, chybou nejsou. V tisku je to rovnice; pojmenovaný `{eq=…}` dostane číslo rovnice.
 - **Odvození ze vztahu:** krok `derive`, který obecně neplatí, se zkusí znovu v bodech, kde platí vztahy nad ním (ty, které s krokem sdílejí jméno): v každém bodě se jedna veličina vztahu (nejdřív ta z kroku) dopočte numericky a krok musí vyjít. V tisku „✓ odvození ověřeno ze vztahu (3)“. Tak jde zapsat i diferenciály z knihy (dV, dV₀ jako značky teorie). Značky vztahu dostanou rozměr, se kterým má vztah smysl (x, y v `x² + y² = r²` s r v metrech jsou délky). Krok, který ze vztahu neplyne, zůstává chybou `E-DERIVE-STEP`.
-- **Řešení podle vztahu:** `solve y: Kruh` (i s podmínkami `∈ ℝ, y > 0`) řeší rovnici vztahu toho jména; v tisku je rovnice vztahu a postup jako u jiné rovnice. Jméno, které není vztahem, je chyba `E-SOLVE-RELATION`.
+- **Řešení podle vztahu:** `solve y: Kruh` (i s podmínkami `∈ ℝ, y > 0`) řeší rovnici vztahu toho jména; v tisku je rovnice vztahu a postup jako u jiné rovnice. Jméno, které není vztahem, je chyba `E-SOLVE-RELATION`. Je-li vztah vytištěný výš, tisk ho neopakuje a napíše „Z rovnice (1):“ s jeho číslem (2026-10-26).
 - **Graf:** viz 7.1e, implicitní křivka.
 
 ---

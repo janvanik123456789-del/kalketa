@@ -134,4 +134,14 @@ describe('relations', () => {
       expect(codes('plot(x^2, x: 0 .. 1, y: 0 .. 1, t: 0 .. 1)')).toEqual(['E-NAMED-ARG']);
     });
   });
+
+  it('show the unknown of a solve in the unit after "|": a moment in kN·m, not in J, also in the rows below', () => {
+    const sheet = ['L := 4 m', 'F := 10 kN', 'relation M == F·L/4 {eq=Moment}', 'solve M: Moment | kN·m', 'σ := M/(1 m^3) | kPa'].join('\n');
+    const solved = result(sheet, 4);
+    expect(solved.solutions?.[0]?.display).toMatchObject({ value: 10, unit: 'kN·m' });
+    expect(result(sheet, 5).display).toMatchObject({ value: 10, unit: 'kPa' });
+    expect(codes(sheet)).toEqual([]);
+    expect(result('x := 2 m\nsolve y: y·x == 6 m^2 | kN', 2).diagnostics.map((d) => d.code)).toEqual(['E-TARGET-UNIT']);
+    expect(result('solve y: y·2 m == 6 m^2 in 0 m .. 10 m | mm', 1).solutions?.[0]?.display).toMatchObject({ value: 3000, unit: 'mm' });
+  });
 });

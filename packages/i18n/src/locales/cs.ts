@@ -312,6 +312,7 @@ export const cs: Catalog = {
     'print.derivedFrom': 'odvození ověřeno ze vztahu {relations}',
     'print.derivedFromAbove': 'odvození ověřeno, plyne ze vztahu výše',
     'print.derived': 'odvození ověřeno',
+    'print.fromRelation': 'Z rovnice {eq}:',
     'print.condition': 'vybrán řádek, který splňuje',
     'print.appendix': 'Příloha {letter}: {name}',
     'print.imported': 'Převzaté hodnoty',

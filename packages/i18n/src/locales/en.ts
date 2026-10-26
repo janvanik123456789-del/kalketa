@@ -312,6 +312,7 @@ export const en: Catalog = {
     'print.derivedFrom': 'derivation checked, from relation {relations}',
     'print.derivedFromAbove': 'derivation checked, follows from the relation above',
     'print.derived': 'derivation checked',
+    'print.fromRelation': 'From equation {eq}:',
     'print.condition': 'selected as the row that satisfies',
     'print.appendix': 'Appendix {letter}: {name}',
     'print.imported': 'Values taken over',

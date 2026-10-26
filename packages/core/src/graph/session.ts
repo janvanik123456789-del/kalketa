@@ -701,11 +701,18 @@ export class SheetSession {
       if (statement.kind === 'solve') {
         const found = solveStatement(statement, ctx, evaluate);
         // {decimals=2 rounded} on a solve line: the rows below go on with the values as shown.
-        const values = found.values.map((v) => (statement.format?.rounded ? roundedAsShown(v, statement.format, context.registry, undefined) : v));
+        // "| kN·m": the unknowns in that unit, here and in the rows below.
+        const unit = statement.target ? resolveUnit(statement.target, context.registry) : undefined;
+        const inUnit = (v: Quantity): Quantity => {
+          if (!unit || !statement.target) return v;
+          if (!sameDim(unit.dim, v.dim)) throw new CalcError(diagnostic('E-TARGET-UNIT', statement.target.span, { unit: unit.symbol, found: baseUnitSymbol(v.dim) }));
+          return inTarget(v, unit);
+        };
+        const values = found.values.map((v) => inUnit(v)).map((v) => (statement.format?.rounded ? roundedAsShown(v, statement.format, context.registry, unit) : v));
         const solutions = statement.unknowns.map((u, i) => ({
           name: u.name,
           value: values[i]!,
-          display: toDisplay(values[i]!, context.registry),
+          display: toDisplay(values[i]!, context.registry, unit),
           ...(found.formula ? { formula: found.formula } : {}),
           ...(found.relation ? { relation: found.relation } : {}),
         }));

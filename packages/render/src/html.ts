@@ -375,7 +375,7 @@ export function renderBlockHtml(block: PrintBlock, catalog: Catalog, options: Bl
     }
     case 'equation':
       return `<section class="block equation${options.style === 'compact' ? ' compact' : options.style === 'book' ? ' book' : ''}${block.number !== undefined ? ' numbered' : ''}" data-line="${block.line}">
-${numbered(options.style === 'compact' ? compactLines(block, options.defineOperator ?? '=') : equationTable(block.lines, block.comment, options.defineOperator ?? '=', block.source), block.number)}${block.table ? dataTableHtml(block.table) : ''}${block.derived ? `<div class="derived">✓ ${esc(derivedText(block.follows, catalog))}</div>` : ''}${imported(block.imported, catalog)}${blockCalc(block.blockCalc, catalog)}${messages(block.messages)}
+${block.from ? `<div class="from-relation">${esc(t(catalog, 'print.fromRelation', { eq: block.from.join(', ') }))}</div>` : ''}${numbered(options.style === 'compact' ? compactLines(block, options.defineOperator ?? '=') : equationTable(block.lines, block.comment, options.defineOperator ?? '=', block.source), block.number)}${block.table ? dataTableHtml(block.table) : ''}${block.derived ? `<div class="derived">✓ ${esc(derivedText(block.follows, catalog))}</div>` : ''}${imported(block.imported, catalog)}${blockCalc(block.blockCalc, catalog)}${messages(block.messages)}
 </section>`;
     case 'selection': {
       const condition = block.condition
@@ -618,6 +618,8 @@ h3, h4, h5, h6 { font-size: 11pt; margin: 4mm 0 1.5mm; break-after: avoid; }
 .page-break, .clear { clear: both; }
 /* A derivation checked step by step: a quiet mark under it. */
 .derived { margin: 0.3mm 0 0 6mm; font-size: 8pt; color: #2e7d32; }
+/* solve by a relation printed above: the relation named, not written again. */
+.from-relation { margin: 0 0 0.5mm 0; }
 /* ⇒ before the unknown that follows from an inequality. */
 .lead { margin: 0 0.6em; }
 /* The stop above a freely placed picture: as tall as it is moved down, no width, so the text beside it is not narrowed. */

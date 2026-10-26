@@ -228,6 +228,8 @@ export type Statement =
       readonly conditions?: readonly Expr[];
       /** "guess I_1 = 1 A": first guesses, which also give the unknowns their units. */
       readonly guesses: readonly NamedArg[];
+      /** "| kN·m": the unit the unknowns are shown and carried on in. */
+      readonly target?: UnitExpr;
     })
   | (StatementBase & { readonly kind: 'invalid'; /** Name if the line looked like a definition. */ readonly name?: string });
 

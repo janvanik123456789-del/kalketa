@@ -53,6 +53,7 @@ export const UI_KEYS = [
   'print.fingerprint',
   'print.condition',
   'print.derived',
+  'print.fromRelation',
   'print.derivedFrom',
   'print.derivedFromAbove',
   'print.appendix',

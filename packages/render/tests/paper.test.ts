@@ -71,3 +71,14 @@ describe('formulas as LaTeX', () => {
     expect(() => katex.renderToString(line, { throwOnError: true })).not.toThrow();
   });
 });
+
+describe('a solve by a relation', () => {
+  it('names a relation printed above by its number; one hidden above is written out', () => {
+    const shown = blocks('relation y == 2·x {eq=Primka}\nsolve x: Primka guess x = 1').at(-1)!;
+    expect(shown.kind === 'equation' && shown.from).toEqual(['(1)']);
+    expect(renderBlockHtml(shown, cs)).toContain('<div class="from-relation">Z rovnice (1):</div>');
+    const hidden = blocks('@hide\nrelation y == 2·x {eq=Primka}\n@show\nsolve x: Primka guess x = 1').at(-1)!;
+    expect(hidden.kind === 'equation' && hidden.from).toBe(undefined);
+    expect(hidden.kind === 'equation' && toText(hidden.lines[0]!.lhs!)).toBe('y');
+  });
+});

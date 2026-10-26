@@ -599,9 +599,15 @@ class LineParser {
     const equations: Equation[] = [];
     const guesses: NamedArg[] = [];
     let range: { low: Expr; high: Expr } | undefined;
+    // "| kN·m": the unit the unknowns are shown in (a moment found from an equation would be in J).
+    let target: UnitExpr | undefined;
     for (;;) {
       while (this.peek().type === 'newline' || this.peek().type === ',') this.next();
       if (this.peek().type === 'eof') break;
+      if (this.peek().type === '|') {
+        target = this.parseTarget();
+        continue;
+      }
       if (this.isKeyword('in')) {
         this.next();
         const low = this.parseAdditive();
@@ -622,7 +628,7 @@ class LineParser {
       const left = this.parseAdditive();
       const eq = this.peek();
       // solve y: Kruh — a relation of the sheet by its name.
-      const ends = eq.type === ',' || eq.type === 'newline' || eq.type === 'eof' || this.isKeyword('in') || this.isKeyword('guess');
+      const ends = eq.type === ',' || eq.type === 'newline' || eq.type === 'eof' || eq.type === '|' || this.isKeyword('in') || this.isKeyword('guess');
       const name = left.kind === 'variable' ? left.name : left.kind === 'unit' && left.unit.kind === 'unit-name' ? left.unit.name : undefined;
       if (ends && name !== undefined && !ode) {
         equations.push({ left, right: left, named: name, span: left.span });
@@ -634,7 +640,7 @@ class LineParser {
       const right = this.parseAdditive();
       equations.push({ left, right, ...(relation ? { relation } : {}), span: spanOf(left, right) });
       const after = this.peek();
-      if (after.type !== ',' && after.type !== 'newline' && after.type !== 'eof' && !this.isKeyword('in') && !this.isKeyword('guess')) {
+      if (after.type !== ',' && after.type !== 'newline' && after.type !== 'eof' && after.type !== '|' && !this.isKeyword('in') && !this.isKeyword('guess')) {
         fail('E-SYNTAX', after.span, { expected: 'end-of-line', found: after.text });
       }
     }
@@ -645,7 +651,7 @@ class LineParser {
     if (inequality && (unknowns.length !== 1 || equations.length !== 1)) fail('E-SOLVE-INEQUALITY', inequality.span);
     if (ode && ownVariable) this.defined.delete(ode.variable);
     if ((domain || conditions.length > 0) && unknowns.length !== 1) fail('E-SOLVE-CONDITIONS', unknowns[1]?.span ?? lineSpan);
-    return { kind: 'solve', unknowns, equations, ...(range ? { range } : {}), guesses, ...(ode ? { ode } : {}), ...(domain ? { domain } : {}), ...(conditions.length > 0 ? { conditions } : {}), span: lineSpan };
+    return { kind: 'solve', unknowns, equations, ...(range ? { range } : {}), ...(target ? { target } : {}), guesses, ...(ode ? { ode } : {}), ...(domain ? { domain } : {}), ...(conditions.length > 0 ? { conditions } : {}), span: lineSpan };
   }
 
   /** unit CZK: Mena · unit ks: dimensionless · unit EUR := 25 CZK */

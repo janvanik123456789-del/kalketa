@@ -13,7 +13,7 @@
  *
  * Coordinates are those of the page at scale 1 (PDF points), y downwards.
  */
-import { formulaOrScraps } from './pdfText.js';
+import { formulaOrScraps, shifted } from './pdfText.js';
 
 export interface Box {
   readonly top: number;
@@ -24,6 +24,127 @@ export interface Box {
 
 export interface LayoutLine extends Box {
   readonly text: string;
+}
+
+/** A piece of text as the PDF places it: from x to right on the baseline y, letters of the given size. */
+export interface TextPart {
+  readonly x: number;
+  readonly right: number;
+  readonly y: number;
+  readonly size: number;
+  readonly text: string;
+}
+
+/** A line of smaller letters this much above its line's baseline (share of the line's size) is an exponent… */
+const RAISED = [-0.75, -0.15] as const;
+/** …and this much below it an index. */
+const LOWERED = [0.1, 0.5] as const;
+/** Letters at most this share of the line's size are an exponent or an index. */
+const SMALLER = 0.85;
+
+/**
+ * The lines of a page from its pieces of text, left to right, a gap between
+ * pieces a space. Exponents and indexes have baselines of their own, so they
+ * come out as lines of their own and would be lost as scraps: smaller letters
+ * just above or below a line are written into it ("10⁻⁶ m⁴", "M_a").
+ */
+export function linesOf(parts: readonly TextPart[]): LayoutLine[] {
+  const sorted = [...parts].sort((a, b) => a.y - b.y || a.x - b.x);
+  const groups: TextPart[][] = [];
+  let current: TextPart[] = [];
+  for (const p of sorted) {
+    if (current.length > 0 && Math.abs(p.y - current[0]!.y) > 0.4 * p.size) {
+      groups.push(current);
+      current = [];
+    }
+    current.push(p);
+  }
+  if (current.length) groups.push(current);
+
+  type Group = { parts: { part: TextPart; shift?: 'raised' | 'lowered' }[]; size: number; base: number; left: number; right: number };
+  const lines: Group[] = groups.map((g) => ({ parts: g.map((part) => ({ part })), size: Math.max(...g.map((p) => p.size)), base: Math.max(...g.map((p) => p.y)), left: Math.min(...g.map((p) => p.x)), right: Math.max(...g.map((p) => p.right)) }));
+  // A group of smaller letters goes into the nearest line it is raised above or lowered below.
+  for (const small of [...lines]) {
+    let best: { line: Group; shift: 'raised' | 'lowered'; d: number } | undefined;
+    for (const line of lines) {
+      if (line === small || small.size > SMALLER * line.size) continue;
+      if (small.left < line.left - line.size || small.right > line.right + 2 * line.size) continue;
+      const d = (small.base - line.base) / line.size;
+      const shift = d >= RAISED[0] && d <= RAISED[1] ? 'raised' : d >= LOWERED[0] && d <= LOWERED[1] ? 'lowered' : undefined;
+      if (shift && (!best || Math.abs(d) < Math.abs(best.d))) best = { line, shift, d };
+    }
+    if (!best) continue;
+    const { line, shift } = best;
+    line.parts.push(...small.parts.map(({ part }) => ({ part, shift })));
+    line.left = Math.min(line.left, small.left);
+    line.right = Math.max(line.right, small.right);
+    lines.splice(lines.indexOf(small), 1);
+  }
+
+  return lines.map((line) => {
+    const row = [...line.parts].sort((a, b) => a.part.x - b.part.x);
+    let text = '';
+    for (let i = 0; i < row.length; i++) {
+      const { part, shift } = row[i]!;
+      if (shift) {
+        // Shifted pieces next to each other: exponents and indexes, or a small fraction set in the line.
+        const run = [row[i]!];
+        while (row[i + 1]?.shift) run.push(row[++i]!);
+        const up = run.filter((r) => r.shift === 'raised').map((r) => r.part);
+        const down = run.filter((r) => r.shift === 'lowered').map((r) => r.part);
+        const span = (ps: TextPart[]) => ({ left: Math.min(...ps.map((p) => p.x)), right: Math.max(...ps.map((p) => p.right)) });
+        // One above the other after an operator or a space, not after a letter ("x₁²"): a fraction "R/M".
+        const stacked = up.length > 0 && down.length > 0 && span(up).left < span(down).right && span(down).left < span(up).right;
+        const joined = (ps: TextPart[]) => ps.map((p) => p.text).join('');
+        if (stacked && !/[\p{L}\p{N})\]]$/u.test(text)) {
+          const term = (ps: TextPart[]) => {
+            const t = joined(ps).trim();
+            return /^[\p{L}\p{N}.,]+$/u.test(t) ? t : `(${t})`;
+          };
+          text += `${term(up)}/${term(down)}`;
+          continue;
+        }
+        // An index with its exponent over it: the index first, as Kalketa writes "x_1²".
+        if (stacked) {
+          text = text.trimEnd() + shifted(joined(down), false) + shifted(joined(up), true);
+          continue;
+        }
+        // Pieces shifted the same way one after another are one exponent or index.
+        for (let k = 0; k < run.length; ) {
+          let piece = run[k]!.part.text;
+          const way = run[k]!.shift;
+          while (run[++k]?.shift === way) piece += run[k]!.part.text;
+          text = text.trimEnd() + shifted(piece, way === 'raised');
+        }
+        continue;
+      }
+      const before = row[i - 1]?.part;
+      const gap = before ? part.x - before.right : 0;
+      text += (before && gap > 0.15 * part.size && !text.endsWith(' ') && !part.text.startsWith(' ') ? ' ' : '') + part.text;
+    }
+    return {
+      text: text.replace(/\s+/g, ' ').trim(),
+      top: Math.min(...line.parts.map(({ part }) => part.y - part.size)),
+      bottom: Math.max(...line.parts.map(({ part }) => part.y + part.size * 0.25)),
+      left: line.left,
+      right: line.right,
+    };
+  });
+}
+
+/**
+ * Shapes and images that only decorate the page: marked as an artifact (a
+ * running head, a page frame, a watermark in a tagged PDF), or a light
+ * see-through fill over the page (a watermark like "DRAFT"). They are no
+ * picture, and a picture they made would swallow the text under them.
+ */
+export function decoration(state: { readonly artifact: boolean; readonly alpha: number; readonly fill: string | undefined }): boolean {
+  if (state.artifact) return true;
+  if (state.alpha >= 0.9) return false;
+  const rgb = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(state.fill ?? '');
+  // A see-through shape of unknown colour: light enough when it is at least half see-through.
+  const light = rgb ? (parseInt(rgb[1]!, 16) + parseInt(rgb[2]!, 16) + parseInt(rgb[3]!, 16)) / 3 >= 150 : true;
+  return light && state.alpha <= 0.6;
 }
 
 /** A line of text keeps where it is (`box`): its part of the page can be read again (pdfReread.ts). */

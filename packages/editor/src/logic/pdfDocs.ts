@@ -5,7 +5,8 @@
  */
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { desktop } from '../document.js';
-import { inkBounds, type Box, type LayoutLine } from './pdfLayout.js';
+import { decoration, inkBounds, linesOf, type Box, type LayoutLine, type TextPart } from './pdfLayout.js';
+import { fromSymbolFont } from './pdfText.js';
 
 type PdfJs = typeof import('pdfjs-dist');
 export type PdfDocument = Awaited<ReturnType<PdfJs['getDocument']>['promise']>;
@@ -29,7 +30,7 @@ function library(): Promise<PdfJs> {
 export function loadPdf(path: string, sheetPath?: string): Promise<PdfDocument> {
   let doc = loaded.get(path);
   if (!doc) {
-    doc = (async () => (await library()).getDocument({ data: await desktop!.studyBytes(path, sheetPath) }).promise)();
+    doc = (async () => (await library()).getDocument({ data: await desktop!.studyBytes(path, sheetPath), fontExtraProperties: true }).promise)();
     // A file that could not be read is tried again next time.
     doc.catch(() => loaded.delete(path));
     loaded.set(path, doc);
@@ -41,44 +42,38 @@ export function loadPdf(path: string, sheetPath?: string): Promise<PdfDocument> 
 export async function pageContent(page: PdfPage): Promise<{ lines: LayoutLine[]; pictures: Box[]; drawn: Box[]; width: number; height: number }> {
   const lib = await library();
   const viewport = page.getViewport({ scale: 1 });
+  // The drawing operations first: they load the page's fonts, whose names tell a Symbol font.
+  const ops = await page.getOperatorList();
   const content = await page.getTextContent();
-  type Part = { x: number; right: number; y: number; size: number; text: string };
-  const parts: Part[] = [];
+  const symbolFonts = new Set<string>();
+  for (const name of new Set(content.items.map((item) => ('fontName' in item ? item.fontName : '')))) {
+    try {
+      if (/symbol/i.test((page.commonObjs.get(name) as { name?: string } | undefined)?.name ?? '')) symbolFonts.add(name);
+    } catch {
+      // A font not loaded: its text stays as the PDF gives it.
+    }
+  }
+  const parts: TextPart[] = [];
   for (const item of content.items) {
     if (!('str' in item) || !item.str.trim()) continue;
     const [x, y] = viewport.convertToViewportPoint(item.transform[4] as number, item.transform[5] as number) as [number, number];
     const size = Math.max(1, Math.hypot(item.transform[2] as number, item.transform[3] as number));
-    parts.push({ x, right: x + (item.width ?? 0), y, size, text: item.str });
+    const text = symbolFonts.has(item.fontName) ? fromSymbolFont(item.str) : item.str;
+    if (text.trim()) parts.push({ x, right: x + (item.width ?? 0), y, size, text });
   }
-  // Parts on one baseline make a line, left to right; a gap between them is a space.
-  parts.sort((a, b) => a.y - b.y || a.x - b.x);
-  const lines: LayoutLine[] = [];
-  let current: Part[] = [];
-  const close = () => {
-    if (current.length === 0) return;
-    const row = [...current].sort((a, b) => a.x - b.x);
-    let text = '';
-    row.forEach((p, i) => {
-      const gap = i > 0 ? p.x - row[i - 1]!.right : 0;
-      text += (i > 0 && gap > 0.15 * p.size && !text.endsWith(' ') && !p.text.startsWith(' ') ? ' ' : '') + p.text;
-    });
-    const size = Math.max(...row.map((p) => p.size));
-    const base = Math.max(...row.map((p) => p.y));
-    lines.push({ text: text.replace(/\s+/g, ' ').trim(), top: base - size, bottom: base + size * 0.25, left: Math.min(...row.map((p) => p.x)), right: Math.max(...row.map((p) => p.right)) });
-    current = [];
-  };
-  for (const p of parts) {
-    if (current.length > 0 && Math.abs(p.y - current[0]!.y) > 0.4 * p.size) close();
-    current.push(p);
-  }
-  close();
+  const lines = linesOf(parts);
 
   // Pictures: where the drawing operations paint an image, through the transforms that place it.
-  const ops = await page.getOperatorList();
   const { OPS, Util } = lib;
   const images = new Set<number>([OPS.paintImageXObject, OPS.paintInlineImageXObject, OPS.paintImageMaskXObject, OPS.paintImageXObjectRepeat, OPS.paintImageMaskXObjectRepeat].filter((n): n is number => typeof n === 'number'));
-  let ctm: number[] = [1, 0, 0, 1, 0, 0];
-  const stack: number[][] = [];
+  // What is painted with: the transform, how see-through and in what colour (saved and restored together).
+  type State = { ctm: number[]; alpha: number; fill: string | undefined };
+  let state: State = { ctm: [1, 0, 0, 1, 0, 0], alpha: 1, fill: undefined };
+  let ctm = state.ctm;
+  const stack: State[] = [];
+  // Marked content open now, each an artifact or not.
+  const marked: boolean[] = [];
+  const decorating = () => decoration({ artifact: marked.includes(true), alpha: state.alpha, fill: state.fill });
   const pictures: Box[] = [];
   const drawn: Box[] = [];
   /** A rectangle of user space on the page. */
@@ -101,19 +96,30 @@ export async function pageContent(page: PdfPage): Promise<{ lines: LayoutLine[];
   for (let i = 0; i < ops.fnArray.length; i++) {
     const fn = ops.fnArray[i]!;
     const args = ops.argsArray[i] as unknown[] | null;
-    if (fn === OPS.save) stack.push(ctm);
-    else if (fn === OPS.restore) ctm = stack.pop() ?? ctm;
-    else if (fn === OPS.transform && args) ctm = Util.transform(ctm, args as number[]) as number[];
+    if (fn === OPS.save) stack.push({ ...state, ctm });
+    else if (fn === OPS.restore) {
+      state = stack.pop() ?? state;
+      ctm = state.ctm;
+    } else if (fn === OPS.transform && args) ctm = Util.transform(ctm, args as number[]) as number[];
     else if (fn === OPS.paintFormXObjectBegin) {
-      stack.push(ctm);
+      stack.push({ ...state, ctm });
       const matrix = args?.[0];
       if (Array.isArray(matrix) && matrix.length === 6) ctm = Util.transform(ctm, matrix as number[]) as number[];
-    } else if (fn === OPS.paintFormXObjectEnd) ctm = stack.pop() ?? ctm;
-    else if (images.has(fn)) pictures.push(onPage(0, 0, 1, 1));
-    else if (fn === OPS.constructPath && args) {
+    } else if (fn === OPS.paintFormXObjectEnd) {
+      state = stack.pop() ?? state;
+      ctm = state.ctm;
+    } else if (fn === OPS.setGState && args) {
+      // The fill's opacity ("ca") of an ExtGState, as pdf.js passes it: [[key, value], …].
+      for (const entry of (args[0] ?? []) as [string, unknown][]) if (entry[0] === 'ca' && typeof entry[1] === 'number') state = { ...state, alpha: entry[1] };
+    } else if ((fn === OPS.setFillRGBColor || fn === OPS.setFillColor) && args) state = { ...state, fill: typeof args[0] === 'string' ? args[0] : undefined };
+    else if (fn === OPS.beginMarkedContent || fn === OPS.beginMarkedContentProps) marked.push(args?.[0] === 'Artifact');
+    else if (fn === OPS.endMarkedContent) marked.pop();
+    else if (images.has(fn)) {
+      if (!decorating()) pictures.push(onPage(0, 0, 1, 1));
+    } else if (fn === OPS.constructPath && args) {
       // A shape drawn (not a clipping path): where it lies, from its bounds.
       const [op, , bounds] = args as [number, unknown, ArrayLike<number> | null];
-      if (op !== OPS.endPath && bounds && bounds.length >= 4 && [0, 1, 2, 3].every((k) => Number.isFinite(bounds[k]!))) drawn.push(onPage(bounds[0]!, bounds[1]!, bounds[2]!, bounds[3]!));
+      if (op !== OPS.endPath && bounds && bounds.length >= 4 && [0, 1, 2, 3].every((k) => Number.isFinite(bounds[k]!)) && !decorating()) drawn.push(onPage(bounds[0]!, bounds[1]!, bounds[2]!, bounds[3]!));
     }
   }
   return { lines, pictures, drawn, width: viewport.width, height: viewport.height };

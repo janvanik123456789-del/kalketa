@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { inkBounds, pageLayout, type LayoutLine } from '../src/logic/pdfLayout.js';
+import { decoration, inkBounds, linesOf, pageLayout, type LayoutLine, type TextPart } from '../src/logic/pdfLayout.js';
 import { formulaOrScraps } from '../src/logic/pdfText.js';
 
 const page = { width: 595, height: 842 };
@@ -60,5 +60,42 @@ describe('a PDF page laid out for the sources', () => {
     for (const [x, y] of [[2, 1], [4, 2]]) pixels.set([20, 20, 20, 255], (y! * 6 + x!) * 4);
     expect(inkBounds(pixels, 6, 4)).toEqual({ top: 1, bottom: 3, left: 2, right: 5 });
     expect(inkBounds(new Uint8ClampedArray(16).fill(255), 2, 2)).toBeUndefined();
+  });
+});
+
+describe('lines of a PDF page from its pieces of text', () => {
+  // A piece on baseline y (downwards), letters of the given size, about half a size wide per letter.
+  const part = (x: number, y: number, text: string, size = 11): TextPart => ({ x, right: x + text.length * size * 0.5, y, size, text });
+
+  it('writes exponents and indexes into their line instead of losing them as scraps', () => {
+    // "I = 21,4·10⁻⁶ m⁴." as VUT's script sets it: the exponents 5 pt above the line, in 7 pt letters.
+    const lines = linesOf([part(100, 300, 'I = 21,4·10'), part(160.5, 295, '-6', 7), part(168, 300, ' m'), part(175, 295, '4', 7), part(179, 300, '.')]);
+    expect(lines.map((l) => l.text)).toEqual(['I = 21,4·10⁻⁶ m⁴.']);
+    expect(linesOf([part(100, 300, 'M'), part(106, 302.8, 'a', 6.5), part(112, 300, ' = 0 kNm')]).map((l) => l.text)).toEqual(['M_a = 0 kNm']);
+    expect(linesOf([part(100, 300, 'Δt'), part(108, 302.8, 'h,a-b', 6.5)]).map((l) => l.text)).toEqual(['Δt_(h,a-b)']);
+    expect(linesOf([part(100, 300, 'e'), part(106, 295, 'x+1', 7)]).map((l) => l.text)).toEqual(['e^(x+1)']);
+  });
+
+  it('reads a small fraction set in the line, but not an index with an exponent', () => {
+    expect(linesOf([part(100, 300, 'r = '), part(122, 295, 'R', 7), part(122, 304, 'M', 7)]).map((l) => l.text)).toEqual(['r = R/M']);
+    expect(linesOf([part(100, 300, 'x'), part(106, 302.8, '1', 6.5), part(106, 295, '2', 7)]).map((l) => l.text)).toEqual(['x_1²']);
+  });
+
+  it('keeps lines of small letters that are lines of their own', () => {
+    // A footnote under the text and a line of the same size above it are not exponents.
+    const lines = linesOf([part(100, 300, 'Text odstavce.'), part(100, 318, 'Poznámka pod čarou.', 7), part(100, 287, 'Řádek nad ním.')]);
+    expect(lines.map((l) => l.text)).toEqual(['Řádek nad ním.', 'Text odstavce.', 'Poznámka pod čarou.']);
+  });
+});
+
+describe('decoration of a page', () => {
+  it('is an artifact or a light see-through shape, not a drawing', () => {
+    // The watermark "KKE/TM" of ZČU's exercises: grey at half opacity.
+    expect(decoration({ artifact: false, alpha: 0.502, fill: '#c0c0c0' })).toBe(true);
+    expect(decoration({ artifact: true, alpha: 1, fill: '#000000' })).toBe(true);
+    expect(decoration({ artifact: false, alpha: 1, fill: '#c0c0c0' })).toBe(false);
+    // A dark see-through area of a chart is part of it.
+    expect(decoration({ artifact: false, alpha: 0.5, fill: '#1f3a93' })).toBe(false);
+    expect(decoration({ artifact: false, alpha: 0.8, fill: '#eeeeee' })).toBe(false);
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applySuspects, cleanPdfText, joinSpacedLetters } from '../src/logic/pdfText.js';
+import { applySuspects, cleanPdfText, fromSymbolFont, joinSpacedLetters, shifted } from '../src/logic/pdfText.js';
 
 // Notes as a PDF copy leaves them: one paragraph per printed line.
 const copied = [
@@ -107,5 +107,23 @@ describe('numbered cases and formulas', () => {
   it('gives numbered headings already there their level, with their section ids', () => {
     const notes = '# 7. PROSTÝ OHYB {#T1}\n\n## 7.5 Grafický průběh {#T6}\n\n# 1. Vetknutý nosník {#T7}\n\nText.\n';
     expect(cleanPdfText(notes).text).toBe('# 7. PROSTÝ OHYB {#T1}\n\n## 7.5 Grafický průběh {#T6}\n\n### 1. Vetknutý nosník {#T7}\n\nText.\n');
+  });
+});
+
+describe('characters of a PDF', () => {
+  it('reads a Symbol font given in the private use area', () => {
+    expect(fromSymbolFont('M  0')).toBe('M = 0');
+    expect(fromSymbolFont('4,8633      ')).toBe('−4,8633 ⋅ α° ≤ ≠ ∫ ∑');
+    // Every code from 0x20 to 0x7E and from 0xA0 to 0xFE has its character (0xF0 none).
+    for (let c = 0x20; c <= 0xfe; c++) if (c < 0x7f || c >= 0xa0) expect(fromSymbolFont(String.fromCharCode(0xf000 + c)).length).toBe(c === 0xf0 ? 0 : 1);
+    expect(fromSymbolFont('obyčejný text')).toBe('obyčejný text');
+  });
+
+  it('writes exponents and indexes', () => {
+    expect(shifted('-6', true)).toBe('⁻⁶');
+    expect(shifted('2', true)).toBe('²');
+    expect(shifted('x+1', true)).toBe('^(x+1)');
+    expect(shifted('max', false)).toBe('_max');
+    expect(shifted('h, a-b', false)).toBe('_(h, a-b)');
   });
 });

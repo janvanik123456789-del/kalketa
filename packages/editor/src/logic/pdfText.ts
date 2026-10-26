@@ -104,6 +104,37 @@ export function joinSpacedLetters(line: string): { text: string; words: string[]
   return { text, words };
 }
 
+/** Symbol encoding from 0x20 (Adobe Symbol, the font of Word's equations and of old formula editors). */
+const SYMBOL_LOW = Array.from(' !∀#∃%&∋()∗+,−./0123456789:;<=>?≅ΑΒΧΔΕΦΓΗΙϑΚΛΜΝΟΠΘΡΣΤΥςΩΞΨΖ[∴]⊥_‾αβχδεφγηιϕκλμνοπθρστυϖωξψζ{|}∼');
+/** Symbol encoding from 0xA0; 0xF0 (an Apple logo) has no character. */
+const SYMBOL_HIGH = Array.from('€ϒ′≤⁄∞ƒ♣♦♥♠↔←↑→↓°±″≥×∝∂•÷≠≡≈…⏐⎯↵ℵℑℜ℘⊗⊕∅∩∪⊃⊇⊄⊂⊆∈∉∠∇®©™∏√⋅¬∧∨⇔⇐⇑⇒⇓◊〈®©™∑⎛⎜⎝⎡⎢⎣⎧⎨⎩⎪\u0000〉∫⌠⎮⌡⎞⎟⎠⎤⎥⎦⎫⎬⎭');
+
+/**
+ * Text of a Symbol font that a PDF gives in the private use area (U+F020–U+F0FE,
+ * the font's own codes) as the characters they show: "M  0" → "M = 0".
+ * Only for a font named Symbol: Wingdings and the like use the same codes for pictures.
+ */
+export function fromSymbolFont(text: string): string {
+  return text.replace(/[-]/g, (ch) => {
+    const code = ch.charCodeAt(0) - 0xf000;
+    const out = code < 0x7f ? SYMBOL_LOW[code - 0x20] : code >= 0xa0 ? SYMBOL_HIGH[code - 0xa0] : undefined;
+    return out === undefined || out === '\u0000' ? '' : out;
+  });
+}
+
+const SUPERSCRIPT: Record<string, string> = { '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹', '+': '⁺', '-': '⁻', '−': '⁻', '=': '⁼', '(': '⁽', ')': '⁾', n: 'ⁿ', i: 'ⁱ' };
+
+/**
+ * A raised part of a line (an exponent) written into it: "⁻⁶" where every
+ * character has a superscript form, else "^(…)". A lowered one (an index)
+ * as Kalketa writes names: "_a", "_max", "_(h,a-b)" when it has more than a word.
+ */
+export function shifted(text: string, raised: boolean): string {
+  const t = text.trim();
+  if (raised) return Array.from(t).every((c) => c in SUPERSCRIPT) ? Array.from(t, (c) => SUPERSCRIPT[c]).join('') : `^(${t})`;
+  return /^[\p{L}\p{N}]+$/u.test(t) ? `_${t}` : `_(${t})`;
+}
+
 /**
  * A line the PDF could not give as text: a formula (short, few words, ending in
  * its number "(45)") or scraps of a figure or formula. Undefined for real text.

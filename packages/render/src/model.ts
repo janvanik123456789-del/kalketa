@@ -299,6 +299,14 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
   const numberFormat = (spec: NumberFormatOptions) => (value: number) => formatNumber(value, catalog, spec);
   // How each name was shown on its own line ({decimals=2}): so it is shown in every substitution below.
   const formats = new Map<string, NumberFormatOptions>();
+  // Columns of the sheet's tables with a format of their numbers ({0.000}): a value read from them is put in so ("Prvky.A").
+  for (const st of result.sheet.statements) {
+    if (st.kind !== 'table') continue;
+    for (const c of st.columns) {
+      const places = c.format ? /^0(?:\.(0+))?$/.exec(c.format) : null;
+      if (places) formats.set(`${st.name}.${c.name}`, { decimals: places[1]?.length ?? 0 });
+    }
+  }
 
   // Blocks used in the sheet: their names are words, not math symbols.
   const blockNames = new Set(result.statements.flatMap((r) => (r.value?.type === 'record' ? [r.value.block] : [])));
@@ -333,7 +341,9 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
     if (mode.hidden && !options.showHidden && s.kind !== 'heading') continue;
     const messages = r.diagnostics.map((d) => ({ severity: d.severity, text: formatDiagnostic(d, catalog) }));
     // The line's own format, else the significant digits of the sheet or of @digits above.
-    const spec: NumberFormatOptions = s.format?.decimals !== undefined ? { decimals: s.format.decimals } : { digits: s.format?.digits ?? mode.digits };
+    // A value as written (m := 6.5452 g, 0.1230 g): a measured value keeps the places it was given with.
+    const written = s.format?.decimals === undefined && s.format?.digits === undefined && s.kind === 'definition' && !s.target ? writtenPlaces(result.source, s.expr) : undefined;
+    const spec: NumberFormatOptions = s.format?.decimals !== undefined ? { decimals: s.format.decimals } : written !== undefined ? { decimals: written } : { digits: s.format?.digits ?? mode.digits };
     if (s.format && (s.kind === 'definition' || s.kind === 'invalid') && s.name) formats.set(s.name, spec);
     // The unknowns of a solve line are shown below as the line shows them.
     if (s.format && s.kind === 'solve') for (const u of s.unknowns) formats.set(u.name, spec);
@@ -1034,6 +1044,14 @@ function readsNames(expr: Expr): boolean {
 }
 
 /** Numbers written out: 5, -2, 12 kN/m, and series and matrices of them, with a unit after the brackets. */
+/** The decimal places of a number written in the sheet (6.5452 g: 4, 0.1230: 4, 1500: 0); none for 97.9e-6 or a calculated value. */
+function writtenPlaces(source: string, expr: Expr): number | undefined {
+  const number = expr.kind === 'unary' && expr.operator === '-' ? expr.operand : expr;
+  if (number.kind !== 'number' || number.imaginary) return undefined;
+  const m = /^\s*\d*(?:\.(\d+))?(?![\d.eE])/.exec(source.slice(number.span.offset, number.span.offset + number.span.length));
+  return m ? (m[1]?.length ?? 0) : undefined;
+}
+
 function isGiven(expr: Expr): boolean {
   switch (expr.kind) {
     case 'number':
@@ -1127,6 +1145,17 @@ function substitution(result: SheetResult, quantityNode: (q: Quantity, name?: st
     if (expr.kind === 'call' && expr.args.length === 1 && expr.args[0]!.kind === 'variable') {
       const series = result.values.get(expr.args[0].name);
       if (series?.type === 'vector') return wrap(seriesStatistic(expr.name, series.items));
+    }
+    // pick(Prvky, "Mn").A with the number put in: the cell of that row and column, 54,938 g/mol.
+    if (expr.kind === 'member' && expr.object.kind === 'call' && expr.object.name === 'pick' && expr.object.args.length === 2) {
+      const [tableExpr, keyExpr] = expr.object.args;
+      const value = tableExpr!.kind === 'variable' ? result.values.get(tableExpr!.name) : undefined;
+      if (value?.type !== 'table' || keyExpr!.kind !== 'string') return undefined;
+      const table = value.table;
+      const keyColumn = table.columns.findIndex((c) => c.name === table.key);
+      const column = table.columns.findIndex((c) => c.name === expr.name);
+      const found = table.rows.find((r) => { const k = r[keyColumn]; return k?.type === 'text' && k.value === (keyExpr as { value: string }).value; });
+      return column >= 0 && found ? wrap(found[column] ?? undefined, `${table.name}.${expr.name}`) : undefined;
     }
     if (expr.kind === 'member' && expr.object.kind === 'variable') {
       const object = result.values.get(expr.object.name);

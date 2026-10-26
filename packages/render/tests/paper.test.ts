@@ -100,3 +100,18 @@ describe('complex results in polar form', () => {
   });
 });
 
+describe('values as written and read from tables', () => {
+  const nl = String.fromCharCode(10);
+
+  it('print a value given in the sheet with the places it was written with (0,1230 g, 6,5452 g)', () => {
+    const lines = blocks(['m_1 := 0.1230 g', 'm_2 := 6.5452 g', 'm_3 := 1500 kg', 'm_4 := 2 g {decimals=2}'].join(nl)).flatMap((b) => (b.kind === 'equation' ? [plain(toText(b.lines.at(-1)!.rhs))] : []));
+    expect(lines).toEqual(['0,1230 g', '6,5452 g', '1 500 kg', '2,00 g']);
+  });
+
+  it('print a value picked from a table as its column with the row, and put in the number in the format of the column', () => {
+    const source = ['table Prvky:', '    | prvek | A [g/mol] {0.000} |', '    | Mn    | 54.938 |', '    | O     | 15.999 |', 'M := 3·pick(Prvky, "Mn").A + 4·pick(Prvky, "O").A'].join(nl);
+    const block = equation(source)!;
+    expect(block.lines.map((l) => plain(toText(l.rhs)))).toEqual(['3·A(Mn)+4·A(O)', '3·54,938 g/mol+4·15,999 g/mol', '228,8 g/mol']);
+  });
+});
+

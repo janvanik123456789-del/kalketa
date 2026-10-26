@@ -169,6 +169,11 @@ function render(expr: Expr, o: FormulaOptions): Rendered {
       if (expr.object.kind === 'variable' && (o.recordNames?.has(expr.object.name) || o.qualifiedMembers?.has(expr.name))) {
         return { node: row(nameNode(expr.name), paren(nameNode(expr.object.name))), prec: ATOM };
       }
+      // A value read from a table by its row (pick(Prvky, "Mn").A): the column with the row, A(Mn), as on paper.
+      if (expr.object.kind === 'call' && expr.object.name === 'pick' && expr.object.args.length === 2 && expr.object.named.length === 0) {
+        const key = expr.object.args[1]!;
+        return { node: row(nameNode(expr.name), paren(key.kind === 'string' ? mtext(key.value) : render(key, o).node)), prec: ATOM };
+      }
       // A column of a row found here (find_min(T, by: N).pouzdro): the search is the formula, not the name alone.
       if (expr.object.kind === 'call') return { node: row(render(expr.object, o).node, mo('.'), nameNode(expr.name)), prec: ATOM };
       // Printed as the column name: profil.W_y -> W_y.

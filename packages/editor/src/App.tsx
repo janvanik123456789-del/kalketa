@@ -14,7 +14,7 @@ import { emptyScene, readScene, writeScene, type CanvasScene } from '@kalketa/ca
 import { CanvasEditor } from '@kalketa/canvas/editor';
 import { withAiLayer, copyWithoutAiRecords, hasAiRecords, compareWithSheet, sheetHas, readOutput, addLayer, allDiagnostics, appendixLayers, blockAppendices, documentBlocks, isRemovable, LayerSessions, MAIN_LAYER, removeLayer, freezeRevision, removeRevision, revisionDocument, revisionState, shortHash, tablesByLayer, theorySections, updateLayer, withTheoryIds, conversationsOf, hasConversations, withConversation, withoutConversation, aiMemoryOf, withAiMemory, linkedLibraries, librarySections, entriesOf, newSheetsOf, withEntries, studyAdvice, studyNotes, LARGE_STUDY_PAGES, type StudySettings, aiMadeLines, type SheetEntry, evaluateDocument, type ChangeEntry, type Conversation, type AddableLayerKind, type Layer, type RevisionState, type SheetDocument } from '@kalketa/sheet';
 import { buildCommands, shortcutOf, type Command } from './commands.js';
-import { applyProposal, applyProposals, cleanFigureDescription, cleanFormula, cleanReread, cleanMemory, parseNewSheets, DEFAULT_AI_SETTINGS, parseAiSettings, parseProposals, providerById, replacedLines, type ChangeProposal, type AiSettings, type ChatTurn, type CheckReport, type ChoiceBlock, type NoteBlock, DETAIL_LEVELS, isRoundResult, loneNumbers, noteText, proseOf, pythonLines, reportedNames, type SheetCheck } from '@kalketa/ai';
+import { applyProposal, latexLine, latexPaste, applyProposals, cleanFigureDescription, cleanFormula, cleanReread, cleanMemory, parseNewSheets, DEFAULT_AI_SETTINGS, parseAiSettings, parseProposals, providerById, replacedLines, type ChangeProposal, type AiSettings, type ChatTurn, type CheckReport, type ChoiceBlock, type NoteBlock, DETAIL_LEVELS, isRoundResult, loneNumbers, noteText, proseOf, pythonLines, reportedNames, type SheetCheck } from '@kalketa/ai';
 import { ChatPane } from './components/ChatPane.js';
 import { TheoryLibraryDialog } from './components/TheoryLibraryDialog.js';
 import { sourceText, useTheoryLibraries, withoutDuplicates, type FoundLibrary } from './theoryLibraries.js';
@@ -1798,6 +1798,27 @@ export function App() {
     reveal.current = { layer: into.id, line: at + 1 };
   };
 
+  /**
+   * LaTeX pasted into a line of the calculation (from Wikipedia, a thesis, a model's answer), written in
+   * its language: an empty line takes the formula as a definition (more of them as rows), inside a line
+   * it is an expression. False for text that is no LaTeX: it is pasted as it is.
+   */
+  const pasteLatex = (area: HTMLTextAreaElement, pasted: string): boolean => {
+    const lines = latexPaste(pasted);
+    if (!lines) return false;
+    const shown = (text: string) => (decimalComma ? toDecimalComma(text) : text);
+    const empty = area.value.trim() === '';
+    const part = empty ? lines[0] : lines.length === 1 ? (latexLine(pasted.replace(/^\s*\$+|\$+\s*$/g, '')) ?? lines[0]) : undefined;
+    if (lines.length > 1 || part === undefined) {
+      pasteRows(lines.join('\n'), empty);
+      return true;
+    }
+    area.focus();
+    area.setRangeText(shown(part), empty ? 0 : area.selectionStart, empty ? area.value.length : area.selectionEnd, 'end');
+    area.dispatchEvent(new Event('input', { bubbles: true }));
+    return true;
+  };
+
   const insertSymbol = (symbol: string) => {
     const area = document.querySelector<HTMLTextAreaElement>('textarea.row-editor');
     // A line of text edited formatted: the symbol among its words.
@@ -1842,14 +1863,18 @@ export function App() {
     if (action === 'paste' && desktop) {
       void desktop.clipboardPictures().then((pictures) => {
         if (pictures.length > 0) void insertPictures(pictures);
-        else void navigator.clipboard.readText().then((text) => (document.querySelector('textarea.row-editor') || textFormat) && insertSymbol(text));
+        else void navigator.clipboard.readText().then((text) => {
+          const row = document.querySelector<HTMLTextAreaElement>('textarea.row-editor');
+          if (row && pasteLatex(row, text)) return;
+          if (row || textFormat) insertSymbol(text);
+        });
       });
       return;
     }
     const area = document.querySelector<HTMLTextAreaElement>('textarea.row-editor') ?? document.querySelector<HTMLElement>('[data-text-editor]');
     if (!area) return;
     area.focus();
-    if (action === 'paste') void navigator.clipboard.readText().then((text) => insertSymbol(text));
+    if (action === 'paste') void navigator.clipboard.readText().then((text) => (area instanceof HTMLTextAreaElement && area.matches('.row-editor') && pasteLatex(area, text)) || insertSymbol(text));
     else document.execCommand(action);
   };
 
@@ -2032,6 +2057,8 @@ export function App() {
   picturesRef.current = insertPictures;
   const pasteRowsRef = useRef(pasteRows);
   pasteRowsRef.current = pasteRows;
+  const pasteLatexRef = useRef(pasteLatex);
+  pasteLatexRef.current = pasteLatex;
   const layerOfElement = (element: EventTarget | null): Layer | undefined => {
     const id = (element as Element | null)?.closest?.('.layer-view')?.getAttribute('data-layer');
     return id ? doc.layers.find((l) => l.id === id) : undefined;
@@ -2064,6 +2091,10 @@ export function App() {
       // Rows pasted into an empty line being edited (a new calculation opens with one): they become rows, not one line.
       const row = (e.target as HTMLElement | null)?.closest?.('textarea.row-editor');
       const rows = data?.getData('text/plain') ?? '';
+      if (row instanceof HTMLTextAreaElement && ![...(data?.files ?? [])].length && pasteLatexRef.current(row, rows)) {
+        e.preventDefault();
+        return;
+      }
       if (row instanceof HTMLTextAreaElement && row.value.trim() === '' && rows.replace(/\r?\n+$/, '').includes('\n') && ![...(data?.files ?? [])].length) {
         e.preventDefault();
         pasteRowsRef.current(rows, true);

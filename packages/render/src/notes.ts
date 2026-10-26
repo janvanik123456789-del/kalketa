@@ -22,6 +22,7 @@ import { defaultRegistry, evaluateSheet, formatExpr, fromDecimalComma, parse, ty
 import { formatNumber, t, type Catalog } from '@kalketa/i18n';
 import { formulaNode, type FormulaOptions } from './formula.js';
 import { esc, mo, nameNode, paren, row, toMathML, type MathNode } from './math.js';
+import katex from 'katex';
 
 export interface NotesOptions {
   /** Resolves an image path inside the sheet to a URL (e.g. a data: URI). */
@@ -104,7 +105,7 @@ export function notesHtml(text: string, options: NotesOptions = {}): string {
           return `<h${level}>${inline(title)}${id ? ` <span class="tid">${id[1]}</span>` : ''}</h${level}>`;
         }
         case 'paragraph':
-          return `<p>${block.lines.map(inline).join('<br>')}</p>`;
+          return `<p>${mathJoined(block.lines).map(inline).join('<br>')}</p>`;
         case 'list':
           return `<ul>${block.items.map((item) => `<li${item.sub ? ' class="sub"' : ''}>${inline(item.text)}</li>`).join('')}</ul>`;
         case 'code':
@@ -437,8 +438,54 @@ function kalkHtml(lines: readonly string[], catalog?: Catalog): string {
 function inline(text: string): string {
   return text
     .split(/(`[^`]+`)/)
-    .map((part) => (/^`[^`]+`$/.test(part) ? `<code>${esc(part.slice(1, -1))}</code>` : marks(part)))
+    .map((part) => (/^`[^`]+`$/.test(part) ? `<code>${esc(part.slice(1, -1))}</code>` : withMath(part)))
     .join('');
+}
+
+/**
+ * LaTeX math as models and books write it, typeset by KaTeX as MathML (as all formulas here):
+ * $$…$$ and \[…\] on a line of their own, $…$ and \(…\) among words. A dollar of a price
+ * ($5 and $10) is no formula: after the opening one stands no space, before the closing one
+ * no space and after it no digit.
+ */
+const TEX = /\$\$([\s\S]+?)\$\$|\\\[([\s\S]+?)\\\]|\\\(([\s\S]+?)\\\)|\$(?=\S)([^$\n]*?\S)\$(?!\d)/g;
+
+function withMath(text: string): string {
+  const formulas: string[] = [];
+  // Set aside while the marks are made: the source kept in the formula holds "_" and "*" too.
+  const marked = marks(
+    text.replace(TEX, (whole: string, display?: string, block?: string, among?: string, inText?: string) => {
+      // "\[T3\]" is how the word-processor editor writes a bracket as text: only math in brackets is a formula.
+      const bracketed = block ?? among;
+      if (bracketed !== undefined && !/\\[A-Za-z]|[\^_=]/.test(bracketed)) return whole;
+      formulas.push(texHtml((display ?? block ?? among ?? inText)!, display !== undefined || block !== undefined));
+      return `\u0000${formulas.length - 1}\u0000`;
+    }),
+  );
+  return marked.replace(/\u0000(\d+)\u0000/g, (_, i: string) => formulas[Number(i)]!);
+}
+
+function texHtml(tex: string, display: boolean): string {
+  // No commands that reach outside the formula (\href, \htmlClass): trust stays off.
+  return katex.renderToString(tex, { output: 'mathml', displayMode: display, throwOnError: false, trust: false, strict: 'ignore', maxExpand: 200 });
+}
+
+/** Lines of a paragraph with a formula over several of them ($$ … $$) made one. */
+function mathJoined(lines: readonly string[]): string[] {
+  const out: string[] = [];
+  let open: string[] | undefined;
+  for (const line of lines) {
+    const parts = open ? [...open, line] : [line];
+    const joined = parts.join(' ');
+    const unclosed = (joined.match(/\$\$/g) ?? []).length % 2 === 1 || (joined.match(/\\\[/g) ?? []).length > (joined.match(/\\\]/g) ?? []).length;
+    if (unclosed) open = parts;
+    else {
+      out.push(joined);
+      open = undefined;
+    }
+  }
+  if (open) out.push(...open);
+  return out;
 }
 
 function marks(text: string): string {
@@ -464,6 +511,9 @@ export const NOTES_CSS = `.notes { font-size: 10.5pt; line-height: 1.5; }
 .notes .tid { font-size: 0.7em; font-weight: normal; color: #6b7480; border: 1px solid #c5ccd5; border-radius: 3px; padding: 0 1.2mm; vertical-align: middle; }
 .notes li.sub { margin-left: 5mm; list-style-type: circle; }
 .notes code { font-family: Consolas, 'Courier New', monospace; font-size: 0.95em; }
+.notes .katex math[display="block"] { margin: 2mm 0; }
+.notes .katex math { font-family: "Cambria Math", "STIX Two Math", "Latin Modern Math", math; font-size: 1.1em; }
+.notes .katex-error { color: #a12828; }
 .notes .kalk { margin: 2mm 0; }
 .notes .kalk-formula { margin: 1mm 0; }
 .notes .kalk-formula math { display: inline-block; }

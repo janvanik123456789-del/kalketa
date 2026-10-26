@@ -134,6 +134,7 @@ ${sheet.theory!.filter((s) => s.id).map((s) => `[${s.id}] ${s.title}`).join('\n'
 - State every assumption (coefficients, categories) openly.
 - Point at lines by their numbers. The program computes; do not recalculate results by hand unless asked.
 - Answer in ${languageName(input.language)}, briefly and to the point. Keep identifiers, units and formulas as they are written in the sheet.
+- A formula in your prose that is not a line of the sheet (a relation from theory, a derivation step) may be written in LaTeX, $…$ among words or $$…$$ on a line of its own: the program typesets it.
 - Lines of the sheet are given with their numbers; the findings and computed results refer to those numbers.${input.python ? `\n${pythonRule(input.python.numpy)}` : ''}`,
     input.intent ? INTENT_RULES : '',
     writingRules(sheet.detail),

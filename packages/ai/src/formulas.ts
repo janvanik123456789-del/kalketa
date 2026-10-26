@@ -9,6 +9,8 @@
  * both are brought into the calculation language here.
  */
 
+import { latexLine } from './latex.js';
+
 /** What the model is asked, with the picture. In English, as all instructions to models. */
 export function formulaPrompt(): string {
   return [
@@ -156,14 +158,15 @@ function toKalkLines(line: string, numbered: (printed: string) => void): string[
   // Written as asked already: "derive y := a == b == c".
   const derived = /^derive\s+/.exec(text);
   if (derived) text = text.slice(derived[0].length);
-  if (/\\[A-Za-z]|[{}]/.test(text)) text = latexToKalk(text);
+  // The number of the formula first: in LaTeX it would be read as a factor.
+  text = text.replace(/[.,;]?\s*\((\d{1,3}[a-z]?)\)\s*$/, (_, n: string) => (numbered(n), ''));
+  if (/\\[A-Za-z]|[{}]/.test(text)) text = latexLine(text) ?? latexToKalk(text);
   // Decimal commas as the book prints them (0,6·σ_Kt; 1,5): the language writes a point.
   text = text.replace(/(\d),(\d)/g, '$1.$2');
   // A function the book writes without parentheses: tg γ, sin α_1.
   text = text.replace(/(?<![\p{L}\p{N}_])(sin|cos|tan|tg|cot|cotg|ln)\s+([\p{L}][\p{L}\p{N}_]*)/gu, '$1($2)');
   text = subscriptParts(
     text
-      .replace(/[.,;]?\s*\((\d{1,3}[a-z]?)\)\s*$/, (_, n: string) => (numbered(n), ''))
       .replace(/[.,;]\s*$/, '')
       .replace(/\s*·\s*/g, '·')
       .trim(),
@@ -183,6 +186,28 @@ function toKalkLines(line: string, numbered: (printed: string) => void): string[
   // A chain (or what came as derive, or a rounded result): one derivation of theory, its names symbols without values.
   const chain = rest.map((member, i) => (i === 0 ? member : `${joins[i]} ${member}`)).join(' ');
   return [defined && joins[0] !== '≐' ? `derive ${left} := ${chain}` : `derive ${left} ${joins[0]} ${chain}`];
+}
+
+/** Text that is LaTeX math: a command (\frac, \sigma), a group as an index or power, or $ around it. A path (C:\Users) is not. */
+export function looksLikeLatex(text: string): boolean {
+  return /\\[A-Za-z]{2,}|[_^]\{|^\s*(\$|\\\[|\\\()/.test(text) && !/[A-Za-z]:\\|\\\\[A-Za-z]+\\/.test(text);
+}
+
+/**
+ * LaTeX pasted into a line (from Wikipedia, a thesis, an answer of a model), as lines of the
+ * calculation: one per formula, the rows of an aligned group (\\) each its own. Undefined
+ * for text that is no LaTeX: it is pasted as it is.
+ */
+export function latexPaste(text: string): string[] | undefined {
+  if (!looksLikeLatex(text)) return undefined;
+  const lines = text
+    .replace(/\\(begin|end)\{[^}]*\}/g, '\n')
+    .replace(/\$\$|\\\[|\\\]/g, '\n')
+    .split(/\\\\|\r?\n/)
+    .map((l) => l.replace(/&/g, '').trim())
+    .filter((l) => l !== '');
+  const out = lines.flatMap(toKalk);
+  return out.length > 0 ? out : undefined;
 }
 
 /** The lines of the model's answer in the calculation language; undefined when it found no formula. */

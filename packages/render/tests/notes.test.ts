@@ -79,4 +79,23 @@ describe('placed figures of the sources', () => {
     const html = notesHtml('![Nosník](obrazky/n.png){width=50% align=center}', { resolveFile: () => 'data:image/png;base64,' });
     expect(html).toContain('<figure class="placed" style="width:50%;margin-left:auto;margin-right:auto">');
   });
+
+  it('typeset LaTeX math as MathML, among words and on lines of its own', () => {
+    const html = notesHtml('Napětí $\\sigma = \\frac{M}{W_y}$ musí být menší než **f_y**.\n\n$$\n\\tau = \\frac{16 M_k}{\\pi d^3}\n$$\n\nA také \\(x^2\\).');
+    expect(html).toContain('<math');
+    expect(html).toContain('<mfrac>');
+    expect(html).toContain('display="block"');
+    expect(html).toContain('<msup>');
+    // The source kept in the formula is not taken for marks of the text.
+    expect(html).toContain('<annotation encoding="application/x-tex">\\sigma = \\frac{M}{W_y}</annotation>');
+    expect(html).toContain('<strong>f<sub>y</sub></strong>');
+  });
+
+  it('leave prices, escaped brackets and bad LaTeX as text', () => {
+    expect(notesHtml('Stojí $5 a $10.')).not.toContain('<math');
+    expect(notesHtml('Viz \\[T3\\].')).not.toContain('<math');
+    const bad = notesHtml('Chyba $\\frac{a}$ zůstane.');
+    expect(bad).toContain('katex-error');
+    expect(notesHtml('Odkaz $\\href{https://x.cz}{x}$')).not.toContain('href="https://x.cz"');
+  });
 });

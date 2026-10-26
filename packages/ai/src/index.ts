@@ -17,3 +17,4 @@ export * from './pythonChecks.js';
 export * from './answerBlocks.js';
 export * from './writingRules.js';
 export * from './sheetChecks.js';
+export { latexLine } from './latex.js';

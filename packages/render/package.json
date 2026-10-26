@@ -15,7 +15,8 @@
   "dependencies": {
     "@kalketa/chart": "*",
     "@kalketa/core": "*",
-    "@kalketa/i18n": "*"
+    "@kalketa/i18n": "*",
+    "katex": "0.18.8"
   },
   "license": "MIT"
 }

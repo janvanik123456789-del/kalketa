@@ -73,6 +73,8 @@ const BUILT_IN: readonly UnitDef[] = [
   { symbol: '°F', factor: 5 / 9, dim: K, offset: (459.67 * 5) / 9, delta: 'Δ°F' },
   { symbol: 'Δ°C', factor: 1, dim: K },
   { symbol: 'Δ°F', factor: 5 / 9, dim: K },
+  // Rankine: the Fahrenheit degree from absolute zero, as American handbooks give thermodynamic temperatures.
+  { symbol: '°R', factor: 5 / 9, dim: K },
 
   // Length, area, volume, mass, time
   { symbol: 'in', factor: 0.0254, dim: L },
@@ -82,6 +84,12 @@ const BUILT_IN: readonly UnitDef[] = [
   { symbol: 'l', factor: 1e-3, dim: VOLUME, prefixable: true },
   { symbol: 't', factor: 1e3, dim: M, prefixable: true },
   { symbol: 'lb', factor: 0.45359237, dim: M },
+  // US customary units of old textbooks and American handbooks, to be converted to SI.
+  { symbol: 'lbm', factor: 0.45359237, dim: M },
+  { symbol: 'oz', factor: 0.028349523125, dim: M },
+  { symbol: 'yd', factor: 0.9144, dim: L },
+  { symbol: 'mi', factor: 1609.344, dim: L },
+  { symbol: 'gal', factor: 3.785411784e-3, dim: VOLUME },
   { symbol: 'min', factor: 60, dim: T },
   { symbol: 'h', factor: 3600, dim: T },
   { symbol: 'd', factor: 86400, dim: T },
@@ -97,10 +105,15 @@ const BUILT_IN: readonly UnitDef[] = [
   { symbol: 'bar', factor: 1e5, dim: PRESSURE, prefixable: true },
   { symbol: 'atm', factor: 101325, dim: PRESSURE },
   { symbol: 'psi', factor: 6894.757293168, dim: PRESSURE },
+  { symbol: 'ksi', factor: 6894757.293168, dim: PRESSURE },
+  { symbol: 'kip', factor: 4448.2216152605, dim: FORCE },
+  { symbol: 'inHg', factor: 3386.388666, dim: PRESSURE },
   { symbol: 'mmHg', factor: 133.322387415, dim: PRESSURE },
   { symbol: 'J', factor: 1, dim: ENERGY, prefixable: true },
   { symbol: 'Wh', factor: 3600, dim: ENERGY, prefixable: true },
   { symbol: 'cal', factor: 4.184, dim: ENERGY, prefixable: true },
+  { symbol: 'Btu', factor: 1055.05585262, dim: ENERGY },
+  { symbol: 'hp', factor: 745.69987158227, dim: POWER },
   { symbol: 'eV', factor: 1.602176634e-19, dim: ENERGY, prefixable: true },
   { symbol: 'W', factor: 1, dim: POWER, prefixable: true },
   { symbol: 'Hz', factor: 1, dim: FREQUENCY, prefixable: true },

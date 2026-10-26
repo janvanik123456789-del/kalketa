@@ -127,6 +127,7 @@ Nejčastější past jednotkových systémů. Pravidla (**převzato z Calcpadu +
 
 - `°C`, `°F` jsou **absolutní teploty** s posunem nuly.
 - `Δ°C`, `Δ°F` (ASCII `delta_degC`) jsou **teplotní rozdíly** bez posunu. `1 Δ°C = 1 K`.
+- `°R` (Rankine) je termodynamická teplota ve stupních Fahrenheita od absolutní nuly, jako `K` bez posunu. Pro staré učebnice a americké příručky dále `lbm`, `oz`, `yd`, `mi`, `gal` (americký), `kip`, `ksi`, `inHg`, `Btu`, `hp` (2026-10-26); samotné `psi` je jednotka tlaku, `psi_1` je dál ψ₁.
 - `T₂ - T₁` dvou absolutních teplot dává **rozdíl** (v K, zobrazitelný v `Δ°C`).
 - Sčítání dvou absolutních teplot je **chyba** s vysvětlením.
 - Násobení absolutní teploty (např. `p·V = n·R·T` s `T := 20 °C`) je fyzikálně správné, počítá se v kelvinech. Program ale vydá **varování**, protože častěji jde o záměnu s rozdílem. (*Upraveno při implementaci F1, původně navrženo jako chyba.*)

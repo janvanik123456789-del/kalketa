@@ -241,3 +241,21 @@ describe('angular velocity and energy as engineers write them', () => {
   });
 });
 
+describe('US customary units of American handbooks', () => {
+  it('convert °R, lbm, psi, Btu, hp and the like to SI (DOE Fundamentals Handbook, Thermodynamics)', () => {
+    const nl = String.fromCharCode(10);
+    const sheet = ['t := 80 °C', 'T_R := t | °R', 'p := 80 psi - 14.7 psi', 'ρ := 64 lbm/ft^3', 'H := p/(ρ·9.80665 m/s^2) | ft', 'Q := 1 Btu | J', 'P := 1 hp | W', 'V := 1 gal | l', 'σ := 1 ksi | MPa', 'ψ_1 := 2', 'psi_2 := 3'].join(nl);
+    const r = evaluateSheet(sheet);
+    expect(r.diagnostics).toEqual([]);
+    const v = (name: string) => (r.values.get(name) as { si: number }).si;
+    expect(v('T_R')).toBeCloseTo(353.15, 9);
+    expect(v('H')).toBeCloseTo(146.925 * 0.3048, 2);
+    expect(v('Q')).toBeCloseTo(1055.05585262, 6);
+    expect(v('P')).toBeCloseTo(745.69987, 4);
+    expect(v('V')).toBeCloseTo(3.785411784e-3, 12);
+    expect(v('σ')).toBeCloseTo(6.894757e6, 0);
+    // psi with an index is still ψ: psi_2 is ψ_2.
+    expect(r.values.has('ψ_2')).toBe(true);
+  });
+});
+

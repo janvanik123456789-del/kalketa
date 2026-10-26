@@ -29,6 +29,8 @@ const COMBINING_DOT_ABOVE = '̇';
 export function normalizeIdentifier(raw: string): string {
   const alias = UNIT_ALIASES[raw];
   if (alias) return alias;
+  // psi alone is the pressure unit of American handbooks (80 psi); ψ with an index stays spelled so (psi_1 → ψ_1).
+  if (raw === 'psi') return raw;
 
   const segments = raw.split('_');
   const out: string[] = [];

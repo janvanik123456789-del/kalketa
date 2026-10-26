@@ -7,7 +7,7 @@
  */
 import { selectedPages, studyNotes, type StudyContent, type StudySettings } from '@kalketa/sheet';
 import { joinSpacedLetters } from './pdfText.js';
-import { pageLayout } from './pdfLayout.js';
+import { pageLayout, withoutRunningLines } from './pdfLayout.js';
 import { cutOut, loadPdf, pageContent } from './pdfDocs.js';
 import { picturePath } from './pictures.js';
 
@@ -41,10 +41,17 @@ export async function studyImport(
   let pictures = 0;
   let formulas = 0;
   const pages = selectedPages(file.content, file.settings);
+  // All pages read first: a running head or foot is known only from the pages together.
+  const contents = [];
   for (const [n, p] of pages.entries()) {
     options.progress?.(n + 1, pages.length);
     const page = await doc.getPage(p);
-    const { lines, pictures: images, drawn, width, height } = await pageContent(page);
+    contents.push({ page, ...(await pageContent(page)) });
+  }
+  const kept = withoutRunningLines(contents);
+  for (const [n, p] of pages.entries()) {
+    const { page, pictures: images, drawn, width, height } = contents[n]!;
+    const lines = kept[n]!;
     const label = file.content.labels?.[p - 1] ?? String(p);
     const blocks: string[] = [];
     let run: string[] = [];

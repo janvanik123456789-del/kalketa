@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decoration, inkBounds, linesOf, pageLayout, type LayoutLine, type TextPart } from '../src/logic/pdfLayout.js';
+import { decoration, inkBounds, linesOf, pageLayout, withoutRunningLines, type LayoutLine, type TextPart } from '../src/logic/pdfLayout.js';
 import { formulaOrScraps } from '../src/logic/pdfText.js';
 
 const page = { width: 595, height: 842 };
@@ -97,5 +97,34 @@ describe('decoration of a page', () => {
     // A dark see-through area of a chart is part of it.
     expect(decoration({ artifact: false, alpha: 0.5, fill: '#1f3a93' })).toBe(false);
     expect(decoration({ artifact: false, alpha: 0.8, fill: '#eeeeee' })).toBe(false);
+  });
+});
+
+describe('running heads and feet', () => {
+  const of = (lines: LayoutLine[]) => ({ lines, height: page.height });
+  const texts = (pages: LayoutLine[][]) => pages.map((p) => p.map((l) => l.text));
+
+  it('are left out where they come back on the pages, their numbers aside', () => {
+    const pages = [
+      of([line(30, 'Cvičení z termomechaniky – Cvičení 3. KKE/TM'), line(100, 'Příklad 1'), line(800, '1')]),
+      of([line(30, 'Cvičení z termomechaniky – Cvičení 3. KKE/TM'), line(100, 'Řešení'), line(800, '2')]),
+      of([line(30, 'Cvičení z termomechaniky – Cvičení 3. KKE/TM'), line(100, 'Příklad 2'), line(800, '3')]),
+    ];
+    expect(texts(withoutRunningLines(pages))).toEqual([['Příklad 1'], ['Řešení'], ['Příklad 2']]);
+  });
+
+  it('are known when a scan read them a letter or two wrong, on every other page', () => {
+    const pages = [
+      of([line(30, 'FLOW THROUGH PIPES 149'), line(100, 'If d is the unknown')]),
+      of([line(30, '150 HYDRAULICS'), line(100, 'Let Q be the number')]),
+      of([line(30, 'FLOW THEOUGH PIPES ItJl'), line(100, 'The hydraulic gradient')]),
+      of([line(30, '132 HYDRAULICS'), line(100, 'Taking f as .0082')]),
+    ];
+    expect(texts(withoutRunningLines(pages))).toEqual([['If d is the unknown'], ['Let Q be the number'], ['The hydraulic gradient'], ['Taking f as .0082']]);
+  });
+
+  it('keep a line at the edge that is on one page only, and everything in the middle', () => {
+    const pages = [of([line(30, 'Kapitola 7 Nosníky'), line(400, 'Text')]), of([line(30, 'Jiný nadpis'), line(400, 'Text')])];
+    expect(texts(withoutRunningLines(pages))).toEqual([['Kapitola 7 Nosníky', 'Text'], ['Jiný nadpis', 'Text']]);
   });
 });

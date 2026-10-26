@@ -44,7 +44,8 @@ export async function pageContent(page: PdfPage): Promise<{ lines: LayoutLine[];
   const viewport = page.getViewport({ scale: 1 });
   // The drawing operations first: they load the page's fonts, whose names tell a Symbol font.
   const ops = await page.getOperatorList();
-  const content = await page.getTextContent();
+  // With the marked content: text marked as an artifact (a running head or foot of a tagged PDF) is no content.
+  const content = await page.getTextContent({ includeMarkedContent: true });
   const symbolFonts = new Set<string>();
   for (const name of new Set(content.items.map((item) => ('fontName' in item ? item.fontName : '')))) {
     try {
@@ -54,14 +55,23 @@ export async function pageContent(page: PdfPage): Promise<{ lines: LayoutLine[];
     }
   }
   const parts: TextPart[] = [];
+  const artifacts: TextPart[] = [];
+  const open: boolean[] = [];
   for (const item of content.items) {
-    if (!('str' in item) || !item.str.trim()) continue;
+    if (!('str' in item)) {
+      const mark = item as { type?: string; tag?: string };
+      if (mark.type === 'beginMarkedContent' || mark.type === 'beginMarkedContentProps') open.push(mark.tag === 'Artifact');
+      else if (mark.type === 'endMarkedContent') open.pop();
+      continue;
+    }
+    if (!item.str.trim()) continue;
     const [x, y] = viewport.convertToViewportPoint(item.transform[4] as number, item.transform[5] as number) as [number, number];
     const size = Math.max(1, Math.hypot(item.transform[2] as number, item.transform[3] as number));
     const text = symbolFonts.has(item.fontName) ? fromSymbolFont(item.str) : item.str;
-    if (text.trim()) parts.push({ x, right: x + (item.width ?? 0), y, size, text });
+    if (text.trim()) (open.includes(true) ? artifacts : parts).push({ x, right: x + (item.width ?? 0), y, size, text });
   }
-  const lines = linesOf(parts);
+  // A PDF that marks most of its text so is taken as if it marked none: no content is lost.
+  const lines = linesOf(artifacts.length > parts.length ? [...parts, ...artifacts] : parts);
 
   // Pictures: where the drawing operations paint an image, through the transforms that place it.
   const { OPS, Util } = lib;

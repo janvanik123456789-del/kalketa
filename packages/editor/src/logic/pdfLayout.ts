@@ -147,6 +147,50 @@ export function decoration(state: { readonly artifact: boolean; readonly alpha: 
   return light && state.alpha <= 0.6;
 }
 
+/** A running head or foot lies in this share of the page at its top or bottom. */
+const RUNNING_EDGE = 0.1;
+
+/** A line as it repeats from page to page: page numbers and other numbers left out, letters in small. */
+function runningKey(text: string): string {
+  return text.toLowerCase().replace(/\d+/g, '#').replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Running heads and feet of the pages taken together ("Cvičení z termomechaniky –
+ * Cvičení 3", "FLOW THROUGH PIPES 149" and "150 HYDRAULICS" on the pages between):
+ * a line at the top or bottom edge of the page that comes back, its numbers aside,
+ * on at least half of the pages (two at least). A page number alone at the edge
+ * is one too. They are left out of each page's lines.
+ */
+export function withoutRunningLines(pages: readonly { readonly lines: readonly LayoutLine[]; readonly height: number }[]): LayoutLine[][] {
+  const atEdge = (line: LayoutLine, height: number) => line.bottom <= height * RUNNING_EDGE || line.top >= height * (1 - RUNNING_EDGE);
+  const edges = pages.map((page) => [...new Set(page.lines.filter((l) => atEdge(l, page.height)).map((l) => runningKey(l.text)))]);
+  const needed = Math.max(2, Math.ceil(pages.length / 2));
+  // On how many pages the line comes back; read from a scan, a letter or two of it may differ ("FLOW THEOUGH PIPES").
+  const pagesWith = (key: string) => edges.filter((keys) => keys.some((other) => alike(key, other))).length;
+  return pages.map((page) =>
+    page.lines.filter((line) => {
+      if (!atEdge(line, page.height)) return true;
+      const key = runningKey(line.text);
+      return !(/^[-–—\s#]*$/.test(key) || pagesWith(key) >= needed);
+    }),
+  );
+}
+
+/** Two lines alike but for a few letters: at most a quarter of the longer one differs. */
+function alike(a: string, b: string): boolean {
+  if (a === b) return true;
+  if (Math.abs(a.length - b.length) > Math.max(a.length, b.length) / 4) return false;
+  // Edit distance, row by row.
+  let row = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const next = [i];
+    for (let j = 1; j <= b.length; j++) next.push(Math.min(row[j]! + 1, next[j - 1]! + 1, row[j - 1]! + (a[i - 1] === b[j - 1] ? 0 : 1)));
+    row = next;
+  }
+  return row[b.length]! <= Math.max(a.length, b.length) / 4;
+}
+
 /** A line of text keeps where it is (`box`): its part of the page can be read again (pdfReread.ts). */
 export type LayoutItem = { readonly kind: 'text'; readonly text: string; readonly box?: Box } | { readonly kind: 'cut'; readonly box: Box; readonly why: 'picture' | 'formula' };
 

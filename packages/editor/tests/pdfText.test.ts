@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applySuspects, cleanPdfText, fromSymbolFont, joinSpacedLetters, shifted } from '../src/logic/pdfText.js';
+import { applySuspects, cleanPdfText, fromSymbolFont, joinSpacedLetters, ocrNoise, shifted } from '../src/logic/pdfText.js';
 
 // Notes as a PDF copy leaves them: one paragraph per printed line.
 const copied = [
@@ -125,5 +125,30 @@ describe('characters of a PDF', () => {
     expect(shifted('x+1', true)).toBe('^(x+1)');
     expect(shifted('max', false)).toBe('_max');
     expect(shifted('h, a-b', false)).toBe('_(h, a-b)');
+  });
+});
+
+describe('worked examples and captions', () => {
+  it('start a heading at "Příklad 1", "Problem 2. …", "Example 1. …"', () => {
+    const cleaned = cleanPdfText(['## Kapitola', '', 'Příklad 1', '1 kg plynu při izobarickém ohřevu vykonal práci.', '', 'Problem 2. Diameter of pipe to give a given discharge.', 'Required the diameter of a pipe.', '', 'Example 1. A pipe 3 inches diameter 200 ft. long connects two tanks, the', 'difference of level is 10 feet.'].join('\n')).text;
+    expect(cleaned).toContain('### Příklad 1\n\n1 kg plynu');
+    expect(cleaned).toContain('### Problem 2 Diameter of pipe to give a given discharge\n\nRequired');
+    expect(cleaned).toContain('### Example 1\n\nA pipe 3 inches diameter 200 ft. long connects two tanks, the difference of level is 10 feet.');
+  });
+
+  it('take "Obr.: …" without a number for a caption, not a part of the paragraph', () => {
+    const cleaned = cleanPdfText(['Modul pružnosti E = 210 GPa, moment setrvačnosti I = 21,4·10⁻⁶ m⁴.', 'Obr.: Model konstrukce a zatížení'].join('\n')).text;
+    expect(cleaned).toBe('Modul pružnosti E = 210 GPa, moment setrvačnosti I = 21,4·10⁻⁶ m⁴.\n\nObr.: Model konstrukce a zatížení\n');
+  });
+});
+
+describe('text of a scan', () => {
+  it('marks formulas the text recognition garbled, not sentences with degrees or quotes', () => {
+    expect(ocrNoise("t ui'^\\*¥ ^«^°''^*y i^ °?' ''^°'\"'' *^e coefficient 0 cannot be obtained from the")).toBe(true);
+    expect(ocrNoise("''=6-oSr7=^-«««\"-^^=°-")).toBe(true);
+    expect(ocrNoise('l~dKv.')).toBe(false);
+    expect(ocrNoise('Plyn se ohřeje z 40 °C na 750 °C, „izobaricky“ při tlaku 0,1 MPa.')).toBe(false);
+    const cleaned = cleanPdfText(['Then', "''=6-oSr7=^-«««\"-^^=°-", 'The head lost due to friction is'].join('\n'));
+    expect(cleaned.suspects).toEqual([{ text: "''=6-oSr7=^-«««\"-^^=°-", kind: 'formula' }]);
   });
 });

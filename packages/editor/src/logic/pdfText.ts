@@ -58,7 +58,10 @@ const NUMBERED_TITLE = /^(\d{1,2}(?:\.\d{1,2}){0,2})\.?\s+(\p{Lu}[^.;:]{1,118}[^
 // A formula with its number, as a PDF gives it when it cannot copy the formula: "F-l3 3-E-ľ (45)".
 const NUMBERED_FORMULA = /\(\d{1,3}\)\s*$/;
 const EXISTING_HEADING = /^(#{1,3})\s+(.*?)(\s*\{#T\d+\})?\s*$/;
-const CAPTION = /^(Obr\.|Obrázek|Fig\.|Figure)\s*\d+/i;
+// A caption with its number, or without one ("Obr.: Model konstrukce a zatížení").
+const CAPTION = /^(Obr\.|Obrázek|Fig\.|Figure)\s*(\d+|:)/i;
+// A worked example starting: "Příklad 1", "Problem 2. Diameter of pipe…", "Example 1. A pipe 3 inches…".
+const EXAMPLE = /^(Příklad|Úloha|Řešený příklad|Example|Problem|Exercise|Aufgabe|Beispiel)\s+(\d{1,3}[a-z]?)\s*[.:)]?\s*(.*)$/iu;
 
 /** A token of a spaced-out word: one or two letters. */
 const SHORT = /^\p{L}{1,2}$/u;
@@ -161,6 +164,22 @@ function looksLikeScraps(line: string): boolean {
   return tokens.length >= 2 && scraps / tokens.length >= 0.8;
 }
 
+/** Signs text recognition (OCR) leaves where it could not read a formula; rare in a sentence. */
+const OCR_SIGNS = /[\^¥«»*`~\\|¬§■]|''|°[^CFK\s]/g;
+
+/**
+ * A line of a scan's text layer garbled where the page has a formula: many such signs
+ * ("t ui'^\*¥ ^«^°''^*y i^ °?'"), or a short line of an equals sign and scraps ("'»=4=iV-",
+ * "1"12d''"). A sentence with a degree (40 °C) or quotes („…“) is none.
+ */
+export function ocrNoise(line: string): boolean {
+  const text = line.trim();
+  const signs = (text.match(OCR_SIGNS) ?? []).length;
+  if (signs >= 4 && signs / text.length >= 0.05) return true;
+  const letters = (text.match(/\p{L}/gu) ?? []).length;
+  return text.length <= 25 && signs >= 2 && letters / text.length < 0.5;
+}
+
 export function cleanPdfText(notes: string): PdfCleanup {
   const stats = { joined: 0, paragraphs: 0, words: 0, headings: 0, pageNumbers: 0, captions: 0 };
   const suspects: Suspect[] = [];
@@ -176,6 +195,8 @@ export function cleanPdfText(notes: string): PdfCleanup {
   type Piece = { kind: 'line'; text: string } | { kind: 'keep'; text: string } | { kind: 'heading'; text: string } | { kind: 'figure'; text: string; caption?: string };
   const pieces: Piece[] = [];
   const levels = headingLevels();
+  // The level of the last numbered heading: an example is one below it.
+  let lastLevel: number | undefined;
   for (const block of blocks) {
     const first = block.split('\n')[0]!;
     if (FIGURE.test(block)) {
@@ -188,10 +209,13 @@ export function cleanPdfText(notes: string): PdfCleanup {
     if (existing && existingTitle) {
       const level = levels(existingTitle[1]!, existingTitle[2]!);
       if (level !== existing[1]!.length) stats.headings++;
+      lastLevel = level;
       pieces.push({ kind: 'heading', text: `${'#'.repeat(level)} ${existing[2]}${existing[3] ?? ''}` });
       continue;
     }
     if (STRUCTURE.test(first)) {
+      const heading = /^(#{1,3})\s/.exec(first);
+      if (heading) lastLevel = heading[1]!.length;
       pieces.push({ kind: 'keep', text: block });
       continue;
     }
@@ -200,6 +224,12 @@ export function cleanPdfText(notes: string): PdfCleanup {
       // Short and with few words: "…pro jehož obsah platí (43)" is a sentence pointing at a formula, not one.
       const realWords = raw.trim().split(/\s+/).filter((w) => /\p{L}{3,}/u.test(w)).length;
       if (NUMBERED_FORMULA.test(raw.trim()) && raw.trim().length <= 60 && realWords <= 3) {
+        suspects.push({ text: raw.trim(), kind: 'formula' });
+        pieces.push({ kind: 'keep', text: `${SUSPECT}${raw.trim()}` });
+        continue;
+      }
+      // A formula a scan's text layer garbled ("t ui'^\*¥ ^«^°''^*y", "''=6-oSr7=^-«««"): a picture of it is better.
+      if (ocrNoise(raw)) {
         suspects.push({ text: raw.trim(), kind: 'formula' });
         pieces.push({ kind: 'keep', text: `${SUSPECT}${raw.trim()}` });
         continue;
@@ -218,16 +248,30 @@ export function cleanPdfText(notes: string): PdfCleanup {
         stats.pageNumbers++;
         continue;
       }
+      // "Příklad 1": a heading one below the heading above it; a short title after it goes with it
+      // ("Problem 2. Diameter of pipe…"), the start of its statement stays text.
+      const example = EXAMPLE.exec(line);
+      if (example) {
+        const rest = example[3]!.trim();
+        // A title is a short sentence of its own ("Diameter of pipe to give a given discharge."); a line running on is the statement.
+        const titled = rest.length <= 70 && /^\p{Lu}.*\.$/u.test(rest) && !/\.\s/.test(rest);
+        const level = Math.min(3, (lastLevel ?? 1) + 1);
+        stats.headings++;
+        pieces.push({ kind: 'heading', text: `${'#'.repeat(level)} ${example[1]} ${example[2]}${titled ? ` ${rest.replace(/\.$/, '')}` : ''}` });
+        if (rest !== '' && !titled) pieces.push({ kind: 'line', text: rest });
+        continue;
+      }
       const title = NUMBERED_TITLE.exec(line);
       if (title && block.split('\n').length === 1) {
         stats.headings++;
-        pieces.push({ kind: 'heading', text: `${'#'.repeat(levels(title[1]!, title[2]!))} ${line}` });
+        lastLevel = levels(title[1]!, title[2]!);
+        pieces.push({ kind: 'heading', text: `${'#'.repeat(lastLevel)} ${line}` });
         continue;
       }
       // A title running on to the next line in small letters ("…s jedinou osamělou silou" / "působící v obecné poloze"):
       // the rest belongs to the heading.
       const above = pieces[pieces.length - 1];
-      if (above?.kind === 'heading' && /^\p{Ll}/u.test(line) && line.length < 90 && !/[.!?:;]$/.test(line) && !/\{#T\d+\}$/.test(above.text)) {
+      if (above?.kind === 'heading' && !EXAMPLE.test(above.text.replace(/^#+\s*/, '')) && /^\p{Ll}/u.test(line) && line.length < 90 && !/[.!?:;]$/.test(line) && !/\{#T\d+\}$/.test(above.text)) {
         above.text = `${above.text} ${line}`;
         continue;
       }

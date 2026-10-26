@@ -262,6 +262,8 @@ interface Mode {
   digits: number;
   /** @exact: results also as fractions and roots where they are exact; @noexact ends it. */
   exact: boolean;
+  /** {polar}: a complex result as its size and angle. */
+  polar?: boolean;
 }
 
 /** How a text line looks, {size=12 italic font=serif}: only what the line sets. */
@@ -336,7 +338,7 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
     // The unknowns of a solve line are shown below as the line shows them.
     if (s.format && s.kind === 'solve') for (const u of s.unknowns) formats.set(u.name, spec);
     // Results also as fractions and roots: the line asks ({exact}) or the sheet does from @exact on.
-    const lineMode: Mode = s.format?.exact && !mode.exact ? { ...mode, exact: true } : mode;
+    const lineMode: Mode = { ...mode, ...(s.format?.exact ? { exact: true } : {}), ...(s.format?.polar ? { polar: true } : {}) };
     const quantityNode = (q: Quantity, name?: string) => {
       const shown = toDisplay(q, options.registry);
       return valueNode(shown.value, shown.unit, numberFormat((name && formats.get(name)) || spec), shown.im, dateFormat);
@@ -555,7 +557,7 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
           lines.push({ role: 'result', lhs: head, op: '', rhs: mtext(t(catalog, 'print.odeSolved', { order: String(r.ode.order), steps: String(r.ode.steps) })), lead: '⇒' });
         }
         for (const found of r.solutions ?? []) {
-          const value = valueNode(found.display.value, found.display.unit, numberFormat(spec), found.display.im, dateFormat, lineMode.exact ? found.display.exact : undefined);
+          const value = valueNode(found.display.value, found.display.unit, numberFormat(spec), found.display.im, dateFormat, lineMode.exact ? found.display.exact : undefined, lineMode.polar);
           // A formula of numbers only (x² + 2·x = 8) says nothing the result does not.
           if (!found.formula || !readsNames(found.formula)) {
             lines.push({ role: 'result', lhs: nameNode(found.name), op: sign(found.relation), rhs: value, ...(found.relation ? { lead: '⇒' } : {}) });
@@ -718,7 +720,7 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
     if (said.length > 0) out.push({ role: 'formula', op: '', rhs: row(...said) });
     const value = (q: Quantity) => {
       const d = toDisplay(q, options.registry);
-      return valueNode(d.value, d.unit, numberFormat(spec), d.im, dateFormat, mode.exact || s.format?.exact ? d.exact : undefined);
+      return valueNode(d.value, d.unit, numberFormat(spec), d.im, dateFormat, mode.exact || s.format?.exact ? d.exact : undefined, s.format?.polar);
     };
     const substituted = (expr: Expr, extra?: (e: Expr) => Substituted | undefined) => {
       const sub = substitution(result, quantityNode, o);
@@ -1060,7 +1062,7 @@ function equationLines(
   format: (value: number) => string,
 ): EquationLine[] {
   const withLhs = (line: Omit<EquationLine, 'lhs'>, first: boolean): EquationLine => (first && lhs ? { ...line, lhs } : line);
-  const result = resultNode(r, format, formulaOptions().booleans, formulaOptions().argumentSeparator, formulaOptions().date, mode.exact);
+  const result = resultNode(r, format, formulaOptions().booleans, formulaOptions().argumentSeparator, formulaOptions().date, mode.exact, mode.polar);
   // A value written out (5 m, [4, -2 | -2, 4] kN/m) is shown once, not as a formula and again as its result.
   const given = isGiven(expr) || expr.kind === 'string' || expr.kind === 'boolean' || expr.kind === 'date';
 
@@ -1095,9 +1097,10 @@ function resultNode(
   separator = ',',
   date?: (days: number) => string,
   exact = false,
+  polar = false,
 ): MathNode | undefined {
   if (r.status !== 'ok' || !r.value) return undefined;
-  if (r.display) return valueNode(r.display.value, r.display.unit, format, r.display.im, date, exact ? r.display.exact : undefined);
+  if (r.display) return valueNode(r.display.value, r.display.unit, format, r.display.im, date, exact ? r.display.exact : undefined, polar);
   if (r.displayList) return seriesNode(r.displayList, format, separator, date);
   if (r.displayMatrix) return matrixNode(r.displayMatrix, format);
   if (r.value.type === 'boolean') return mtext(r.value.value ? booleans.true : booleans.false);
@@ -1247,7 +1250,7 @@ function applyDirective(name: string, args: string, mode: Mode, blocks: PrintBlo
  * "37,5 kN·m"; scientific numbers become mantissa · 10^exponent. With the exact form the fraction or root comes
  * first and the number after ≐, as a book writes it: 49/9 s⁻² ≐ 5,444 s⁻².
  */
-export function valueNode(value: number, unit: string, format: (value: number) => string, im?: number, date?: (days: number) => string, exact?: Exact): MathNode {
+export function valueNode(value: number, unit: string, format: (value: number) => string, im?: number, date?: (days: number) => string, exact?: Exact, polar = false): MathNode {
   // A date: "29. 9. 2026".
   if (unit === 'date') return mtext(date ? date(value) : isoDate(value));
   const numberNode = (x: number): MathNode => {
@@ -1258,6 +1261,12 @@ export function valueNode(value: number, unit: string, format: (value: number) =
   if (exact && !im) {
     const withUnit = (node: MathNode) => (unit ? row(node, THIN_SPACE, mu(unit)) : node);
     return row(withUnit(exactNode(exact)), mo('≐'), withUnit(numberNode(value)));
+  }
+  // In polar form: the size with its unit, then the angle in degrees (146,6 mA ∠ 58,37°); a real value too (120 V ∠ 0°).
+  if (polar) {
+    const size = Math.hypot(value, im ?? 0);
+    const angle = (Math.atan2(im ?? 0, value) * 180) / Math.PI;
+    return row(unit ? row(numberNode(size), THIN_SPACE, mu(unit)) : numberNode(size), mo('∠'), numberNode(Math.abs(angle) < 1e-12 ? 0 : angle), mo('°'));
   }
   if (!im) return unit ? row(numberNode(value), THIN_SPACE, mu(unit)) : numberNode(value);
   // A complex value: "(3 + 4j) Ω"; the imaginary unit is j.

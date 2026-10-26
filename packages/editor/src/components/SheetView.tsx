@@ -182,13 +182,16 @@ function precisionMenuItems(seg: Segment, catalog: Catalog, change: RowChange, s
 }
 
 /** The menu of the right button of a row with a result: its precision, its equation number, a cell beside. */
-function formatMenuItems(seg: Segment, catalog: Catalog, change: RowChange, shown?: (decimals: number) => string, numbered?: boolean, latex?: string): MenuItem[] {
+function formatMenuItems(seg: Segment, catalog: Catalog, change: RowChange, shown?: (decimals: number) => string, numbered?: boolean, latex?: string, complex?: boolean): MenuItem[] {
   const box = lineAttributesOf(seg.text).has('box');
+  const polar = lineAttributesOf(seg.text).has('polar');
   return [
     ...precisionMenuItems(seg, catalog, change, shown),
     { kind: 'separator' },
     // The final result marked as on paper; the formula as LaTeX for Word or a thesis.
     { kind: 'action', label: t(catalog, 'result.box'), checked: box, run: () => change((text) => withLineAttribute(text, 'box', box ? undefined : '')) },
+    // A complex result as its size and angle, as electrical engineers read it.
+    ...(complex || polar ? [{ kind: 'action' as const, label: t(catalog, 'result.polar'), checked: polar, run: () => change((text) => withLineAttribute(text, 'polar', polar ? undefined : '')) }] : []),
     ...(latex ? [{ kind: 'action' as const, label: t(catalog, 'result.copyLatex'), run: () => copyText(latex) }] : []),
     { kind: 'separator' },
     {
@@ -1094,7 +1097,7 @@ export function SheetView(props: Props) {
             const display = row?.display ?? row?.solutions?.[0]?.display;
             const shown = display && !display.im && Number.isFinite(display.value) ? (n: number) => `${formatNumber(display.value, props.printCatalog, { decimals: n }).replace('-', '−')}${display.unit ? ` ${display.unit}` : ''}` : undefined;
             const own = blockByLine.get(formatMenu.seg.start);
-            const items = [...formatMenuItems(formatMenu.seg, props.uiCatalog, change, shown, own?.kind === 'equation' && own.number !== undefined, own ? blockLatex(own) : undefined), ...sliderItems(formatMenu.seg)];
+            const items = [...formatMenuItems(formatMenu.seg, props.uiCatalog, change, shown, own?.kind === 'equation' && own.number !== undefined, own ? blockLatex(own) : undefined, !!display?.im), ...sliderItems(formatMenu.seg)];
             const solveLine = formatMenu.solveLine;
             return solveLine
               ? [{ kind: 'action' as const, label: t(props.uiCatalog, 'solve.toDefinition'), run: () => props.onReplace(formatMenu.seg.start, formatMenu.seg.end, solveLine) }, { kind: 'separator' as const }, ...items]

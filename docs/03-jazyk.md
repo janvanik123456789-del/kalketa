@@ -242,7 +242,8 @@ S := U·conj(I) | VA             ' zdánlivý výkon
 ```
 
 - Funkce: `re`, `im`, `conj`, `abs` (velikost), `arg` (úhel), `polar(r, φ)`, `sqrt`. Mocnina jen s reálným exponentem.
-- Výsledky se píší s `j`: „(27,6 − 36,8j) A“.
+- Výsledky se píší s `j`: „(27,6 − 36,8j) A“. S `{polar}` na konci řádku (v editoru pravé tlačítko → „Polární tvar“) v polárním tvaru: „146,6 mA ∠ 58,37°“ (2026-10-26).
+- Úhlová rychlost `ω := 2·π·f` (i z otáček `2·π·n`, `2·π/T`) se ukazuje v rad/s, ne v Hz nebo min⁻¹; radián vedle jiných jednotek odpadne (`ω·r` v m/s). Energie ze samých kg, m, s (`J·ω²/2`, `m·v²/2`) je v J; moment zůstává kN·m a práce výkonu kW·h (2026-10-26).
 - Komplexní čísla nemají pořadí: `<`, `≤` i posudek s nimi je chyba s radou porovnat `abs(…)` (E-COMPLEX-ORDER). Kde dávají smysl jen reálná čísla (goniometrické funkce, tabulky, řešič, absolutní teplota), je chyba E-COMPLEX-ARG, nikdy tiché zahození imaginární části.
 - `sqrt(-4)` zůstává chybou; odmocnina z komplexního čísla dá hlavní hodnotu.
 - Jména `i` a `j` zůstávají volná pro proměnné (`1000·(1 + i)`); imaginární jednotka je jen hned za číslem.

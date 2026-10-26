@@ -214,3 +214,25 @@ describe('names and checks as on paper', () => {
   });
 });
 
+describe('angular velocity and energy as engineers write them', () => {
+  const shown = (source: string, name: string) => {
+    const d = evaluateSheet(source).statements.find((r) => r.statement.kind === 'definition' && r.statement.name === name)?.display;
+    return d ? `${Number(d.value.toPrecision(4))} ${d.unit}` : '';
+  };
+  const sheet = 'f := 60 Hz\nn := 1500 min^-1\nT := 0.2 s\nr := 2 m\nJ := 2 kg·m^2\nω := 2·π·f\nω_n := 2·π·n\nω_T := 2·π/T\nv := ω_n·r\nE := J·ω_n^2/2\nF := 2 kN\nM := F·r\nP := 2 kW\nt := 3 h\nW := P·t';
+
+  it('show 2·π·f, 2·π·n and 2·π/T in rad/s, not in Hz or min⁻¹', () => {
+    expect(shown(sheet, 'ω')).toBe('377 rad/s');
+    expect(shown(sheet, 'ω_n')).toBe('157.1 rad/s');
+    expect(shown(sheet, 'ω_T')).toBe('31.42 rad/s');
+  });
+
+  it('leave the radian out beside other units, and name an energy of mass, length and time in J', () => {
+    expect(shown(sheet, 'v')).toBe('314.2 m/s');
+    expect(shown(sheet, 'E')).toBe('24670 J');
+    // A moment stays a moment, a work of a power stays in kW·h.
+    expect(shown(sheet, 'M')).toBe('4 kN·m');
+    expect(shown(sheet, 'W')).toBe('6 kW·h');
+  });
+});
+

@@ -115,6 +115,8 @@ export interface LineFormat {
   readonly exact?: boolean;
   /** The result in a frame ({box}), as the final result is marked on paper. */
   readonly box?: boolean;
+  /** A complex result in polar form ({polar}): 146,6 mA ∠ 58,37°, as electrical engineers read it. */
+  readonly polar?: boolean;
   /** The equation number of the line: {eq} numbered, {eq=hooke} numbered and named for (#hooke) in text, {noeq} never. */
   readonly eq?: true | string;
   readonly noeq?: boolean;

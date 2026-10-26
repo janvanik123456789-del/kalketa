@@ -99,6 +99,8 @@ function composeUnit(op: '*' | '/', a: ResolvedUnit, b: ResolvedUnit, units: Uni
   const terms = new Map(ta);
   for (const [name, e] of tb) terms.set(name, (terms.get(name) ?? 0) + (op === '*' ? e : -e));
   for (const [name, e] of terms) if (e === 0) terms.delete(name);
+  // A radian is a plain number: beside other units it goes (ω·r in m/s, not rad·m/s); alone it is an angle (ω·t in rad).
+  if (terms.size > 1) terms.delete('rad');
   const dim = op === '*' ? multiplyDims(a.dim, b.dim) : divideDims(a.dim, b.dim);
   if (terms.size === 0 || isDimensionless(dim)) return none;
   const factor = op === '*' ? a.factor * b.factor : a.factor / b.factor;
@@ -106,7 +108,12 @@ function composeUnit(op: '*' | '/', a: ResolvedUnit, b: ResolvedUnit, units: Uni
   // Two units of one kind (m and cm in kN·m/cm³): no scale of the calculation to keep.
   const mixed = dims.some((d, i) => !d || dims.some((e, j) => j > i && e && sameDim(d, e)));
   if (terms.size > 1) {
-    const named = units.ownUnit(dim, factor, mixed ? value : undefined);
+    // Of mass, length and time only (J·ω²/2, m·v²/2) an energy is in J; with a force (N·m) it stays a moment, with a power (kW·h) as written.
+    const basic = [...terms.keys()].every((name) => {
+      const d = units.dimOf(name);
+      return d !== undefined && Object.keys(d).length === 1 && ['M', 'L', 'T'].includes(Object.keys(d)[0]!);
+    });
+    const named = units.ownUnit(dim, factor, mixed ? value : undefined, basic);
     if (named) return { unit: named, byValue: mixed };
   }
   // mm² · m is not a unit to show: two units of one dimension stay apart only in SI (m³).
@@ -154,7 +161,7 @@ export interface UnitNames {
    * by the usual prefixes: 1e6 Pa -> MPa, 1e7 Pa -> MPa, 1 N -> N; smaller
    * while `value` (SI) would show below 1 in it: 1.93e8 Pa in GPa -> MPa.
    */
-  ownUnit(dim: Dimension, factor: number, value?: number): ResolvedUnit | undefined;
+  ownUnit(dim: Dimension, factor: number, value?: number, energy?: boolean): ResolvedUnit | undefined;
   /** A power of a length unit of exactly this size: 1e-6 m² -> mm², 1e-6 m³ -> cm³. */
   lengthPower(dim: Dimension, factor: number): ResolvedUnit | undefined;
 }
@@ -170,11 +177,12 @@ export function unitNames(resolve: (symbol: string) => { dim: Dimension; factor:
     const unit = resolve(s);
     return unit ? [{ symbol: s, dim: unit.dim }] : [];
   });
+  const joule = resolve('J');
   return {
     hasOwnName: (dim) => named.some((n) => sameDim(n.dim, dim)),
     dimOf: (symbol) => resolve(symbol)?.dim,
-    ownUnit: (dim, factor, value) => {
-      const base = named.find((n) => sameDim(n.dim, dim));
+    ownUnit: (dim, factor, value, energy) => {
+      const base = named.find((n) => sameDim(n.dim, dim)) ?? (energy && joule && sameDim(joule.dim, dim) ? { symbol: 'J', dim } : undefined);
       if (!base) return undefined;
       const sizes = PREFIXES.flatMap((p) => {
         const unit = resolve(p + base.symbol);

@@ -157,6 +157,11 @@ export function formatTrace(node: TraceNode, options: ReportOptions): string {
 }
 
 function formatValue(r: StatementResult, options: ReportOptions): string {
+  // {polar}: the size with its unit and the angle, 146.6 mA ∠ 58.37°.
+  if (r.display && r.statement.format?.polar) {
+    const angle = (Math.atan2(r.display.im ?? 0, r.display.value) * 180) / Math.PI;
+    return `${formatDisplay(Math.hypot(r.display.value, r.display.im ?? 0), r.display.unit, options)} ∠ ${formatDisplay(Math.abs(angle) < 1e-12 ? 0 : angle, '°', options).replace(' °', '°')}`;
+  }
   if (r.display) return formatDisplay(r.display.value, r.display.unit, options, r.display.im);
   if (r.value?.type === 'boolean') return options.catalog.terms[String(r.value.value)] ?? String(r.value.value);
   if (r.value?.type === 'text') return JSON.stringify(r.value.value);

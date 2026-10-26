@@ -91,3 +91,12 @@ describe('names of differences', () => {
   });
 });
 
+describe('complex results in polar form', () => {
+  it('show the size and the angle for {polar}', () => {
+    const block = equation('E := 120 V\nZ := (429.15 - 696.79j) Ω\nI := E/Z | mA {polar}')!;
+    expect(plain(toText(block.lines.at(-1)!.rhs))).toBe('146,6 mA∠58,37°');
+    const plainLine = equation('E := 120 V\nZ := (429.15 - 696.79j) Ω\nI := E/Z | mA')!;
+    expect(plain(toText(plainLine.lines.at(-1)!.rhs))).toBe('(76,9+124,9j) mA');
+  });
+});
+

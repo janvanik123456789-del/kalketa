@@ -193,7 +193,7 @@ function lineFormat(tokens: readonly Token[], diagnostics: Diagnostic[], at: Spa
       if ((key === 'decimals' || key === 'digits') && Number.isInteger(n) && n >= (key === 'digits' ? 1 : 0) && n <= 15) format[key] = n;
       else if (key === 'size' && Number.isFinite(n) && n >= 6 && n <= 48) format.size = n;
       else if (key === 'font' && value !== undefined && /^[\p{L}\p{N}_\-]+$/u.test(value)) format.font = value;
-      else if ((key === 'italic' || key === 'bold' || key === 'rounded' || key === 'exact' || key === 'box' || key === 'noeq' || key === 'beside') && value === undefined) format[key] = true;
+      else if ((key === 'italic' || key === 'bold' || key === 'rounded' || key === 'exact' || key === 'box' || key === 'polar' || key === 'noeq' || key === 'beside') && value === undefined) format[key] = true;
       // A name for references (eq=hooke), or the number a book gave the formula (eq=32, eq=12a).
       else if (key === 'eq' && (value === undefined || /^[\p{L}\p{N}_]+$/u.test(value))) format.eq = value ?? true;
       // A position: numbered on (pos), or as the calculation numbers it (pos=3, pos=12a).

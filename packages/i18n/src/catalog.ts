@@ -63,6 +63,7 @@ export const UI_KEYS = [
   'print.variantChosen',
   'cells.beside',
   'result.box',
+  'result.polar',
   'result.copyLatex',
   'cells.alone',
   'cells.delete',

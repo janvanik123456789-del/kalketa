@@ -8,7 +8,7 @@
 import { diagnostic, fail, type Diagnostic, type Span } from '../diagnostics.js';
 import * as X from '../values/exact.js';
 import type { BinaryOperator, Expr } from '../lang/ast.js';
-import { isDimensionless, multiplyDims, divideDims, powerDim, sameDim, superscript } from '../units/dimension.js';
+import { dim, isDimensionless, multiplyDims, divideDims, powerDim, sameDim, superscript } from '../units/dimension.js';
 import { baseUnitSymbol } from '../units/display.js';
 import type { UnitRegistry } from '../units/registry.js';
 import { resolveUnit, type ResolvedUnit } from '../units/unitExpr.js';
@@ -337,6 +337,17 @@ function product(a: MatrixValue, b: MatrixValue, leftExpr: Expr, rightExpr: Expr
   return matrix(a.rows, b.cols, items);
 }
 
+const PER_SECOND = dim({ T: -1 });
+const RADIANS_PER_SECOND: ResolvedUnit = { symbol: 'rad/s', factor: 1, dim: PER_SECOND };
+
+/** π written in a factor (2·π, π·n/30): the product is an angle, or an angle per time. */
+function writesPi(e: Expr): boolean {
+  if (e.kind === 'variable') return e.name === 'π' || e.name === 'pi';
+  if (e.kind === 'binary') return (e.operator === '*' || e.operator === '/') && (writesPi(e.left) || (e.operator === '*' && writesPi(e.right)));
+  if (e.kind === 'unary') return writesPi(e.operand);
+  return false;
+}
+
 /** Two numbers (real or complex): + − · / ^ and comparisons. */
 /** Operations where a zero written without a unit takes the unit of the other side (p_a + ρ·g·0, y == 0). */
 const SUMS_AND_COMPARISONS: ReadonlySet<BinaryOperator> = new Set(['+', '-', '==', '!=', '<', '<=', '>', '>=']);
@@ -368,6 +379,12 @@ function arithmetic(op: BinaryOperator, left: Value, right: Value, leftExpr: Exp
       // Exactly as well, where both are exact (absolute temperatures are no fractions of anything).
       const exactly = a.exact && b.exact && !a.absolute && !b.absolute ? (op === '*' ? X.multiply(a.exact, b.exact) : X.divide(a.exact, b.exact)) : undefined;
       const exact = exactly ? { exact: exactly } : {};
+      // 2·π·f, 2·π·n: an angular velocity, shown in rad/s, not in the Hz or min⁻¹ of the frequency;
+      // 2·π/T likewise.
+      const product = op === '*' ? multiplyDims(a.dim, b.dim) : divideDims(a.dim, b.dim);
+      if (!hintsOff && (writesPi(leftExpr) || (op === '*' && writesPi(rightExpr))) && sameDim(product, PER_SECOND) && (op === '*' || b.si !== 0)) {
+        return quantity(op === '*' ? a.si * b.si : a.si / b.si, PER_SECOND, { hint: RADIANS_PER_SECOND, ...exact });
+      }
       if (op === '*') return quantity(a.si * b.si, multiplyDims(a.dim, b.dim), { ...hint, ...exact });
       if (b.si === 0) fail('E-DIV-ZERO', rightExpr.span);
       return quantity(a.si / b.si, divideDims(a.dim, b.dim), { ...hint, ...exact });

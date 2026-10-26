@@ -384,7 +384,9 @@ function arithmetic(op: BinaryOperator, left: Value, right: Value, leftExpr: Exp
       const combined = scaled || hintsOff ? undefined : samePowerHint(op, a, b);
       // Different units compose: kN/m · m² = kN·m (not joules, which have the same dimension).
       const composed = hintsOff || scaled || combined || !a.hint || !b.hint || a.absolute || b.absolute ? undefined : composedHint(op, a.hint, b.hint, ownNames(ctx.registry), op === '*' ? a.si * b.si : a.si / b.si);
-      const hint = keptHint(scaled) ? { hint: scaled!.hint! } : combined ? { hint: combined } : composed ? { hint: composed } : {};
+      // A share divided by a plain number stays a share: i/4 of 6,96 % is 1,74 %, not 0,0174 (200 · 21 % is still 42).
+      const share = op === '/' && scaled === a && !!a.hint && isDimensionless(a.dim) && !b.hint;
+      const hint = keptHint(scaled) || share ? { hint: scaled!.hint! } : combined ? { hint: combined } : composed ? { hint: composed } : {};
       // Exactly as well, where both are exact (absolute temperatures are no fractions of anything).
       const exactly = a.exact && b.exact && !a.absolute && !b.absolute ? (op === '*' ? X.multiply(a.exact, b.exact) : X.divide(a.exact, b.exact)) : undefined;
       const exact = exactly ? { exact: exactly } : {};

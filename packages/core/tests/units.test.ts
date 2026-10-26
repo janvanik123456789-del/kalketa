@@ -234,5 +234,10 @@ describe('angular velocity and energy as engineers write them', () => {
     expect(shown(sheet, 'M')).toBe('4 kN·m');
     expect(shown(sheet, 'W')).toBe('6 kW·h');
   });
+
+  it('keep a share divided by a plain number a share (a quarterly rate i/4), a count times a share a count', () => {
+    expect(shown('i := 6.957 %\nj := i/4', 'j')).toBe('1.739 %');
+    expect(shown('k := 200·21 %', 'k')).toBe('42 ');
+  });
 });
 

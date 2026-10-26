@@ -6,7 +6,7 @@
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { desktop } from '../document.js';
 import { decoration, inkBounds, linesOf, type Box, type LayoutLine, type TextPart } from './pdfLayout.js';
-import { fromSymbolFont } from './pdfText.js';
+import { fromSymbolFont, plainMathLetters } from './pdfText.js';
 
 type PdfJs = typeof import('pdfjs-dist');
 export type PdfDocument = Awaited<ReturnType<PdfJs['getDocument']>['promise']>;
@@ -67,7 +67,7 @@ export async function pageContent(page: PdfPage): Promise<{ lines: LayoutLine[];
     if (!item.str.trim()) continue;
     const [x, y] = viewport.convertToViewportPoint(item.transform[4] as number, item.transform[5] as number) as [number, number];
     const size = Math.max(1, Math.hypot(item.transform[2] as number, item.transform[3] as number));
-    const text = symbolFonts.has(item.fontName) ? fromSymbolFont(item.str) : item.str;
+    const text = plainMathLetters(symbolFonts.has(item.fontName) ? fromSymbolFont(item.str) : item.str);
     if (text.trim()) (open.includes(true) ? artifacts : parts).push({ x, right: x + (item.width ?? 0), y, size, text });
   }
   // A PDF that marks most of its text so is taken as if it marked none: no content is lost.

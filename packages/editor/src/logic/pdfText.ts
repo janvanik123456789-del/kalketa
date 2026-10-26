@@ -117,6 +117,14 @@ const SYMBOL_HIGH = Array.from('€ϒ′≤⁄∞ƒ♣♦♥♠↔←↑→↓°
  * the font's own codes) as the characters they show: "M  0" → "M = 0".
  * Only for a font named Symbol: Wingdings and the like use the same codes for pictures.
  */
+/**
+ * Letters of the Unicode block of mathematical letters (𝜎, 𝑀𝑃𝑎, 𝐹, 𝛼 from Word's and LaTeX's equations) as
+ * plain ones (σ, MPa, F, α), so the text can be searched and read as formulas; only that block changes.
+ */
+export function plainMathLetters(text: string): string {
+  return text.replace(/[\u{1D400}-\u{1D7FF}]/gu, (c) => c.normalize('NFKC'));
+}
+
 export function fromSymbolFont(text: string): string {
   return text.replace(/[-]/g, (ch) => {
     const code = ch.charCodeAt(0) - 0xf000;

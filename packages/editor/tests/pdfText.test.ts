@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applySuspects, cleanPdfText, fromSymbolFont, joinSpacedLetters, ocrNoise, shifted } from '../src/logic/pdfText.js';
+import { applySuspects, cleanPdfText, fromSymbolFont, joinSpacedLetters, ocrNoise, plainMathLetters, shifted } from '../src/logic/pdfText.js';
 
 // Notes as a PDF copy leaves them: one paragraph per printed line.
 const copied = [
@@ -159,3 +159,12 @@ describe('text of a scan', () => {
     expect(cleaned.suspects).toEqual([{ text: "''=6-oSr7=^-«««\"-^^=°-", kind: 'formula' }]);
   });
 });
+
+describe('mathematical letters', () => {
+  it('become plain letters, nothing else changes', () => {
+    // Word's 𝑚̇ is a letter and a combining dot: m with the dot, as a name of the calculation writes it.
+    expect(plainMathLetters('𝜎 𝑥 = 80 𝑀𝑃𝑎, 𝜏 𝑥𝑦 = 40 𝑀𝑃𝑎, 𝑚̇, 𝜅')).toBe('σ x = 80 MPa, τ xy = 40 MPa, ṁ, κ');
+    expect(plainMathLetters('Napětí σ = 80 MPa, ½, ²')).toBe('Napětí σ = 80 MPa, ½, ²');
+  });
+});
+

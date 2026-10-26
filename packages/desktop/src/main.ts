@@ -2807,10 +2807,12 @@ async function layersWithRealInput(picture: string) {
   await pressKey('Enter');
   await typeText('k_t := 2');
   await pause(1500);
+  // Watched all the time while typing: on a slow machine the keys come so far apart that it may wait out between them.
+  await contents.executeJavaScript(`(() => { window.__kalketaWaited = false; const seen = () => { if (document.querySelector('.statusbar .waiting')) window.__kalketaWaited = true; }; window.__kalketaWaitWatch = new MutationObserver(seen); window.__kalketaWaitWatch.observe(document.body, { childList: true, subtree: true }); })()`);
   const typedAt = Date.now();
   await typeText('34567');
   const typing = Date.now() - typedAt;
-  const waitingShown = (await contents.executeJavaScript(`!!document.querySelector('.statusbar .waiting')`)) as boolean;
+  const waitingShown = (await contents.executeJavaScript(`(() => { window.__kalketaWaitWatch.disconnect(); return window.__kalketaWaited || !!document.querySelector('.statusbar .waiting'); })()`)) as boolean;
   await pause(1500);
   const slowTyping = {
     typing,

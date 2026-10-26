@@ -34,6 +34,8 @@ xvfb-run -a -s "-screen 0 1920x1080x24" node scripts/smoke.mjs 2>&1 | tail -2
 
 if [ "$1" = "--appimage" ]; then
   echo "linux: AppImage"
+  # Builds of an older version stay there otherwise, and the first found would be tested.
+  rm -rf "$work/packages/desktop/release"
   npm run dist:linux --workspace @kalketa/desktop > /tmp/kalketa-dist.log 2>&1 || { tail -20 /tmp/kalketa-dist.log; exit 1; }
   image="$(ls "$work"/packages/desktop/release/*.AppImage | head -1)"
   KALKETA_SMOKE_EXE="$image" xvfb-run -a -s "-screen 0 1920x1080x24" node scripts/smoke.mjs 2>&1 | tail -2

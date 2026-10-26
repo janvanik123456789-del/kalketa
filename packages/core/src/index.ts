@@ -7,7 +7,7 @@
  *  - no knowledge of any particular field of engineering.
  */
 
-export const CORE_VERSION = '0.1.0';
+export const CORE_VERSION = '0.2.0';
 
 export * from './diagnostics.js';
 export type * from './lang/ast.js';

@@ -406,7 +406,10 @@ export const LINEAR: readonly FunctionDef[] = [
     arity: [1, 2],
     call: (a) => {
       const { values, dim } = eigen(a);
-      return series(values.map((v) => quantity(v, dim)));
+      // Of one matrix in one unit (a stress tensor in MPa) the values keep that unit: principal stresses in MPa.
+      const given = a.count === 1 ? a.value(0) : undefined;
+      const hint = given?.type === 'matrix' && given.items[0]?.hint && given.items.every((q) => q.hint?.symbol === given.items[0]!.hint!.symbol) ? given.items[0].hint : undefined;
+      return series(values.map((v) => quantity(v, dim, hint ? { hint } : {})));
     },
   },
   {

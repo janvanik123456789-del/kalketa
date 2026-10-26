@@ -49,3 +49,10 @@ describe('a series of temperatures', () => {
   });
 });
 
+describe('principal stresses', () => {
+  it('keep the unit of a stress tensor (VŠB Pružnost a pevnost, příklad 9.1)', () => {
+    const sheet = ['T := [80, 40, 0 | 40, 20, 0 | 0, 0, -15] MPa', 'σ := eigenvals(T)', 's_1 := max(σ)'].join(String.fromCharCode(10));
+    expect(shown(sheet, 's_1')).toBe('100 MPa');
+  });
+});
+

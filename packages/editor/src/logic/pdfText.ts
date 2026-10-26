@@ -127,6 +127,29 @@ export function plainMathLetters(text: string): string {
   return text.replace(/[\u{1D400}-\u{1D7FF}]/gu, (c) => c.normalize('NFKC'));
 }
 
+/** Accents old TeX fonts set as characters of their own beside the letter, and the combining marks they stand for. */
+const SPACING_ACCENTS: Readonly<Record<string, string>> = { 'ˇ': '̌', '´': '́', '˚': '̊', '¨': '̈', 'ˆ': '̂', '`': '̀', '˘': '̆', '˝': '̋' };
+
+/** The letters each accent stands over in Czech, Slovak and German: "don´t" keeps its apostrophe. */
+const ACCENTED: Readonly<Record<string, string>> = { 'ˇ': 'cdenrstzlCDENRSTZL', '´': 'aeiouylrnAEIOUYLRN', '˚': 'uU', '¨': 'aeiouAEIOU', 'ˆ': 'aeiouAEIOU', '`': 'aeiouAEIOU', '˘': 'aA', '˝': 'ouOU' };
+
+/**
+ * Letters with their accents put together, where the PDF has the accent as a character of its own
+ * ("pˇríklad", "pr ˚ubˇeh ˚u" from old TeX fonts) → "příklad", "průběhů". The háček of a capital
+ * letter may come after its word ("Rešeníˇ"): it goes to that letter ("Řešení"). A space before the
+ * accent is the PDF's guess, kept where the letter may start a word ("příklad ˇc." → "příklad č."),
+ * dropped where no Czech word starts so (ů, ě, ň: "stup ˇnů" → "stupňů").
+ */
+export function joinedAccents(text: string): string {
+  return text
+    .replace(/((?<=\p{L}) )?([ˇ´˚¨ˆ`˘˝])(\p{L})/gu, (whole: string, space: string | undefined, accent: string, letter: string) => {
+      if (!ACCENTED[accent]!.includes(letter)) return whole;
+      const inWord = (accent === '˚' && letter === 'u') || (accent === 'ˇ' && 'en'.includes(letter));
+      return `${space && !inWord ? ' ' : ''}${letter}${SPACING_ACCENTS[accent]}`.normalize('NFC');
+    })
+    .replace(/(^|[^\p{L}])([RCSZDTNE])(\p{Ll}+)ˇ(?=[^\p{L}]|$)/gu, (_, start: string, capital: string, rest: string) => `${start}${`${capital}̌`.normalize('NFC')}${rest}`);
+}
+
 export function fromSymbolFont(text: string): string {
   return text.replace(/[-]/g, (ch) => {
     const code = ch.charCodeAt(0) - 0xf000;

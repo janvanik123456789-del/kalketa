@@ -65,6 +65,11 @@ export async function pageContent(page: PdfPage): Promise<{ lines: LayoutLine[];
       continue;
     }
     if (!item.str.trim()) continue;
+    // Text turned on the page (a label up a dimension line, a watermark, a sidebar running down the edge) is
+    // no line of the text; nor is text with control characters, the codes of a font that maps none to letters.
+    const m = lib.Util.transform(viewport.transform, item.transform as number[]) as number[];
+    if (!(m[0]! > 0 && Math.abs(m[1]!) <= 0.05 * m[0]! && Math.abs(m[2]!) <= 0.05 * m[0]!)) continue;
+    if (/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/.test(item.str)) continue;
     const [x, y] = viewport.convertToViewportPoint(item.transform[4] as number, item.transform[5] as number) as [number, number];
     const size = Math.max(1, Math.hypot(item.transform[2] as number, item.transform[3] as number));
     const text = plainMathLetters(symbolFonts.has(item.fontName) ? fromSymbolFont(item.str) : item.str);

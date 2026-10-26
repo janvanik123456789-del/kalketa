@@ -13,7 +13,7 @@
  *
  * Coordinates are those of the page at scale 1 (PDF points), y downwards.
  */
-import { formulaOrScraps, shifted } from './pdfText.js';
+import { formulaOrScraps, joinedAccents, shifted } from './pdfText.js';
 
 export interface Box {
   readonly top: number;
@@ -43,13 +43,31 @@ const LOWERED = [0.1, 0.5] as const;
 const SMALLER = 0.85;
 
 /**
+ * An accent an old TeX font sets as a piece of its own ("ˇ" over the r of "ríklad") put on the letter it
+ * stands over: the piece that starts where the accent stands. Then no space comes between them
+ * ("pˇ ríklad" → "příklad"), and a space before a word starting with the letter stays ("a řada").
+ */
+function withAccentsOnLetters(parts: readonly TextPart[]): TextPart[] {
+  const accents = parts.filter((p) => /^\s*[ˇ´˚¨ˆ`˘˝]\s*$/.test(p.text));
+  if (accents.length === 0) return [...parts];
+  const out = parts.filter((p) => !accents.includes(p)).map((p) => ({ ...p }));
+  for (const accent of accents) {
+    const mark = accent.text.trim();
+    const target = out.find((q) => Math.abs(q.x - accent.x) <= 0.6 * q.size && Math.abs(q.y - accent.y) <= 1.2 * q.size && /^\p{L}/u.test(q.text));
+    if (target) target.text = joinedAccents(`${mark}${target.text}`);
+    else out.push(accent);
+  }
+  return out;
+}
+
+/**
  * The lines of a page from its pieces of text, left to right, a gap between
  * pieces a space. Exponents and indexes have baselines of their own, so they
  * come out as lines of their own and would be lost as scraps: smaller letters
  * just above or below a line are written into it ("10⁻⁶ m⁴", "M_a").
  */
 export function linesOf(parts: readonly TextPart[]): LayoutLine[] {
-  const sorted = [...parts].sort((a, b) => a.y - b.y || a.x - b.x);
+  const sorted = withAccentsOnLetters(parts).sort((a, b) => a.y - b.y || a.x - b.x);
   const groups: TextPart[][] = [];
   let current: TextPart[] = [];
   for (const p of sorted) {
@@ -123,7 +141,7 @@ export function linesOf(parts: readonly TextPart[]): LayoutLine[] {
       text += (before && gap > 0.15 * part.size && !text.endsWith(' ') && !part.text.startsWith(' ') ? ' ' : '') + part.text;
     }
     return {
-      text: text.replace(/\s+/g, ' ').trim(),
+      text: joinedAccents(text.replace(/\s+/g, ' ').trim()),
       top: Math.min(...line.parts.map(({ part }) => part.y - part.size)),
       bottom: Math.max(...line.parts.map(({ part }) => part.y + part.size * 0.25)),
       left: line.left,
@@ -196,6 +214,87 @@ function alike(a: string, b: string): boolean {
     row = next;
   }
   return row[b.length]! <= Math.max(a.length, b.length) / 4;
+}
+
+/** The narrowest gap between two columns of text (points). */
+const GUTTER = 8;
+
+/**
+ * The x of the gap between two columns of text, when the page is set in two: a strip in the middle of
+ * the page no piece of text crosses (a heading over both columns may), with text on both sides, down
+ * the most of the page. Undefined for a page of one column, or a table whose cells leave such a strip
+ * on a few lines only.
+ */
+export function columnGutter(parts: readonly TextPart[], page: { readonly width: number; readonly height: number }): number | undefined {
+  if (parts.length < 20) return undefined;
+  const from = Math.floor(page.width * 0.3);
+  const to = Math.ceil(page.width * 0.7);
+  // How many pieces cover each point across the middle of the page; a heading over both columns may.
+  const allowed = Math.max(1, Math.floor(parts.length / 40));
+  let best: { start: number; end: number } | undefined;
+  let start: number | undefined;
+  for (let x = from; x <= to + 1; x++) {
+    const free = x <= to && parts.filter((p) => p.x < x && p.right > x).length <= allowed;
+    if (free && start === undefined) start = x;
+    if (!free && start !== undefined) {
+      if (!best || x - start > best.end - best.start) best = { start, end: x };
+      start = undefined;
+    }
+  }
+  if (!best || best.end - best.start < GUTTER) return undefined;
+  const gutter = (best.start + best.end) / 2;
+  const left = parts.filter((p) => p.right <= gutter);
+  const right = parts.filter((p) => p.x >= gutter);
+  const enough = (side: readonly TextPart[]) => {
+    if (side.length < Math.max(8, parts.length / 4)) return false;
+    const ys = side.map((p) => p.y);
+    return Math.max(...ys) - Math.min(...ys) >= 0.4 * page.height;
+  };
+  return enough(left) && enough(right) ? gutter : undefined;
+}
+
+/** What a page holds, as pageContent reads it. */
+export interface PageContent {
+  readonly lines: readonly LayoutLine[];
+  readonly parts: readonly TextPart[];
+  readonly pictures: readonly Box[];
+  readonly drawn: readonly Box[];
+  readonly width: number;
+  readonly height: number;
+}
+
+/**
+ * The chosen pages laid out for the sources, in reading order: what all pages repeat at the same
+ * place goes (a navigation panel, running heads and feet), a page set in two columns is read column by
+ * column (the left one, then the right one), and each column is laid out as a page of its own.
+ */
+export function pagesLayout(pages: readonly PageContent[]): LayoutItem[][] {
+  const parts = withoutRunningParts(pages);
+  const drawings = withoutRunningBoxes(pages.map((c) => ({ boxes: c.drawn, width: c.width, height: c.height })));
+  const pictures = withoutRunningBoxes(pages.map((c) => ({ boxes: c.pictures, width: c.width, height: c.height })));
+  // Each page as its columns: the pieces left of the gutter (with those over it) and right of it.
+  const columns = pages.map((page, i) => {
+    const own = parts[i]!;
+    const gutter = columnGutter(own, page);
+    if (gutter === undefined) return [{ lines: own.length === page.parts.length ? [...page.lines] : linesOf(own), part: (_: Box) => true }];
+    const isLeft = (b: Box) => (b.left + b.right) / 2 < gutter;
+    return [
+      { lines: linesOf(own.filter((p) => p.x < gutter)), part: isLeft },
+      { lines: linesOf(own.filter((p) => p.x >= gutter)), part: (b: Box) => !isLeft(b) },
+    ];
+  });
+  // Running heads and feet from the lines of the pages taken together, then back to their columns.
+  const kept = withoutRunningLines(pages.map((page, i) => ({ lines: columns[i]!.flatMap((c) => c.lines), height: page.height })));
+  return pages.map((page, i) =>
+    columns[i]!.flatMap((column) =>
+      pageLayout(
+        column.lines.filter((l) => kept[i]!.includes(l)),
+        pictures[i]!.filter(column.part),
+        page,
+        drawings[i]!.filter(column.part),
+      ),
+    ),
+  );
 }
 
 /** How far (points) a piece may stand from where it stood on another page and still be the same piece. */

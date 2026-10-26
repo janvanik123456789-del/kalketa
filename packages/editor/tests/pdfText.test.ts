@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applySuspects, cleanPdfText, fromSymbolFont, joinSpacedLetters, ocrNoise, plainMathLetters, shifted } from '../src/logic/pdfText.js';
+import { applySuspects, cleanPdfText, fromSymbolFont, joinedAccents, joinSpacedLetters, ocrNoise, plainMathLetters, shifted } from '../src/logic/pdfText.js';
 
 // Notes as a PDF copy leaves them: one paragraph per printed line.
 const copied = [
@@ -173,3 +173,16 @@ describe('mathematical letters', () => {
   });
 });
 
+describe('accents set as characters of their own', () => {
+  it('go onto their letters', () => {
+    expect(joinedAccents('Vzorový pˇríklad ˇc. 9')).toBe('Vzorový příklad č. 9');
+    expect(joinedAccents('stanovte pr ˚ubˇehy vnitˇrních sil')).toBe('stanovte průběhy vnitřních sil');
+    expect(joinedAccents('odebraných stup ˇn ˚u volnosti')).toBe('odebraných stupňů volnosti');
+    expect(joinedAccents('Rešeníˇ reakcí')).toBe('Řešení reakcí');
+  });
+
+  it('leave an apostrophe and a lone mark be', () => {
+    expect(joinedAccents('don´t')).toBe('don´t');
+    expect(joinedAccents('úhel 30˚')).toBe('úhel 30˚');
+  });
+});

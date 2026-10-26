@@ -7,7 +7,7 @@
  */
 import { selectedPages, studyNotes, type StudyContent, type StudySettings } from '@kalketa/sheet';
 import { joinSpacedLetters } from './pdfText.js';
-import { linesOf, pageLayout, withoutRunningBoxes, withoutRunningLines, withoutRunningParts } from './pdfLayout.js';
+import { pagesLayout } from './pdfLayout.js';
 import { cutOut, loadPdf, pageContent } from './pdfDocs.js';
 import { picturePath } from './pictures.js';
 
@@ -48,17 +48,10 @@ export async function studyImport(
     const page = await doc.getPage(p);
     contents.push({ page, ...(await pageContent(page)) });
   }
-  // What every page repeats at the same place (a navigation panel, its buttons) goes first, then the lines are
-  // made of the rest, then running heads and feet go.
-  const parts = withoutRunningParts(contents);
-  const drawings = withoutRunningBoxes(contents.map((c) => ({ boxes: c.drawn, width: c.width, height: c.height })));
-  const pictureBoxes = withoutRunningBoxes(contents.map((c) => ({ boxes: c.pictures, width: c.width, height: c.height })));
-  const kept = withoutRunningLines(contents.map((c, i) => ({ lines: parts[i]!.length === c.parts.length ? c.lines : linesOf(parts[i]!), height: c.height })));
+  // In reading order, without what all pages repeat (a navigation panel, running heads), column by column.
+  const layouts = pagesLayout(contents);
   for (const [n, p] of pages.entries()) {
-    const { page, width, height } = contents[n]!;
-    const images = pictureBoxes[n]!;
-    const drawn = drawings[n]!;
-    const lines = kept[n]!;
+    const { page } = contents[n]!;
     const label = file.content.labels?.[p - 1] ?? String(p);
     const blocks: string[] = [];
     let run: string[] = [];
@@ -66,7 +59,7 @@ export async function studyImport(
       if (run.length) blocks.push(textLines(run).join('\n'));
       run = [];
     };
-    for (const item of pageLayout(lines, images, { width, height }, drawn)) {
+    for (const item of layouts[n]!) {
       if (item.kind === 'text') {
         run.push(item.text);
         continue;

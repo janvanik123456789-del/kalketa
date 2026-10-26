@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decoration, inkBounds, linesOf, pageLayout, withoutRunningBoxes, withoutRunningLines, withoutRunningParts, type LayoutLine, type TextPart } from '../src/logic/pdfLayout.js';
+import { columnGutter, decoration, inkBounds, linesOf, pageLayout, pagesLayout, withoutRunningBoxes, withoutRunningLines, withoutRunningParts, type LayoutLine, type TextPart } from '../src/logic/pdfLayout.js';
 import { formulaOrScraps } from '../src/logic/pdfText.js';
 
 const page = { width: 595, height: 842 };
@@ -166,3 +166,34 @@ describe('a navigation panel of an interactive PDF', () => {
   });
 });
 
+describe('a page of two columns', () => {
+  const words = 'nosník je tažen silou a ohýbán momentem od spojitého zatížení'.split(' ');
+  const column = (x: number, tag: string): TextPart[] =>
+    Array.from({ length: 40 }, (_, k) => ({ x, right: x + 220, y: 80 + 16 * k, size: 10, text: `${tag}${k} ${words[k % words.length]}` }));
+  const parts = [...column(50, 'L'), ...column(320, 'R')];
+  const two = { lines: linesOf(parts), parts, pictures: [], drawn: [], width: 595, height: 842 };
+
+  it('has a gutter between them', () => {
+    const gutter = columnGutter(parts, two)!;
+    expect(gutter).toBeGreaterThan(270);
+    expect(gutter).toBeLessThan(320);
+    expect(columnGutter(column(50, 'L').map((p) => ({ ...p, right: 540 })), two)).toBeUndefined();
+  });
+
+  it('is read column by column', () => {
+    const text = pagesLayout([two]).flat().flatMap((item) => (item.kind === 'text' ? [item.text] : [])).join(' ');
+    expect(text.indexOf('L39')).toBeLessThan(text.indexOf('R0'));
+    expect(text).not.toMatch(/R\d.*L\d/);
+  });
+});
+
+describe('accents an old TeX font sets apart', () => {
+  it('stand over the letter of the piece beside them', () => {
+    const parts: TextPart[] = [
+      { x: 50, right: 90, y: 100, size: 10, text: 'Vzorový p' },
+      { x: 90, right: 94, y: 100, size: 10, text: 'ˇ' },
+      { x: 90, right: 120, y: 100, size: 10, text: 'ríklad' },
+    ];
+    expect(linesOf(parts).map((l) => l.text)).toEqual(['Vzorový příklad']);
+  });
+});

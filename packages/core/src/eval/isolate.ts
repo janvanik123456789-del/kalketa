@@ -236,8 +236,9 @@ function divide(a: Expr, b: Expr, at: Span): Expr {
   if (isNumber(b, 1)) return a;
   // a/b/c reads as a/(b·c).
   if (a.kind === 'binary' && a.operator === '/') return binary('/', a.left, times(a.right, b, at), at);
-  // −a/b reads better than a/(−b).
+  // −a/b reads better than a/(−b); the minus of the numerator goes before the fraction, where two minuses cancel (not −−D/…).
   if (b.kind === 'unary' && b.operator === '-') return negate(divide(a, b.operand, at), at);
+  if (a.kind === 'unary' && a.operator === '-') return negate(divide(a.operand, b, at), at);
   return binary('/', a, b, at);
 }
 

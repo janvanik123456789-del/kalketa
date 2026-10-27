@@ -36,6 +36,7 @@ import { isolate, quadraticOf } from './isolate.js';
 import { substitute } from './derive.js';
 import { differentiate } from './differentiate.js';
 import { toDisplay } from '../units/display.js';
+import { exact, solveLinear as solveLinearExact, subtract as exactSubtract, toNumber as toNumberExact, type Exact } from '../values/exact.js';
 
 type SolveStatement = Extract<Statement, { kind: 'solve' }>;
 type Evaluate = (expr: Expr, ctx: EvalContext) => Value;
@@ -171,7 +172,57 @@ function solveEquations(statement: SolveStatement, ctx: EvalContext, evaluate: E
 
   // The solution once more, with warnings and table reads recorded.
   residuals(x, ctx);
-  return { values: values(x) };
+  // A linear system with exact coefficients has an exact solution too (I_1 = 96/83 A), shown on request.
+  if (unknowns.length > 1) {
+    const exactly = exactLinear(x, equations, (given) => {
+      const inner: EvalContext = { ...quiet, warnings: [], tableReads: [], lookup: (name, span) => {
+        const index = shape.findIndex((u) => u.name === name);
+        return index === -1 ? quiet.lookup(name, span) : quantity(toNumberExact(given[index]!), shape[index]!.dim, { exact: given[index]! });
+      } };
+      return equations.map((eq) => {
+        const [left, right] = withBareZero(asQuantity(evaluate(eq.left, inner), eq.left.span), asQuantity(evaluate(eq.right, inner), eq.right.span), eq.left, eq.right);
+        return left.exact && right.exact ? exactSubtract(left.exact, right.exact) : undefined;
+      });
+    });
+    if (exactly) return { values: values(x).map((v, i) => quantity(v.si, v.dim, { ...(v.hint ? { hint: v.hint } : {}), ...(v.absolute ? { absolute: true } : {}), exact: exactly[i]! })) };
+  }
+  // Solved numerically (E(y_0) = E(y_1), a cubic), a function of the sheet is still written out as on paper.
+  const equation = statement.equations[0]!;
+  const [inLeft, inRight] = unknowns.length === 1 && statement.equations.length === 1 ? [inlineCalls(equation.left, ctx), inlineCalls(equation.right, ctx)] : [equation.left, equation.right];
+  const expanded = inLeft !== equation.left || inRight !== equation.right ? { left: inLeft, right: inRight } : undefined;
+  return { values: values(x), ...(expanded ? { expanded } : {}) };
+}
+
+/**
+ * The exact solution of a system linear in its unknowns, or undefined. The equations are taken
+ * apart from their exact residuals at 0 and at each unit vector (r(x) = A·x − b), solved in
+ * fractions, and the solution is kept only when it puts every residual exactly to zero and
+ * agrees with the numerical one: a nonlinear system, or a coefficient without an exact form, gives none.
+ */
+function exactLinear(x: readonly number[], equations: readonly unknown[], residualsAt: (given: readonly Exact[]) => (Exact | undefined)[]): Exact[] | undefined {
+  const n = x.length;
+  const zero = exact(0n)!;
+  const one = exact(1n)!;
+  try {
+    const r0 = residualsAt(x.map(() => zero));
+    if (r0.some((r) => !r || r.root !== 1n)) return undefined;
+    const columns: Exact[][] = [];
+    for (let j = 0; j < n; j++) {
+      const rj = residualsAt(x.map((_, k) => (k === j ? one : zero)));
+      const column = rj.map((r, i) => (r ? exactSubtract(r, r0[i]!) : undefined));
+      if (column.some((c) => !c || c.root !== 1n)) return undefined;
+      columns.push(column as Exact[]);
+    }
+    // A·x = −r(0).
+    const found = solveLinearExact(equations.map((_, i) => columns.map((c) => c[i]!)), r0.map((r) => exactSubtract(zero, r!)!));
+    if (!found) return undefined;
+    if (residualsAt(found).some((r) => !r || r.num !== 0n)) return undefined;
+    if (found.some((v, i) => Math.abs(toNumberExact(v) - x[i]!) > 1e-9 * Math.max(1, Math.abs(x[i]!)))) return undefined;
+    return found;
+  } catch (err) {
+    if (err instanceof CalcError) return undefined;
+    throw err;
+  }
 }
 
 /**

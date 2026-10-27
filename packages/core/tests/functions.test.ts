@@ -147,6 +147,19 @@ describe('math and statistics functions', () => {
     expect(codes('mod(5 m, 2 s)')).toEqual(['E-UNIT-MISMATCH']);
   });
 
+  it('take whole parts as on paper, not of the binary neighbour (F4 of the samples)', () => {
+    // (0.7 + 0.1)·10 is 7.999… in binary; written in decimals it is exactly 8.
+    expectValue('floor((0.7 + 0.1)·10)', 8, '');
+    expectValue('ceil((0.7 + 0.1)·10)', 8, '');
+    expectValue('floor(-7/2)', -4, '');
+    expectValue('ceil(-7/2)', -3, '');
+    expectValue('round(5/2)', 3, '');
+    expectValue('round(-5/2)', -2, '');
+    // Without an exact form (a unit conversion), the last bits of rounding are ignored: 12 months of 5 yr + 7 mo are 67.
+    expectValue('t := 5 yr + 7 mo\nfloor(12·t/(1 yr))', 67, '');
+    expectValue('floor(2.9999)', 2, '');
+  });
+
   it('round to decimals', () => {
     expectValue('round(3.14159, 2)', 3.14, '');
     expectValue('round(2.5)', 3, '');

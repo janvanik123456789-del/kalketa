@@ -5,6 +5,7 @@
  */
 
 import type { Expr } from '../lang/ast.js';
+import { exact } from '../values/exact.js';
 import { quantity, type Quantity } from '../values/value.js';
 
 export function isBareZero(e: Expr): boolean {
@@ -21,9 +22,9 @@ export function isBareZero(e: Expr): boolean {
   }
 }
 
-/** The zero in the unit of what it stands beside (a zero difference of an absolute temperature). */
+/** The zero in the unit of what it stands beside (a zero difference of an absolute temperature); it is exactly zero. */
 export function zeroLike(other: Quantity): Quantity {
-  return quantity(0, other.dim, other.hint && !other.absolute ? { hint: other.hint } : {});
+  return quantity(0, other.dim, { ...(other.hint && !other.absolute ? { hint: other.hint } : {}), exact: exact(0n)! });
 }
 
 /** Operands of a sum or a comparison with a bare zero taken in the unit of the other side. */

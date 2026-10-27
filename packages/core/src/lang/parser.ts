@@ -790,6 +790,14 @@ class LineParser {
         left = { kind: 'call', name: 'parallel', args: [left, right], named: [], span: spanOf(left, right) };
         continue;
       }
+      // 10^(-pK_s) (mol/l)^3: a unit in brackets after a value is its unit, the power the unit's only.
+      if (type === '(' && !this.freeNames) {
+        const group = this.unitGroupHere();
+        if (group) {
+          left = { kind: 'binary', operator: '*', left, right: { kind: 'unit', unit: group, span: group.span }, span: spanOf(left, group) };
+          continue;
+        }
+      }
       if (this.startsOperand(this.peek())) {
         fail('E-MISSING-OPERATOR', this.peek().span, { found: this.peek().text });
       }
@@ -1013,6 +1021,11 @@ class LineParser {
       const unit = this.parseUnitChain();
       return { kind: 'number', value: token.value, unit, span: spanOf(token, unit), ...(token.imaginary ? { imaginary: true } : {}) };
     }
+    // 1.8e-10 (mol/l)^2: the unit of a solubility product, as books write it; the power is the unit's, not the number's.
+    if (next.type === '(' && !this.freeNames) {
+      const group = this.unitGroupHere();
+      if (group) return { kind: 'number', value: token.value, unit: group, span: spanOf(token, group), ...(token.imaginary ? { imaginary: true } : {}) };
+    }
     const value: Expr = { kind: 'number', value: token.value, span: token.span, ...(token.imaginary ? { imaginary: true } : {}) };
     if (next.type === '(') {
       this.next();
@@ -1027,9 +1040,27 @@ class LineParser {
   // Units
   // -------------------------------------------------------------------------
 
+  /**
+   * A group of units only, with its powers and the units after it: (mol/l)^2, (kg·m)/s. Undefined (and nothing read)
+   * when the brackets hold anything else or a name defined above: 2(a + b) and 2(L) stay products.
+   */
+  private unitGroupHere(): UnitExpr | undefined {
+    const save = this.pos;
+    const group = this.tryParseUnitFactor();
+    if (!group) return undefined;
+    for (let i = save; i < this.pos; i++) {
+      const t = this.tokens[i]!;
+      if (t.type === 'ident' && this.defined.has(t.text)) {
+        this.pos = save;
+        return undefined;
+      }
+    }
+    return this.parseUnitChain(group);
+  }
+
   /** Unit chain right after a number: continues only while units follow. */
-  private parseUnitChain(): UnitExpr {
-    let left = this.parseUnitFactor(false);
+  private parseUnitChain(first?: UnitExpr): UnitExpr {
+    let left = first ?? this.parseUnitFactor(false);
     for (;;) {
       const op = this.peek();
       if (op.type !== '*' && op.type !== '/') return left;

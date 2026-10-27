@@ -93,6 +93,34 @@ export function subtract(a: Exact, b: Exact): Exact | undefined {
   return add(a, negate(b));
 }
 
+/**
+ * A·x = b solved in fractions (Gauss–Jordan with a nonzero pivot), for the exact form of a linear
+ * system's solution (96/83); undefined when a coefficient has a root, the matrix is singular or a fraction grows past the limit.
+ */
+export function solveLinear(a: readonly (readonly Exact[])[], b: readonly Exact[]): Exact[] | undefined {
+  const n = b.length;
+  if (a.some((row) => row.some((v) => v.root !== 1n)) || b.some((v) => v.root !== 1n)) return undefined;
+  const m: Exact[][] = a.map((row, i) => [...row, b[i]!]);
+  for (let c = 0; c < n; c++) {
+    const p = m.findIndex((row, i) => i >= c && row[c]!.num !== 0n);
+    if (p === -1) return undefined;
+    [m[c], m[p]] = [m[p]!, m[c]!];
+    for (let i = 0; i < n; i++) {
+      if (i === c || m[i]![c]!.num === 0n) continue;
+      const f = divide(m[i]![c]!, m[c]![c]!);
+      if (!f) return undefined;
+      for (let k = c; k <= n; k++) {
+        const product = multiply(f, m[c]![k]!);
+        const next = product && subtract(m[i]![k]!, product);
+        if (!next) return undefined;
+        m[i]![k] = next;
+      }
+    }
+  }
+  const x = m.map((row, i) => divide(row[n]!, row[i]!));
+  return x.every((v): v is Exact => v !== undefined) ? x : undefined;
+}
+
 /** A whole power; negative ones too. */
 export function power(a: Exact, n: number): Exact | undefined {
   if (!Number.isInteger(n) || Math.abs(n) > 64) return undefined;

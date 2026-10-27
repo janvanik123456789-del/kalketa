@@ -334,8 +334,12 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
   const skipTitle = titleHeading?.kind === 'heading' && titleHeading.level === 1 && titleHeading.text === options.title ? titleHeading : undefined;
 
   let figures = 0;
+  // The values of the position the line stands in (Pos. 1), for its substitutions.
+  const positions = new Map([...result.values.values()].flatMap((v) => (v.type === 'record' && v.position !== undefined ? [[v.position, v.values] as const] : [])));
+  let scope: ReadonlyMap<string, Value> | undefined;
   for (const r of result.statements) {
     const s = r.statement;
+    if (s.kind === 'heading' && r.position !== undefined) scope = positions.get(r.position);
     if (s === skipTitle) continue;
     if (s.kind === 'directive') {
       applyDirective(s.name, s.args, mode, blocks);
@@ -483,7 +487,7 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
           blocks.push(selectionBlock(r, result, options, formulaOptions(), messages));
           break;
         }
-        const substitute = substitution(result, quantityNode, formulaOptions());
+        const substitute = substitution(result, quantityNode, formulaOptions(), scope);
         // A user function shows as "A_kruh(d) = π·d²/4": its parameters have no values to substitute.
         const params = s.kind === 'definition' ? s.params : undefined;
         const lhs = s.kind !== 'definition' ? undefined : params ? functionHead(s.name, params, formulaOptions().argumentSeparator) : nameNode(s.name);
@@ -550,14 +554,14 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
           eq.named !== undefined && result.sheet.statements.some((o) => o.kind === 'derive' && o.relation && o.format?.eq === eq.named && blocks.some((b) => b.kind === 'equation' && b.line === o.span.line));
         const from = s.equations.every(printedAbove) ? s.equations.map((eq) => eq.named!) : undefined;
         const lines: EquationLine[] = from ? [] : s.equations.map(named).map((eq) => ({ role: 'formula', lhs: formulaNode(eq.left, formulaOptions()), op: sign(eq.relation), rhs: formulaNode(eq.right, formulaOptions()) }));
+        // y′(x_v) = 0 written out as on paper: 2·a·x_v + b = 0.
+        if (r.expanded && !r.roots) lines.push({ role: 'formula', op: '', rhs: row(formulaNode(r.expanded.left, formulaOptions()), mo('='), formulaNode(r.expanded.right, formulaOptions())) });
         // The interval decides which root is found: "0 ≤ x ≤ 10".
         if (s.range && s.unknowns[0]) {
           // Of a differential equation the interval is its variable's: 0 ≤ x ≤ L.
           const range = row(formulaNode(s.range.low, formulaOptions()), mo('≤'), nameNode(s.ode?.variable ?? s.unknowns[0].name), mo('≤'), formulaNode(s.range.high, formulaOptions()));
           lines.push({ role: 'formula', op: '', rhs: range });
         }
-        // y′(x_v) = 0 written out as on paper: 2·a·x_v + b = 0.
-        if (r.expanded && !r.roots) lines.push({ role: 'formula', op: '', rhs: row(formulaNode(r.expanded.left, formulaOptions()), mo('='), formulaNode(r.expanded.right, formulaOptions())) });
         // Under its conditions (x ∈ ℝ, x > 0) the solution is worked out as on paper.
         if (r.roots && s.unknowns[0]) {
           lines.push(...rootLines(s, r.roots, s.unknowns[0].name, spec, quantityNode));
@@ -579,7 +583,7 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
           // Expressed by a formula: L = √(8·M_Ed/q) = √(8·37,5 kN·m / 12 kN/m) = 5 m, checkable by hand.
           const formula = formulaNode(found.formula, formulaOptions());
           lines.push({ role: 'formula', lhs: nameNode(found.name), op: sign(found.relation), rhs: formula, ...(found.relation ? { lead: '⇒' } : {}) });
-          const substituted = formulaNode(found.formula, formulaOptions(substitution(result, quantityNode, formulaOptions())));
+          const substituted = formulaNode(found.formula, formulaOptions(substitution(result, quantityNode, formulaOptions(), scope)));
           if (mode.substitution && toText(substituted) !== toText(formula)) lines.push({ role: 'substitution', rhs: substituted });
           lines.push({ role: 'result', rhs: value });
         }
@@ -736,7 +740,7 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
       return valueNode(d.value, d.unit, numberFormat(spec), d.im, dateFormat, mode.exact || s.format?.exact ? d.exact : undefined, s.format?.polar);
     };
     const substituted = (expr: Expr, extra?: (e: Expr) => Substituted | undefined) => {
-      const sub = substitution(result, quantityNode, o);
+      const sub = substitution(result, quantityNode, o, scope);
       return formulaNode(expr, formulaOptions((e) => extra?.(e) ?? putCoefficients(e) ?? sub(e)));
     };
     // y(x) = 0 written out: a·x² + b·x + c = 0, then with the numbers: 5·x² + 4·x − 10 = 0 (the unknown stays).
@@ -1097,7 +1101,9 @@ function equationLines(
   if (mode.substitution && !plainVariable && hasSubstitutableParts(expr) && r.status === 'ok') {
     // Nothing substituted (e.g. a series stays a name): no second, identical line.
     const substituted = formulaNode(expr, formulaOptions(substitute));
-    if (toText(substituted) !== toText(lines[0]!.rhs)) lines.push({ role: 'substitution', rhs: substituted });
+    // Nor one that only repeats the result: mean(α_i) put in is the mean itself (ᾱ = 1,219·10⁻⁵ 1/°C, once).
+    const same = (a: MathNode, b: MathNode) => toText(a).replace(/\s/g, '') === toText(b).replace(/\s/g, '');
+    if (!same(substituted, lines[0]!.rhs) && !(result && same(substituted, result))) lines.push({ role: 'substitution', rhs: substituted });
   }
   if (result) lines.push({ role: 'result', rhs: result });
   return lines;
@@ -1121,7 +1127,9 @@ function resultNode(
 }
 
 /** Replaces variables and table columns by their values. */
-function substitution(result: SheetResult, quantityNode: (q: Quantity, name?: string) => MathNode, formulaOptions: FormulaOptions) {
+function substitution(result: SheetResult, quantityNode: (q: Quantity, name?: string) => MathNode, formulaOptions: FormulaOptions, scope?: ReadonlyMap<string, Value>) {
+  // In a position (Pos. 1) its own values: a name defined again in a later position has another one there.
+  const valueOf = (name: string): Value | undefined => scope?.get(name) ?? result.values.get(name);
   const wrap = (value: Value | undefined, name?: string): Substituted | undefined => {
     if (!value) return undefined;
     if (value.type === 'quantity') {
@@ -1135,16 +1143,16 @@ function substitution(result: SheetResult, quantityNode: (q: Quantity, name?: st
     return undefined;
   };
   return (expr: Expr): Substituted | undefined => {
-    if (expr.kind === 'variable') return wrap(result.values.get(expr.name), expr.name);
+    if (expr.kind === 'variable') return wrap(valueOf(expr.name), expr.name);
     // mean(t_i) with the numbers put in: the mean itself, 18,62 s (the series is too long to write out).
     if (expr.kind === 'call' && expr.args.length === 1 && expr.args[0]!.kind === 'variable') {
-      const series = result.values.get(expr.args[0].name);
+      const series = valueOf(expr.args[0].name);
       if (series?.type === 'vector') return wrap(seriesStatistic(expr.name, series.items));
     }
     // pick(Prvky, "Mn").A with the number put in: the cell of that row and column, 54,938 g/mol.
     if (expr.kind === 'member' && expr.object.kind === 'call' && expr.object.name === 'pick' && expr.object.args.length === 2) {
       const [tableExpr, keyExpr] = expr.object.args;
-      const value = tableExpr!.kind === 'variable' ? result.values.get(tableExpr!.name) : undefined;
+      const value = tableExpr!.kind === 'variable' ? valueOf(tableExpr!.name) : undefined;
       if (value?.type !== 'table' || keyExpr!.kind !== 'string') return undefined;
       const table = value.table;
       const keyColumn = table.columns.findIndex((c) => c.name === table.key);
@@ -1153,7 +1161,7 @@ function substitution(result: SheetResult, quantityNode: (q: Quantity, name?: st
       return column >= 0 && found ? wrap(found[column] ?? undefined, `${table.name}.${expr.name}`) : undefined;
     }
     if (expr.kind === 'member' && expr.object.kind === 'variable') {
-      const object = result.values.get(expr.object.name);
+      const object = valueOf(expr.object.name);
       if (object?.type !== 'row') return undefined;
       const index = object.table.columns.findIndex((c) => c.name === expr.name);
       return wrap(object.cells[index] ?? undefined);

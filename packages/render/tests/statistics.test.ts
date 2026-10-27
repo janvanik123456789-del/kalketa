@@ -10,8 +10,13 @@ const lines = (source: string) => {
 };
 
 describe('statistics of a series in print', () => {
+  it('do not put in a mean that only repeats the result (P4 of the samples)', () => {
+    expect(lines('α_i := [1.5e-5, 1.1e-5, 1.3e-5]\nα := mean(α_i)')).toEqual(['ᾱ', '1,3·10^−5']);
+  });
+
   it('write the mean as t̄ and put in its value, not the function again', () => {
-    expect(lines('t_i := [18.60, 18.55, 18.60, 18.70, 18.65] s\nT_k := mean(t_i)/8')).toEqual(['(t̄)/8', '(18,62 s)/8', '2,327 s']);
+    // 18,62 s/8 = 2,3275 s on paper (2,32749… in binary), rounded to four digits 2,328 s.
+    expect(lines('t_i := [18.60, 18.55, 18.60, 18.70, 18.65] s\nT_k := mean(t_i)/8')).toEqual(['(t̄)/8', '(18,62 s)/8', '2,328 s']);
   });
 
   it('write the standard deviation as s_t and the count by its value', () => {

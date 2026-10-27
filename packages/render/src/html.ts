@@ -356,7 +356,7 @@ export function renderBlockHtml(block: PrintBlock, catalog: Catalog, options: Bl
       const image = block.src
         ? `<img src="${esc(block.src)}" alt="${esc(block.caption)}">`
         : `<div class="missing-image">${esc(t(catalog, 'print.pictureMissing', { path: block.path }))}</div>`;
-      const caption = block.label ? `<figcaption><span class="figure-label">${esc(block.label)}:</span> ${esc(block.caption)}</figcaption>` : '';
+      const caption = block.label ? `<figcaption><span class="figure-label">${esc(block.label)}:</span> ${namesInText(block.caption)}</figcaption>` : '';
       const wrap = block.wrap ? ` wrap-${block.wrap}` : block.align ? ` align-${block.align}` : '';
       // Placed freely: an empty stop of its height moves it down, a margin away from its edge.
       const styles = [block.width !== undefined ? `width:${block.width}%` : '', block.wrap && block.dx ? `margin-${block.wrap}:${block.dx}%` : '', block.wrap && block.dy ? `clear:${block.wrap}` : ''].filter(Boolean);
@@ -364,13 +364,13 @@ export function renderBlockHtml(block: PrintBlock, catalog: Catalog, options: Bl
       return `${stop}<figure class="block picture${block.width === undefined ? ' natural' : ''}${wrap}" data-line="${block.line}"${styles.length ? ` style="${styles.join(';')}"` : ''}>${image}${caption}</figure>`;
     }
     case 'chart': {
-      const caption = block.label ? `<figcaption><span class="figure-label">${esc(block.label)}:</span> ${esc(block.caption)}</figcaption>` : '';
+      const caption = block.label ? `<figcaption><span class="figure-label">${esc(block.label)}:</span> ${namesInText(block.caption)}</figcaption>` : '';
       // Placed as a picture: at an edge, or flowed around and moved from its line.
       const place = block.wrap ? ` wrap-${block.wrap}` : block.align ? ` align-${block.align}` : '';
       const styles = [block.width !== undefined ? `width:${block.width}%` : '', block.wrap && block.dx ? `margin-${block.wrap}:${block.dx}%` : '', block.wrap && block.dy ? `clear:${block.wrap}` : ''].filter(Boolean);
       const stop = block.wrap && block.dy ? `<div class="wrap-stop wrap-${block.wrap}" style="height:${block.dy}mm"></div>` : '';
       // The cut of a surface: a figure of its own below it, as wide, with its caption.
-      const cut = block.cut ? `<figure class="block chart chart-cut-figure${place}" data-line="${block.line}"${styles.length ? ` style="${styles.join(';')}"` : ''}>${block.cut.svg}<figcaption>${esc(block.cut.caption)}</figcaption></figure>` : '';
+      const cut = block.cut ? `<figure class="block chart chart-cut-figure${place}" data-line="${block.line}"${styles.length ? ` style="${styles.join(';')}"` : ''}>${block.cut.svg}<figcaption>${namesInText(block.cut.caption)}</figcaption></figure>` : '';
       return `${stop}<figure class="block chart${place}" data-line="${block.line}"${styles.length ? ` style="${styles.join(';')}"` : ''}>${block.svg}${caption}${messages(block.messages)}</figure>${cut}`;
     }
     case 'equation':

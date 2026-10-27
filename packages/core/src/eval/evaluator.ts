@@ -193,7 +193,8 @@ function evaluateRaw(expr: Expr, ctx: EvalContext): Value {
       }
       if (expr.column) fail('E-TYPE', expr.object.span, { expected: 'matrix', found: object.type === 'quantity' ? 'number' : object.type });
       // p := polyfit(x, y, 1): p[1] is the slope, as in MATLAB the coefficients from the highest power down.
-      const polynomial = object.type === 'function' && object.fit && degreeOf(object.fit.kind) !== undefined && !object.fit.zero ? object.fit.coefficients.map((c) => c.value).reverse() : undefined;
+      // With x in °C they are those of the reading of the thermometer, as np.polyfit gives them for the numbers.
+      const polynomial = object.type === 'function' && object.fit && degreeOf(object.fit.kind) !== undefined ? object.fit.coefficients.map((c) => c.value).reverse() : undefined;
       if (object.type !== 'vector' && !polynomial) return fail('E-TYPE', expr.object.span, { expected: 'vector', found: object.type === 'quantity' ? 'number' : object.type });
       const items = polynomial ?? (object as VectorValue).items;
       const index = asQuantity(evaluate(expr.index, ctx), expr.index.span);

@@ -22,6 +22,21 @@ describe('distributions of measured data', () => {
     expect(value('p := normcdf(-8)', 'p')).toBeCloseTo(6.22096057427178e-16, 25);
   });
 
+  it('give χ² and F as SciPy does, for tests of hypotheses (M4 of the samples)', () => {
+    // scipy.stats.chi2.cdf / ppf, scipy.stats.f.cdf / ppf
+    expect(value('p := chi2cdf(8.53, 3)', 'p')).toBeCloseTo(0.9637613302853121, 12);
+    expect(value('x := chi2inv(0.95, 3)', 'x')).toBeCloseTo(7.814727903251179, 10);
+    expect(value('x := chi2inv(0.01, 1)', 'x')).toBeCloseTo(0.00015708785790970184, 14);
+    expect(value('x := chi2inv(0.999, 50)', 'x')).toBeCloseTo(86.66081519040317, 9);
+    expect(value('p := chi2cdf(120, 100)', 'p')).toBeCloseTo(0.9155933189063082, 12);
+    expect(value('p := fcdf(0.42, 3, 24)', 'p')).toBeCloseTo(0.25969608778629194, 12);
+    expect(value('x := finv(0.95, 3, 24)', 'x')).toBeCloseTo(3.0087865704473615, 10);
+    expect(value('x := finv(0.05, 2, 10)', 'x')).toBeCloseTo(0.05155729658968043, 12);
+    expect(value('p := fcdf(5, 1, 1)', 'p')).toBeCloseTo(0.7322795271987701, 12);
+    expect(codes('x := chi2inv(1, 3)')).toEqual(['E-DOMAIN']);
+    expect(codes('p := fcdf(1, 3, 0)')).toEqual(['E-DOMAIN']);
+  });
+
   it('take only probabilities between 0 and 1, positive degrees of freedom and plain numbers', () => {
     expect(codes('k := tinv(1, 21)')).toEqual(['E-DOMAIN']);
     expect(codes('k := tinv(0.975, 0)')).toEqual(['E-DOMAIN']);

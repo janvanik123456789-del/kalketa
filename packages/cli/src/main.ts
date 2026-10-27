@@ -42,8 +42,8 @@ const USAGE = [
   '  kalketa import-table <file.csv|file.xlsx> --name <Table> [--sheet <name>] [--into <folder>] [--source <title>]',
 ].join('\n');
 
-async function main(argv: string[]): Promise<number> {
-  const { positionals, values } = parseArgs({
+function parseOptions(argv: string[]) {
+  return parseArgs({
     args: argv,
     allowPositionals: true,
     options: {
@@ -56,8 +56,25 @@ async function main(argv: string[]): Promise<number> {
       title: { type: 'string' },
       source: { type: 'string' },
       pdf: { type: 'string' },
+      help: { type: 'boolean', short: 'h' },
     },
   });
+}
+
+async function main(argv: string[]): Promise<number> {
+  let parsed: ReturnType<typeof parseOptions>;
+  try {
+    parsed = parseOptions(argv);
+  } catch (e) {
+    // An unknown option is a mistake of the caller, not a crash.
+    console.error(`${(e as Error).message}\n\n${USAGE}`);
+    return 2;
+  }
+  const { positionals, values } = parsed;
+  if (values.help) {
+    console.log(USAGE);
+    return 0;
+  }
   const [command, file, name] = positionals;
   const catalog = catalogFor(values.lang);
   const digits = Number(values.digits);

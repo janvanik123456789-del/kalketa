@@ -5,7 +5,7 @@
  */
 
 import { rootHint } from '../units/compose.js';
-import { squareRoot } from '../values/exact.js';
+import { squareRoot, type Exact } from '../values/exact.js';
 import { fail } from '../diagnostics.js';
 import { dim, isDimensionless, powerDim, sameDim } from '../units/dimension.js';
 import { baseUnitSymbol } from '../units/display.js';
@@ -16,10 +16,28 @@ import { compare } from '../eval/evaluator.js';
 import { withBareZero } from '../eval/zero.js';
 import type { Expr } from '../lang/ast.js';
 import type { Args, FunctionDef, FunctionModuleId } from './registry.js';
-import { normalCdf, normalQuantile, studentCdf, studentQuantile } from './distributions.js';
+import { chiSquareCdf, chiSquareQuantile, fisherCdf, fisherQuantile, normalCdf, normalQuantile, studentCdf, studentQuantile } from './distributions.js';
 
 /** A function of one plain number, with an optional domain; on a series it is taken item by item (exp(-t/τ) for the times t). */
-function plain(name: string, module: FunctionModuleId, f: (x: number) => number, domain?: (x: number) => boolean): FunctionDef {
+/**
+ * ⌊x⌋, ⌈x⌉ or the nearest whole number as on paper: from the exact form where the value has one
+ * (⌊(0.7 + 0.1)·10⌋ is 8, though the binary number is 7.999…), else with the last bits of rounding ignored.
+ */
+function whole(x: number, exact: Exact | undefined, how: 'floor' | 'ceil' | 'round'): number {
+  if (exact && exact.root === 1n) {
+    // Division of bigints truncates toward zero: floor and ceil from it and the sign of the remainder.
+    const { num, den } = how === 'round' ? { num: 2n * exact.num + exact.den, den: 2n * exact.den } : exact;
+    const q = num / den;
+    const r = num % den;
+    if (how === 'ceil') return Number(r > 0n ? q + 1n : q);
+    return Number(r < 0n ? q - 1n : q);
+  }
+  const near = Math.round(x);
+  if (Math.abs(x - near) <= 1e-12 * Math.max(1, Math.abs(x))) return near;
+  return how === 'floor' ? Math.floor(x) : how === 'ceil' ? Math.ceil(x) : near;
+}
+
+function plain(name: string, module: FunctionModuleId, f: (x: number, q: Quantity) => number, domain?: (x: number) => boolean): FunctionDef {
   return {
     name,
     module,
@@ -30,7 +48,7 @@ function plain(name: string, module: FunctionModuleId, f: (x: number) => number,
       const one = (q: Quantity): Quantity => {
         if (!isDimensionless(q.dim)) fail('E-FUNC-ARG-DIM', a.expr(0).span, { function: a.name, dim: baseUnitSymbol(q.dim) });
         if (domain && !domain(q.si)) a.domain(0);
-        return quantity(f(q.si));
+        return quantity(f(q.si, q));
       };
       if (value.type === 'vector') return { type: 'vector', items: value.items.map(one) };
       return one(asQuantity(value, a.expr(0).span));
@@ -173,8 +191,8 @@ export const MATH: readonly FunctionDef[] = [
     arity: [1, 1],
     call: (a) => quantity(Math.sign(a.quantity(0).si)),
   },
-  plain('floor', 'math', Math.floor),
-  plain('ceil', 'math', Math.ceil),
+  plain('floor', 'math', (x, q) => whole(x, q.exact, 'floor')),
+  plain('ceil', 'math', (x, q) => whole(x, q.exact, 'ceil')),
   {
     name: 'round',
     module: 'math',
@@ -186,7 +204,8 @@ export const MATH: readonly FunctionDef[] = [
       const n = a.count > 1 ? a.number(1) : 0;
       if (!Number.isInteger(n) || n < 0 || n > 15) a.domain(1);
       const scale = 10 ** n;
-      return quantity(Math.round(x * scale) / scale);
+      const given = asQuantity(a.value(0), a.expr(0).span);
+      return quantity(n === 0 ? whole(x, given.exact, 'round') : whole(x * scale, undefined, 'round') / scale);
     },
   },
   plain('exp', 'math', Math.exp),
@@ -449,6 +468,62 @@ export const STATISTICS: readonly FunctionDef[] = [
       if (!(p > 0 && p < 1)) a.domain(0);
       if (!(nu > 0)) a.domain(1);
       return quantity(studentQuantile(p, nu));
+    },
+  },
+  {
+    // P(X ≤ x) of the χ² distribution with ν degrees of freedom: the p-value of a goodness-of-fit test is 1 − chi2cdf(x, ν).
+    name: 'chi2cdf',
+    module: 'statistics',
+    params: 'x, ν',
+    arity: [2, 2],
+    call: (a) => {
+      const nu = a.number(1);
+      if (!(nu > 0)) a.domain(1);
+      return quantity(chiSquareCdf(a.number(0), nu));
+    },
+  },
+  {
+    // The p-quantile of χ²: the critical value of a test at 5 % with 3 degrees of freedom, chi2inv(0.95, 3) = 7.815.
+    name: 'chi2inv',
+    module: 'statistics',
+    params: 'p, ν',
+    arity: [2, 2],
+    call: (a) => {
+      const p = a.number(0);
+      const nu = a.number(1);
+      if (!(p > 0 && p < 1)) a.domain(0);
+      if (!(nu > 0)) a.domain(1);
+      return quantity(chiSquareQuantile(p, nu));
+    },
+  },
+  {
+    // P(X ≤ x) of the F distribution with ν₁, ν₂ degrees of freedom: the p-value of an analysis of variance is 1 − fcdf(F, k − 1, n − k).
+    name: 'fcdf',
+    module: 'statistics',
+    params: 'x, ν₁, ν₂',
+    arity: [3, 3],
+    call: (a) => {
+      const nu1 = a.number(1);
+      const nu2 = a.number(2);
+      if (!(nu1 > 0)) a.domain(1);
+      if (!(nu2 > 0)) a.domain(2);
+      return quantity(fisherCdf(a.number(0), nu1, nu2));
+    },
+  },
+  {
+    // The p-quantile of F: finv(0.95, 3, 24) = 3.009.
+    name: 'finv',
+    module: 'statistics',
+    params: 'p, ν₁, ν₂',
+    arity: [3, 3],
+    call: (a) => {
+      const p = a.number(0);
+      const nu1 = a.number(1);
+      const nu2 = a.number(2);
+      if (!(p > 0 && p < 1)) a.domain(0);
+      if (!(nu1 > 0)) a.domain(1);
+      if (!(nu2 > 0)) a.domain(2);
+      return quantity(fisherQuantile(p, nu1, nu2));
     },
   },
   {

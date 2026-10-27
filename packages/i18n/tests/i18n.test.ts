@@ -42,6 +42,12 @@ describe('formatNumber', () => {
     expect(formatNumber(1.602e-19, catalogFor('en'))).toBe('1.602E-19');
     expect(formatNumber(0, catalogFor('en'))).toBe('0');
   });
+
+  it('rounds the number as written on paper, not its binary neighbour (F4 of the samples)', () => {
+    // 120 000·1.025³ = 129 226.875 exactly; in binary 129 226.87499…
+    expect(formatNumber(120000 * 1.025 ** 3, catalogFor('cs'), { decimals: 2 })).toBe('129 226,88');
+    expect(formatNumber(1.005, catalogFor('en'), { decimals: 2 })).toBe('1.01');
+  });
 });
 
 describe('function help', () => {

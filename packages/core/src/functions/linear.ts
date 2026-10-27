@@ -12,6 +12,7 @@ import { fail, type Span } from '../diagnostics.js';
 import { DIMENSIONLESS, divideDims, isDimensionless, multiplyDims, powerDim, sameDim, type Dimension } from '../units/dimension.js';
 import { baseUnitSymbol } from '../units/display.js';
 import { quantity, type MatrixValue, type Quantity, type Value, type VectorValue } from '../values/value.js';
+import { solveLinear, type Exact } from '../values/exact.js';
 import type { Args, FunctionDef } from './registry.js';
 
 // ---------------------------------------------------------------- building
@@ -279,7 +280,11 @@ export const LINEAR: readonly FunctionDef[] = [
         const s = divideDims(at(b, 0, c).dim, rows[0]!);
         for (let i = 1; i < n; i++) if (!sameDim(at(b, i, c).dim, multiplyDims(rows[i]!, s))) fail('E-MATRIX-UNITS', a.expr(1).span, { function: a.name, row: i + 1, col: c + 1 });
         const x = luSolve(d, Array.from({ length: n }, (_, i) => at(b, i, c).si));
-        x.forEach((value, j) => (items[j * b.cols + c] = quantity(value, divideDims(s, cols[j]!))));
+        // With every element exact (written in decimals), the solution is exact too: 96/83.
+        const given = Array.from({ length: n }, (_, i) => at(b, i, c).exact);
+        const coefficients = Array.from({ length: n }, (_, i) => Array.from({ length: n }, (_, j) => at(m, i, j).exact));
+        const exactly = given.every((e) => e) && coefficients.every((row) => row.every((e) => e)) ? solveLinear(coefficients as Exact[][], given as Exact[]) : undefined;
+        x.forEach((value, j) => (items[j * b.cols + c] = quantity(value, divideDims(s, cols[j]!), exactly ? { exact: exactly[j]! } : {})));
       }
       return normalized(matrix(n, b.cols, items));
     },

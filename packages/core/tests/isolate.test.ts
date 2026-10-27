@@ -16,6 +16,12 @@ describe('solve expresses one unknown as a formula', () => {
     expect(solution!.display.unit).toBe('m');
   });
 
+  it('cancels two minuses: a payment of a loan is D/(…), not −−D/(…) (F4 of the samples)', () => {
+    const { solution } = solved('D := 50000 CZK\ni := 8 %\nsolve x: D == x/(1 + i) + x/(1 + i)^2');
+    expect(formatExpr(solution!.formula!)).toBe('D/(1/(1 + i) + 1/(1 + i)^2)');
+    expect(solution!.display.value).toBeCloseTo(28038.46, 2);
+  });
+
   it('expresses a diameter from the shear stress, with a cube root', () => {
     const { solution, codes } = solved('M_k := 98.79 N·m\nτ_dov := 60 MPa\nsolve d: τ_dov == 16·M_k/(π·d^3)');
     expect(codes).toEqual([]);

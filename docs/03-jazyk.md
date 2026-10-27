@@ -134,6 +134,7 @@ Nejčastější past jednotkových systémů. Pravidla (**převzato z Calcpadu +
 - `4180 J/(kg·K)` · `60 K` funguje. `4180 J/(kg·°C)` se v jednotce interpretuje jako rozdíl, tedy `J/(kg·Δ°C)`.
 - **Jméno rozdílu (2026-10-26):** `ΔT := 50 °C` (jméno začíná `Δ`, hodnota je číslo ve `°C` nebo `°F`) je rozdíl `50 Δ°C`, jak to píšou učebnice; `α_T·ΔT` pak není součin absolutní teploty. Jiné jméno (`T := 50 °C`) zůstává absolutní teplotou.
 - **Převrácená jednotka za číslem (2026-10-26):** `12e-6 1/°C`, `50 1/s`, `3 1/(m·s)` jako v knihách (vedle sebe dvě čísla jinak součin nejsou).
+- **Jednotka v závorce za číslem nebo výrazem (2026-10-27):** `K_s := 1.8e-10 (mol/l)^2`, `K_s := 10^(-pK_s) (mol/l)^3` jako součiny rozpustnosti v knihách: mocnina patří jen jednotce, ne číslu. Obsahuje-li závorka jméno definované výše nebo cokoli jiného než jednotky, zůstává součinem (`2(a + b)`, `2(L)`).
 
 ### 4.5 Bezrozměrné a zvláštní dimenze
 
@@ -222,7 +223,7 @@ Funkce jsou v **registru funkcí** rozdělené do modulů. Každá funkce má v 
 | Goniometrické a hyperbolické | `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `atan2(y, x)`, `sinh`, `cosh`, `tanh`, `asinh`, `acosh`, `atanh` |
 | Komplexní čísla | `re`, `im`, `conj`, `arg`, `polar(r, φ)` (7.1a) |
 | Řady | `range`, `sum`, `len`, `cumsum` (7.1b) |
-| Statistika | `mean`, `median`, `stdev` (výběrová, n − 1); rozdělení jako v MATLABu: `normcdf(x)`, `norminv(p)`, `tcdf(t, ν)`, `tinv(p, ν)` – koeficient rozšíření pro 95 % z n měření `k := tinv(0.975, n - 1)` (2026-10-26). Diskrétní: `nchoosek(n, k)` (tiskne se jako kombinační číslo), `binopdf`, `binocdf(k, n, p)`, `poisspdf`, `poisscdf(k, λ)`; `factorial(n)` se tiskne n!. Průměr a medián teplot ve °C jsou teplotou, směrodatná odchylka rozdílem; řada `[20, 25] °C` jsou teploty jako `20 °C` |
+| Statistika | `mean`, `median`, `stdev` (výběrová, n − 1); rozdělení jako v MATLABu: `normcdf(x)`, `norminv(p)`, `tcdf(t, ν)`, `tinv(p, ν)` – koeficient rozšíření pro 95 % z n měření `k := tinv(0.975, n - 1)` (2026-10-26). Pro testy hypotéz `chi2cdf(x, ν)`, `chi2inv(p, ν)`, `fcdf(x, ν₁, ν₂)`, `finv(p, ν₁, ν₂)`: p-hodnota testu dobré shody `1 - chi2cdf(G, k - 1)`, analýzy rozptylu `1 - fcdf(F, k - 1, n - k)` (2026-10-27). Diskrétní: `nchoosek(n, k)` (tiskne se jako kombinační číslo), `binopdf`, `binocdf(k, n, p)`, `poisspdf`, `poisscdf(k, λ)`; `factorial(n)` se tiskne n!. Průměr a medián teplot ve °C jsou teplotou, směrodatná odchylka rozdílem; řada `[20, 25] °C` jsou teploty jako `20 °C` |
 | Finance | `npv`, `irr`, `pmt`, `payback` (7.1b) |
 | Data | `date`, `year`, `month`, `day` (7.1b) |
 | Logika | `if(podmínka, a, b)` (7.3) |
@@ -274,7 +275,7 @@ rok := sum(Vyroba.E)                         ' sloupec tabulky jako řada
 
 **Data:** `2026-09-29` (bez mezer; s mezerami je to odčítání) je absolutní čas jako absolutní teplota:
 `datum − datum` dá dny, `datum + 30 d` dá datum, `(d_2 − d_1) | yr` dá roky, dvě data sečíst ani násobit nejde.
-Funkce `date(2026, 9, 29)`, `year`, `month`, `day`; jednotky `wk` a `yr` (365,25 d; ne `a`, to je příliš časté jméno).
+Funkce `date(2026, 9, 29)`, `year`, `month`, `day`; jednotky `wk`, `yr` (365,25 d; ne `a`, to je příliš časté jméno) a `mo` (měsíc = yr/12 = 30,4375 d, pro doby ve financích: `5 yr + 7 mo`; datum + `1 mo` není kalendářní měsíc, 2026-10-27).
 Tabulky mají sloupce typu `date` (`2026-09-29` i `29.9.2026`); kurz k datu: `find_max(Kurzy, by: datum, where: r.datum ≤ d).EUR`.
 Data se píší v jazyce tisku: „29. 9. 2026“.
 

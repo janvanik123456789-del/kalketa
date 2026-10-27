@@ -85,7 +85,9 @@ export function complexText(re: number, im: number, format: (x: number) => strin
 
 export function formatNumber(value: number, catalog: Catalog, options: NumberFormatOptions = {}): string {
   // −0 (as −b/(2·a) with b = 0 gives) and a negative number rounded to nothing are plain 0.
-  const shown = formatSigned(value === 0 ? 0 : value, catalog, options);
+  // Read to 15 digits first: 1.025³·120 000 is 129 226,874999… in binary, 129 226,875 on paper, and rounds to ,88.
+  const clean = Number.isFinite(value) ? Number(value.toPrecision(15)) : value;
+  const shown = formatSigned(clean === 0 ? 0 : clean, catalog, options);
   return /^[-−]0(?:[.,]0+)?$/.test(shown) ? shown.slice(1) : shown;
 }
 

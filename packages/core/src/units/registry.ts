@@ -98,6 +98,8 @@ const BUILT_IN: readonly UnitDef[] = [
   { symbol: 'wk', factor: 7 * 86400, dim: T },
   // Year: 365.25 days (the Julian year). Not "a": that is too common a name (side, acceleration).
   { symbol: 'yr', factor: 365.25 * 86400, dim: T },
+  // Month: a twelfth of that year (30.4375 d), for periods as finance writes them (5 yr + 7 mo); a date plus a calendar month is not this.
+  { symbol: 'mo', factor: (365.25 * 86400) / 12, dim: T },
 
   // Mechanics
   { symbol: 'N', factor: 1, dim: FORCE, prefixable: true },

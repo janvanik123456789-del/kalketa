@@ -282,6 +282,16 @@ describe('units of chemistry and of American handbooks', () => {
     expectValue('n := 0.5 mmol\nn/(2 l)', 0.25, 'mmol/l');
     expectValue('n := 2 mol\nn/(4 m^3)', 0.5, 'mol/m³');
   });
+
+  it('take a unit in brackets after a number or a value as theirs, its power the unit\'s only (C4 of the samples)', () => {
+    // K_s of AgCl: 1.8e-10 (mol/l)², not (1.8e-10 mol/l)².
+    expectValue('K_s := 1.8e-10 (mol/l)^2\nsqrt(K_s) | mol/l', Math.sqrt(1.8e-10), 'mol/l');
+    expect(codes('K_s := 1.8e-10 (mol/l)^2')).toEqual([]);
+    expectValue('pK := 12.58\nK := 10^(-pK) (mol/l)^3\ncbrt(K/4) | mol/l', Math.cbrt(10 ** -12.58 / 4), 'mol/l');
+    // Names in the brackets keep the product: 2(a + b), 2(L).
+    expectValue('a := 1 m\nb := 2 m\n2(a + b)', 6, 'm');
+    expectValue('L := 3 m\n2(L)', 6, 'm');
+  });
 });
 
 describe('temperatures and their differences as books write them', () => {

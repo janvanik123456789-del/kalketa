@@ -14,16 +14,28 @@ export function fitWideEquations(root: ParentNode): void {
   const scaleOf = (width: number, room: number) => (room > 0 && width > room + 1 ? Math.max(0.5, Math.floor((room / width) * 1000) / 1000) : 1);
   // In the steps of an equation only the steps too wide are made smaller (a substitution with all
   // its units), the equation and its result above and below them stay as they are.
-  // A sum a + b + c is written as nested rows ((a + b) + c): its terms lie along the left edge.
-  const termsOf = (math: Element): Element[] | undefined => {
+  // The pieces a long line may be broken between, each kept whole. A sum a + b + c is written as nested
+  // rows ((a + b) + c): its terms lie along the left edge, each with the sign before it ([a], [+ b], [+ c]).
+  // A series [x₁; x₂; …] unit breaks after its semicolons ([[ x₁ ;], [x₂ ;], …, [xₙ ] unit]).
+  const piecesOf = (math: Element): Element[][] | undefined => {
     let node: Element | null = math.firstElementChild;
     while (node && node.localName === 'mrow' && node.children.length === 1) node = node.firstElementChild;
-    const parts: Element[] = [];
+    if (!node) return undefined;
+    const items = [...node.children];
+    if (node.localName === 'mrow' && items[0]?.localName === 'mo' && items[0].textContent === '[') {
+      const pieces: Element[][] = [[]];
+      for (const item of items) {
+        pieces.at(-1)!.push(item);
+        if (item.localName === 'mo' && item.textContent === ';') pieces.push([]);
+      }
+      return pieces.length >= 3 ? pieces : undefined;
+    }
+    const parts: Element[][] = [];
     while (node && node.localName === 'mrow' && node.children.length === 3 && node.children[1]!.localName === 'mo' && ['+', '−', '-'].includes(node.children[1]!.textContent ?? '')) {
-      parts.unshift(node.children[1]!, node.children[2]!);
+      parts.unshift([node.children[1]!, node.children[2]!]);
       node = node.children[0]!;
     }
-    return node && parts.length >= 4 ? [node, ...parts] : undefined;
+    return node && parts.length >= 2 ? [[node], ...parts] : undefined;
   };
   const rooms = cells.map((math) => {
     const table = math.closest('table');
@@ -34,24 +46,23 @@ export function fitWideEquations(root: ParentNode): void {
     return room - others - Math.max(0, (math.parentElement?.offsetWidth ?? 0) - widest);
   });
   const rows = cells.map((math, i) => scaleOf(math.scrollWidth, rooms[i]!));
-  // A long sum is broken before a plus or minus onto more lines, as on paper, rather than made
-  // small: lines filled greedily by the measured widths of its terms, the next ones indented.
+  // A long sum is broken before a plus or minus, a long series after a semicolon, onto more lines as on
+  // paper, rather than made small: lines filled greedily by the measured widths of the pieces, the next ones indented.
   const breaks = cells.map((math, i) => {
     if (rows[i]! >= 0.9 || math.classList.contains('eq-line')) return undefined;
-    const terms = termsOf(math);
-    if (!terms) return undefined;
-    const widths = terms.map((t) => t.getBoundingClientRect().width);
+    const pieces = piecesOf(math);
+    if (!pieces) return undefined;
+    const widths = pieces.map((piece) => piece.reduce((sum, el) => sum + el.getBoundingClientRect().width, 0));
     const indent = 16;
-    const lines: Element[][] = [[terms[0]!]];
+    const lines: Element[][] = [[...pieces[0]!]];
     let width = widths[0]!;
-    for (let k = 1; k < terms.length; k += 2) {
-      const step = widths[k]! + widths[k + 1]!;
-      if (width + step > rooms[i]! * 0.97 && lines[lines.length - 1]!.length > 1) {
+    for (let k = 1; k < pieces.length; k++) {
+      if (width + widths[k]! > rooms[i]! * 0.97 && lines[lines.length - 1]!.length > 0) {
         lines.push([]);
         width = indent;
       }
-      lines[lines.length - 1]!.push(terms[k]!, terms[k + 1]!);
-      width += step;
+      lines[lines.length - 1]!.push(...pieces[k]!);
+      width += widths[k]!;
     }
     return lines.length > 1 ? lines : undefined;
   });

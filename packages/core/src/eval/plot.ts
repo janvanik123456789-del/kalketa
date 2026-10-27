@@ -122,6 +122,8 @@ export interface PlotResult {
   readonly title?: string;
   /** Name of the variable on the x axis; empty when the x axis is the order of the items. */
   readonly variable: string;
+  /** What the x axis shows when it is a series of the sheet: its name or column (T of Mereni.T), for the title of the axis. */
+  readonly axisName?: string;
   readonly xUnit: string;
   readonly yUnit: string;
   /** The x axis holds dates (xs are days from 1970-01-01). */
@@ -282,6 +284,8 @@ export function plotStatement(given: CallExpr, ctx: EvalContext, evaluate: Evalu
     ...(title !== undefined ? { title } : {}),
     ...(style ? { style } : {}),
     variable: binder?.name ?? '',
+    // x: Mereni.T: the axis is the temperature T, not the x of the curves P(x).
+    ...(binder && binder.value.kind === 'member' ? { axisName: binder.value.name } : binder && binder.value.kind === 'variable' ? { axisName: binder.value.name } : {}),
     xUnit: x.unit,
     yUnit: yUnitSymbol,
     ...(x.dates ? { xDates: true } : {}),

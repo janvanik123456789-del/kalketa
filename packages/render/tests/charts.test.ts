@@ -13,6 +13,11 @@ const chart = (source: string): Extract<PrintBlock, { kind: 'chart' }> => {
 const BEAM = 'q := 12 kN/m\nL := 5 m\nM(x) := q·x·(L - x)/2\nV(x) := q·(L/2 - x)\n';
 
 describe('charts in print', () => {
+  it('name the x axis after the column it shows, not the variable of the curves (P4 of the samples)', () => {
+    const block = chart('T_i := [50, 80, 110] °C\nΔL := [0.05, 0.06, 0.12] mm\nP := fit(ΔL, x: T_i)\nplot(ΔL, P(x), x: T_i) | mm');
+    expect(block.spec.xTitle).toBe('T_i [°C]');
+  });
+
   it('draw a curve with its axes named after the variable, the expression and the units', () => {
     const block = chart(`${BEAM}plot(M(x), x: 0 m .. L)`);
     expect(block.spec.xTitle).toBe('x [m]');

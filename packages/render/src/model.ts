@@ -1432,7 +1432,7 @@ function chartBlock(
       ...(s.roots || s.axes ? { rootName: plot.variable || 'x', ...(plot.xUnit ? { rootUnit: plot.xUnit } : {}) } : {}),
       ...(s.implicit ? { implicit: true } : {}),
     })),
-    xTitle: plot.xDates ? plot.variable : `${plot.variable}${unit(plot.xUnit)}`.trim(),
+    xTitle: plot.xDates ? (plot.axisName ?? plot.variable) : `${plot.axisName ?? plot.variable}${unit(plot.xUnit)}`.trim(),
     // One curve names the axis; more curves are named in the legend. Over x and y (an implicit curve) y names it.
     yTitle: (plot.yVariable ? `${plot.yVariable}${unit(plot.yUnit)}` : names.length === 1 ? `${names[0]}${unit(plot.yUnit)}` : unit(plot.yUnit)).trim(),
     ...(plot.yRange ? { yRange: plot.yRange } : {}),

@@ -359,6 +359,16 @@ export function PropertiesDialog({ catalog, doc, preview, onApply, onClose }: { 
             </select>
           </label>
           <label className="field">
+            <span>{t(catalog, 'props.money')}</span>
+            <select className="props-money" value={layout.money ?? 'cents'} onChange={(e) => setLayout({ ...layout, money: e.target.value === 'whole' ? 'whole' : 'cents' })}>
+              {(['cents', 'whole'] as const).map((p) => (
+                <option key={p} value={p}>
+                  {t(catalog, `money.${p}`)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
             <span>{t(catalog, 'props.headings')}</span>
             <select className="props-headings" value={layout.headings ?? 'plain'} onChange={(e) => setLayout({ ...layout, headings: e.target.value === 'numbered' ? 'numbered' : 'plain' })}>
               <option value="plain">{t(catalog, 'props.headingsPlain')}</option>

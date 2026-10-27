@@ -356,7 +356,7 @@ function product(a: MatrixValue, b: MatrixValue, leftExpr: Expr, rightExpr: Expr
       let sum: Quantity | undefined;
       for (let k = 0; k < a.cols; k++) {
         const term = asComplex(arithmetic('*', at(a, i, k), at(b, k, j), leftExpr, rightExpr, span, ctx), span);
-        sum = sum ? asComplex(addSubtract('+', sum, term, span), span) : term;
+        sum = sum ? asComplex(addSubtract('+', sum, term, span, ctx), span) : term;
       }
       items.push(sum!);
     }
@@ -388,7 +388,7 @@ function arithmetic(op: BinaryOperator, left: Value, right: Value, leftExpr: Exp
   switch (op) {
     case '+':
     case '-':
-      return addSubtract(op, a, b, span);
+      return addSubtract(op, a, b, span, ctx);
     case '*':
     case '/': {
       // A date has no size: 2026-09-29 · 2 means nothing.
@@ -401,7 +401,7 @@ function arithmetic(op: BinaryOperator, left: Value, right: Value, leftExpr: Exp
       const scaled = hintsOff ? undefined : scaledOperand(op, a, b);
       const combined = scaled || hintsOff ? undefined : samePowerHint(op, a, b);
       // Different units compose: kN/m · m² = kN·m (not joules, which have the same dimension).
-      const composed = hintsOff || scaled || combined || !a.hint || !b.hint || a.absolute || b.absolute ? undefined : composedHint(op, a.hint, b.hint, ownNames(ctx.registry), op === '*' ? a.si * b.si : a.si / b.si);
+      const composed = hintsOff || scaled || combined || !a.hint || !b.hint || (a.absolute && shiftedScale(a)) || (b.absolute && shiftedScale(b)) ? undefined : composedHint(op, a.hint, b.hint, ownNames(ctx.registry), op === '*' ? a.si * b.si : a.si / b.si);
       // A share divided by a plain number stays a share: i/4 of 6,96 % is 1,74 %, not 0,0174 (200 · 21 % is still 42).
       const share = op === '/' && scaled === a && !!a.hint && isDimensionless(a.dim) && !b.hint;
       const hint = keptHint(scaled) || share ? { hint: scaled!.hint! } : combined ? { hint: combined } : composed ? { hint: composed } : {};
@@ -517,7 +517,7 @@ function keptHint(scaled: Quantity | undefined): boolean {
   return !isDimensionless(scaled.dim) || scaled.hint.factor === 1;
 }
 
-function addSubtract(op: '+' | '-', a: Quantity, b: Quantity, span: Span): Quantity {
+function addSubtract(op: '+' | '-', a: Quantity, b: Quantity, span: Span, ctx: EvalContext): Quantity {
   if (!sameDim(a.dim, b.dim)) {
     fail('E-UNIT-MISMATCH', span, { operator: op, left: baseUnitSymbol(a.dim), right: baseUnitSymbol(b.dim) });
   }
@@ -527,8 +527,20 @@ function addSubtract(op: '+' | '-', a: Quantity, b: Quantity, span: Span): Quant
 
   // Absolute temperatures: T + T is meaningless, T - T is a difference.
   if (a.absolute && b.absolute) {
-    if (op === '+') fail('E-ABS-TEMP', span);
-    return quantity(si, a.dim, { ...deltaHint(a.hint), ...exact });
+    if (op === '+') {
+      // T_1 + T_2 in kelvins (the mean (T_1 + T_2)/2 of a heat exchanger): a sum from absolute zero, as before.
+      if (!shiftedScale(a) && !shiftedScale(b)) return quantity(si, a.dim, a.hint ? { hint: a.hint } : {});
+      // t_1 + x with x := 10 K: a temperature by its name added as a difference, said so.
+      const kelvin = shiftedScale(a) ? b : a;
+      if (!shiftedScale(kelvin)) {
+        ctx.warnings.push(diagnostic('W-TEMP-AS-DIFFERENCE', span, {}));
+        return quantity(si, a.dim, { absolute: true, ...((shiftedScale(a) ? a : b).hint ? { hint: (shiftedScale(a) ? a : b).hint! } : {}) });
+      }
+      fail('E-ABS-TEMP', span);
+    }
+    // t − x with x := 10 K mixed with °C: a temperature of 10 K is rather a difference without its Δ.
+    if (shiftedScale(a) !== shiftedScale(b) && Math.min(a.si, b.si) < 150) ctx.warnings.push(diagnostic('W-TEMP-LOW-KELVIN', span, {}));
+    return quantity(si, a.dim, { ...deltaHint((shiftedScale(a) ? a : b).hint ?? a.hint), ...exact });
   }
   if (a.absolute || b.absolute) {
     if (op === '-' && b.absolute) fail('E-ABS-TEMP', span);
@@ -605,8 +617,17 @@ export function compare(op: BinaryOperator, a: Quantity, b: Quantity, span: Span
   return { type: 'boolean', value: result };
 }
 
+/**
+ * A temperature in °C or °F in a product is more often a difference mistaken for it (m·c·t); one in
+ * kelvins (T := 298.15 K, T := t | K) is the thermodynamic temperature p·V = m·r·T means, said nothing about.
+ */
 function warnOnAbsoluteTemperature(q: Quantity, span: Span, ctx: EvalContext): void {
-  if (q.absolute) ctx.warnings.push(diagnostic('W-ABS-TEMP-MUL', span));
+  if (q.absolute && shiftedScale(q)) ctx.warnings.push(diagnostic('W-ABS-TEMP-MUL', span));
+}
+
+/** A temperature written on a scale with a shifted zero (°C, °F), not from absolute zero (K, °R). */
+function shiftedScale(q: Quantity): boolean {
+  return q.hint?.offset !== undefined;
 }
 
 

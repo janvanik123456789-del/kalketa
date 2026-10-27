@@ -38,6 +38,8 @@ export interface PrintSettings {
   /** Equation numbers at the right (1), (2) …: none, of formulas, of every result. */
   readonly equations?: EquationNumbers;
   readonly verdict?: VerdictForm;
+  /** Computed amounts of money to the cent (default) or in whole units (layout.json money). */
+  readonly money?: 'cents' | 'whole';
   /** Headings of sections numbered 1, 1.1 … (layout.json headings), or as written. */
   readonly headings?: HeadingNumbers;
   readonly resolveFile?: (path: string) => string | undefined;
@@ -96,6 +98,7 @@ export function printHtml(result: SheetResult, settings: PrintSettings): string 
     importSource: (layer: string) => titles.get(layer),
     ...(settings.resolveFile ? { resolveFile: settings.resolveFile } : {}),
     ...(settings.chartStyle ? { chartStyle: settings.chartStyle } : {}),
+    ...(settings.money ? { money: settings.money } : {}),
   };
   const doc = buildPrintDocument(result, {
     ...common,

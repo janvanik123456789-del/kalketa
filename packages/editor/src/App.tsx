@@ -384,10 +384,10 @@ export function App() {
         openPanes.flatMap((id) => {
           const l = layerById(id);
           if (l?.kind !== 'sheet' && l?.kind !== 'calc') return [];
-          return [[id, buildPrintDocument(resultOf(l), { catalog: printCatalog, registry: defaultRegistry, digits: doc.layout.digits, title: '', showHidden: true, resolveFile, ...(doc.layout.summary ? { summary: doc.layout.summary } : {}), ...(equationNumbers(doc.layout) ? { equations: equationNumbers(doc.layout)! } : {}), ...(doc.layout.verdict ? { verdict: doc.layout.verdict } : {}), ...(doc.layout.headings ? { headings: doc.layout.headings } : {}), ...(doc.layout.chartStyle ? { chartStyle: doc.layout.chartStyle } : {}) })] as const];
+          return [[id, buildPrintDocument(resultOf(l), { catalog: printCatalog, registry: defaultRegistry, digits: doc.layout.digits, title: '', showHidden: true, resolveFile, ...(doc.layout.summary ? { summary: doc.layout.summary } : {}), ...(equationNumbers(doc.layout) ? { equations: equationNumbers(doc.layout)! } : {}), ...(doc.layout.verdict ? { verdict: doc.layout.verdict } : {}), ...(doc.layout.money ? { money: doc.layout.money } : {}), ...(doc.layout.headings ? { headings: doc.layout.headings } : {}), ...(doc.layout.chartStyle ? { chartStyle: doc.layout.chartStyle } : {}) })] as const];
         }),
       ),
-    [evaluation, openKey, printCatalog, doc.layout.digits, doc.layout.summary, doc.layout.equations, doc.layout.style, doc.layout.verdict, doc.layout.headings, doc.layout.chartStyle, resolveFile],
+    [evaluation, openKey, printCatalog, doc.layout.digits, doc.layout.summary, doc.layout.equations, doc.layout.style, doc.layout.verdict, doc.layout.money, doc.layout.headings, doc.layout.chartStyle, resolveFile],
   );
 
   useEffect(() => {
@@ -951,6 +951,7 @@ export function App() {
       ...(d.layout.summary ? { summary: d.layout.summary } : {}),
       ...(equationNumbers(d.layout) ? { equations: equationNumbers(d.layout)! } : {}),
       ...(d.layout.verdict ? { verdict: d.layout.verdict } : {}),
+      ...(d.layout.money ? { money: d.layout.money } : {}),
       ...(d.layout.headings ? { headings: d.layout.headings } : {}),
       ...(d.layout.pageNumbers ? { pageNumbers: d.layout.pageNumbers } : {}),
       ...(d.layout.derivations ? { derivations: d.layout.derivations } : {}),

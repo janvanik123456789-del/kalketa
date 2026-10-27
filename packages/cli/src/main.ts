@@ -95,7 +95,7 @@ async function main(argv: string[]): Promise<number> {
       console.log(formatTrace(node, { catalog, digits }));
       return 0;
     }
-    console.log(formatReport(result, { catalog, digits }));
+    console.log(formatReport(result, { catalog, digits, ...(opened.document.layout.money ? { money: opened.document.layout.money } : {}) }));
     return [...opened.diagnostics, ...tableDiagnostics, ...result.diagnostics].some((d) => d.severity === 'error') ? 1 : 0;
   }
 
@@ -120,6 +120,7 @@ async function main(argv: string[]): Promise<number> {
       orientation: doc.layout.orientation,
       ...(doc.layout.style ? { style: doc.layout.style } : {}),
       ...(doc.layout.chartStyle ? { chartStyle: doc.layout.chartStyle } : {}),
+      ...(doc.layout.money ? { money: doc.layout.money } : {}),
       resolveFile: (path) => dataUri(path, doc.files.get(path), doc.files),
       appendices: [...appendixLayers(doc.layers, evaluation, (layer) => t(printCatalog, `layer.kind.${layer.kind}` as UiKey)), ...blockAppendices(evaluation.main)],
       footer: revisionFooter(printCatalog, {

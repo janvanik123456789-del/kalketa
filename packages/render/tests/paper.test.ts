@@ -6,7 +6,7 @@ import { blockLatex, buildPrintDocument, nameNode, renderBlockHtml, toMathML, to
 
 const cs = catalogFor('cs');
 const plain = (text: string) => text.replace(/\s+/g, ' ');
-const blocks = (source: string): readonly PrintBlock[] => buildPrintDocument(evaluateSheet(source), { catalog: cs, registry: defaultRegistry, digits: 4, title: 'T' }).blocks;
+const blocks = (source: string, money?: 'cents' | 'whole'): readonly PrintBlock[] => buildPrintDocument(evaluateSheet(source), { catalog: cs, registry: defaultRegistry, digits: 4, title: 'T', ...(money ? { money } : {}) }).blocks;
 const equation = (source: string) => {
   const block = blocks(source).at(-1)!;
   return block.kind === 'equation' ? block : undefined;
@@ -130,8 +130,11 @@ describe('counting as on paper', () => {
 describe('amounts of money', () => {
   it('keep their whole part, however few digits a value shows; a price per unit as usual', () => {
     const nl = String.fromCharCode(10);
-    const results = blocks(['LCC := 643221.4 USD·1', 'S := 1234567890 CZK·1', 'c := 0.123456 USD/kWh·1', 'L := 643221.4 m·1'].join(nl)).flatMap((b) => (b.kind === 'equation' ? [plain(toText(b.lines.at(-1)!.rhs))] : []));
-    expect(results).toEqual(['643 221 USD', '1 234 567 890 CZK', '0,1235 USD/kWh', '643 200 m']);
+    const source = ['LCC := 643221.4 USD·1', 'S := 1234567890 CZK·1', 'c := 0.123456 USD/kWh·1', 'L := 643221.4 m·1', 'D := 643221.4 USD·1 {digits=3}'].join(nl);
+    const results = (money?: 'cents' | 'whole') => blocks(source, money).flatMap((b) => (b.kind === 'equation' ? [plain(toText(b.lines.at(-1)!.rhs))] : []));
+    // To the cent as Czech books write amounts (F4 of the samples); in whole units when the sheet says so; a line's {digits} wins.
+    expect(results()).toEqual(['643 221,40 USD', '1 234 567 890,00 CZK', '0,1235 USD/kWh', '643 200 m', '643 221 USD']);
+    expect(results('whole')).toEqual(['643 221 USD', '1 234 567 890 CZK', '0,1235 USD/kWh', '643 200 m', '643 221 USD']);
   });
 });
 

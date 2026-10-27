@@ -310,4 +310,25 @@ describe('temperatures and their differences as books write them', () => {
     // Any other name keeps the absolute temperature.
     expectValue('T := 50 °C\nT', 50, '°C');
   });
+
+  it('read a value in kelvins as a temperature by its name, a difference under ΔT (T4 of the samples)', () => {
+    // T₂ = 894,45 K = 621,3 °C, as the book writes it; computed from p₂·T₁/p₁ just as well.
+    expectValue('T_2 := 894.45 K\nT_2 | °C', 621.3, '°C');
+    expectValue('T_1 := 25 °C | K\nT_2 := 6 MPa·T_1/(2 MPa) | K\nt_2 := T_2 | °C\nt_2', 621.3, '°C');
+    // A temperature in K and one in °C are the same temperature: their difference is nothing.
+    expectValue('t := 15 °C\nT := 288.15 K\nt - T', 0, 'Δ°C');
+    expectValue('t := 15 °C\nT := 288.15 K\nT - t', 0, 'Δ°C');
+    // The state equation in kelvins says nothing; in °C it warns as before.
+    expect(codes('T := 288.15 K\nr := 287 J/(kg·K)\nr·T')).toEqual([]);
+    expect(codes('t := 15 °C\nr := 287 J/(kg·K)\nr·t')).toEqual(['W-ABS-TEMP-MUL']);
+    // Differences: ΔT, δT and a value in Δ°C stay differences; a lone 10 K in a formula is one.
+    expectValue('ΔT := 10 K\nΔT | °C', 10, 'Δ°C');
+    expectValue('t := 15 °C\nt + 10 K', 25, '°C');
+    expectValue('t := 15 °C\nδ_T := 5 °C\nt + δ_T', 20, '°C');
+    // The mean of two temperatures in kelvins.
+    expectValue('T_1 := 300 K\nT_2 := 400 K\n(T_1 + T_2)/2', 350, 'K');
+    // A difference named as a temperature is said so where it is used as one.
+    expect(codes('t := 15 °C\nx := 10 K\nt + x')).toEqual(['W-TEMP-AS-DIFFERENCE']);
+    expect(codes('t := 15 °C\nx := 10 K\nt - x')).toEqual(['W-TEMP-LOW-KELVIN']);
+  });
 });

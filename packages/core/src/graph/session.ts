@@ -25,6 +25,7 @@ import { parse } from '../lang/parser.js';
 import { buildTable, rowLabel, type ColumnSchema, type Table, type TableBuildResult, type TableRead } from '../tables/table.js';
 import { COMPARE_FUNCTION } from '../eval/tables.js';
 import { sameDim } from '../units/dimension.js';
+import { isDifferenceName } from '../lang/parser.js';
 import { baseUnitSymbol, toDisplay, type DisplayValue } from '../units/display.js';
 import { defaultRegistry, type UnitRegistry } from '../units/registry.js';
 import { resolveUnit, type ResolvedUnit } from '../units/unitExpr.js';
@@ -752,6 +753,8 @@ export class SheetSession {
           value = inTarget(value, target);
         }
       }
+      // T_2 := 894.45 K, T_2 := p_2·V/(m·r): a temperature by its name; ΔT := 10 K stays a difference.
+      if (statement.kind === 'definition' && !statement.params && value.type === 'quantity') value = temperatureByName(statement.name, value);
       // {decimals=2 rounded}: the rows below go on with the value as shown, not the exact one.
       if (statement.format?.rounded && value.type === 'quantity') value = roundedAsShown(value, statement.format, context.registry, target);
       const display = value.type === 'quantity' ? toDisplay(value, context.registry, target) : undefined;
@@ -886,6 +889,17 @@ function inTarget(q: Quantity, target: ResolvedUnit): Quantity {
   if (!q.absolute || target.offset !== undefined) return { ...q, hint: target };
   const { absolute: _, ...plain } = q;
   return { ...plain, hint: target };
+}
+
+/**
+ * A value in kelvins (or °R) named as a temperature is one, counted from absolute zero, as books write
+ * T₁ = 298,15 K: T_2 | °C gives 621,3 °C and t − T a difference. A name of a difference (ΔT, delta_T)
+ * keeps the value a difference, as ΔT := 50 °C does (docs/03-jazyk.md, 4.4).
+ */
+function temperatureByName(name: string, q: Quantity): Quantity {
+  // A value in a unit of a difference (a correction y_1 in Δ°C, x := ΔT | °C shown in Δ°C) stays one.
+  if (q.absolute || q.im || q.hint?.offset !== undefined || q.hint?.symbol.startsWith('Δ') || isDifferenceName(name) || !sameDim(q.dim, dim({ Θ: 1 }))) return q;
+  return { ...q, absolute: true };
 }
 
 /** A value given for a block input must be of the same kind as the block's own. */

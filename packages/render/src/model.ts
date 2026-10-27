@@ -51,6 +51,8 @@ export interface PrintOptions {
   readonly equations?: EquationNumbers;
   /** How a check says its result: VYHOVUJE (default), VYHOVÍ, or a sign only. */
   readonly verdict?: VerdictForm;
+  /** Computed amounts of money to the cent (default) or in whole units; a line's own {decimals} or {digits} wins. */
+  readonly money?: 'cents' | 'whole';
   /** Headings of sections numbered 1, 1.1 … or as written (default). */
   readonly headings?: HeadingNumbers;
   /** Resolves a path inside the sheet (images/...) to a URL, e.g. a data: URI. */
@@ -297,8 +299,9 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
   // Lines written beside the one above them: cells of its row.
   const beside = new Set(result.statements.flatMap((r) => (r.statement.format?.beside ? [r.statement.span.line] : [])));
   const decimalComma = formatNumber(1.5, catalog).includes(',');
-  // Shown in a currency (USD, Kč), an amount keeps its whole part: 643 212 USD.
+  // Shown in a currency (USD, Kč), an amount keeps its whole part (643 212 USD) and, unless the sheet says otherwise, its cents.
   const money = (unit: string | undefined) => !!unit && !!options.registry.resolve(unit)?.currency;
+  const cents = options.money !== 'whole';
   const numberFormat = (spec: NumberFormatOptions) => (value: number, unit?: string) => formatNumber(value, catalog, money(unit) ? { ...spec, whole: true } : spec);
   // How each name was shown on its own line ({decimals=2}): so it is shown in every substitution below.
   const formats = new Map<string, NumberFormatOptions>();
@@ -350,7 +353,8 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
     // The line's own format, else the significant digits of the sheet or of @digits above.
     // A value as written (m := 6.5452 g, 0.1230 g): a measured value keeps the places it was given with.
     const written = s.format?.decimals === undefined && s.format?.digits === undefined && s.kind === 'definition' && !s.target ? writtenPlaces(result.source, s.expr) : undefined;
-    const spec: NumberFormatOptions = s.format?.decimals !== undefined ? { decimals: s.format.decimals } : written !== undefined ? { decimals: written } : { digits: s.format?.digits ?? mode.digits };
+    // A computed amount of money to the cent, unless the line asks for its own digits (an amount given is shown as written).
+    const spec: NumberFormatOptions = s.format?.decimals !== undefined ? { decimals: s.format.decimals } : written !== undefined ? { decimals: written } : { digits: s.format?.digits ?? mode.digits, ...(cents && s.format?.digits === undefined ? { cents: true } : {}) };
     if (s.format && (s.kind === 'definition' || s.kind === 'invalid') && s.name) formats.set(s.name, spec);
     // The unknowns of a solve line are shown below as the line shows them.
     if (s.format && s.kind === 'solve') for (const u of s.unknowns) formats.set(u.name, spec);

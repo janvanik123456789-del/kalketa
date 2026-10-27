@@ -258,6 +258,11 @@ export function spanOf(first: { span: Span }, last: { span: Span }): Span {
   return { offset: a.offset, length: b.offset + b.length - a.offset, line: a.line, column: a.column };
 }
 
+/** ΔT, Δt_1, δT (also written delta_T, Delta_T): the name of a difference, as books write it (a value in °C or K under it is a difference of temperatures). */
+export function isDifferenceName(name: string): boolean {
+  return /^[Δδ]/.test(name);
+}
+
 /** 50 °C, −5 °F as a difference of temperatures: 50 Δ°C, −5 Δ°F; anything else as it is. */
 function asDifference(expr: Expr): Expr {
   if (expr.kind === 'unary' && expr.operator === '-') return { ...expr, operand: asDifference(expr.operand) };
@@ -506,7 +511,7 @@ class LineParser {
     }
     this.defined.add(nameToken.text);
     // ΔT := 50 °C: a name of a difference given in degrees is a difference of temperatures (50 Δ°C), as books write it.
-    if (!params && nameToken.text.startsWith('Δ')) expr = asDifference(expr);
+    if (!params && isDifferenceName(nameToken.text)) expr = asDifference(expr);
     const source = this.parseSource();
     this.expectEnd();
     return {

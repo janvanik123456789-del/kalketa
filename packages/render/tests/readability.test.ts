@@ -25,7 +25,7 @@ describe('readable printouts', () => {
   });
 
   it('do not repeat a name taken over from a column of the same name', () => {
-    expect(lines('s := pick(Stridace, "S-10")\ncena := s.cena')).toEqual(['cena = 45 000 CZK']);
+    expect(lines('s := pick(Stridace, "S-10")\ncena := s.cena')).toEqual(['cena = 45 000,00 CZK']);
   });
 
   it('print a date once', () => {

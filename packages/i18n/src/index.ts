@@ -48,6 +48,8 @@ export interface NumberFormatOptions {
   readonly decimals?: number;
   /** Money: the whole part is never rounded (643 212 USD, not 643 200), however few significant digits are asked. */
   readonly whole?: boolean;
+  /** Money to the cent (129 226,88 Kč), unless decimals are asked; with whole only. */
+  readonly cents?: boolean;
 }
 
 /**
@@ -96,7 +98,7 @@ function formatSigned(value: number, catalog: Catalog, options: NumberFormatOpti
   const places = abs >= 1 ? Math.floor(Math.log10(abs)) + 1 : 0;
   const digits = options.whole && abs < 1e15 ? Math.max(options.digits ?? 4, places) : (options.digits ?? 4);
   const scientific = abs !== 0 && ((abs >= 1e9 && !(options.whole && abs < 1e15)) || abs < 1e-4);
-  const decimals = options.decimals;
+  const decimals = options.decimals ?? (options.whole && options.cents ? 2 : undefined);
   if (decimals !== undefined && !scientific && (abs === 0 || abs >= 10 ** -decimals / 2)) {
     return new Intl.NumberFormat(catalog.locale, { minimumFractionDigits: decimals, maximumFractionDigits: decimals }).format(value);
   }

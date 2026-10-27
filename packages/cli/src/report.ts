@@ -21,6 +21,8 @@ export interface ReportOptions {
   readonly digits?: number;
   /** Decimal places instead of significant digits (a value as written). */
   readonly decimals?: number;
+  /** Computed amounts of money to the cent (default) or in whole units (layout.json money). */
+  readonly money?: 'cents' | 'whole';
 }
 
 const OPERATOR_SYMBOLS: Readonly<Record<string, string>> = { '<': '<', '<=': '≤', '>': '>', '>=': '≥' };
@@ -196,7 +198,9 @@ function formatValue(r: StatementResult, options: ReportOptions, source: string)
     // A value as written (M := 39.997 g/mol) keeps its places, as in the printout.
     const s = r.statement;
     const written = s.format?.decimals ?? (s.kind === 'definition' && !s.target && s.format?.digits === undefined ? writtenPlaces(source, s.expr) : undefined);
-    return formatDisplay(r.display.value, r.display.unit, written === undefined ? options : { ...options, decimals: written }, r.display.im);
+    // {digits=3} on the line: its own significant digits, an amount of money then without forced cents, as in the printout.
+    const own: ReportOptions = s.format?.digits !== undefined ? { ...options, digits: s.format.digits, money: 'whole' } : options;
+    return formatDisplay(r.display.value, r.display.unit, written === undefined ? own : { ...own, decimals: written }, r.display.im);
   }
   if (r.value?.type === 'boolean') return options.catalog.terms[String(r.value.value)] ?? String(r.value.value);
   if (r.value?.type === 'text') return JSON.stringify(r.value.value);
@@ -231,7 +235,7 @@ function formatQuantity(q: Quantity, options: ReportOptions): string {
 function formatDisplay(value: number, unit: string, options: ReportOptions, im?: number): string {
   // An amount of money keeps its whole part: 643 212 USD.
   const whole = !!unit && !!defaultRegistry.resolve(unit)?.currency;
-  return formatQuantityValue(value, im, unit, options.catalog, { ...(options.decimals !== undefined ? { decimals: options.decimals } : options.digits !== undefined ? { digits: options.digits } : {}), ...(whole ? { whole } : {}) });
+  return formatQuantityValue(value, im, unit, options.catalog, { ...(options.decimals !== undefined ? { decimals: options.decimals } : options.digits !== undefined ? { digits: options.digits } : {}), ...(whole ? { whole, ...(options.money !== 'whole' ? { cents: true } : {}) } : {}) });
 }
 
 function formatPercent(ratio: number, options: ReportOptions): string {

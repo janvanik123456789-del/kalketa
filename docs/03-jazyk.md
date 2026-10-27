@@ -133,6 +133,10 @@ Nejčastější past jednotkových systémů. Pravidla (**převzato z Calcpadu +
 - Násobení absolutní teploty (např. `p·V = n·R·T` s `T := 20 °C`) je fyzikálně správné, počítá se v kelvinech. Program ale vydá **varování**, protože častěji jde o záměnu s rozdílem. (*Upraveno při implementaci F1, původně navrženo jako chyba.*)
 - `4180 J/(kg·K)` · `60 K` funguje. `4180 J/(kg·°C)` se v jednotce interpretuje jako rozdíl, tedy `J/(kg·Δ°C)`.
 - **Jméno rozdílu (2026-10-26):** `ΔT := 50 °C` (jméno začíná `Δ`, hodnota je číslo ve `°C` nebo `°F`) je rozdíl `50 Δ°C`, jak to píšou učebnice; `α_T·ΔT` pak není součin absolutní teploty. Jiné jméno (`T := 50 °C`) zůstává absolutní teplotou.
+- **Teplota v kelvinech podle jména (2026-10-27):** hodnota v `K` (nebo `°R`) přiřazená jménu je **teplota od absolutní nuly**, jako ji píšou knihy (`T_1 := 298.15 K`, i spočtená `T_2 := p_2·V/(m·r)` nebo `T := t | K`). Jméno začínající `Δ` nebo `δ` (`ΔT := 10 K`, `δ_T`, také psáno `delta_T`) zůstává rozdílem, stejně hodnota v `Δ°C` (korekce teploměru). Holé číslo s `K` ve vzorci (`t + 10 K`) je rozdíl jako dřív. Proto:
+  - `T_2 | °C` dá 621,3 °C, ne 894,45 Δ°C; `t − T` a `T − t` teploty ve °C a v K dají rozdíl (stejná teplota 0);
+  - součin teploty v K (`p·V = m·r·T`, `T_2/T_1`) je termodynamická teplota a **nehlásí varování**; varuje jen teplota ve °C nebo °F v součinu (`m·c·t` je spíš záměna s rozdílem);
+  - součet dvou teplot v K (průměr `(T_1 + T_2)/2`) je v pořádku; teplota v K přičtená k teplotě ve °C se počítá jako rozdíl s varováním `W-TEMP-AS-DIFFERENCE`; teplota pod 150 K vedle teploty ve °C nebo °F dostane varování `W-TEMP-LOW-KELVIN` (spíš je to rozdíl bez Δ ve jménu).
 - **Převrácená jednotka za číslem (2026-10-26):** `12e-6 1/°C`, `50 1/s`, `3 1/(m·s)` jako v knihách (vedle sebe dvě čísla jinak součin nejsou).
 - **Jednotka v závorce za číslem nebo výrazem (2026-10-27):** `K_s := 1.8e-10 (mol/l)^2`, `K_s := 10^(-pK_s) (mol/l)^3` jako součiny rozpustnosti v knihách: mocnina patří jen jednotce, ne číslu. Obsahuje-li závorka jméno definované výše nebo cokoli jiného než jednotky, zůstává součinem (`2(a + b)`, `2(L)`).
 
@@ -272,6 +276,7 @@ rok := sum(Vyroba.E)                         ' sloupec tabulky jako řada
 - Funkce: `range(od, do[, krok])`, `sum`, `mean`, `len`, `cumsum`, `min`/`max` přes řadu, `npv`, `irr`, `pmt`, `payback`.
 - `[m]` zůstává jednotkou; řada je vše ostatní v hranatých závorkách a smí mít jednotku za sebou: `[1, 2] m`.
 - V tisku se dlouhá řada zkrátí: „[1; 2; 3; 4; 5; …; 24; 25] (25)“.
+- **Částky (2026-10-27):** spočtená částka v měně (Kč, CZK, EUR, USD) se ukazuje s haléři, jak je píšou české sbírky: `129 226,88 Kč`; celá část se nikdy nezaokrouhluje. Zadaná částka zůstává, jak je napsaná (`120 000 Kč`), `{decimals=…}` nebo `{digits=…}` na řádku má přednost. Vlastnosti výpočtu → Částky: s haléři (výchozí) / v celých jednotkách (`layout.json`, `money`: `cents` / `whole`). Před zaokrouhlením se číslo čte na 15 platných číslic, takže 129 226,875 je ,88, ne ,87 binárního souseda.
 
 **Data:** `2026-09-29` (bez mezer; s mezerami je to odčítání) je absolutní čas jako absolutní teplota:
 `datum − datum` dá dny, `datum + 30 d` dá datum, `(d_2 − d_1) | yr` dá roky, dvě data sečíst ani násobit nejde.

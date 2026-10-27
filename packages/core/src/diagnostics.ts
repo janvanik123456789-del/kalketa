@@ -49,6 +49,8 @@ export const DIAGNOSTIC_SEVERITY = {
   'E-TARGET-UNIT': 'error',
   'E-ABS-TEMP': 'error',
   'W-ABS-TEMP-MUL': 'warning',
+  'W-TEMP-AS-DIFFERENCE': 'warning',
+  'W-TEMP-LOW-KELVIN': 'warning',
   'E-POWER-DIM': 'error',
   'E-TYPE': 'error',
   'E-DIV-ZERO': 'error',

@@ -1352,14 +1352,15 @@ async function layersWithRealInput(picture: string) {
   })`)) as { errors: number; rows: string[]; flowGroups: number; oneLine: number };
   await takePicture(picture.replace(/[.]png$/, '-function.png'));
   const functions = userFunction.errors === 0 && userFunction.rows.some((r) => r.includes('314,2'));
-  const money = userFunction.rows.some((r) => r.replace(/\s+/g, '').includes('=105Kč')) && userFunction.rows.some((r) => r.includes('10 kWp'));
+  // A computed amount is shown to the cent (layout money, default).
+  const money = userFunction.rows.some((r) => r.replace(/\s+/g, '').includes('=105,00Kč')) && userFunction.rows.some((r) => r.includes('10 kWp'));
   const solved = userFunction.rows.some((r) => r.replace(/\s+/g, '').includes('x=2')) && userFunction.flowGroups >= 1 && userFunction.oneLine > 5;
   const finance = userFunction.rows.some((r) => r.replace(/\s+/g, '').includes('=2,6')) && userFunction.rows.some((r) => r.includes('29. 10. 2026'));
   const rod = userFunction.rows.some((r) => r.replace(/\s+/g, '').includes('=157100mm³'));
   const calculus = userFunction.rows.some((r) => r.includes('∫') && r.replace(/\s+/g, '').endsWith('=9'));
   const matrices = userFunction.rows.some((r) => r.replace(/\s+/g, '').includes('=[0,6667;0,3333]m')) && (await contents.executeJavaScript(`!!document.querySelector('.page mtable')`)) as boolean;
   const complex = userFunction.rows.some((r) => r.replace(/\s+/g, '').includes('(27,6−36,8j)A'));
-  const ownUnits = userFunction.rows.some((r) => r.replace(/\s+/g, '').includes('100EUR=2500CZK'));
+  const ownUnits = userFunction.rows.some((r) => r.replace(/\s+/g, '').includes('100EUR=2500,00CZK'));
   const help =
     listed > 50 &&
     userFunction.rows.some((r) => r.replace(/\s+/g, '').includes('hypot(3m;4m)=5m')) &&

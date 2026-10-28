@@ -302,7 +302,8 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
   // Shown in a currency (USD, Kč), an amount keeps its whole part (643 212 USD) and, unless the sheet says otherwise, its cents.
   const money = (unit: string | undefined) => !!unit && !!options.registry.resolve(unit)?.currency;
   const cents = options.money !== 'whole';
-  const numberFormat = (spec: NumberFormatOptions) => (value: number, unit?: string) => formatNumber(value, catalog, money(unit) ? { ...spec, whole: true } : spec);
+  // Without a unit (a year 2030 in a table or on an axis), four digits stand without a space.
+  const numberFormat = (spec: NumberFormatOptions) => (value: number, unit?: string) => formatNumber(value, catalog, money(unit) ? { ...spec, whole: true } : unit ? spec : { ...spec, unitless: true });
   // How each name was shown on its own line ({decimals=2}): so it is shown in every substitution below.
   const formats = new Map<string, NumberFormatOptions>();
   // Columns of the sheet's tables with a format of their numbers ({0.000}): a value read from them is put in so ("Prvky.A").

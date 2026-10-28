@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { builtinFunctions, DIAGNOSTIC_SEVERITY, diagnostic, evaluateSheet, FUNCTION_MODULES, type DiagnosticCode } from '@kalketa/core';
-import { CATALOGS, catalogFor, formatDiagnostic, formatNumber } from '../src/index.js';
+import { CATALOGS, catalogFor, formatDiagnostic, formatNumber, formatValue } from '../src/index.js';
 
 const span = { offset: 0, length: 1, line: 1, column: 1 };
 
@@ -41,6 +41,13 @@ describe('formatNumber', () => {
   it('switches to scientific notation for extreme magnitudes', () => {
     expect(formatNumber(1.602e-19, catalogFor('en'))).toBe('1.602E-19');
     expect(formatNumber(0, catalogFor('en'))).toBe('0');
+  });
+
+  it('writes a year or a count of four digits without a space, a number with a unit grouped', () => {
+    const cs = catalogFor('cs');
+    expect(formatValue(2030, undefined, '', cs)).toBe('2030');
+    expect(formatValue(12450, undefined, '', cs)).toBe('12 450');
+    expect(formatValue(2030, undefined, 'mm', cs)).toBe('2 030 mm');
   });
 
   it('rounds the number as written on paper, not its binary neighbour (F4 of the samples)', () => {

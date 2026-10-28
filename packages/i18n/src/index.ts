@@ -50,6 +50,11 @@ export interface NumberFormatOptions {
   readonly whole?: boolean;
   /** Money to the cent (129 226,88 Kč), unless decimals are asked; with whole only. */
   readonly cents?: boolean;
+  /**
+   * A number without a unit (a year, a count): four digits stand without a space (2030, 1500), as Czech
+   * typography allows and a year is always written; five and more are grouped (12 450).
+   */
+  readonly unitless?: boolean;
 }
 
 /**
@@ -63,7 +68,7 @@ export interface NumberFormatOptions {
 export function formatValue(value: number, im: number | undefined, unit: string, catalog: Catalog, options: NumberFormatOptions = {}): string {
   if (unit === 'date') return formatDate(value, catalog);
   const number = im ? complexText(value, im, (x) => formatNumber(x, catalog, options)) : formatNumber(value, catalog, options);
-  if (!unit) return number;
+  if (!unit) return im ? number : formatNumber(value, catalog, { ...options, unitless: true });
   const gap = unitGap(unit);
   return im && value !== 0 ? `(${number})${gap}${unit}` : `${number}${gap}${unit}`;
 }
@@ -99,8 +104,10 @@ function formatSigned(value: number, catalog: Catalog, options: NumberFormatOpti
   const digits = options.whole && abs < 1e15 ? Math.max(options.digits ?? 4, places) : (options.digits ?? 4);
   const scientific = abs !== 0 && ((abs >= 1e9 && !(options.whole && abs < 1e15)) || abs < 1e-4);
   const decimals = options.decimals ?? (options.whole && options.cents ? 2 : undefined);
+  // 'min2' groups only from five digits on (Intl's option; the lib types know only booleans and 'always' / 'auto').
+  const grouping = options.unitless ? { useGrouping: 'min2' as unknown as boolean } : {};
   if (decimals !== undefined && !scientific && (abs === 0 || abs >= 10 ** -decimals / 2)) {
-    return new Intl.NumberFormat(catalog.locale, { minimumFractionDigits: decimals, maximumFractionDigits: decimals }).format(value);
+    return new Intl.NumberFormat(catalog.locale, { minimumFractionDigits: decimals, maximumFractionDigits: decimals, ...grouping }).format(value);
   }
   if (decimals !== undefined) {
     return new Intl.NumberFormat(catalog.locale, { maximumSignificantDigits: Math.max(1, decimals + 1), notation: 'scientific' }).format(value);
@@ -108,5 +115,6 @@ function formatSigned(value: number, catalog: Catalog, options: NumberFormatOpti
   return new Intl.NumberFormat(catalog.locale, {
     maximumSignificantDigits: digits,
     ...(scientific ? { notation: 'scientific' } : {}),
+    ...grouping,
   }).format(value);
 }

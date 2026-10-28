@@ -276,6 +276,7 @@ rok := sum(Vyroba.E)                         ' sloupec tabulky jako řada
 - Funkce: `range(od, do[, krok])`, `sum`, `mean`, `len`, `cumsum`, `min`/`max` přes řadu, `npv`, `irr`, `pmt`, `payback`.
 - `[m]` zůstává jednotkou; řada je vše ostatní v hranatých závorkách a smí mít jednotku za sebou: `[1, 2] m`.
 - V tisku se dlouhá řada zkrátí: „[1; 2; 3; 4; 5; …; 24; 25] (25)“.
+- **Roky a počty (2026-10-28):** celé číslo bez jednotky se čtyřmi číslicemi se píše bez mezery (`2030`, `1500`), v tisku, v ose grafu i v příkazové řádce, jak dovoluje ČSN 01 6910 a jak se letopočet píše vždy; od pěti číslic s mezerou (`12 450`). Číslo s jednotkou se seskupuje dál (`2 030 mm`, `1 500 Kč`).
 - **Částky (2026-10-27):** spočtená částka v měně (Kč, CZK, EUR, USD) se ukazuje s haléři, jak je píšou české sbírky: `129 226,88 Kč`; celá část se nikdy nezaokrouhluje. Zadaná částka zůstává, jak je napsaná (`120 000 Kč`), `{decimals=…}` nebo `{digits=…}` na řádku má přednost. Vlastnosti výpočtu → Částky: s haléři (výchozí) / v celých jednotkách (`layout.json`, `money`: `cents` / `whole`). Před zaokrouhlením se číslo čte na 15 platných číslic, takže 129 226,875 je ,88, ne ,87 binárního souseda.
 
 **Data:** `2026-09-29` (bez mezer; s mezerami je to odčítání) je absolutní čas jako absolutní teplota:

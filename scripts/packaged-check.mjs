@@ -3,10 +3,10 @@
 // A package holds no test code, so the program is looked at from outside over the debugging port of
 // Chromium: it starts, its editor loads and has the bridge, and the page reports no errors. It must also
 // ignore KALKETA_SMOKE_TEST (that mode skips the question before Python of the computer runs a script)
-// and KALKETA_DEV_URL (a page loaded from there would have the bridge of the program), and where the
-// package can be read, it must not contain the smoke test.
+// KALKETA_DEV_URL (a page loaded from there would have the bridge of the program) and KALKETA_AI_POLICY
+// (it would switch the rules of a company off), and where the package can be read, it must not contain the smoke test.
 import { spawn } from 'node:child_process';
-import { existsSync, mkdtempSync, openSync, readSync, closeSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, openSync, readSync, closeSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
@@ -18,7 +18,9 @@ if (!program || !existsSync(program)) {
 
 const out = mkdtempSync(join(tmpdir(), 'kalketa-packaged-'));
 const forbidden = join(out, 'must-not-appear.pdf');
-const env = { ...process.env, KALKETA_USER_DATA: join(out, 'profile'), KALKETA_SMOKE_TEST: forbidden, KALKETA_DEV_URL: 'http://127.0.0.1:9/foreign.html' };
+const foreignPolicy = join(out, 'foreign-policy.json');
+writeFileSync(foreignPolicy, JSON.stringify({ instructions: 'foreign policy' }));
+const env = { ...process.env, KALKETA_USER_DATA: join(out, 'profile'), KALKETA_SMOKE_TEST: forbidden, KALKETA_DEV_URL: 'http://127.0.0.1:9/foreign.html', KALKETA_AI_POLICY: foreignPolicy };
 delete env.ELECTRON_RUN_AS_NODE;
 
 const failures = [];
@@ -47,7 +49,7 @@ async function waitFor(read, seconds) {
 function inPage(url, expression) {
   return new Promise((done, fail) => {
     const socket = new WebSocket(url);
-    socket.onopen = () => socket.send(JSON.stringify({ id: 1, method: 'Runtime.evaluate', params: { expression, returnByValue: true } }));
+    socket.onopen = () => socket.send(JSON.stringify({ id: 1, method: 'Runtime.evaluate', params: { expression, returnByValue: true, awaitPromise: true } }));
     socket.onerror = () => fail(new Error('no connection to the page'));
     socket.onmessage = (event) => {
       const answer = JSON.parse(event.data);
@@ -90,6 +92,7 @@ try {
   }, 60);
   if (!state) failures.push('the editor did not load (no menus)');
   else if (!state.bridge) failures.push('the editor has no bridge to the program');
+  else if ((await inPage(page.webSocketDebuggerUrl, 'window.kalketaDesktop.aiPolicy().then((p) => p.instructions ?? "")')) === 'foreign policy') failures.push('the program read the AI rules from KALKETA_AI_POLICY');
   // Long enough for the test mode to have shown itself, had it started.
   await pause(5000);
   if (exited) failures.push('the program ended by itself');

@@ -5,8 +5,9 @@
  * system (Electron safeStorage); without that, it is kept until the program
  * closes and never written to disk. Local servers (LM Studio, Ollama) need no key.
  *
- * Company rules come from ai-policy.json next to the program (KALKETA_AI_POLICY
- * may point elsewhere); they are read, never written.
+ * Company rules come from ai-policy.json next to the program; they are read, never
+ * written. KALKETA_AI_POLICY may point elsewhere only from the source: in a packaged
+ * program it would let a user switch the rules of the company off.
  */
 
 import { app, ipcMain, safeStorage, type IpcMainInvokeEvent } from 'electron';
@@ -105,7 +106,8 @@ async function keyState(provider: string): Promise<AiKeyState> {
 }
 
 export function readPolicy(): AiPolicy {
-  const path = process.env['KALKETA_AI_POLICY'] ?? join(dirname(app.getPath('exe')), 'ai-policy.json');
+  const own = app.isPackaged ? undefined : process.env['KALKETA_AI_POLICY'];
+  const path = own ?? join(dirname(app.getPath('exe')), 'ai-policy.json');
   if (!existsSync(path)) return NO_POLICY;
   try {
     return parseAiPolicy(JSON.parse(readFileSync(path, 'utf8')));

@@ -225,11 +225,31 @@ export function pyodidePlace(resources?: string): PyodidePlace {
   return { indexDir, ...(packagesDir ? { packagesDir } : {}) };
 }
 
-/** The start of a script for the question before it runs: its first lines, and how many more there are. */
-export function scriptExcerpt(code: string, more: string, lines = 30): string {
-  const all = code.replace(/\r\n/g, '\n').split('\n');
-  const shown = all.slice(0, lines).map((l) => (l.length > 160 ? `${l.slice(0, 160)}…` : l));
-  return all.length > lines ? `${shown.join('\n')}\n${more.replace('{n}', String(all.length - lines))}` : shown.join('\n');
+/** Characters a dialog would not show (controls, zero widths, direction marks): written as their code instead. */
+const UNSEEN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F\u00AD\u061C\u180E\u200B-\u200F\u2028-\u202E\u2060-\u206F\uFEFF]/g;
+
+/**
+ * The start of a script for the question before it runs: its first lines, and how many more there are.
+ * Nothing of a line shown is left out: a long line is wrapped, a long run of spaces is written as its count
+ * (␣×150) and unseen characters as their code, so no code can hide behind them. Lines end as Python ends
+ * them (\n, \r\n, a lone \r). Only whole lines are shown, `rows` rows at most; the rest is counted.
+ */
+export function scriptExcerpt(code: string, more: string, rows = 30, width = 160): string {
+  const all = code.split(/\r\n|\r|\n/);
+  const shown: string[] = [];
+  let whole = 0;
+  for (const line of all) {
+    const visible = line.replace(UNSEEN, (c) => `⟨U+${c.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0')}⟩`).replace(/[ \t]{17,}/g, (run) => ` ␣×${run.length} `);
+    const pieces = visible.length <= width ? [visible] : Array.from({ length: Math.ceil(visible.length / width) }, (_, i) => `${i > 0 ? '↪ ' : ''}${visible.slice(i * width, (i + 1) * width)}`);
+    if (shown.length + pieces.length > rows) {
+      // A first line longer than all the rows: its start is shown, and it is counted among those not shown.
+      if (whole === 0) shown.push(...pieces.slice(0, rows));
+      break;
+    }
+    shown.push(...pieces);
+    whole += 1;
+  }
+  return whole < all.length ? `${shown.join('\n')}\n${more.replace('{n}', String(all.length - whole))}` : shown.join('\n');
 }
 
 /**

@@ -103,6 +103,31 @@ describe('Python of the computer', () => {
     expect(shown.endsWith('… 10 more lines')).toBe(true);
     expect(scriptExcerpt('print(1)', '…')).toBe('print(1)');
   });
+
+  it('hides no code behind a long line, a run of spaces or unseen characters', () => {
+    const hidden = 'import os; os.system("rm -rf ~")';
+    // Spaces push the code past the width of a line.
+    const padded = scriptExcerpt(`result("F", 12.5, "kN")${' '.repeat(150)}; ${hidden}`, '… {n} more lines');
+    expect(padded).toContain(hidden);
+    expect(padded).toContain('␣×150');
+    // A line longer than the width is wrapped, not cut.
+    const long = scriptExcerpt(`x = "${'a'.repeat(400)}"; ${hidden}`, '… {n} more lines');
+    expect(long.replace(/\n↪ /g, '')).toContain(hidden);
+    // A lone \r ends a line for Python: it is shown as one.
+    expect(scriptExcerpt(`print(1)\r${hidden}`, '…').split('\n')).toEqual(['print(1)', hidden]);
+    // A direction mark or a zero width space is written as its code.
+    expect(scriptExcerpt('x = 1\u202E\u200B', '…')).toBe('x = 1⟨U+202E⟩⟨U+200B⟩');
+  });
+
+  it('shows only whole lines and counts those it leaves out', () => {
+    // Two rows fit, the long third line does not: it is counted, not cut.
+    const shown = scriptExcerpt(`a = 1\nb = 2\nc = "${'x'.repeat(200)}"`, '… {n} more lines', 3, 160);
+    expect(shown).toBe('a = 1\nb = 2\n… 1 more lines');
+    // A first line longer than all the rows: its start, and it is counted too.
+    const first = scriptExcerpt('y'.repeat(1000), '… {n} more lines', 2, 100);
+    expect(first.split('\n')).toHaveLength(3);
+    expect(first.endsWith('… 1 more lines')).toBe(true);
+  });
 });
 
 describe('the prelude of a script', () => {

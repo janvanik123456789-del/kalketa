@@ -3,7 +3,7 @@
 //
 // It writes its own test sheets (AI notes, a block) into a temporary folder, so it
 // needs nothing outside the repo and works wherever the repo lives.
-// KALKETA_SMOKE_EXE=<path to Kalketa.exe> runs the same test on a packaged build.
+// A packaged program holds no test code: scripts/packaged-check.mjs looks at it from outside.
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
 import { mkdtempSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
@@ -257,8 +257,7 @@ const env = {
 delete env.ANTHROPIC_API_KEY;
 delete env.ANTHROPIC_AUTH_TOKEN;
 delete env.ELECTRON_RUN_AS_NODE;
-const packaged = process.env.KALKETA_SMOKE_EXE;
-const child = spawn(packaged ?? electron, packaged ? [] : [desktop], { env, stdio: ['ignore', 'pipe', 'pipe'] });
+const child = spawn(electron, [desktop], { env, stdio: ['ignore', 'pipe', 'pipe'] });
 let stdout = '';
 let stderr = '';
 child.stdout.on('data', (chunk) => (stdout += chunk));

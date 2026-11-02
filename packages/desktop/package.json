@@ -29,6 +29,7 @@
     },
     "files": [
       "dist/**",
+      "!dist/smoke.*",
       "package.json",
       "!**/node_modules/@napi-rs/**"
     ],

@@ -4,7 +4,11 @@
 
 **Technické výpočty, které jdou zkontrolovat.** Obecný technický výpočtář jako Mathcad, který umí dobře pracovat s daty. Výpočet se píše jako text s jednotkami a tiskne se jako klasický technický výpočet: vzorec, dosazení, výsledek, posudek. Tabulky, obrázky, zdroje a teorie jsou součástí výpočtu (listu), ne programu.
 
-[English](README.md) · licence MIT
+[English](README.md) · [Stažení](https://github.com/janvanik123456789-del/kalketa/releases) · licence MIT
+
+## Stažení a instalace
+
+Sestavení pro Windows (instalátor nebo přenosný `.exe`) a Linux (`.AppImage`, který běží bez instalace, nebo `.deb`) jsou na stránce [Releases](https://github.com/janvanik123456789-del/kalketa/releases). Program mluví česky a anglicky.
 
 ## Co umí
 

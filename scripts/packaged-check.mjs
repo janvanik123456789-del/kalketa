@@ -2,8 +2,9 @@
 //
 // A package holds no test code, so the program is looked at from outside over the debugging port of
 // Chromium: it starts, its editor loads and has the bridge, and the page reports no errors. It must also
-// ignore KALKETA_SMOKE_TEST (that mode skips the question before Python of the computer runs a script),
-// and where the package can be read, it must not contain the smoke test.
+// ignore KALKETA_SMOKE_TEST (that mode skips the question before Python of the computer runs a script)
+// and KALKETA_DEV_URL (a page loaded from there would have the bridge of the program), and where the
+// package can be read, it must not contain the smoke test.
 import { spawn } from 'node:child_process';
 import { existsSync, mkdtempSync, openSync, readSync, closeSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -17,7 +18,7 @@ if (!program || !existsSync(program)) {
 
 const out = mkdtempSync(join(tmpdir(), 'kalketa-packaged-'));
 const forbidden = join(out, 'must-not-appear.pdf');
-const env = { ...process.env, KALKETA_USER_DATA: join(out, 'profile'), KALKETA_SMOKE_TEST: forbidden };
+const env = { ...process.env, KALKETA_USER_DATA: join(out, 'profile'), KALKETA_SMOKE_TEST: forbidden, KALKETA_DEV_URL: 'http://127.0.0.1:9/foreign.html' };
 delete env.ELECTRON_RUN_AS_NODE;
 
 const failures = [];
@@ -79,9 +80,10 @@ try {
   if (!port) throw new Error(`the program gave no debugging port. ${stderr.slice(-1000)}`);
   const page = await waitFor(async () => {
     const targets = await fetch(`http://127.0.0.1:${port}/json/list`).then((r) => r.json(), () => []);
-    return targets.find((t) => t.type === 'page' && t.url.includes('index.html'));
+    return targets.find((t) => t.type === 'page' && (t.url.includes('index.html') || t.url.includes('foreign.html')));
   }, 60);
   if (!page) throw new Error('the editor page did not open');
+  if (page.url.includes('foreign.html') || !page.url.startsWith('file:')) failures.push(`the program loaded ${page.url}`);
   const state = await waitFor(async () => {
     const seen = await inPage(page.webSocketDebuggerUrl, `({ bridge: typeof window.kalketaDesktop === 'object', menus: document.querySelectorAll('.menubar-item').length, title: document.title })`).catch(() => undefined);
     return seen?.menus > 0 ? seen : undefined;

@@ -179,7 +179,8 @@ if (smokeTest) app.setPath('userData', mkdtempSync(join(tmpdir(), 'kalketa-smoke
 else if (process.env['KALKETA_USER_DATA']) app.setPath('userData', process.env['KALKETA_USER_DATA']);
 
 function editorEntry(): { url?: string; file?: string } {
-  const devUrl = process.env['KALKETA_DEV_URL'];
+  // Only from the source: a page loaded here has the bridge of the program, so a packaged program loads its own editor alone.
+  const devUrl = app.isPackaged ? undefined : process.env['KALKETA_DEV_URL'];
   if (devUrl) return { url: devUrl };
   return { file: app.isPackaged ? join(process.resourcesPath, 'editor', 'index.html') : join(HERE, '../../editor/dist/index.html') };
 }

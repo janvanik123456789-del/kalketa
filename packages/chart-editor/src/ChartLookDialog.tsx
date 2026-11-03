@@ -5,13 +5,14 @@
  * or saved as the style of charts of the calculation, which every chart of it takes.
  */
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ComponentType, type ReactNode } from 'react';
 import { t, type Catalog, type UiKey } from '@kalketa/i18n';
 import { CHART_PALETTES, chartSvg, SERIES_COLORS, withLook, type ChartLook, type ChartSpec } from '@kalketa/chart';
-import { Dialog } from './Dialogs.js';
 
 interface ChartLookDialogProps {
   readonly catalog: Catalog;
+  /** The dialog window of the program. */
+  readonly Dialog: ComponentType<{ title: string; catalog: Catalog; wide?: boolean; onClose(): void; buttons?: readonly { readonly label: string; run(): void; readonly isDefault?: boolean }[]; children: ReactNode }>;
   /** The chart: what it shows and its size. */
   readonly spec: ChartSpec;
   readonly size: { readonly width: number; readonly height: number };
@@ -30,7 +31,7 @@ interface ChartLookDialogProps {
 const LINES = [1, 1.5, 2, 2.5, 3, 4];
 const FONTS = [9, 10, 11, 12, 13, 14];
 
-export function ChartLookDialog({ catalog, spec, size, format, base, own, onApply, onSaveStyle, onClose }: ChartLookDialogProps) {
+export function ChartLookDialog({ catalog, Dialog, spec, size, format, base, own, onApply, onSaveStyle, onClose }: ChartLookDialogProps) {
   const say = (key: UiKey, params?: Record<string, string | number>) => t(catalog, key, params);
   const [look, setLook] = useState<ChartLook>(withLook(base, own));
   const set = (part: ChartLook) => setLook((l) => ({ ...l, ...part }));

@@ -1,0 +1,27 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": false,
+    "declaration": false,
+    "noEmit": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "types": ["vite/client"],
+    "esModuleInterop": true,
+    "paths": {
+      "@kalketa/core": ["../core/src/index.ts"],
+      "@kalketa/i18n": ["../i18n/src/index.ts"],
+      "@kalketa/render": ["../render/src/index.ts"],
+      "@kalketa/chart": ["../chart/src/index.ts"],
+      "@kalketa/chart-editor": ["./src/index.ts"],
+      "@kalketa/chart-editor/logic": ["./src/logic/index.ts"],
+      "@kalketa/sheet": ["../sheet/src/index.ts"],
+      "@kalketa/canvas": ["../canvas/src/index.ts"],
+      "@kalketa/canvas/editor": ["../canvas/src/editor/index.ts"],
+      "@kalketa/ai": ["../ai/src/index.ts"]
+    }
+  },
+  "include": ["src", "workbench"]
+}

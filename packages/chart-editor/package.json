@@ -1,0 +1,27 @@
+{
+  "name": "@kalketa/chart-editor",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Editing a chart on screen: mouse, small windows, menu. Hands back changed plot lines.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./logic": "./src/logic/index.ts",
+    "./chart-editor.css": "./src/chart-editor.css"
+  },
+  "dependencies": {
+    "@kalketa/chart": "*",
+    "@kalketa/core": "*",
+    "@kalketa/i18n": "*",
+    "@kalketa/render": "*",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "vite": "^8.3.1"
+  },
+  "license": "MIT"
+}

@@ -12,6 +12,7 @@ export default defineConfig({
       '@kalketa/sheet': src('sheet'),
       '@kalketa/render': src('render'),
       '@kalketa/canvas': src('canvas'),
+      '@kalketa/chart-editor/logic': fileURLToPath(new URL('./packages/chart-editor/src/logic/index.ts', import.meta.url)),
       '@kalketa/chart': src('chart'),
       '@kalketa/ai/connect': fileURLToPath(new URL('./packages/ai/src/connect.ts', import.meta.url)),
       '@kalketa/ai': src('ai'),

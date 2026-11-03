@@ -13,6 +13,7 @@
     "@kalketa/ai": "*",
     "@kalketa/canvas": "*",
     "@kalketa/chart": "*",
+    "@kalketa/chart-editor": "*",
     "@kalketa/core": "*",
     "@kalketa/i18n": "*",
     "@kalketa/render": "*",

@@ -198,18 +198,6 @@ table.shortcuts td { padding: 2px 16px 2px 0; }
 .fit-preview { background: #fff; border: 1px solid #d5d9df; padding: 8mm 6mm; overflow: auto; max-height: 64vh; font-size: 10pt; }
 .chart-range { display: grid !important; grid-template-columns: 70px minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 4px; }
 .chart-range input { min-width: 0; width: 100%; box-sizing: border-box; }
-.look-dialog { display: grid; grid-template-columns: minmax(250px, 300px) minmax(0, 1fr); gap: 12px; min-height: 380px; }
-.look-options { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
-.look-options fieldset { border: 1px solid #c9ced6; padding: 4px 8px 6px; margin: 0; display: flex; flex-direction: column; gap: 4px; }
-.look-options legend { font-weight: 600; padding: 0 4px; }
-.look-field { display: grid; grid-template-columns: 110px minmax(0, 1fr); align-items: center; gap: 6px; }
-.look-check { display: flex; align-items: center; gap: 6px; }
-.look-colors { display: flex; flex-wrap: wrap; gap: 4px; padding-left: 116px; }
-.look-colors input[type='color'] { width: 26px; height: 22px; padding: 0; border: 1px solid #c9ced6; background: none; cursor: pointer; }
-.look-reset { align-self: flex-start; }
-.look-options .hint { margin: 2px 0; color: #4b5563; font-size: 12px; }
-.look-preview { background: #fff; border: 1px solid #d5d9df; padding: 6mm; overflow: auto; max-height: 64vh; align-self: start; }
-@media (max-width: 760px) { .look-dialog { grid-template-columns: 1fr; } }
 .functions-list { max-height: 60vh; overflow-y: auto; }
 .functions-list h4 { margin: 10px 0 4px; }
 table.functions { border-collapse: collapse; width: 100%; }
@@ -288,14 +276,7 @@ kbd { font: 12px Consolas, monospace; background: #fff; border: 1px solid #c4cad
 .block-view .block.picture.align-right { margin-right: 0; }
 .block-view h2, .block-view h3, .block-view h4 { margin-top: 2mm; }
 /* A chart reads its values under the pointer. */
-.chart-view { position: relative; width: 100%; margin: 0 auto; }
-.chart-view.align-left { margin-left: 0; }
-.chart-view.align-right { margin-right: 0; }
-.row:hover .chart-view svg.chart-svg { outline: calc(1px / var(--zoom, 1)) dashed var(--accent); }
-.row.selected .chart-view svg.chart-svg { outline: calc(2px / var(--zoom, 1)) solid var(--accent); }
 /* The labels of points in a chart are taken by the mouse anywhere in their box, not only on their letters. */
-.chart-view .chart-label { pointer-events: bounding-box; cursor: move; }
-.chart-view .chart-tangent-handle { cursor: ew-resize; }
 /* The slider of an input (a := -2 {slider=-5..5}): only in the editor, never printed. */
 .input-slider { display: flex; align-items: center; gap: 6px; margin: 1mm 0 1mm 4mm; width: 50mm; max-width: 100%; font: 10px system-ui, sans-serif; color: #666; user-select: none; }
 .input-slider .slider-track { position: relative; flex: 1; min-width: 30mm; height: 6px; border-radius: 3px; background: #dfe3ea; cursor: pointer; outline: none; }
@@ -310,9 +291,6 @@ kbd { font: 12px Consolas, monospace; background: #fff; border: 1px solid #c4cad
 .chart-slider-value { min-width: 9mm; text-align: right; font-variant-numeric: tabular-nums; }
 .chart-slider .input-slider { margin: 0; width: 42mm; }
 @media print { .chart-sliders { display: none; } }
-.chart-crosshair { position: absolute; width: 0; border-left: 1px solid #898781; pointer-events: none; }
-.chart-tooltip { position: absolute; transform: translate(10px, 0); padding: 4px 8px; background: #ffffff; color: #0b0b0b; border: 1px solid rgba(11, 11, 11, 0.15); border-radius: 4px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12); font: 11px system-ui, sans-serif; white-space: nowrap; pointer-events: none; z-index: 5; }
-.chart-tooltip.left { transform: translate(calc(-100% - 10px), 0); }
 .blank { height: 14px; }
 code.raw { display: block; padding: 3px 0; color: var(--muted); font: 12px/1.5 Consolas, "Courier New", monospace; white-space: pre-wrap; }
 .row-editor { width: 100%; resize: none; overflow: hidden; border: 1px solid #e0c060; border-radius: 3px; padding: 4px 6px; background: #fff; font: 13px/1.5 Consolas, "Courier New", monospace; outline: none; }
@@ -978,21 +956,3 @@ button.icon:hover { color: var(--accent); }
 .completion-note { flex: none; color: var(--muted); font-size: 11px; }
 
 /* The small window beside a part of a chart. */
-.chart-part-panel { position: fixed; z-index: 900; width: 236px; padding: 8px 10px 10px; display: flex; flex-direction: column; gap: 6px; background: var(--panel, #fff); color: var(--ink, #1f2328); border: 1px solid var(--line, #c9ced6); border-radius: 6px; box-shadow: 0 6px 22px rgba(0, 0, 0, 0.22); font-size: 13px; }
-.chart-part-panel .part-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.chart-part-panel .part-close { border: 0; background: none; font-size: 17px; line-height: 1; cursor: pointer; color: inherit; padding: 0 2px; }
-.chart-part-panel .part-field { display: grid; grid-template-columns: 76px minmax(0, 1fr); align-items: center; gap: 6px; }
-.chart-part-panel select, .chart-part-panel input[type='text'] { width: 100%; min-width: 0; box-sizing: border-box; }
-.chart-part-panel input[type='color'] { width: 100%; height: 24px; padding: 0; box-sizing: border-box; }
-.chart-part-panel .part-row { display: flex; align-items: center; gap: 6px; }
-.chart-part-panel .part-row button { min-width: 30px; height: 26px; cursor: pointer; }
-.chart-part-panel .part-row button[data-part-field='bold'] { font-weight: bold; }
-.chart-part-panel .part-row button[data-part-field='italic'] { font-style: italic; }
-.chart-part-panel .part-row button.on { background: var(--accent, #2a78d6); border-color: var(--accent, #2a78d6); color: #fff; }
-.chart-part-panel .part-row input[type='color'] { flex: 1; }
-.chart-part-panel .part-choice button { flex: 1; }
-.chart-part-panel .part-check { display: flex; align-items: center; gap: 6px; }
-.chart-part-panel .part-hint { margin: 0; font-size: 12px; opacity: 0.75; }
-.chart-part-panel .part-reset { align-self: flex-start; cursor: pointer; }
-.chart-view svg.chart-svg [data-part] { cursor: pointer; }
-.chart-view svg.chart-svg [data-part='xTitle'], .chart-view svg.chart-svg [data-part='yTitle'], .chart-view svg.chart-svg [data-part='legend'] { cursor: move; }

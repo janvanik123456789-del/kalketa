@@ -35,6 +35,12 @@
       "@kalketa/chart": [
         "../chart/src/index.ts"
       ],
+      "@kalketa/chart-editor": [
+        "../chart-editor/src/index.ts"
+      ],
+      "@kalketa/chart-editor/logic": [
+        "../chart-editor/src/logic/index.ts"
+      ],
       "@kalketa/canvas/editor": [
         "../canvas/src/editor/index.ts"
       ],

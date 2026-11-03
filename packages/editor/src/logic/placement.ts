@@ -6,6 +6,9 @@
  */
 
 import { formatPicture, formatPlacement, parsePicture, parsePlacement, type Placement } from '@kalketa/core';
+import { closingParen } from '@kalketa/chart-editor/logic';
+
+export { plotFlag, plotOption, plotShowsRoots, plotYRange, withPlotFlag, withPlotOption, withPlotRoots, withPlotYRange } from '@kalketa/chart-editor/logic';
 
 export interface Placeable {
   readonly kind: 'picture' | 'chart';
@@ -39,100 +42,4 @@ export function withPlotPlace(text: string, options: string): string {
   const close = closingParen(text, text.indexOf('('));
   if (close < 0) return text;
   return `${text.slice(0, close)}, place: "${options}"${text.slice(close)}`;
-}
-
-/** The parenthesis that closes the one at `open`, past texts in quotes; -1 when it is missing. */
-function closingParen(text: string, open: number): number {
-  let depth = 0;
-  for (let i = open; i < text.length; i++) {
-    const c = text[i];
-    if (c === '"') {
-      const end = text.indexOf('"', i + 1);
-      if (end < 0) return -1;
-      i = end;
-    } else if (c === '(') depth++;
-    else if (c === ')' && --depth === 0) return i;
-  }
-  return -1;
-}
-
-const YLIM = /,?\s*ylim\s*:\s*([^,()"]+?\.\.[^,()"]+?)(?=\s*[,)])/;
-
-/** The range of the y axis a plot line sets (ylim: -20 .. 20), as written; undefined when it follows the values. */
-export function plotYRange(text: string): string | undefined {
-  return PLOT.test(text) ? YLIM.exec(text)?.[1]?.trim() : undefined;
-}
-
-/** The plot line with its y axis from .. to (`range`, as written), or following the values again (undefined). */
-export function withPlotYRange(text: string, range: string | undefined): string {
-  const found = YLIM.exec(text);
-  if (found) {
-    const rest = text.slice(found.index + found[0].length);
-    return range ? `${text.slice(0, found.index)}, ylim: ${range}${rest}` : `${text.slice(0, found.index)}${rest}`;
-  }
-  if (!range) return text;
-  const close = closingParen(text, text.indexOf('('));
-  if (close < 0) return text;
-  return `${text.slice(0, close)}, ylim: ${range}${text.slice(close)}`;
-}
-
-/** A yes/no option of a plot line (roots: true, symmetry: true): whether it is on. */
-export function plotFlag(text: string, name: string): boolean {
-  return PLOT.test(text) && new RegExp(`,?\\s*${name}\\s*:\\s*true\\b`).test(text);
-}
-
-/** The plot line with a yes/no option on (written as name: true) or off (left out). */
-export function withPlotFlag(text: string, name: string, on: boolean): string {
-  const found = new RegExp(`,?\\s*${name}\\s*:\\s*(true|false)\\b`).exec(text);
-  const without = found ? text.slice(0, found.index) + text.slice(found.index + found[0].length) : text;
-  if (!on) return without;
-  const close = closingParen(without, without.indexOf('('));
-  return close < 0 ? text : `${without.slice(0, close)}, ${name}: true${without.slice(close)}`;
-}
-
-/** Whether a plot line marks the roots of its curves (roots: true). */
-export const plotShowsRoots = (text: string): boolean => plotFlag(text, 'roots');
-
-/** The plot line marking the roots of its curves, or not. */
-export const withPlotRoots = (text: string, on: boolean): string => withPlotFlag(text, 'roots', on);
-
-/** Where the named option of the plot call stands: from its comma to its end, past brackets and texts. */
-function optionSpan(text: string, name: string): { start: number; end: number; value: string } | undefined {
-  const open = text.indexOf('(');
-  const close = closingParen(text, open);
-  if (open < 0 || close < 0) return undefined;
-  let depth = 0;
-  let itemStart = open + 1;
-  for (let i = open + 1; i <= close; i++) {
-    const c = text[i];
-    if (c === '"') {
-      const end = text.indexOf('"', i + 1);
-      if (end < 0) return undefined;
-      i = end;
-      continue;
-    }
-    if (c === '(' || c === '[') depth++;
-    else if ((c === ')' || c === ']') && depth > 0) depth--;
-    else if ((c === ',' && depth === 0) || i === close) {
-      const item = text.slice(itemStart, i);
-      const m = new RegExp(`^\\s*${name}\\s*:\\s*`).exec(item);
-      if (m) return { start: itemStart - 1, end: i, value: item.slice(m[0].length).trim() };
-      itemStart = i + 1;
-    }
-  }
-  return undefined;
-}
-
-/** The value of a named option of a plot line as written (area: x_2 .. x_1 gives "x_2 .. x_1"). */
-export function plotOption(text: string, name: string): string | undefined {
-  return PLOT.test(text) ? optionSpan(text, name)?.value : undefined;
-}
-
-/** The plot line with a named option set to `value` as written, or left out (undefined). */
-export function withPlotOption(text: string, name: string, value: string | undefined): string {
-  const found = optionSpan(text, name);
-  const without = found ? text.slice(0, found.start) + text.slice(found.end) : text;
-  if (value === undefined) return without;
-  const close = closingParen(without, without.indexOf('('));
-  return close < 0 ? text : `${without.slice(0, close)}, ${name}: ${value}${without.slice(close)}`;
 }

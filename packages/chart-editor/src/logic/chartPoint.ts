@@ -4,6 +4,8 @@
  * chart there (beyond the y axis set by hand), the nearest place of it inside.
  */
 
+import { unitGap } from '@kalketa/i18n';
+import type { PrintBlock } from '@kalketa/render';
 import { xPosition, xValueAt, yPosition, type ChartLayout, type ChartSpec } from '@kalketa/chart';
 
 /**
@@ -62,4 +64,17 @@ export function seriesAt(chart: { readonly spec: ChartSpec; readonly layout: Cha
     if (d <= within && (!best || d < best.d)) best = { index, d };
   });
   return best?.index;
+}
+
+/** A number as the file writes it, rounded to what a person reads: 2.236, not 2.2360679775. */
+export function writtenNumber(value: number, step?: number): string {
+  const digits = step ? Math.max(0, -Math.floor(Math.log10(step))) : 4;
+  return String(Number(value.toFixed(Math.min(12, digits))));
+}
+
+/** A value of the x axis of a chart as written in its line: rounded to a two-hundredth of the axis, with its unit. */
+export function chartX(chart: Extract<PrintBlock, { kind: 'chart' }>, x: number): string {
+  const step = 10 ** Math.floor(Math.log10((chart.layout.x.max - chart.layout.x.min) / 200));
+  const n = writtenNumber(Math.round(x / step) * step, step);
+  return chart.xUnit ? `${n}${unitGap(chart.xUnit)}${chart.xUnit}` : n;
 }

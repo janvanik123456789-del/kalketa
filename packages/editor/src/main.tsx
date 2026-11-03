@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { BLOCK_CSS } from '@kalketa/render';
 import { App } from './App.js';
 import './styles.css';
+import '@kalketa/chart-editor/chart-editor.css';
 
 // The sheet looks exactly like the printout: same block styles.
 const style = document.createElement('style');

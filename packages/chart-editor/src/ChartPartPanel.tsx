@@ -8,11 +8,12 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 're
 import { createPortal } from 'react-dom';
 import { t, type Catalog, type UiKey } from '@kalketa/i18n';
 import type { ChartLook, ChartSpec } from '@kalketa/chart';
-import { lookOption, partKind, type ChartPart } from '../logic/chartParts.js';
-import { fontName, fontValue, useSystemFonts } from '../logic/systemFonts.js';
+import { lookOption, partKind, type ChartPart } from './logic/chartParts.js';
 
 interface ChartPartPanelProps {
   readonly catalog: Catalog;
+  /** The fonts to choose from. */
+  readonly fonts: readonly string[];
   readonly part: ChartPart;
   readonly spec: ChartSpec;
   /** The look of the chart as the user sees it, and the part of it this chart keeps itself. */
@@ -29,13 +30,16 @@ interface ChartPartPanelProps {
   onClose(): void;
 }
 
+/** A font's name as the line writes it, and back. */
+const fontValue = (family: string) => family.replace(/ /g, '_');
+const fontName = (value: string) => value.replace(/_/g, ' ');
+
 const SIZES = [8, 9, 10, 11, 12, 13, 14, 16, 18, 20, 24, 28, 32];
 const WIDTHS = [0.5, 1, 1.5, 2, 2.5, 3, 4, 5, 6];
 const DASHES = ['solid', 'dash', 'dot', 'dashdot'] as const;
 
-export function ChartPartPanel({ catalog, part, spec, look, anchor, onSet, onLook, onTitle, onReset, onClose }: ChartPartPanelProps) {
+export function ChartPartPanel({ catalog, fonts, part, spec, look, anchor, onSet, onLook, onTitle, onReset, onClose }: ChartPartPanelProps) {
   const say = (key: UiKey, params?: Record<string, string | number>) => t(catalog, key, params);
-  const fonts = useSystemFonts();
   const box = useRef<HTMLDivElement>(null);
   const [place, setPlace] = useState<{ left: number; top: number }>();
   const kind = partKind(part);

@@ -47,12 +47,12 @@ import { FUNCTION_TEMPLATES, parseLayout, setVisible, templateParts, type Toolba
 import { createTable, importTableFile, type TableChange } from './tableActions.js';
 import { captionOf, fromFile, pictureLine, picturePath, pixelWidth, widthFor, type IncomingPicture } from './logic/pictures.js';
 import { importBlockFile } from './blockActions.js';
-import { AboutDialog, CustomizeDialog, FunctionHelpDialog, InsertFunctionDialog, PropertiesDialog, SettingsDialog, ShortcutsDialog } from './components/Dialogs.js';
+import { AboutDialog, CustomizeDialog, Dialog, FunctionHelpDialog, InsertFunctionDialog, PropertiesDialog, SettingsDialog, ShortcutsDialog } from './components/Dialogs.js';
 import { helpNamesOfLine } from './logic/functionHelp.js';
 import { FitDialog } from './components/FitDialog.js';
 import { ChartDialog } from './components/ChartDialog.js';
 import type { ChartFunction, ChartRelation, ChartSources } from './logic/chartInsert.js';
-import { ChartLookDialog } from './components/ChartLookDialog.js';
+import { ChartLookDialog } from '@kalketa/chart-editor';
 import { chartLookText, lookDifference, parseChartLook } from '@kalketa/chart';
 import { PythonRunnerContext, type PythonRunner } from './components/PythonCheck.js';
 import { applyEdits, fitCharts, fitSeries, readFit, type FitChoice, type LineEdit } from './logic/curveFit.js';
@@ -2932,6 +2932,7 @@ export function App() {
       {chartLook && (
         <ChartLookDialog
           catalog={ui}
+          Dialog={Dialog}
           spec={chartLook.chart.spec}
           size={{ width: chartLook.chart.layout.width, height: chartLook.chart.layout.height }}
           format={chartNumber}

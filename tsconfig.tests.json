@@ -27,6 +27,9 @@
       "@kalketa/chart": [
         "./packages/chart/src/index.ts"
       ],
+      "@kalketa/chart-editor/logic": [
+        "./packages/chart-editor/src/logic/index.ts"
+      ],
       "@kalketa/ai": [
         "./packages/ai/src/index.ts"
       ],
@@ -43,6 +46,7 @@
   ],
   "exclude": [
     "packages/editor/src",
+    "packages/chart-editor/src",
     "packages/canvas/src/editor"
   ]
 }

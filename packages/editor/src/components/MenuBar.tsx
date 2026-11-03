@@ -185,6 +185,13 @@ function MenuPanel({ items, commands, onClose, onNeighbour }: PanelProps) {
   const selectable = rows.map((r, i) => (r?.enabled ? i : -1)).filter((i) => i !== -1);
   const [active, setActive] = useState<number>(selectable[0] ?? -1);
   const [submenu, setSubmenu] = useState<number | undefined>();
+  // A submenu stands where its row was: only a scroll that moved the row closes it (the report of one may come late).
+  const panel = useRef<HTMLDivElement>(null);
+  const scrollOfSubmenu = useRef(0);
+  const openSubmenu = (index: number) => {
+    scrollOfSubmenu.current = panel.current?.scrollTop ?? 0;
+    setSubmenu(index);
+  };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -193,10 +200,11 @@ function MenuPanel({ items, commands, onClose, onNeighbour }: PanelProps) {
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
         e.preventDefault();
         const step = e.key === 'ArrowDown' ? 1 : -1;
+        movedByKey.current = true;
         setActive(selectable[(pos + step + selectable.length) % selectable.length] ?? -1);
       } else if (e.key === 'ArrowRight') {
         e.preventDefault();
-        if (rows[active]?.submenu) setSubmenu(active);
+        if (rows[active]?.submenu) openSubmenu(active);
         else onNeighbour?.(1);
       } else if (e.key === 'ArrowLeft') {
         e.preventDefault();
@@ -224,31 +232,43 @@ function MenuPanel({ items, commands, onClose, onNeighbour }: PanelProps) {
     if (!row?.enabled) return;
     if (row.submenu) {
       setActive(index);
-      setSubmenu(index);
+      openSubmenu(index);
       return;
     }
     onClose();
     row.run?.();
   };
 
+  // A row reached by a key comes into view of a menu that scrolls (under the mouse the row is in view already).
+  const movedByKey = useRef(false);
+  useEffect(() => {
+    if (movedByKey.current) panel.current?.querySelector(':scope > .menu-entry > .menu-row.active')?.scrollIntoView({ block: 'nearest' });
+    movedByKey.current = false;
+  }, [active]);
+
   // A menu that would leave the window opens to the other side (submenus) or shifts left.
-  const panel = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const element = panel.current;
     if (!element) return;
+    const anchor = element.parentElement;
+    // A submenu stands free of the menu that scrolls, beside its row, whole inside the window.
+    const row = anchor?.classList.contains('submenu-anchor') ? anchor.parentElement?.getBoundingClientRect() : undefined;
+    if (anchor && row) {
+      const { width, height } = element.getBoundingClientRect();
+      anchor.style.left = `${row.right + width <= window.innerWidth ? row.right : Math.max(0, row.left - width)}px`;
+      anchor.style.top = `${Math.max(4, Math.min(row.top - 4, window.innerHeight - height - 4))}px`;
+      return;
+    }
     const rect = element.getBoundingClientRect();
     // A menu opened near the bottom (the layer tabs) opens upwards.
     const below = rect.bottom - window.innerHeight;
     if (below > 0) element.style.top = `calc(100% - ${Math.min(rect.height, below + 2)}px)`;
     const overflow = rect.right - window.innerWidth;
-    if (overflow <= 0) return;
-    const anchor = element.parentElement;
-    if (anchor?.classList.contains('submenu-anchor')) anchor.classList.add('flipped');
-    else element.style.left = `${-overflow - 2}px`;
+    if (overflow > 0) element.style.left = `${-overflow - 2}px`;
   }, []);
 
   return (
-    <div ref={panel} className="menu-panel" role="menu">
+    <div ref={panel} className="menu-panel" role="menu" onScroll={(e) => e.currentTarget.scrollTop !== scrollOfSubmenu.current && setSubmenu(undefined)}>
       {items.map((item, i) => {
         const row = rows[i];
         if (!row) return item.kind === 'separator' ? <div key={i} className="menu-separator" role="separator" /> : <Fragment key={i} />;
@@ -262,7 +282,8 @@ function MenuPanel({ items, commands, onClose, onNeighbour }: PanelProps) {
               className={`menu-row${i === active ? ' active' : ''}`}
               onMouseEnter={() => {
                 setActive(i);
-                setSubmenu(row.submenu ? i : undefined);
+                if (row.submenu) openSubmenu(i);
+                else setSubmenu(undefined);
               }}
               onClick={() => activate(i)}
             >

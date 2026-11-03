@@ -3224,9 +3224,43 @@ async function chartEditWithRealInput(contents: Electron.WebContents, picture: s
   await pause(300);
   const hintCzech = await partAttr('.layer-view.active .chart-view[title]', 'title');
   const printLanguage = /^Page /.test(footEnglish) && headCzech === 'Popis osy y' && hintCzech !== '' && hintCzech === catalogHint;
+  // A menu longer than the window scrolls. The mouse on its row with a submenu opens it once, whole: it used to open
+  // and close for ever, the menu stretching under the mouse each time.
+  const [menuWidth, menuHeight] = smokeWindow!.getContentSize() as [number, number];
+  smokeWindow!.setContentSize(menuWidth, 450);
+  await pause(400);
+  await clickOn(chart, [], 'right');
+  await pause(400);
+  const shadeRow = (await contents.executeJavaScript(`(() => {
+    const panel = document.querySelector('.context-menu .menu-panel');
+    const row = [...panel.querySelectorAll(':scope > .menu-entry > .menu-row')].find((r) => r.textContent.includes('Vyšrafovat'));
+    row.scrollIntoView({ block: 'center' });
+    window.__submenus = 0;
+    new MutationObserver((changes) => { for (const c of changes) for (const n of c.addedNodes) if (n.classList?.contains('submenu-anchor')) window.__submenus++; }).observe(panel, { childList: true, subtree: true });
+    const box = row.getBoundingClientRect();
+    return { x: Math.round(box.left + 40), y: Math.round(box.top + box.height / 2) };
+  })()`)) as { x: number; y: number };
+  // At once, on purpose: the report of the scroll may come after the mouse, and must not close the submenu.
+  contents.sendInputEvent({ type: 'mouseMove', x: shadeRow.x, y: shadeRow.y });
+  await pause(800);
+  const longMenu = (await contents.executeJavaScript(`(() => {
+    const panel = document.querySelector('.context-menu .menu-panel');
+    const own = panel.getBoundingClientRect();
+    const sub = panel.querySelector('.submenu-anchor > .menu-panel')?.getBoundingClientRect();
+    const seen = sub && document.elementFromPoint(sub.left + 30, sub.top + 12)?.closest('.submenu-anchor');
+    return { opened: window.__submenus, scrolls: panel.scrollHeight > panel.clientHeight, inside: own.top >= 0 && own.bottom <= innerHeight, whole: !!seen && sub.bottom <= innerHeight && sub.right <= innerWidth, x: Math.round(sub?.left + 30), y: Math.round(sub?.top + 12) };
+  })()`)) as { opened: number; scrolls: boolean; inside: boolean; whole: boolean; x: number; y: number };
+  // The mouse goes over into the submenu, and it stays.
+  contents.sendInputEvent({ type: 'mouseMove', x: longMenu.x, y: longMenu.y });
+  await pause(300);
+  const staysOpen = (await contents.executeJavaScript(`!!document.querySelector('.context-menu .submenu-anchor')`)) as boolean;
+  await pressKey('Escape');
+  await pause(200);
+  smokeWindow!.setContentSize(menuWidth, menuHeight);
+  await pause(400);
   const ok =
-    plain.x === first.x && plain.y === first.y && zoomed.x !== first.x && zoomed.y !== first.y && axisOnly.x !== zoomed.x && axisOnly.y === zoomed.y && moved.x !== axisOnly.x && whole.x === first.x && whole.y === first.y && refAfter !== refBefore && /kN·m/.test(refAfter) && cursorAfter !== cursorBefore && /^Δx = /.test(cursorAfter) && log.y !== whole.y && errors === 0 && panelHead === 'Popis osy y' && boldOn === 'bold' && /rotate\(-90/.test(turned) && stillOpen && sized !== '' && closed && /translate\(/.test(dragged) && /rotate\(-90/.test(dragged) && notOpenedByDrag && ticksHead === 'Čísla na ose x' && printLanguage;
-  return { ok, first, plain, zoomed, axisOnly, moved, whole, refBefore, refAfter, cursorBefore, cursorAfter, log, errors, panelHead, boldOn, turned, stillOpen, sized, closed, dragged, notOpenedByDrag, ticksHead, footEnglish, headCzech, hintCzech };
+    plain.x === first.x && plain.y === first.y && zoomed.x !== first.x && zoomed.y !== first.y && axisOnly.x !== zoomed.x && axisOnly.y === zoomed.y && moved.x !== axisOnly.x && whole.x === first.x && whole.y === first.y && refAfter !== refBefore && /kN·m/.test(refAfter) && cursorAfter !== cursorBefore && /^Δx = /.test(cursorAfter) && log.y !== whole.y && errors === 0 && panelHead === 'Popis osy y' && boldOn === 'bold' && /rotate\(-90/.test(turned) && stillOpen && sized !== '' && closed && /translate\(/.test(dragged) && /rotate\(-90/.test(dragged) && notOpenedByDrag && ticksHead === 'Čísla na ose x' && printLanguage && longMenu.opened === 1 && longMenu.scrolls && longMenu.inside && longMenu.whole && staysOpen;
+  return { ok, first, plain, zoomed, axisOnly, moved, whole, refBefore, refAfter, cursorBefore, cursorAfter, log, errors, panelHead, boldOn, turned, stillOpen, sized, closed, dragged, notOpenedByDrag, ticksHead, footEnglish, headCzech, hintCzech, longMenu, staysOpen };
 }
 
 async function sheetPictureWithRealInput(contents: Electron.WebContents): Promise<{ offered: boolean; described: boolean; notice: string; menu: string }> {

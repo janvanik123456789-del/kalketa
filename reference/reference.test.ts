@@ -34,20 +34,29 @@ const casesIn = (dir: string, depth: number): { dir: string; file: string; name:
   });
 const cases = folders(ROOT).flatMap((field) => casesIn(join(ROOT, field), 1));
 
-function loadTables(dir: string): Table[] {
+function loadTables(dir: string, tongue = ''): Table[] {
   const root = join(dir, 'tables');
   if (!existsSync(root)) return [];
   return readdirSync(root).map((name) => {
     const folder = join(root, name);
-    const loaded = loadTable(readFileSync(join(folder, 'schema.json'), 'utf8'), readFileSync(join(folder, 'data.csv'), 'utf8'), defaultRegistry);
+    // A table in the language of the sheet, its words only, else the Czech one.
+    const own = (base: string, ext: string) => join(folder, existsSync(join(folder, `${base}${tongue}.${ext}`)) ? `${base}${tongue}.${ext}` : `${base}.${ext}`);
+    const loaded = loadTable(readFileSync(own('schema', 'json'), 'utf8'), readFileSync(own('data', 'csv'), 'utf8'), defaultRegistry);
     expect(loaded.diagnostics, `table ${name}`).toEqual([]);
     return loaded.table;
   });
 }
 
-describe.each(cases)('$name', ({ dir, file }) => {
+// Every case, and its English version where it has one (x.en.cc beside x.cc): the same results from the same expected file.
+const versions = cases.flatMap((c) => {
+  const sheet = (JSON.parse(readFileSync(join(c.dir, c.file), 'utf8')) as Expected).sheet;
+  const english = sheet.replace(/\.cc$/, '.en.cc');
+  return [{ ...c, sheet, tongue: '' }, ...(existsSync(join(c.dir, english)) ? [{ ...c, name: `${c.name} (en)`, sheet: english, tongue: '.en' }] : [])];
+});
+
+describe.each(versions)('$name', ({ dir, file, sheet, tongue }) => {
   const expected = JSON.parse(readFileSync(join(dir, file), 'utf8')) as Expected;
-  const result = evaluateSheet(readFileSync(join(dir, expected.sheet), 'utf8'), { tables: loadTables(dir) });
+  const result = evaluateSheet(readFileSync(join(dir, sheet), 'utf8'), { tables: loadTables(dir, tongue) });
 
   it('evaluates without diagnostics', () => {
     // The info that a name after a number is a unit (a mass m and lengths in metres) is fine: it keeps the symbols of the source.
@@ -60,7 +69,8 @@ describe.each(cases)('$name', ({ dir, file }) => {
 
   it('has the expected checks', () => {
     const want = expected.checks ?? [];
-    expect(result.checks.map((c) => [c.label, c.passed])).toEqual(want.map((c) => [c.label, c.passed]));
+    // The labels are words of the language of the sheet: in another language the same checks in the same order.
+    expect(result.checks.map((c) => [tongue ? '' : c.label, c.passed])).toEqual(want.map((c) => [tongue ? '' : c.label, c.passed]));
     want.forEach((c, i) => {
       if (c.utilization === undefined) return;
       const got = result.checks[i]!.utilization!;
@@ -94,11 +104,12 @@ describe.each(cases)('$name', ({ dir, file }) => {
 
 // The theory beside a sample (podklady.md): every formula in it (```kalk) holds as written.
 const notes = folders(ROOT).flatMap((field) => {
-  const found: { name: string; path: string }[] = [];
+  const found: { name: string; path: string; tongue: string }[] = [];
   const walk = (dir: string, depth: number) => {
     for (const name of folders(dir)) {
       const here = join(dir, name);
-      if (existsSync(join(here, 'podklady.md'))) found.push({ name, path: join(here, 'podklady.md') });
+      if (existsSync(join(here, 'podklady.md'))) found.push({ name, path: join(here, 'podklady.md'), tongue: '' });
+      if (existsSync(join(here, 'podklady.en.md'))) found.push({ name: `${name} (en)`, path: join(here, 'podklady.en.md'), tongue: '.en' });
       else if (depth > 0) walk(here, depth - 1);
     }
   };
@@ -106,7 +117,7 @@ const notes = folders(ROOT).flatMap((field) => {
   return found;
 });
 
-describe.each(notes)('$name/podklady.md', ({ path }) => {
+describe.each(notes)('$name/podklady.md', ({ path, tongue }) => {
   const blocks = [...readFileSync(path, 'utf8').matchAll(/```kalk\r?\n([\s\S]*?)```/g)].map((m) => m[1]!);
   it('has formulas to check', () => {
     expect(blocks.length).toBeGreaterThan(0);
@@ -120,12 +131,12 @@ describe.each(notes)('$name/podklady.md', ({ path }) => {
   it('holds no check in Python', () => {
     expect(readFileSync(path, 'utf8')).not.toContain('```python');
   });
-  const checkPath = join(dirname(path), 'kontrola.md');
+  const checkPath = join(dirname(path), `kontrola${tongue}.md`);
   const scripts = existsSync(checkPath) ? [...readFileSync(checkPath, 'utf8').matchAll(/```python\r?\n([\s\S]*?)```/g)].map((m) => m[1]!) : [];
   it.each(scripts.map((script, i) => [i + 1, script] as const))('check in Python %i agrees with the sheet', async (_, script) => {
     const dir = dirname(path);
     const expected = JSON.parse(readFileSync(join(dir, readdirSync(dir).find((f) => f.endsWith('.expected.json'))!), 'utf8')) as Expected;
-    const sheet = evaluateSheet(readFileSync(join(dir, expected.sheet), 'utf8'), { tables: loadTables(dir) });
+    const sheet = evaluateSheet(readFileSync(join(dir, tongue ? expected.sheet.replace(/\.cc$/, `${tongue}.cc`) : expected.sheet), 'utf8'), { tables: loadTables(dir, tongue) });
     const run = await runPyodide(`${PYTHON_PRELUDE}\n${script}`, pyodidePlace());
     expect(run.error).toBeUndefined();
     const rows = compareWithSheet(readOutput(run.stdout).results, sheet);

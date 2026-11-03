@@ -10,13 +10,13 @@ import { newDocument, type SheetDocument, type StoredTable } from '@kalketa/shee
 // Sorted by field, in a subfield or not: reference/<field>/[<subfield>/]<case>/
 // (03_Strojirenstvi_a_mechanika/01_Kinematika_a_dynamika/R9-klikovy-mechanismus, 04_…/R1-nosnik).
 const SAMPLE_SHEETS = import.meta.glob<string>('../../../reference/*/**/*.cc', { query: '?raw', import: 'default', eager: true });
-const SAMPLE_TABLES = import.meta.glob<string>('../../../reference/*/**/tables/*/{schema.json,data.csv}', { query: '?raw', import: 'default', eager: true });
+const SAMPLE_TABLES = import.meta.glob<string>('../../../reference/*/**/tables/*/{schema,data}{,.en}.{json,csv}', { query: '?raw', import: 'default', eager: true });
 // Its pictures, drawings of its own (images/mechanismus.svg in the sheet).
 const SAMPLE_IMAGES = import.meta.glob<string>('../../../reference/*/**/images/*.svg', { query: '?raw', import: 'default', eager: true });
 // Its sources layer (theory, in the Markdown of notes): podklady.md beside the sheet.
-const SAMPLE_NOTES = import.meta.glob<string>('../../../reference/*/**/podklady.md', { query: '?raw', import: 'default', eager: true });
+const SAMPLE_NOTES = import.meta.glob<string>('../../../reference/*/**/podklady{,.en}.md', { query: '?raw', import: 'default', eager: true });
 // Its check in Python, a layer of its own beside the theory: kontrola.md beside the sheet.
-const SAMPLE_CHECKS = import.meta.glob<string>('../../../reference/*/**/kontrola.md', { query: '?raw', import: 'default', eager: true });
+const SAMPLE_CHECKS = import.meta.glob<string>('../../../reference/*/**/kontrola{,.en}.md', { query: '?raw', import: 'default', eager: true });
 // How it is set, as a saved calculation keeps it (layout.json: numbered headings, equation numbers, style).
 const SAMPLE_LAYOUTS = import.meta.glob<string>('../../../reference/*/**/layout.json', { query: '?raw', import: 'default', eager: true });
 // The names of a subfield, kept beside its cases: nazev.json {"cs": "Kinematika a dynamika", "en": "Kinematics and dynamics"}.
@@ -41,7 +41,7 @@ export interface Sample {
   readonly subfield?: Subfield;
   /** Its first heading ("Posouzení nosníku N1"). */
   readonly title: string;
-  /** The language of its printout: a sheet named *.en.cc is in English, the others in Czech. */
+  /** The language it is written and printed in: a sheet named *.en.cc is in English, the others in Czech. */
   readonly language: string;
 }
 
@@ -64,8 +64,23 @@ function placeOf(path: string): { field: SampleField | undefined; subfield?: str
   return { field: SAMPLE_FIELDS.find((f) => parts[0]!.startsWith(`${f}_`)), ...(parts.length === 4 ? { subfield: parts[1]! } : {}), id: parts[parts.length - 2]!, file };
 }
 
-/** The sample calculations, by field, then by subfield (those directly in the field first), then in the order of their folders. */
-export function samples(): Sample[] {
+/** The sheet of a case in a language: <name>.en.cc beside <name>.cc; in Czech while it has none in that language. */
+function sheetOf(id: string, language: string): readonly [string, string] | undefined {
+  const own = Object.entries(SAMPLE_SHEETS).filter(([path]) => path.includes(`/${id}/`) && !TEST_VARIANTS.has(/([^/]+)\.cc$/.exec(path)?.[1] ?? ''));
+  return own.find(([path]) => languageOf(/([^/]+)\.cc$/.exec(path)![1]!) === language) ?? own.find(([path]) => languageOf(/([^/]+)\.cc$/.exec(path)![1]!) === 'cs') ?? own[0];
+}
+
+/** What stands beside a sheet, in the language of the sheet: podklady.en.md beside podklady.md. */
+function besideSheet(files: Readonly<Record<string, string>>, id: string, name: string, language: string): string | undefined {
+  const file = language === 'cs' ? `/${name}.md` : `/${name}.${language}.md`;
+  return Object.entries(files).find(([path]) => path.includes(`/${id}/`) && path.endsWith(file))?.[1];
+}
+
+/**
+ * The sample calculations in a language, each case once, in Czech while it has no sheet in that language; by field, then
+ * by subfield (those directly in the field first), then in the order of their folders.
+ */
+export function samples(language = 'cs'): Sample[] {
   const subfields = new Map(
     Object.entries(SUBFIELD_NAMES).map(([path, text]) => {
       const folder = /\/([^/]+)\/nazev\.json$/.exec(path)![1]!;
@@ -81,7 +96,7 @@ export function samples(): Sample[] {
   return Object.entries(SAMPLE_SHEETS)
     .flatMap(([path, source]): Sample[] => {
       const place = placeOf(path);
-      if (!place?.field || TEST_VARIANTS.has(place.file.replace(/\.cc$/, ''))) return [];
+      if (!place?.field || TEST_VARIANTS.has(place.file.replace(/\.cc$/, '')) || sheetOf(place.id, language)?.[0] !== path) return [];
       const subfield = place.subfield === undefined ? undefined : (subfields.get(path.slice(0, path.indexOf(`/${place.subfield}/`) + place.subfield.length + 1)) ?? { folder: place.subfield, names: {} });
       const file = place.file.replace(/\.cc$/, '');
       return [{ id: place.id, field: place.field, ...(subfield ? { subfield } : {}), title: /^#\s+(.+)$/m.exec(source)?.[1]?.trim() ?? place.id, language: languageOf(file) }];
@@ -93,50 +108,53 @@ export function samples(): Sample[] {
  * A sample calculation as a new, unsaved document. Its title says it is a
  * sample, so saving it never offers the name of the user's own calculation.
  */
-export function exampleDocument(id = DEFAULT_SAMPLE, prefix = 'Vzor'): SheetDocument {
-  const entry = Object.entries(SAMPLE_SHEETS).find(([path]) => path.includes(`/${id}/`) && !TEST_VARIANTS.has(/([^/]+)\.cc$/.exec(path)?.[1] ?? ''));
+export function exampleDocument(id = DEFAULT_SAMPLE, prefix = 'Vzor', language = 'cs'): SheetDocument {
+  const entry = sheetOf(id, language);
   const source = entry?.[1] ?? '';
   const title = /^#\s+(.+)$/m.exec(source)?.[1]?.trim() ?? id;
   const base = newDocument(`${prefix} – ${title}`, source);
+  const file = /([^/]+)\.cc$/.exec(entry?.[0] ?? '')?.[1] ?? '';
+  const own = languageOf(file);
   const tables = new Map<string, StoredTable>();
-  for (const [path, text] of Object.entries(SAMPLE_TABLES)) {
-    const [, folder, name, file] = /\/([^/]+)\/tables\/([^/]+)\/([^/]+)$/.exec(path) ?? [];
-    if (folder !== id || !name) continue;
+  // A table in the language of the sheet (data.en.csv, its words only: the same columns and numbers), else the Czech one.
+  const tableFiles = Object.entries(SAMPLE_TABLES).sort(([a], [b]) => (a.includes(`.${own}.`) ? 1 : 0) - (b.includes(`.${own}.`) ? 1 : 0));
+  for (const [path, text] of tableFiles) {
+    const [, folder, name, kind, tongue] = /\/([^/]+)\/tables\/([^/]+)\/(schema|data)(?:\.([a-z]{2}))?\.[a-z]+$/.exec(path) ?? [];
+    if (folder !== id || !name || (tongue !== undefined && tongue !== own)) continue;
     const table = tables.get(name) ?? { schemaJson: '', dataCsv: '' };
-    tables.set(name, file === 'schema.json' ? { ...table, schemaJson: text } : { ...table, dataCsv: text });
+    tables.set(name, kind === 'schema' ? { ...table, schemaJson: text } : { ...table, dataCsv: text });
   }
   const files = new Map(base.files);
   for (const [path, text] of Object.entries(SAMPLE_IMAGES)) {
     const [, folder, name] = /\/([^/]+)\/images\/([^/]+)$/.exec(path) ?? [];
     if (folder === id && name) files.set(`images/${name}`, new TextEncoder().encode(text));
   }
-  const file = /([^/]+)\.cc$/.exec(entry?.[0] ?? '')?.[1] ?? '';
   // Theory beside the calculation: a sources layer (Podklady), after the layers of a new sheet.
-  const notes = Object.entries(SAMPLE_NOTES).find(([path]) => path.includes(`/${id}/`))?.[1];
+  const notes = besideSheet(SAMPLE_NOTES, id, 'podklady', own);
   // The calculation done again in Python, to be run and compared with the sheet: a layer after the theory, theory only in Podklady.
-  const check = Object.entries(SAMPLE_CHECKS).find(([path]) => path.includes(`/${id}/`))?.[1];
+  const check = besideSheet(SAMPLE_CHECKS, id, 'kontrola', own);
   const notesLayer = { visible: true, locked: false, appendix: false } as const;
   const layers = [
     ...base.layers,
     ...(notes === undefined ? [] : [{ ...notesLayer, id: 'sources', kind: 'sources' as const, text: notes }]),
-    ...(check === undefined ? [] : [{ ...notesLayer, id: 'python', kind: 'sources' as const, name: languageOf(file) === 'en' ? 'Check in Python' : 'Kontrola v Pythonu', text: check }]),
+    ...(check === undefined ? [] : [{ ...notesLayer, id: 'python', kind: 'sources' as const, name: own === 'en' ? 'Check in Python' : 'Kontrola v Pythonu', text: check }]),
   ];
   let layout = base.layout;
-  const own = Object.entries(SAMPLE_LAYOUTS).find(([path]) => path.includes(`/${id}/`))?.[1];
+  const setting = Object.entries(SAMPLE_LAYOUTS).find(([path]) => path.includes(`/${id}/`))?.[1];
   try {
-    if (own) layout = { ...layout, ...(JSON.parse(own) as Partial<SheetDocument['layout']>) };
+    if (setting) layout = { ...layout, ...(JSON.parse(setting) as Partial<SheetDocument['layout']>) };
   } catch {
     // A layout that cannot be read: the sample is set as a new calculation.
   }
-  return { ...base, manifest: { ...base.manifest, language: languageOf(file) }, layout, tables, files, layers };
+  return { ...base, manifest: { ...base.manifest, language: own }, layout, tables, files, layers };
 }
 
 /**
  * The first picture of a sample, as its sheet shows it, for the card of the start screen: an SVG as a data URL,
  * undefined for a sample without a picture.
  */
-export function samplePicture(id: string): string | undefined {
-  const source = Object.entries(SAMPLE_SHEETS).find(([path]) => path.includes(`/${id}/`) && !TEST_VARIANTS.has(/([^/]+)\.cc$/.exec(path)?.[1] ?? ''))?.[1];
+export function samplePicture(id: string, language = 'cs'): string | undefined {
+  const source = sheetOf(id, language)?.[1];
   const name = /!\[[^\]]*\]\(images\/([^)\s]+\.svg)\)/.exec(source ?? '')?.[1];
   const svg = name ? Object.entries(SAMPLE_IMAGES).find(([path]) => path.endsWith(`/${id}/images/${name}`))?.[1] : undefined;
   return svg === undefined ? undefined : `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;

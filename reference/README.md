@@ -29,6 +29,10 @@ Strojírenství má podobory `01_Kinematika_a_dynamika`, `02_Pevnost_a_pruznost`
 
 Příklady ze zdrojů (články, učebnice) se převádějí do jednotek SI; obrázky jsou vlastní.
 
+## Jazyky (2026-11-03)
+
+Výpočet má jednu složku a program ho ukáže v jazyce programu; dokud anglickou verzi nemá, česky. Anglická verze stojí vedle české: `<list>.en.cc`, `podklady.en.md`, `kontrola.en.md`, `tables/<Tabulka>/schema.en.json` a `data.en.csv` (jen slova, stejné sloupce a čísla), obrázky `images/<obrázek>.en.svg`, na které list odkazuje. Jména proměnných, vzorce a čísla zůstávají stejné a referenční test ověřuje, že anglický list dá tytéž výsledky a posudky podle stejného `*.expected.json`.
+
 Nezávislý přepočet v Pythonu patří do souboru `kontrola.md` vedle listu: program ho otevře jako vrstvu Kontrola v Pythonu a referenční test ho spustí a porovná s listem. Teorie k výpočtu patří do souboru `podklady.md` vedle listu: program ho otevře jako vrstvu Podklady (Markdown poznámek, vzorce v blocích ```` ```kalk ````). Referenční test ověří, že každý vzorec v podkladech platí.
 
 Jádro je hotové, až projdou všechny bez kódu specifického pro jeden obor.
@@ -54,7 +58,6 @@ Jádro je hotové, až projdou všechny bez kódu specifického pro jeden obor.
 | 17_…/R34-nejistota-mereni | obecné | reálný příklad (Z. Budinská, Chyby a nejistoty měření – příklady, ČVUT FS, př. 1 a 4): nejistota typu A (`stdev`), typu B, kombinovaná, šíření nejistoty do plochy průřezu |
 | 16_…/R5-fotovoltaika | ekonom | vlastní měna, kurz k datu z tabulky, řady peněžních toků, NPV, IRR, doba a datum návratnosti |
 | 01_…/R7-kvadraticka-rovnice | výuka | kvadratická rovnice jako na papíře: podmínka řešitelnosti, kořeny s dosazením, Vietovy vzorce, rozklad, vrchol přes derivaci, tečna s úhlem, plocha mezi kořeny, graf s body a šrafováním, posuvníky koeficientů |
-| 01_…/R8-quadratic-equation | výuka | totéž v angličtině (soubor `*.en.cc` se tiskne anglicky) |
 | 01_…/R17-prolozeni-parabolou | výuka | proložení pěti bodů parabolou metodou nejmenších čtverců s postupem (`fit(…, kind: "poly2", steps: true)`: součty mocnin, soustava normálních rovnic obecně i s čísly, koeficienty), srovnání s přímkou součtem čtverců odchylek, graf bodů a obou křivek; teorie v Podkladech (odvození normálních rovnic ověřené derivací, přímka jako zvláštní případ, R²) |
 | 01_…/R19-plochy-3d | výuka | plochy z(x, y) jako mapa s vrstevnicemi i ve 3D: polokoule, rotační elipsoid, paraboloid, kužel, anuloid (díra uprostřed, okraje dohledané), sedlo a vlnová plocha; řezy (`cut:`), body na ploše, objemy rotačních těles integrálem přes plátky ověřené vzorci (Archimedes, Pappova věta) |
 | 02_Fyzika/R10-stlaceni-hydrostatickym-tlakem | fyzik | reálná úloha (Sbírka řešených úloh, č. 2155): hydrostatický tlak, Hookův zákon, diferenciály jako vztahy (`relation`) a odvození z nich, trojný integrál přes objem, čísla rovnic (1)–(9) jako ve sbírce |

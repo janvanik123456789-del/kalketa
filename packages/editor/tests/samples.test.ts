@@ -7,7 +7,6 @@ describe('sample calculations shipped with the program', () => {
     expect(list.map((s) => `${s.field} ${s.id}`)).toEqual([
       '00 R24-pruvodce-police',
       '01 R7-kvadraticka-rovnice',
-      '01 R8-quadratic-equation',
       '01 R17-prolozeni-parabolou',
       '01 R19-plochy-3d',
       '02 R10-stlaceni-hydrostatickym-tlakem',
@@ -48,9 +47,33 @@ describe('sample calculations shipped with the program', () => {
     expect(list.find((s) => s.id === 'R1-nosnik')!.subfield).toBeUndefined();
   });
 
-  it('print in the language of their sheet: a sheet named *.en.cc in English', () => {
-    expect(samples().find((s) => s.id === 'R8-quadratic-equation')).toMatchObject({ title: 'Quadratic equation', language: 'en' });
-    expect(exampleDocument('R8-quadratic-equation').manifest.language).toBe('en');
+  it('come in the language of the program, each case once, in Czech while it has no English sheet', () => {
+    expect(samples('en').map((s) => s.id)).toEqual(samples('cs').map((s) => s.id));
+    expect(samples('en').find((s) => s.id === 'R7-kvadraticka-rovnice')).toMatchObject({ title: 'Quadratic equation', language: 'en' });
+    expect(samples('cs').find((s) => s.id === 'R7-kvadraticka-rovnice')).toMatchObject({ title: 'Kvadratická rovnice', language: 'cs' });
+    expect(exampleDocument('R7-kvadraticka-rovnice', 'Sample', 'en').manifest).toMatchObject({ language: 'en', title: 'Sample – Quadratic equation' });
+    // All that belongs to it comes in that language: its theory, its check, its table, its picture.
+    const guide = exampleDocument('R24-pruvodce-police', 'Sample', 'en');
+    expect(guide.source).toContain('# Book shelf');
+    expect(guide.layers.find((l) => l.id === 'sources')?.text).toContain('# The board as a simply supported beam');
+    expect(guide.layers.find((l) => l.id === 'python')).toMatchObject({ name: 'Check in Python' });
+    expect(guide.layers.find((l) => l.id === 'python')?.text).toContain('# Check in Python');
+    expect(guide.tables.get('Dreviny')?.dataCsv).toContain('spruce, pine');
+    expect(new TextDecoder().decode(guide.files.get('images/police.en.svg'))).toContain('board section');
+    expect(guide.source).toContain('images/police.en.svg');
+    expect(exampleDocument('R24-pruvodce-police').tables.get('Dreviny')?.dataCsv).toContain('smrk, borovice');
+  });
+
+  it('are in no Czech in their English version', () => {
+    for (const { id, language } of samples('en').filter((s) => s.language === 'en')) {
+      const doc = exampleDocument(id, 'Sample', 'en');
+      expect(language).toBe('en');
+      // Czech letters, in the names of sources only (ČSN EN 1995 has no small ones).
+      for (const text of [doc.source, ...doc.layers.map((l) => l.text ?? '')]) expect(text, id).not.toMatch(/[áčďéěíňóřšťúůýž]/);
+    }
+  });
+
+  it('print in the language of their sheet', () => {
     // A sample brings its own pictures, at the paths its sheet gives.
     const crank = exampleDocument('R9-klikovy-mechanismus');
     const pictures = [...crank.source.matchAll(/\]\(([^)]+)\)/g)].map((m) => m[1]!);

@@ -209,7 +209,6 @@ export function App() {
   // Another window (Window > New window) was asked for to write in: it starts with the empty calculation.
   const [controls, setControls] = useState(() => readControls(stored(CONTROLS_KEY)));
   const [startOpen, setStartOpen] = useState(() => controls.startScreen && !new URLSearchParams(location.search).has('blank') && !(!!desktop && sessionFiles().length > 0));
-  const [sampleList] = useState(samples);
   // A new calculation from its intent: asked for ('pending'), then the tab whose next conversation it is.
   const [intentFor, setIntentFor] = useState<number | 'pending' | undefined>();
   const [ribbonCollapsed, setRibbonCollapsed] = useState(() => stored(RIBBON_COLLAPSED_KEY) === 'yes');
@@ -1973,7 +1972,7 @@ export function App() {
         void confirmAiPrint().then((yes) => {
           if (yes) void desktop?.exportPdf({ html: printoutHtml(), suggestedName: fileName(doc) });
         }),
-      example: () => openDocument(exampleDocument(undefined, t(ui, 'samples.prefix')), undefined),
+      example: () => openDocument(exampleDocument(undefined, t(ui, 'samples.prefix'), language), undefined),
       start: () => setStartOpen(true),
       exit: () => window.close(),
       undo: () => {
@@ -2226,12 +2225,12 @@ export function App() {
           label: t(ui, 'menu.samples'),
           // By field, only the fields that have samples yet.
           items: SAMPLE_FIELDS.flatMap((field) => {
-            const own = samples().filter((sample) => sample.field === field);
+            const own = samples(language).filter((sample) => sample.field === field);
             const open = (list: readonly Sample[]): MenuItem[] =>
               list.map((sample, i) => ({
                 kind: 'action' as const,
                 label: `&${i + 1} ${sample.title}`,
-                run: () => openDocument(exampleDocument(sample.id, t(ui, 'samples.prefix')), undefined),
+                run: () => openDocument(exampleDocument(sample.id, t(ui, 'samples.prefix'), language), undefined),
               }));
             // A field split into parts: a submenu for each part that has samples.
             const parts = [...new Map(own.flatMap((s) => (s.subfield ? [[s.subfield.folder, s.subfield] as const] : []))).values()];
@@ -2796,8 +2795,8 @@ export function App() {
           {startOpen && (
             <StartScreen
               catalog={ui}
-              samples={sampleList}
-              picture={samplePicture}
+              samples={samples(language)}
+              picture={(id) => samplePicture(id, language)}
               recent={recent}
               onNew={() => {
                 setStartOpen(false);
@@ -2809,7 +2808,7 @@ export function App() {
               }}
               onSample={(id) => {
                 setStartOpen(false);
-                openDocument(exampleDocument(id, t(ui, 'samples.prefix')), undefined);
+                openDocument(exampleDocument(id, t(ui, 'samples.prefix'), language), undefined);
               }}
               onRecent={(path) => {
                 setStartOpen(false);

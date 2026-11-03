@@ -1,0 +1,16 @@
+{
+  "name": "Dreviny",
+  "key": "trida",
+  "columns": [
+    { "name": "trida", "type": "text" },
+    { "name": "drevo", "type": "text" },
+    { "name": "f_mk", "type": "quantity", "unit": "MPa" },
+    { "name": "E_0", "type": "quantity", "unit": "GPa" },
+    { "name": "ρ", "type": "quantity", "unit": "kg/m³" }
+  ],
+  "source": {
+    "title": "Strength classes of solid timber (EN 338:2016, tables 1 and 2): characteristic bending strength, mean modulus of elasticity, mean density",
+    "retrieved": "2026-10-23",
+    "note": "A choice of classes for the example; the wood named at a class is a usual example."
+  }
+}

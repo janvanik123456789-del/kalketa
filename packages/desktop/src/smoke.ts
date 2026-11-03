@@ -2285,13 +2285,30 @@ async function layersWithRealInput(picture: string) {
   })()`)) as { drawn: boolean; area: boolean; roots: number; error: boolean; warned: boolean };
   await takePicture(picture.replace(/[.]png$/, '-quadratic-nodomain.png'));
   await takePicture(picture.replace(/[.]png$/, '-quadratic.png'));
-  // The same sample in English: printed in English.
+  // In a program set to English the samples are in English: the same case once in the menu, printed in English.
+  const setLanguage = async (settings: string, language: string) => {
+    await clickOn('.menubar-item:nth-child(6) > button');
+    await clickMenu(settings);
+    await pause(300);
+    const order = (await contents.executeJavaScript(`[...document.querySelector('.dialog select').options].map((o) => o.value)`)) as string[];
+    await contents.executeJavaScript(`document.querySelector('.dialog select').focus()`);
+    for (let tries = 0; tries < 8; tries++) {
+      const now = (await contents.executeJavaScript(`document.querySelector('.dialog select').value`)) as string;
+      if (now === language) break;
+      await pressKey(order.indexOf(language) > order.indexOf(now) ? 'Down' : 'Up');
+      await pause(250);
+    }
+    await clickOn('.dialog-buttons button.default');
+    await pause(400);
+  };
+  await setLanguage('Nastavení', 'en');
   await clickOn('.menubar-item:nth-child(1) > button');
-  await clickMenu('Vzorové příklady');
-  await clickMenu('Matematika a numerické metody');
-  await clickMenu('2 Quadratic equation');
+  await clickMenu('Sample calculations');
+  await clickMenu('Mathematics and numerical methods');
+  await clickMenu('1 Quadratic equation');
   await pause(1500);
   const english = (await contents.executeJavaScript(`(() => ({ head: [...document.querySelectorAll('.layer-view.active .page h1, .layer-view.active .page h2')].map((h) => h.textContent.trim()).find((t) => t === 'Quadratic equation') ?? '', verdicts: [...document.querySelectorAll('.layer-view.active .page .check .status')].map((s) => s.textContent.trim()), errors: document.querySelectorAll('.layer-view.active .page .row.has-error').length }))()`)) as { head: string; verdicts: string[]; errors: number };
+  await setLanguage('Settings', 'cs');
   // A real example from an article: the crank mechanism of a steam engine, opened from the menu, calculated whole.
   await clickOn('.menubar-item:nth-child(1) > button');
   await clickMenu('Vzorové příklady');
@@ -2430,7 +2447,7 @@ async function layersWithRealInput(picture: string) {
   await clickOn('.menubar-item:nth-child(1) > button');
   await clickMenu('Vzorové příklady');
   await clickMenu('Matematika a numerické metody');
-  await clickMenu('3 Proložení naměřených bodů');
+  await clickMenu('2 Proložení naměřených bodů');
   await pause(2000);
   const parabola = (await contents.executeJavaScript(`({ errors: document.querySelectorAll('.layer-view.active .page .row.has-error').length, charts: document.querySelectorAll('.layer-view.active .block.chart svg.chart-svg .chart-data path').length, normal: [...document.querySelectorAll('.layer-view.active .page math')].filter((m) => m.textContent.includes('979')).length })`)) as { errors: number; charts: number; normal: number };
   await takePicture(picture.replace(/[.]png$/, '-parabola.png'));
@@ -2682,7 +2699,7 @@ async function layersWithRealInput(picture: string) {
   await clickOn('.menubar-item:nth-child(1) > button');
   await clickMenu('Vzorové příklady');
   await clickMenu('Matematika a numerické metody');
-  await clickMenu('4 Plochy ve 3D');
+  await clickMenu('3 Plochy ve 3D');
   await pause(3000);
   const surfacesSample = (await contents.executeJavaScript(`({ errors: document.querySelectorAll('.layer-view.active .page .row.has-error').length, maps: document.querySelectorAll('.layer-view.active .block.chart image.chart-map').length, solids: document.querySelectorAll('.layer-view.active .block.chart .chart-surface').length, verdicts: [...document.querySelectorAll('.layer-view.active .page')].map((p) => p.textContent).join('').split('VYHOVUJE').length - 1 })`)) as { errors: number; maps: number; solids: number; verdicts: number };
   await takePicture(picture.replace(/[.]png$/, '-surfaces.png'));
@@ -2690,7 +2707,7 @@ async function layersWithRealInput(picture: string) {
   await clickOn('.menubar-item:nth-child(1) > button');
   await clickMenu('Vzorové příklady');
   await clickMenu('Matematika a numerické metody');
-  await clickMenu('3 Proložení naměřených bodů');
+  await clickMenu('2 Proložení naměřených bodů');
   await pause(1500);
   await clickOn('.menubar-item:nth-child(4) > button');
   await clickMenu('Proložit křivku');

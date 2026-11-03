@@ -1,0 +1,28 @@
+{
+  "name": "Korekce",
+  "key": "bod",
+  "columns": [
+    {
+      "name": "bod",
+      "type": "text"
+    },
+    {
+      "name": "θ",
+      "type": "quantity",
+      "unit": "°C"
+    },
+    {
+      "name": "n",
+      "type": "quantity"
+    },
+    {
+      "name": "k",
+      "type": "quantity"
+    }
+  ],
+  "source": {
+    "title": "Correction factors for ambient temperature and grouping of cables (indicative values after the Czech standard CSN 33 2000-5-52, tables B.52.14 and B.52.17)",
+    "retrieved": "2026-09-30",
+    "note": "Product of both factors; values written for test purposes."
+  }
+}

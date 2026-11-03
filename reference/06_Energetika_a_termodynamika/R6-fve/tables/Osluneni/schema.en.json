@@ -1,0 +1,20 @@
+{
+  "name": "Osluneni",
+  "key": "mesic",
+  "columns": [
+    {
+      "name": "mesic",
+      "type": "text"
+    },
+    {
+      "name": "H",
+      "type": "quantity",
+      "unit": "kWh/kWp"
+    }
+  ],
+  "source": {
+    "title": "Specific monthly yield, south, tilt 35° (indicative values)",
+    "retrieved": "2026-09-30",
+    "note": "Values written for test purposes."
+  }
+}

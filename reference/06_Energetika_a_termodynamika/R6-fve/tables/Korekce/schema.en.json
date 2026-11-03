@@ -1,0 +1,28 @@
+{
+  "name": "Korekce",
+  "key": "bod",
+  "columns": [
+    {
+      "name": "bod",
+      "type": "text"
+    },
+    {
+      "name": "θ",
+      "type": "quantity",
+      "unit": "°C"
+    },
+    {
+      "name": "n",
+      "type": "quantity"
+    },
+    {
+      "name": "k",
+      "type": "quantity"
+    }
+  ],
+  "source": {
+    "title": "Correction of current capacity for temperature and grouping (indicative values)",
+    "retrieved": "2026-09-30",
+    "note": "Values written for test purposes."
+  }
+}

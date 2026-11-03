@@ -1,0 +1,29 @@
+{
+  "name": "Betony",
+  "key": "trida",
+  "columns": [
+    {
+      "name": "trida",
+      "type": "text"
+    },
+    {
+      "name": "f_ck",
+      "type": "quantity",
+      "unit": "MPa"
+    },
+    {
+      "name": "f_cm",
+      "type": "quantity",
+      "unit": "MPa"
+    },
+    {
+      "name": "f_ctm",
+      "type": "quantity",
+      "unit": "MPa"
+    }
+  ],
+  "source": {
+    "title": "Compressive and tensile strength of concrete (EN 1992-1-1; textbook of CTU FCE, Examples of design of concrete structures to Eurocode 2, appendix P03)",
+    "retrieved": "2026-10-23"
+  }
+}

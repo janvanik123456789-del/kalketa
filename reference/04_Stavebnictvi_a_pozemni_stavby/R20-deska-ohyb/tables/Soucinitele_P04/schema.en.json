@@ -1,0 +1,30 @@
+{
+  "name": "Soucinitele_P04",
+  "key": "μ",
+  "columns": [
+    {
+      "name": "μ",
+      "type": "quantity",
+      "unit": ""
+    },
+    {
+      "name": "ω",
+      "type": "quantity",
+      "unit": ""
+    },
+    {
+      "name": "ξ",
+      "type": "quantity",
+      "unit": ""
+    },
+    {
+      "name": "ζ",
+      "type": "quantity",
+      "unit": ""
+    }
+  ],
+  "source": {
+    "title": "Design of a rectangular section in bending: the moment coefficient, the relative height of the compression zone and the lever arm of the internal forces (rectangular stress block, unlimited strain of the reinforcement; textbook of CTU FCE, appendix P04)",
+    "retrieved": "2026-10-23"
+  }
+}

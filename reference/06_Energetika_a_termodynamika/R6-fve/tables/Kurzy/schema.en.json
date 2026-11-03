@@ -1,0 +1,19 @@
+{
+  "name": "Kurzy",
+  "key": "datum",
+  "columns": [
+    {
+      "name": "datum",
+      "type": "date"
+    },
+    {
+      "name": "EUR",
+      "type": "quantity"
+    }
+  ],
+  "source": {
+    "title": "Exchange rate in CZK per 1 EUR on working days (indicative values)",
+    "retrieved": "2026-09-30",
+    "note": "Values written for test purposes."
+  }
+}

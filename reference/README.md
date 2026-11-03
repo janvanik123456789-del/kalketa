@@ -31,7 +31,7 @@ Příklady ze zdrojů (články, učebnice) se převádějí do jednotek SI; obr
 
 ## Jazyky (2026-11-03)
 
-Výpočet má jednu složku a program ho ukáže v jazyce programu; dokud anglickou verzi nemá, česky. Anglická verze stojí vedle české: `<list>.en.cc`, `podklady.en.md`, `kontrola.en.md`, `tables/<Tabulka>/schema.en.json` a `data.en.csv` (jen slova, stejné sloupce a čísla), obrázky `images/<obrázek>.en.svg`, na které list odkazuje. Jména proměnných, vzorce a čísla zůstávají stejné a referenční test ověřuje, že anglický list dá tytéž výsledky a posudky podle stejného `*.expected.json`.
+Výpočet má jednu složku a program ho ukáže v jazyce programu; dokud anglickou verzi nemá, česky. Anglická verze stojí vedle české: `<list>.en.cc`, `podklady.en.md`, `kontrola.en.md`, `tables/<Tabulka>/schema.en.json` a `data.en.csv` (jen slova, stejné sloupce a čísla), obrázky `images/<obrázek>.en.svg`, na které list odkazuje. Názvy českých zdrojů a autoři zůstávají v řádku `Source:` tak, jak jsou napsané. Jména proměnných, vzorce a čísla zůstávají stejné a referenční test ověřuje, že anglický list dá tytéž výsledky a posudky podle stejného `*.expected.json`.
 
 Nezávislý přepočet v Pythonu patří do souboru `kontrola.md` vedle listu: program ho otevře jako vrstvu Kontrola v Pythonu a referenční test ho spustí a porovná s listem. Teorie k výpočtu patří do souboru `podklady.md` vedle listu: program ho otevře jako vrstvu Podklady (Markdown poznámek, vzorce v blocích ```` ```kalk ````). Referenční test ověří, že každý vzorec v podkladech platí.
 

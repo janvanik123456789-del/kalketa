@@ -49,7 +49,7 @@ function Sample({ index, source }: { index: number; source: string }) {
   const line = { start: block.line, end: block.line, text: lines[block.line - 1] ?? '' };
   charts.register(line, block);
   return (
-    <section data-sample={index} className="row selected workbench-sample">
+    <section data-sample={index} className="row selected workbench-sample" onDoubleClick={(e) => e.currentTarget.setAttribute('data-line-opened', '')}>
       <div
         className="content page-body"
         onContextMenu={(e) => {

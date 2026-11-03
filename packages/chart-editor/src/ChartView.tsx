@@ -399,10 +399,12 @@ export function ChartView({ ref: holder, block, catalog, uiCatalog, onPart, onLo
       style={width !== undefined ? { width: `${width}%` } : undefined}
       {...(zoomable ? { title: t(uiCatalog, 'chart.viewHint') } : {})}
       onPointerDownCapture={startDrag}
-      // A double click into the plot area: the grid and the background.
+      // A double click into the plot area: the grid and the background. On a part it stays with the part's window: the
+      // row around the chart would open its line, which only the margin of the chart does.
       onDoubleClickCapture={(e) => {
         const svg = view.current?.querySelector('svg.chart-svg');
-        if (!svg || block.spec.kind === 'surface' || (e.target as Element).closest?.('[data-part]')) return;
+        if (!svg || block.spec.kind === 'surface') return;
+        if ((e.target as Element).closest?.('[data-part]')) return e.stopPropagation();
         const box = svg.getBoundingClientRect();
         const unit = box.width / block.layout.width;
         const [px, py] = [(e.clientX - box.left) / unit, (e.clientY - box.top) / unit];

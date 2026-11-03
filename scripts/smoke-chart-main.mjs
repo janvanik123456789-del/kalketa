@@ -122,6 +122,11 @@ async function run() {
   steps.titleWrittenAtEnd = (await plotLine()) !== beforeDrag;
   steps.titleDragged = /translate\(/.test(await attr(yTitle, 'transform')) && !(await exists('.chart-part-panel'));
 
+  // A double click on a part opens its window, not the line of the chart.
+  await click(yTitle, { clickCount: 2 });
+  steps.doubleClickKeepsLine = (await text(panelHead)) === 'Popis osy y' && !(await exists('[data-sample="0"][data-line-opened]'));
+  await key('Escape');
+
   await click(`${chart} [data-part="xTicks"]`);
   steps.ticksWindow = (await text(panelHead)) === 'Čísla na ose x';
   await key('Escape');

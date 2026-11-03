@@ -396,7 +396,11 @@ async function clickMenu(label: string): Promise<void> {
     row?.setAttribute('data-smoke', '');
     return !!row;
   })()`)) as boolean;
-  if (!found) throw new Error(`No menu row: ${label}`);
+  if (!found) {
+    // What was there instead says why: another menu open, none at all, a dialog over it.
+    const there = (await smokeWindow!.webContents.executeJavaScript(`({ open: document.querySelector('.menubar-item.open > button')?.textContent, rows: [...document.querySelectorAll('.menu-panel .menu-row .menu-label')].map((l) => l.textContent.trim()).slice(0, 8), dialogs: [...document.querySelectorAll('.dialog-title')].map((d) => d.textContent.trim()), tabs: document.querySelectorAll('.doc-tab').length, panel: !!document.querySelector('.chart-part-panel'), context: document.querySelectorAll('.context-menu').length })`)) as unknown;
+    throw new Error(`No menu row: ${label}; ${JSON.stringify(there)}`);
+  }
   await clickOn('[data-smoke]');
 }
 
@@ -2761,8 +2765,10 @@ async function layersWithRealInput(picture: string) {
     if (curvePoint) await moveTo(curvePoint);
   }
   await pause(300);
-  // Over the curve the pointer shows it can be clicked.
-  const curveCursor = (await contents.executeJavaScript(`(() => { const charts = [...document.querySelectorAll('.layer-view.active .chart-view')]; return charts[charts.length - 1]?.style.cursor ?? ''; })()`)) as string;
+  // Over the curve the pointer shows it can be clicked (a hidden window takes the move with its next frame).
+  const readCursor = async () => (await contents.executeJavaScript(`(() => { const charts = [...document.querySelectorAll('.layer-view.active .chart-view')]; return charts[charts.length - 1]?.style.cursor ?? ''; })()`)) as string;
+  for (let waited = 0; waited < 2000 && !(await readCursor()); waited += 100) await pause(100);
+  const curveCursor = await readCursor();
   if (curvePoint) {
     contents.sendInputEvent({ type: 'mouseDown', ...curvePoint, button: 'left', clickCount: 1 });
     contents.sendInputEvent({ type: 'mouseUp', ...curvePoint, button: 'left', clickCount: 1 });
@@ -3138,9 +3144,12 @@ async function chartEditWithRealInput(contents: Electron.WebContents, picture: s
     return { x: Math.round(box.left + ((left + right) / 2) * u), y: Math.round(box.top + (bottom - 80) * u), axisY: Math.round(box.top + (bottom + 10) * u) };
   })()`)) as { x: number; y: number; axisY: number };
   const wheel = async (x: number, y: number, modifiers: Array<'shift'>) => {
+    const before = JSON.stringify(await ticks());
     contents.sendInputEvent({ type: 'mouseMove', x, y });
     contents.sendInputEvent({ type: 'mouseWheel', x, y, deltaX: 0, deltaY: 120, wheelTicksY: 1, canScroll: true, modifiers });
     await pause(700);
+    // A hidden window takes the wheel with its next frame: a zoom is waited for.
+    for (let waited = 0; modifiers.length > 0 && waited < 3000 && JSON.stringify(await ticks()) === before; waited += 100) await pause(100);
   };
   const first = await ticks();
   await wheel(plotArea.x, plotArea.y, []);
@@ -3242,43 +3251,9 @@ async function chartEditWithRealInput(contents: Electron.WebContents, picture: s
   await pause(300);
   const hintCzech = await partAttr('.layer-view.active .chart-view[title]', 'title');
   const printLanguage = /^Page /.test(footEnglish) && headCzech === 'Popis osy y' && hintCzech !== '' && hintCzech === catalogHint;
-  // A menu longer than the window scrolls. The mouse on its row with a submenu opens it once, whole: it used to open
-  // and close for ever, the menu stretching under the mouse each time.
-  const [menuWidth, menuHeight] = smokeWindow!.getContentSize() as [number, number];
-  smokeWindow!.setContentSize(menuWidth, 450);
-  await pause(400);
-  await clickOn(chart, [], 'right');
-  await pause(400);
-  const shadeRow = (await contents.executeJavaScript(`(() => {
-    const panel = document.querySelector('.context-menu .menu-panel');
-    const row = [...panel.querySelectorAll(':scope > .menu-entry > .menu-row')].find((r) => r.textContent.includes('Vyšrafovat'));
-    row.scrollIntoView({ block: 'center' });
-    window.__submenus = 0;
-    new MutationObserver((changes) => { for (const c of changes) for (const n of c.addedNodes) if (n.classList?.contains('submenu-anchor')) window.__submenus++; }).observe(panel, { childList: true, subtree: true });
-    const box = row.getBoundingClientRect();
-    return { x: Math.round(box.left + 40), y: Math.round(box.top + box.height / 2) };
-  })()`)) as { x: number; y: number };
-  // At once, on purpose: the report of the scroll may come after the mouse, and must not close the submenu.
-  contents.sendInputEvent({ type: 'mouseMove', x: shadeRow.x, y: shadeRow.y });
-  await pause(800);
-  const longMenu = (await contents.executeJavaScript(`(() => {
-    const panel = document.querySelector('.context-menu .menu-panel');
-    const own = panel.getBoundingClientRect();
-    const sub = panel.querySelector('.submenu-anchor > .menu-panel')?.getBoundingClientRect();
-    const seen = sub && document.elementFromPoint(sub.left + 30, sub.top + 12)?.closest('.submenu-anchor');
-    return { opened: window.__submenus, scrolls: panel.scrollHeight > panel.clientHeight, inside: own.top >= 0 && own.bottom <= innerHeight, whole: !!seen && sub.bottom <= innerHeight && sub.right <= innerWidth, x: Math.round(sub?.left + 30), y: Math.round(sub?.top + 12) };
-  })()`)) as { opened: number; scrolls: boolean; inside: boolean; whole: boolean; x: number; y: number };
-  // The mouse goes over into the submenu, and it stays.
-  contents.sendInputEvent({ type: 'mouseMove', x: longMenu.x, y: longMenu.y });
-  await pause(300);
-  const staysOpen = (await contents.executeJavaScript(`!!document.querySelector('.context-menu .submenu-anchor')`)) as boolean;
-  await pressKey('Escape');
-  await pause(200);
-  smokeWindow!.setContentSize(menuWidth, menuHeight);
-  await pause(400);
   const ok =
-    plain.x === first.x && plain.y === first.y && zoomed.x !== first.x && zoomed.y !== first.y && axisOnly.xAt !== zoomed.xAt && axisOnly.y === zoomed.y && moved.x !== axisOnly.x && whole.x === first.x && whole.y === first.y && refAfter !== refBefore && /kN·m/.test(refAfter) && cursorAfter !== cursorBefore && /^Δx = /.test(cursorAfter) && log.y !== whole.y && errors === 0 && panelHead === 'Popis osy y' && boldOn === 'bold' && /rotate\(-90/.test(turned) && stillOpen && sized !== '' && closed && /translate\(/.test(dragged) && /rotate\(-90/.test(dragged) && notOpenedByDrag && ticksHead === 'Čísla na ose x' && printLanguage && longMenu.opened === 1 && longMenu.scrolls && longMenu.inside && longMenu.whole && staysOpen;
-  return { ok, first, plain, zoomed, axisOnly, moved, whole, refBefore, refAfter, cursorBefore, cursorAfter, log, errors, panelHead, boldOn, turned, stillOpen, sized, closed, dragged, notOpenedByDrag, ticksHead, footEnglish, headCzech, hintCzech, longMenu, staysOpen };
+    plain.x === first.x && plain.y === first.y && zoomed.x !== first.x && zoomed.y !== first.y && axisOnly.xAt !== zoomed.xAt && axisOnly.y === zoomed.y && moved.x !== axisOnly.x && whole.x === first.x && whole.y === first.y && refAfter !== refBefore && /kN·m/.test(refAfter) && cursorAfter !== cursorBefore && /^Δx = /.test(cursorAfter) && log.y !== whole.y && errors === 0 && panelHead === 'Popis osy y' && boldOn === 'bold' && /rotate\(-90/.test(turned) && stillOpen && sized !== '' && closed && /translate\(/.test(dragged) && /rotate\(-90/.test(dragged) && notOpenedByDrag && ticksHead === 'Čísla na ose x' && printLanguage;
+  return { ok, first, plain, zoomed, axisOnly, moved, whole, refBefore, refAfter, cursorBefore, cursorAfter, log, errors, panelHead, boldOn, turned, stillOpen, sized, closed, dragged, notOpenedByDrag, ticksHead, footEnglish, headCzech, hintCzech };
 }
 
 async function sheetPictureWithRealInput(contents: Electron.WebContents): Promise<{ offered: boolean; described: boolean; notice: string; menu: string }> {

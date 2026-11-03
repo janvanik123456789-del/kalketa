@@ -2528,7 +2528,7 @@ export function App() {
           zoom={zoom}
           title={l.kind === 'calc' ? nameOf(l) : (/^[ \t]*#(?!#)[ \t]*(.+?)[ \t]*$/m.exec(doc.source)?.[1] ?? doc.manifest.title)}
           headRight={headRight}
-          uiCatalog={printCatalog}
+          uiCatalog={ui}
           decimalComma={decimalComma}
           calcStyle={doc.layout.style ?? 'airy'}
           pageNumbers={doc.layout.pageNumbers ?? 'continuous'}

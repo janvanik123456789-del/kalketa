@@ -1246,8 +1246,8 @@ export function SheetView(props: Props) {
             {props.footer && <div className="page-foot-left">{props.footer}</div>}
             <div className="page-foot">
               {sectionPages
-                ? `${t(props.uiCatalog, 'print.page')} ${sectionPages[p]} (${p + 1} ${t(props.uiCatalog, 'print.of')} ${pages.length})`
-                : `${t(props.uiCatalog, 'print.page')} ${p + 1} ${t(props.uiCatalog, 'print.of')} ${pages.length}`}
+                ? `${t(props.printCatalog, 'print.page')} ${sectionPages[p]} (${p + 1} ${t(props.printCatalog, 'print.of')} ${pages.length})`
+                : `${t(props.printCatalog, 'print.page')} ${p + 1} ${t(props.printCatalog, 'print.of')} ${pages.length}`}
             </div>
           </section>
         ))}
@@ -1463,7 +1463,7 @@ export function SheetView(props: Props) {
             props.onSelect(seg.statement);
             const equation = statement.statement.equations[0]!.span;
             const from = result.source.slice(equation.offset, equation.offset + equation.length).replace(/\s+/g, ' ');
-            setFormatMenu({ seg, at: { x: e.clientX, y: e.clientY }, solveLine: `${solution.name} := ${formatExpr(solution.formula)}  ' ${t(props.uiCatalog, 'solve.expressedFrom')} ${from}` });
+            setFormatMenu({ seg, at: { x: e.clientX, y: e.clientY }, solveLine: `${solution.name} := ${formatExpr(solution.formula)}  ' ${t(props.printCatalog, 'solve.expressedFrom')} ${from}` });
             return;
           }
           // A table in the sheet: set it across or down.

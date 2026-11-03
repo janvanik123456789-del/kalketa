@@ -3199,11 +3199,34 @@ async function chartEditWithRealInput(contents: Electron.WebContents, picture: s
   const ticksHead = await textOf(`${panel} .part-head strong`);
   await pressKey('Escape');
   await pause(300);
+  const catalogHint = await partAttr('.layer-view.active .chart-view[title]', 'title');
   await takePicture(picture.replace(/[.]png$/, '-chartedit.png'));
   const errors = (await contents.executeJavaScript(`document.querySelectorAll('.layer-view.active .page .row.has-error').length`)) as number;
+  // A calculation printed in English, in a Czech program: the windows and hints stay Czech, the page turns English.
+  await clickOn('.menubar-item:nth-child(1) > button');
+  await clickMenu('Vlastnosti výpočtu');
+  await pause(300);
+  const languages = (await contents.executeJavaScript(`[...document.querySelector('.props-language').options].map((o) => o.value)`)) as string[];
+  await contents.executeJavaScript(`document.querySelector('.props-language').focus()`);
+  for (let tries = 0; tries < 8; tries++) {
+    const now = (await contents.executeJavaScript(`document.querySelector('.props-language').value`)) as string;
+    if (now === 'en') break;
+    await pressKey(languages.indexOf('en') > languages.indexOf(now) ? 'Down' : 'Up');
+    await pause(250);
+  }
+  await clickOn('.dialog-buttons button.default');
+  await pause(500);
+  const footEnglish = await textOf('.layer-view.active .page-foot');
+  await clickOn(yTitle);
+  await pause(400);
+  const headCzech = await textOf(`${panel} .part-head strong`);
+  await pressKey('Escape');
+  await pause(300);
+  const hintCzech = await partAttr('.layer-view.active .chart-view[title]', 'title');
+  const printLanguage = /^Page /.test(footEnglish) && headCzech === 'Popis osy y' && hintCzech !== '' && hintCzech === catalogHint;
   const ok =
-    plain.x === first.x && plain.y === first.y && zoomed.x !== first.x && zoomed.y !== first.y && axisOnly.x !== zoomed.x && axisOnly.y === zoomed.y && moved.x !== axisOnly.x && whole.x === first.x && whole.y === first.y && refAfter !== refBefore && /kN·m/.test(refAfter) && cursorAfter !== cursorBefore && /^Δx = /.test(cursorAfter) && log.y !== whole.y && errors === 0 && panelHead === 'Popis osy y' && boldOn === 'bold' && /rotate\(-90/.test(turned) && stillOpen && sized !== '' && closed && /translate\(/.test(dragged) && /rotate\(-90/.test(dragged) && notOpenedByDrag && ticksHead === 'Čísla na ose x';
-  return { ok, first, plain, zoomed, axisOnly, moved, whole, refBefore, refAfter, cursorBefore, cursorAfter, log, errors, panelHead, boldOn, turned, stillOpen, sized, closed, dragged, notOpenedByDrag, ticksHead };
+    plain.x === first.x && plain.y === first.y && zoomed.x !== first.x && zoomed.y !== first.y && axisOnly.x !== zoomed.x && axisOnly.y === zoomed.y && moved.x !== axisOnly.x && whole.x === first.x && whole.y === first.y && refAfter !== refBefore && /kN·m/.test(refAfter) && cursorAfter !== cursorBefore && /^Δx = /.test(cursorAfter) && log.y !== whole.y && errors === 0 && panelHead === 'Popis osy y' && boldOn === 'bold' && /rotate\(-90/.test(turned) && stillOpen && sized !== '' && closed && /translate\(/.test(dragged) && /rotate\(-90/.test(dragged) && notOpenedByDrag && ticksHead === 'Čísla na ose x' && printLanguage;
+  return { ok, first, plain, zoomed, axisOnly, moved, whole, refBefore, refAfter, cursorBefore, cursorAfter, log, errors, panelHead, boldOn, turned, stillOpen, sized, closed, dragged, notOpenedByDrag, ticksHead, footEnglish, headCzech, hintCzech };
 }
 
 async function sheetPictureWithRealInput(contents: Electron.WebContents): Promise<{ offered: boolean; described: boolean; notice: string; menu: string }> {

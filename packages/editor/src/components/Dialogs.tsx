@@ -302,7 +302,7 @@ export function PropertiesDialog({ catalog, doc, preview, onApply, onClose }: { 
           </label>
           <label className="field">
             <span>{t(catalog, 'props.printLanguage')}</span>
-            <select value={language} onChange={(e) => setLanguage(e.target.value)}>
+            <select className="props-language" value={language} onChange={(e) => setLanguage(e.target.value)}>
               {Object.values(CATALOGS).map((c) => (
                 <option key={c.locale} value={c.locale}>
                   {c.name}

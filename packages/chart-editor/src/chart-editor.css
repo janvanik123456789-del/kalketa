@@ -39,3 +39,12 @@
 .chart-part-panel .part-reset { align-self: flex-start; cursor: pointer; }
 .chart-view svg.chart-svg [data-part] { cursor: pointer; }
 .chart-view svg.chart-svg [data-part='xTitle'], .chart-view svg.chart-svg [data-part='yTitle'], .chart-view svg.chart-svg [data-part='legend'] { cursor: move; }
+/* The texts of a selected chart in their frames: what can be edited; those with handles can be moved. */
+.chart-part-frame { display: none; position: absolute; box-sizing: border-box; border: calc(1px / var(--zoom, 1)) dashed var(--accent, #2a78d6); pointer-events: none; }
+.row.selected .chart-part-frame, .row.editing .chart-part-frame { display: block; }
+.chart-part-frame.moves { pointer-events: auto; cursor: move; }
+.chart-part-frame i { --size: calc(6px / var(--zoom, 1)); position: absolute; width: var(--size); height: var(--size); box-sizing: border-box; background: #fff; border: calc(1px / var(--zoom, 1)) solid var(--accent, #2a78d6); }
+.chart-part-frame i.nw { left: calc(var(--size) / -2); top: calc(var(--size) / -2); }
+.chart-part-frame i.ne { right: calc(var(--size) / -2); top: calc(var(--size) / -2); }
+.chart-part-frame i.sw { left: calc(var(--size) / -2); bottom: calc(var(--size) / -2); }
+.chart-part-frame i.se { right: calc(var(--size) / -2); bottom: calc(var(--size) / -2); }

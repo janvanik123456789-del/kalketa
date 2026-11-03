@@ -18,7 +18,7 @@ import { pickOf } from '../logic/pick.js';
 import { chartMenuItems, ChartView, seriesAt, startEdgeResize, startResize, useChartEditing, type ChartMenuHost } from '@kalketa/chart-editor';
 import { useSystemFonts } from '../logic/systemFonts.js';
 import { inputNumber, sliderStep, sliderValue, withInputNumber } from '../logic/slider.js';
-import { placeable } from '../logic/placement.js';
+import { placeable, plotOption } from '../logic/placement.js';
 import { PickControl } from './PickControl.js';
 import { TextRowEditor, type TextFormat } from './TextRowEditor.js';
 import { parseTextLine } from '../logic/textLine.js';
@@ -301,7 +301,7 @@ export function SheetView(props: Props) {
   const [dropBox, setDropBox] = useState<{ x: number; y: number; width: number; height: number; src: string } | undefined>();
   // The menu of an AI mark: reviewed, or where it came from.
   const [aiMenu, setAiMenu] = useState<{ id: string; at: { x: number; y: number } } | undefined>();
-  const segs = segments(source, result.sheet.statements, editing);
+  const segs = segments(source, result.sheet.statements, editing, result.source);
   useEffect(() => {
     const opened = editing ? segs.find((s) => s.start === editing.start) : undefined;
     const statement = opened?.statement !== undefined ? result.statements[opened.statement]?.statement : undefined;
@@ -1172,7 +1172,7 @@ export function SheetView(props: Props) {
     const stop = placed?.dy ? <div key={`stop:${seg.start}`} className={`wrap-stop wrap-${placed.wrap}`} style={{ height: `${placed.dy}mm` }} /> : null;
     const row = (
       <div
-        key={`${seg.start}:${isEditing ? 'e' : seg.text}`}
+        key={`${seg.start}:${isEditing ? 'e' : block?.kind === 'chart' ? `chart:${plotOption(seg.text, 'place') ?? ''}` : seg.text}`}
         data-item={measured ? '' : undefined}
         className={`row${isEditing ? ' editing' : ''}${selected ? ' selected' : ''}${marked.has(seg.start) ? ' marked' : ''}${statement?.status === 'error' ? ' has-error' : ''}${placed ? ` wrap-${placed.wrap}` : ''}${clear ? ' clear-row' : ''}${aiMark ? ' ai-made' : ''}`}
         style={
@@ -1263,7 +1263,7 @@ export function SheetView(props: Props) {
             setFormatMenu({ seg, at: { x: e.clientX, y: e.clientY }, text: block.kind === 'paragraph' || block.kind === 'heading' });
             return;
           }
-          if ((block?.kind !== 'picture' && block?.kind !== 'chart') || !(e.target as HTMLElement).closest('figure')) return;
+          if ((block?.kind !== 'picture' && block?.kind !== 'chart') || !(e.target as HTMLElement).closest('figure, .chart-part-frame')) return;
           e.preventDefault();
           props.onSelect(seg.statement);
           setPictureMenu({ seg, at: { x: e.clientX, y: e.clientY }, flow: true });

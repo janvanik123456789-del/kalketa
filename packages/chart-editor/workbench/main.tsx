@@ -62,7 +62,7 @@ function Sample({ index, source }: { index: number; source: string }) {
           block={block}
           catalog={catalog}
           uiCatalog={catalog}
-          onResize={(width) => replace(block.line, block.line, withPlotOption(line.text, 'place', `"width=${width}%"`))}
+          onResize={(width, ratio) => replace(block.line, block.line, withPlotOption(line.text, 'place', `"width=${width}%${ratio ? ` ratio=${ratio}` : ''}"`))}
         />
       </div>
       <code data-plot-line="">{text}</code>

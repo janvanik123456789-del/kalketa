@@ -913,7 +913,7 @@ export function App() {
   const unreviewedAiLines = () => {
     const made = aiMadeLines(doc.source, entriesOf(doc));
     if (made.size === 0) return new Set<number>();
-    return new Set(segments(doc.source, evaluation.main.sheet.statements).filter((seg) => seg.statement !== undefined && [...made.keys()].some((line) => line >= seg.start && line <= seg.end)).map((seg) => seg.start));
+    return new Set(segments(doc.source, evaluation.main.sheet.statements, undefined, evaluation.main.source).filter((seg) => seg.statement !== undefined && [...made.keys()].some((line) => line >= seg.start && line <= seg.end)).map((seg) => seg.start));
   };
   /** The AI notes print as a protocol: sources and citations, proposed changes and decisions. */
   const withAiProtocol = (appendix: PrintAppendix): PrintAppendix => {
@@ -986,7 +986,7 @@ export function App() {
     if (editing) return editing;
     const s = selected !== undefined ? result.statements[selected]?.statement : undefined;
     if (!s) return undefined;
-    return segments(text, result.sheet.statements).find((seg) => seg.statement === selected);
+    return segments(text, result.sheet.statements, undefined, result.source).find((seg) => seg.statement === selected);
   };
 
   const lineCount = text.split('\n').length;

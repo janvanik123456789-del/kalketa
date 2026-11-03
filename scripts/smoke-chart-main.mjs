@@ -90,6 +90,12 @@ async function run() {
   // The first press of a hidden window may only bring it focus.
   await clickAt({ x: 5, y: 5 });
 
+  // A selected chart shows what can be edited: the texts in frames, those that move with handles.
+  steps.framesShown = await js(`(() => {
+    const frames = [...document.querySelectorAll('[data-sample="0"] .chart-part-frame')];
+    return frames.length >= 4 && frames.every((f) => getComputedStyle(f).display === 'block' && f.offsetWidth > 0) && frames.filter((f) => f.classList.contains('moves')).length >= 2 && !document.querySelector('${chart} .chart-part-frame');
+  })()`);
+
   // A click on a part: its small window, which stays open as the line changes, and shows each change at once.
   const yTitle = `${chart} [data-part="yTitle"]`;
   await click(yTitle);
@@ -121,6 +127,14 @@ async function run() {
   await pause(500);
   steps.titleWrittenAtEnd = (await plotLine()) !== beforeDrag;
   steps.titleDragged = /translate\(/.test(await attr(yTitle, 'transform')) && !(await exists('.chart-part-panel'));
+
+  // Taken by its frame, a title moves, and the frame goes with it.
+  const xFrame = '[data-sample="0"] .chart-part-frame[data-part="xTitle"]';
+  const frameBefore = await place(xFrame);
+  await drag(xFrame, 40, -10);
+  await pause(400);
+  const frameAfter = await place(xFrame);
+  steps.dragByFrame = /translate\(/.test(await attr(`${chart} [data-part="xTitle"]`, 'transform')) && frameAfter.x > frameBefore.x + 20 && (await plotLine()).includes('xTitle.at=');
 
   // A double click on a part opens its window, not the line of the chart.
   await click(yTitle, { clickCount: 2 });
@@ -166,6 +180,11 @@ async function run() {
   });
   steps.refDragged = (await plotLine()).match(/hline: [^,)]+/)?.[0] !== hline;
 
+  // The handles of a chart stay its handles, also where the frame of a title reaches under them.
+  await drag('[data-sample="1"] .picture-handle.edge.s', 0, 40);
+  await pause(300);
+  steps.edgeHandleResizes = /ratio=/.test(await text('[data-sample="1"] [data-plot-line]'));
+
   await picture();
 
   // A menu longer than the window scrolls; the mouse on a row with a submenu opens it once, whole, and it stays.
@@ -183,6 +202,8 @@ async function run() {
     return { x: Math.round(box.left + 40), y: Math.round(box.top + box.height / 2) };
   })()`);
   contents.sendInputEvent({ type: 'mouseMove', ...row });
+  // A hidden window takes the move with its next frame; then it must stay at one opening.
+  for (let waited = 0; waited < 3000 && !(await exists('.context-menu .submenu-anchor')); waited += 100) await pause(100);
   await pause(800);
   const menu = await js(`(() => {
     const panel = document.querySelector('.context-menu .menu-panel');

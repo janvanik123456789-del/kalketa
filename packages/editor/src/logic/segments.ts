@@ -25,8 +25,10 @@ export function splitLines(source: string): string[] {
  * Splits the source into segments. `fixed` is the line range being edited:
  * it stays one segment even if an unfinished line (an open bracket) makes the
  * parser run on into the following lines, which then show as plain lines.
+ * `calculated` is the text the statements were read from, when a long sheet waits to be calculated again: their places
+ * count in that text, not in the changed one (the same number of lines, of other lengths).
  */
-export function segments(source: string, statements: readonly Statement[], fixed?: { start: number; end: number }): Segment[] {
+export function segments(source: string, statements: readonly Statement[], fixed?: { start: number; end: number }, calculated: string = source): Segment[] {
   const lines = splitLines(source);
   const out: Segment[] = [];
   let line = 1;
@@ -41,7 +43,7 @@ export function segments(source: string, statements: readonly Statement[], fixed
 
   statements.forEach((s, index) => {
     const start = s.span.line;
-    let end = start + (source.slice(s.span.offset, s.span.offset + s.span.length).match(/\n/g)?.length ?? 0);
+    let end = start + (calculated.slice(s.span.offset, s.span.offset + s.span.length).match(/\n/g)?.length ?? 0);
     if (start < line) return; // already covered
     if (fixed && start < fixed.start && end >= fixed.start) end = fixed.start - 1;
     if (fixed && start >= fixed.start && start <= fixed.end) {

@@ -1486,7 +1486,7 @@ async function layersWithRealInput(picture: string) {
     await pause(500);
     const chartCentred = centred.includes('-2') && centred.includes('6') && !centred.includes('10');
     chartPlaced = chartCentred && placed && restored && yRanged && yAuto && chartRoots.length > 0 && chartRoots.every((t) => /^x=[−-]?[\d,]+$/.test(t)) && chartAxis === 'x=2' && chartVertex === '[2;24]' && chartTools;
-    chartSteps = `centred=${centred.join(' ')} framed=${chartFramed} placed=${placed} restored=${restored} yRange=${yRanged} yAuto=${yAuto} roots=${chartRoots.join(' ')} axis=${chartAxis} vertex=${chartVertex} area=${chartArea} tangent=${tangentBefore}->${tangentAfter} onCurve=${tangentOnCurve} near=${nearPointer} end=${handleEnd} target=${dragTarget} start=${handle?.x} labelMoved=${labelMoved}`;
+    chartSteps = `centred=${centred.join(' ')} framed=${chartFramed} placed=${placed} taller=${chartTaller} restored=${restored} yRange=${yRanged} yAuto=${yAuto} roots=${chartRoots.join(' ')} axis=${chartAxis} vertex=${chartVertex} area=${chartArea} tangent=${tangentBefore}->${tangentAfter} onCurve=${tangentOnCurve} near=${nearPointer} end=${handleEnd} target=${dragTarget} start=${handle?.x} labelMoved=${labelMoved}`;
   }
   const charts = !!chartBox && chartBox.paths > 0 && /^x = [\d,]+ \| Mt\(x\) = /.test(chartTip) && chartPlaced;
 

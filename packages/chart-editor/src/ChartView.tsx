@@ -10,6 +10,7 @@ import { formatDate, formatNumber, t, type Catalog } from '@kalketa/i18n';
 import { chartSvg as drawChart, DEFAULT_VIEW, labelParts, partOffset, surfaceAt, viewText, xPosition, xValueAt, yValueAt, type ChartLook } from '@kalketa/chart';
 import { renderBlockHtml, type PrintBlock } from '@kalketa/render';
 import { axisRangeText, axisValueText, chartX, movedRange, nearestOnCurve, partMoves, seriesAt, withPartChanges, zoomedRange, type AxisRange, type ChartPart } from './logic/index.js';
+import { ChartPartFrames } from './ChartPartFrames.js';
 import { drawInPlace } from './drawInPlace.js';
 import { startEdgeResize, startResize } from './resize.js';
 
@@ -185,8 +186,9 @@ export function ChartView({ ref: holder, block, catalog, uiCatalog, onPart, onLo
   // The point of the tangent dragged along the curve; a label dragged off it. Both written into the line.
   const startDrag = (e: ReactPointerEvent<HTMLDivElement>) => {
     // A title under a handle of the selected chart (the y title written upwards lies under the left one) is taken, not the handle.
+    // The title itself: its frame reaches further and would take the handle's place.
     const pressed = e.target as Element;
-    const under = pressed.closest?.('.picture-handle') ? document.elementsFromPoint(e.clientX, e.clientY).find((el) => partMoves(el.closest('[data-part]')?.getAttribute('data-part') ?? '')) : undefined;
+    const under = pressed.closest?.('.picture-handle') ? document.elementsFromPoint(e.clientX, e.clientY).find((el) => el.closest('svg.chart-svg') && partMoves(el.closest('[data-part]')?.getAttribute('data-part') ?? '')) : undefined;
     const target = under ?? pressed;
     const handle = target.closest?.('[data-chart-drag="tangent"]');
     const labelEl = target.closest?.('[data-label]');
@@ -204,7 +206,9 @@ export function ChartView({ ref: holder, block, catalog, uiCatalog, onPart, onLo
       const holder = e.currentTarget;
       const size = () => (holder.querySelector('svg.chart-svg')?.getBoundingClientRect().width ?? 0) / block.layout.width;
       // The part itself follows the pointer; only where it stops is written (a write recalculates the sheet).
-      const own = partEl!.getAttribute('transform') ?? '';
+      // Pressed on its frame or on it, it is the text of the drawing that moves.
+      const drawn = holder.querySelector(`svg.chart-svg [data-part="${partName}"]`) ?? partEl!;
+      const own = drawn.getAttribute('transform') ?? '';
       let dragged = false;
       let at = '';
       const move = (ev: PointerEvent) => {
@@ -212,7 +216,7 @@ export function ChartView({ ref: holder, block, catalog, uiCatalog, onPart, onLo
         if (!moves || !(u > 0) || (!dragged && Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 4)) return;
         dragged = true;
         const [dx, dy] = [(ev.clientX - start.x) / u, (ev.clientY - start.y) / u];
-        partEl!.setAttribute('transform', `translate(${dx} ${dy}) ${own}`.trim());
+        drawn.setAttribute('transform', `translate(${dx} ${dy}) ${own}`.trim());
         at = `${Math.round(ox + dx)},${Math.round(oy + dy)}`;
       };
       const up = () => {
@@ -417,6 +421,7 @@ export function ChartView({ ref: holder, block, catalog, uiCatalog, onPart, onLo
       onMouseLeave={() => setHover(undefined)}
     >
       <div className="block-view" dangerouslySetInnerHTML={{ __html: renderBlockHtml(plain, catalog, { defineOperator: '≔' }) }} />
+      <ChartPartFrames view={view} />
       {(['nw', 'ne', 'sw', 'se'] as const).map((corner) => (
         <span
           key={corner}

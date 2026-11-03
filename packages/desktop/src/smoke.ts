@@ -3101,13 +3101,14 @@ async function chartEditWithRealInput(contents: Electron.WebContents, picture: s
   await sendOpen(path);
   await pause(1500);
   const chart = '.layer-view.active .block.chart svg.chart-svg';
-  // The ticks of an axis as the chart writes them: x below the plot, y left of it.
+  // The ticks of an axis as the chart writes them: x below the plot, y left of it. Where they stand as well: a small zoom may
+  // keep the same numbers, more so with the wider fonts of Linux.
   const ticks = async () =>
     (await contents.executeJavaScript(`(() => {
       const svg = document.querySelector('${chart}');
       const all = [...svg.querySelectorAll('text[fill]')].filter((t) => !t.closest('[data-label]') && !t.classList.contains('chart-cursor-text') && /^[−\\d, ]+$/.test(t.textContent));
-      return { x: all.filter((t) => t.getAttribute('text-anchor') === 'middle').map((t) => t.textContent).join('|'), y: all.filter((t) => t.getAttribute('text-anchor') === 'end').map((t) => t.textContent).join('|') };
-    })()`)) as { x: string; y: string };
+      return { xAt: all.filter((t) => t.getAttribute('text-anchor') === 'middle').map((t) => t.getAttribute('x')).join('|'), x: all.filter((t) => t.getAttribute('text-anchor') === 'middle').map((t) => t.textContent).join('|'), y: all.filter((t) => t.getAttribute('text-anchor') === 'end').map((t) => t.textContent).join('|') };
+    })()`)) as { xAt: string; x: string; y: string };
   const place = async (selector: string) =>
     (await contents.executeJavaScript(`(() => { const r = document.querySelector('${selector}')?.getBoundingClientRect(); return r ? { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) } : undefined; })()`)) as { x: number; y: number } | undefined;
   const textOf = async (selector: string) => (await contents.executeJavaScript(`[...document.querySelectorAll('${selector}')].map((t) => t.textContent).join(' | ')`)) as string;
@@ -3259,7 +3260,7 @@ async function chartEditWithRealInput(contents: Electron.WebContents, picture: s
   smokeWindow!.setContentSize(menuWidth, menuHeight);
   await pause(400);
   const ok =
-    plain.x === first.x && plain.y === first.y && zoomed.x !== first.x && zoomed.y !== first.y && axisOnly.x !== zoomed.x && axisOnly.y === zoomed.y && moved.x !== axisOnly.x && whole.x === first.x && whole.y === first.y && refAfter !== refBefore && /kN·m/.test(refAfter) && cursorAfter !== cursorBefore && /^Δx = /.test(cursorAfter) && log.y !== whole.y && errors === 0 && panelHead === 'Popis osy y' && boldOn === 'bold' && /rotate\(-90/.test(turned) && stillOpen && sized !== '' && closed && /translate\(/.test(dragged) && /rotate\(-90/.test(dragged) && notOpenedByDrag && ticksHead === 'Čísla na ose x' && printLanguage && longMenu.opened === 1 && longMenu.scrolls && longMenu.inside && longMenu.whole && staysOpen;
+    plain.x === first.x && plain.y === first.y && zoomed.x !== first.x && zoomed.y !== first.y && axisOnly.xAt !== zoomed.xAt && axisOnly.y === zoomed.y && moved.x !== axisOnly.x && whole.x === first.x && whole.y === first.y && refAfter !== refBefore && /kN·m/.test(refAfter) && cursorAfter !== cursorBefore && /^Δx = /.test(cursorAfter) && log.y !== whole.y && errors === 0 && panelHead === 'Popis osy y' && boldOn === 'bold' && /rotate\(-90/.test(turned) && stillOpen && sized !== '' && closed && /translate\(/.test(dragged) && /rotate\(-90/.test(dragged) && notOpenedByDrag && ticksHead === 'Čísla na ose x' && printLanguage && longMenu.opened === 1 && longMenu.scrolls && longMenu.inside && longMenu.whole && staysOpen;
   return { ok, first, plain, zoomed, axisOnly, moved, whole, refBefore, refAfter, cursorBefore, cursorAfter, log, errors, panelHead, boldOn, turned, stillOpen, sized, closed, dragged, notOpenedByDrag, ticksHead, footEnglish, headCzech, hintCzech, longMenu, staysOpen };
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chartLayout, chartLookText, chartSvg, lookDifference, niceScale, parseChartLook, withLook, xPosition, xValueAt, yPosition, type ChartSpec } from '../src/index.js';
+import { chartLayout, chartLookText, chartSvg, lookDifference, niceScale, parseChartLook, withLook, xPosition, xValueAt, yPosition, type ChartSpec, logScale, yValueAt } from '../src/index.js';
 
 const line: ChartSpec = { kind: 'line', series: [{ label: 'M(x)', xs: [0, 2.5, 5], ys: [0, 37.5, 0] }], xTitle: 'x [m]', yTitle: 'M(x) [kN·m]' };
 
@@ -69,3 +69,47 @@ describe('chart', () => {
     expect(chartSvg({ ...line, xTitle: 'a < b & "c"' })).toContain('a &lt; b &amp; &quot;c&quot;');
   });
 });
+
+describe('axes and lines edited by hand', () => {
+  const curve = (xs: number[], ys: number[]) => ({ label: 'M(x)', xs, ys });
+
+  it('draw a logarithmic axis: decades at even steps, nothing for what it cannot show', () => {
+    expect(logScale(3, 70).ticks).toEqual([1, 2, 5, 10, 20, 50, 100]);
+    expect(logScale(3, 700).ticks).toEqual([1, 10, 100, 1000]);
+    expect(logScale(1, 1e6)).toMatchObject({ min: 1, max: 1e6, ticks: [1, 10, 100, 1000, 10000, 100000, 1000000] });
+    const spec: ChartSpec = { kind: 'line', series: [curve([1, 10, 100], [0, 5, 7])], xTitle: 'f', yTitle: 'A', xLog: true };
+    const layout = chartLayout(spec);
+    expect(xPosition(layout, 10) - xPosition(layout, 1)).toBeCloseTo(xPosition(layout, 100) - xPosition(layout, 10));
+    expect(xValueAt(layout, xPosition(layout, 10))).toBeCloseTo(10);
+    const logY = chartLayout({ ...spec, xLog: false, yLog: true });
+    expect(yValueAt(logY, yPosition(logY, 5))).toBeCloseTo(5);
+    expect(yPosition(logY, 0)).toBeNaN();
+    // The zero is a gap of the curve, not a stroke to nowhere.
+    expect(chartSvg({ ...spec, xLog: false, yLog: true })).not.toContain('NaN');
+  });
+
+  it('draw reference lines, and reach them when the axis follows the values', () => {
+    const spec: ChartSpec = { kind: 'line', series: [curve([0, 1], [0, 10])], xTitle: 'x', yTitle: 'M', refs: [{ axis: 'y', at: 45, name: 'M_Rd', unit: 'kN·m' }, { axis: 'x', at: 0.5, unit: 'm', movable: true }] };
+    expect(chartLayout(spec).y.max).toBeGreaterThanOrEqual(45);
+    const svg = chartSvg(spec);
+    expect(svg.match(/class="chart-ref"/g)).toHaveLength(2);
+    // Only the plain number can be taken: a name of the sheet stays its value.
+    expect(svg.match(/data-chart-drag="ref"/g)).toHaveLength(1);
+    expect(svg).toContain('0.5 m');
+  });
+
+  it('read two places of the x axis: the curves between the points, and the differences', () => {
+    const spec: ChartSpec = { kind: 'line', series: [curve([0, 2, 4], [0, 10, 20])], xTitle: 'x', yTitle: 'M', cursors: { from: 1, to: 3, name: 'x', xUnit: 'm', yUnit: 'kN' } };
+    const svg = chartSvg(spec);
+    expect(svg.match(/data-chart-drag="cursor"/g)).toHaveLength(2);
+    expect(svg).toContain('Δx = 2 m');
+    expect(svg).toContain('5 → 15, Δ = 10 kN');
+  });
+
+  it('cut off what lies beyond an x axis set by hand', () => {
+    const spec: ChartSpec = { kind: 'points', series: [curve([0, 1, 2, 3], [1, 2, 3, 4])], xTitle: 'x', yTitle: 'y', xRange: [1, 2] };
+    expect(chartLayout(spec).x).toMatchObject({ min: 1, max: 2 });
+    expect(chartSvg(spec)).toMatch(/<svg x="\d+" y="\d+" width="\d+" height="\d+" viewBox=/);
+  });
+});
+

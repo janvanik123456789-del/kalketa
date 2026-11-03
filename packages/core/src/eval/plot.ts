@@ -35,12 +35,20 @@ export const PLOT_FUNCTION = 'plot';
 export type PlotKind = 'line' | 'points' | 'bar' | 'map' | 'surface';
 const KINDS: readonly PlotKind[] = ['line', 'points', 'bar'];
 /** Options of plot(...); every other named argument is the variable. */
-export const PLOT_OPTIONS: readonly string[] = ['kind', 'title', 'samples', 'place', 'ylim', 'roots', 'symmetry', 'extremes', 'inflections', 'area', 'tangent', 'labels', 'points', 'style', 'levels', 'view', 'cut', 'center'];
+export const PLOT_OPTIONS: readonly string[] = ['kind', 'title', 'samples', 'place', 'ylim', 'xlim', 'xlabel', 'ylabel', 'xscale', 'yscale', 'hline', 'vline', 'cursors', 'roots', 'symmetry', 'extremes', 'inflections', 'area', 'tangent', 'labels', 'points', 'style', 'levels', 'view', 'cut', 'center'];
 /** Curves in one chart: the categorical colours a reader still tells apart. */
 export const MAX_PLOT_SERIES = 8;
 const LINE_SAMPLES = 201;
 const MARK_SAMPLES = 11;
 const MAX_SAMPLES = 2001;
+
+export interface PlotRef {
+  readonly axis: 'x' | 'y';
+  readonly at: number;
+  /** The name it was given by (hline: M_Rd), for its label. */
+  readonly name?: string;
+  readonly movable?: boolean;
+}
 
 export interface PlotSeries {
   /**
@@ -132,6 +140,16 @@ export interface PlotResult {
   readonly series: readonly PlotSeries[];
   /** Where the chart stands among the lines (place: "width=40% wrap=right"), as a picture. */
   readonly place?: Placement;
+  /** xlabel: "…", ylabel: "…": the words of the title of an axis instead of the name of the variable or curve. */
+  readonly xLabel?: string;
+  readonly yLabel?: string;
+  /** xscale: "log", yscale: "log": a logarithmic axis. */
+  readonly xLog?: boolean;
+  readonly yLog?: boolean;
+  /** hline: M_Rd, vline: 3 m: reference lines, in the units of the axes; `movable` when written as a plain number. */
+  readonly refs?: readonly PlotRef[];
+  /** cursors: 1 m .. 3 m: two places of the x axis, read and compared. */
+  readonly cursors?: readonly [number, number];
   /** ylim: -20 .. 20: the y axis from and to, in the unit of the y axis; what lies beyond is cut off. */
   readonly yRange?: readonly [number, number];
   /** With an implicit curve: the x axis over the whole range x: a .. b, and the name of the y axis (y: c .. d). */
@@ -182,8 +200,17 @@ export function plotStatement(given: CallExpr, ctx: EvalContext, evaluate: Evalu
   const place = placeText === undefined ? undefined : parsePlacement(placeText);
   // A chart has no lines of its own to stand beside: side= is for pictures.
   if (placeText !== undefined && (!place || place.side)) fail('E-PLOT-POSITION', call.named.find((n) => n.name === 'place')!.value.span, { place: placeText });
-  const binder = binders[0];
-  const sampled = binder ? samplePoints(binder, call, plotKind, ctx, evaluate) : undefined;
+  // xlim: a .. b over a range of x: the curve calculated anew for that part of it, sharp however far it is zoomed in.
+  const xlim = call.named.find((n) => n.name === 'xlim');
+  if (xlim && xlim.value.kind !== 'range') fail('E-PLOT-RANGE', xlim.value.span, {});
+  const written = binders[0];
+  const binder = written && xlim?.value.kind === 'range' && written.value.kind === 'range' ? { ...written, value: { ...written.value, low: xlim.value.low, high: xlim.value.high } } : written;
+  const xLog = axisScale(call, 'xscale', ctx, evaluate);
+  const yLog = axisScale(call, 'yscale', ctx, evaluate) && plotKind !== 'bar';
+  const linear = binder ? samplePoints(binder, call, plotKind, ctx, evaluate) : undefined;
+  // On a logarithmic axis the points are as dense in every decade.
+  if (xLog && binder?.value.kind === 'range' && linear && !(linear[0]!.si > 0)) fail('E-PLOT-RANGE', binder.value.span, {});
+  const sampled = xLog && binder?.value.kind === 'range' && linear ? linear.map((q, i) => ({ ...q, si: linear[0]!.si * (linear[linear.length - 1]!.si / linear[0]!.si) ** (i / (linear.length - 1)) })) : linear;
   // center: true — the range of x moved, as wide as written, so the axis of symmetry of the first curve is in its
   // middle (the vertex of a parabola), wherever the axis is; without one the range stays as written, and says so.
   let xs = sampled;
@@ -275,6 +302,16 @@ export function plotStatement(given: CallExpr, ctx: EvalContext, evaluate: Evalu
   const tangent = first ? optional('tangent', 'W-PLOT-NO-TANGENT', () => tangentOf(call, first, ctx, evaluate, xIn, y)) : undefined;
   const points = first ? optional('points', 'W-PLOT-NO-POINTS', () => pointsOf(call, first.like.dim, yDim, ctx, evaluate, xIn, y)) : undefined;
   const labelText = option(call, 'labels', ctx, evaluate);
+  const xLabel = option(call, 'xlabel', ctx, evaluate);
+  const yLabel = option(call, 'ylabel', ctx, evaluate);
+  const xDim = xs?.[0]?.dim;
+  // Over a series of the sheet the axis gets a window: what lies beyond it is cut off (over a range xlim sampled it already).
+  const seriesWindow = xlim?.value.kind === 'range' && binder?.value.kind !== 'range' && xDim ? axisWindow(xlim.value, xDim, xIn, ctx, evaluate) : undefined;
+  const refs = [...refsOf(call, 'vline', 'x', xDim, xIn, ctx, evaluate), ...refsOf(call, 'hline', 'y', yDim, y, ctx, evaluate)];
+  const cursorArg = call.named.find((n) => n.name === 'cursors');
+  if (cursorArg && cursorArg.value.kind !== 'range') fail('E-PLOT-RANGE', cursorArg.value.span, {});
+  const cursors = cursorArg?.value.kind === 'range' && xDim ? axisWindow(cursorArg.value, xDim, xIn, ctx, evaluate) : undefined;
+  if ((xLog && xs?.some((q) => q.si <= 0)) || (yLog && columns.some((col) => col.some((q) => q && y(q) <= 0)))) ctx.warnings.push(diagnostic('W-PLOT-LOG-VALUES', call.span, {}));
   const labelOffsets = labelText ? parseLabelOffsets(labelText) : undefined;
   // A point found by searching is exact to some 8 digits: shown at the precision the chart has (2,1·10⁻⁸ is 0).
   const xSpan = x.values.length > 1 ? Math.abs(x.values[x.values.length - 1]! - x.values[0]!) : 1;
@@ -284,6 +321,13 @@ export function plotStatement(given: CallExpr, ctx: EvalContext, evaluate: Evalu
     ...(title !== undefined ? { title } : {}),
     ...(style ? { style } : {}),
     variable: binder?.name ?? '',
+    ...(xLabel !== undefined ? { xLabel } : {}),
+    ...(yLabel !== undefined ? { yLabel } : {}),
+    ...(xLog ? { xLog: true } : {}),
+    ...(yLog ? { yLog: true } : {}),
+    ...(refs.length > 0 ? { refs } : {}),
+    ...(cursors ? { cursors } : {}),
+    ...(seriesWindow ? { xRange: seriesWindow } : {}),
     // x: Mereni.T: the axis is the temperature T, not the x of the curves P(x).
     ...(binder && binder.value.kind === 'member' ? { axisName: binder.value.name } : binder && binder.value.kind === 'variable' ? { axisName: binder.value.name } : {}),
     xUnit: x.unit,
@@ -674,6 +718,38 @@ function centreOf(body: Expr, name: string, xs: readonly Quantity[], ctx: EvalCo
     });
   const middle = (lo + hi) / 2;
   return candidates.filter(symmetric).sort((p, q) => Math.abs(p - middle) - Math.abs(q - middle))[0];
+}
+
+/** xscale: "log" or yscale: "log" (the usual "linear" may be written too). */
+function axisScale(call: CallExpr, name: string, ctx: EvalContext, evaluate: Evaluate): boolean {
+  const text = option(call, name, ctx, evaluate);
+  if (text !== undefined && text !== 'log' && text !== 'linear') fail('E-PLOT-KIND', call.named.find((n) => n.name === name)!.value.span, { kind: text });
+  return text === 'log';
+}
+
+/** A low .. high of the x axis, in the unit of the axis. */
+function axisWindow(r: Extract<Expr, { kind: 'range' }>, dimension: Dimension, at: (q: Quantity) => number, ctx: EvalContext, evaluate: Evaluate): readonly [number, number] {
+  const low = asQuantity(evaluate(r.low, ctx), r.low.span);
+  const high = asQuantity(evaluate(r.high, ctx), r.high.span);
+  for (const [q, e] of [[low, r.low], [high, r.high]] as const) {
+    if (!sameDim(q.dim, dimension)) fail('E-PLOT-UNITS', e.span, { left: baseUnitSymbol(dimension, ctx.registry.baseSymbols()), right: baseUnitSymbol(q.dim, ctx.registry.baseSymbols()) });
+  }
+  if (!(high.si > low.si)) fail('E-PLOT-RANGE', r.span, {});
+  return [at(low), at(high)];
+}
+
+/** hline: M_Rd, vline: [1, 2] m: reference lines of an axis; a plain number can be moved by hand, a name of the sheet stays its value. */
+function refsOf(call: CallExpr, name: string, axis: 'x' | 'y', dimension: Dimension | undefined, at: (q: Quantity) => number, ctx: EvalContext, evaluate: Evaluate): PlotRef[] {
+  const arg = call.named.find((n) => n.name === name);
+  if (!arg) return [];
+  const value = evaluate(arg.value, ctx);
+  const items = value.type === 'vector' ? value.items : [asQuantity(value, arg.value.span)];
+  const given = arg.value.kind === 'variable' ? arg.value.name : undefined;
+  const plain = value.type !== 'vector' && (arg.value.kind === 'number' || (arg.value.kind === 'unary' && arg.value.operand.kind === 'number'));
+  return items.map((q) => {
+    if (dimension && !sameDim(q.dim, dimension)) fail('E-PLOT-UNITS', arg.value.span, { left: baseUnitSymbol(dimension, ctx.registry.baseSymbols()), right: baseUnitSymbol(q.dim, ctx.registry.baseSymbols()) });
+    return { axis, at: at(q), ...(given ? { name: given } : {}), ...(plain ? { movable: true } : {}) };
+  });
 }
 
 /** ylim: low .. high, in the unit of the curves (or a pure number for pure numbers). */

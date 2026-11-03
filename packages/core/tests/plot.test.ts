@@ -184,3 +184,43 @@ describe('the range of x centred on the axis of symmetry', () => {
     expect(codes('plot(3·x + 1, x: 0 .. 4, center: true)')).toEqual(['W-PLOT-NO-CENTER']);
   });
 });
+
+describe('plot: axes and lines edited by hand', () => {
+  const plotOf = (source: string) => evaluateSheet(source).statements.at(-1)!;
+  const M = 'M(x) := 12 kN/m·x·(5 m - x)/2\n';
+
+  it('xlim calculates the curve anew for that part of the axis', () => {
+    const p = plotOf(`${M}plot(M(x), x: 0 m .. 5 m, xlim: 1 m .. 4 m) | kN·m`).plot!;
+    expect(p.series[0]!.xs[0]).toBeCloseTo(1);
+    expect(p.series[0]!.xs.at(-1)).toBeCloseTo(4);
+    expect(p.series[0]!.xs).toHaveLength(201);
+  });
+
+  it('xlim over a series of the sheet is a window of its axis', () => {
+    const p = plotOf('t := [1, 2, 3, 4] s\ny := [1, 2, 3, 4] m\nplot(y, x: t, xlim: 2 s .. 3 s)').plot!;
+    expect(p.xRange).toEqual([2, 3]);
+    expect(p.series[0]!.xs).toHaveLength(4);
+  });
+
+  it('takes the words of the axes, logarithmic axes, lines and the two places', () => {
+    const p = plotOf(`M_Rd := 45 kN·m\n${M}plot(M(x), x: 1 m .. 4 m, xlabel: "Poloha", ylabel: "Moment", yscale: "log", hline: M_Rd, vline: 2 m, cursors: 1.5 m .. 3 m) | kN·m`).plot!;
+    expect(p).toMatchObject({ xLabel: 'Poloha', yLabel: 'Moment', yLog: true, cursors: [1.5, 3] });
+    expect(p.refs).toEqual([{ axis: 'x', at: 2, movable: true }, { axis: 'y', at: 45, name: 'M_Rd' }]);
+  });
+
+  it('samples a logarithmic x axis as densely in every decade', () => {
+    const p = plotOf('f(x) := x\nplot(f(x), x: 1 .. 1000, xscale: "log", samples: 4)').plot!;
+    expect(p.xLog).toBe(true);
+    p.series[0]!.xs.forEach((x, i) => expect(x).toBeCloseTo(10 ** i));
+  });
+
+  it('says so about what a logarithmic axis cannot show, and about wrong options', () => {
+    expect(codes('t := [1, 2] s\ny := [0, 2] m\nplot(y, x: t, yscale: "log")')).toEqual(['W-PLOT-LOG-VALUES']);
+    expect(codes('f(x) := x\nplot(f(x), x: 0 .. 10, xscale: "log")')).toEqual(['E-PLOT-RANGE']);
+    expect(codes('f(x) := x\nplot(f(x), x: 1 .. 10, xscale: "kruh")')).toEqual(['E-PLOT-KIND']);
+    expect(codes(`${M}plot(M(x), x: 0 m .. 5 m, xlim: 4 m .. 1 m)`)).toEqual(['E-PLOT-RANGE']);
+    expect(codes(`${M}plot(M(x), x: 0 m .. 5 m, hline: 3 m)`)).toEqual(['E-PLOT-UNITS']);
+    expect(codes(`${M}plot(M(x), x: 0 m .. 5 m, vline: 3 s)`)).toEqual(['E-PLOT-UNITS']);
+  });
+});
+

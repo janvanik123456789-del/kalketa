@@ -7,7 +7,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { formatExpr, formatPicture, fromDecimalComma, parsePicture, TEXT_ALIGNS, TEXT_COLORS, toDecimalComma, type SheetResult, type Statement, type StatementResult } from '@kalketa/core';
 import { formatDate, formatNumber, t, unitGap, type Catalog, type UiKey } from '@kalketa/i18n';
-import { chartSvg as drawChart, DEFAULT_VIEW, labelParts, surfaceAt, viewText, xPosition, xValueAt, yPosition } from '@kalketa/chart';
+import { chartSvg as drawChart, DEFAULT_VIEW, labelParts, surfaceAt, viewText, xPosition, xValueAt, yPosition, yValueAt } from '@kalketa/chart';
 import { blockLatex, columnsHead, fitWideEquations, isInput, pageLabels, renderBlockHtml, renderSummary, sheetSections, type CalcStyle, type PrintBlock, type PrintDocument, type Section } from '@kalketa/render';
 import { isCanvasPath } from '@kalketa/canvas';
 import { paginate, type PageGeometry } from '../logic/pages.js';
@@ -16,6 +16,7 @@ import { lineAttributesOf, lineFormatOf, lineSourceOf, lineTargetOf, withLineAtt
 import { defineShortcut } from '../logic/shortcuts.js';
 import { pickOf } from '../logic/pick.js';
 import { nearestOnCurve, seriesAt } from '../logic/chartPoint.js';
+import { axisRangeText, axisValueText, movedRange, zoomedRange, type AxisRange } from '../logic/chartView.js';
 import { inputNumber, sliderStep, sliderValue, withInputNumber } from '../logic/slider.js';
 import { placeable, plotFlag, plotOption, plotShowsRoots, plotYRange, withPlotFlag, withPlotOption, withPlotRoots, withPlotYRange } from '../logic/placement.js';
 import { PickControl } from './PickControl.js';
@@ -738,6 +739,50 @@ export function SheetView(props: Props) {
     ];
   };
 
+  /** The x axis, the words of the axes, logarithmic axes, reference lines and the measuring between two places: options of the plot line. */
+  const chartAxisItems = (seg: Segment): MenuItem[] => {
+    const c = props.uiCatalog;
+    const shown = (text: string) => (props.decimalComma ? toDecimalComma(text) : text);
+    const stored = (text: string) => (props.decimalComma ? fromDecimalComma(text) : text);
+    const has = (name: string) => plotOption(seg.text, name) !== undefined;
+    const write = (name: string, value: string | undefined) => props.onReplace(seg.start, seg.end, withPlotOption(seg.text, name, value));
+    // Asked for as written in the line; empty takes the option away.
+    const asked = (label: UiKey, question: UiKey, name: string): MenuItem => ({
+      kind: 'action',
+      label: t(c, label),
+      checked: has(name),
+      run: () =>
+        void ask(t(c, question), shown(plotOption(seg.text, name) ?? '')).then((answer) => {
+          if (answer === undefined) return;
+          write(name, answer.trim() === '' ? undefined : stored(answer.trim()));
+        }),
+    });
+    // Words of an axis: in quotes in the line, not in the question.
+    const words = (label: UiKey, question: UiKey, name: string): MenuItem => ({
+      kind: 'action',
+      label: t(c, label),
+      checked: has(name),
+      run: () =>
+        void ask(t(c, question), (plotOption(seg.text, name) ?? '').replace(/^"|"$/g, '')).then((answer) => {
+          if (answer === undefined) return;
+          write(name, answer.trim() === '' ? undefined : `"${answer.trim().replace(/"/g, '')}"`);
+        }),
+    });
+    const logarithmic = (label: UiKey, name: string): MenuItem => ({ kind: 'action', label: t(c, label), checked: /log/.test(plotOption(seg.text, name) ?? ''), run: () => write(name, /log/.test(plotOption(seg.text, name) ?? '') ? undefined : '"log"') });
+    return [
+      asked('chart.xRange', 'chart.xRangeAsk', 'xlim'),
+      ...(has('xlim') || has('ylim') ? [{ kind: 'action' as const, label: t(c, 'chart.fullRange'), run: () => props.onReplace(seg.start, seg.end, withPlotOption(withPlotOption(seg.text, 'xlim', undefined), 'ylim', undefined)) }] : []),
+      words('chart.xLabel', 'chart.xLabelAsk', 'xlabel'),
+      words('chart.yLabel', 'chart.yLabelAsk', 'ylabel'),
+      logarithmic('chart.xLog', 'xscale'),
+      logarithmic('chart.yLog', 'yscale'),
+      { kind: 'separator' },
+      asked('chart.hline', 'chart.hlineAsk', 'hline'),
+      asked('chart.vline', 'chart.vlineAsk', 'vline'),
+      asked('chart.cursors', 'chart.cursorsAsk', 'cursors'),
+    ];
+  };
+
   /** The y axis of a chart: from .. to as asked for (ylim), or following the values again. */
   const yRangeItems = (seg: Segment): MenuItem[] => {
     const c = props.uiCatalog;
@@ -771,6 +816,7 @@ export function SheetView(props: Props) {
           }),
       },
       ...(current !== undefined ? [{ kind: 'action' as const, label: t(c, 'chart.yRangeAuto'), run: () => props.onReplace(seg.start, seg.end, withPlotYRange(seg.text, undefined)) }] : []),
+      ...chartAxisItems(seg),
       { kind: 'separator' },
       ...chartToolItems(seg),
       ...chartLookItems(seg),
@@ -1478,6 +1524,7 @@ export function SheetView(props: Props) {
               sliders={chartSliders(seg)}
               {...(props.curveEditable ? { editable: (series: number) => props.curveEditable!(block.line, series) } : {})}
               onOption={(name, value) => props.onReplace(seg.start, seg.end, withPlotOption(seg.text, name, value))}
+              onOptions={(options) => props.onReplace(seg.start, seg.end, options.reduce((text, [name, value]) => withPlotOption(text, name, value), seg.text))}
               onResize={(width, ratio) => {
                 const item = placeable(seg.text);
                 if (item) props.onReplace(seg.start, seg.end, item.write({ ...item.place, width, ...(ratio !== undefined ? { ratio } : {}) }));
@@ -1602,10 +1649,66 @@ function chartX(chart: Extract<PrintBlock, { kind: 'chart' }>, x: number): strin
   return chart.xUnit ? `${n}${unitGap(chart.xUnit)}${chart.xUnit}` : n;
 }
 
-function ChartBlock({ block, catalog, onResize, onOption, sliders, editable }: { block: Extract<PrintBlock, { kind: 'chart' }>; catalog: Catalog; onResize(width: number, ratio?: number): void; onOption(name: string, value: string | undefined): void; sliders?: ReactNode; /** A curve that opens to be edited by a click (a fitted one). */ editable?(series: number): boolean }) {
+function ChartBlock({ block, catalog, onResize, onOption, onOptions, sliders, editable }: { block: Extract<PrintBlock, { kind: 'chart' }>; catalog: Catalog; onResize(width: number, ratio?: number): void; onOption(name: string, value: string | undefined): void; onOptions(options: readonly (readonly [string, string | undefined])[]): void; sliders?: ReactNode; /** A curve that opens to be edited by a click (a fitted one). */ editable?(series: number): boolean }) {
   const [hover, setHover] = useState<{ left: number; top: number; height: number; lines: string[] } | undefined>();
   const [dragged, setDragged] = useState<number | undefined>();
   const view = useRef<HTMLDivElement>(null);
+  // The newest function of the row (the line changes as the chart is zoomed): a later write must not work from an old text.
+  const writeOptions = useRef(onOptions);
+  writeOptions.current = onOptions;
+  // What the axes show, ahead of the chart while a zoom waits to be written (a few writes a second, each recalculates).
+  const shownRange = useRef<{ x?: AxisRange; y?: AxisRange } | undefined>(undefined);
+  const zoomable = !block.xDates && block.spec.kind !== 'surface' && block.spec.kind !== 'map' && block.spec.kind !== 'bar' && !block.spec.surface;
+  const writeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const writeRange = () => {
+    writeTimer.current = undefined;
+    const range = shownRange.current;
+    if (!range) return;
+    writeOptions.current([
+      ...(range.x ? [['xlim', axisRangeText(range.x, block.xUnit, block.layout.x.log)] as const] : []),
+      ...(range.y ? [['ylim', axisRangeText(range.y, block.yUnit, block.layout.y.log)] as const] : []),
+    ]);
+  };
+  const askRange = (range: { x?: AxisRange; y?: AxisRange }) => {
+    shownRange.current = { ...shownRange.current, ...range };
+    writeTimer.current ??= setTimeout(writeRange, 80);
+  };
+  // A chart drawn anew from its line is what it shows again.
+  useEffect(() => {
+    if (writeTimer.current === undefined) shownRange.current = undefined;
+  });
+  // Shift + wheel zooms: over the plot both axes, over an axis that axis alone. The plain wheel stays the page's.
+  useEffect(() => {
+    const element = view.current;
+    if (!element || !zoomable) return;
+    const wheel = (e: WheelEvent) => {
+      if (!e.shiftKey) return;
+      const svg = element.querySelector('svg.chart-svg');
+      if (!svg) return;
+      const box = svg.getBoundingClientRect();
+      const unit = box.width / block.layout.width;
+      const [px, py] = [(e.clientX - box.left) / unit, (e.clientY - box.top) / unit];
+      const { plot, x, y } = block.layout;
+      const overX = px >= plot.left - 4 && px <= plot.right + 4;
+      const overY = py >= plot.top - 4 && py <= plot.bottom + 4;
+      if (!overX && !overY) return;
+      e.preventDefault();
+      // Under Shift a wheel may report its turn sideways.
+      const factor = (e.deltaY || e.deltaX) < 0 ? 0.8 : 1.25;
+      const scaleOf = (s: typeof x, range?: AxisRange) => (range ? { ...s, min: range[0], max: range[1] } : s);
+      const now = shownRange.current;
+      const xNow = scaleOf(x, now?.x);
+      const yNow = scaleOf(y, now?.y);
+      const clampShare = (v: number) => Math.min(1, Math.max(0, v));
+      const along = (s: typeof x, share: number) => (s.log ? s.min * (s.max / s.min) ** share : s.min + share * (s.max - s.min));
+      askRange({
+        ...(overX ? { x: zoomedRange(xNow, along(xNow, clampShare((px - plot.left) / (plot.right - plot.left))), factor) } : {}),
+        ...(overY ? { y: zoomedRange(yNow, along(yNow, clampShare((plot.bottom - py) / (plot.bottom - plot.top))), factor) } : {}),
+      });
+    };
+    element.addEventListener('wheel', wheel, { passive: false });
+    return () => element.removeEventListener('wheel', wheel);
+  }, [block.layout, zoomable]);
   // The box of the chart carries its width and edge (a row flowed around carries them itself); the chart fills it.
   const { wrap: _w, dx: _x, dy: _y, width: _s, align: _a, ...plain } = block;
   const width = block.wrap ? undefined : (dragged ?? block.width);
@@ -1720,9 +1823,12 @@ function ChartBlock({ block, catalog, onResize, onOption, sliders, editable }: {
     const target = e.target as Element;
     const handle = target.closest?.('[data-chart-drag="tangent"]');
     const labelEl = target.closest?.('[data-label]');
+    const lineHandle = target.closest?.('[data-chart-drag="ref"], [data-chart-drag="cursor"]');
     const surface = block.spec.kind === 'surface' ? block.spec.surface : undefined;
     if (surface && e.button === 0 && target.closest?.('svg.chart-svg')) return turnSurface(e, surface);
-    if (!handle && !labelEl) return;
+    // Shift + drag moves what the axes show, as far as the plot goes.
+    const panning = e.shiftKey && e.button === 0 && zoomable && !!target.closest?.('svg.chart-svg');
+    if (!handle && !labelEl && !lineHandle && !panning) return;
     // No mousedown follows (the row would take the chart to move it), and the pointer is held by the page:
     // the chart is drawn anew as the point moves, and the element pressed is gone, yet the moves still come.
     e.preventDefault();
@@ -1751,6 +1857,75 @@ function ChartBlock({ block, catalog, onResize, onOption, sliders, editable }: {
       view.isConnected ? view.querySelector('svg.chart-svg') : (layer?.isConnected ? layer : document).querySelector(`.row[data-line="${block.line}"] svg.chart-svg`);
     if (!chartSvg()) return;
     const unit = () => (chartSvg()?.getBoundingClientRect().width ?? 0) / block.layout.width;
+    if (panning) {
+      const { plot, x, y } = block.layout;
+      const start = { x: e.clientX, y: e.clientY };
+      const move = (ev: PointerEvent) => {
+        const u = unit();
+        if (!(u > 0)) return;
+        // Taken by the hand: the content follows the pointer, so the range goes the other way.
+        askRange({
+          x: movedRange(x, -(ev.clientX - start.x) / u / (plot.right - plot.left)),
+          y: movedRange(y, (ev.clientY - start.y) / u / (plot.bottom - plot.top)),
+        });
+      };
+      const up = () => {
+        window.removeEventListener('pointermove', move);
+        window.removeEventListener('pointerup', up);
+        release();
+      };
+      window.addEventListener('pointermove', move);
+      window.addEventListener('pointerup', up);
+      return;
+    }
+    if (lineHandle) {
+      // A reference line or a cursor follows the pointer; written a few times a second, and where it stops.
+      const refIndex = lineHandle.getAttribute('data-ref');
+      const refAxis = refIndex === null ? undefined : block.spec.refs?.[Number(refIndex)]?.axis;
+      const cursor = lineHandle.getAttribute('data-cursor');
+      const { x: xs, y: ys } = block.layout;
+      const spanX = xs.log ? 0 : xs.max - xs.min;
+      const spanY = ys.log ? 0 : ys.max - ys.min;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      let pending: readonly [string, string] | undefined;
+      const flush = () => {
+        timer = undefined;
+        if (pending) writeOptions.current([pending]);
+        pending = undefined;
+      };
+      const move = (ev: PointerEvent) => {
+        const box = chartSvg()?.getBoundingClientRect();
+        const u = unit();
+        if (!box || !(u > 0)) return;
+        const { plot } = block.layout;
+        const px = Math.min(plot.right, Math.max(plot.left, (ev.clientX - box.left) / u));
+        const py = Math.min(plot.bottom, Math.max(plot.top, (ev.clientY - box.top) / u));
+        if (refAxis === 'y') {
+          const v = yValueAt(block.layout, py);
+          pending = ['hline', axisValueText(v, spanY || v, block.yUnit)];
+        } else if (refAxis === 'x') {
+          const v = xValueAt(block.layout, px);
+          pending = ['vline', axisValueText(v, spanX || v, block.xUnit)];
+        } else if (cursor !== null && block.spec.cursors) {
+          const v = xValueAt(block.layout, px);
+          const other = cursor === '0' ? block.spec.cursors.to : block.spec.cursors.from;
+          // The two may cross: the range stays from the lower to the higher (never empty).
+          if (v === other) return;
+          pending = ['cursors', axisRangeText([Math.min(v, other), Math.max(v, other)], block.xUnit, xs.log)];
+        }
+        timer ??= setTimeout(flush, 60);
+      };
+      const up = () => {
+        window.removeEventListener('pointermove', move);
+        window.removeEventListener('pointerup', up);
+        release();
+        if (timer) clearTimeout(timer);
+        flush();
+      };
+      window.addEventListener('pointermove', move);
+      window.addEventListener('pointerup', up);
+      return;
+    }
     if (handle) {
       // Written as it moves, a few times a second (each write recalculates the chart), and where it stops.
       let timer: ReturnType<typeof setTimeout> | undefined;
@@ -1814,6 +1989,7 @@ function ChartBlock({ block, catalog, onResize, onOption, sliders, editable }: {
       ref={view}
       className={`chart-view${block.align && !block.wrap ? ` align-${block.align}` : ''}`}
       style={width !== undefined ? { width: `${width}%` } : undefined}
+      {...(zoomable ? { title: t(catalog, 'chart.viewHint') } : {})}
       onPointerDownCapture={startDrag}
       onMouseMove={read}
       onMouseLeave={() => setHover(undefined)}

@@ -80,7 +80,7 @@ export async function runSmokeTest(pdfPath: string, context: SmokeContext): Prom
     await writeFile(pdfPath, pdf);
     ok =
       state.bridge && state.sideBySide && state.menus === 8 && state.toolbars > 0 && state.rows > 10 && state.summary > 0 && state.math > 0 && reshapedColumns === 3 && pdf.length > 1000 &&
-      layers.deflection && layers.pickTaken.column.startsWith('→') && /mm|cm/.test(layers.pickTaken.text) && layers.newKeepsExample && layers.samplesOk && layers.derivations && layers.summaryOk && layers.definitionAtCursor && layers.sheetGridOk && layers.tableEnter && layers.solvedByFormula && layers.rootsAndExtremes && layers.userChart.ok && layers.relations.ok && layers.quadraticSample.ok && layers.saveOnClose.ok && layers.wordPrinted && layers.wordColored && layers.paletteColored && layers.wordText.focused && layers.wordText.pane && layers.wordText.bold === 'dynamiky' && !layers.wordText.shown.includes('"') && layers.wordText.align === 'center' && layers.cellMarked === 'Síla na konci' && layers.systemFont !== '' && layers.cellFont.replace(/"/g, '').startsWith(layers.systemFont) && layers.cellDeleted && layers.paperRoots && layers.tableRowAdded && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.notesPicture === 'FIGURE+img BLOCKQUOTE' && layers.notesPlaced === 'narrower centred' && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.charts && layers.functionBar && layers.revisions && layers.roots && layers.toolIcons && layers.aiSettings && layers.aiChat && layers.pdfCleanup && layers.theoryLibrary && layers.study && layers.sheetPicture.offered && layers.sheetPicture.described && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
+      layers.deflection && layers.pickTaken.column.startsWith('→') && /mm|cm/.test(layers.pickTaken.text) && layers.newKeepsExample && layers.samplesOk && layers.derivations && layers.summaryOk && layers.definitionAtCursor && layers.sheetGridOk && layers.tableEnter && layers.solvedByFormula && layers.rootsAndExtremes && layers.userChart.ok && layers.relations.ok && layers.chartEdit && layers.quadraticSample.ok && layers.saveOnClose.ok && layers.wordPrinted && layers.wordColored && layers.paletteColored && layers.wordText.focused && layers.wordText.pane && layers.wordText.bold === 'dynamiky' && !layers.wordText.shown.includes('"') && layers.wordText.align === 'center' && layers.cellMarked === 'Síla na konci' && layers.systemFont !== '' && layers.cellFont.replace(/"/g, '').startsWith(layers.systemFont) && layers.cellDeleted && layers.paperRoots && layers.tableRowAdded && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.notesPicture === 'FIGURE+img BLOCKQUOTE' && layers.notesPlaced === 'narrower centred' && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.charts && layers.functionBar && layers.revisions && layers.roots && layers.toolIcons && layers.aiSettings && layers.aiChat && layers.pdfCleanup && layers.theoryLibrary && layers.study && layers.sheetPicture.offered && layers.sheetPicture.described && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
     ok = ok && insertMenu.ok && rowTools.ok && controls.ok && typing.ok && start.shown && start.cards >= 20 && start.lead === 'R24-pruvodce-police' && start.pictures >= 12 && start.closed && start.tab === 'Vzor – Posouzení nosníku N1';
     console.log(JSON.stringify({ ok, start, insertMenu, rowTools, controls, typing, ...state, reshapedColumns, layers, pdfBytes: pdf.length }));
   } catch (err) {
@@ -3028,6 +3028,7 @@ async function layersWithRealInput(picture: string) {
   await takePicture(picture.replace(/[.]png$/, '-relations.png'));
   // A circle at one scale: as wide as it is high.
   const relationsOk = { ...relations, circle: circleAt, ok: relations.derived && relations.solved && relations.errors === 0 && !!circleAt && Math.abs(circleAt.width - circleAt.height) <= 3 && /y = /.test(relations.tip) };
+  const chartEdit = await chartEditWithRealInput(contents, picture);
   // Closing with unsaved changes asks Save, Don't save, Cancel: a tab (the program's own question, real clicks)
   // and a window (its question answered by the test), Save saving first, then closing.
   await clickOn('.doc-tab-new');
@@ -3085,11 +3086,93 @@ async function layersWithRealInput(picture: string) {
   // The folder of the file saved last is where the open and save dialogs start next time.
   const folderKept = lastFolder() === dirname(resolve(tabFile));
   const saveOnClose = { closeButtons, keptOnCancel, savedOnClose, windowSaved, folderKept, ok: closeButtons.join('|') === 'Uložit|Neukládat|Zrušit' && keptOnCancel && savedOnClose && windowSaved && folderKept };
-  return { ...state, pickTaken, deflection, derivations, summaryOk, summaryOpens, summaryAtEnd, bookStyle, verdictFuture, verdictBack, pageHead, definitionAtCursor, solveFormatted, sheetGridOk, sheetGrid, tableEnter, tableEnterAt, lastRowEnter, draggedRows, selectedAll, bothFormatted, roundedOn, equationNumber, solvedByFormula, rootsAndExtremes, wordText, wordColored, paletteColored, wordPrinted, cellMarked, cellFont, systemFont, cellDeleted, paperRoots, tableRowAdded, chartSteps, samplesOk, sampleTab, newKeepsExample, citations, notesPicture, notesPlaced, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, rootSteps, toolIcons, aiSettings, aiChat, pdfCleanup, theoryLibrary, study, sheetPicture, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, placedFree, strictPlaced, canvasOk, besideText, pictures, blocksOk, userChart, quadraticSample, saveOnClose, relations: relationsOk };
+  return { ...state, pickTaken, deflection, derivations, summaryOk, summaryOpens, summaryAtEnd, bookStyle, verdictFuture, verdictBack, pageHead, definitionAtCursor, solveFormatted, sheetGridOk, sheetGrid, tableEnter, tableEnterAt, lastRowEnter, draggedRows, selectedAll, bothFormatted, roundedOn, equationNumber, solvedByFormula, rootsAndExtremes, wordText, wordColored, paletteColored, wordPrinted, cellMarked, cellFont, systemFont, cellDeleted, paperRoots, tableRowAdded, chartSteps, samplesOk, sampleTab, newKeepsExample, citations, notesPicture, notesPlaced, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, rootSteps, toolIcons, aiSettings, aiChat, pdfCleanup, theoryLibrary, study, sheetPicture, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, placedFree, strictPlaced, canvasOk, besideText, pictures, blocksOk, userChart, quadraticSample, saveOnClose, relations: relationsOk, chartEdit: chartEdit.ok, chartEditSteps: chartEdit };
 }
 
 /** The tidied sources saved as a library (.kalkt) and attached in the chat: the model cites it by its key. */
 /** A picture of the sheet described for the AI by its right button (the fake AI of scripts/smoke.mjs reads PNG only). */
+/**
+ * A chart edited by the mouse: Shift + wheel zooms (over an axis that axis alone) and the plain wheel leaves it,
+ * Shift + drag moves it, a reference line and a cursor are dragged, the menu sets a logarithmic axis and the whole range.
+ */
+async function chartEditWithRealInput(contents: Electron.WebContents, picture: string) {
+  const path = join(tmpdir(), `kalketa-smoke-chartedit-${process.pid}.cc`);
+  await writeFile(path, ['# Graf', 'M(x) := 12 kN/m·x·(5 m - x)/2 + 1 kN·m', 'plot(M(x), x: 0 m .. 5 m, hline: 30 kN·m, cursors: 1 m .. 3 m) | kN·m'].join('\n'));
+  await sendOpen(path);
+  await pause(1500);
+  const chart = '.layer-view.active .block.chart svg.chart-svg';
+  // The ticks of an axis as the chart writes them: x below the plot, y left of it.
+  const ticks = async () =>
+    (await contents.executeJavaScript(`(() => {
+      const svg = document.querySelector('${chart}');
+      const all = [...svg.querySelectorAll('text[fill]')].filter((t) => !t.closest('[data-label]') && !t.classList.contains('chart-cursor-text') && /^[−\\d, ]+$/.test(t.textContent));
+      return { x: all.filter((t) => t.getAttribute('text-anchor') === 'middle').map((t) => t.textContent).join('|'), y: all.filter((t) => t.getAttribute('text-anchor') === 'end').map((t) => t.textContent).join('|') };
+    })()`)) as { x: string; y: string };
+  const place = async (selector: string) =>
+    (await contents.executeJavaScript(`(() => { const r = document.querySelector('${selector}')?.getBoundingClientRect(); return r ? { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) } : undefined; })()`)) as { x: number; y: number } | undefined;
+  const textOf = async (selector: string) => (await contents.executeJavaScript(`[...document.querySelectorAll('${selector}')].map((t) => t.textContent).join(' | ')`)) as string;
+  const plotArea = (await contents.executeJavaScript(`(() => {
+    const svg = document.querySelector('${chart}');
+    const box = svg.getBoundingClientRect();
+    const u = box.width / svg.viewBox.baseVal.width;
+    const line = [...svg.querySelectorAll('line')].find((l) => l.getAttribute('y1') === l.getAttribute('y2') && l.getAttribute('stroke-width') === '1' && +l.getAttribute('x2') - +l.getAttribute('x1') > 100);
+    const left = +line.getAttribute('x1'), right = +line.getAttribute('x2'), bottom = +line.getAttribute('y1');
+    return { x: Math.round(box.left + ((left + right) / 2) * u), y: Math.round(box.top + (bottom - 80) * u), axisY: Math.round(box.top + (bottom + 10) * u) };
+  })()`)) as { x: number; y: number; axisY: number };
+  const wheel = async (x: number, y: number, modifiers: Array<'shift'>) => {
+    contents.sendInputEvent({ type: 'mouseMove', x, y });
+    contents.sendInputEvent({ type: 'mouseWheel', x, y, deltaX: 0, deltaY: 120, wheelTicksY: 1, canScroll: true, modifiers });
+    await pause(700);
+  };
+  const first = await ticks();
+  await wheel(plotArea.x, plotArea.y, []);
+  const plain = await ticks();
+  await wheel(plotArea.x, plotArea.y, ['shift']);
+  const zoomed = await ticks();
+  await wheel(plotArea.x, plotArea.axisY, ['shift']);
+  const axisOnly = await ticks();
+  // Shift + drag: the x axis moves with the hand, a good way across the plot.
+  contents.sendInputEvent({ type: 'mouseDown', x: plotArea.x, y: plotArea.y, button: 'left', clickCount: 1, modifiers: ['shift'] });
+  for (let step = 1; step <= 6; step++) {
+    contents.sendInputEvent({ type: 'mouseMove', x: plotArea.x + step * 15, y: plotArea.y, modifiers: ['shift'] });
+    await pause(40);
+  }
+  contents.sendInputEvent({ type: 'mouseUp', x: plotArea.x + 90, y: plotArea.y, button: 'left', clickCount: 1, modifiers: ['shift'] });
+  await pause(700);
+  const moved = await ticks();
+  await clickOn(chart, [], 'right');
+  await clickMenu('Celý rozsah');
+  await pause(700);
+  const whole = await ticks();
+  // A line and a cursor taken by the hand; what they say follows.
+  const drag = async (selector: string, dx: number, dy: number) => {
+    const from = await place(selector);
+    if (!from) return;
+    contents.sendInputEvent({ type: 'mouseDown', x: from.x, y: from.y, button: 'left', clickCount: 1 });
+    for (let step = 1; step <= 8; step++) {
+      contents.sendInputEvent({ type: 'mouseMove', x: from.x + Math.round((dx * step) / 8), y: from.y + Math.round((dy * step) / 8) });
+      await pause(30);
+    }
+    contents.sendInputEvent({ type: 'mouseUp', x: from.x + dx, y: from.y + dy, button: 'left', clickCount: 1 });
+    await pause(700);
+  };
+  const refBefore = await textOf(`${chart} .chart-ref-label`);
+  await drag(`${chart} .chart-ref-handle`, 0, 40);
+  const refAfter = await textOf(`${chart} .chart-ref-label`);
+  const cursorBefore = await textOf(`${chart} .chart-cursor-text`);
+  await drag(`${chart} .chart-cursor-handle`, 60, 0);
+  const cursorAfter = await textOf(`${chart} .chart-cursor-text`);
+  await clickOn(chart, [], 'right');
+  await clickMenu('Logaritmická osa y');
+  await pause(800);
+  const log = await ticks();
+  await takePicture(picture.replace(/[.]png$/, '-chartedit.png'));
+  const errors = (await contents.executeJavaScript(`document.querySelectorAll('.layer-view.active .page .row.has-error').length`)) as number;
+  const ok =
+    plain.x === first.x && plain.y === first.y && zoomed.x !== first.x && zoomed.y !== first.y && axisOnly.x !== zoomed.x && axisOnly.y === zoomed.y && moved.x !== axisOnly.x && whole.x === first.x && whole.y === first.y && refAfter !== refBefore && /kN·m/.test(refAfter) && cursorAfter !== cursorBefore && /^Δx = /.test(cursorAfter) && log.y !== whole.y && errors === 0;
+  return { ok, first, plain, zoomed, axisOnly, moved, whole, refBefore, refAfter, cursorBefore, cursorAfter, log, errors };
+}
+
 async function sheetPictureWithRealInput(contents: Electron.WebContents): Promise<{ offered: boolean; described: boolean; notice: string; menu: string }> {
   const sheetPicture = { offered: false, described: false, notice: '', menu: '' };
   // A picture of the assignment described for the AI by its right button: the drawing (SVG) goes to the model

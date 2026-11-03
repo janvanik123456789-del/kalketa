@@ -50,6 +50,7 @@ export const DIAGNOSTIC_SEVERITY = {
   'E-ABS-TEMP': 'error',
   'W-ABS-TEMP-MUL': 'warning',
   'W-TEMP-AS-DIFFERENCE': 'warning',
+  'W-PLOT-LOG-VALUES': 'warning',
   'W-TEMP-LOW-KELVIN': 'warning',
   'E-POWER-DIM': 'error',
   'E-TYPE': 'error',

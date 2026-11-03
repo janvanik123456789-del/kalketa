@@ -40,6 +40,13 @@ export interface ChartSpec {
   readonly xTitle: string;
   /** Above the y axis, e.g. "M [kN·m]". */
   readonly yTitle: string;
+  /** Logarithmic axes (xscale: "log", yscale: "log"): only values above zero are drawn. */
+  readonly xLog?: boolean;
+  readonly yLog?: boolean;
+  /** Reference lines (hline, vline), with what their labels say; `movable` ones can be dragged in the editor. */
+  readonly refs?: readonly { readonly axis: 'x' | 'y'; readonly at: number; readonly name?: string; readonly unit?: string; readonly movable?: boolean }[];
+  /** Two places of the x axis read and compared (cursors: a .. b). */
+  readonly cursors?: { readonly from: number; readonly to: number; readonly name: string; readonly xUnit?: string; readonly yUnit?: string };
   /** The y axis from and to as set (ylim); the curves beyond it are cut off. Else it follows the values. */
   readonly yRange?: readonly [number, number];
   /** The x axis from and to (an implicit curve over x: a .. b); else it ends at the data. */
@@ -226,6 +233,8 @@ export interface Scale {
   readonly min: number;
   readonly max: number;
   readonly ticks: readonly number[];
+  /** A logarithmic axis: positions go by the logarithm of the value. */
+  readonly log?: boolean;
 }
 
 export interface ChartLayout {
@@ -261,6 +270,30 @@ export function niceScale(min: number, max: number, count = 6, includeZero = fal
   return { min: first, max: last, ticks };
 }
 
+/** A logarithmic axis over [min, max] (above zero): ticks on the decades, with 2 and 5 between them when it spans few of them. */
+export function logScale(min: number, max: number, fixed = false): Scale {
+  const lo = Number.isFinite(min) && min > 0 ? min : 1;
+  const hi = Number.isFinite(max) && max > lo ? max : lo * 10;
+  const [first, last] = [Math.floor(Math.log10(lo) + 1e-9), Math.ceil(Math.log10(hi) - 1e-9)];
+  const steps = last - first <= 2 ? [1, 2, 5] : [1];
+  const stride = Math.max(1, Math.ceil((last - first) / 8));
+  const ticks: number[] = [];
+  for (let e = first; e <= last; e += stride) for (const m of steps) ticks.push(Number((m * 10 ** e).toPrecision(12)));
+  const [from, to] = fixed ? [lo, hi] : [10 ** first, 10 ** last];
+  return { min: from, max: to, log: true, ticks: ticks.filter((t) => t >= from * (1 - 1e-9) && t <= to * (1 + 1e-9)) };
+}
+
+/** Where a value lies along an axis, 0 at its start and 1 at its end; NaN for a value a logarithmic axis cannot show. */
+function shareOf(scale: Scale, v: number): number {
+  if (!scale.log) return (v - scale.min) / (scale.max - scale.min);
+  return v > 0 ? Math.log10(v / scale.min) / Math.log10(scale.max / scale.min) : NaN;
+}
+
+/** The value at a share of an axis (the inverse of shareOf). */
+function atShare(scale: Scale, s: number): number {
+  return scale.log ? scale.min * (scale.max / scale.min) ** s : scale.min + s * (scale.max - scale.min);
+}
+
 function finite(values: Iterable<number>): number[] {
   return [...values].filter((v) => Number.isFinite(v));
 }
@@ -273,14 +306,23 @@ export function chartLayout(spec: ChartSpec, options: ChartOptions = {}): ChartL
   const paint = paintOf(options.look);
   const panel = 0;
   const scale = paint.font / 11;
-  const xs = finite(spec.series.flatMap((s) => s.xs));
-  const ys = finite(spec.series.flatMap((s) => s.ys));
+  const xs = finite(spec.series.flatMap((s) => s.xs)).filter((v) => !spec.xLog || v > 0);
+  // A reference line is there to be seen: the y axis following the values reaches it too.
+  const ys = finite([...spec.series.flatMap((s) => s.ys), ...(spec.refs ?? []).filter((l) => l.axis === 'y').map((l) => l.at)]).filter((v) => !spec.yLog || v > 0);
   const bar = spec.kind === 'bar';
   const categories = bar ? [...new Set(xs)].sort((a, b) => a - b) : undefined;
   // Bars stand on zero; curves get the range of their values.
-  const y = spec.yRange ? fixedScale(spec.yRange[0], spec.yRange[1]) : niceScale(Math.min(...ys), Math.max(...ys), 6, bar);
-  const x = categories
+  const y = spec.yLog
+    ? spec.yRange
+      ? logScale(spec.yRange[0], spec.yRange[1], true)
+      : logScale(Math.min(...ys), Math.max(...ys))
+    : spec.yRange
+      ? fixedScale(spec.yRange[0], spec.yRange[1])
+      : niceScale(Math.min(...ys), Math.max(...ys), 6, bar);
+  const x: Scale = categories
     ? { min: 0, max: categories.length, ticks: categories }
+    : spec.xLog
+      ? logScale(spec.xRange?.[0] ?? Math.min(...xs), spec.xRange?.[1] ?? Math.max(...xs), true)
     : spec.xRange
       ? fixedScale(spec.xRange[0], spec.xRange[1])
       : { ...niceScale(Math.min(...xs), Math.max(...xs), 8), ...tight(xs) };
@@ -314,20 +356,26 @@ export function xPosition(layout: ChartLayout, x: number): number {
     const i = layout.categories.indexOf(x);
     return plot.left + ((i + 0.5) / layout.categories.length) * (plot.right - plot.left);
   }
-  return plot.left + ((x - layout.x.min) / (layout.x.max - layout.x.min)) * (plot.right - plot.left);
+  return plot.left + shareOf(layout.x, x) * (plot.right - plot.left);
 }
 
 export function yPosition(layout: ChartLayout, y: number): number {
   const { plot } = layout;
-  return plot.bottom - ((y - layout.y.min) / (layout.y.max - layout.y.min)) * (plot.bottom - plot.top);
+  return plot.bottom - shareOf(layout.y, y) * (plot.bottom - plot.top);
 }
 
 /** The x value at a horizontal position in the plot area (the inverse of xPosition). */
 export function xValueAt(layout: ChartLayout, px: number): number {
   const { plot } = layout;
-  const share = (px - plot.left) / (plot.right - plot.left);
-  if (layout.categories) return layout.categories[Math.min(layout.categories.length - 1, Math.max(0, Math.floor(share * layout.categories.length)))]!;
-  return layout.x.min + share * (layout.x.max - layout.x.min);
+  const along = (px - plot.left) / (plot.right - plot.left);
+  if (layout.categories) return layout.categories[Math.min(layout.categories.length - 1, Math.max(0, Math.floor(along * layout.categories.length)))]!;
+  return atShare(layout.x, along);
+}
+
+/** The y value at a vertical position in the plot area (the inverse of yPosition). */
+export function yValueAt(layout: ChartLayout, py: number): number {
+  const { plot } = layout;
+  return atShare(layout.y, (plot.bottom - py) / (plot.bottom - plot.top));
 }
 
 const esc = (text: string) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -441,12 +489,12 @@ export function chartSvg(spec: ChartSpec, options: ChartOptions = {}): string {
   const data = spec.surface ? surfaceSvg(spec, layout, format, paint.colormap, paint.font) : `<g class="chart-data">${spec.kind === 'bar' ? bars(spec, layout) : curves(spec, layout)}</g>`;
   // A y axis set by hand cuts off what lies beyond it: the data in a window of the plot area.
   parts.push(
-    spec.yRange && !spec.surface
+    (spec.yRange || spec.xRange) && !spec.surface
       ? `<svg x="${plot.left}" y="${plot.top}" width="${plot.right - plot.left}" height="${plot.bottom - plot.top}" viewBox="${plot.left} ${plot.top} ${plot.right - plot.left} ${plot.bottom - plot.top}" overflow="hidden">${data}</svg>`
       : data,
   );
   // The marks of points first, their labels over all of them: a label is never hidden under a mark, and can be taken.
-  const marks = [areaMarks(spec, layout, format), symmetryLines(spec, layout, formatX), rootMarks(spec, layout, formatX), extremeMarks(spec, layout, formatX, format), inflectionMarks(spec, layout, formatX, format), pointMarks(spec, layout, formatX, format), tangentMarks(spec, layout, format)].join('');
+  const marks = [refLines(spec, layout, formatX, format), cursorMarks(spec, layout, formatX, format), areaMarks(spec, layout, format), symmetryLines(spec, layout, formatX), rootMarks(spec, layout, formatX), extremeMarks(spec, layout, formatX, format), inflectionMarks(spec, layout, formatX, format), pointMarks(spec, layout, formatX, format), tangentMarks(spec, layout, format)].join('');
   const LABEL = /(?:<line class="chart-label-lead"[^>]*\/>)?<text data-label="[^"]*"[^>]*>.*?<\/text>/g;
   parts.push(marks.replace(LABEL, ''), ...(marks.match(LABEL) ?? []));
   if (spec.series.length > 1 && paint.legend === 'top') parts.push(legend(spec, layout));
@@ -469,24 +517,27 @@ function curves(spec: ChartSpec, layout: ChartLayout): string {
   spec.series.forEach((s, i) => {
     const color = colorOf(layout, i);
     const points = s.xs.map((x, j) => [x, s.ys[j]!] as const);
+    const shown = points.filter(([x, y]) => (!spec.xLog || x > 0) && (!spec.yLog || y > 0));
     if ((s.mark ?? spec.kind) === 'line') {
       // A gap (NaN) ends a piece of the curve.
       let d = '';
       let pen = false;
       for (const [x, y] of points) {
-        if (!Number.isFinite(y)) {
+        // Also what a logarithmic axis cannot show.
+        const [px, py] = [xPosition(layout, x), yPosition(layout, y)];
+        if (!Number.isFinite(px) || !Number.isFinite(py)) {
           pen = false;
           continue;
         }
-        d += `${pen ? 'L' : 'M'}${r(xPosition(layout, x))} ${r(yPosition(layout, y))}`;
+        d += `${pen ? 'L' : 'M'}${r(px)} ${r(py)}`;
         pen = true;
       }
       const dash = paint.dashes && SERIES_DASHES[i] ? ` stroke-dasharray="${SERIES_DASHES[i]}"` : '';
       out.push(`<path d="${d}" fill="none" stroke="${color}" stroke-width="${paint.line}" stroke-linejoin="round" stroke-linecap="round"${dash}/>`);
       // A curve of a few points shows them (or as the look says).
-      if (paint.markers === 'always' || (paint.markers === 'auto' && points.length <= 30)) out.push(markers(points, layout, color, i, 3));
+      if (paint.markers === 'always' || (paint.markers === 'auto' && points.length <= 30)) out.push(markers(shown, layout, color, i, 3));
     } else {
-      out.push(markers(points, layout, color, i, 4));
+      out.push(markers(shown, layout, color, i, 4));
     }
   });
   return out.join('');
@@ -700,6 +751,58 @@ function tangentMarks(spec: ChartSpec, layout: ChartLayout, format: (value: numb
 }
 
 /** The axes of symmetry of the curves: a dashed vertical line in the colour of the curve, its value at the top. */
+/** Reference lines: dashed across the plot, what they are at their end; a movable one has a wider band to take it by. */
+function refLines(spec: ChartSpec, layout: ChartLayout, formatX: (value: number) => string, format: (value: number) => string): string {
+  const { plot } = layout;
+  const out: string[] = [];
+  (spec.refs ?? []).forEach((line, k) => {
+    const pos = line.axis === 'x' ? xPosition(layout, line.at) : yPosition(layout, line.at);
+    const [low, high] = line.axis === 'x' ? [plot.left, plot.right] : [plot.top, plot.bottom];
+    if (!Number.isFinite(pos) || pos < low - 0.5 || pos > high + 0.5) return;
+    const p = r(pos);
+    const ends = line.axis === 'x' ? `x1="${p}" x2="${p}" y1="${plot.top}" y2="${plot.bottom}"` : `x1="${plot.left}" x2="${plot.right}" y1="${p}" y2="${p}"`;
+    out.push(`<line class="chart-ref" ${ends} stroke="${INK_2}" stroke-width="1.2" stroke-dasharray="6 3"/>`);
+    if (line.movable) out.push(`<line class="chart-ref-handle" data-chart-drag="ref" data-ref="${k}" ${ends} stroke="transparent" stroke-width="9" style="cursor:${line.axis === 'x' ? 'ew-resize' : 'ns-resize'}"/>`);
+    const value = `${line.axis === 'x' ? formatX(line.at) : format(line.at)}${line.unit ? ` ${line.unit}` : ''}`;
+    const text = line.name ? `${line.name} = ${value}` : value;
+    const at: readonly [number, number] = line.axis === 'x' ? [pos + 4, plot.top + 11] : [plot.right - 4, pos - 4];
+    out.push(placed(spec, `l${k}`, [line.axis === 'x' ? pos : plot.right, line.axis === 'x' ? plot.top + 8 : pos], at, label(text), `class="chart-label chart-ref-label" fill="${INK_2}"${line.axis === 'y' ? ' text-anchor="end"' : ''}`));
+  });
+  return out.join('');
+}
+
+/** The value of a curve at x, between its points; NaN where it has none. */
+function curveAt(s: ChartSeries, x: number): number {
+  const j = s.xs.findIndex((v, k) => k + 1 < s.xs.length && v <= x && x <= s.xs[k + 1]!);
+  if (j < 0) return NaN;
+  const t = (x - s.xs[j]!) / (s.xs[j + 1]! - s.xs[j]! || 1);
+  return s.ys[j]! + t * (s.ys[j + 1]! - s.ys[j]!);
+}
+
+/** Two places of the x axis: a line at each, and what lies between them: Δx, each curve from .. to and its Δ. */
+function cursorMarks(spec: ChartSpec, layout: ChartLayout, formatX: (value: number) => string, format: (value: number) => string): string {
+  const c = spec.cursors;
+  if (!c) return '';
+  const { plot } = layout;
+  const out: string[] = [];
+  [c.from, c.to].forEach((x, k) => {
+    if (!Number.isFinite(xPosition(layout, x)) || x < layout.x.min || x > layout.x.max) return;
+    const p = r(xPosition(layout, x));
+    const ends = `x1="${p}" x2="${p}" y1="${plot.top}" y2="${plot.bottom}"`;
+    out.push(`<line class="chart-cursor" ${ends} stroke="${INK_2}" stroke-width="1.2" stroke-dasharray="2 3"/>`);
+    out.push(`<line class="chart-cursor-handle" data-chart-drag="cursor" data-cursor="${k}" ${ends} stroke="transparent" stroke-width="9" style="cursor:ew-resize"/>`);
+  });
+  const unit = (u?: string) => (u ? ` ${u}` : '');
+  const lines = [`Δ${c.name} = ${formatX(c.to - c.from)}${unit(c.xUnit)}`];
+  for (const s of spec.series) {
+    const [a, b] = [curveAt(s, c.from), curveAt(s, c.to)];
+    if (Number.isFinite(a) && Number.isFinite(b)) lines.push(`${s.label}: ${format(a)} → ${format(b)}, Δ = ${format(b - a)}${unit(c.yUnit)}`);
+  }
+  // Over the curves, with a white edge so that it stays readable on them.
+  lines.forEach((text, i) => out.push(`<text class="chart-cursor-text" x="${plot.left + 6}" y="${r(plot.top + 13 + i * (layout.paint.font + 3))}" fill="${INK_2}" stroke="#fff" stroke-width="3" paint-order="stroke">${label(text)}</text>`));
+  return out.join('');
+}
+
 function symmetryLines(spec: ChartSpec, layout: ChartLayout, format: (value: number) => string): string {
   const { plot } = layout;
   const out: string[] = [];

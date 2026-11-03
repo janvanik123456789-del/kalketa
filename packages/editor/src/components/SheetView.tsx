@@ -7,7 +7,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { formatExpr, formatPicture, fromDecimalComma, parsePicture, TEXT_ALIGNS, TEXT_COLORS, toDecimalComma, type SheetResult, type Statement, type StatementResult } from '@kalketa/core';
 import { formatDate, formatNumber, t, unitGap, type Catalog, type UiKey } from '@kalketa/i18n';
-import { chartSvg as drawChart, DEFAULT_VIEW, labelParts, surfaceAt, viewText, xPosition, xValueAt, yPosition, yValueAt } from '@kalketa/chart';
+import { chartLookText, chartSvg as drawChart, DEFAULT_VIEW, labelParts, partOffset, surfaceAt, viewText, withLook, xPosition, xValueAt, yPosition, yValueAt, type ChartLook } from '@kalketa/chart';
 import { blockLatex, columnsHead, fitWideEquations, isInput, pageLabels, renderBlockHtml, renderSummary, sheetSections, type CalcStyle, type PrintBlock, type PrintDocument, type Section } from '@kalketa/render';
 import { isCanvasPath } from '@kalketa/canvas';
 import { paginate, type PageGeometry } from '../logic/pages.js';
@@ -17,6 +17,8 @@ import { defineShortcut } from '../logic/shortcuts.js';
 import { pickOf } from '../logic/pick.js';
 import { nearestOnCurve, seriesAt } from '../logic/chartPoint.js';
 import { axisRangeText, axisValueText, movedRange, zoomedRange, type AxisRange } from '../logic/chartView.js';
+import { partMoves, withPartChanges, withoutPart, type ChartPart } from '../logic/chartParts.js';
+import { ChartPartPanel } from './ChartPartPanel.js';
 import { inputNumber, sliderStep, sliderValue, withInputNumber } from '../logic/slider.js';
 import { placeable, plotFlag, plotOption, plotShowsRoots, plotYRange, withPlotFlag, withPlotOption, withPlotRoots, withPlotYRange } from '../logic/placement.js';
 import { PickControl } from './PickControl.js';
@@ -273,6 +275,10 @@ function textMenuItems(seg: Segment, catalog: Catalog, change: RowChange): MenuI
 }
 
 export function SheetView(props: Props) {
+  const chartRowsRef = useRef(new Map<number, { seg: Segment; block: Extract<PrintBlock, { kind: 'chart' }>; view?: HTMLElement | null }>());
+  const pendingLooks = useRef(new Map<number, ChartLook>());
+  const writeChartRef = useRef<(line: number, options: readonly (readonly [string, string | undefined])[]) => void>(() => undefined);
+  const [chartPart, setChartPart] = useState<{ line: number; part: ChartPart } | undefined>();
   const { source, result, print, editing } = props;
   // The menu of a picture: opened by clicking it (or right click).
   const [pictureMenu, setPictureMenu] = useState<{ seg: Segment; at: { x: number; y: number }; flow?: boolean } | undefined>();
@@ -1071,6 +1077,27 @@ export function SheetView(props: Props) {
   // What completion offers: the values of the sheet (with their value and line) and the built-in functions.
   const completionList = useMemoCompletions(result, props.uiCatalog, props.decimalComma);
 
+  // A row is made anew when its text changes, a chart with it. What must outlast that lives here: the row of each chart
+  // as it is now (a write never works from an old text), the look on its way to the line, and the small window of a part.
+  const chartRows = chartRowsRef.current;
+  const writeChart = (line: number, options: readonly (readonly [string, string | undefined])[]) => {
+    const row = chartRows.get(line);
+    if (row) props.onReplace(row.seg.start, row.seg.end, options.reduce((text, [name, value]) => withPlotOption(text, name, value), row.seg.text));
+  };
+  const lookOf = (line: number): ChartLook => pendingLooks.current.get(line) ?? chartRows.get(line)?.block.ownLook ?? {};
+  const changeChartLook = (line: number, change: (look: ChartLook) => ChartLook) => {
+    const waiting = pendingLooks.current.has(line);
+    pendingLooks.current.set(line, change(lookOf(line)));
+    if (waiting) return;
+    setTimeout(() => {
+      const look = pendingLooks.current.get(line);
+      pendingLooks.current.delete(line);
+      const text = look ? chartLookText(look) : '';
+      writeChartRef.current(line, [['style', text ? `"${text}"` : undefined]]);
+    }, 50);
+  };
+  writeChartRef.current = writeChart;
+
   return (
     <>
       {/* Outside the zoomed pages, so the menu has its normal size and sits at the pointer. */}
@@ -1225,6 +1252,30 @@ export function SheetView(props: Props) {
           </section>
         ))}
       </div>
+      {chartPart &&
+        (() => {
+          const row = chartRows.get(chartPart.line);
+          if (!row) return null;
+          const { line, part } = chartPart;
+          return (
+            <ChartPartPanel
+              key={`${line}:${part}`}
+              catalog={props.uiCatalog}
+              part={part}
+              spec={row.block.spec}
+              look={withLook(row.block.look, lookOf(line))}
+              anchor={() => {
+                const view = chartRows.get(line)?.view;
+                return view?.querySelector(`svg.chart-svg [data-part="${part}"]`) ?? view?.querySelector('svg.chart-svg') ?? null;
+              }}
+              onSet={(changes) => changeChartLook(line, (look) => withPartChanges(look, part, changes))}
+              onLook={(change) => changeChartLook(line, (look) => ({ ...look, ...change }))}
+              {...(part === 'xTitle' || part === 'yTitle' ? { onTitle: (text: string) => writeChart(line, [[part === 'xTitle' ? 'xlabel' : 'ylabel', text.trim() ? `"${text.trim().replace(/"/g, '')}"` : undefined]]) } : {})}
+              onReset={() => changeChartLook(line, (look) => withoutPart(look, part))}
+              onClose={() => setChartPart(undefined)}
+            />
+          );
+        })()}
     </>
   );
 
@@ -1333,6 +1384,7 @@ export function SheetView(props: Props) {
     let aiMark: { id: string; title: string } | undefined;
     for (let line = seg.start; line <= seg.end && !aiMark; line++) aiMark = props.aiMade?.get(line);
     const placed = (block?.kind === 'picture' || block?.kind === 'chart') && block.wrap ? block : undefined;
+    if (block?.kind === 'chart') chartRows.set(block.line, { seg, block, view: chartRows.get(block.line)?.view ?? null });
     const stop = placed?.dy ? <div key={`stop:${seg.start}`} className={`wrap-stop wrap-${placed.wrap}`} style={{ height: `${placed.dy}mm` }} /> : null;
     const row = (
       <div
@@ -1519,12 +1571,19 @@ export function SheetView(props: Props) {
             />
           ) : block?.kind === 'chart' ? (
             <ChartBlock
+              ref={(element) => {
+                const row = chartRows.get(block.line);
+                if (element && row) row.view = element;
+              }}
               block={block}
               catalog={props.printCatalog}
+              uiCatalog={props.uiCatalog}
+              onPart={(part) => setChartPart({ line: block.line, part })}
+              onLook={(change) => changeChartLook(block.line, change)}
               sliders={chartSliders(seg)}
               {...(props.curveEditable ? { editable: (series: number) => props.curveEditable!(block.line, series) } : {})}
               onOption={(name, value) => props.onReplace(seg.start, seg.end, withPlotOption(seg.text, name, value))}
-              onOptions={(options) => props.onReplace(seg.start, seg.end, options.reduce((text, [name, value]) => withPlotOption(text, name, value), seg.text))}
+              onOptions={(options) => writeChart(block.line, options)}
               onResize={(width, ratio) => {
                 const item = placeable(seg.text);
                 if (item) props.onReplace(seg.start, seg.end, item.write({ ...item.place, width, ...(ratio !== undefined ? { ratio } : {}) }));
@@ -1649,7 +1708,7 @@ function chartX(chart: Extract<PrintBlock, { kind: 'chart' }>, x: number): strin
   return chart.xUnit ? `${n}${unitGap(chart.xUnit)}${chart.xUnit}` : n;
 }
 
-function ChartBlock({ block, catalog, onResize, onOption, onOptions, sliders, editable }: { block: Extract<PrintBlock, { kind: 'chart' }>; catalog: Catalog; onResize(width: number, ratio?: number): void; onOption(name: string, value: string | undefined): void; onOptions(options: readonly (readonly [string, string | undefined])[]): void; sliders?: ReactNode; /** A curve that opens to be edited by a click (a fitted one). */ editable?(series: number): boolean }) {
+function ChartBlock({ ref: holder, block, catalog, uiCatalog, onPart, onLook, onResize, onOption, onOptions, sliders, editable }: { ref?: (element: HTMLDivElement | null) => void; block: Extract<PrintBlock, { kind: 'chart' }>; catalog: Catalog; /** The language of the program: of its windows and hints (catalog is that of the printout). */ uiCatalog: Catalog; /** A click on a part of the chart: its small window. */ onPart(part: ChartPart): void; /** A change of the chart's own look, on its way to the line. */ onLook(change: (look: ChartLook) => ChartLook): void; onResize(width: number, ratio?: number): void; onOption(name: string, value: string | undefined): void; onOptions(options: readonly (readonly [string, string | undefined])[]): void; sliders?: ReactNode; /** A curve that opens to be edited by a click (a fitted one). */ editable?(series: number): boolean }) {
   const [hover, setHover] = useState<{ left: number; top: number; height: number; lines: string[] } | undefined>();
   const [dragged, setDragged] = useState<number | undefined>();
   const view = useRef<HTMLDivElement>(null);
@@ -1820,10 +1879,42 @@ function ChartBlock({ block, catalog, onResize, onOption, onOptions, sliders, ed
   };
   // The point of the tangent dragged along the curve; a label dragged off it. Both written into the line.
   const startDrag = (e: ReactPointerEvent<HTMLDivElement>) => {
-    const target = e.target as Element;
+    // A title under a handle of the selected chart (the y title written upwards lies under the left one) is taken, not the handle.
+    const pressed = e.target as Element;
+    const under = pressed.closest?.('.picture-handle') ? document.elementsFromPoint(e.clientX, e.clientY).find((el) => partMoves(el.closest('[data-part]')?.getAttribute('data-part') ?? '')) : undefined;
+    const target = under ?? pressed;
     const handle = target.closest?.('[data-chart-drag="tangent"]');
     const labelEl = target.closest?.('[data-label]');
     const lineHandle = target.closest?.('[data-chart-drag="ref"], [data-chart-drag="cursor"]');
+    // A part of the chart: a click opens its small window, a drag moves it where it can be moved. A fitted curve opens its fit as before.
+    const partEl = e.button === 0 && !e.shiftKey && !handle && !labelEl && !lineHandle && block.spec.kind !== 'surface' ? target.closest?.('[data-part]') : null;
+    const partName = partEl?.getAttribute('data-part') ?? undefined;
+    const fitted = partName !== undefined && /^s\d+$/.test(partName) && !!editable?.(Number(partName.slice(1)));
+    if (partName && !fitted) {
+      e.preventDefault();
+      e.stopPropagation();
+      const moves = partMoves(partName);
+      const start = { x: e.clientX, y: e.clientY };
+      const [ox, oy] = partOffset(block.look, partName);
+      const holder = e.currentTarget;
+      const size = () => (holder.querySelector('svg.chart-svg')?.getBoundingClientRect().width ?? 0) / block.layout.width;
+      let dragged = false;
+      const move = (ev: PointerEvent) => {
+        const u = size();
+        if (!moves || !(u > 0) || (!dragged && Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 4)) return;
+        dragged = true;
+        const at = `${Math.round(ox + (ev.clientX - start.x) / u)},${Math.round(oy + (ev.clientY - start.y) / u)}`;
+        onLook((look) => withPartChanges(look, partName, { at }));
+      };
+      const up = () => {
+        window.removeEventListener('pointermove', move);
+        window.removeEventListener('pointerup', up);
+        if (!dragged) onPart(partName);
+      };
+      window.addEventListener('pointermove', move);
+      window.addEventListener('pointerup', up);
+      return;
+    }
     const surface = block.spec.kind === 'surface' ? block.spec.surface : undefined;
     if (surface && e.button === 0 && target.closest?.('svg.chart-svg')) return turnSurface(e, surface);
     // Shift + drag moves what the axes show, as far as the plot goes.
@@ -1986,11 +2077,26 @@ function ChartBlock({ block, catalog, onResize, onOption, onOptions, sliders, ed
   };
   return (
     <div
-      ref={view}
+      ref={(element) => {
+        view.current = element;
+        holder?.(element);
+      }}
       className={`chart-view${block.align && !block.wrap ? ` align-${block.align}` : ''}`}
       style={width !== undefined ? { width: `${width}%` } : undefined}
-      {...(zoomable ? { title: t(catalog, 'chart.viewHint') } : {})}
+      {...(zoomable ? { title: t(uiCatalog, 'chart.viewHint') } : {})}
       onPointerDownCapture={startDrag}
+      // A double click into the plot area: the grid and the background.
+      onDoubleClickCapture={(e) => {
+        const svg = view.current?.querySelector('svg.chart-svg');
+        if (!svg || block.spec.kind === 'surface' || (e.target as Element).closest?.('[data-part]')) return;
+        const box = svg.getBoundingClientRect();
+        const unit = box.width / block.layout.width;
+        const [px, py] = [(e.clientX - box.left) / unit, (e.clientY - box.top) / unit];
+        const { plot } = block.layout;
+        if (px < plot.left || px > plot.right || py < plot.top || py > plot.bottom) return;
+        e.stopPropagation();
+        onPart('grid');
+      }}
       onMouseMove={read}
       onMouseLeave={() => setHover(undefined)}
     >

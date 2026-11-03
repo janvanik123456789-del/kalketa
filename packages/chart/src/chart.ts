@@ -102,10 +102,44 @@ export interface ChartLook {
   readonly names?: boolean;
   /** Colours of a map of a surface: chosen by its values (when left out), one way, round zero, grey. */
   readonly colormap?: Colormap;
+  /** The look of single parts of the chart, by "part.property" (yTitle.size=14, s0.color=#d1495b): see PART_KEY. */
+  readonly parts?: Readonly<Record<string, string>>;
 }
+
+/**
+ * What can be set on a part: xTitle, yTitle, xTicks, yTicks, legend, names (texts: font, size, bold, italic, color;
+ * titles and the legend also at=dx,dy, yTitle rotate=90), axis (color, width), grid (color, width, dash),
+ * plot (fill), s0, s1, … the curves (color, width, dash, marker, name). A font has _ for a space, a name ~.
+ */
+export const PART_KEY = /^(?:(?:xTitle|yTitle|xTicks|yTicks|legend|names)\.(?:font|size|bold|italic|color|rotate|at)|axis\.(?:color|width)|grid\.(?:color|width|dash)|plot\.fill|s\d+\.(?:color|width|dash|marker|name))$/;
 
 /** The parts of a look in the order they are written. */
 export const LOOK_KEYS = ['colors', 'line', 'dashes', 'markers', 'grid', 'frame', 'font', 'legend', 'names', 'colormap'] as const;
+
+/** The text of a sheet goes into the drawing: a value is taken only in the form its property has, so nothing else can get in. */
+function partValueIsValid(key: string, value: string): boolean {
+  switch (key.slice(key.indexOf('.') + 1)) {
+    case 'color':
+    case 'fill':
+      return /^#[0-9a-f]{6}$/i.test(value);
+    case 'size':
+    case 'width':
+    case 'marker':
+      return /^\d+(\.\d+)?$/.test(value);
+    case 'at':
+      return /^-?\d+,-?\d+$/.test(value);
+    case 'rotate':
+      return value === '90';
+    case 'bold':
+    case 'italic':
+      return value === 'on';
+    case 'dash':
+      return /^(solid|dash|dot|dashdot)$/.test(value);
+    default:
+      // A font or the name of a curve: letters, digits and a few signs, no markup.
+      return /^[\p{L}\p{N}_~.,()·′″+\-–−%°]+$/u.test(value);
+  }
+}
 
 /** A look read from its text: "colors=#2a78d6,#eb6834 line=2.5 dashes=off grid=y frame font=12". Parts it does not know are left out. */
 export function parseChartLook(text: string): ChartLook {
@@ -142,6 +176,8 @@ export function parseChartLook(text: string): ChartLook {
       case 'colormap':
         if (value === 'auto' || value === 'sequential' || value === 'diverging' || value === 'gray') look.colormap = value;
         break;
+      default:
+        if (PART_KEY.test(key) && partValueIsValid(key, value ?? 'on')) look.parts = { ...(look.parts as Record<string, string> | undefined), [key]: value ?? 'on' };
     }
   }
   return look as ChartLook;
@@ -157,12 +193,14 @@ export function chartLookText(look: ChartLook): string {
     else if (typeof value === 'boolean') parts.push(value ? key : `${key}=off`);
     else parts.push(`${key}=${value}`);
   }
+  for (const [key, value] of Object.entries(look.parts ?? {}).sort(([a], [b]) => a.localeCompare(b))) parts.push(value === 'on' ? key : `${key}=${value}`);
   return parts.join(' ');
 }
 
 /** A look over another: the parts the own one has win (the chart's own over the style of the calculation). */
 export function withLook(base: ChartLook | undefined, own: ChartLook | undefined): ChartLook {
-  return { ...(base ?? {}), ...(own ?? {}) };
+  const parts = { ...(base?.parts ?? {}), ...(own?.parts ?? {}) };
+  return { ...(base ?? {}), ...(own ?? {}), ...(Object.keys(parts).length > 0 ? { parts } : {}) };
 }
 
 /** The parts of a look that differ from a base: what a chart keeps of its own beside the style of the calculation. */
@@ -172,6 +210,8 @@ export function lookDifference(look: ChartLook, base: ChartLook | undefined): Ch
     const value = look[key];
     if (value !== undefined && JSON.stringify(value) !== JSON.stringify(base?.[key])) out[key] = value;
   }
+  const parts = Object.fromEntries(Object.entries(look.parts ?? {}).filter(([key, value]) => base?.parts?.[key] !== value));
+  if (Object.keys(parts).length > 0) out.parts = parts;
   return out as ChartLook;
 }
 
@@ -195,6 +235,7 @@ interface Paint {
   readonly legend: 'top' | 'none';
   readonly names: boolean;
   readonly colormap: Colormap;
+  readonly parts: Readonly<Record<string, string>>;
 }
 
 function paintOf(look: ChartLook | undefined): Paint {
@@ -209,13 +250,50 @@ function paintOf(look: ChartLook | undefined): Paint {
     legend: look?.legend ?? 'top',
     names: look?.names ?? true,
     colormap: look?.colormap ?? 'auto',
+    parts: look?.parts ?? {},
   };
 }
 
 /** The colour of the i-th curve. */
 function colorOf(layout: ChartLayout, i: number): string {
   const colors = layout.paint.colors;
-  return colors[i % colors.length]!;
+  return layout.paint.parts[`s${i}.color`] ?? colors[i % colors.length]!;
+}
+
+/** Size of the text of a part, px. */
+function sizeOf(paint: Paint, part: string): number {
+  const n = Number(paint.parts[`${part}.size`]);
+  return Number.isFinite(n) && n > 0 ? Math.min(48, Math.max(6, n)) : paint.font;
+}
+
+/** The attributes of the text of a part: what the user set on it, and the mark the editor takes it by. */
+function textLook(paint: Paint, part: string, fill: string): string {
+  const p = paint.parts;
+  const font = p[`${part}.font`];
+  return [
+    `data-part="${part}"`,
+    `fill="${p[`${part}.color`] ?? fill}"`,
+    ...(font ? [`font-family="'${font.replace(/_/g, ' ').replace(/['"<>&]/g, '')}'"`] : []),
+    ...(p[`${part}.size`] ? [`font-size="${sizeOf(paint, part)}"`] : []),
+    ...(p[`${part}.bold`] ? ['font-weight="bold"'] : []),
+    ...(p[`${part}.italic`] ? ['font-style="italic"'] : []),
+  ].join(' ');
+}
+
+/** Where a part was dragged to: dx, dy in units of the chart. */
+export function partOffset(look: ChartLook | undefined, part: string): readonly [number, number] {
+  const [x, y] = (look?.parts?.[`${part}.at`] ?? '').split(',').map(Number);
+  return Number.isFinite(x) && Number.isFinite(y) ? [x!, y!] : [0, 0];
+}
+
+/** The dash of a curve or the grid by its name; undefined for one that says nothing. */
+function dashOf(name: string | undefined): string | undefined {
+  return name === undefined ? undefined : ({ solid: '', dash: '7 4', dot: '2 3', dashdot: '10 3 2 3' } as Record<string, string>)[name];
+}
+
+/** The name of a curve as it stands in the legend and at its end: what the user wrote, else its expression. */
+function nameOf(s: ChartSeries, i: number, paint: Paint): string {
+  return paint.parts[`s${i}.name`]?.replace(/~/g, ' ') ?? s.label;
 }
 
 /** Categorical colours, in this order (validated for colour vision deficiencies on white paper). */
@@ -327,11 +405,14 @@ export function chartLayout(spec: ChartSpec, options: ChartOptions = {}): ChartL
       ? fixedScale(spec.xRange[0], spec.xRange[1])
       : { ...niceScale(Math.min(...xs), Math.max(...xs), 8), ...tight(xs) };
   // Room for the longest tick label on the left, the labels at the ends of the curves on the right.
-  const ticksWidth = Math.max(...y.ticks.map((v) => format(v).length)) * 6.6 * scale;
+  const ticksWidth = (Math.max(...y.ticks.map((v) => format(v).length)) * 6.6 * sizeOf(paint, 'yTicks')) / 11;
+  // A y title written upwards stands left of the numbers; bigger texts take the room they need.
+  const yUp = paint.parts['yTitle.rotate'] === '90';
+  const growth = (part: string) => Math.max(0, sizeOf(paint, part) - paint.font);
   const ends = !bar && paint.names && spec.series.length > 1 && spec.series.length <= 4 ? Math.max(...spec.series.map((s) => labelWidth(s.label))) * scale + 12 : 12;
   const legend = spec.series.length > 1 && paint.legend === 'top' ? 22 * scale : 0;
   const barRoom = spec.surface ? COLOR_BAR * scale + Math.max(0, Math.max(...surfaceRange(spec.surface).map((v) => format(v).length)) - 4) * 6.6 * scale : 0;
-  const plot = { left: Math.ceil(ticksWidth + 16), top: Math.round(26 * scale + legend), right: width - Math.ceil(spec.surface ? barRoom : Math.min(ends, width * 0.25)), bottom: Math.round(height - panel - 29 - 11 * scale) };
+  const plot = { left: Math.ceil(ticksWidth + 16 + (yUp ? sizeOf(paint, 'yTitle') + 6 : 0)), top: Math.round(26 * scale + legend + (yUp ? 0 : growth('yTitle'))), right: width - Math.ceil(spec.surface ? barRoom : Math.min(ends, width * 0.25)), bottom: Math.round(height - panel - 29 - 11 * scale - growth('xTicks') - growth('xTitle')) };
   return { width, height, plot, x, y, ...(categories ? { categories } : {}), paint };
 }
 
@@ -466,25 +547,44 @@ export function chartSvg(spec: ChartSpec, options: ChartOptions = {}): string {
 
   // Grid and y ticks: hairlines behind the data.
   const { paint } = layout;
+  const gridColor = paint.parts['grid.color'] ?? GRID;
+  const gridDash = dashOf(paint.parts['grid.dash']);
+  const gridLook = gridDash ? ` stroke-dasharray="${gridDash}"` : '';
+  const gridWidth = Number(paint.parts['grid.width']) || 1;
+  const axisColor = paint.parts['axis.color'] ?? AXIS;
+  const axisWidth = Number(paint.parts['axis.width']) || 1;
+  if (paint.parts['plot.fill']) parts.push(`<rect class="chart-plot-fill" x="${plot.left}" y="${plot.top}" width="${plot.right - plot.left}" height="${plot.bottom - plot.top}" fill="${esc(paint.parts['plot.fill'])}"/>`);
   for (const t of layout.y.ticks) {
     const y = yPosition(layout, t);
-    if (paint.grid === 'both' || paint.grid === 'y' || t === 0) parts.push(`<line x1="${plot.left}" x2="${plot.right}" y1="${r(y)}" y2="${r(y)}" stroke="${t === 0 ? AXIS : GRID}" stroke-width="1"/>`);
-    parts.push(text(plot.left - 6, y + 4, format(t), `text-anchor="end" fill="${MUTED}"`));
+    if (paint.grid === 'both' || paint.grid === 'y' || t === 0) parts.push(`<line${t === 0 ? '' : gridLook} x1="${plot.left}" x2="${plot.right}" y1="${r(y)}" y2="${r(y)}" stroke="${t === 0 ? axisColor : gridColor}" stroke-width="${t === 0 ? 1 : gridWidth}"/>`);
+    parts.push(text(plot.left - 6, y + 4, format(t), `text-anchor="end" ${textLook(paint, 'yTicks', MUTED)}`));
   }
   // x ticks.
-  const xTicks = thinned(layout.x.ticks, (t) => formatX(t).length * 6.6 + 10, plot.right - plot.left);
+  const xSize = sizeOf(paint, 'xTicks');
+  const xTicks = thinned(layout.x.ticks, (t) => (formatX(t).length * 6.6 * xSize) / 11 + 10, plot.right - plot.left);
   for (const t of xTicks) {
     const x = xPosition(layout, t);
-    if (!layout.categories && (paint.grid === 'both' || paint.grid === 'x')) parts.push(`<line x1="${r(x)}" x2="${r(x)}" y1="${plot.top}" y2="${plot.bottom}" stroke="${GRID}" stroke-width="1"/>`);
-    parts.push(text(x, plot.bottom + 5 + paint.font, formatX(t), `text-anchor="middle" fill="${MUTED}"`));
+    if (!layout.categories && (paint.grid === 'both' || paint.grid === 'x')) parts.push(`<line${gridLook} x1="${r(x)}" x2="${r(x)}" y1="${plot.top}" y2="${plot.bottom}" stroke="${gridColor}" stroke-width="${gridWidth}"/>`);
+    parts.push(text(x, plot.bottom + 5 + xSize, formatX(t), `text-anchor="middle" ${textLook(paint, 'xTicks', MUTED)}`));
   }
   // The axes: x at the bottom (or at zero), y on the left.
   const zero = layout.y.min < 0 && layout.y.max > 0 ? yPosition(layout, 0) : plot.bottom;
-  parts.push(`<line x1="${plot.left}" x2="${plot.right}" y1="${r(zero)}" y2="${r(zero)}" stroke="${AXIS}" stroke-width="1"/>`);
-  parts.push(`<line x1="${plot.left}" x2="${plot.left}" y1="${plot.top}" y2="${plot.bottom}" stroke="${AXIS}" stroke-width="1"/>`);
+  parts.push(`<line x1="${plot.left}" x2="${plot.right}" y1="${r(zero)}" y2="${r(zero)}" stroke="${axisColor}" stroke-width="${axisWidth}"/>`);
+  parts.push(`<line x1="${plot.left}" x2="${plot.left}" y1="${plot.top}" y2="${plot.bottom}" stroke="${axisColor}" stroke-width="${axisWidth}"/>`);
+  // Wider than they look, to be taken by the mouse.
+  parts.push(`<line data-part="axis" x1="${plot.left}" x2="${plot.right}" y1="${r(zero)}" y2="${r(zero)}" stroke="transparent" stroke-width="7"/>`);
+  parts.push(`<line data-part="axis" x1="${plot.left}" x2="${plot.left}" y1="${plot.top}" y2="${plot.bottom}" stroke="transparent" stroke-width="7"/>`);
   if (paint.frame) parts.push(`<rect class="chart-frame" x="${plot.left}" y="${plot.top}" width="${plot.right - plot.left}" height="${plot.bottom - plot.top}" fill="none" stroke="${INK_2}" stroke-width="1"/>`);
-  if (spec.xTitle) parts.push(text((plot.left + plot.right) / 2, height - 8, spec.xTitle, `text-anchor="middle" fill="${INK_2}"`));
-  if (spec.yTitle) parts.push(text(plot.left - 6, plot.top - 10, spec.yTitle, `text-anchor="start" fill="${INK_2}"`));
+  const moved = (part: string, rotate = '') => {
+    const [dx, dy] = partOffset({ parts: paint.parts }, part);
+    return dx || dy || rotate ? ` transform="${dx || dy ? `translate(${dx} ${dy}) ` : ''}${rotate}"` : '';
+  };
+  if (spec.xTitle) parts.push(text((plot.left + plot.right) / 2, height - 8, spec.xTitle, `text-anchor="middle" ${textLook(paint, 'xTitle', INK_2)}${moved('xTitle')}`));
+  if (spec.yTitle) {
+    const up = paint.parts['yTitle.rotate'] === '90';
+    const [tx, ty] = up ? [sizeOf(paint, 'yTitle') + 2, (plot.top + plot.bottom) / 2] : [plot.left - 6, plot.top - 10];
+    parts.push(text(tx, ty, spec.yTitle, `text-anchor="${up ? 'middle' : 'start'}" ${textLook(paint, 'yTitle', INK_2)}${moved('yTitle', up ? `rotate(-90 ${r(tx)} ${r(ty)})` : '')}`));
+  }
 
   const data = spec.surface ? surfaceSvg(spec, layout, format, paint.colormap, paint.font) : `<g class="chart-data">${spec.kind === 'bar' ? bars(spec, layout) : curves(spec, layout)}</g>`;
   // A y axis set by hand cuts off what lies beyond it: the data in a window of the plot area.
@@ -497,8 +597,8 @@ export function chartSvg(spec: ChartSpec, options: ChartOptions = {}): string {
   const marks = [refLines(spec, layout, formatX, format), cursorMarks(spec, layout, formatX, format), areaMarks(spec, layout, format), symmetryLines(spec, layout, formatX), rootMarks(spec, layout, formatX), extremeMarks(spec, layout, formatX, format), inflectionMarks(spec, layout, formatX, format), pointMarks(spec, layout, formatX, format), tangentMarks(spec, layout, format)].join('');
   const LABEL = /(?:<line class="chart-label-lead"[^>]*\/>)?<text data-label="[^"]*"[^>]*>.*?<\/text>/g;
   parts.push(marks.replace(LABEL, ''), ...(marks.match(LABEL) ?? []));
-  if (spec.series.length > 1 && paint.legend === 'top') parts.push(legend(spec, layout));
-  if (spec.kind !== 'bar' && paint.names && spec.series.length > 1 && spec.series.length <= 4) parts.push(endLabels(spec, layout));
+  if (spec.series.length > 1 && paint.legend === 'top') parts.push(`<g ${textLook(paint, 'legend', INK)}${moved('legend')}>${legend(spec, layout)}</g>`);
+  if (spec.kind !== 'bar' && paint.names && spec.series.length > 1 && spec.series.length <= 4) parts.push(`<g ${textLook(paint, 'names', INK)}>${endLabels(spec, layout)}</g>`);
 
   const title = options.title ? `<title>${esc(options.title)}</title>` : '';
   return `<svg class="chart-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" role="img" font-family='${FONT}' font-size="${paint.font}" style="width:100%;height:auto;display:block">${title}${parts.join('')}</svg>`;
@@ -532,12 +632,15 @@ function curves(spec: ChartSpec, layout: ChartLayout): string {
         d += `${pen ? 'L' : 'M'}${r(px)} ${r(py)}`;
         pen = true;
       }
-      const dash = paint.dashes && SERIES_DASHES[i] ? ` stroke-dasharray="${SERIES_DASHES[i]}"` : '';
-      out.push(`<path d="${d}" fill="none" stroke="${color}" stroke-width="${paint.line}" stroke-linejoin="round" stroke-linecap="round"${dash}/>`);
+      const own = dashOf(paint.parts[`s${i}.dash`]);
+      const pattern = own ?? (paint.dashes ? SERIES_DASHES[i] : '');
+      const dash = pattern ? ` stroke-dasharray="${pattern}"` : '';
+      out.push(`<path d="${d}" fill="none" stroke="${color}" stroke-width="${Number(paint.parts[`s${i}.width`]) || paint.line}" stroke-linejoin="round" stroke-linecap="round"${dash}/>`);
+      out.push(`<path data-part="s${i}" d="${d}" fill="none" stroke="transparent" stroke-width="8"/>`);
       // A curve of a few points shows them (or as the look says).
-      if (paint.markers === 'always' || (paint.markers === 'auto' && points.length <= 30)) out.push(markers(shown, layout, color, i, 3));
+      if (paint.markers === 'always' || (paint.markers === 'auto' && points.length <= 30)) out.push(markers(shown, layout, color, i, Number(paint.parts[`s${i}.marker`]) || 3));
     } else {
-      out.push(markers(shown, layout, color, i, 4));
+      out.push(`<g data-part="s${i}">${markers(shown, layout, color, i, Number(paint.parts[`s${i}.marker`]) || 4)}</g>`);
     }
   });
   return out.join('');
@@ -607,15 +710,18 @@ function legend(spec: ChartSpec, layout: ChartLayout): string {
     .map((s, i) => {
       const color = colorOf(layout, i);
       const kind = spec.kind === 'bar' ? 'bar' : (s.mark ?? spec.kind);
-      const dash = kind === 'line' && layout.paint.dashes && SERIES_DASHES[i] ? ` stroke-dasharray="${SERIES_DASHES[i]}"` : '';
+      const own = dashOf(layout.paint.parts[`s${i}.dash`]);
+      const pattern = own ?? (layout.paint.dashes ? SERIES_DASHES[i] : '');
+      const dash = kind === 'line' && pattern ? ` stroke-dasharray="${pattern}"` : '';
+      const name = nameOf(s, i, layout.paint);
       const key =
         kind === 'line'
-          ? `<line x1="${r(x)}" x2="${r(x + 22)}" y1="${y}" y2="${y}" stroke="${color}" stroke-width="${layout.paint.line}"${dash}/>`
+          ? `<line x1="${r(x)}" x2="${r(x + 22)}" y1="${y}" y2="${y}" stroke="${color}" stroke-width="${Number(layout.paint.parts[`s${i}.width`]) || layout.paint.line}"${dash}/>`
           : kind === 'points'
             ? marker(x + 11, y, i % 4, 4, color)
             : `<rect x="${r(x + 5)}" y="${y - 6}" width="12" height="12" rx="2" fill="${color}"/>`;
-      const item = `${key}<text x="${r(x + 28)}" y="${y + 4}" fill="${INK}">${label(s.label)}</text>`;
-      x += 28 + (labelWidth(s.label) * layout.paint.font) / 11 + 18;
+      const item = `${key}<text x="${r(x + 28)}" y="${y + 4}">${label(name)}</text>`;
+      x += 28 + (labelWidth(name) * sizeOf(layout.paint, 'legend')) / 11 + 18;
       return item;
     })
     .join('');
@@ -852,10 +958,10 @@ function endLabels(spec: ChartSpec, layout: ChartLayout): string {
     .map((s, i) => {
       let j = s.ys.length - 1;
       while (j >= 0 && !Number.isFinite(s.ys[j]!)) j--;
-      return j < 0 ? undefined : { i, label: s.label, x: xPosition(layout, s.xs[j]!), y: yPosition(layout, s.ys[j]!) };
+      return j < 0 ? undefined : { i, label: nameOf(s, i, layout.paint), x: xPosition(layout, s.xs[j]!), y: yPosition(layout, s.ys[j]!) };
     })
     .filter((e) => e !== undefined)
     .sort((a, b) => a.y - b.y);
   for (let k = 1; k < ends.length; k++) if (ends[k]!.y - ends[k - 1]!.y < 13) ends[k]!.y = ends[k - 1]!.y + 13;
-  return ends.map((e) => `<text x="${r(e.x + 6)}" y="${r(e.y + 4)}" fill="${INK}">${label(e.label)}</text>`).join('');
+  return ends.map((e) => `<text x="${r(e.x + 6)}" y="${r(e.y + 4)}">${label(e.label)}</text>`).join('');
 }

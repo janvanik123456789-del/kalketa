@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chartLayout, chartLookText, chartSvg, lookDifference, niceScale, parseChartLook, withLook, xPosition, xValueAt, yPosition, type ChartSpec, logScale, yValueAt } from '../src/index.js';
+import { partOffset, chartLayout, chartLookText, chartSvg, lookDifference, niceScale, parseChartLook, withLook, xPosition, xValueAt, yPosition, type ChartSpec, logScale, yValueAt } from '../src/index.js';
 
 const line: ChartSpec = { kind: 'line', series: [{ label: 'M(x)', xs: [0, 2.5, 5], ys: [0, 37.5, 0] }], xTitle: 'x [m]', yTitle: 'M(x) [kN·m]' };
 
@@ -110,6 +110,58 @@ describe('axes and lines edited by hand', () => {
     const spec: ChartSpec = { kind: 'points', series: [curve([0, 1, 2, 3], [1, 2, 3, 4])], xTitle: 'x', yTitle: 'y', xRange: [1, 2] };
     expect(chartLayout(spec).x).toMatchObject({ min: 1, max: 2 });
     expect(chartSvg(spec)).toMatch(/<svg x="\d+" y="\d+" width="\d+" height="\d+" viewBox=/);
+  });
+});
+
+describe('the look of single parts', () => {
+  const two: ChartSpec = { kind: 'line', series: [{ label: 'M(x)', xs: [0, 1], ys: [0, 1] }, { label: 'V(x)', xs: [0, 1], ys: [1, 0] }], xTitle: 'x [m]', yTitle: '[kN]' };
+  const draw = (style: string) => chartSvg(two, { look: parseChartLook(style) });
+
+  it('writes the parts into the text of the look and reads them back, what it does not know left out', () => {
+    const text = 'line=3 s0.color=#d1495b yTitle.bold yTitle.font=Times_New_Roman yTitle.size=14';
+    expect(chartLookText(parseChartLook(text))).toBe(text);
+    expect(parseChartLook('yTitle.nonsense=1 foo.size=3').parts).toBeUndefined();
+    expect(withLook(parseChartLook('xTitle.size=9 yTitle.size=9'), parseChartLook('yTitle.size=12')).parts).toEqual({ 'xTitle.size': '9', 'yTitle.size': '12' });
+    expect(lookDifference(parseChartLook('xTitle.size=9 yTitle.size=12'), parseChartLook('xTitle.size=9')).parts).toEqual({ 'yTitle.size': '12' });
+  });
+
+  it('marks each part, for the editor to take it by', () => {
+    const svg = chartSvg(two);
+    for (const part of ['xTitle', 'yTitle', 'xTicks', 'yTicks', 'legend', 'names', 'axis', 's0', 's1']) expect(svg).toContain(`data-part="${part}"`);
+  });
+
+  it('draws a text with its font, size, weight, slant and colour', () => {
+    const svg = draw('yTitle.font=Times_New_Roman yTitle.size=16 yTitle.bold yTitle.italic yTitle.color=#112233');
+    expect(svg).toMatch(/data-part="yTitle" fill="#112233" font-family="'Times New Roman'" font-size="16" font-weight="bold" font-style="italic"/);
+    // A name of a font cannot break out of its attribute.
+    expect(draw(`yTitle.font=A"><script>`)).not.toContain('<script>');
+    expect(parseChartLook(`yTitle.color="><script> grid.width=1"x plot.fill=red s0.dash=<b> s0.name=<i> yTitle.at=1,2" axis.color=#12345g`).parts).toBeUndefined();
+  });
+
+  it('turns the y title upwards, with room for it, and moves a title where it was dragged', () => {
+    const usual = chartLayout(two);
+    const up = chartLayout(two, { look: parseChartLook('yTitle.rotate=90') });
+    expect(up.plot.left).toBeGreaterThan(usual.plot.left);
+    expect(draw('yTitle.rotate=90')).toMatch(/data-part="yTitle"[^>]*transform="\s*rotate\(-90 /);
+    expect(draw('xTitle.at=10,-5')).toMatch(/data-part="xTitle"[^>]*transform="translate\(10 -5\)/);
+    expect(partOffset(parseChartLook('legend.at=4,7'), 'legend')).toEqual([4, 7]);
+    expect(partOffset(undefined, 'legend')).toEqual([0, 0]);
+  });
+
+  it('gives bigger text the room it needs', () => {
+    const usual = chartLayout(two);
+    const big = chartLayout(two, { look: parseChartLook('xTicks.size=18 xTitle.size=18 yTicks.size=18') });
+    expect(big.plot.bottom).toBeLessThan(usual.plot.bottom);
+    expect(big.plot.left).toBeGreaterThan(usual.plot.left);
+  });
+
+  it('draws a curve, the axes, the grid and the plot as set', () => {
+    const svg = draw('s0.color=#123456 s0.width=4 s0.dash=dot s1.name=Posouvající~síla axis.color=#654321 axis.width=2 grid.color=#abcdef grid.dash=dash grid.width=2 plot.fill=#fafafa');
+    expect(svg).toContain('stroke="#123456" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="2 3"');
+    expect(svg).toContain('Posouvající síla');
+    expect(svg).toContain('stroke="#654321" stroke-width="2"');
+    expect(svg).toMatch(/<line stroke-dasharray="7 4"[^>]*stroke="#abcdef" stroke-width="2"/);
+    expect(svg).toContain('class="chart-plot-fill"');
   });
 });
 

@@ -2703,7 +2703,7 @@ async function layersWithRealInput(picture: string) {
   await pause(1500);
   const fitInserted = (await contents.executeJavaScript(`({ dialog: document.querySelectorAll('.fit-dialog').length, errors: document.querySelectorAll('.layer-view.active .page .row.has-error').length, charts: document.querySelectorAll('.layer-view.active .block.chart svg.chart-svg .chart-data path').length })`)) as { dialog: number; errors: number; charts: number };
   // Into a chart the sheet has: pchip added to the chart of R17 (picked from the list by the keyboard).
-  const joinBefore = (await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .block.chart')][0]?.querySelectorAll('.chart-data path[fill="none"]').length ?? 0`)) as number;
+  const joinBefore = (await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .block.chart')][0]?.querySelectorAll('.chart-data path[fill="none"]:not([data-part])').length ?? 0`)) as number;
   await clickOn('.menubar-item:nth-child(4) > button');
   await clickMenu('Proložit křivku');
   await pause(600);
@@ -2716,7 +2716,7 @@ async function layersWithRealInput(picture: string) {
   const joinLines = (await contents.executeJavaScript(`document.querySelector('.fit-lines')?.textContent ?? ''`)) as string;
   await clickOn('.dialog-buttons button.default');
   await pause(1500);
-  const joinAfter = (await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .block.chart')][0]?.querySelectorAll('.chart-data path[fill="none"]').length ?? 0`)) as number;
+  const joinAfter = (await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .block.chart')][0]?.querySelectorAll('.chart-data path[fill="none"]:not([data-part])').length ?? 0`)) as number;
   // A click on the spline in its chart opens it to be edited; straight segments instead, written in place.
   // Where the spline is on the screen now (measured again after the window paints: the page may have moved).
   const measureCurve = async () =>
@@ -3166,11 +3166,44 @@ async function chartEditWithRealInput(contents: Electron.WebContents, picture: s
   await clickMenu('Logaritmická osa y');
   await pause(800);
   const log = await ticks();
+  // A click on a part of the chart opens its small window beside it, in the language of the program; a change shows at once.
+  const panel = '.chart-part-panel';
+  const partAttr = async (selector: string, name: string) => (await contents.executeJavaScript(`document.querySelector('${selector}')?.getAttribute('${name}') ?? ''`)) as string;
+  const yTitle = `${chart} [data-part="yTitle"]`;
+  await clickOn(yTitle);
+  await pause(400);
+  const panelHead = await textOf(`${panel} .part-head strong`);
+  await clickOn(`${panel} [data-part-field="bold"]`);
+  await pause(500);
+  const boldOn = await partAttr(yTitle, 'font-weight');
+  await clickOn(`${panel} [data-part-field="vertical"]`);
+  await pause(500);
+  const turned = await partAttr(yTitle, 'transform');
+  const stillOpen = (await textOf(`${panel} .part-head strong`)) === panelHead;
+  await clickOn(`${panel} [data-part-field="size"]`);
+  await pause(200);
+  await pressKey('Down');
+  await pressKey('Down');
+  await pressKey('Return');
+  await pause(500);
+  const sized = await partAttr(yTitle, 'font-size');
+  await takePicture(picture.replace(/[.]png$/, '-chartpanel.png'));
+  await pressKey('Escape');
+  await pause(300);
+  const closed = !(await place(panel));
+  await drag(yTitle, 30, -25);
+  const dragged = await partAttr(yTitle, 'transform');
+  const notOpenedByDrag = !(await place(panel));
+  await clickOn(`${chart} [data-part="xTicks"]`);
+  await pause(400);
+  const ticksHead = await textOf(`${panel} .part-head strong`);
+  await pressKey('Escape');
+  await pause(300);
   await takePicture(picture.replace(/[.]png$/, '-chartedit.png'));
   const errors = (await contents.executeJavaScript(`document.querySelectorAll('.layer-view.active .page .row.has-error').length`)) as number;
   const ok =
-    plain.x === first.x && plain.y === first.y && zoomed.x !== first.x && zoomed.y !== first.y && axisOnly.x !== zoomed.x && axisOnly.y === zoomed.y && moved.x !== axisOnly.x && whole.x === first.x && whole.y === first.y && refAfter !== refBefore && /kN·m/.test(refAfter) && cursorAfter !== cursorBefore && /^Δx = /.test(cursorAfter) && log.y !== whole.y && errors === 0;
-  return { ok, first, plain, zoomed, axisOnly, moved, whole, refBefore, refAfter, cursorBefore, cursorAfter, log, errors };
+    plain.x === first.x && plain.y === first.y && zoomed.x !== first.x && zoomed.y !== first.y && axisOnly.x !== zoomed.x && axisOnly.y === zoomed.y && moved.x !== axisOnly.x && whole.x === first.x && whole.y === first.y && refAfter !== refBefore && /kN·m/.test(refAfter) && cursorAfter !== cursorBefore && /^Δx = /.test(cursorAfter) && log.y !== whole.y && errors === 0 && panelHead === 'Popis osy y' && boldOn === 'bold' && /rotate\(-90/.test(turned) && stillOpen && sized !== '' && closed && /translate\(/.test(dragged) && /rotate\(-90/.test(dragged) && notOpenedByDrag && ticksHead === 'Čísla na ose x';
+  return { ok, first, plain, zoomed, axisOnly, moved, whole, refBefore, refAfter, cursorBefore, cursorAfter, log, errors, panelHead, boldOn, turned, stillOpen, sized, closed, dragged, notOpenedByDrag, ticksHead };
 }
 
 async function sheetPictureWithRealInput(contents: Electron.WebContents): Promise<{ offered: boolean; described: boolean; notice: string; menu: string }> {

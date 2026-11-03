@@ -44,7 +44,7 @@ function Sample({ index, source }: { index: number; source: string }) {
   }, [text]);
   const lines = text.split('\n');
   const replace = (start: number, _end: number, next: string) => setText(lines.map((l, i) => (i === start - 1 ? next : l)).join('\n'));
-  const charts = useChartEditing({ catalog, fonts: FONTS, onReplace: replace });
+  const charts = useChartEditing({ catalog, printCatalog: catalog, fonts: FONTS, onReplace: replace });
   if (!block) return <p>{text}</p>;
   const line = { start: block.line, end: block.line, text: lines[block.line - 1] ?? '' };
   charts.register(line, block);

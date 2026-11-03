@@ -49,13 +49,14 @@ async function key(keyCode) {
   contents.sendInputEvent({ type: 'keyUp', keyCode });
   await pause(150);
 }
-async function drag(selector, dx, dy) {
+async function drag(selector, dx, dy, halfway) {
   const from = await place(selector);
   contents.sendInputEvent({ type: 'mouseMove', ...from });
   contents.sendInputEvent({ type: 'mouseDown', ...from, button: 'left', clickCount: 1 });
   for (let i = 1; i <= 8; i++) {
     contents.sendInputEvent({ type: 'mouseMove', x: from.x + Math.round((dx * i) / 8), y: from.y + Math.round((dy * i) / 8), button: 'left', modifiers: ['leftbuttondown'] });
     await pause(30);
+    if (i === 4) await halfway?.();
   }
   contents.sendInputEvent({ type: 'mouseUp', x: from.x + dx, y: from.y + dy, button: 'left', clickCount: 1 });
   await pause(300);
@@ -93,8 +94,14 @@ async function run() {
   const yTitle = `${chart} [data-part="yTitle"]`;
   await click(yTitle);
   steps.titleWindow = (await text(panelHead)) === 'Popis osy y';
-  await click('.chart-part-panel [data-part-field="bold"]');
-  await pause(300);
+  // Shown at once, written a moment later: the sheet is not recalculated with each change.
+  const before = await plotLine();
+  const bold = await place('.chart-part-panel [data-part-field="bold"]');
+  contents.sendInputEvent({ type: 'mouseDown', ...bold, button: 'left', clickCount: 1 });
+  contents.sendInputEvent({ type: 'mouseUp', ...bold, button: 'left', clickCount: 1 });
+  for (let waited = 0; waited < 200 && (await attr(yTitle, 'font-weight')) !== 'bold'; waited += 10) await pause(10);
+  steps.lookAtOnce = (await attr(yTitle, 'font-weight')) === 'bold' && (await plotLine()) === before && (await exists('.chart-part-panel button.on[data-part-field="bold"]'));
+  await pause(500);
   steps.bold = (await attr(yTitle, 'font-weight')) === 'bold' && (await plotLine()).includes('yTitle.bold');
   await click('.chart-part-panel [data-part-field="vertical"]');
   await pause(300);
@@ -103,7 +110,16 @@ async function run() {
   steps.escCloses = !(await exists('.chart-part-panel'));
 
   // Dragged, a title moves and no window opens.
-  await drag(yTitle, 30, -25);
+  await pause(600);
+  const beforeDrag = await plotLine();
+  const unmoved = await attr(yTitle, 'transform');
+  await drag(yTitle, 30, -25, async () => {
+    // A hidden window takes the moves with its next frame.
+    for (let waited = 0; waited < 1000 && (await attr(yTitle, 'transform')) === unmoved; waited += 50) await pause(50);
+    steps.titleFollows = (await attr(yTitle, 'transform')) !== unmoved && (await plotLine()) === beforeDrag;
+  });
+  await pause(500);
+  steps.titleWrittenAtEnd = (await plotLine()) !== beforeDrag;
   steps.titleDragged = /translate\(/.test(await attr(yTitle, 'transform')) && !(await exists('.chart-part-panel'));
 
   await click(`${chart} [data-part="xTicks"]`);
@@ -139,7 +155,10 @@ async function run() {
 
   // A reference line follows the pointer.
   const hline = (await plotLine()).match(/hline: [^,)]+/)?.[0];
-  await drag(`${chart} [data-chart-drag="ref"]`, 0, 30);
+  const lineBefore = await plotLine();
+  await drag(`${chart} [data-chart-drag="ref"]`, 0, 30, async () => {
+    steps.refNotWrittenWhileMoving = (await plotLine()) === lineBefore;
+  });
   steps.refDragged = (await plotLine()).match(/hline: [^,)]+/)?.[0] !== hline;
 
   await picture();

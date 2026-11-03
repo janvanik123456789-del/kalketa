@@ -273,7 +273,7 @@ function textMenuItems(seg: Segment, catalog: Catalog, change: RowChange): MenuI
 }
 
 export function SheetView(props: Props) {
-  const charts = useChartEditing({ catalog: props.uiCatalog, fonts: useSystemFonts(), onReplace: props.onReplace });
+  const charts = useChartEditing({ catalog: props.uiCatalog, printCatalog: props.printCatalog, fonts: useSystemFonts(), onReplace: props.onReplace });
   const { source, result, print, editing } = props;
   // The menu of a picture: opened by clicking it (or right click).
   const [pictureMenu, setPictureMenu] = useState<{ seg: Segment; at: { x: number; y: number }; flow?: boolean } | undefined>();

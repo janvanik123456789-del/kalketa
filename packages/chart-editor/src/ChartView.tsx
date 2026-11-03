@@ -10,6 +10,7 @@ import { formatDate, formatNumber, t, type Catalog } from '@kalketa/i18n';
 import { chartSvg as drawChart, DEFAULT_VIEW, labelParts, partOffset, surfaceAt, viewText, xPosition, xValueAt, yValueAt, type ChartLook } from '@kalketa/chart';
 import { renderBlockHtml, type PrintBlock } from '@kalketa/render';
 import { axisRangeText, axisValueText, chartX, movedRange, nearestOnCurve, partMoves, seriesAt, withPartChanges, zoomedRange, type AxisRange, type ChartPart } from './logic/index.js';
+import { drawInPlace } from './drawInPlace.js';
 import { startEdgeResize, startResize } from './resize.js';
 
 export function ChartView({ ref: holder, block, catalog, uiCatalog, onPart, onLook, onResize, onOption, onOptions, sliders, editable }: { ref?: (element: HTMLDivElement | null) => void; block: Extract<PrintBlock, { kind: 'chart' }>; catalog: Catalog; /** The language of the program: of its windows and hints (catalog is that of the printout). */ uiCatalog: Catalog; /** A click on a part of the chart: its small window. */ onPart(part: ChartPart): void; /** A change of the chart's own look, on its way to the line. */ onLook(change: (look: ChartLook) => ChartLook): void; onResize(width: number, ratio?: number): void; onOption(name: string, value: string | undefined): void; onOptions(options: readonly (readonly [string, string | undefined])[]): void; sliders?: ReactNode; /** A curve that opens to be edited by a click (a fitted one). */ editable?(series: number): boolean }) {
@@ -202,18 +203,23 @@ export function ChartView({ ref: holder, block, catalog, uiCatalog, onPart, onLo
       const [ox, oy] = partOffset(block.look, partName);
       const holder = e.currentTarget;
       const size = () => (holder.querySelector('svg.chart-svg')?.getBoundingClientRect().width ?? 0) / block.layout.width;
+      // The part itself follows the pointer; only where it stops is written (a write recalculates the sheet).
+      const own = partEl!.getAttribute('transform') ?? '';
       let dragged = false;
+      let at = '';
       const move = (ev: PointerEvent) => {
         const u = size();
         if (!moves || !(u > 0) || (!dragged && Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 4)) return;
         dragged = true;
-        const at = `${Math.round(ox + (ev.clientX - start.x) / u)},${Math.round(oy + (ev.clientY - start.y) / u)}`;
-        onLook((look) => withPartChanges(look, partName, { at }));
+        const [dx, dy] = [(ev.clientX - start.x) / u, (ev.clientY - start.y) / u];
+        partEl!.setAttribute('transform', `translate(${dx} ${dy}) ${own}`.trim());
+        at = `${Math.round(ox + dx)},${Math.round(oy + dy)}`;
       };
       const up = () => {
         window.removeEventListener('pointermove', move);
         window.removeEventListener('pointerup', up);
-        if (!dragged) onPart(partName);
+        if (dragged) onLook((look) => withPartChanges(look, partName, { at }));
+        else onPart(partName);
       };
       window.addEventListener('pointermove', move);
       window.addEventListener('pointerup', up);
@@ -274,20 +280,18 @@ export function ChartView({ ref: holder, block, catalog, uiCatalog, onPart, onLo
       return;
     }
     if (lineHandle) {
-      // A reference line or a cursor follows the pointer; written a few times a second, and where it stops.
+      // A reference line or a cursor follows the pointer, drawn from what the chart holds; only where it stops is written.
       const refIndex = lineHandle.getAttribute('data-ref');
-      const refAxis = refIndex === null ? undefined : block.spec.refs?.[Number(refIndex)]?.axis;
+      const refAt = refIndex === null ? -1 : Number(refIndex);
+      const refAxis = block.spec.refs?.[refAt]?.axis;
       const cursor = lineHandle.getAttribute('data-cursor');
       const { x: xs, y: ys } = block.layout;
       const spanX = xs.log ? 0 : xs.max - xs.min;
       const spanY = ys.log ? 0 : ys.max - ys.min;
-      let timer: ReturnType<typeof setTimeout> | undefined;
+      let frame: number | undefined;
       let pending: readonly [string, string] | undefined;
-      const flush = () => {
-        timer = undefined;
-        if (pending) writeOptions.current([pending]);
-        pending = undefined;
-      };
+      let shown = block.spec;
+      const withRef = (at: number) => ({ ...block.spec, refs: block.spec.refs!.map((line, i) => (i === refAt ? { ...line, at } : line)) });
       const move = (ev: PointerEvent) => {
         const box = chartSvg()?.getBoundingClientRect();
         const u = unit();
@@ -298,24 +302,30 @@ export function ChartView({ ref: holder, block, catalog, uiCatalog, onPart, onLo
         if (refAxis === 'y') {
           const v = yValueAt(block.layout, py);
           pending = ['hline', axisValueText(v, spanY || v, block.yUnit)];
+          shown = withRef(v);
         } else if (refAxis === 'x') {
           const v = xValueAt(block.layout, px);
           pending = ['vline', axisValueText(v, spanX || v, block.xUnit)];
+          shown = withRef(v);
         } else if (cursor !== null && block.spec.cursors) {
           const v = xValueAt(block.layout, px);
           const other = cursor === '0' ? block.spec.cursors.to : block.spec.cursors.from;
           // The two may cross: the range stays from the lower to the higher (never empty).
           if (v === other) return;
           pending = ['cursors', axisRangeText([Math.min(v, other), Math.max(v, other)], block.xUnit, xs.log)];
+          shown = { ...block.spec, cursors: { ...block.spec.cursors, from: Math.min(v, other), to: Math.max(v, other) } };
         }
-        timer ??= setTimeout(flush, 60);
+        frame ??= requestAnimationFrame(() => {
+          frame = undefined;
+          drawInPlace(view, block, catalog, block.look, shown);
+        });
       };
       const up = () => {
         window.removeEventListener('pointermove', move);
         window.removeEventListener('pointerup', up);
         release();
-        if (timer) clearTimeout(timer);
-        flush();
+        if (frame !== undefined) cancelAnimationFrame(frame);
+        if (pending) writeOptions.current([pending]);
       };
       window.addEventListener('pointermove', move);
       window.addEventListener('pointerup', up);

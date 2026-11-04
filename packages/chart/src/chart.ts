@@ -110,8 +110,9 @@ export interface ChartLook {
  * What can be set on a part: xTitle, yTitle, xTicks, yTicks, legend, names (texts: font, size, bold, italic, color;
  * titles and the legend also at=dx,dy, yTitle rotate=90), axis (color, width), grid (color, width, dash),
  * plot (fill), s0, s1, … the curves (color, width, dash, marker, name). A font has _ for a space, a name ~.
+ * title.place=top: the words of the title: over the chart as a heading (title.font, size…), not under it as a caption.
  */
-export const PART_KEY = /^(?:(?:xTitle|yTitle|xTicks|yTicks|legend|names)\.(?:font|size|bold|italic|color|rotate|at)|axis\.(?:color|width)|grid\.(?:color|width|dash)|plot\.fill|s\d+\.(?:color|width|dash|marker|name))$/;
+export const PART_KEY = /^(?:(?:xTitle|yTitle|xTicks|yTicks|legend|names)\.(?:font|size|bold|italic|color|rotate|at)|title\.(?:font|size|bold|italic|color|at|place)|axis\.(?:color|width)|grid\.(?:color|width|dash)|plot\.fill|s\d+\.(?:color|width|dash|marker|name))$/;
 
 /** The parts of a look in the order they are written. */
 export const LOOK_KEYS = ['colors', 'line', 'dashes', 'markers', 'grid', 'frame', 'font', 'legend', 'names', 'colormap'] as const;
@@ -130,6 +131,8 @@ function partValueIsValid(key: string, value: string): boolean {
       return /^-?\d+,-?\d+$/.test(value);
     case 'rotate':
       return value === '90';
+    case 'place':
+      return value === 'top';
     case 'bold':
     case 'italic':
       return value === 'on';
@@ -260,6 +263,11 @@ function colorOf(layout: ChartLayout, i: number): string {
   return layout.paint.parts[`s${i}.color`] ?? colors[i % colors.length]!;
 }
 
+/** Whether the title of a chart stands over it as a heading, rather than under it as a caption. */
+export function titleOnTop(look: ChartLook | undefined): boolean {
+  return look?.parts?.['title.place'] === 'top';
+}
+
 /** Size of the text of a part, px. */
 function sizeOf(paint: Paint, part: string): number {
   const n = Number(paint.parts[`${part}.size`]);
@@ -316,6 +324,8 @@ export interface Scale {
 }
 
 export interface ChartLayout {
+  /** The room of a heading over the chart, when it has one. */
+  readonly titleRoom?: number;
   readonly width: number;
   readonly height: number;
   /** The plot area inside the axes. */
@@ -411,9 +421,12 @@ export function chartLayout(spec: ChartSpec, options: ChartOptions = {}): ChartL
   const growth = (part: string) => Math.max(0, sizeOf(paint, part) - paint.font);
   const ends = !bar && paint.names && spec.series.length > 1 && spec.series.length <= 4 ? Math.max(...spec.series.map((s) => labelWidth(s.label))) * scale + 12 : 12;
   const legend = spec.series.length > 1 && paint.legend === 'top' ? 22 * scale : 0;
+  // A heading takes its room above all the rest; a little bigger than the other texts unless set.
+  const headed = !!options.title && !spec.surface && paint.parts['title.place'] === 'top';
+  const titleRoom = headed ? Math.round((paint.parts['title.size'] ? sizeOf(paint, 'title') : paint.font + 2) + 8) : 0;
   const barRoom = spec.surface ? COLOR_BAR * scale + Math.max(0, Math.max(...surfaceRange(spec.surface).map((v) => format(v).length)) - 4) * 6.6 * scale : 0;
-  const plot = { left: Math.ceil(ticksWidth + 16 + (yUp ? sizeOf(paint, 'yTitle') + 6 : 0)), top: Math.round(26 * scale + legend + (yUp ? 0 : growth('yTitle'))), right: width - Math.ceil(spec.surface ? barRoom : Math.min(ends, width * 0.25)), bottom: Math.round(height - panel - 29 - 11 * scale - growth('xTicks') - growth('xTitle')) };
-  return { width, height, plot, x, y, ...(categories ? { categories } : {}), paint };
+  const plot = { left: Math.ceil(ticksWidth + 16 + (yUp ? sizeOf(paint, 'yTitle') + 6 : 0)), top: Math.round(26 * scale + legend + titleRoom + (yUp ? 0 : growth('yTitle'))), right: width - Math.ceil(spec.surface ? barRoom : Math.min(ends, width * 0.25)), bottom: Math.round(height - panel - 29 - 11 * scale - growth('xTicks') - growth('xTitle')) };
+  return { width, height, plot, x, y, ...(categories ? { categories } : {}), ...(titleRoom ? { titleRoom } : {}), paint };
 }
 
 /** An axis set by hand: exactly from and to, round ticks inside. */
@@ -580,6 +593,10 @@ export function chartSvg(spec: ChartSpec, options: ChartOptions = {}): string {
     return dx || dy || rotate ? ` transform="${dx || dy ? `translate(${dx} ${dy}) ` : ''}${rotate}"` : '';
   };
   if (spec.xTitle) parts.push(text((plot.left + plot.right) / 2, height - 8, spec.xTitle, `text-anchor="middle" ${textLook(paint, 'xTitle', INK_2)}${moved('xTitle')}`));
+  if (layout.titleRoom && options.title) {
+    const size = paint.parts['title.size'] ? '' : ` font-size="${paint.font + 2}"`;
+    parts.push(text((plot.left + plot.right) / 2, layout.titleRoom - 6, options.title, `text-anchor="middle" ${textLook(paint, 'title', INK)}${size}${moved('title')}`));
+  }
   if (spec.yTitle) {
     const up = paint.parts['yTitle.rotate'] === '90';
     const [tx, ty] = up ? [sizeOf(paint, 'yTitle') + 2, (plot.top + plot.bottom) / 2] : [plot.left - 6, plot.top - 10];
@@ -705,7 +722,7 @@ function barPath(left: number, width: number, base: number, end: number, color: 
 
 function legend(spec: ChartSpec, layout: ChartLayout): string {
   let x = layout.plot.left;
-  const y = 12;
+  const y = 12 + (layout.titleRoom ?? 0);
   return spec.series
     .map((s, i) => {
       const color = colorOf(layout, i);

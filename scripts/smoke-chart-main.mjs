@@ -180,6 +180,26 @@ async function run() {
   });
   steps.refDragged = (await plotLine()).match(/hline: [^,)]+/)?.[0] !== hline;
 
+  // The text of the chart: a caption under it, moved over it by a click; a heading can be dragged; and back again.
+  const caption = '[data-sample="0"] figcaption[data-part="title"]';
+  const heading = `${chart} [data-part="title"]`;
+  steps.captionUnder = (await exists(caption)) && !(await exists(heading));
+  await click(caption);
+  steps.textWindow = (await text(panelHead)) === 'Text grafu';
+  await click('.chart-part-panel [data-part-field="above"]');
+  for (let waited = 0; waited < 2000 && !(await exists(heading)); waited += 100) await pause(100);
+  await pause(600);
+  steps.headingOver = (await exists(heading)) && !(await exists(caption)) && (await plotLine()).includes('title.place=top') && (await exists('.chart-part-panel [data-part-field="bold"]'));
+  await key('Escape');
+  await drag('[data-sample="0"] .chart-part-frame[data-part="title"]', 40, 5);
+  await pause(500);
+  steps.headingDragged = (await plotLine()).includes('title.at=') && /translate\(/.test(await attr(heading, 'transform'));
+  await click(heading);
+  await click('.chart-part-panel [data-part-field="below"]');
+  await pause(800);
+  steps.captionBack = (await exists(caption)) && !(await exists(heading)) && !(await plotLine()).includes('title.at=');
+  await key('Escape');
+
   // The handles of a chart stay its handles, also where the frame of a title reaches under them.
   await drag('[data-sample="1"] .picture-handle.edge.s', 0, 40);
   await pause(300);

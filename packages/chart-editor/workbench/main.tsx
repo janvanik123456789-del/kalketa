@@ -27,7 +27,7 @@ const FONTS = ['Arial', 'Calibri', 'Cambria', 'Consolas', 'Georgia', 'Times New 
 const NO_COMMANDS = new Map<string, never>();
 
 const SAMPLES = [
-  ['M(x) := 12 kN/m·x·(5 m - x)/2 + 1 kN·m', 'plot(M(x), x: 0 m .. 5 m, hline: 30 kN·m, cursors: 1 m .. 3 m) | kN·m'],
+  ['M(x) := 12 kN/m·x·(5 m - x)/2 + 1 kN·m', 'plot(M(x), x: 0 m .. 5 m, hline: 30 kN·m, cursors: 1 m .. 3 m, title: "Bending moment") | kN·m'],
   ['plot(sin(x), cos(x), x: 0 .. 2·π)'],
   ['y(x) := -2·x^2 + 2·x + 10', 'plot(y(x), x: -4 .. 5, roots: true, symmetry: true, area: -1.79 .. 2.79)'],
 ].map((lines) => lines.join('\n'));

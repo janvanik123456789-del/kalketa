@@ -148,6 +148,20 @@ describe('the look of single parts', () => {
     expect(partOffset(undefined, 'legend')).toEqual([0, 0]);
   });
 
+  it('puts the title over the chart as a heading when asked, with room for it', () => {
+    const usual = chartLayout(two, { title: 'Moment' });
+    const look = parseChartLook('title.place=top title.bold title.color=#112233');
+    expect(chartLookText(look)).toBe('title.bold title.color=#112233 title.place=top');
+    const headed = chartLayout(two, { title: 'Moment', look });
+    expect(headed.plot.top).toBeGreaterThan(usual.plot.top);
+    const svg = chartSvg(two, { title: 'Moment', look });
+    expect(svg).toMatch(/data-part="title" fill="#112233" font-weight="bold"[^>]*>Moment</);
+    // Not asked for, or without words, nothing is drawn; only "top" is a place.
+    expect(chartSvg(two, { title: 'Moment' })).not.toContain('data-part="title"');
+    expect(chartSvg(two, { look })).not.toContain('data-part="title"');
+    expect(parseChartLook('title.place=left').parts).toBeUndefined();
+  });
+
   it('gives bigger text the room it needs', () => {
     const usual = chartLayout(two);
     const big = chartLayout(two, { look: parseChartLook('xTicks.size=18 xTitle.size=18 yTicks.size=18') });

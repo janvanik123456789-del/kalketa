@@ -105,6 +105,7 @@ export function useChartEditing({ catalog, printCatalog, fonts, onReplace }: { c
         fonts={fonts}
         part={open.part}
         spec={row.block.spec}
+        chartText={row.block.caption}
         look={lookWith(row.block, lookOf(open.line))}
         anchor={() => {
           const view = rows.get(open.line)?.view;
@@ -112,7 +113,7 @@ export function useChartEditing({ catalog, printCatalog, fonts, onReplace }: { c
         }}
         onSet={(changes) => changeLook(open.line, (look) => withPartChanges(look, open.part, changes))}
         onLook={(change) => changeLook(open.line, (look) => ({ ...look, ...change }))}
-        {...(open.part === 'xTitle' || open.part === 'yTitle' ? { onTitle: (text: string) => write(open.line, [[open.part === 'xTitle' ? 'xlabel' : 'ylabel', text.trim() ? `"${text.trim().replace(/"/g, '')}"` : undefined]]) } : {})}
+        {...(open.part === 'xTitle' || open.part === 'yTitle' || open.part === 'title' ? { onTitle: (text: string) => write(open.line, [[open.part === 'xTitle' ? 'xlabel' : open.part === 'yTitle' ? 'ylabel' : 'title', text.trim() ? `"${text.trim().replace(/"/g, '')}"` : undefined]]) } : {})}
         onReset={() => changeLook(open.line, (look) => withoutPart(look, open.part))}
         onClose={() => setOpen(undefined)}
       />

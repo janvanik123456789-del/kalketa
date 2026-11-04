@@ -200,15 +200,15 @@ export function ChartView({ ref: holder, block, catalog, uiCatalog, onPart, onLo
     if (partName && !fitted) {
       e.preventDefault();
       e.stopPropagation();
-      const moves = partMoves(partName);
+      const drawn = e.currentTarget.querySelector(`svg.chart-svg [data-part="${partName}"]`);
+      const moves = partMoves(partName) && !!drawn;
       const start = { x: e.clientX, y: e.clientY };
       const [ox, oy] = partOffset(block.look, partName);
       const holder = e.currentTarget;
       const size = () => (holder.querySelector('svg.chart-svg')?.getBoundingClientRect().width ?? 0) / block.layout.width;
       // The part itself follows the pointer; only where it stops is written (a write recalculates the sheet).
       // Pressed on its frame or on it, it is the text of the drawing that moves.
-      const drawn = holder.querySelector(`svg.chart-svg [data-part="${partName}"]`) ?? partEl!;
-      const own = drawn.getAttribute('transform') ?? '';
+      const own = drawn?.getAttribute('transform') ?? '';
       let dragged = false;
       let at = '';
       const move = (ev: PointerEvent) => {
@@ -216,7 +216,7 @@ export function ChartView({ ref: holder, block, catalog, uiCatalog, onPart, onLo
         if (!moves || !(u > 0) || (!dragged && Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 4)) return;
         dragged = true;
         const [dx, dy] = [(ev.clientX - start.x) / u, (ev.clientY - start.y) / u];
-        drawn.setAttribute('transform', `translate(${dx} ${dy}) ${own}`.trim());
+        drawn!.setAttribute('transform', `translate(${dx} ${dy}) ${own}`.trim());
         at = `${Math.round(ox + dx)},${Math.round(oy + dy)}`;
       };
       const up = () => {

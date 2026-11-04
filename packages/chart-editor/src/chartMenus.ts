@@ -66,6 +66,7 @@ export function chartMenuItems(host: ChartMenuHost): ChartMenuItem[] {
     return [
       asked('chart.xRange', 'chart.xRangeAsk', 'xlim'),
       ...(has('xlim') || has('ylim') ? [{ kind: 'action' as const, label: t(c, 'chart.fullRange'), run: () => host.write(withPlotOption(withPlotOption(host.text, 'xlim', undefined), 'ylim', undefined)) }] : []),
+      words('chart.title', 'chart.titleAsk', 'title'),
       words('chart.xLabel', 'chart.xLabelAsk', 'xlabel'),
       words('chart.yLabel', 'chart.yLabelAsk', 'ylabel'),
       logarithmic('chart.xLog', 'xscale'),

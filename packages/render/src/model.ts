@@ -33,7 +33,7 @@ import {
   type Value,
   writtenPlaces,
 } from '@kalketa/core';
-import { chartLayout, chartSvg, cutChart, parseChartLook, withLook, type ChartLayout, type ChartLook, type ChartSpec } from '@kalketa/chart';
+import { chartLayout, chartSvg, cutChart, parseChartLook, titleOnTop, withLook, type ChartLayout, type ChartLook, type ChartSpec } from '@kalketa/chart';
 import { formatDate, formatDiagnostic, formatNumber, t, unitGap, type Catalog, type NumberFormatOptions } from '@kalketa/i18n';
 import { formulaNode, hasSubstitutableParts, THIN_SPACE, type FormulaOptions, type Substituted } from './formula.js';
 import { boxed, frac, mi, mn, mo, mtext, mu, nameNode, paren, row, sqrt, sup, toText, type MathNode, table } from './math.js';
@@ -454,7 +454,7 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
           break;
         }
         if (r.plot && s.kind === 'display' && s.expr.kind === 'call') {
-          const label = r.plot.title ? t(catalog, 'print.figure', { n: String(++figures) }) : undefined;
+          const label = r.plot.title && !titleOnTop(r.plot.style ? parseChartLook(r.plot.style) : undefined) ? t(catalog, 'print.figure', { n: String(++figures) }) : undefined;
           blocks.push(chartBlock(r.plot, s.expr, s.span.line, formulaOptions(), (v) => numberFormat({ digits: 4 })(v).replace('-', '−'), dateFormat, label, s.comment, messages, options.chartStyle, (at) => t(options.catalog, 'print.cut', { at })));
           break;
         }

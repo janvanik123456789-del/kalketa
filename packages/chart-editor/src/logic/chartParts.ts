@@ -13,9 +13,9 @@ export function partKind(part: ChartPart): 'text' | 'lines' | 'curve' {
   return part === 'axis' || part === 'grid' ? 'lines' : 'text';
 }
 
-/** Parts that the mouse moves. */
+/** Parts that the mouse moves, when they are in the drawing (a title under the chart is a caption, it stays there). */
 export function partMoves(part: ChartPart): boolean {
-  return part === 'xTitle' || part === 'yTitle' || part === 'legend';
+  return part === 'xTitle' || part === 'yTitle' || part === 'legend' || part === 'title';
 }
 
 /** The look with properties of a part set, or taken away with undefined. */

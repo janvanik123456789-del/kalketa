@@ -364,7 +364,7 @@ export function renderBlockHtml(block: PrintBlock, catalog: Catalog, options: Bl
       return `${stop}<figure class="block picture${block.width === undefined ? ' natural' : ''}${wrap}" data-line="${block.line}"${styles.length ? ` style="${styles.join(';')}"` : ''}>${image}${caption}</figure>`;
     }
     case 'chart': {
-      const caption = block.label ? `<figcaption><span class="figure-label">${esc(block.label)}:</span> ${namesInText(block.caption)}</figcaption>` : '';
+      const caption = block.label ? `<figcaption data-part="title"><span class="figure-label">${esc(block.label)}:</span> ${namesInText(block.caption)}</figcaption>` : '';
       // Placed as a picture: at an edge, or flowed around and moved from its line.
       const place = block.wrap ? ` wrap-${block.wrap}` : block.align ? ` align-${block.align}` : '';
       const styles = [block.width !== undefined ? `width:${block.width}%` : '', block.wrap && block.dx ? `margin-${block.wrap}:${block.dx}%` : '', block.wrap && block.dy ? `clear:${block.wrap}` : ''].filter(Boolean);

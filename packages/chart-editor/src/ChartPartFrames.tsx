@@ -9,6 +9,8 @@ import { partKind, partMoves } from './logic/chartParts.js';
 
 interface Frame {
   readonly part: string;
+  /** In the drawing, so the mouse can move it. */
+  readonly moves: boolean;
   readonly left: number;
   readonly top: number;
   readonly width: number;
@@ -22,14 +24,15 @@ function measure(view: HTMLElement): Frame[] {
   const own = view.getBoundingClientRect();
   if (!(own.width > 0)) return [];
   const scale = view.offsetWidth / own.width;
-  const boxes = new Map<string, { left: number; top: number; right: number; bottom: number }>();
-  view.querySelectorAll('svg.chart-svg [data-part]').forEach((element) => {
+  const boxes = new Map<string, { moves: boolean; left: number; top: number; right: number; bottom: number }>();
+  view.querySelectorAll('.block-view [data-part]').forEach((element) => {
     const part = element.getAttribute('data-part')!;
     if (partKind(part) !== 'text') return;
     const box = element.getBoundingClientRect();
     if (!(box.width > 0 || box.height > 0)) return;
     const seen = boxes.get(part);
     boxes.set(part, {
+      moves: partMoves(part) && !!element.closest('svg'),
       left: Math.min(box.left, seen?.left ?? box.left),
       top: Math.min(box.top, seen?.top ?? box.top),
       right: Math.max(box.right, seen?.right ?? box.right),
@@ -38,6 +41,7 @@ function measure(view: HTMLElement): Frame[] {
   });
   return [...boxes].map(([part, box]) => ({
     part,
+    moves: box.moves,
     left: Math.round((box.left - own.left) * scale) - PADDING,
     top: Math.round((box.top - own.top) * scale) - PADDING,
     width: Math.round((box.right - box.left) * scale) + 2 * PADDING,
@@ -69,8 +73,7 @@ export function ChartPartFrames({ view }: { view: RefObject<HTMLElement | null> 
   }, [view]);
   return (
     <>
-      {frames.map(({ part, left, top, width, height }) => {
-        const moves = partMoves(part);
+      {frames.map(({ part, moves, left, top, width, height }) => {
         return (
           <span key={part} className={`chart-part-frame${moves ? ' moves' : ''}`} style={{ left, top, width, height }} {...(moves ? { 'data-part': part } : {})}>
             {moves && (['nw', 'ne', 'sw', 'se'] as const).map((corner) => <i key={corner} className={corner} />)}

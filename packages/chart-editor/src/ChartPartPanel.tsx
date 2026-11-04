@@ -16,6 +16,8 @@ interface ChartPartPanelProps {
   readonly fonts: readonly string[];
   readonly part: ChartPart;
   readonly spec: ChartSpec;
+  /** The words of the title of the chart. */
+  readonly chartText: string;
   /** The look of the chart as the user sees it, and the part of it this chart keeps itself. */
   readonly look: ChartLook;
   /** The element clicked: the window stands beside it. */
@@ -38,7 +40,7 @@ const SIZES = [8, 9, 10, 11, 12, 13, 14, 16, 18, 20, 24, 28, 32];
 const WIDTHS = [0.5, 1, 1.5, 2, 2.5, 3, 4, 5, 6];
 const DASHES = ['solid', 'dash', 'dot', 'dashdot'] as const;
 
-export function ChartPartPanel({ catalog, fonts, part, spec, look, anchor, onSet, onLook, onTitle, onReset, onClose }: ChartPartPanelProps) {
+export function ChartPartPanel({ catalog, fonts, part, spec, chartText, look, anchor, onSet, onLook, onTitle, onReset, onClose }: ChartPartPanelProps) {
   const say = (key: UiKey, params?: Record<string, string | number>) => t(catalog, key, params);
   const box = useRef<HTMLDivElement>(null);
   const [place, setPlace] = useState<{ left: number; top: number }>();
@@ -168,7 +170,18 @@ export function ChartPartPanel({ catalog, fonts, part, spec, look, anchor, onSet
         </button>
       </div>
       {(part === 'xTitle' || part === 'yTitle') && onTitle && field('part.text', <TitleInput value={(part === 'xTitle' ? spec.xTitle : spec.yTitle).replace(/\s*\[[^\]]*\]$/, '')} onChange={onTitle} />)}
-      {kind === 'text' && textFields()}
+      {part === 'title' && onTitle && field('part.text', <TitleInput value={chartText} onChange={onTitle} />)}
+      {part === 'title' && (
+        <div className="part-row part-choice">
+          <button type="button" className={get('place') ? '' : 'on'} data-part-field="below" onClick={() => onSet({ place: undefined, at: undefined })}>
+            {say('part.title.below')}
+          </button>
+          <button type="button" className={get('place') ? 'on' : ''} data-part-field="above" onClick={() => onSet({ place: 'top' })}>
+            {say('part.title.above')}
+          </button>
+        </div>
+      )}
+      {kind === 'text' && (part !== 'title' || !!get('place')) && textFields()}
       {part === 'yTitle' && (
         <div className="part-row part-choice">
           <button type="button" className={get('rotate') ? '' : 'on'} data-part-field="horizontal" onClick={() => onSet({ rotate: undefined, at: undefined })}>
@@ -250,7 +263,7 @@ export function ChartPartPanel({ catalog, fonts, part, spec, look, anchor, onSet
           )}
         </>
       )}
-      {(part === 'xTitle' || part === 'yTitle' || part === 'legend') && <p className="part-hint">{say('part.dragHint')}</p>}
+      {(part === 'xTitle' || part === 'yTitle' || part === 'legend' || (part === 'title' && !!get('place'))) && <p className="part-hint">{say('part.dragHint')}</p>}
       <button type="button" className="part-reset" data-part-field="reset" onClick={onReset}>
         {say('part.reset')}
       </button>

@@ -100,8 +100,10 @@ function formatStatement(r: StatementResult, result: SheetResult, options: Repor
 
 /** A polynomial from its highest power down (2,05·x − 0,06667); another curve as its coefficients. */
 function fitText(fit: NonNullable<FunctionValue['fit']>, options: ReportOptions): string {
+  // The sign as shown: −2 °C is 271 K, whose value in SI is positive.
+  const shown = (q: Quantity) => toDisplay(q, defaultRegistry);
   const value = (q: Quantity) => {
-    const d = toDisplay(q, defaultRegistry);
+    const d = shown(q);
     return formatDisplay(Math.abs(d.value), d.unit, options);
   };
   if (fit.kind === 'linear' || fit.kind.startsWith('poly')) {
@@ -111,7 +113,8 @@ function fitText(fit: NonNullable<FunctionValue['fit']>, options: ReportOptions)
       .reverse()
       .map(({ q, power }, k) => {
         const term = `${value(q)}${power === 0 ? '' : `·${x}${power > 1 ? `^${power}` : ''}`}`;
-        return k === 0 ? `${q.si < 0 ? '−' : ''}${term}` : `${q.si < 0 ? ' − ' : ' + '}${term}`;
+        const negative = shown(q).value < 0;
+        return k === 0 ? `${negative ? '−' : ''}${term}` : `${negative ? ' − ' : ' + '}${term}`;
       })
       .join('');
   }
@@ -211,7 +214,10 @@ function formatValue(r: StatementResult, options: ReportOptions, source: string)
     const sep = formatNumber(1.5, options.catalog).includes(',') ? '; ' : ', ';
     const unit = r.displayList[0]?.unit ?? '';
     const shared = r.displayList.every((d) => d.unit === unit);
-    const numbers = r.displayList.map((d) => formatDisplay(d.value, shared ? '' : d.unit, options));
+    // {decimals=6}, {digits=6} on the line hold for the items too; complex items keep their imaginary part.
+    const format = r.statement.format;
+    const own: ReportOptions = format?.decimals !== undefined ? { ...options, decimals: format.decimals } : format?.digits !== undefined ? { ...options, digits: format.digits } : options;
+    const numbers = r.displayList.map((d) => formatDisplay(d.value, shared ? '' : d.unit, own, d.im));
     const shown = numbers.length > 12 ? [...numbers.slice(0, 5), '…', ...numbers.slice(-2)] : numbers;
     return `[${shown.join(sep)}]${shared && unit ? ` ${unit}` : ''}${numbers.length > 12 ? ` (${numbers.length})` : ''}`;
   }

@@ -9,17 +9,20 @@
  * conditions on the function or its derivatives anywhere in the interval
  * (a support: w = 0; a fixed end: w = 0 and w′ = 0). The equation is solved
  * for its highest derivative (it is taken as linear in it), then integrated
- * with Runge–Kutta of the 4th order on a fixed grid; the values at the start
- * that the conditions leave open are found by shooting: Newton's method on
- * the conditions, which for a linear equation (a beam) is exact in one step.
+ * with Runge–Kutta of the 4th order. Conditions all at one point give the
+ * curve directly, going out from that point both ways; otherwise the values
+ * at the start that the conditions leave open are found by shooting: Newton's
+ * method on the conditions, which for a linear equation (a beam) is exact in
+ * one step. The grid is uniform, its steps doubled until the curve no longer
+ * changes; what does not settle comes with a warning.
  * The result is a function: w(x) and its derivatives w′(x), w″(x) … between
  * the grid points by cubic Hermite interpolation.
  */
 
-import { fail, type Span } from '../diagnostics.js';
+import { CalcError, diagnostic, fail, type Span } from '../diagnostics.js';
 import type { Equation, Expr, Statement } from '../lang/ast.js';
 import { divideDims, multiplyDims, powerDim, sameDim, type Dimension } from '../units/dimension.js';
-import { baseUnitSymbol } from '../units/display.js';
+import { baseUnitSymbol, toDisplay } from '../units/display.js';
 import { quantity, type FunctionValue, type Quantity, type Value } from '../values/value.js';
 import { asQuantity } from './coerce.js';
 import type { EvalContext } from './evaluator.js';
@@ -28,9 +31,30 @@ import { withBareZero } from './zero.js';
 type SolveStatement = Extract<Statement, { kind: 'solve' }>;
 type Evaluate = (expr: Expr, ctx: EvalContext) => Value;
 
-/** Steps of the grid: enough for the smooth curves of mechanics, a kink of M(x) included. */
+/** Steps of the first grid; doubled until the curve no longer changes (see the end of solveOde). */
 export const ODE_STEPS = 200;
+const MAX_ODE_STEPS = 3200;
+/** The change of a curve at which the doubling stops, and the largest one a result stands without a warning. */
+const ODE_TOLERANCE = 1e-6;
+const ODE_ACCEPTABLE = 1e-4;
 const MAX_NEWTON = 25;
+/** What says that the curve reached a point without a value. */
+const UNDEFINED_ON_THE_WAY: ReadonlySet<string> = new Set(['E-DIV-ZERO', 'E-DOMAIN', 'E-NOT-FINITE']);
+
+/** The solution on one grid: the curve, the values it set out with, and how the conditions answer to those. */
+interface Solved {
+  readonly grid: Grid;
+  readonly values: number[];
+  readonly sensitivity?: number[][];
+}
+
+/** A curve along a grid; `left` is the index of the point it set out from. */
+interface Grid {
+  readonly left: number;
+  readonly xs: readonly number[];
+  readonly ys: readonly (readonly number[])[];
+  readonly ds: readonly number[];
+}
 
 /** The name under which the equation reads the k-th derivative of the unknown: w″ -> w″ (w and k primes). */
 export function primeName(name: string, order: number): string {
@@ -122,6 +146,7 @@ export function solveOde(statement: SolveStatement, ctx: EvalContext, evaluate: 
   const factors = new Map<number, number>();
   let reuse = false;
   let mismatch = false;
+  let evaluated = false;
   const highest = (x: number, y: readonly number[]): number => {
     const at = (trial: number): Quantity => {
       const inner: EvalContext = {
@@ -142,97 +167,188 @@ export function solveOde(statement: SolveStatement, ctx: EvalContext, evaluate: 
     const known = factors.get(x);
     if (reuse && known !== undefined) return -g0 / known;
     const factor = at(1).si - g0;
-    if (factor === 0) fail('E-ODE-FORM', equation.span, { name });
+    // At the first point the equation does not read its highest derivative at all; later the curve reached a point
+    // where its factor vanishes ((y − 1)²·y′ at y = 1).
+    if (factor === 0) fail(evaluated ? 'E-DIV-ZERO' : 'E-ODE-FORM', equation.span, evaluated ? {} : { name });
+    evaluated = true;
     if (known !== undefined && Math.abs(known - factor) > 1e-9 * Math.abs(factor)) mismatch = true;
     factors.set(x, factor);
     return -g0 / factor;
   };
 
   const a = low.si;
-  const h = (high.si - a) / ODE_STEPS;
-  /** The state along the grid from the values at the start; with each point its highest derivative. */
-  const integrate = (start: readonly number[]): { ys: number[][]; ds: number[] } => {
+  const b = high.si;
+  // All conditions at one point, one for each lower derivative: nothing to search for, the curve goes out from
+  // that point both ways. Otherwise (w(0) and w(L)) it goes from the start, the open values found by shooting.
+  const atOnePoint = new Set(conditions.map((c) => c.order)).size === n && conditions.every((c) => c.order < n && Math.abs(c.at - conditions[0]!.at) <= 1e-12 * (b - a));
+  const origin = atOnePoint ? Math.min(b, Math.max(a, conditions[0]!.at)) : a;
+  // Points of the coarsest grid before the origin; every finer grid holds the coarser one's points.
+  const before = origin <= a ? 0 : origin >= b ? ODE_STEPS : Math.min(ODE_STEPS - 1, Math.max(1, Math.round((ODE_STEPS * (origin - a)) / (b - a))));
+
+  const where = (x: number): string => {
+    const shown = toDisplay(quantity(x, dimX, low.hint ? { hint: low.hint } : {}), ctx.registry);
+    return `${variable} = ${Number(shown.value.toPrecision(4))}${shown.unit ? ` ${shown.unit}` : ''}`;
+  };
+  /** The state along a grid from the values at the origin; with each point its highest derivative. */
+  const integrate = (steps: number, values: readonly number[]): Grid => {
+    const left = before * (steps / ODE_STEPS);
+    const xs = Array.from({ length: steps + 1 }, (_, i) => (i <= left ? (left === 0 ? a : a + ((origin - a) * i) / left) : origin + ((b - origin) * (i - left)) / (steps - left)));
+    const ys = new Array<number[]>(steps + 1);
+    const ds = new Array<number>(steps + 1);
     const f = (x: number, y: readonly number[]): number[] => [...y.slice(1), highest(x, y)];
-    const ys: number[][] = [[...start]];
-    const ds: number[] = [];
-    let y = [...start];
-    for (let i = 0; i < ODE_STEPS; i++) {
-      const x = a + i * h;
-      const k1 = f(x, y);
-      ds.push(k1[n - 1]!);
-      const k2 = f(x + h / 2, y.map((v, j) => v + (h / 2) * k1[j]!));
-      const k3 = f(x + h / 2, y.map((v, j) => v + (h / 2) * k2[j]!));
-      const k4 = f(x + h, y.map((v, j) => v + h * k3[j]!));
-      y = y.map((v, j) => v + (h / 6) * (k1[j]! + 2 * k2[j]! + 2 * k3[j]! + k4[j]!));
-      if (!y.every(Number.isFinite)) fail('E-NOT-FINITE', equation.span);
-      ys.push([...y]);
-    }
-    ds.push(highest(a + ODE_STEPS * h, y));
-    return { ys, ds };
+    /** Runs f where the curve has reached: a point without a value says where, not only what. */
+    const along = <T>(x: number, run: () => T): T => {
+      try {
+        return run();
+      } catch (err) {
+        if (err instanceof CalcError && UNDEFINED_ON_THE_WAY.has(err.diagnostic.code)) fail('E-ODE-SINGULAR', equation.span, { name, at: where(x) });
+        throw err;
+      }
+    };
+    const go = (from: number, to: number) => {
+      const [x, y, h] = [xs[from]!, ys[from]!, xs[to]! - xs[from]!];
+      const next = along(x, () => {
+        const k1 = f(x, y);
+        ds[from] = k1[n - 1]!;
+        const k2 = f(x + h / 2, y.map((v, j) => v + (h / 2) * k1[j]!));
+        const k3 = f(x + h / 2, y.map((v, j) => v + (h / 2) * k2[j]!));
+        const k4 = f(x + h, y.map((v, j) => v + h * k3[j]!));
+        return y.map((v, j) => v + (h / 6) * (k1[j]! + 2 * k2[j]! + 2 * k3[j]! + k4[j]!));
+      });
+      if (!next.every(Number.isFinite)) fail('E-ODE-SINGULAR', equation.span, { name, at: where(x) });
+      ys[to] = next;
+    };
+    ys[left] = [...values];
+    for (let i = left; i < steps; i++) go(i, i + 1);
+    ds[steps] = along(xs[steps]!, () => highest(xs[steps]!, ys[steps]!));
+    for (let i = left; i > 0; i--) go(i, i - 1);
+    if (left > 0) ds[0] = along(xs[0]!, () => highest(xs[0]!, ys[0]!));
+    return { left, xs, ys, ds };
+  };
+  /** The step of a grid that holds x. */
+  const locate = (grid: Grid, x: number): number => {
+    const steps = grid.xs.length - 1;
+    const found = x < origin ? Math.floor(((x - a) / (origin - a)) * grid.left) : grid.left === steps ? steps - 1 : grid.left + Math.floor(((x - origin) / (b - origin)) * (steps - grid.left));
+    return Math.min(steps - 1, Math.max(0, found));
   };
   /** The k-th derivative at x between the grid points: cubic Hermite from it and the next one. */
-  const sample = (grid: { ys: number[][]; ds: number[] }, k: number, x: number): number => {
-    const i = Math.min(ODE_STEPS - 1, Math.max(0, Math.floor((x - a) / h)));
-    const t = (x - (a + i * h)) / h;
+  const sample = (grid: Grid, k: number, x: number): number => {
+    const i = locate(grid, x);
+    const h = grid.xs[i + 1]! - grid.xs[i]!;
+    const t = (x - grid.xs[i]!) / h;
     const value = (j: number) => grid.ys[j]![k]!;
     const slope = (j: number) => (k + 1 < n ? grid.ys[j]![k + 1]! : grid.ds[j]!);
     const t2 = t * t;
     const t3 = t2 * t;
     return (2 * t3 - 3 * t2 + 1) * value(i) + (t3 - 2 * t2 + t) * h * slope(i) + (-2 * t3 + 3 * t2) * value(i + 1) + (t3 - t2) * h * slope(i + 1);
   };
-  const derivativeAt = (grid: { ys: number[][]; ds: number[] }, k: number, x: number): number => {
+  const derivativeAt = (grid: Grid, k: number, x: number): number => {
     if (k < n) return sample(grid, k, x);
     // The highest derivative itself: between its values at the grid points.
-    const i = Math.min(ODE_STEPS - 1, Math.max(0, Math.floor((x - a) / h)));
-    const t = (x - (a + i * h)) / h;
+    const i = locate(grid, x);
+    const t = (x - grid.xs[i]!) / (grid.xs[i + 1]! - grid.xs[i]!);
     return grid.ds[i]! * (1 - t) + grid.ds[i + 1]! * t;
   };
 
-  // Shooting: the values at the start that make every condition hold.
-  const residuals = (start: readonly number[]) => {
-    const grid = integrate(start);
-    return { grid, r: conditions.map((c) => derivativeAt(grid, c.order, c.at) - c.value) };
-  };
-  let start = new Array<number>(n).fill(0);
-  let current = residuals(start);
-  reuse = true;
-  const scale = (grid: { ys: number[][] }) => Math.max(1e-300, ...conditions.map((c) => Math.abs(c.value)), ...grid.ys.map((y) => Math.abs(y[0]!)));
-  let converged = false;
-  for (let iteration = 0; iteration < MAX_NEWTON; iteration++) {
-    const size = scale(current.grid);
-    if (current.r.every((r) => Math.abs(r) <= 1e-9 * size)) {
-      converged = true;
-      break;
-    }
-    const jacobian = start.map((p, j) => {
-      const step = 1e-3 * Math.max(Math.abs(p), 1e-6);
-      const moved = [...start];
-      moved[j] = p + step;
-      const r = residuals(moved).r;
-      return r.map((v, i) => (v - current.r[i]!) / step);
-    });
-    // Columns per start value: J[i][j] = ∂r_i/∂p_j.
-    const matrix = conditions.map((_, i) => start.map((__, j) => jacobian[j]![i]!));
-    const delta = solveLinear(matrix, current.r.map((v) => -v));
-    if (!delta) return fail('E-ODE-CONDITIONS', statement.span, { name, order: n, found: conditions.length });
-    start = start.map((p, j) => p + delta[j]!);
-    // The run that gives the solution works its factors out afresh.
+  /** Shooting on one grid: the values at the start that make every condition hold. */
+  const shoot = (steps: number, from: readonly number[], known?: number[][]): Solved => {
+    factors.clear();
     reuse = false;
-    current = residuals(start);
-    if (mismatch) factors.clear();
-    reuse = !mismatch;
+    mismatch = false;
+    const residuals = (values: readonly number[]) => {
+      const grid = integrate(steps, values);
+      return { grid, r: conditions.map((c) => derivativeAt(grid, c.order, c.at) - c.value) };
+    };
+    let values = [...from];
+    let current = residuals(values);
+    reuse = true;
+    const scale = (grid: Grid) => Math.max(1e-300, ...conditions.map((c) => Math.abs(c.value)), ...grid.ys.map((y) => Math.abs(y[0]!)));
+    let converged = false;
+    let sensitivity: number[][] | undefined;
+    for (let iteration = 0; iteration < MAX_NEWTON; iteration++) {
+      const size = scale(current.grid);
+      const holds = current.r.every((r) => Math.abs(r) <= 1e-9 * size);
+      // Values taken over from a coarser grid hold within this tolerance, yet not as well as this grid can: one step always.
+      if (holds && iteration > 0) {
+        converged = true;
+        break;
+      }
+      // On a finer grid the coarser one's sensitivities still point the way: the first step needs no new runs.
+      const matrix = known && iteration === 0 ? known : sensitivities(values, current.r, residuals);
+      sensitivity = matrix;
+      const delta = solveLinear(matrix, current.r.map((v) => -v));
+      if (!delta && holds) {
+        converged = true;
+        break;
+      }
+      if (!delta) return fail('E-ODE-CONDITIONS', statement.span, { name, order: n, found: conditions.length });
+      values = values.map((p, j) => p + delta[j]!);
+      // The run that gives the solution works its factors out afresh.
+      reuse = false;
+      current = residuals(values);
+      if (mismatch) factors.clear();
+      reuse = !mismatch;
+    }
+    if (!converged) {
+      const size = scale(current.grid);
+      if (!current.r.every((r) => Math.abs(r) <= 1e-7 * size)) fail('E-SOLVE-NO-CONVERGENCE', statement.span, {});
+    }
+    return { grid: current.grid, values, ...(sensitivity ? { sensitivity } : {}) };
+  };
+  /** One grid: from the conditions directly when they say all at one point, else by shooting. */
+  const solveOn = (steps: number, from: readonly number[], known?: number[][]): Solved => {
+    if (!atOnePoint) return shoot(steps, from, known);
+    factors.clear();
+    reuse = false;
+    mismatch = false;
+    return { grid: integrate(steps, from), values: [...from] };
+  };
+
+  // Where to begin: what the conditions say at the origin; a slope from two values of the function (w(0), w(L));
+  // what they leave open from zero, which may be a point without a value (u′ == 1/u): then other values.
+  const first = new Array<number>(n).fill(0);
+  const open = first.map((_, k) => k);
+  for (const c of conditions) {
+    if (c.order < n && Math.abs(c.at - origin) <= 1e-12 * (b - a)) {
+      first[c.order] = c.value;
+      open.splice(open.indexOf(c.order), 1);
+    }
   }
-  if (!converged) {
-    const size = scale(current.grid);
-    if (!current.r.every((r) => Math.abs(r) <= 1e-7 * size)) fail('E-SOLVE-NO-CONVERGENCE', statement.span, {});
+  const across = conditions.find((c) => c.order === 0 && Math.abs(c.at - origin) > 1e-12 * (b - a));
+  if (n > 1 && across && !open.includes(0) && open.includes(1)) first[1] = (across.value - first[0]!) / (across.at - origin);
+  let solved: Solved | undefined;
+  for (const factor of [0, 1, -1, 0.1, -0.1, 10, -10]) {
+    try {
+      solved = solveOn(ODE_STEPS, first.map((v, k) => (factor !== 0 && open.includes(k) ? v + factor : v)));
+      break;
+    } catch (err) {
+      if (!(err instanceof CalcError) || err.diagnostic.code !== 'E-ODE-SINGULAR' || open.length === 0 || factor === -10) throw err;
+    }
   }
-  const grid = current.grid;
+
+  // Twice as many steps until the curve no longer changes: a fast oscillation or a narrow load shows itself so.
+  let { grid, values: reached, sensitivity } = solved!;
+  let steps = ODE_STEPS;
+  let difference = Infinity;
+  while (steps < MAX_ODE_STEPS && difference > ODE_TOLERANCE) {
+    const finer = solveOn(steps * 2, reached, sensitivity);
+    const change = gridDifference(grid, finer.grid, n, Math.abs(b - a));
+    // Good enough for what is shown and settling slowly (a jump in the load): more steps would only cost time.
+    const slowly = change > difference / 8;
+    difference = change;
+    grid = finer.grid;
+    reached = finer.values;
+    sensitivity = finer.sensitivity ?? sensitivity;
+    steps *= 2;
+    if (slowly && difference <= ODE_ACCEPTABLE) break;
+  }
+  if (difference > ODE_ACCEPTABLE) ctx.warnings.push(diagnostic('W-ODE-ACCURACY', equation.span, { name, steps }));
   const inside = (q: Value, span: Span): number => {
     const x = asQuantity(q, span);
     if (!sameDim(x.dim, dimX)) fail('E-UNIT-MISMATCH', span, { operator: '(', left: baseUnitSymbol(x.dim), right: baseUnitSymbol(dimX) });
-    const slack = 1e-9 * (high.si - a);
-    if (x.si < a - slack || x.si > high.si + slack) fail('E-DOMAIN', span, { function: name });
-    return Math.min(high.si, Math.max(a, x.si));
+    const slack = 1e-9 * (b - a);
+    if (x.si < a - slack || x.si > b + slack) fail('E-DOMAIN', span, { function: name });
+    return Math.min(b, Math.max(a, x.si));
   };
   const fn: FunctionValue = {
     type: 'function',
@@ -246,7 +362,36 @@ export function solveOde(statement: SolveStatement, ctx: EvalContext, evaluate: 
       return quantity(derivativeAt(grid, order, inside(arg, span)), dimOf(order));
     },
   };
-  return { fn, info: { order: n, low, high, steps: ODE_STEPS } };
+  return { fn, info: { order: n, low, high, steps } };
+}
+
+/** J[i][j] = ∂r_i/∂p_j: how each condition answers to each value at the start. */
+function sensitivities(values: readonly number[], at: readonly number[], residuals: (values: readonly number[]) => { r: number[] }): number[][] {
+  const columns = values.map((p, j) => {
+    const step = 1e-3 * Math.max(Math.abs(p), 1e-6);
+    const moved = [...values];
+    moved[j] = p + step;
+    return residuals(moved).r.map((v, i) => (v - at[i]!) / step);
+  });
+  return at.map((_, i) => values.map((__, j) => columns[j]![i]!));
+}
+
+/**
+ * How far a curve moved when the steps were doubled: the largest change at the points of the coarser grid, of the
+ * function and its lower derivatives, each against its own largest value (a derivative that stays near zero
+ * against the function over the length of the interval, or its rounding would count).
+ */
+function gridDifference(coarse: Grid, fine: Grid, n: number, length: number): number {
+  const largest = (k: number) => fine.ys.reduce((most, y) => Math.max(most, Math.abs(y[k]!)), 0);
+  const function0 = largest(0);
+  let worst = 0;
+  for (let k = 0; k < n; k++) {
+    const scale = largest(k) + 1e-9 * (function0 / length ** k) + Number.MIN_VALUE;
+    coarse.ys.forEach((y, i) => {
+      worst = Math.max(worst, Math.abs(y[k]! - fine.ys[2 * i]![k]!) / scale);
+    });
+  }
+  return worst;
 }
 
 /** Gaussian elimination with partial pivoting; undefined when the matrix is singular. */

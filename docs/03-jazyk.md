@@ -97,7 +97,7 @@ Ohyb: σ = 193.3 MPa ≤ fy = 235 MPa   využití 82 %  ✓   [EN 1993-1-1, 6.2.
 
 Tohle je nejčastější zdroj chyb, proto pravidlo **přísnější než u konkurence**:
 
-1. Za číslem (`5 m`) je to vždy jednotka. Jednotka za číslem pokračuje přes `/`, `·` a mocniny, dokud následují jednotky (`12 kN/m`, `4180 J/(kg·K)`). `5 m / 2 s` je proto (5 m)/(2 s).
+1. Za číslem (`5 m`) je to vždy jednotka. Jednotka za číslem pokračuje přes `/`, `·` a mocniny, dokud následují jednotky (`12 kN/m`, `4180 J/(kg·K)`). `5 m / 2 s` je proto (5 m)/(2 s). A `3/8 in` je 3/(8 in), s jednotkou ve jmenovateli; program na to upozorní, zlomek palce se píše `(3/8) in`.
 2. Samostatně stojící název:
    - je-li definovaný jako proměnná, je to proměnná,
    - jinak je to jednotka.
@@ -710,7 +710,7 @@ plot(w(x), x: 0 m .. L) | mm         ' průhybová čára
 
 - `solve w(x): …` hledá funkci. Derivace se píší jako v knize: `w′ w″ w‴ w⁗` (tlačítka ′ a ″ v liště Operátory; obyčejný apostrof je komentář). Interval `in a .. b` je povinný.
 - Rovnice řádu n potřebuje n okrajových podmínek na funkci nebo její derivace v libovolných bodech intervalu: podpora `w(0 m) == 0 m`, vetknutí navíc `w′(0 m) == 0`, volný konec konzoly `w″(L) == 0 m^-1` a `w‴(L) == 0 m^-2`. Jednotka funkce plyne z podmínek. Jde i 4. řád (`E·I·w⁗ == q`) a 1. řád (`y′ == −y/τ`, `y(0 s) == 1`).
-- Rovnice se řeší pro nejvyšší derivaci (bere se, že je v ní lineární), integruje se Rungeho–Kuttovou metodou 4. řádu na 200 krocích a hodnoty na začátku, které podmínky nechávají otevřené, dopočte metoda střelby (Newton; pro lineární rovnici přesně v jednom kroku).
+- Rovnice se řeší pro nejvyšší derivaci (bere se, že je v ní lineární), integruje se Rungeho–Kuttovou metodou 4. řádu; kroky se zdvojnásobují od 200 do 3200, dokud se křivka přestane měnit, a co se neustálí, dostane varování. Podmínky všechny v jednom bodě (i na konci intervalu) dají křivku přímo, jde z toho bodu oběma směry; jinak hodnoty na začátku, které podmínky nechávají otevřené, dopočte metoda střelby (Newton; pro lineární rovnici přesně v jednom kroku).
 - Výsledek je funkce: `w(x)`, `w′(x)`, `w″(x)` (mezi body sítě Hermiteovou interpolací), mimo interval chyba `E-DOMAIN`. `w′(bod)` u obyčejné funkce listu spočte derivaci numericky (řád 1 a 2).
 - Chyby: chybí interval (`E-ODE-RANGE`), rovnice bez derivace nebo nelineární v nejvyšší (`E-ODE-FORM`), podmínka v jiném tvaru (`E-ODE-CONDITION`), počet nebo nezávislost podmínek (`E-ODE-CONDITIONS`), bod mimo interval (`E-ODE-POINT`).
 

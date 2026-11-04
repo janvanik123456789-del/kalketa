@@ -78,12 +78,15 @@ const BUILT_IN: readonly UnitDef[] = [
 
   // Length, area, volume, mass, time
   { symbol: 'in', factor: 0.0254, dim: L },
+  { symbol: 'Å', factor: 1e-10, dim: L },
   { symbol: 'ft', factor: 0.3048, dim: L },
   { symbol: 'ha', factor: 1e4, dim: AREA },
   { symbol: 'L', factor: 1e-3, dim: VOLUME, prefixable: true },
   { symbol: 'l', factor: 1e-3, dim: VOLUME, prefixable: true },
   { symbol: 't', factor: 1e3, dim: M, prefixable: true },
   { symbol: 'lb', factor: 0.45359237, dim: M },
+  { symbol: 'dkg', factor: 0.01, dim: M },
+  { symbol: 'Da', factor: 1.6605390666e-27, dim: M, prefixable: true },
   // US customary units of old textbooks and American handbooks, to be converted to SI.
   { symbol: 'lbm', factor: 0.45359237, dim: M },
   { symbol: 'oz', factor: 0.028349523125, dim: M },
@@ -109,6 +112,13 @@ const BUILT_IN: readonly UnitDef[] = [
   { symbol: 'bar', factor: 1e5, dim: PRESSURE, prefixable: true },
   { symbol: 'atm', factor: 101325, dim: PRESSURE },
   { symbol: 'psi', factor: 6894.757293168, dim: PRESSURE },
+  // Absolute and gauge pressure of American tables: the same size, the reference is the reader's.
+  { symbol: 'psia', factor: 6894.757293168, dim: PRESSURE },
+  { symbol: 'psig', factor: 6894.757293168, dim: PRESSURE },
+  { symbol: 'torr', factor: 101325 / 760, dim: PRESSURE },
+  // Viscosity as tables give it: centipoise = mPa·s, centistokes = mm²/s.
+  { symbol: 'cP', factor: 1e-3, dim: dim({ M: 1, L: -1, T: -1 }) },
+  { symbol: 'cSt', factor: 1e-6, dim: dim({ L: 2, T: -1 }) },
   { symbol: 'ksi', factor: 6894757.293168, dim: PRESSURE },
   { symbol: 'kip', factor: 4448.2216152605, dim: FORCE },
   { symbol: 'inHg', factor: 3386.388666, dim: PRESSURE },

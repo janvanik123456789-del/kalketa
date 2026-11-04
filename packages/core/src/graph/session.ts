@@ -12,7 +12,7 @@ import { CalcError, DependencyFailed, diagnostic, type Diagnostic, type Span } f
 import { asBoolean, asComplex } from '../eval/coerce.js';
 import { compare, evaluate, LINE_TIME_LIMIT_MS, withTimeLimit, type EvalContext } from '../eval/evaluator.js';
 import { BUILTIN_CONSTANTS } from '../eval/functions.js';
-import { defineFunction, isBuiltinFunction } from '../eval/userFunctions.js';
+import { defineFunction, inTarget, isBuiltinFunction } from '../eval/userFunctions.js';
 import { allRoots, solveStatement, type RootsFound } from '../eval/solver.js';
 import { solveOde, type OdeInfo } from '../eval/ode.js';
 import { isPlotCall, plotStatement, type PlotResult } from '../eval/plot.js';
@@ -709,7 +709,8 @@ export class SheetSession {
           if (!sameDim(unit.dim, v.dim)) throw new CalcError(diagnostic('E-TARGET-UNIT', statement.target.span, { unit: unit.symbol, found: baseUnitSymbol(v.dim) }));
           return inTarget(v, unit);
         };
-        const values = found.values.map((v) => inUnit(v)).map((v) => (statement.format?.rounded ? roundedAsShown(v, statement.format, context.registry, unit) : v));
+        // solve T: … in 100 K .. 450 K: a temperature by its name, as T := 200 K is.
+        const values = found.values.map((v, i) => temperatureByName(statement.unknowns[i]!.name, inUnit(v))).map((v) => (statement.format?.rounded ? roundedAsShown(v, statement.format, context.registry, unit) : v));
         const solutions = statement.unknowns.map((u, i) => ({
           name: u.name,
           value: values[i]!,
@@ -722,13 +723,16 @@ export class SheetSession {
 
       if (statement.kind === 'definition' && statement.params) {
         const fn = defineFunction({ ...statement, params: statement.params }, ctx);
-        return { status: 'ok', value: fn, dependencies, tableReads, diagnostics: ctx.warnings };
+        // P(v) := F·v | hp: the unit its values are shown in.
+        const target = statement.target ? resolveUnit(statement.target, context.registry) : undefined;
+        return { status: 'ok', value: target ? { ...fn, target } : fn, dependencies, tableReads, diagnostics: ctx.warnings };
       }
 
       if (statement.kind === 'display' && isPlotCall(statement.expr)) {
         const target = statement.target ? resolveUnit(statement.target, context.registry) : undefined;
         const plot = plotStatement(statement.expr, ctx, evaluate, target, (name) => context.formulas.get(name) ?? context.namedFormulas?.get(name)?.expr);
-        return { status: 'ok', plot, dependencies, tableReads, diagnostics: ctx.warnings };
+        // A chart draws a curve far into its tail, where a zero is what is expected.
+        return { status: 'ok', plot, dependencies, tableReads, diagnostics: ctx.warnings.filter((w) => w.code !== 'W-UNDERFLOW') };
       }
 
       let value = evaluate(statement.expr, ctx);
@@ -754,7 +758,7 @@ export class SheetSession {
         }
       }
       // T_2 := 894.45 K, T_2 := p_2·V/(m·r): a temperature by its name; ΔT := 10 K stays a difference.
-      if (statement.kind === 'definition' && !statement.params && value.type === 'quantity') value = temperatureByName(statement.name, value);
+      if (statement.kind === 'definition' && !statement.params && value.type === 'quantity') value = angularVelocityByName(statement.name, temperatureByName(statement.name, value));
       // {decimals=2 rounded}: the rows below go on with the value as shown, not the exact one.
       if (statement.format?.rounded && value.type === 'quantity') value = roundedAsShown(value, statement.format, context.registry, target);
       const display = value.type === 'quantity' ? toDisplay(value, context.registry, target) : undefined;
@@ -885,10 +889,10 @@ function sheetTable(statement: Extract<Statement, { kind: 'table' }>, registry: 
  * A value in the unit its line asks for (T_K := T | K). An absolute temperature put into kelvin is said to be
  * the thermodynamic one: it goes on as a temperature written in K, so 1/T_K (Arrhenius, a thermistor) gives no warning.
  */
-function inTarget(q: Quantity, target: ResolvedUnit): Quantity {
-  if (!q.absolute || target.offset !== undefined) return { ...q, hint: target };
-  const { absolute: _, ...plain } = q;
-  return { ...plain, hint: target };
+/** ω := 1/√(L·C): an angular velocity is named so, and shown in rad/s, not in the Hz of a frequency. */
+function angularVelocityByName(name: string, q: Quantity): Quantity {
+  if (q.hint || q.im || !/^(ω|omega)(_|$)/.test(name) || !sameDim(q.dim, dim({ T: -1 }))) return q;
+  return { ...q, hint: { symbol: 'rad/s', factor: 1, dim: q.dim } };
 }
 
 /**

@@ -25,3 +25,20 @@ describe('a fitted curve in the report', () => {
     expect(text).toContain('p(x) = 2,05·x − 0,06667   R² = 0,9998');
   });
 });
+
+describe('series and fits in the report', () => {
+  it('keeps the imaginary part of the items of a series', () => {
+    const text = report('r := roots(x^2 + 2·x + 101, x)\nv := [1, 2]·(1j)');
+    expect(text).toContain('r = [−1 + 10j; −1 − 10j]');
+    expect(text).toContain('v = [1j; 2j]');
+  });
+
+  it('holds {decimals} for the items of a series', () => {
+    expect(report('V := [10.000172, 10.000116] V {decimals=6}')).toContain('V = [10,000172; 10,000116] V');
+  });
+
+  it('gives a fitted coefficient in °C the sign it is shown with', () => {
+    const text = report('table A:\n    | T [°C] | I [°C] |\n    | 10 | 28 |\n    | 20 | 58 |\n    | 30 | 88 |\nfa := fit(A.I, x: A.T)');
+    expect(text).toMatch(/fa\(T\) = 3 .*− 2 °C/);
+  });
+});

@@ -14,6 +14,15 @@ Označení kandidátů odpovídá těm zprávám: `elektrotechnika-3` je řádek
 
 Nezávisí na ničem a má přednost před vším. Každý bod je ověřený krátkým listem (`priklady-podklady/vyber/overeni/`).
 
+**Opraveno 2026-11-04**, testy jsou v `packages/core/tests/silent-errors.test.ts`, `packages/render/tests/series-digits.test.ts` a `packages/cli/tests/report.test.ts`. Tabulka níž ukazuje stav před opravou. Co z toho vyšlo jinak, než se čekalo:
+
+- **0.6, 0.7 a `{decimals}` z 0.11 se týkaly jen příkazového řádku.** Sondy běžely přes něj a tisk programu byl správně. Opravený je výpis příkazového řádku.
+- **0.1 zůstává pravidlem, s varováním.** `3/8 in` je dál 3/(8 in), hlásí se, jak se to čte a jak napsat zlomek.
+- **0.5 je oprava jen zčásti.** Impulz teď dá −0,153 mm s varováním (správně −0,1544). Impulz užší než krok jemné sítě může propadnout dál, osamělá síla patří do etapy 4.
+- **0.11:** řada se rozepíše jen tolik, aby se položky lišily (`[10,0002; 10,0001] V`), `{decimals}` platí. Peníze v řadě a matici zůstávají celé. Přesně spočítané celé číslo bez jednotky se vypíše celé.
+- **0.13:** rad/s podle jména platí pro `ω` a `omega`, ne pro `w`, to může být cokoli. `| jednotka` u funkce teď platí, a když k výsledku nesedí, je to chyba. Singularita v krajním bodě se počítá metodou tanh–sinh, u konce mimo nulu je přesnost asi 8 číslic.
+- **Rovnice navíc:** kroky se zdvojnásobují od 200 do 3200, dokud se křivka přestane měnit. Bod, kde řešení končí, se hlásí i s místem (`E-ODE-SINGULAR`), a neustálený výsledek dostane varování `W-ODE-ACCURACY`.
+
 | # | Co se stane | Správně | Prověří kandidát |
 |---|---|---|---|
 | 0.1 | `d := 3/8 in` dá 14,76 1/m bez varování | 3/8 palce, nebo aspoň upozornění | `strojni-casti-1` (kotlový nýtový spoj, Leutwiler) |
@@ -30,7 +39,7 @@ Nezávisí na ničem a má přednost před vším. Každý bod je ověřený kr�
 | 0.12 | `solve` s funkcí listu a `== 0` nenajde řešení, se stejnými rovnicemi rozepsanými ano; `npv` v `solve` s `guess` selže, s intervalem funguje | a = 3,8; b = −7,2 / 0,1524 | `stavebni-statika-7`, `ekonomika-7` |
 | 0.13 | Drobné: `1/sqrt(L·C)` se vypíše v Hz místo rad/s; `| hp` v těle funkce se při volání ztratí; `1/√x` od nuly hlásí nepřesnost | rad/s; hp; bez varování | `elektrotechnika-17`, `strojni-casti-5`, `datasety-16` |
 
-Levné k tomu: jednotky `dkg`, `psia`, `psig`, `torr`, `Da`, `u`, `Å`, `eq`, `meq`, `dB`, `dBm`, `Np`, `cP`; konstanty `g_n`, `R`, `c`, `h`, `k_B`, `N_A`.
+Levné k tomu, hotovo: jednotky `dkg`, `psia`, `psig`, `torr`, `Da`, `Å`, `cP`, `cSt`. Zbývá: `u`, `eq`, `meq` (`u` se plete se jménem proměnné), `dB`, `dBm`, `Np` (nejsou to násobky) a konstanty `g_n`, `R`, `c`, `h`, `k_B`, `N_A` (kolidují s běžnými jmény, chce to rozhodnutí).
 
 ## Etapa 1: řady jako základ všeho dalšího
 
@@ -69,8 +78,7 @@ Navazuje na 0.3 až 0.5 a na etapu 2.
 
 | Rozšíření (v tomhle pořadí) | Prověří |
 |---|---|
-| Řízená délka kroku, poznání singularity místo „dělení nulou“ | `elektrotechnika-8`, `datasety-3` |
-| Podmínka na konci intervalu, integrace od ní | `hydraulika-7` (vzdutí nad jezem, Bellasis) |
+| Hotovo v etapě 0: zjemňování kroku, poznání singularity, integrace od podmínky na konci (zbývá ukázat na vzorech) | `elektrotechnika-8`, `datasety-3`, `hydraulika-7` (vzdutí nad jezem, Bellasis) |
 | Soustavy rovnic | `chemie-7` (A ⇌ B), `elektrotechnika-9` (stavové rovnice) |
 | Osamělá síla a vnitřní podpora | `stavebni-statika-3`, `stavebni-statika-7` (nosník na třech podporách) |
 | Neznámý parametr v rovnici (kritická síla, vlastní frekvence) | proměnný průřez ze zprávy strojních částí, mezera `ode-parametric-solve` |

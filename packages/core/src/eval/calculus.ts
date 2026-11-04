@@ -105,6 +105,46 @@ const XGK = [0.991455371120812639, 0.949107912342758525, 0.864864423359769073, 0
 const WGK = [0.022935322010529225, 0.063092092629978553, 0.104790010322250184, 0.140653259715525919, 0.169004726639267903, 0.190350578064785410, 0.204432940075298892, 0.209482141084727828];
 const WG = [0.129484966168869693, 0.279705391489276668, 0.381830050505118945, 0.417959183673469388];
 
+/**
+ * The tanh–sinh rule: its points crowd exponentially towards the ends, so what f does there hardly counts. The
+ * value when two halvings of its step agree, else undefined (a jump inside the interval, where it is no better).
+ */
+function doubleExponential(g: (x: number) => number, a: number, b: number): number | undefined {
+  const half = (b - a) / 2;
+  /** One point t: its distance from the end is worked out on its own, as it soon falls below the rounding of x. */
+  const term = (t: number): number => {
+    const u = (Math.PI / 2) * Math.sinh(t);
+    const weight = (Math.PI / 2) * Math.cosh(t) / Math.cosh(u) ** 2;
+    // 1 ∓ tanh u: how far from the nearer end.
+    const off = 1 / (Math.exp(Math.abs(u)) * Math.cosh(u));
+    const x = t > 0 ? b - half * off : a + half * off;
+    // A point that rounds to the end itself adds nothing that is known.
+    if (weight === 0 || x === a || x === b) return 0;
+    let value: number;
+    try {
+      value = g(x);
+    } catch (err) {
+      if (err instanceof CalcError && err.diagnostic.code !== 'E-TIME-LIMIT') return 0;
+      throw err;
+    }
+    return Number.isFinite(value) ? weight * value : 0;
+  };
+  const LIMIT = 4;
+  let h = 0.5;
+  let sum = term(0);
+  for (let k = 1; k * h <= LIMIT; k++) sum += term(k * h) + term(-k * h);
+  let previous = sum * h * half;
+  for (let level = 1; level <= 7; level++) {
+    h /= 2;
+    // The points of the finer step that the coarser one lacks: the odd multiples.
+    for (let k = 1; k * h <= LIMIT; k += 2) sum += term(k * h) + term(-k * h);
+    const current = sum * h * half;
+    if (level >= 2 && Math.abs(current - previous) <= 1e-9 * Math.abs(current)) return current;
+    previous = current;
+  }
+  return undefined;
+}
+
 function integral(call: CallExpr, ctx: EvalContext, evaluate: Evaluate): Value {
   const { body, variable } = parts(call, []);
   const [low, high] = range(variable, call, ctx, evaluate);
@@ -161,6 +201,7 @@ function integral(call: CallExpr, ctx: EvalContext, evaluate: Evaluate): Value {
     return { kronrod: kronrod * half, error: Math.max(Math.abs((kronrod - gauss) * half), jump * gap), size: Math.abs(size * half) };
   };
   let accurate = true;
+  const warningsBefore = ctx.warnings.length;
   const whole = rule(low.si, high.si);
   // Relative to the result, or to ∫|f| where the parts cancel out (QUADPACK): a result near zero needs no
   // more digits than the values it is made of have.
@@ -178,8 +219,15 @@ function integral(call: CallExpr, ctx: EvalContext, evaluate: Evaluate): Value {
     const middle = (a + b) / 2;
     return adapt(a, middle, rule(a, middle), depth + 1) + adapt(middle, b, rule(middle, b), depth + 1);
   };
-  const value = low.si === high.si ? 0 : adapt(low.si, high.si, whole, 0);
-  if (!accurate) ctx.warnings.push(diagnostic('W-CALCULUS-ACCURACY', call.span, { function: call.name }));
+  let value = low.si === high.si ? 0 : adapt(low.si, high.si, whole, 0);
+  if (!accurate) {
+    // A singularity at an end (1/√x at 0) is beyond this rule, not beyond the integral.
+    const atEnds = doubleExponential(g, low.si, high.si);
+    if (atEnds !== undefined) value = atEnds;
+    else ctx.warnings.push(diagnostic('W-CALCULUS-ACCURACY', call.span, { function: call.name }));
+  }
+  // A zero far out in the tail (exp(−x²) at x = 500) is what the integral expects there.
+  for (let i = ctx.warnings.length - 1; i >= warningsBefore; i--) if (ctx.warnings[i]!.code === 'W-UNDERFLOW') ctx.warnings.splice(i, 1);
   const f0 = sample ?? f(low.si);
   return quantity(value, multiplyDims(f0.dim, low.dim), combinedHint(f0.hint, low.hint, '*', 1));
 }

@@ -11,7 +11,7 @@ import type { BinaryOperator, Expr } from '../lang/ast.js';
 import { dim, isDimensionless, multiplyDims, divideDims, powerDim, sameDim, superscript } from '../units/dimension.js';
 import { baseUnitSymbol } from '../units/display.js';
 import type { UnitRegistry } from '../units/registry.js';
-import { resolveUnit, type ResolvedUnit } from '../units/unitExpr.js';
+import { formatUnit, resolveUnit, type ResolvedUnit } from '../units/unitExpr.js';
 import type { TableRead } from '../tables/table.js';
 import { quantity, type MatrixValue, type Quantity, type Value, type VectorValue } from '../values/value.js';
 import { dateValue, isDate } from '../values/date.js';
@@ -93,7 +93,27 @@ export function evaluate(expr: Expr, ctx: EvalContext): Value {
   }
   const value = evaluateRaw(expr, ctx);
   if (value.type === 'quantity' && (!Number.isFinite(value.si) || !Number.isFinite(value.im ?? 0))) fail('E-NOT-FINITE', expr.span);
+  if (expr.kind === 'binary') noteFractionBeforeUnit(expr, ctx);
+  if (expr.kind === 'call' && expr.name === 'exp' && value.type === 'quantity' && value.si === 0) warnUnderflow(expr.span, ctx);
   return value;
+}
+
+/** Once per place in the sheet: a formula evaluated many times (a sum, a chart) says it once. */
+function warnOnce(warning: Diagnostic, ctx: EvalContext): void {
+  if (!ctx.warnings.some((w) => w.code === warning.code && w.span.offset === warning.span.offset)) ctx.warnings.push(warning);
+}
+
+/** 3/8 in is 3/(8 in), by the rule that a number binds its unit first; rarely what its author meant (docs/03-jazyk.md). */
+function noteFractionBeforeUnit(expr: Extract<Expr, { kind: 'binary' }>, ctx: EvalContext): void {
+  const { left, right, operator } = expr;
+  if (operator !== '/' || left.kind !== 'number' || left.unit || left.imaginary || right.kind !== 'number' || !right.unit) return;
+  const unit = formatUnit(right.unit);
+  warnOnce(diagnostic('W-FRACTION-BEFORE-UNIT', expr.span, { written: `${left.value}/${right.value} ${unit}`, left: left.value, right: right.value, unit }), ctx);
+}
+
+/** A result too small for a number, not a true zero: 44^(-1e5). The points of an integral stay silent. */
+function warnUnderflow(span: Span, ctx: EvalContext): void {
+  if (hintsOff === 0) warnOnce(diagnostic('W-UNDERFLOW', span, {}), ctx);
 }
 
 function evaluateRaw(expr: Expr, ctx: EvalContext): Value {
@@ -414,6 +434,7 @@ function arithmetic(op: BinaryOperator, left: Value, right: Value, leftExpr: Exp
       if (!hintsOff && (writesPi(leftExpr) || (op === '*' && writesPi(rightExpr))) && sameDim(product, PER_SECOND) && (op === '*' || b.si !== 0)) {
         return quantity(op === '*' ? a.si * b.si : a.si / b.si, PER_SECOND, { hint: RADIANS_PER_SECOND, ...exact });
       }
+      if (a.si !== 0 && b.si !== 0 && (op === '*' ? a.si * b.si : a.si / b.si) === 0) warnUnderflow(span, ctx);
       if (op === '*') return quantity(a.si * b.si, multiplyDims(a.dim, b.dim), { ...hint, ...exact });
       if (b.si === 0) fail('E-DIV-ZERO', rightExpr.span);
       return quantity(a.si / b.si, divideDims(a.dim, b.dim), { ...hint, ...exact });
@@ -424,6 +445,7 @@ function arithmetic(op: BinaryOperator, left: Value, right: Value, leftExpr: Exp
       // A whole power, or ^0.5 as a square root, keeps the exact form.
       const half = b.exact && b.exact.num === 1n && b.exact.den === 2n && b.exact.root === 1n;
       const exactly = a.exact && !a.absolute && b.exact ? (half ? X.squareRoot(a.exact) : b.exact.den === 1n && b.exact.root === 1n ? X.power(a.exact, Number(b.exact.num)) : undefined) : undefined;
+      if (a.si !== 0 && a.si ** b.si === 0) warnUnderflow(span, ctx);
       return quantity(a.si ** b.si, powerDim(a.dim, b.si), { ...(hintsOff ? {} : poweredHint(a, b.si)), ...(exactly ? { exact: exactly } : {}) });
     }
     default:

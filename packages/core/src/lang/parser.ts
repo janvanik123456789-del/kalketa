@@ -113,6 +113,18 @@ const COLUMN = /^([\p{L}_][\p{L}\p{N}_]*)\s*(?:\[([^\]]*)\])?\s*(?:\{([^}]*)\})?
  *       | t [s] | T [°C] {0.0} | poznamka |
  *       | 0     | 20.1         | start    |
  */
+function namesAbove(lines: readonly string[], end: number): string[] {
+  const names: string[] = [];
+  for (let n = 0; n < end; n++) {
+    const line = lines[n]!;
+    const definition = /^\s*([\p{L}][\p{L}\p{N}_]*)\s*(?:\([^)]*\))?\s*:=/u.exec(line);
+    if (definition) names.push(definition[1]!);
+    const solve = /^\s*solve\s+(?:\(([^)]*)\)|([\p{L}][\p{L}\p{N}_]*))/u.exec(line);
+    if (solve) names.push(...(solve[1] ?? solve[2]!).split(',').map((name) => name.trim().replace(/\(.*$/, '')));
+  }
+  return names;
+}
+
 function sheetTables(source: string, options: ParseOptions): { tables: { statement: Extract<Statement, { kind: 'table' }>; diagnostics: Diagnostic[] }[]; rest: string } {
   const lines = source.split('\n');
   const tables: { statement: Extract<Statement, { kind: 'table' }>; diagnostics: Diagnostic[] }[] = [];
@@ -143,7 +155,8 @@ function sheetTables(source: string, options: ParseOptions): { tables: { stateme
       // The formula of a calculated column, read as an expression of the language.
       let formula: Expr | undefined;
       if (match?.[4]) {
-        const read = parse(match[4], { isUnit });
+        // Names defined above the table too: g := 9.81 m/s² is no gram in 2·g·y, as it is not on a line of the sheet.
+        const read = parse(match[4], { isUnit, predefined: [...(options.predefined ?? []), ...namesAbove(lines, i)] });
         const statement = read.sheet.statements.find((s) => s.kind !== 'comment');
         if (statement?.kind === 'display' && read.diagnostics.every((d) => d.severity !== 'error')) formula = statement.expr;
         else diagnostics.push(diagnostic('E-TABLE-SCHEMA', lineSpan(i + 1), { table: head[1]!, problem: 'formula', value: match[4] }));

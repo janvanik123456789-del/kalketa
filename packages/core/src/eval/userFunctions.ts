@@ -16,6 +16,8 @@
 import { CalcError, fail, type Span } from '../diagnostics.js';
 import type { Expr, Statement } from '../lang/ast.js';
 import { sameDim } from '../units/dimension.js';
+import { baseUnitSymbol } from '../units/display.js';
+import type { ResolvedUnit } from '../units/unitExpr.js';
 import type { FunctionValue, Quantity, Value } from '../values/value.js';
 import type { EvalContext } from './evaluator.js';
 import { BINDING_FUNCTIONS, BINDING_OPTIONS } from '../lang/parser.js';
@@ -122,7 +124,21 @@ export function applyFunction(fn: FunctionValue, call: CallExpr, ctx: EvalContex
       return fn.captured.get(name) ?? fail('E-UNDEFINED', span, { name });
     },
   };
-  return evaluate(fn.body, inner);
+  const value = evaluate(fn.body, inner);
+  const target = fn.target;
+  if (!target) return value;
+  const shown = (q: Quantity): Quantity => {
+    if (!sameDim(q.dim, target.dim)) fail('E-TARGET-UNIT', call.span, { unit: target.symbol, found: baseUnitSymbol(q.dim) });
+    return inTarget(q, target);
+  };
+  return value.type === 'quantity' ? shown(value) : value.type === 'vector' ? { type: 'vector', items: value.items.map(shown) } : value;
+}
+
+/** A value in a target unit: the unit it is shown in; a temperature shown in kelvins is a number like any other. */
+export function inTarget(q: Quantity, target: ResolvedUnit): Quantity {
+  if (!q.absolute || target.offset !== undefined) return { ...q, hint: target };
+  const { absolute: _, ...plain } = q;
+  return { ...plain, hint: target };
 }
 
 function asAbsolute(value: Value, zero: Quantity): Value {

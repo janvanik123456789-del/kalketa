@@ -303,7 +303,11 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
   const money = (unit: string | undefined) => !!unit && !!options.registry.resolve(unit)?.currency;
   const cents = options.money !== 'whole';
   // Without a unit (a year 2030 in a table or on an axis), four digits stand without a space.
-  const numberFormat = (spec: NumberFormatOptions) => (value: number, unit?: string) => formatNumber(value, catalog, money(unit) ? { ...spec, whole: true } : unit ? spec : { ...spec, unitless: true });
+  const numberFormat = (spec: NumberFormatOptions): NumberFormat =>
+    Object.assign((value: number, unit?: string) => formatNumber(value, catalog, money(unit) ? { ...spec, whole: true } : unit ? spec : { ...spec, unitless: true }), {
+      // More significant digits are for a format that was not asked for places ({decimals=2} stands).
+      ...(spec.decimals === undefined ? { withDigits: (digits: number) => numberFormat({ ...spec, digits }) } : {}),
+    });
   // How each name was shown on its own line ({decimals=2}): so it is shown in every substitution below.
   const formats = new Map<string, NumberFormatOptions>();
   // Columns of the sheet's tables with a format of their numbers ({0.000}): a value read from them is put in so ("Prvky.A").
@@ -1081,7 +1085,7 @@ function equationLines(
   mode: Mode,
   formulaOptions: (s?: FormulaOptions['substitute']) => FormulaOptions,
   substitute: FormulaOptions['substitute'],
-  format: (value: number) => string,
+  format: NumberFormat,
 ): EquationLine[] {
   const withLhs = (line: Omit<EquationLine, 'lhs'>, first: boolean): EquationLine => (first && lhs ? { ...line, lhs } : line);
   const result = resultNode(r, format, formulaOptions().booleans, formulaOptions().argumentSeparator, formulaOptions().date, mode.exact, mode.polar);
@@ -1114,9 +1118,12 @@ function equationLines(
   return lines;
 }
 
+/** Formats a number, of a unit when it is given; withDigits: the same with more significant digits. */
+type NumberFormat = ((value: number, unit?: string) => string) & { readonly withDigits?: (digits: number) => NumberFormat };
+
 function resultNode(
   r: StatementResult,
-  format: (value: number) => string,
+  format: NumberFormat,
   booleans: FormulaOptions['booleans'],
   separator = ',',
   date?: (days: number) => string,
@@ -1124,7 +1131,9 @@ function resultNode(
   polar = false,
 ): MathNode | undefined {
   if (r.status !== 'ok' || !r.value) return undefined;
-  if (r.display) return valueNode(r.display.value, r.display.unit, format, r.display.im, date, exact ? r.display.exact : undefined, polar);
+  // A whole number calculated exactly has no digits to round away: 8⁹ − 8 is 134 217 720.
+  const whole = r.value?.type === 'quantity' && r.value.exact?.den === 1n && r.value.exact.root === 1n && !r.display?.unit && Math.abs(r.value.si) < 1e15;
+  if (r.display) return valueNode(r.display.value, r.display.unit, whole && format.withDigits ? format.withDigits(15) : format, r.display.im, date, exact ? r.display.exact : undefined, polar);
   if (r.displayList) return seriesNode(r.displayList, format, separator, date);
   if (r.displayMatrix) return matrixNode(r.displayMatrix, format);
   if (r.value.type === 'boolean') return mtext(r.value.value ? booleans.true : booleans.false);
@@ -1333,17 +1342,19 @@ function isoDate(days: number): string {
 }
 
 /** "[100; 120; 150] CZK"; a long series shows its start and end: "[1; 2; 3; 4; 5; …; 24; 25] (25)". */
-function seriesNode(items: readonly { value: number; unit: string; im?: number }[], format: (value: number) => string, separator: string, date?: (days: number) => string): MathNode {
+function seriesNode(items: readonly { value: number; unit: string; im?: number }[], format: NumberFormat, separator: string, date?: (days: number) => string): MathNode {
   const shown = items.length > SERIES_SHOWN ? [...items.slice(0, 5), undefined, ...items.slice(-2)] : items;
   const parts: MathNode[] = [];
   // One unit after the brackets; items of different units (a solution x = [u, φ]) each with their own.
   const unit = items[0]?.unit ?? '';
   // Dates are written out each ("1. 1. 2026"); they have no unit after the brackets.
   const shared = unit !== 'date' && items.every((item) => item.unit === unit);
+  const distinct = telling(items, format, shared ? unit : undefined);
+  const own = shared && unit ? (value: number) => distinct(value, unit) : distinct;
   shown.forEach((item, i) => {
     if (i > 0) parts.push(mo(separator));
     // Complex items (roots of a polynomial) keep their imaginary part.
-    parts.push(item ? valueNode(item.value, shared ? '' : item.unit, format, item.im, date) : mo('…'));
+    parts.push(item ? valueNode(item.value, shared ? '' : item.unit, own, item.im, date) : mo('…'));
   });
   const count = items.length > SERIES_SHOWN ? [THIN_SPACE, mtext(`(${items.length})`)] : [];
   return row(mo('['), ...parts, mo(']'), ...(shared && unit ? unitAfter(unit) : []), ...count);
@@ -1351,14 +1362,41 @@ function seriesNode(items: readonly { value: number; unit: string; im?: number }
 
 const SERIES_SHOWN = 12;
 
+/**
+ * The format that tells different items of a series apart: [10.000172, 10.000116] V is not [10, 10] V.
+ * A series that really has equal items stays as it is; so does one with places asked for.
+ */
+function telling(items: readonly { value: number; unit: string; im?: number }[], format: NumberFormat, unit: string | undefined): NumberFormat {
+  if (!format.withDigits) return format;
+  const collapses = (candidate: NumberFormat): boolean => {
+    const seen = new Map<string, number>();
+    for (const item of items) {
+      if (item.im) continue;
+      const text = candidate(item.value, unit ?? item.unit);
+      const before = seen.get(text);
+      if (before !== undefined && Math.abs(before - item.value) > 1e-12 * Math.abs(item.value)) return true;
+      seen.set(text, item.value);
+    }
+    return false;
+  };
+  if (!collapses(format)) return format;
+  for (const digits of [6, 8, 10, 12]) {
+    const finer = format.withDigits(digits);
+    if (!collapses(finer)) return finer;
+  }
+  return format;
+}
+
 /** A matrix in brackets; one unit for all items stands after it, else each item has its own. */
-function matrixNode(m: { rows: number; cols: number; items: readonly { value: number; unit: string; im?: number }[] }, format: (value: number) => string): MathNode {
+function matrixNode(m: { rows: number; cols: number; items: readonly { value: number; unit: string; im?: number }[] }, format: NumberFormat): MathNode {
   const unit = m.items[0]?.unit ?? '';
   const shared = m.items.every((item) => item.unit === unit);
+  // The unit stands after the brackets, the numbers are still of it: an amount of money keeps its whole part.
+  const own = shared && unit ? (value: number) => format(value, unit) : format;
   const cells = Array.from({ length: m.rows }, (_, i) =>
     Array.from({ length: m.cols }, (_, j) => {
       const item = m.items[i * m.cols + j]!;
-      return valueNode(item.value, shared ? '' : item.unit, format, item.im);
+      return valueNode(item.value, shared ? '' : item.unit, own, item.im);
     }),
   );
   return row(mo('['), table(cells), mo(']'), ...(shared && unit ? unitAfter(unit) : []));

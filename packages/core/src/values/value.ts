@@ -79,6 +79,8 @@ export interface FunctionValue {
   readonly native?: (args: readonly Value[], span: Span) => Value;
   /** Its derivatives at a point (w′(0 m)), where the program has them. */
   readonly derivative?: (order: number, arg: Value, span: Span) => Value;
+  /** The unit its values are shown in: P(v) := F·v | hp. */
+  readonly target?: ResolvedUnit;
 }
 
 /** Result of a block (N1 := Prosty_nosnik(L: 6 m)): its values, read as N1.M_max. */

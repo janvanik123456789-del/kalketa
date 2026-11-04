@@ -47,6 +47,8 @@ const RESIDUAL_TOLERANCE = 1e-10;
 const UNDEFINED_POINT: ReadonlySet<string> = new Set(['E-DOMAIN', 'E-DIV-ZERO', 'E-NOT-FINITE']);
 /** Sub-intervals searched for a sign change when the ends of the interval have the same sign. */
 const SCAN_STEPS = 64;
+/** A Newton step this small against the unknown changes nothing that could be shown. */
+const STEP_TOLERANCE = 1e-13;
 
 interface Unknown {
   readonly name: string;
@@ -539,48 +541,57 @@ function bracketed(low: number, high: number, g: (x: number) => { r: number[]; s
     return Math.abs(r[0]!) <= RESIDUAL_TOLERANCE * scale[0]!;
   };
 
-  let a = low;
-  let b = high;
-  let fa = f(a);
-  let fb = f(b);
-  if (fa === 0 && done(a)) return a;
-  if (fb === 0 && done(b)) return b;
-
-  // No sign change at the ends: look for one inside (e.g. two roots in the interval).
-  if (!(fa * fb < 0)) {
-    const step = (high - low) / SCAN_STEPS;
-    let found = false;
-    let x0 = low;
-    let f0 = fa;
-    for (let i = 1; i <= SCAN_STEPS && !found; i++) {
-      const x1 = low + step * i;
-      const f1 = f(x1);
-      if (f1 === 0) return x1;
-      if (f0 * f1 < 0) {
-        [a, fa, b, fb] = [x0, f0, x1, f1];
-        found = true;
+  /**
+   * The point where f changes sign between two points, when it is a root. The sign also changes at a pole
+   * (tan x at π/2) and at a jump: there f does not go to zero but stays as large as at the ends, or grows.
+   */
+  const signChange = (from: number, fFrom: number, to: number, fTo: number): number | undefined => {
+    let [a, fa, b, fb] = [from, fFrom, to, fTo];
+    const small = (fx: number) => Math.abs(fx) <= 0.1 * Math.max(Math.abs(fFrom), Math.abs(fTo));
+    for (let i = 0; i < MAX_ITERATIONS; i++) {
+      const c = b - (fb * (b - a)) / (fb - fa);
+      const fc = f(c);
+      if (fc === 0) return c;
+      if (Number.isNaN(fc)) return undefined;
+      if (Math.abs(b - a) <= 4 * Number.EPSILON * Math.max(Math.abs(a), Math.abs(b))) return small(fc) ? c : undefined;
+      if (fc * fb < 0) {
+        a = b;
+        fa = fb;
+      } else {
+        const m = 1 - fc / fb;
+        fa *= m > 0 ? m : 0.5;
       }
-      if (!Number.isNaN(f1)) [x0, f0] = [x1, f1];
+      b = c;
+      fb = fc;
+      if (done(c)) return c;
     }
-    if (!found) fail('E-SOLVE-NO-ROOT', span);
+    return small(fb) ? b : undefined;
+  };
+
+  const fa = f(low);
+  const fb = f(high);
+  if (fa === 0 && done(low)) return low;
+  if (fb === 0 && done(high)) return high;
+  if (fa * fb < 0) {
+    const root = signChange(low, fa, high, fb);
+    if (root !== undefined) return root;
   }
 
-  for (let i = 0; i < MAX_ITERATIONS; i++) {
-    const c = b - (fb * (b - a)) / (fb - fa);
-    const fc = f(c);
-    if (fc === 0 || Math.abs(b - a) <= 4 * Number.EPSILON * Math.max(Math.abs(a), Math.abs(b))) return c;
-    if (fc * fb < 0) {
-      a = b;
-      fa = fb;
-    } else {
-      const m = 1 - fc / fb;
-      fa *= m > 0 ? m : 0.5;
+  // No sign change at the ends, or only a pole between them: look inside, the root nearest the lower end.
+  const step = (high - low) / SCAN_STEPS;
+  let x0 = low;
+  let f0 = fa;
+  for (let i = 1; i <= SCAN_STEPS; i++) {
+    const x1 = low + step * i;
+    const f1 = f(x1);
+    if (f1 === 0) return x1;
+    if (f0 * f1 < 0) {
+      const root = signChange(x0, f0, x1, f1);
+      if (root !== undefined) return root;
     }
-    b = c;
-    fb = fc;
-    if (done(c)) return c;
+    if (!Number.isNaN(f1)) [x0, f0] = [x1, f1];
   }
-  return b;
+  return fail('E-SOLVE-NO-ROOT', span);
 }
 
 /** A system (or one unknown without an interval): damped Newton–Raphson. */
@@ -588,6 +599,10 @@ function newton(start: number[], residuals: (x: readonly number[]) => { r: numbe
   let x = [...start];
   const typical = start.map((v) => Math.abs(v) || 1);
   let current = residuals(x);
+  // A side that goes to zero is its own scale (f(a, b) == 0, npv(i, CF) == 0 USD), so size() stays 1 whatever
+  // the residual does: the progress of a step is measured against the residuals at the start as well.
+  const weights = current.r.map((v, i) => Math.max(current.scale[i]!, Math.abs(v), Number.MIN_VALUE));
+  const progress = ({ r }: { r: number[] }) => Math.hypot(...r.map((v, i) => v / weights[i]!));
   for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
     if (converged(current)) return x;
     const n = x.length;
@@ -601,6 +616,9 @@ function newton(start: number[], residuals: (x: readonly number[]) => { r: numbe
     }
     const step = gauss(jacobian, current.r.map((v) => -v));
     if (!step) fail('E-SOLVE-SINGULAR', span);
+    // A step that no longer moves the unknowns: the residual is only rounding, whatever it is compared with.
+    const moves = (limit: number) => step.some((s, j) => Math.abs(s) > limit * Math.max(Math.abs(x[j]!), typical[j]!));
+    if (!moves(STEP_TOLERANCE)) return x;
 
     // Damped step: halve until the residuals get smaller.
     let accepted = false;
@@ -613,14 +631,19 @@ function newton(start: number[], residuals: (x: readonly number[]) => { r: numbe
         if (err instanceof CalcError && err.diagnostic.code !== 'E-UNIT-MISMATCH') continue;
         throw err;
       }
-      if (size(trial) < size(current)) {
+      if (size(trial) < size(current) || progress(trial) < progress(current)) {
         x = next;
         current = trial;
         accepted = true;
         break;
       }
     }
-    if (!accepted) break;
+    // No step helps any more, the last one being tiny and the residual far below where it began: the noise of a
+    // calculated side (an integral) is reached.
+    if (!accepted) {
+      if (!moves(1e-6) && progress(current) <= 1e-6) return x;
+      break;
+    }
   }
   if (converged(current)) return x;
   return fail('E-SOLVE-NO-CONVERGENCE', span);

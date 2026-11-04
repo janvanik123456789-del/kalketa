@@ -167,6 +167,16 @@ async function run() {
   for (let waited = 0; waited < 3000 && !/xlim:/.test(await plotLine()); waited += 100) await pause(100);
   detail.zoomed = await plotLine();
   steps.zoomed = /xlim:/.test(detail.zoomed);
+  // Several turns of the wheel in a row: the chart follows, the line is written when they stop, fewer times than they were
+  // turned (a hidden window takes the wheel with its frames, so they may come apart).
+  await pause(500);
+  const writes = js(`new Promise((done) => { let n = 0; const line = document.querySelector('[data-sample="0"] [data-plot-line]'); const watch = new MutationObserver(() => n++); watch.observe(line, { childList: true, characterData: true, subtree: true }); setTimeout(() => { watch.disconnect(); done(n); }, 1500); })`);
+  for (let turn = 0; turn < 3; turn++) {
+    contents.sendInputEvent({ type: 'mouseWheel', ...plot, deltaX: 0, deltaY: 120, wheelTicksY: 1, canScroll: true, modifiers: ['shift'] });
+    await pause(50);
+  }
+  detail.zoomWrites = await writes;
+  steps.zoomWrittenLess = detail.zoomWrites >= 1 && detail.zoomWrites < 3;
   await clickAt(plot, { button: 'right' });
   await clickMenu('Celý rozsah');
   await pause(300);
@@ -224,6 +234,11 @@ async function run() {
   const zeroBefore = Number(await xTick('0'));
   await click(`${chart} [data-part="axis"]`);
   steps.axisWindow = (await text(panelHead)) === 'Osy';
+  await click('.chart-part-panel [data-part-field="ylog"]');
+  await pause(500);
+  steps.axisLogarithmic = (await plotLine()).includes('yscale: "log"');
+  await click('.chart-part-panel [data-part-field="ylog"]');
+  await pause(500);
   await click('.chart-part-panel [data-part-field="xflip"]');
   await pause(500);
   steps.axisTurned = Number(await xTick('0')) > zeroBefore + 100 && (await plotLine()).includes('axis.xflip');

@@ -3191,9 +3191,12 @@ async function chartEditWithRealInput(contents: Electron.WebContents, picture: s
   const cursorBefore = await textOf(`${chart} .chart-cursor-text`);
   await drag(`${chart} .chart-cursor-handle`, 60, 0);
   const cursorAfter = await textOf(`${chart} .chart-cursor-text`);
-  await clickOn(chart, [], 'right');
-  await clickMenu('Logaritmická osa y');
+  await clickOn(`${chart} [data-part="axis"]`);
+  await pause(300);
+  await clickOn('.chart-part-panel [data-part-field="ylog"]');
   await pause(800);
+  await pressKey('Escape');
+  await pause(300);
   const log = await ticks();
   // A click on a part of the chart opens its small window beside it, in the language of the program; a change shows at once.
   const panel = '.chart-part-panel';

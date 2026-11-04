@@ -21,10 +21,12 @@ export function ChartView({ ref: holder, block, catalog, uiCatalog, onPart, onLo
   // The newest function of the row (the line changes as the chart is zoomed): a later write must not work from an old text.
   const writeOptions = useRef(onOptions);
   writeOptions.current = onOptions;
-  // What the axes show, ahead of the chart while a zoom waits to be written (a few writes a second, each recalculates).
+  // What the axes show, ahead of the chart while a zoom waits to be written. The chart is stretched at once from the points it
+  // has; written when the zoom stops, it comes back from the sheet with its curve calculated for that range.
   const shownRange = useRef<{ x?: AxisRange; y?: AxisRange } | undefined>(undefined);
   const zoomable = !block.xDates && block.spec.kind !== 'surface' && block.spec.kind !== 'map' && block.spec.kind !== 'bar' && !block.spec.surface;
   const writeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const drawFrame = useRef<number | undefined>(undefined);
   const writeRange = () => {
     writeTimer.current = undefined;
     const range = shownRange.current;
@@ -36,7 +38,13 @@ export function ChartView({ ref: holder, block, catalog, uiCatalog, onPart, onLo
   };
   const askRange = (range: { x?: AxisRange; y?: AxisRange }) => {
     shownRange.current = { ...shownRange.current, ...range };
-    writeTimer.current ??= setTimeout(writeRange, 80);
+    drawFrame.current ??= requestAnimationFrame(() => {
+      drawFrame.current = undefined;
+      const shown = shownRange.current;
+      if (shown) drawInPlace(view.current, block, catalog, block.look, { ...block.spec, ...(shown.x ? { xRange: shown.x } : {}), ...(shown.y ? { yRange: shown.y } : {}) });
+    });
+    clearTimeout(writeTimer.current);
+    writeTimer.current = setTimeout(writeRange, 250);
   };
   // A chart drawn anew from its line is what it shows again.
   useEffect(() => {

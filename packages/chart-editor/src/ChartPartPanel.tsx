@@ -26,6 +26,9 @@ interface ChartPartPanelProps {
   onSet(changes: Readonly<Record<string, string | undefined>>): void;
   /** Changes the look of the whole chart: grid, frame, legend, names, markers. */
   onLook(change: Partial<ChartLook>): void;
+  /** Whether the axes are logarithmic, and how that is written: an option of the line, as it changes what is calculated. */
+  readonly logarithmic: { readonly x: boolean; readonly y: boolean };
+  onLogarithmic(axis: 'x' | 'y', on: boolean): void;
   /** The words of an axis title, in the line beside the look. */
   onTitle?(text: string): void;
   onReset(): void;
@@ -40,7 +43,7 @@ const SIZES = [8, 9, 10, 11, 12, 13, 14, 16, 18, 20, 24, 28, 32];
 const WIDTHS = [0.5, 1, 1.5, 2, 2.5, 3, 4, 5, 6];
 const DASHES = ['solid', 'dash', 'dot', 'dashdot'] as const;
 
-export function ChartPartPanel({ catalog, fonts, part, spec, chartText, look, anchor, onSet, onLook, onTitle, onReset, onClose }: ChartPartPanelProps) {
+export function ChartPartPanel({ catalog, fonts, part, spec, chartText, look, anchor, logarithmic, onLogarithmic, onSet, onLook, onTitle, onReset, onClose }: ChartPartPanelProps) {
   const say = (key: UiKey, params?: Record<string, string | number>) => t(catalog, key, params);
   const box = useRef<HTMLDivElement>(null);
   const [place, setPlace] = useState<{ left: number; top: number }>();
@@ -209,6 +212,12 @@ export function ChartPartPanel({ catalog, fonts, part, spec, chartText, look, an
         <>
           {color('color', '#6b7280')}
           {width(1)}
+          {(['x', 'y'] as const).map((axis) => (
+            <label key={axis} className="part-check">
+              <input type="checkbox" data-part-field={`${axis}log`} checked={logarithmic[axis]} onChange={(e) => onLogarithmic(axis, e.target.checked)} />
+              {say(axis === 'x' ? 'chart.xLog' : 'chart.yLog')}
+            </label>
+          ))}
           {(['xflip', 'yflip', 'zero'] as const).map((name) => (
             <label key={name} className="part-check">
               <input type="checkbox" data-part-field={name} checked={!!get(name)} onChange={(e) => onSet({ [name]: e.target.checked ? 'on' : undefined })} />

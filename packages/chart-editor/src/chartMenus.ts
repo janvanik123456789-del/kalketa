@@ -62,15 +62,10 @@ export function chartMenuItems(host: ChartMenuHost): ChartMenuItem[] {
           write(name, answer.trim() === '' ? undefined : `"${answer.trim().replace(/"/g, '')}"`);
         }),
     });
-    const logarithmic = (label: UiKey, name: string): ChartMenuItem => ({ kind: 'action', label: t(c, label), checked: /log/.test(plotOption(host.text, name) ?? ''), run: () => write(name, /log/.test(plotOption(host.text, name) ?? '') ? undefined : '"log"') });
     return [
       asked('chart.xRange', 'chart.xRangeAsk', 'xlim'),
       ...(has('xlim') || has('ylim') ? [{ kind: 'action' as const, label: t(c, 'chart.fullRange'), run: () => host.write(withPlotOption(withPlotOption(host.text, 'xlim', undefined), 'ylim', undefined)) }] : []),
       words('chart.title', 'chart.titleAsk', 'title'),
-      words('chart.xLabel', 'chart.xLabelAsk', 'xlabel'),
-      words('chart.yLabel', 'chart.yLabelAsk', 'ylabel'),
-      logarithmic('chart.xLog', 'xscale'),
-      logarithmic('chart.yLog', 'yscale'),
       { kind: 'separator' },
       asked('chart.hline', 'chart.hlineAsk', 'hline'),
       asked('chart.vline', 'chart.vlineAsk', 'vline'),

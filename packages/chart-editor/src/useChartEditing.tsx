@@ -13,7 +13,7 @@ import { chartLookText, lookDifference, withLook, type ChartLook } from '@kalket
 import type { PrintBlock } from '@kalketa/render';
 import { ChartPartPanel } from './ChartPartPanel.js';
 import { drawInPlace } from './drawInPlace.js';
-import { withoutPart, withPartChanges, withPlotOption, type ChartPart } from './logic/index.js';
+import { plotOption, withoutPart, withPartChanges, withPlotOption, type ChartPart } from './logic/index.js';
 
 type ChartBlock = Extract<PrintBlock, { kind: 'chart' }>;
 /** A plot line of the sheet: where it stands and its text. */
@@ -106,6 +106,8 @@ export function useChartEditing({ catalog, printCatalog, fonts, onReplace }: { c
         part={open.part}
         spec={row.block.spec}
         chartText={row.block.caption}
+        logarithmic={{ x: /log/.test(plotOption(row.line.text, 'xscale') ?? ''), y: /log/.test(plotOption(row.line.text, 'yscale') ?? '') }}
+        onLogarithmic={(axis, on) => write(open.line, [[`${axis}scale`, on ? '"log"' : undefined]])}
         look={lookWith(row.block, lookOf(open.line))}
         anchor={() => {
           const view = rows.get(open.line)?.view;

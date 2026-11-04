@@ -53,6 +53,7 @@ import { FitDialog } from './components/FitDialog.js';
 import { ChartDialog } from './components/ChartDialog.js';
 import type { ChartFunction, ChartRelation, ChartSources } from './logic/chartInsert.js';
 import { ChartLookDialog } from '@kalketa/chart-editor';
+import { withMathFont } from './mathFont.js';
 import { chartLookText, lookDifference, parseChartLook } from '@kalketa/chart';
 import { PythonRunnerContext, type PythonRunner } from './components/PythonCheck.js';
 import { applyEdits, fitCharts, fitSeries, readFit, type FitChoice, type LineEdit } from './logic/curveFit.js';
@@ -932,7 +933,7 @@ export function App() {
   const printoutHtml = (d: SheetDocument = doc, preview = false) => {
     const catalog = d === doc ? printCatalog : catalogFor(d.manifest.language ?? language);
     const head = d === doc ? headRight : [d.manifest.author?.trim(), formatDate(Math.floor(Date.parse(d.manifest.modified) / 86_400_000), catalog)].filter(Boolean).join(' · ');
-    return printHtml(evaluation.main, {
+    return withMathFont(printHtml(evaluation.main, {
       catalog,
       registry: defaultRegistry,
       title: /^[ \t]*#(?!#)[ \t]*(.+?)[ \t]*$/m.exec(d.source)?.[1] ?? d.manifest.title,
@@ -954,7 +955,7 @@ export function App() {
       ...(d.layout.headings ? { headings: d.layout.headings } : {}),
       ...(d.layout.pageNumbers ? { pageNumbers: d.layout.pageNumbers } : {}),
       ...(d.layout.derivations ? { derivations: d.layout.derivations } : {}),
-    });
+    }));
   };
   /** Unreviewed AI lines: the user is asked first; they print marked, with a notice. */
   const confirmAiPrint = async () => unreviewedAiLines().size === 0 || (await askConfirm(t(ui, 'print.aiConfirm')));

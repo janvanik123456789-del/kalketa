@@ -53,7 +53,9 @@ export async function runSmokeTest(pdfPath: string, context: SmokeContext): Prom
   try {
     await new Promise((resolve) => setTimeout(resolve, 500));
     const start = await startScreenWithRealMouse(pdfPath.replace(/\.pdf$/i, '') + '-start.png');
-    const state = (await smokeWindow!.webContents.executeJavaScript(`({
+    const state = (await smokeWindow!.webContents.executeJavaScript(`(async () => ({
+      // The math font that comes with the program can be used, whatever the system has.
+      mathFont: (await document.fonts.load('16px "STIX Two Math"', '∫')).length > 0,
       bridge: typeof window.kalketaDesktop === 'object',
       rows: document.querySelectorAll('.row').length,
       summary: document.querySelectorAll('.summary-box tbody tr').length,
@@ -67,7 +69,7 @@ export async function runSmokeTest(pdfPath: string, context: SmokeContext): Prom
         const pages = [...document.querySelectorAll('.page')].map((p) => p.getBoundingClientRect());
         return pages.length > 1 && Math.abs(pages[0].top - pages[1].top) < 2 && pages[1].left > pages[0].right;
       })()
-    })`)) as { bridge: boolean; rows: number; summary: number; math: number; errors: string; menus: number; toolbars: number; language: string; sideBySide: boolean };
+    }))()`)) as { mathFont: boolean; bridge: boolean; rows: number; summary: number; math: number; errors: string; menus: number; toolbars: number; language: string; sideBySide: boolean };
     const reshapedColumns = await reshapeWithRealMouse();
     const layers = await layersWithRealInput(pdfPath.replace(/\.pdf$/i, '') + '-layers.png');
     const insertMenu = await insertMenuWithRealKeys(pdfPath.replace(/\.pdf$/i, '') + '-insert-menu.png');
@@ -79,7 +81,7 @@ export async function runSmokeTest(pdfPath: string, context: SmokeContext): Prom
     printer.destroy();
     await writeFile(pdfPath, pdf);
     ok =
-      state.bridge && state.sideBySide && state.menus === 8 && state.toolbars > 0 && state.rows > 10 && state.summary > 0 && state.math > 0 && reshapedColumns === 3 && pdf.length > 1000 &&
+      state.mathFont && state.bridge && state.sideBySide && state.menus === 8 && state.toolbars > 0 && state.rows > 10 && state.summary > 0 && state.math > 0 && reshapedColumns === 3 && pdf.length > 1000 &&
       layers.deflection && layers.pickTaken.column.startsWith('→') && /mm|cm/.test(layers.pickTaken.text) && layers.newKeepsExample && layers.samplesOk && layers.derivations && layers.summaryOk && layers.definitionAtCursor && layers.sheetGridOk && layers.tableEnter && layers.solvedByFormula && layers.rootsAndExtremes && layers.userChart.ok && layers.relations.ok && layers.chartEdit && layers.quadraticSample.ok && layers.saveOnClose.ok && layers.wordPrinted && layers.wordColored && layers.paletteColored && layers.wordText.focused && layers.wordText.pane && layers.wordText.bold === 'dynamiky' && !layers.wordText.shown.includes('"') && layers.wordText.align === 'center' && layers.cellMarked === 'Síla na konci' && layers.systemFont !== '' && layers.cellFont.replace(/"/g, '').startsWith(layers.systemFont) && layers.cellDeleted && layers.paperRoots && layers.tableRowAdded && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.notesPicture === 'FIGURE+img BLOCKQUOTE' && layers.notesPlaced === 'narrower centred' && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.charts && layers.functionBar && layers.revisions && layers.roots && layers.toolIcons && layers.aiSettings && layers.aiChat && layers.pdfCleanup && layers.theoryLibrary && layers.study && layers.sheetPicture.offered && layers.sheetPicture.described && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
     ok = ok && insertMenu.ok && rowTools.ok && controls.ok && typing.ok && start.shown && start.cards >= 20 && start.lead === 'R24-pruvodce-police' && start.pictures >= 12 && start.closed && start.tab === 'Vzor – Posouzení nosníku N1';
     console.log(JSON.stringify({ ok, start, insertMenu, rowTools, controls, typing, ...state, reshapedColumns, layers, pdfBytes: pdf.length }));

@@ -45,6 +45,6 @@ navrat := datum_nakupu + doba·1 yr
 ## Checks
 check "Inverter power": P_dc ≤ 1.2·stridac.P_ac               source "manufacturer's recommendation"
 check "String voltage": 1.25·U_mp ≤ stridac.U_max            source "ČSN 33 2000-7-712"
-check "DC cable current capacity": 1.25·I_mp ≤ kabel.I_z·k      source "ČSN 33 2000-7-712"
+check "DC cable current-carrying capacity": 1.25·I_mp ≤ kabel.I_z·k      source "ČSN 33 2000-7-712"
 check "DC voltage drop": ΔU_rel ≤ 1 %                        source "recommendation"
 check "Payback period": doba ≤ 10                           source "investor's brief"

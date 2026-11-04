@@ -9,18 +9,18 @@ a := -2 {slider=-5..5}
 b := 2 {slider=-10..10 beside}
 c := 10 {slider=-20..20 beside}
 
-"The parabola as a function of the sheet. The solution, the vertex, the tangent, the area and the chart all come from it, so changing the coefficients is enough."
+"The parabola as a function in the sheet. The solution, the vertex, the tangent, the area and the chart all come from it, so changing the coefficients is enough."
 y(x) := a·x^2 + b·x + c
 
-## Condition of a solution
+## Condition of solvability
 
-"The equation has real roots when its discriminant D = b² − 4·a·c is not negative. With D < 0 the parabola does not meet the x axis: the check below then fails and the lines that calculate with the roots (the checks, the area) are not calculated. Try it with the slider of a."
+"The equation has real roots when its discriminant D = b² − 4·a·c is not negative. With D < 0 the parabola does not meet the x axis: the check below then fails and the lines that calculate with the roots (the checks, the area) are not calculated. Try it with the slider for a."
 D := b^2 - 4·a·c
 check "the equation has real roots": D ≥ 0
 
 ## Roots
 
-"The roots are sought among the real numbers. The program writes the solution out as on paper: the discriminant, the formula of the roots with the numbers put in and both roots; the roots are then the names x_1 and x_2 for what follows. It also gives the vertex of the parabola V = [−b/(2·a); −D/(4·a)]."
+"The roots are sought among the real numbers. The program writes the solution out as on paper: the discriminant, the formula for the roots with the numbers put in and both roots; the roots are then the names x_1 and x_2 for what follows. It also gives the vertex of the parabola V = [−b/(2·a); −D/(4·a)]."
 solve x ∈ ℝ: y(x) == 0
 
 "Check by Vieta's formulas: the sum of the roots is −b/a, their product c/a."
@@ -37,8 +37,8 @@ check "factored form": y_r(3) == y(3)
 solve x_v: y′(x_v) == 0
 y_v := y(x_v)
 
-"A check by the formula of the vertex, y_v = c − b²/(4·a):"
-check "vertex by its formula": y_v == c - b^2/(4·a)
+"Check using the vertex formula, y_v = c − b²/(4·a):"
+check "vertex by the formula": y_v == c - b^2/(4·a)
 V := [x_v, y_v]
 
 ## Tangent

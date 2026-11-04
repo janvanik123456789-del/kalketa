@@ -1,17 +1,17 @@
 # Elongation of a wire under its own weight
-"After problem 2091 of a Czech collection of solved physics problems (reseneulohy.cz/2091; originally a Czech problem book of Charles University, 1994). An iron wire of constant cross-section, 200 m long, hangs freely. By how much does it stretch under its own weight? The deformation is elastic. The picture and the graphs are our own."
+"After problem 2091 of a Czech collection of solved physics problems (reseneulohy.cz/2091; originally a problem book in mechanics, Charles University, 1994). An iron wire of constant cross-section, 200 m long, hangs freely. By how much does it stretch under its own weight? The deformation is elastic. The picture and the graphs are our own."
 "Source: Mandíková, Rojko: Soubor úloh z mechaniky, MFF UK 1994, https://reseneulohy.cz/2091"
 
 ## Input
 l := 200 m            ' length of the wire
 ρ := 7800 kg/m^3      ' density of iron
-E := 200 GPa          ' modulus of elasticity of iron in tension
+E := 200 GPa          ' Young's modulus of iron in tension
 g := 9.81 m/s^2       ' gravitational acceleration
 "The cross-section S is constant and drops out of the relations, its size is not needed."
 ![A wire of length l hangs from a support; the element dx at distance x from the free end is pulled by the weight of the part of the wire below it; on the right the stress growing towards the support](images/drat.en.svg){width=75%}
 
 ## Analysis
-"The wire is pulled down by its own weight, most at the top by the support, where the whole wire hangs, least at the free end. So the stress changes along the length. We divide the wire into thin elements dx in which the stress is constant, stretch each by Hooke's law and add the elongations up by an integral."
+"The wire is pulled down by its own weight, most at the top at the support, where the whole wire hangs, least at the free end. So the stress changes along the length. We divide the wire into thin elements dx in which the stress is constant, stretch each by Hooke's law and add up the elongations in an integral."
 
 ## Solution
 "The element at distance x from the free end is loaded by the weight of the part of the wire below it; this part has the mass (S is the cross-section)"

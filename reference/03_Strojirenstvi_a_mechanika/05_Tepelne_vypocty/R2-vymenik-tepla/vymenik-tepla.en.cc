@@ -1,5 +1,5 @@
 # Length of a double-pipe heat exchanger: counterflow or parallel flow
-"After the examples of the course ME302 Heat Transfer (Rose-Hulman Institute of Technology), heat exchangers, two solved examples. Geothermal water at 160 °C heats service water from 20 °C to 80 °C in a double-pipe heat exchanger. The inner pipe is thin-walled, 1.5 cm in diameter, with an overall heat transfer coefficient of 640 W/(m²·K). How long must the exchanger be when the two fluids flow against each other (counterflow), and how long when they flow in the same direction (parallel flow)? Both arrangements are variants of the calculation. The picture is our own."
+"After the examples of the course ME302 Heat Transfer (Rose-Hulman Institute of Technology), heat exchangers, two solved examples. Geothermal water at 160 °C heats utility water from 20 °C to 80 °C in a double-pipe heat exchanger. The inner pipe is thin-walled, 1.5 cm in diameter, with an overall heat transfer coefficient of 640 W/(m²·K). How long must the exchanger be when the two fluids flow against each other (counterflow), and how long when they flow in the same direction (parallel flow)? Both arrangements are variants of the calculation. The picture is our own."
 "Source: https://rose-hulman.edu/~adams1/courses/me302/lessons/Examples_HXRs_soln.pdf"
 
 ## Input
@@ -32,7 +32,7 @@ table Usporadani: {variants=protiproud}
 ## Area and length
 A := Q/(k·ΔT_ln) | m^2 {eq}
 L := A/(π·D) | m {eq}
-"Source: counterflow 92 °C, 5.13 m² and 109 m; parallel flow 83.7 °C, 5.64 m² and 120 m. The source works with the outlet temperature rounded to 125 °C and the heat 302 kW, so it differs in the tenths."
+"Source: counterflow 92 °C, 5.13 m² and 109 m; parallel flow 83.7 °C, 5.64 m² and 120 m. The source works with the outlet temperature rounded to 125 °C and the heat 302 kW, so its values differ in the first decimals."
 
 ## Comparison of the arrangements
 porovnani := compare(Usporadani, ΔT_ln, A, L)

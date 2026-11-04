@@ -1,5 +1,5 @@
 # Evaluation of a tensile test of steel 11 458
-"After exercise 4 of the course Limit States of Materials (Brno University of Technology, Institute of Materials Science and Engineering, Vlach et al.; in Czech), example 2. A cylindrical test bar of steel 11 458 with threaded heads was broken in a tensile testing machine. From the recorded forces and from the dimensions of the bar before and after the test we determine the offset yield strength, the tensile strength, the reduction of area, the elongation, the tensile toughness, the resilience and the strain hardening ratio. The source gives no results; all of them were verified independently in Python. The picture is our own."
+"Based on exercise 4 of the course Limit States of Materials (Brno University of Technology, Institute of Materials Science and Engineering, Vlach et al.; in Czech), example 2. A cylindrical test bar of steel 11 458 with threaded heads was broken in a tensile testing machine. From the recorded forces and from the dimensions of the bar before and after the test we determine the offset yield strength, the tensile strength, the reduction of area, the elongation, the tensile toughness, the resilience and the strain hardening ratio. The source gives no results; all of them were verified independently in Python. The drawing is our own."
 "Source: Vlach a kol.: Mezní stavy materiálu, cvičení 4, VUT v Brně, https://imse.fme.vutbr.cz/wp-content/themes/umvi_website/assets/materials/winter/6MS/Cviceni/04-Plasticka.pdf"
 
 ## Input
@@ -26,7 +26,7 @@ R_m := F_m/S_0 | MPa {eq}
 "Reduction of area from the cross-section at the fracture:"
 S_u := π·d_u^2/4 | mm^2
 Z := (S_0 - S_u)/S_0 | % {eq}
-"The elongation A_5.65 belongs to a short proportional bar with the gauge length L_0 = 5.65·√S_0. For this bar it is 50 mm, so the marks (1):"
+"The elongation A_5.65 belongs to a short proportional test piece with the gauge length L_0 = 5.65·√S_0. For this bar it is 50 mm, so the marks (1):"
 L_0 := 5.65·sqrt(S_0) | mm
 A_565 := (L_u1 - L_01)/L_01 | % {eq}
 "The marks (2) 100 mm apart give a smaller elongation. The extension in the neck is almost the same, but it is spread over twice the length. That is why an elongation is always stated together with the gauge length it belongs to."

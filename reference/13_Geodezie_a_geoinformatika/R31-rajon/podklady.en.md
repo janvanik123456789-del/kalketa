@@ -6,7 +6,7 @@ The theory behind the calculation, in our own words. Kalketa checks the formulas
 
 ## The coordinate system S-JTSK
 
-The system of the Unified Trigonometric Cadastral Network is a rectangular plane system of the Krovak projection. The X axis points south, the Y axis west, and both coordinates are positive on the whole territory (Y about 430 to 900 km, X about 930 to 1230 km). The system is right-handed as in mathematics, only rotated: the positive direction of angles is from the X axis to the Y axis, that is clockwise as we look at the map.
+The system of the Unified Trigonometric Cadastral Network is a rectangular plane system of the Krovak projection. The X axis points south, the Y axis west, and both coordinates are positive on the whole territory (Y about 430 to 900 km, X about 930 to 1230 km). The formulas have the same form as in mathematics, as the positive direction of angles runs from the X axis to the Y axis. On the map, however, that is clockwise, the opposite of mathematics.
 
 ## Bearing
 
@@ -32,4 +32,4 @@ relation ΔY == d·sin(α)
 relation ΔX == d·cos(α)
 ```
 
-The distance is first corrected for physical influences and converted to the projection (by the scale of the Krovak projection and the altitude). In the source this is already done: 286.45 m.
+The distance is first corrected for physical influences and converted to the projection (by the scale of the Krovak projection and the height above sea level). In the source this is already done: 286.45 m.

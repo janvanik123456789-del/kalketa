@@ -4,12 +4,12 @@ Theory for the calculation, in our own words. Kalketa verifies the formulas in t
 
 ## Interpolation and approximation
 
-- **Interpolation** leads the curve exactly through all the points. It suits tables we trust: catalogue values, tables in standards, results of an exact calculation.
-- **Approximation** (least squares fit, the functions `fit` and `polyfit` with a lower degree) only captures the points. It suits measured data burdened with error, where a curve through all the points would follow the measurement noise too.
+- **Interpolation** passes the curve exactly through all the points. It suits tables we trust: catalogue values, tables in standards, results of an exact calculation.
+- **Approximation** (least squares fit, the functions `fit` and `polyfit` with a lower degree) only approximates the points. It suits measured data affected by errors, where a curve through all the points would follow the measurement noise too.
 
 ## Broken line
 
-Between neighbouring points x₁, x₂ we replace the curve by a straight line. The piecewise notation is the same as the Lagrange polynomial of two points:
+Between neighbouring points x₁, x₂ we replace the curve by a straight line. The piecewise expression is the same as the Lagrange polynomial of two points:
 
 ```kalk
 derive y_1 + (y_2 - y_1)·(x - x_1)/(x_2 - x_1) == y_1·(x - x_2)/(x_1 - x_2) + y_2·(x - x_1)/(x_2 - x_1)
@@ -19,7 +19,7 @@ Between the points the error is at most (x − x₁)·(x₂ − x)/2 · max|f″
 
 ## Cubic spline
 
-On each section there is a cubic; neighbouring cubics have the same value, first and second derivative at the node. At the ends two conditions are missing. MATLAB, SciPy and Kalketa choose "not-a-knot": the first two and the last two cubics are one and the same curve (the third derivative is continuous at the second and the last but one point too). Four points therefore give exactly one cubic, three points a parabola.
+On each section there is a cubic; neighbouring cubics have the same value, first and second derivative at the node. At the ends two conditions are missing. MATLAB, SciPy and Kalketa choose "not-a-knot": the first two and the last two cubics are one and the same curve (the third derivative is continuous at the second and the last but one point too). Four points therefore give exactly that one cubic, three points a parabola.
 
 The spline is smooth and accurate for smooth functions, but for data with a jump or with a sharp change of slope it can swing above or below the data between the points.
 

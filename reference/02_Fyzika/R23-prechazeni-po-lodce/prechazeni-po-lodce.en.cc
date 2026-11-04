@@ -1,5 +1,5 @@
 # Shift of a boat when a man walks from the stern to the bow
-"After problem 1136 of a Czech collection of solved physics problems (reseneulohy.cz/1136; originally a set of problems in mechanics for teacher training, Charles University 1994). A man of mass 70 kg walks from the stern to the bow of a boat that is 2.5 m long and weighs 100 kg. By how much does the boat shift? We neglect the resistance of the water and the tilting of the boat. The picture is our own."
+"After problem 1136 of a Czech collection of solved physics problems (reseneulohy.cz/1136; originally a set of problems in mechanics for teacher training, Faculty of Mathematics and Physics, Charles University, 1994). A man of mass 70 kg walks from the stern to the bow of a boat that is 2.5 m long and weighs 100 kg. By how much does the boat shift? We neglect the resistance of the water and the tilting of the boat. The picture is our own."
 "Source: D. Mandíková, M. Rojko: Soubor úloh z mechaniky pro studium učitelství, MFF UK 1994, https://reseneulohy.cz/1136"
 
 ## Data
@@ -9,7 +9,7 @@ L := 2.5 m            ' length of the boat
 ![The man walks from the stern to the bow, the centre of mass T of the system stays in place and the boat shifts by x](images/lodka.en.svg){width=80%}
 
 ## Analysis
-"On the system boat–man only the weight and the buoyancy act from outside, and they cancel. The boat is pushed by the friction of the shoes on the bottom, but that is a force inside the system. The resultant of the external forces is therefore always zero and the centre of mass of the system, at rest at the start, stays at rest (Newton's 1st law). We express the position of the centre of mass before and after the walk and set the two equal. The whole mass of the boat and of the man is concentrated in their centres of mass."
+"On the boat–man system only the weight and the buoyancy act from outside, and they cancel. The boat is pushed by the friction of the shoes on the floor, but that is a force inside the system. The resultant of the external forces is therefore always zero and the centre of mass of the system, at rest at the start, stays at rest (Newton's 1st law). We express the position of the centre of mass before and after the walk and set the two equal. The whole mass of the boat and of the man is concentrated in their centres of mass."
 
 ## Solution
 "The x axis runs along the water surface, the origin is at the bow of the boat before the walk, the positive direction towards the stern. Before the walk the centre of mass of the boat is at half of its length and the man stands at the stern:"
@@ -27,7 +27,7 @@ x_T2 := (m·x + M·(x + L/2))/(M + m) | m
 check "The centre of mass stayed in place": abs(x_T2 - x_T1) ≤ 1e-9 m
 
 ## What happens on the way
-"Relative to the water the man does not walk the whole length of the boat, only the rest of it; the boat slides away under his feet the other way. The product of mass and shift is the same for both, otherwise the centre of mass would move:"
+"Relative to the water the man does not walk the whole length of the boat, only the rest of it; the boat slides away under his feet in the opposite direction. The product of mass and shift is the same for both, otherwise the centre of mass would move:"
 s_c := L - x | m
 check "The shifts of the man and of the boat balance": abs(m·s_c - M·x) ≤ 1e-9 kg·m
 "When the man has walked a distance s along the boat, the boat is shifted in proportion to it; position of the bow and of the man relative to the water:"

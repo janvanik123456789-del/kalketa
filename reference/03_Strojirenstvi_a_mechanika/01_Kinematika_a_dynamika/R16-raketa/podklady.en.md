@@ -66,9 +66,9 @@ derive g·τ == M_p·v_R/((n + 1)·M_r)
 
 For the rocket of the problem (12 t of fuel, 2 t of structure, 5000 km/h, n = 7) the loss is 12 000·5000/(8·2000) = 3750 km/h. An ideal rocket would reach 5000·ln 7 ≐ 9730 km/h, the real one only about 5980 km/h.
 
-## Acceleration and overload
+## Acceleration and g-load
 
-The assignment limits the acceleration of the rocket relative to the Earth to 7 g. But the crew also feels its own weight: the seat presses on them with the force m·(a + g). They therefore feel (a + g)/g = n + 1, eight times their weight. Aviation and space standards usually limit exactly this overload; with a limit of 7 g for the overload the consumption would come out one eighth smaller.
+The problem statement limits the acceleration of the rocket relative to the Earth to 7 g. But the crew also feels its own weight: the seat presses on them with the force m·(a + g). They therefore feel (a + g)/g = n + 1, eight times their weight. Aviation and space standards usually limit exactly this g-load; with a limit of 7 g for the g-load the consumption would come out one eighth smaller.
 
 ## Why rockets have several stages
 

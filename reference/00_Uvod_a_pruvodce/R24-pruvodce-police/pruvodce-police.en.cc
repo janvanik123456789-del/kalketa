@@ -38,7 +38,7 @@ k_def := 0.6                          ' solid timber, service class 1
 w := (1 + k_def)·5·q_k·L^4/(384·E·I) | mm
 w_lim := L/300 | mm
 check "Deflection of the shelf": w ≤ w_lim   source "EN 1995-1-1, cl. 7.2"
-"Tip: a chart is a line plot(…). With the right mouse button on it you add labels, extremes or hatching; a click on a text of the chart opens its look, and the chart can be stretched by its edge."
+"Tip: a chart is a line plot(…). With the right mouse button on it you add labels, extremes or hatching; the chart can be stretched by its edge."
 w_x(x) := (1 + k_def)·q_k·x·(L^3 - 2·L·x^2 + x^3)/(24·E·I)
 plot(-w_x(x), x: 0 m .. L, extremes: true, title: "Deflection along the board") | mm
 
@@ -48,4 +48,4 @@ solve t_min: (1 + k_def)·5·q_k·L^4/(384·E·b·t_min^3/12) == w_lim in 5 mm .
 "Boards are made in a series of thicknesses 18, 22, 25 and 28 mm; we choose the next one up. The weight of the board changes little with its thickness, the calculation takes it from the 18 mm board."
 
 ## What next
-"Result: an 18 mm board of C24 spruce carries the books over 80 cm with a large reserve, the deflection decides. An overview of the checks is at the start of the printout, in the editor in the status bar below. The theory of the calculation (where the formulas for the moment and the deflection come from, what the factors mean) is in the Sources layer under the sheet. The calculation again in Python, which runs and compares itself with the sheet, is in the layer Check in Python. Kalketa numbers the sections itself (File → Properties → Numbering of sections), where the style and the language of the printout are set too. File → Sample calculations offers more calculations by field."
+"Result: an 18 mm board of C24 spruce carries the books over 80 cm with a large reserve, the deflection decides. An overview of the checks is at the start of the printout, in the editor in the status bar below. The theory of the calculation (where the formulas for the moment and the deflection come from, what the factors mean) is in the Sources layer under the sheet. The calculation again in Python, which runs and compares itself with the sheet, is in the Check in Python layer. Kalketa numbers the sections itself (File → Properties → Numbering of sections), where the style and the language of the printout are set too. File → Sample calculations offers more calculations by field."

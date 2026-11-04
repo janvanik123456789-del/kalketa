@@ -59,7 +59,7 @@ Poměrná výška ξ_bal = x/d je pro B500B asi 0,617. Je-li skutečné x/d men�
 Z momentu m_Ed na metr šířky je potřeba najít plochu výztuže a_s na metr. Všechny tři cesty vycházejí ze stejné rovnováhy:
 
 1. **Odhad ramene** z ≐ 0,9·d. Pro desky bývá rameno skutečně kolem 0,9 až 0,95·d, takže odhad je na bezpečné straně a stačí pro rychlý návrh: a_s = m_Ed / (0,9·d·f_yd).
-2. **Momentový a rozměrové součinitele.** Bezrozměrný moment μ = m_Ed / (b·d²·f_cd) určí z tabulky (příloha P04, tabulka Soucinitele_P04) poměrnou výšku ξ = x/d a rameno ζ = z/d; pak a_s = m_Ed / (ζ·d·f_yd).
+2. **Momentové a rozměrové součinitele.** Bezrozměrný moment μ = m_Ed / (b·d²·f_cd) určí z tabulky (příloha P04, tabulka Soucinitele_P04) poměrnou výšku ξ = x/d a rameno ζ = z/d; pak a_s = m_Ed / (ζ·d·f_yd).
 3. **Přímý výpočet.** Dosazením x z rovnováhy sil do momentové rovnice vznikne kvadratická rovnice pro a_s, jejíž menší kořen je:
 
 ```kalk
@@ -101,4 +101,4 @@ derive m_cr == b·h^2·f_ctm/6
 
 - Obdélníkové rozdělení napětí v tlačeném betonu, výztuž s neomezeným přetvořením (vodorovná větev pracovního diagramu).
 - Beton v tahu se v únosnosti nezapočítává.
-- Moment je spočten lineárně pružnou analýzou; deska je pnutá jedním směrem a počítá se na pruh širokého 1 m.
+- Moment je spočten lineárně pružnou analýzou; deska je pnutá jedním směrem a počítá se na pruh široký 1 m.

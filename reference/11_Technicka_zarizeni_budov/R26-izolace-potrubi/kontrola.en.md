@@ -1,6 +1,6 @@
 # Check in Python
 
-The calculation of the sheet again and independently, in Python. The button above the script runs it in the built-in Python and sets the results beside the values of the sheet: if they agree, the sheet is calculated correctly.
+The calculation of the sheet again and independently, in Python. The button above the script runs it in the built-in Python and places the results next to the values of the sheet: if they agree, the sheet is calculated correctly.
 
 The whole calculation for all five thicknesses, independent of the sheet. Kalketa compares the results of the chosen variant (50 mm) with the sheet.
 

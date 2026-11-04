@@ -20,7 +20,7 @@ f_e := 1                      ' balanced ventilation
 ρc := 1.2 kg/m^3·0.28 W·h/(kg·K) | W·h/(m^3·K)
 
 ## The house as a zone: infiltration and the air behind the recovery unit
-"The specific air permeability of the envelope at 50 Pa from the chosen air change rate n_50. The source gives 1.33 m³/(h·m²); from the room volume of 298 m³ it comes out 1.24, so the source apparently used a larger internal volume (with the partitions). We go on with the value of the source so that the results can be compared."
+"The specific air permeability of the envelope at 50 Pa from the chosen air change rate n_50. The source gives 1.33 m³/(h·m²); from the room volume of 298 m³ it comes out 1.24, so the source apparently used a larger internal volume (with the partitions). We continue with the value of the source so that the results can be compared."
 V_50 := n_50·V_b/A_env | m^3/(h·m^2)
 V_50z := 1.33 m^3/(h·m^2)     ' value of the source
 "Additional infiltration and the air that gets into the house through the envelope (the unit supplies and extracts the same amount, no underpressure arises):"
@@ -40,7 +40,7 @@ V_tech1 := max(55 m^3/h + 0 m^3/h, 40 m^3/h) | m^3/h
 Q_env1 := max(V_env1, V_min1 - V_tech1)·ρc·(t_i - t_e) | W {eq}
 Q_sup1 := 55 m^3/h·ρc·(t_i - t_rec) | W {eq}
 Q_V1 := Q_env1 + Q_sup1 | W
-"Forced ventilation covers more than the minimum flow (55 > 48.6 m³/h), so through the envelope we count only the actual infiltration; the supplied air is at 13 °C and the room has to reheat it."
+"Forced ventilation covers more than the minimum flow (55 > 48.6 m³/h), so through the envelope we take only the actual infiltration; the supplied air is at 13 °C and the room has to reheat it."
 
 ## All rooms
 "The source does not give the room envelope areas (except for the living room); they are worked out from its table of flows. Their sum of 360.1 m² agrees with the envelope area of the house. The air transferred from the surrounding rooms is at 20 °C, it gives a loss only in the bathroom heated to 24 °C."

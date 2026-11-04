@@ -16,7 +16,7 @@ For more bodies, the numerator and the denominator are summed over all of them.
 
 ## When the centre of mass does not move
 
-The centre of mass of a system moves as if the whole mass were concentrated in it and the resultant of the **external** forces acted on it. Internal forces (friction of the shoes on the bottom of the boat, the force of the legs, the tension in a rope between two bodies) are paired by the law of action and reaction and their sum is zero; they cannot set the centre of mass in motion.
+The centre of mass of a system moves as if the whole mass were concentrated in it and the resultant of the **external** forces acted on it. Internal forces (friction of the shoes on the floor of the boat, the force of the legs, the tension in a rope between two bodies) are paired by the law of action and reaction and their sum is zero; they cannot set the centre of mass in motion.
 
 If the resultant of the external forces is zero and the centre of mass is at rest at the start, it stays at rest. If the bodies shift by Δx₁ and Δx₂, then it must hold that:
 
@@ -29,7 +29,7 @@ The shifts are opposite and in the inverse ratio of the masses: the heavier body
 
 ## The boat and the man
 
-Relative to the boat the man shifts by its whole length towards the bow, but relative to the water only by L − x, because the boat meanwhile drives away by x the other way. The condition of the motionless centre of mass:
+Relative to the boat the man shifts by its whole length towards the bow, but relative to the water only by L − x, because the boat meanwhile moves away by x in the opposite direction. The condition of the motionless centre of mass:
 
 ```kalk
 relation m·(x - L) + M·x == 0
@@ -48,6 +48,6 @@ check "The shift of the boat is about 1.03 m": abs(x - 1.0294 m) ≤ 0.0001 m
 
 ## Assumptions of the calculation
 
-- **The resistance of the water is neglected.** If it were counted, it would be an external force; as long as the boat moves it brakes it and the shift comes out smaller.
+- **The resistance of the water is neglected.** If it were included, it would be an external force; as long as the boat moves it brakes it and the shift comes out smaller.
 - **The tilting of the boat is neglected.** A man at the stern tilts the boat, so the centre of mass shifts vertically too; the effect on the horizontal shift is small.
 - The boat and the man are replaced by points at their centres of mass. The man stands at the stern and at the bow right above the end of the boat; in reality he stands a little inside and walks slightly less than L.

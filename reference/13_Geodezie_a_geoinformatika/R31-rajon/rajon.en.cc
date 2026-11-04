@@ -23,4 +23,4 @@ d_550 := 286.45 m
 Y_550 := Y_517 + d_550·sin(α) | m {decimals=2}
 X_550 := X_517 + d_550·cos(α) | m {decimals=2}
 check "Coordinates as in the source (668512.86; 1118895.51)": abs(Y_550 - 668512.86 m) ≤ 0.005 m and abs(X_550 - 1118895.51 m) ≤ 0.005 m
-"In the source the calculation of X has a typo 268.45 m instead of 286.45 m; the increments used correspond to the distance 286.45 m."
+"In the source the calculation of X has a misprint, 268.45 m instead of 286.45 m; the increments used correspond to a distance of 286.45 m."

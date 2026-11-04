@@ -16,7 +16,7 @@ u_A := stdev(x)/sqrt(len(x)) | mm
 check "standard deviation of the mean": abs(u_A - 0.0707 mm) ≤ 0.0001 mm
 ```
 
-**Type B** is determined otherwise: from the resolution of the instrument, the accuracy class, a calibration certificate. If only the error limit Δ is known and every value within it is equally probable (uniform distribution), then u_B = Δ/√3.
+**Type B** is determined in another way: from the resolution of the instrument, the accuracy class, a calibration certificate. If only the error limit Δ is known and every value within it is equally probable (uniform distribution), then u_B = Δ/√3.
 
 The **combined uncertainty** of both types is the square root of the sum of squares. The **expanded uncertainty** U = k·u with coverage factor k = 2 covers about 95 % of the values.
 

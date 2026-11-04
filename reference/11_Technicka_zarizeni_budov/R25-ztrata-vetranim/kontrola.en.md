@@ -1,6 +1,6 @@
 # Check in Python
 
-The calculation of the sheet again and independently, in Python. The button above the script runs it in the built-in Python and sets the results beside the values of the sheet: if they agree, the sheet is calculated correctly.
+The calculation of the sheet again and independently, in Python. The button above the script runs it in the built-in Python and places the results next to the values of the sheet: if they agree, the sheet is calculated correctly.
 
 The whole calculation again, room by room, from the values of the source (tables 1 to 4 of the article):
 

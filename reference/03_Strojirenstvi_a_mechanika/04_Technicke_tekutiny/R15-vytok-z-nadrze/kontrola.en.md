@@ -1,8 +1,8 @@
 # Check in Python
 
-The calculation of the sheet again and independently, in Python. The button above the script runs it in the built-in Python and sets the results beside the values of the sheet: if they agree, the sheet is calculated correctly.
+The calculation of the sheet again and independently, in Python. The button above the script runs it in the built-in Python and places the results next to the values of the sheet: if they agree, the sheet is calculated correctly.
 
-Another way to the same results: instead of the integral, a step-by-step simulation of the emptying (the 4th order Runge–Kutta method), the impact speed from conservation of energy. The button below the script runs it in the built-in Python and sets the results beside the values of the sheet.
+Another way to the same results: instead of the integral, a step-by-step simulation of the emptying (the 4th order Runge–Kutta method), the impact speed from conservation of energy. The button below the script runs it in the built-in Python and places the results next to the values of the sheet.
 
 ```python
 from math import pi, sqrt

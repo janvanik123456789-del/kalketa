@@ -36,6 +36,23 @@ jobs:
       - run: npm run typecheck
       - run: npm test
 
+  packaged:
+    name: Packaged program (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: node scripts/pyodide-packages.mjs
+      - run: npm run build:desktop
+      - run: npx electron-builder --win --dir --publish never
+        working-directory: packages/desktop
+      - run: node scripts/packaged-check.mjs packages/desktop/release/win-unpacked/Kalketa.exe
+
   smoke:
     name: Smoke test (Linux, real input)
     runs-on: ubuntu-latest
@@ -63,6 +80,10 @@ jobs:
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
       - run: npm run build:desktop
       - run: xvfb-run -a -s "-screen 0 1920x1080x24" node scripts/smoke.mjs
+      # The packaged program, looked at from outside: it starts, and its test modes are not there.
+      - run: npx electron-builder --linux --dir --publish never
+        working-directory: packages/desktop
+      - run: xvfb-run -a -s "-screen 0 1920x1080x24" node scripts/packaged-check.mjs packages/desktop/release/linux-unpacked/kalketa
       # Screenshots and result.json of the run, to see what went wrong.
       - if: failure()
         uses: actions/upload-artifact@v5

@@ -33,7 +33,7 @@ relation I == b·t^3/12
 derive W == b·t^2/6
 ```
 
-The thickness t is squared in the formula, the width b only linear: a board on edge is much stronger than one laid flat.
+The thickness t is squared in the formula, the width b only linearly: a board on edge is much stronger than one laid flat.
 
 ## Deflection
 

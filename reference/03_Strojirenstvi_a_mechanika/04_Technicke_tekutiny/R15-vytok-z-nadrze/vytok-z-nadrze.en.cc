@@ -6,7 +6,7 @@
 r := 0.9 m            ' radius of the tank
 h_1 := 3 m            ' height of the water in the tank
 h_2 := 6 m            ' height of the pedestal
-S_2 := 6.3 cm^2       ' area of the opening after the plug
+S_2 := 6.3 cm^2       ' area of the opening left by the plug
 g := 9.81 m/s^2       ' gravitational acceleration
 ![A tank on a pedestal: water up to the height h₁ above the bottom, the bottom at the height h₂ above the ground, an opening near the bottom, the jet hits the ground at the point A](images/nadrz.en.svg){width=80%}
 
@@ -27,7 +27,7 @@ v_A := sqrt(2·g·(h_1 + h_2)) | m/s
 "The outflow speed v_v through the opening from the Bernoulli equation for the surface at the height h above the opening and for the opening (Torricelli's formula, see Sources):"
 relation p_a + (h_2 + h)·ρ·g == p_a + h_2·ρ·g + ρ·v_v^2/2 {eq}
 derive v_v == sqrt(2·g·h) {eq}
-"At every moment the tank loses as much water as flows out through the opening (the continuity equation). But both the speed of the falling surface v_p and the outflow speed change with the height h of the surface, so we work with a fall by dh in the time dt (dh is negative, the surface falls):"
+"At every moment the tank loses as much water as flows out through the opening (the continuity equation). But both the speed of the falling surface v_p and the outflow speed change with the height h of the surface, so we work with a drop of dh in the time dt (dh is negative, the surface falls):"
 S_1 := π·r^2 | m^2
 relation S_1·v_p == S_2·v_v {eq}
 relation v_p == -dh/dt {eq}
@@ -37,7 +37,7 @@ derive -dh/sqrt(h) == sqrt(2·g)·S_2/S_1·dt
 "Integrating from the full tank (height h_1) to the empty one (0) and from the time 0 to t gives the time to empty:"
 t_v := S_1/(S_2·sqrt(2·g))·integral(1/sqrt(h), h: 0 m .. h_1) == S_1/(S_2·sqrt(2·g))·2·sqrt(h_1) == S_1/S_2·sqrt(2·h_1/g) | min {eq}
 
-## Course of the emptying
+## Progress of the emptying
 "The height of the surface at the time t, the solution of that differential equation with h(0) = h_1:"
 h_t(t) := (sqrt(h_1) - S_2/S_1·sqrt(g/2)·t)^2
 v_t(t) := sqrt(2·g·h_t(t))

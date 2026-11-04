@@ -1,11 +1,11 @@
 # Surfaces in 3D: solids of revolution, saddle and waves
-"A sample sheet for graphs of surfaces z(x, y). Each surface can be shown as a map with contour lines or in 3D; a 3D graph is rotated by dragging with the mouse and the rotation is stored in the line (view). Right button on the graph: Surface as a map / Surface in 3D, Section of the surface…, View from above, Appearance of the graph. For solids of revolution the volume is calculated below the surface and compared with a formula."
+"A sample sheet for graphs of surfaces z(x, y). Each surface can be shown as a map with contour lines or in 3D; a 3D graph is rotated by dragging with the mouse and the rotation is stored in the line (view). Right-click on the graph: Surface as a map / Surface in 3D, Section of the surface…, View from above, Appearance of the graph. For solids of revolution the volume is calculated below the surface and compared with a formula."
 
 ## Hemisphere
 R := 1 m              ' radius of the sphere
 x_b := 0.5 m          ' point on the surface
 y_b := 0.3 m
-"The upper half of a sphere centred at the origin: z² + x² + y² = R². Outside the circle x² + y² ≤ R² the expression has no value, the graph leaves an empty place there and finds the edge exactly."
+"The upper half of a sphere centred at the origin: z² + x² + y² = R². Outside the circle x² + y² ≤ R² the expression has no value, the graph leaves a gap there and finds the edge exactly."
 z(x, y) := sqrt(R^2 - x^2 - y^2)
 
 "A map with contour lines: the contour lines of a sphere are concentric circles, the highest point is in the middle."
@@ -51,7 +51,7 @@ check "Volume of the paraboloid": V_p == V_p2
 ## Cone
 R_k := 1 m            ' radius of the base
 H_k := 1.2 m          ' height
-"A cone over a circular base; outside it the surface is at zero. The contour lines of a cone are concentric circles at equal distances (the slope is the same everywhere), unlike the sphere and the paraboloid."
+"A cone over a circular base; outside it the surface is zero. The contour lines of a cone are concentric circles at equal distances (the slope is the same everywhere), unlike the sphere and the paraboloid."
 z_k(x, y) := max(0 m, H_k·(1 - sqrt(x^2 + y^2)/R_k))
 plot(z_k(x, y), x: -R_k .. R_k, y: -R_k .. R_k, levels: 6) | m
 
@@ -75,7 +75,7 @@ check "Volume of half the torus": V_t == V_t2
 
 ## Saddle
 a := 1 m
-"The hyperbolic paraboloid z = (x² − y²)/a has a saddle at the origin: it rises in the direction x and falls in the direction y. The values go to both sides of zero, so the map is blue–white–red with its centre at zero."
+"The hyperbolic paraboloid z = (x² − y²)/a has a saddle at the origin: it rises in the x direction and falls in the y direction. The values go to both sides of zero, so the map is blue–white–red with its centre at zero."
 s(x, y) := (x^2 - y^2)/a
 plot(s(x, y), x: -1 m .. 1 m, y: -1 m .. 1 m, levels: 8) | m
 plot(s(x, y), x: -1 m .. 1 m, y: -1 m .. 1 m, kind: "surface", view: "az=-40 el=35", cut: x == 0 m) | m

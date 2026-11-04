@@ -68,9 +68,9 @@ describe('sample calculations shipped with the program', () => {
     for (const { id, language } of samples('en').filter((s) => s.language === 'en')) {
       const doc = exampleDocument(id, 'Sample', 'en');
       expect(language).toBe('en');
-      // Czech letters only where they belong: the title of a source (source "…", a line "Source: …"), the unit Kč and the names
-      // of the calculation, which stay the same in every language (η_č).
-      const words = (text: string) => text.replace(/source "[^"]*"/g, '').replace(/^.*\bSources?:.*$/gm, '').replace(/Kč/g, '').replace(/\p{L}+_\p{L}+/gu, '');
+      // Czech letters only where they belong: the title of a source (source "…", a line "Source: …"), the unit Kč, the names
+      // of the calculation, which stay the same in every language (η_č), and a name of a person in a language other than Czech (Chézy).
+      const words = (text: string) => text.replace(/source "[^"]*"/g, '').replace(/^.*\bSources?:.*$/gm, '').replace(/Kč|Chézy/g, '').replace(/\p{L}+_\p{L}+/gu, '');
       for (const text of [doc.source, ...doc.layers.map((l) => l.text ?? '')]) expect(words(text), id).not.toMatch(/[áčďéěíňóřšťúůýž]/);
     }
   });

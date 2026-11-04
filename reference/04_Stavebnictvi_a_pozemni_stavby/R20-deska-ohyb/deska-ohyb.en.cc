@@ -1,5 +1,5 @@
 # Design and check of the bending reinforcement of a floor slab
-"After example 3 of a Czech textbook of CTU (Examples of design of concrete structures to Eurocode 2, CTU in Prague, Faculty of Civil Engineering; EN 1992-1-1 second generation). A one-way floor slab 200 mm thick, the design bending moment at the bottom fibres from a linear elastic analysis, concrete C30/37 of strength development class CR, steel B500B. The calculation is for a strip of the slab 1 m wide, so the moment and the area of reinforcement are related to a metre of width. The theory (concrete strength, the rectangular stress block, three ways of design, detailing rules) is in the Sources layer."
+"Based on example 3 of a Czech textbook from CTU in Prague, Faculty of Civil Engineering (Examples of the Design of Concrete Structures to Eurocode 2; EN 1992-1-1, second generation). A one-way spanning floor slab 200 mm thick, the design bending moment at the bottom fibres from a linear elastic analysis, concrete C30/37 of strength development class CR, steel B500B. The calculation is for a strip of the slab 1 m wide, so the moment and the area of reinforcement are related to a metre of width. The theory (concrete strength, the rectangular stress block, three ways of design, detailing rules) is in the Sources layer."
 "Source: Příklady navrhování betonových konstrukcí podle Eurokódu 2, ČVUT v Praze, Fakulta stavební, https://people.fsv.cvut.cz/~bilypet1/vyuka/Skripta/P%c5%99%c3%adklady%20navrhov%c3%a1n%c3%ad%20BK%20EC2_2G.pdf"
 
 ## Input
@@ -48,9 +48,9 @@ m_Rd := a_s_prov·f_yd·(d - 0.4·x) | kN·m/m
 check "Bending": m_Ed ≤ m_Rd source "EN 1992-1-1; textbook, appendix P04"
 
 ## Check of the reinforcement
-"At the ultimate limit state the reinforcement is beyond yield:"
+"At the ultimate limit state the reinforcement has yielded:"
 check "Reinforcement beyond yield": x/d ≤ ξ_bal
-"Minimum reinforcement: the resistance is larger than the moment at cracking, at which the concrete in tension would crack:"
+"Minimum reinforcement: the resistance must exceed the cracking moment, at which the concrete in tension would crack:"
 m_cr := h^2·f_ctm/6 | kN·m/m
 check "Minimum reinforcement": m_cr ≤ m_Rd source "textbook, appendix P05, row 1"
 s_slab_max := min(3·h, 400 mm) | mm

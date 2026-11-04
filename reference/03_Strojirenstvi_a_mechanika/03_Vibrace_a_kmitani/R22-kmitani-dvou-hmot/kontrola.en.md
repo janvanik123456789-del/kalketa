@@ -1,8 +1,8 @@
 # Check in Python
 
-The calculation of the sheet again and independently, in Python. The button above the script runs it in the built-in Python and sets the results beside the values of the sheet: if they agree, the sheet is calculated correctly.
+The calculation of the sheet again and independently, in Python. The button above the script runs it in the built-in Python and places the results next to the values of the sheet: if they agree, the sheet is calculated correctly.
 
-Another way to the same results: the eigenvalues of the matrix M⁻¹·K from the characteristic equation, the modes from the first row, and the motion simulated step by step (the Runge–Kutta method) and compared with the decomposition into modes.
+Another way to the same results: the eigenvalues of the matrix M⁻¹·K from the characteristic equation, the mode shapes from the first row, and the motion simulated step by step (the Runge–Kutta method) and compared with the decomposition into mode shapes.
 
 ```python
 from math import pi, sqrt, cos

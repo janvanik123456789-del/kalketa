@@ -2,7 +2,7 @@
 
 The calculation of the sheet done again and independently, in Python. The button above the script runs it in the built-in Python and places the results beside the values of the sheet: if they agree, the sheet is calculated correctly.
 
-Another way to the same result: the man walks with a varying speed relative to the boat (he starts running, slows down, stands for a while), and the speed of the boat is calculated step by step from the equality of momenta. The shift of the boat at the end must come out the same as from the formula, whatever the course of the walk.
+Another way to the same result: the man walks with a varying speed relative to the boat (he sets off, slows down, stands still for a while), and the speed of the boat is calculated step by step from the equality of momenta. The shift of the boat at the end must come out the same as from the formula, whatever the course of the walk.
 
 ```python
 from math import sin, pi

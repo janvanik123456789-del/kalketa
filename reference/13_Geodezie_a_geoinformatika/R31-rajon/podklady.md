@@ -6,7 +6,7 @@ Teorie k výpočtu, vlastními slovy. Vzorce v rámečcích Kalketa ověřuje.
 
 ## Souřadnicový systém S-JTSK
 
-Systém jednotné trigonometrické sítě katastrální je pravoúhlý rovinný systém Křovákova zobrazení. Osa X míří k jihu, osa Y k západu, a obě souřadnice jsou na celém území kladné (Y asi 430 až 900 km, X asi 930 až 1 230 km). Systém je pravotočivý jako v matematice, jen pootočený: kladný směr úhlů je od osy X k ose Y, tedy ve směru hodinových ručiček, jak se díváme na mapu.
+Systém jednotné trigonometrické sítě katastrální je pravoúhlý rovinný systém Křovákova zobrazení. Osa X míří k jihu, osa Y k západu, a obě souřadnice jsou na celém území kladné (Y asi 430 až 900 km, X asi 930 až 1 230 km). Vzorce mají stejný tvar jako v matematice, protože kladný směr úhlů vede od osy X k ose Y. Na mapě je to ale ve směru hodinových ručiček, opačně než v matematice.
 
 ## Směrník
 

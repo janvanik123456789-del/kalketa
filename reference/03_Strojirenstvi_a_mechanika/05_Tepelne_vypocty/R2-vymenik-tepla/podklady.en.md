@@ -13,7 +13,7 @@ relation Q == m_h·c_h·(t_h1 - t_h2)
 relation Q == m_c·c_c·(t_c2 - t_c1)
 ```
 
-From three known temperatures and both flow rates the fourth temperature follows.
+From three known temperatures and both mass flow rates the fourth temperature follows.
 
 ## Log mean temperature difference
 
@@ -38,4 +38,4 @@ check "larger than the smaller of the differences": ΔT_ln > ΔT_A
 - **Counterflow:** the hot fluid enters at the end where the cold one leaves. The temperature difference is more even along the exchanger and its mean value larger. The cold fluid can be heated even above the outlet temperature of the hot one.
 - **Parallel flow:** both enter at the same end. At the inlet the difference is large, towards the end it falls quickly, and the cold fluid never exceeds the outlet temperature of the hot one.
 
-For the same temperatures counterflow needs a smaller area, so it is used where possible. Parallel flow is chosen when the wall temperature at the inlet has to be limited (e.g. for sensitive substances).
+For the same temperatures counterflow needs a smaller area, so it is used where possible. Parallel flow is chosen when the wall temperature at the inlet has to be limited (e.g. for sensitive fluids).

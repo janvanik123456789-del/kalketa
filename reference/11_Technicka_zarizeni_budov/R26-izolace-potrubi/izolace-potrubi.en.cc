@@ -1,5 +1,5 @@
 # Optimal insulation thickness of a central heating pipe
-"After example 1 of the opinion of SEI (the Czech Energy Inspectorate) “Are the prescribed heat transfer coefficients binding for determining the insulation thickness?” (TZB-info, in Czech). A steel central heating pipe DN 40 in the technical floor of an apartment building in Melnik, insulation shells of mineral wool with aluminium foil. The manufacturer supplies five thicknesses; each is one variant of the calculation. The optimum is the one with the smallest sum of the price of the insulation and the price of the heat that escapes through the pipe during the assessed period of two years. The section of the pipe is our own."
+"After example 1 of the opinion of SEI (the Czech State Energy Inspectorate) “Are the prescribed heat transfer coefficients binding for determining the insulation thickness?” (TZB-info, in Czech). A steel central heating pipe DN 40 in the technical floor of an apartment building in Melnik, insulation shells of mineral wool with aluminium foil. The manufacturer supplies five thicknesses; each is one variant of the calculation. The optimum is the one with the smallest sum of the price of the insulation and the price of the heat that escapes through the pipe during the assessed period of two years. The section of the pipe is our own."
 "Source: https://www.tzb-info.cz/4564-stanovisko-sei-jsou-predepisovane-hodnoty-soucinitelu-prostupu-tepla-pro-urceni-tloustky-izolace-zavazne"
 
 ## Input
@@ -16,7 +16,7 @@ t_v := 3.7 °C                 ' mean outdoor temperature in the heating season
 t_i := 20 °C                  ' heated living spaces
 d_12 := 219                   ' days of the heating season per year
 C_tp := 400 Kč/GJ             ' current price of heat
-z := 8 %                      ' mean yearly increase of the price of heat
+z := 8 %                      ' average annual increase of the price of heat
 i_f := 3 %                    ' expected inflation
 n := 2                        ' assessed period in years
 "Variants: the thicknesses of the shells the manufacturer supplies and their price per metre. The calculation below is written out for the chosen thickness, the comparison of all of them is at the end."
@@ -30,7 +30,7 @@ table Izolace: {variants=50mm}
 ![Section of the insulated pipe: water at temperature t_m, steel wall, insulation of thickness δ_iz, surroundings t_o](images/potrubi.en.svg){width=60%}
 
 ## Water temperature and price of heat
-"The water is not at 75 °C for the whole heating season: its temperature is controlled by the outdoor temperature (equithermal control). Mean water temperature in the heating season:"
+"The water is not at 75 °C for the whole heating season: its temperature is controlled by the outdoor temperature (weather-compensated, or equithermal, control). Mean water temperature in the heating season:"
 t_m := (t_w - t_i)·(t_v - t_e)/(t_i - t_e) + t_i | °C {eq}
 "The price of heat grows faster than inflation; the mean real price of heat in the assessed period:"
 C_ts := C_tp·((1 + z - i_f)^n - 1)/(n·(z - i_f)) | Kč/kWh {eq}
@@ -47,4 +47,4 @@ N := N_p + C_iz | Kč/m {eq}
 ## Comparison of thicknesses
 porovnani := compare(Izolace, U_o, q, N_p, C_iz, N)
 nejlepsi := find_min(porovnani, by: N).pouzdro
-"The smallest cost over two years belongs to the 50 mm shell, as in the source (237.50 Kč/m). A 10 mm thicker insulation saves heat worth 16 Kč/m but costs 12 Kč/m more: the differences get smaller, so for a longer period an even thicker one would pay off. The source also gives 60 mm (250.30 Kč/m) but does not state the price of that shell."
+"The smallest cost over two years belongs to the 50 mm shell, as in the source (237.50 Kč/m). An insulation 10 mm thicker saves heat worth 16 Kč/m but costs 12 Kč/m more: the differences get smaller, so for a longer period an even thicker one would pay off. The source also gives 60 mm (250.30 Kč/m) but does not state the price of that shell."

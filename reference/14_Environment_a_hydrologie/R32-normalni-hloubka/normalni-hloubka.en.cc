@@ -1,5 +1,5 @@
 # Roughness and normal depth in a trapezoidal channel (Manning)
-"After the lecture notes Fluid Mechanics, chapter 8 Open Channel Flow (University of Mustansiriyah), worked examples 3 and 4. A trapezoidal channel with a bottom width of 8 m and side slopes 1 : 1.5 carries 56 m³/s, the bed slope is 0.0009. First, from the depth of 2 m measured at this flow, we determine Manning’s roughness coefficient. Then for the roughness 0.017 we find the normal depth at which the flow is uniform. The picture of the cross section is our own."
+"After the lecture notes Fluid Mechanics, chapter 8 Open Channel Flow (University of Mustansiriyah), worked examples 3 and 4. A trapezoidal channel with a bottom width of 8 m and side slopes 1 : 1.5 carries 56 m³/s, the bed slope is 0.0009. First, from the depth of 2 m measured at this flow, we determine Manning’s roughness coefficient. Then for the roughness 0.017 we find the normal depth at which the flow is uniform. The drawing of the cross section is our own."
 "Source: https://www.uomus.edu.iq/img/lectures21/MUCLecture_2024_41752170.pdf"
 
 ## Input
@@ -25,7 +25,7 @@ n := 0.017 s/m^(1/3)
 "The normal depth is the one at which Manning’s equation gives the specified flow:"
 solve y_n: S_p(y_n)·R_h(y_n)^(2/3)·sqrt(I_0)/n == Q in 0.5 m .. 5 m
 v := Q/S_p(y_n) | m/s
-"Source by trial: 2.137 m. A channel with higher roughness (0.017 against 0.0151) needs a larger depth to carry the same flow."
-"Rating curve of the channel, the flow in uniform flow against the depth:"
+"Source, by trial and error: 2.137 m. A channel with higher roughness (0.017 against 0.0151) needs a larger depth to carry the same flow."
+"Rating curve of the channel, the flow in uniform flow as a function of the depth:"
 Q_y(y) := S_p(y)·R_h(y)^(2/3)·sqrt(I_0)/n
 plot(Q_y(y), y: 0.2 m .. 3 m, title: "Rating curve of the channel (n = 0.017)") | m^3/s

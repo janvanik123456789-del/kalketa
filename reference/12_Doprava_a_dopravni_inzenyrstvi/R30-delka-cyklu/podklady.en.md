@@ -16,7 +16,7 @@ From simulations of vehicle delay Webster (1958) derived the cycle length for wh
 relation C_o == (1.5·L + 5 s)/(1 - Y)
 ```
 
-L is the lost time of the cycle (the sum of the intergreen times, when nobody drives at full rate), Y the sum of the critical ratios. A short cycle loses too much time on intergreens, a long one makes vehicles wait needlessly. The minimum is flat, so the cycle is rounded to 5 s. For Y → 1 the cycle grows beyond all bounds: the intersection is at the limit of its capacity.
+L is the lost time of the cycle (the sum of the intergreen times, when no vehicles move at the full rate), Y the sum of the critical ratios. A short cycle loses too much time on intergreens, a long one makes vehicles wait needlessly. The minimum is flat, so the cycle is rounded to 5 s. For Y → 1 the cycle grows without limit: the intersection is at the limit of its capacity.
 
 ## Split of the green
 

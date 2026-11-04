@@ -16,7 +16,7 @@ Cemented carbide withstands a much higher temperature at the point of cut than h
 
 ## Machining time
 
-In one revolution the tool travels the feed f. The tool path L is the length of the machined surface plus the approach (and possibly the overrun):
+In one revolution the tool advances by the feed f. The tool path L is the length of the machined surface plus the approach (and possibly the overrun):
 
 ```kalk
 relation t_m == L/(n·f)
@@ -32,8 +32,8 @@ t_m := L/(n·f) | s
 check "half a minute": abs(t_m - 30 s) ≤ 0.001 s
 ```
 
-## Edge life and tool consumption
+## Tool life and tool consumption
 
-The edge life T is the cutting time after which the edge becomes so blunt that it must be resharpened or replaced. In that time T/t_m parts are machined. A cemented carbide insert has more usable corners (here four), it is turned when blunt, and only after all the corners is it replaced.
+The tool life T is the cutting time after which the edge becomes so blunt that it must be resharpened or replaced. In that time T/t_m parts are machined. A cemented carbide insert has more usable cutting edges (here four), it is indexed when blunt, and only after all the edges is it replaced.
 
-The edge life falls steeply with the cutting speed (Taylor's relation v_c·T^m = const.). A higher speed thus shortens the machining time but uses up more edges. The cutting conditions in the tables therefore seek a compromise between the cost of the machine and of the tools.
+The tool life falls steeply with the cutting speed (Taylor's relation v_c·T^m = const.). A higher speed thus shortens the machining time but uses up more edges. The cutting conditions in the tables therefore seek a compromise between machine costs and tool costs.

@@ -1,5 +1,5 @@
 # Force and moment of water on the vertical wall of a dam
-"After problem 1152 of a Czech collection of solved physics problems (reseneulohy.cz/1152; originally Halpern: Schaum's 3000 Solved Problems in Physics). The water at a dam reaches the height h, the dam is l long. Find the resulting force F with which the water pushes the dam horizontally, its moment M about the point O at the foot of the dam, and the height H above the foot at which the force F would have the moment M. The task is general; for an idea we substitute a dam 30 m high and 100 m long (an assumption). The picture and the graphs are our own."
+"After problem 1152 of a Czech collection of solved physics problems (reseneulohy.cz/1152; originally Halpern: Schaum's 3000 Solved Problems in Physics). The water at a dam reaches the height h, the dam has length l. Find the resulting force F with which the water pushes the dam horizontally, its moment M about the point O at the foot of the dam, and the height H above the foot at which the force F would have the moment M. The problem is general; for illustration we substitute a dam 30 m high and 100 m long (an assumption). The picture and the graphs are our own."
 "Source: https://reseneulohy.cz/1152"
 
 ## Input
@@ -12,7 +12,7 @@ g := 9.81 m/s^2       ' gravitational acceleration
 ## Force of the water
 "At depth y below the surface we mark a horizontal strip of height dy; on the inner and the outer side of the dam it has the area"
 relation dS == l·dy {eq}
-"From the inside it is pressed by the water and the air above it, from the outside only by the air:"
+"From the inside the water and the air above it press on it, from the outside only the air does:"
 relation p == p_h + p_a {eq}
 relation dF_1 == p·dS {eq}
 relation dF_2 == p_a·dS {eq}
@@ -26,7 +26,7 @@ derive dF == ρ·g·y·l·dy {eq}
 F := integral(ρ·g·y·l, y: 0 m .. h) == ρ·g·l·h^2/2 | MN {eq}
 
 ## Moment of the force about the foot of the dam
-"The strip at depth y has an arm to the point O at the foot of the dam, its height above the foot:"
+"The arm of the strip at depth y about the point O at the foot of the dam is its height above the foot:"
 relation dM == r·dF {eq}
 relation r == h - y {eq}
 derive dM == (h - y)·ρ·g·y·l·dy {eq}
@@ -37,10 +37,10 @@ M := integral((h - y)·ρ·g·y·l, y: 0 m .. h) == ρ·g·l·h^3/6 | MN·m {eq}
 H := M/F == (ρ·g·l·h^3/6)/(ρ·g·l·h^2/2) == h/3 | m {eq}
 "So the resultant of the water pressure acts at one third of the height of the water above the foot of the dam."
 
-## Course along the height
+## Variation with height
 "The water pressure grows evenly with depth, from zero at the surface:"
 p_v(y) := ρ·g·y
 plot(p_v(y), y: 0 m .. h, title: "Hydrostatic pressure at depth y") | kPa
-"The load on the dam per metre of height q(y) = ρ·g·y·l; the area under it is the resultant force F:"
+"The load on the dam per metre of height is q(y) = ρ·g·y·l; the area under it is the resultant force F:"
 q(y) := ρ·g·y·l
 plot(q(y), y: 0 m .. h, area: 0 m .. h, title: "Load on the dam along the height; the area is the force F") | MN/m

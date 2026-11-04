@@ -14,7 +14,7 @@ n := 3                                  ' loaded cables in a bundle
 I_B := P / (√3·U·cos_φ) | A
 k := interpolate(Korekce, θ: θ, n: n).k
 
-## Smallest cross-section that is enough
+## Smallest adequate cross-section
 kabel := find_min(Kabely, by: S, where: r.I_z·k ≥ I_B)
 I_zk := kabel.I_z·k | A
 

@@ -87,7 +87,7 @@ relation λ_A == λ_B
 derive w_B == w_A·sqrt(L_A/L_B)
 ```
 
-The assumption λ_A = λ_B is exact only in the fully rough region. Otherwise λ depends on the speed, which is yet to be found; an honest calculation solves the Colebrook equation and the equality of the losses as a system of two equations for w_B and λ_B.
+The assumption λ_A = λ_B is exact only in the fully rough region. Otherwise λ depends on the speed, which is yet to be found; a rigorous calculation solves the Colebrook equation and the equality of the losses as a system of two equations for w_B and λ_B.
 
 ## Assumptions of the calculation
 

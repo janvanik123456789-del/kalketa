@@ -1,5 +1,5 @@
 # Measurement uncertainty: swing time of a pendulum and cross section of a wire
-"After the collection Errors and uncertainties of measurement – examples (CTU in Prague, Faculty of Mechanical Engineering, in Czech), worked examples 1 and 4. First the swing time of a torsional pendulum from repeated measurement with a stopwatch: type A uncertainty from the scatter of the measurements, type B from the accuracy of the stopwatch, and their combination. Then the cross section of a wire from a single measurement with a micrometer: how the uncertainty of the diameter carries over to the area. The picture is our own."
+"After the collection Errors and uncertainties of measurement – examples (CTU in Prague, Faculty of Mechanical Engineering, in Czech), worked examples 1 and 4. First the swing time of a torsional pendulum from repeated measurement with a stopwatch: type A uncertainty from the scatter of the measurements, type B from the accuracy of the stopwatch, and their combination. Then the cross section of a wire from a single measurement with a micrometer: how the uncertainty of the diameter propagates to the area. The figure is our own."
 "Source: Z. Budinská: Chyby a nejistoty měření – příklady, ČVUT v Praze, Fakulta strojní, https://www.fs.cvut.cz/content/files/12102/2024nejistotypriklady.pdf"
 
 ## Swing time of a torsional pendulum (example 1)
@@ -14,7 +14,7 @@ u_A := stdev(t_i)/sqrt(len(t_i))/N_k | s {eq}
 Δ_t := 0.3 s
 u_B := Δ_t/(N_k·sqrt(3)) | s {eq}
 u_c := sqrt(u_A^2 + u_B^2) | s {eq}
-"Result: T_k = (2.328 ± 0.022) s. The source rounds u_B to 0.022 s and the combined uncertainty up to 0.023 s. The uncertainty of the stopwatch prevails: repeating the measurement would improve the result only a little."
+"Result: T_k = (2.328 ± 0.022) s. The source rounds u_B to 0.022 s and the combined uncertainty up to 0.023 s. The uncertainty of the stopwatch dominates: repeating the measurement would improve the result only a little."
 
 ## Cross section of a wire (example 4)
 d := 0.81 mm                  ' diameter measured with a micrometer

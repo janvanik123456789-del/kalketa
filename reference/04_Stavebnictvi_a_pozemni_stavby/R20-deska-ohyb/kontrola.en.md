@@ -1,8 +1,8 @@
 # Check in Python
 
-The calculation of the sheet again and independently, in Python. The button above the script runs it in the built-in Python and sets the results beside the values of the sheet: if they agree, the sheet is calculated correctly.
+The sheet is calculated again, independently, in Python. The button above the script runs it in the built-in Python and places the results next to the values of the sheet: if they agree, the sheet is calculated correctly.
 
-Another way to the same results: a calculation without tables (the lever arm ζ from a quadratic equation, not from appendix P04) and the checks by plain arithmetic.
+A different route to the same results: a calculation without tables (the lever arm ζ from a quadratic equation, not from appendix P04) and the checks by plain arithmetic.
 
 ```python
 from math import pi, sqrt

@@ -1,5 +1,5 @@
 # Natural frequencies, mode shapes and free vibration of a two-mass system
-"After the examples of lecture 4 of the course 53/58:153 Fundamentals of Vibration (University of Iowa, S. Xiao). Two masses on a line, joined between walls by three springs: wall – k_1 – m_1 – k_2 – m_2 – k_3 – wall. Task: the natural frequencies and mode shapes, then the free vibration when the first mass is displaced by 1 and released. The source gives no units; we take kilograms, newtons per metre and metres. The solution in the source is only in pictures, so it is checked separately (eigenvalues in Python and by hand from a quadratic equation). The theory is in the Sources layer."
+"After the examples of lecture 4 of the course 53/58:153 Fundamentals of Vibration (University of Iowa, S. Xiao). Two masses on a line, joined between walls by three springs: wall – k_1 – m_1 – k_2 – m_2 – k_3 – wall. Problem: find the natural frequencies and mode shapes, then the free vibration when the first mass is displaced by 1 and released. The source gives no units; we take the masses in kilograms, newtons per metre and metres. The solution in the source is only in pictures, so it was verified separately (eigenvalues in Python and by hand from a quadratic equation). The theory is in the Sources layer."
 "Source: https://user.engineering.uiowa.edu/~sxiao/class/058-153/lecture-4.pdf"
 
 ## Input

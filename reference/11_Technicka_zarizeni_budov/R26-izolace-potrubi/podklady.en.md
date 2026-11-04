@@ -12,9 +12,9 @@ A thicker insulation lets less heat through but costs more. The total cost per m
 relation N == C_iz + q·C·τ
 ```
 
-The price of the insulation grows roughly linearly with the thickness, the heat loss falls more and more slowly (the logarithm in the resistance of the insulation). The sum therefore has a minimum: that is the economically optimal thickness. It depends on the length of the assessed period. Over two years 50 mm pays off most, over a longer time a thicker insulation would come out.
+The price of the insulation grows roughly linearly with the thickness, the heat loss falls more and more slowly (the logarithm in the resistance of the insulation). The sum therefore has a minimum: that is the economically optimal thickness. It depends on the length of the assessed period. Over two years 50 mm pays off most, over a longer time a thicker insulation would be optimal.
 
-The Czech standard for heat distribution (decree No. 193/2007 Coll.) prescribes the largest heat transfer coefficient. The SEI opinion, from which the example comes, shows that the economically better insulation tends to be thicker than the decree requires.
+The Czech rules for heat distribution (decree No. 193/2007 Coll.) prescribes the maximum heat transfer coefficient. The SEI opinion, from which the example comes, shows that the economically better insulation tends to be thicker than the decree requires.
 
 ## Heat transfer through a cylindrical wall
 
@@ -41,7 +41,7 @@ For the 20 mm thickness the source gives the outer diameter of the insulation D 
 
 ## Water temperature and price of heat
 
-The heating water has the highest temperature only at the outdoor design temperature. With equithermal control it falls roughly linearly with the outdoor temperature, so for the mean outdoor temperature of the heating season t_v the mean water temperature is:
+The heating water has the highest temperature only at the outdoor design temperature. With weather-compensated (equithermal) control it falls roughly linearly with the outdoor temperature, so for the mean outdoor temperature of the heating season t_v the mean water temperature is:
 
 ```kalk
 relation t_m == (t_w - t_i)·(t_v - t_e)/(t_i - t_e) + t_i

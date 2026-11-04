@@ -1,9 +1,9 @@
 # Pressure losses in a pipe: pump input power and flow through a parallel branch
-"After exercise 11 of the course Fluid Mechanics I (University of West Bohemia in Pilsen, Department of Machine Design, Ing. M. Klimko), examples 4 and 1. First the input power of the pump of a garden sprayer: water is drawn from a tank through a suction strainer, led through smooth pipes and an elbow and sprayed through twelve holes of the nozzle 3 m above the surface. Then two parallel branches of a water main: at what flow rate does the longer branch run when the shorter one carries 0.4 m³/s. The friction factor is computed from the Blasius relation as in the exercise and from the Colebrook equation, which Kalketa solves as an equation. The theory is in the Sources layer."
+"After exercise 11 of the course Fluid Mechanics I (University of West Bohemia in Pilsen, Department of Machine Design, Ing. M. Klimko), examples 4 and 1. First the input power of the pump of a garden sprayer: water is drawn from a tank through a suction strainer, led through smooth pipes and an elbow and sprayed through twelve holes of the nozzle 3 m above the surface. Then two parallel branches of a water main: what flow rate passes through the longer branch when the shorter one carries 0.4 m³/s. The friction factor is computed from the Blasius relation as in the exercise and from the Colebrook equation, which Kalketa solves as an equation. The theory is in the Sources layer."
 "Source: Ing. M. Klimko: Mechanika tekutin I, cvičení 11, ZČU v Plzni, http://home.zcu.cz/~kovarikp/MT/cviceni/cviceni_MT_11.pdf"
 
 ## Input power of the sprayer pump
-D := 30 mm                  ' nominal size of the pipe
+D := 30 mm                  ' inside diameter (bore) of the pipe
 L_1 := 1 m                  ' suction
 L_2 := 10 m                 ' delivery
 L_3 := 1 m                  ' feed to the nozzle

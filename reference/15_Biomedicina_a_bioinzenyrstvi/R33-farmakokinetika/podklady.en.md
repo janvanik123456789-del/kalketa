@@ -6,13 +6,13 @@ The theory behind the calculation, in our own words. Kalketa checks the formulas
 
 ## Model
 
-After an intravenous dose the drug quickly spreads into the blood and the tissues that exchange the substance with the blood quickly. The body then behaves as one vessel (compartment) of apparent volume V_d. With linear (first-order) elimination the substance decreases in proportion to its amount:
+After an intravenous dose the drug quickly spreads into the blood and into the tissues that exchange the substance with the blood quickly. The body then behaves as one vessel (compartment) of apparent volume V_d. With linear (first-order) elimination the substance decreases in proportion to its amount:
 
 ```kalk
 relation c == c_0·exp(-k_e·t)
 ```
 
-In a semilogarithmic plot (ln c against t) the measurements lie on a line with slope −k_e. The biological half-life is the time in which the concentration falls to a half:
+In a semilogarithmic plot (ln c against t) the measurements lie on a line with slope −k_e. The biological half-life is the time in which the concentration falls to half:
 
 ```kalk
 k_e := 0.126 h^-1
@@ -37,4 +37,4 @@ The trapezoidal rule from a few distant points overestimates the area, because t
 
 ## Linearity
 
-Kinetics is linear when k_e, t_1/2, V_d and CL do not depend on the dose and AUC grows in proportion to the dose. When the elimination saturates (enzymes, transporters) this stops being true and the concentration grows faster than the dose.
+The kinetics is linear when k_e, t_1/2, V_d and CL do not depend on the dose and AUC grows in proportion to the dose. When the elimination saturates (enzymes, transporters) this stops being true and the concentration grows faster than the dose.

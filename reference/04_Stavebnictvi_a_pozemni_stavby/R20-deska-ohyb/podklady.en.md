@@ -1,6 +1,6 @@
 # Bending of a reinforced concrete slab
 
-The theory behind the calculation, in our own words after a Czech textbook of CTU and EN 1992-1-1 (second generation). Kalketa checks the formulas in the boxes as derivations.
+The theory behind the calculation, in our own words, based on a Czech textbook of CTU and on EN 1992-1-1 (second generation). Kalketa checks the formulas in the boxes as derivations.
 
 ![A strip of the slab with the main reinforcement at the bottom surface](images/deska.en.svg)
 
@@ -23,7 +23,7 @@ relation ε_yd == f_yd/E_s
 
 ## The rectangular stress block
 
-At the ultimate limit state the compressed part of the section has the height x. The real stress distribution in the concrete (a parabola with a constant part) is replaced by a rectangle of height 0.8·x with the stress f_cd. The compressive force in the concrete and the tensile force in the reinforcement are in equilibrium:
+At the ultimate limit state the compressed part of the section has the height x. The real stress distribution in the concrete (a parabola followed by a constant part) is replaced by a rectangle of height 0.8·x with the stress f_cd. The compressive force in the concrete and the tensile force in the reinforcement are in equilibrium:
 
 ```kalk
 relation F_c == 0.8·x·b·f_cd
@@ -94,11 +94,11 @@ relation m_cr == W·f_ctm
 derive m_cr == b·h^2·f_ctm/6
 ```
 
-- **Largest spacing of bars** in tensile concrete is s_slab,max = min(3·h; 400 mm). At the places of the largest moments the stricter min(2·h; 250 mm) from the first generation of the standard is also recommended.
+- **Maximum spacing of bars** in the tension zone is s_slab,max = min(3·h; 400 mm). At the places of the largest moments the stricter min(2·h; 250 mm) from the first generation of the standard is also recommended.
 - **Distribution reinforcement** of a one-way slab (in the perpendicular direction) must have at least 20 % of the main reinforcement in the span; it also keeps the largest spacing.
 
 ## Assumptions of the calculation
 
 - Rectangular stress block in the compressed concrete, reinforcement with unlimited strain (the horizontal branch of the stress-strain diagram).
-- Concrete in tension is not counted in the resistance.
-- The moment is computed by a linear elastic analysis; the slab spans in one direction and the calculation is for a strip 1 m wide.
+- Concrete in tension is not included in the resistance.
+- The moment is obtained from a linear elastic analysis; the slab spans in one direction and the calculation is for a strip 1 m wide.

@@ -1,5 +1,5 @@
 # Payback of a photovoltaic system
-"Reference calculation R5: a 10 kWp PV system on a family house, panels paid in euros."
+"Reference calculation R5: a 10 kWp PV system on a family house, panels paid for in euros."
 @digits 6
 
 dimension Mena
@@ -15,8 +15,8 @@ vyroba := 9800 kWh                              ' production in the first year
 podil_spotreby := 70 %                          ' consumed in the house, the rest sold
 cena_nakup := 5.8 CZK/kWh
 cena_prodej := 1.2 CZK/kWh
-degradace := 0.5 %                              ' drop of panel output per year
-rust_cen := 3 %                                 ' growth of electricity prices per year
+degradace := 0.5 %                              ' annual drop in panel output
+rust_cen := 3 %                                 ' annual growth of electricity prices
 diskont := 4 %
 roky := range(1, 25)
 

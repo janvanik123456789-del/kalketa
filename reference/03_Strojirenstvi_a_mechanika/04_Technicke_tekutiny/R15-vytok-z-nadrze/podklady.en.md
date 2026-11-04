@@ -14,7 +14,7 @@ relation p + ρ·g·y + ρ·v^2/2 == c
 
 - p is the pressure in the liquid, y the height above a chosen zero plane, v the flow speed, ρ the density, g the gravitational acceleration.
 - Every term has the dimension of pressure (Pa = J/m³): it is an energy density. So the equation is the law of conservation of energy for a flowing liquid.
-- Between two places 1 and 2 of the same streamline: p₁ + ρ·g·y₁ + ½·ρ·v₁² = p₂ + ρ·g·y₂ + ½·ρ·v₂².
+- Between two points 1 and 2 of the same streamline: p₁ + ρ·g·y₁ + ½·ρ·v₁² = p₂ + ρ·g·y₂ + ½·ρ·v₂².
 
 ## The continuity equation
 
@@ -67,7 +67,7 @@ relation Q == μ·S_2·sqrt(2·g·h)
 - The time to empty is lengthened in the ratio 1/μ. The tank of the calculation (52.7 min without the coefficient) would be emptied through a sharp-edged opening in about 85 minutes.
 - The collection of problems neglects the coefficient; a technical calculation must include it.
 
-## Speed of impact another way: a horizontal projectile
+## Speed of impact another way: horizontal projectile motion
 
 The jet leaves the opening horizontally at the speed vₓ = √(2·g·h₁) and falls from the height h₂, where it gains the vertical speed v_y = √(2·g·h₂). The magnitude of the resulting speed at impact is the same as from the Bernoulli equation for the surface and the ground:
 

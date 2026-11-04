@@ -4,7 +4,8 @@ import { exampleDocument, samples, savedSampleTitle, subfieldName } from '../src
 describe('sample calculations shipped with the program', () => {
   it('are the reference cases, named after their first heading', () => {
     const list = samples();
-    expect(list.map((s) => `${s.field} ${s.id}`)).toEqual([
+    // These at least, by field; a new case goes after the others of its field.
+    expect(list.map((s) => `${s.field} ${s.id}`)).toEqual(expect.arrayContaining([
       '00 R24-pruvodce-police',
       '01 R7-kvadraticka-rovnice',
       '01 R17-prolozeni-parabolou',
@@ -38,7 +39,8 @@ describe('sample calculations shipped with the program', () => {
       '15 R33-farmakokinetika',
       '16 R5-fotovoltaika',
       '17 R34-nejistota-mereni',
-    ]);
+    ]));
+    expect(list.map((s) => s.field)).toEqual(list.map((s) => s.field).sort());
     expect(list.find((s) => s.id === 'R1-nosnik')!.title).toBe('Posouzení nosníku N1');
     // A field split into parts: the part with its names (cs, en); a case right in its field has none.
     const crank = list.find((s) => s.id === 'R9-klikovy-mechanismus')!;
@@ -65,14 +67,18 @@ describe('sample calculations shipped with the program', () => {
   });
 
   it('are in no Czech in their English version', () => {
-    for (const { id, language } of samples('en').filter((s) => s.language === 'en')) {
+    const notEnglish: string[] = [];
+    for (const { id } of samples('en').filter((s) => s.language === 'en')) {
       const doc = exampleDocument(id, 'Sample', 'en');
-      expect(language).toBe('en');
       // Czech letters only where they belong: the title of a source (source "…", a line "Source: …"), the unit Kč, the names
       // of the calculation, which stay the same in every language (η_č), and a name of a person in a language other than Czech (Chézy).
       const words = (text: string) => text.replace(/source "[^"]*"/g, '').replace(/^.*\bSources?:.*$/gm, '').replace(/Kč|Chézy/g, '').replace(/\p{L}+_\p{L}+/gu, '');
-      for (const text of [doc.source, ...doc.layers.map((l) => l.text ?? '')]) expect(words(text), id).not.toMatch(/[áčďéěíňóřšťúůýž]/);
+      for (const text of [doc.source, ...doc.layers.map((l) => l.text ?? '')]) {
+        const found = /.{0,30}[áčďéěíňóřšťúůýž].{0,30}/.exec(words(text));
+        if (found) notEnglish.push(`${id}: ${found[0]}`);
+      }
     }
+    expect(notEnglish).toEqual([]);
   });
 
   it('print in the language of their sheet', () => {

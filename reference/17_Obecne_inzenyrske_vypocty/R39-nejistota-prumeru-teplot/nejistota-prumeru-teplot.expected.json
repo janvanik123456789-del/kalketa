@@ -1,0 +1,39 @@
+{
+  "sheet": "nejistota-prumeru-teplot.cc",
+  "verifiedBy": "NIST Technical Note 1900, příklad E2 (A. Possolo, 2015): průměr 25,59 °C, s = 4,1 °C, u = 0,872 °C, k = 2,08, 95% interval 23,8 až 27,4 °C. Samostatně přepočteno v Pythonu (statistics, SciPy) ve vrstvě Kontrola v Pythonu.",
+  "relativeTolerance": 1e-09,
+  "values": {
+    "m": {
+      "value": 22,
+      "unit": ""
+    },
+    "t_avg": {
+      "value": 25.59090909090909,
+      "unit": "°C"
+    },
+    "s": {
+      "value": 4.092345827553479,
+      "unit": "Δ°C"
+    },
+    "u": {
+      "value": 0.872491062009295,
+      "unit": "Δ°C"
+    },
+    "k": {
+      "value": 2.0796138447276795,
+      "unit": ""
+    },
+    "U": {
+      "value": 1.8144444919556864,
+      "unit": "Δ°C"
+    },
+    "t_low": {
+      "value": 23.776464598953403,
+      "unit": "°C"
+    },
+    "t_high": {
+      "value": 27.405353582864777,
+      "unit": "°C"
+    }
+  }
+}

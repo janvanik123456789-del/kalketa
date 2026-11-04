@@ -1,0 +1,73 @@
+{
+  "sheet": "seriove-paralelni-rlc.cc",
+  "verifiedBy": "Zdroj (Kuphaldt, Lessons In Electric Circuits II, oddíl 5.4) uvádí Z = 818,34 Ω ∠ −58,371°, I = 146,64 mA ∠ 58,371°, E_C1 = 82,760 V, E_p = 65,857 V, I_R = 140,12 mA, I_LC2 = 43,232 mA, E_L = 10,594 V, E_C2 = 76,451 V; výkon je náš doplněk. Samostatně v Pythonu s komplexními čísly (Kontrola v Pythonu) a shoda s tabulkou zdroje na 4–5 platných číslic.",
+  "relativeTolerance": 1e-09,
+  "values": {
+    "ω": {
+      "value": 376.99111843077515,
+      "unit": "rad/s"
+    },
+    "Z_abs": {
+      "value": 818.3386108102854,
+      "unit": "Ω"
+    },
+    "φ_Z": {
+      "value": -58.371170109793105,
+      "unit": "°"
+    },
+    "I_abs": {
+      "value": 146.6385655214055,
+      "unit": "mA"
+    },
+    "E_C1_abs": {
+      "value": 82.75976081785979,
+      "unit": "V"
+    },
+    "E_p_abs": {
+      "value": 65.85685113301538,
+      "unit": "V"
+    },
+    "I_R_abs": {
+      "value": 140.12095985747953,
+      "unit": "mA"
+    },
+    "I_LC2_abs": {
+      "value": 43.23176502057424,
+      "unit": "mA"
+    },
+    "E_L_abs": {
+      "value": 10.593694440447784,
+      "unit": "V"
+    },
+    "E_C2_abs": {
+      "value": 76.45054557346316,
+      "unit": "V"
+    },
+    "cos_φ": {
+      "value": 0.5244144086026157,
+      "unit": ""
+    },
+    "P": {
+      "value": 9.227925193949254,
+      "unit": "W"
+    },
+    "P_R": {
+      "value": 9.227925193949252,
+      "unit": "W"
+    }
+  },
+  "checks": [
+    {
+      "label": "Kirchhoffův zákon pro napětí",
+      "passed": true
+    },
+    {
+      "label": "Kirchhoffův zákon pro proudy",
+      "passed": true
+    },
+    {
+      "label": "Činný výkon zdroje = výkon na rezistoru",
+      "passed": true
+    }
+  ]
+}

@@ -1,0 +1,81 @@
+{
+  "sheet": "silova-metoda.cc",
+  "verifiedBy": "Zdroj (příklad č. 8, BD03, VUT FAST Brno): X_1 = −22,727 kN, X_2 = 9,584 kN (ze zaokrouhleného 2,727), A_x = −77,273 kN, A_z = 0,682 kN, D_z = 8,902 kN, M_b = 3,41 kN·m, M_cL = −23,296 kN·m, M_cP = 26,706 kN·m. Samostatně v Pythonu (Kontrola v Pythonu): integrály součinů obrazců dvoubodovým Gaussovým pravidlem po úsecích (přesné pro kvadratické průběhy) a dříve i lichoběžníkovým pravidlem na jemné síti; ve zdroji je překlep v kanonické rovnici (261236 / 261326, správně asi 261364).",
+  "relativeTolerance": 1e-06,
+  "values": {
+    "δ_10": {
+      "value": 0.4177109440267335,
+      "unit": "mm"
+    },
+    "δ_11": {
+      "value": 0.018379281537176273,
+      "unit": "mm/kN"
+    },
+    "δ_20": {
+      "value": -64.05500486818038,
+      "unit": "mm"
+    },
+    "δ_22": {
+      "value": 6.684000507984039,
+      "unit": "mm/kN"
+    },
+    "X_1": {
+      "value": -22.727272727272727,
+      "unit": "kN"
+    },
+    "X_2": {
+      "value": 9.583333333333334,
+      "unit": "kN"
+    },
+    "A_x": {
+      "value": -77.27272727272727,
+      "unit": "kN"
+    },
+    "A_z": {
+      "value": 0.681818181818182,
+      "unit": "kN"
+    },
+    "D_z": {
+      "value": 8.901515151515152,
+      "unit": "kN"
+    },
+    "N_a": {
+      "value": 77.27272727272727,
+      "unit": "kN"
+    },
+    "N_d": {
+      "value": -22.727272727272727,
+      "unit": "kN"
+    },
+    "M_b": {
+      "value": 3.40909090909091,
+      "unit": "kN·m"
+    },
+    "M_cL": {
+      "value": -23.295454545454543,
+      "unit": "kN·m"
+    },
+    "M_cP": {
+      "value": 26.704545454545457,
+      "unit": "kN·m"
+    }
+  },
+  "checks": [
+    {
+      "label": "Svislá rovnováha",
+      "passed": true
+    },
+    {
+      "label": "Momentová rovnováha k bodu a",
+      "passed": true
+    },
+    {
+      "label": "Neznámé a reakce jako ve zdroji (−22,727; 9,584; −77,273; 0,682; 8,902 kN)",
+      "passed": true
+    },
+    {
+      "label": "Momenty jako ve zdroji (3,41; −23,296; 26,706 kN·m)",
+      "passed": true
+    }
+  ]
+}

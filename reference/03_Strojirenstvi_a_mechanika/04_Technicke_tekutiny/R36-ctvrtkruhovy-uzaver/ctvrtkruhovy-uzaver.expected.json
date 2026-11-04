@@ -1,0 +1,33 @@
+{
+  "sheet": "ctvrtkruhovy-uzaver.cc",
+  "verifiedBy": "Úloha 2.3 sbírky KIT Hydromechanik zadává jen data, výsledky neuvádí; samostatně v Pythonu (Kontrola) v uzavřeném tvaru: momenty ke kloubu D (slaná voda ρ_S·g·R²/2 na rameni R, tíha G·R/3, říční voda ρ_F·g·(t·R²/2 + R³/3)), přítlak F_A a hloubka otevření t_0 z F_A = 0.",
+  "relativeTolerance": 1e-06,
+  "values": {
+    "M_S": {
+      "value": 5.027625,
+      "unit": "kN·m/m"
+    },
+    "M_G": {
+      "value": 10.0,
+      "unit": "kN·m/m"
+    },
+    "F_A0": {
+      "value": 11.767435,
+      "unit": "kN/m"
+    },
+    "F_A1": {
+      "value": 6.87715,
+      "unit": "kN/m"
+    },
+    "t_0": {
+      "value": 2.40628818156815,
+      "unit": "m"
+    }
+  },
+  "checks": [
+    {
+      "label": "Při t_0 je přítlak nulový",
+      "passed": true
+    }
+  ]
+}

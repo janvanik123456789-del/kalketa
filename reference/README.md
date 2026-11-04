@@ -29,6 +29,10 @@ Strojírenství má podobory `01_Kinematika_a_dynamika`, `02_Pevnost_a_pruznost`
 
 Příklady ze zdrojů (články, učebnice) se převádějí do jednotek SI; obrázky jsou vlastní.
 
+## Nový vzor (2026-11-04)
+
+Zadání pro toho, kdo vzor vyrábí, je ve `scripts/sample-factory-brief.md`, kontrola hotového vzoru `node scripts/sample-check.mjs R35`. Vzory přibývají cyklicky po oborech.
+
 ## Jazyky (2026-11-03)
 
 Výpočet má jednu složku a program ho ukáže v jazyce programu; dokud anglickou verzi nemá, česky. Anglická verze stojí vedle české: `<list>.en.cc`, `podklady.en.md`, `kontrola.en.md`, `tables/<Tabulka>/schema.en.json` a `data.en.csv` (jen slova, stejné sloupce a čísla), obrázky `images/<obrázek>.en.svg`, na které list odkazuje. Názvy českých zdrojů a autoři zůstávají v řádku `Source:` tak, jak jsou napsané. Jména proměnných, vzorce a čísla zůstávají stejné a referenční test ověřuje, že anglický list dá tytéž výsledky a posudky podle stejného `*.expected.json`.

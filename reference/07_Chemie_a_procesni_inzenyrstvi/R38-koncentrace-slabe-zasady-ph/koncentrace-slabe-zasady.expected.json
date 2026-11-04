@@ -1,0 +1,17 @@
+{
+  "sheet": "koncentrace-slabe-zasady.cc",
+  "verifiedBy": "Zdroj (VŠCHT Praha, T. Uhlíková, seminář 3, př. 4) uvádí c(CH₃COONa) = 1,770·10⁻² mol/dm³ (ze zaokrouhleného pK = 4,754; přesně 1,760·10⁻²), c(NaCN) = 4,93·10⁻⁷ a 3,6552·10⁻⁶ mol/dm³ s autoprotolýzou. Samostatně v Pythonu (kontrola.md), pH kyanidu o zjednodušené koncentraci řešením kvadratické rovnice.",
+  "relativeTolerance": 1e-09,
+  "values": {
+    "c_oct0": {"value": 0.017600000000000022, "unit": "mol/dm³"},
+    "c_CN0": {"value": 4.929999999999997e-07, "unit": "mol/dm³"},
+    "c_oct": {"value": 0.01760316227766017, "unit": "mol/dm³"},
+    "c_CN": {"value": 3.655277660168379e-06, "unit": "mol/dm³"},
+    "pH_CN0": {"value": 7.6826567152086715, "unit": ""}
+  },
+  "checks": [
+    {"label": "Octan: zjednodušení stačí (do 1 %)", "passed": true},
+    {"label": "Kyanid: zjednodušení nestačí (chyba nad 50 %)", "passed": true},
+    {"label": "Kyanid jako ve zdroji (3,6552·10⁻⁶ mol/dm³)", "passed": true}
+  ]
+}

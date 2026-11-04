@@ -162,6 +162,37 @@ describe('the look of single parts', () => {
     expect(parseChartLook('title.place=left').parts).toBeUndefined();
   });
 
+  it('draws notes where they were dragged, their words only as text', () => {
+    const svg = draw('n0.text=Peak~here n0.at=20,30 n0.bold n1.text=<b>');
+    expect(svg).toMatch(/data-part="n0"[^>]*font-weight="bold"[^>]*transform="translate\(20 30\)[^>]*>Peak here</);
+    // What could be markup does not get in.
+    expect(svg).not.toContain('<b>');
+    expect(parseChartLook('n1.text=<b>').parts).toBeUndefined();
+    expect(chartLookText(parseChartLook('n0.at=20,30 n0.text=Peak~here'))).toBe('n0.at=20,30 n0.text=Peak~here');
+  });
+
+  it('turns an axis round: the values go the other way and read back', () => {
+    const usual = chartLayout(two);
+    const turned = chartLayout(two, { look: parseChartLook('axis.xflip') });
+    expect(xPosition(turned, 0)).toBeCloseTo(xPosition(usual, 1));
+    expect(xPosition(turned, 1)).toBeCloseTo(xPosition(usual, 0));
+    expect(xValueAt(turned, xPosition(turned, 0.25))).toBeCloseTo(0.25);
+    const up = chartLayout(two, { look: parseChartLook('axis.yflip') });
+    expect(yPosition(up, 0)).toBeLessThan(yPosition(up, 1));
+    expect(yValueAt(up, yPosition(up, 0.25))).toBeCloseTo(0.25);
+  });
+
+  it('sets the spacing of the numbers of an axis, and draws the lines through zero', () => {
+    const layout = chartLayout(two, { look: parseChartLook('axis.xstep=0.25 axis.ystep=0.5') });
+    expect(layout.x.ticks).toEqual([0, 0.25, 0.5, 0.75, 1]);
+    expect(layout.y.ticks).toEqual([0, 0.5, 1]);
+    expect(parseChartLook('axis.xstep=0').parts).toBeUndefined();
+    // So many numbers that nobody could read them: the axis keeps its own.
+    expect(chartLayout(two, { look: parseChartLook('axis.xstep=0.0001') }).x.ticks).toEqual(chartLayout(two).x.ticks);
+    expect(draw('axis.zero')).toContain('class="chart-zero"');
+    expect(chartSvg(two)).not.toContain('class="chart-zero"');
+  });
+
   it('gives bigger text the room it needs', () => {
     const usual = chartLayout(two);
     const big = chartLayout(two, { look: parseChartLook('xTicks.size=18 xTitle.size=18 yTicks.size=18') });

@@ -5,9 +5,9 @@
 
 import { t, type Catalog, type UiKey } from '@kalketa/i18n';
 import { fromDecimalComma, toDecimalComma } from '@kalketa/core';
-import { xPosition } from '@kalketa/chart';
+import { chartLookText, xPosition } from '@kalketa/chart';
 import type { PrintBlock } from '@kalketa/render';
-import { chartX, nearestOnCurve, plotFlag, plotOption, plotShowsRoots, plotYRange, withPlotFlag, withPlotOption, withPlotRoots, withPlotYRange, writtenNumber } from './logic/index.js';
+import { chartX, nearestOnCurve, plotFlag, plotOption, plotShowsRoots, plotYRange, withNewNote, withPlotFlag, withPlotOption, withPlotRoots, withPlotYRange, writtenNumber } from './logic/index.js';
 
 export type ChartMenuItem =
   | { readonly kind: 'separator' }
@@ -211,6 +211,16 @@ export function chartMenuItems(host: ChartMenuHost): ChartMenuItem[] {
             if (answer === undefined) return;
             const typed = answer.trim();
             set('points', typed === '' ? undefined : host.decimalComma ? fromDecimalComma(typed) : typed);
+          }),
+      },
+      {
+        // A note anywhere in the chart: it appears in the corner of the plot and is dragged where it belongs.
+        kind: 'action',
+        label: t(c, 'chart.note'),
+        run: () =>
+          void host.ask(t(c, 'chart.noteAsk'), '').then((answer) => {
+            if (!answer?.trim()) return;
+            set('style', `"${chartLookText(withNewNote(chart?.ownLook ?? {}, answer))}"`);
           }),
       },
       ...(plotOption(host.text, 'labels') !== undefined ? [{ kind: 'action' as const, label: t(c, 'chart.labelsReset'), run: () => set('labels', undefined) }] : []),

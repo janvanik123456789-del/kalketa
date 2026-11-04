@@ -13,9 +13,22 @@ export function partKind(part: ChartPart): 'text' | 'lines' | 'curve' {
   return part === 'axis' || part === 'grid' ? 'lines' : 'text';
 }
 
+/** A note in the chart: n0, n1, … */
+export const isNote = (part: ChartPart): boolean => /^n\d+$/.test(part);
+
+/** The words of a note as a look writes them, ~ for a space: what could end the style or be markup is left out. */
+export const noteValue = (words: string): string => words.trim().replace(/["<>&]/g, '').replace(/\s+/g, '~');
+
+/** The look with a new note: the next free number, a little under the last one. */
+export function withNewNote(look: ChartLook, words: string): ChartLook {
+  const taken = Object.keys(look.parts ?? {}).flatMap((key) => /^n(\d+)\.text$/.exec(key)?.[1] ?? []).map(Number);
+  const next = taken.length > 0 ? Math.max(...taken) + 1 : 0;
+  return withPartChanges(look, `n${next}`, { text: noteValue(words), at: `0,${taken.length * 18}` });
+}
+
 /** Parts that the mouse moves, when they are in the drawing (a title under the chart is a caption, it stays there). */
 export function partMoves(part: ChartPart): boolean {
-  return part === 'xTitle' || part === 'yTitle' || part === 'legend' || part === 'title';
+  return part === 'xTitle' || part === 'yTitle' || part === 'legend' || part === 'title' || isNote(part);
 }
 
 /** The look with properties of a part set, or taken away with undefined. */

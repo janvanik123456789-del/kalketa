@@ -65,7 +65,10 @@ export function ChartView({ ref: holder, block, catalog, uiCatalog, onPart, onLo
       const xNow = scaleOf(x, now?.x);
       const yNow = scaleOf(y, now?.y);
       const clampShare = (v: number) => Math.min(1, Math.max(0, v));
-      const along = (s: typeof x, share: number) => (s.log ? s.min * (s.max / s.min) ** share : s.min + share * (s.max - s.min));
+      const along = (s: typeof x, at: number) => {
+        const share = s.reversed ? 1 - at : at;
+        return s.log ? s.min * (s.max / s.min) ** share : s.min + share * (s.max - s.min);
+      };
       askRange({
         ...(overX ? { x: zoomedRange(xNow, along(xNow, clampShare((px - plot.left) / (plot.right - plot.left))), factor) } : {}),
         ...(overY ? { y: zoomedRange(yNow, along(yNow, clampShare((plot.bottom - py) / (plot.bottom - plot.top))), factor) } : {}),
@@ -270,8 +273,8 @@ export function ChartView({ ref: holder, block, catalog, uiCatalog, onPart, onLo
         if (!(u > 0)) return;
         // Taken by the hand: the content follows the pointer, so the range goes the other way.
         askRange({
-          x: movedRange(x, -(ev.clientX - start.x) / u / (plot.right - plot.left)),
-          y: movedRange(y, (ev.clientY - start.y) / u / (plot.bottom - plot.top)),
+          x: movedRange(x, ((x.reversed ? 1 : -1) * (ev.clientX - start.x)) / u / (plot.right - plot.left)),
+          y: movedRange(y, ((y.reversed ? -1 : 1) * (ev.clientY - start.y)) / u / (plot.bottom - plot.top)),
         });
       };
       const up = () => {

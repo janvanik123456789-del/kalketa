@@ -8,7 +8,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 're
 import { createPortal } from 'react-dom';
 import { t, type Catalog, type UiKey } from '@kalketa/i18n';
 import type { ChartLook, ChartSpec } from '@kalketa/chart';
-import { lookOption, partKind, type ChartPart } from './logic/chartParts.js';
+import { isNote, lookOption, noteValue, partKind, type ChartPart } from './logic/chartParts.js';
 
 interface ChartPartPanelProps {
   readonly catalog: Catalog;
@@ -150,7 +150,7 @@ export function ChartPartPanel({ catalog, fonts, part, spec, chartText, look, an
     );
   };
 
-  const title = spec.series.length > 0 && kind === 'curve' ? say('part.curve', { name: spec.series[Number(part.slice(1))]?.label ?? '' }) : say(`part.${part}` as UiKey);
+  const title = spec.series.length > 0 && kind === 'curve' ? say('part.curve', { name: spec.series[Number(part.slice(1))]?.label ?? '' }) : isNote(part) ? say('part.note') : say(`part.${part}` as UiKey);
   const series = kind === 'curve' ? spec.series[Number(part.slice(1))] : undefined;
   return createPortal(
     <div
@@ -170,6 +170,7 @@ export function ChartPartPanel({ catalog, fonts, part, spec, chartText, look, an
         </button>
       </div>
       {(part === 'xTitle' || part === 'yTitle') && onTitle && field('part.text', <TitleInput value={(part === 'xTitle' ? spec.xTitle : spec.yTitle).replace(/\s*\[[^\]]*\]$/, '')} onChange={onTitle} />)}
+      {isNote(part) && field('part.text', <TitleInput value={(get('text') ?? '').replace(/~/g, ' ')} onChange={(words) => noteValue(words) && onSet({ text: noteValue(words) })} />)}
       {part === 'title' && onTitle && field('part.text', <TitleInput value={chartText} onChange={onTitle} />)}
       {part === 'title' && (
         <div className="part-row part-choice">
@@ -208,6 +209,29 @@ export function ChartPartPanel({ catalog, fonts, part, spec, chartText, look, an
         <>
           {color('color', '#6b7280')}
           {width(1)}
+          {(['xflip', 'yflip', 'zero'] as const).map((name) => (
+            <label key={name} className="part-check">
+              <input type="checkbox" data-part-field={name} checked={!!get(name)} onChange={(e) => onSet({ [name]: e.target.checked ? 'on' : undefined })} />
+              {say(`part.axis.${name}`)}
+            </label>
+          ))}
+          {(['xstep', 'ystep'] as const).map((name) =>
+            field(
+              `part.axis.${name}`,
+              <input
+                key={name}
+                type="text"
+                data-part-field={name}
+                placeholder={say('part.axis.auto')}
+                defaultValue={get(name) ?? ''}
+                onChange={(e) => {
+                  const value = e.target.value.trim().replace(',', '.');
+                  if (value === '') onSet({ [name]: undefined });
+                  else if (/^\d+(\.\d+)?$/.test(value) && Number(value) > 0) onSet({ [name]: value });
+                }}
+              />,
+            ),
+          )}
         </>
       )}
       {part === 'grid' && (
@@ -263,9 +287,17 @@ export function ChartPartPanel({ catalog, fonts, part, spec, chartText, look, an
           )}
         </>
       )}
-      {(part === 'xTitle' || part === 'yTitle' || part === 'legend' || (part === 'title' && !!get('place'))) && <p className="part-hint">{say('part.dragHint')}</p>}
-      <button type="button" className="part-reset" data-part-field="reset" onClick={onReset}>
-        {say('part.reset')}
+      {(part === 'xTitle' || part === 'yTitle' || part === 'legend' || isNote(part) || (part === 'title' && !!get('place'))) && <p className="part-hint">{say('part.dragHint')}</p>}
+      <button
+        type="button"
+        className="part-reset"
+        data-part-field="reset"
+        onClick={() => {
+          onReset();
+          if (isNote(part)) onClose();
+        }}
+      >
+        {say(isNote(part) ? 'part.note.remove' : 'part.reset')}
       </button>
     </div>,
     document.body,

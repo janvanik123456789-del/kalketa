@@ -110,9 +110,11 @@ export interface ChartLook {
  * What can be set on a part: xTitle, yTitle, xTicks, yTicks, legend, names (texts: font, size, bold, italic, color;
  * titles and the legend also at=dx,dy, yTitle rotate=90), axis (color, width), grid (color, width, dash),
  * plot (fill), s0, s1, … the curves (color, width, dash, marker, name). A font has _ for a space, a name ~.
+ * n0, n1, … notes anywhere in the chart (text with ~ for a space, font, size, bold, italic, color, at). axis.xflip, axis.yflip
+ * turn an axis round, axis.xstep, axis.ystep set the spacing of its numbers, axis.zero draws the lines through zero.
  * title.place=top: the words of the title: over the chart as a heading (title.font, size…), not under it as a caption.
  */
-export const PART_KEY = /^(?:(?:xTitle|yTitle|xTicks|yTicks|legend|names)\.(?:font|size|bold|italic|color|rotate|at)|title\.(?:font|size|bold|italic|color|at|place)|axis\.(?:color|width)|grid\.(?:color|width|dash)|plot\.fill|s\d+\.(?:color|width|dash|marker|name))$/;
+export const PART_KEY = /^(?:(?:xTitle|yTitle|xTicks|yTicks|legend|names)\.(?:font|size|bold|italic|color|rotate|at)|title\.(?:font|size|bold|italic|color|at|place)|n\d+\.(?:text|font|size|bold|italic|color|at)|axis\.(?:color|width|xflip|yflip|zero|xstep|ystep)|grid\.(?:color|width|dash)|plot\.fill|s\d+\.(?:color|width|dash|marker|name))$/;
 
 /** The parts of a look in the order they are written. */
 export const LOOK_KEYS = ['colors', 'line', 'dashes', 'markers', 'grid', 'frame', 'font', 'legend', 'names', 'colormap'] as const;
@@ -135,7 +137,16 @@ function partValueIsValid(key: string, value: string): boolean {
       return value === 'top';
     case 'bold':
     case 'italic':
+    case 'xflip':
+    case 'yflip':
+    case 'zero':
       return value === 'on';
+    case 'xstep':
+    case 'ystep':
+      return /^\d+(\.\d+)?$/.test(value) && Number(value) > 0;
+    case 'text':
+      // Any words of a note, with ~ for a space: drawn as text, never as markup; the quotes would end the style.
+      return /^[^\s"<>&]+$/u.test(value);
     case 'dash':
       return /^(solid|dash|dot|dashdot)$/.test(value);
     default:
@@ -321,6 +332,8 @@ export interface Scale {
   readonly ticks: readonly number[];
   /** A logarithmic axis: positions go by the logarithm of the value. */
   readonly log?: boolean;
+  /** An axis turned round: its values grow towards the origin. */
+  readonly reversed?: boolean;
 }
 
 export interface ChartLayout {
@@ -373,13 +386,24 @@ export function logScale(min: number, max: number, fixed = false): Scale {
 
 /** Where a value lies along an axis, 0 at its start and 1 at its end; NaN for a value a logarithmic axis cannot show. */
 function shareOf(scale: Scale, v: number): number {
-  if (!scale.log) return (v - scale.min) / (scale.max - scale.min);
-  return v > 0 ? Math.log10(v / scale.min) / Math.log10(scale.max / scale.min) : NaN;
+  const share = !scale.log ? (v - scale.min) / (scale.max - scale.min) : v > 0 ? Math.log10(v / scale.min) / Math.log10(scale.max / scale.min) : NaN;
+  return scale.reversed ? 1 - share : share;
 }
 
 /** The value at a share of an axis (the inverse of shareOf). */
 function atShare(scale: Scale, s: number): number {
-  return scale.log ? scale.min * (scale.max / scale.min) ** s : scale.min + s * (scale.max - scale.min);
+  const share = scale.reversed ? 1 - s : s;
+  return scale.log ? scale.min * (scale.max / scale.min) ** share : scale.min + share * (scale.max - scale.min);
+}
+
+/** An axis as its look wants it: its numbers at a spacing set by hand, turned round. Bars keep their own places. */
+function axisAsSet(scale: Scale, parts: Readonly<Record<string, string>>, axis: 'x' | 'y'): Scale {
+  const step = Number(parts[`axis.${axis}step`]);
+  const reversed = parts[`axis.${axis}flip`] === 'on';
+  const first = Math.ceil(scale.min / step - 1e-9);
+  const last = Math.floor(scale.max / step + 1e-9);
+  const ticks = !scale.log && step > 0 && last - first <= 200 ? Array.from({ length: last - first + 1 }, (_, i) => Number(((first + i) * step).toPrecision(12))) : scale.ticks;
+  return { ...scale, ticks, ...(reversed ? { reversed } : {}) };
 }
 
 function finite(values: Iterable<number>): number[] {
@@ -414,8 +438,9 @@ export function chartLayout(spec: ChartSpec, options: ChartOptions = {}): ChartL
     : spec.xRange
       ? fixedScale(spec.xRange[0], spec.xRange[1])
       : { ...niceScale(Math.min(...xs), Math.max(...xs), 8), ...tight(xs) };
+  const yAxis = axisAsSet(y, paint.parts, 'y');
   // Room for the longest tick label on the left, the labels at the ends of the curves on the right.
-  const ticksWidth = (Math.max(...y.ticks.map((v) => format(v).length)) * 6.6 * sizeOf(paint, 'yTicks')) / 11;
+  const ticksWidth = (Math.max(...yAxis.ticks.map((v) => format(v).length)) * 6.6 * sizeOf(paint, 'yTicks')) / 11;
   // A y title written upwards stands left of the numbers; bigger texts take the room they need.
   const yUp = paint.parts['yTitle.rotate'] === '90';
   const growth = (part: string) => Math.max(0, sizeOf(paint, part) - paint.font);
@@ -426,7 +451,7 @@ export function chartLayout(spec: ChartSpec, options: ChartOptions = {}): ChartL
   const titleRoom = headed ? Math.round((paint.parts['title.size'] ? sizeOf(paint, 'title') : paint.font + 2) + 8) : 0;
   const barRoom = spec.surface ? COLOR_BAR * scale + Math.max(0, Math.max(...surfaceRange(spec.surface).map((v) => format(v).length)) - 4) * 6.6 * scale : 0;
   const plot = { left: Math.ceil(ticksWidth + 16 + (yUp ? sizeOf(paint, 'yTitle') + 6 : 0)), top: Math.round(26 * scale + legend + titleRoom + (yUp ? 0 : growth('yTitle'))), right: width - Math.ceil(spec.surface ? barRoom : Math.min(ends, width * 0.25)), bottom: Math.round(height - panel - 29 - 11 * scale - growth('xTicks') - growth('xTitle')) };
-  return { width, height, plot, x, y, ...(categories ? { categories } : {}), ...(titleRoom ? { titleRoom } : {}), paint };
+  return { width, height, plot, x: categories ? x : axisAsSet(x, paint.parts, 'x'), y: yAxis, ...(categories ? { categories } : {}), ...(titleRoom ? { titleRoom } : {}), paint };
 }
 
 /** An axis set by hand: exactly from and to, round ticks inside. */
@@ -587,6 +612,12 @@ export function chartSvg(spec: ChartSpec, options: ChartOptions = {}): string {
   // Wider than they look, to be taken by the mouse.
   parts.push(`<line data-part="axis" x1="${plot.left}" x2="${plot.right}" y1="${r(zero)}" y2="${r(zero)}" stroke="transparent" stroke-width="7"/>`);
   parts.push(`<line data-part="axis" x1="${plot.left}" x2="${plot.left}" y1="${plot.top}" y2="${plot.bottom}" stroke="transparent" stroke-width="7"/>`);
+  // The lines through zero, where the axes reach it.
+  if (paint.parts['axis.zero'] === 'on' && !spec.surface) {
+    const { x, y } = layout;
+    if (!categories(layout) && !x.log && x.min <= 0 && x.max >= 0) parts.push(`<line class="chart-zero" x1="${r(xPosition(layout, 0))}" x2="${r(xPosition(layout, 0))}" y1="${plot.top}" y2="${plot.bottom}" stroke="${INK_2}" stroke-width="1.2"/>`);
+    if (!y.log && y.min <= 0 && y.max >= 0) parts.push(`<line class="chart-zero" x1="${plot.left}" x2="${plot.right}" y1="${r(yPosition(layout, 0))}" y2="${r(yPosition(layout, 0))}" stroke="${INK_2}" stroke-width="1.2"/>`);
+  }
   if (paint.frame) parts.push(`<rect class="chart-frame" x="${plot.left}" y="${plot.top}" width="${plot.right - plot.left}" height="${plot.bottom - plot.top}" fill="none" stroke="${INK_2}" stroke-width="1"/>`);
   const moved = (part: string, rotate = '') => {
     const [dx, dy] = partOffset({ parts: paint.parts }, part);
@@ -596,6 +627,11 @@ export function chartSvg(spec: ChartSpec, options: ChartOptions = {}): string {
   if (layout.titleRoom && options.title) {
     const size = paint.parts['title.size'] ? '' : ` font-size="${paint.font + 2}"`;
     parts.push(text((plot.left + plot.right) / 2, layout.titleRoom - 6, options.title, `text-anchor="middle" ${textLook(paint, 'title', INK)}${size}${moved('title')}`));
+  }
+  // Notes: from the upper left corner of the plot, as far as they were dragged.
+  for (const key of Object.keys(paint.parts).filter((k) => /^n\d+\.text$/.test(k)).sort()) {
+    const part = key.slice(0, key.indexOf('.'));
+    parts.push(text(plot.left + 8, plot.top + 14, paint.parts[key]!.replace(/~/g, ' '), `${textLook(paint, part, INK)}${moved(part)}`));
   }
   if (spec.yTitle) {
     const up = paint.parts['yTitle.rotate'] === '90';
@@ -620,6 +656,8 @@ export function chartSvg(spec: ChartSpec, options: ChartOptions = {}): string {
   const title = options.title ? `<title>${esc(options.title)}</title>` : '';
   return `<svg class="chart-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" role="img" font-family='${FONT}' font-size="${paint.font}" style="width:100%;height:auto;display:block">${title}${parts.join('')}</svg>`;
 }
+
+const categories = (layout: ChartLayout) => layout.categories;
 
 /** Every n-th tick, so labels do not run into each other. */
 function thinned(ticks: readonly number[], size: (t: number) => number, room: number): number[] {

@@ -200,6 +200,47 @@ async function run() {
   steps.captionBack = (await exists(caption)) && !(await exists(heading)) && !(await plotLine()).includes('title.at=');
   await key('Escape');
 
+  // A note: asked for in the menu, dragged, opened by a click, removed from its window.
+  await clickAt(await place(chart), { button: 'right' });
+  await clickMenu('Přidat poznámku');
+  await pause(300);
+  for (const ch of 'Peak here') contents.sendInputEvent({ type: 'char', keyCode: ch });
+  await pause(200);
+  await key('Return');
+  const note = `${chart} [data-part="n0"]`;
+  for (let waited = 0; waited < 2000 && !(await exists(note)); waited += 100) await pause(100);
+  steps.noteAdded = (await text(note)) === 'Peak here' && (await plotLine()).includes('n0.text=Peak~here');
+  await drag(note, 60, 40);
+  await pause(500);
+  steps.noteDragged = /n0\.at=[1-9]/.test(await plotLine());
+  await click(note);
+  steps.noteWindow = (await text(panelHead)) === 'Poznámka';
+  await click('.chart-part-panel [data-part-field="reset"]');
+  await pause(600);
+  steps.noteRemoved = !(await exists(note)) && !(await plotLine()).includes('n0.') && !(await exists('.chart-part-panel'));
+
+  // The window of the axes: a turned axis, the spacing of its numbers, the lines through zero.
+  const xTick = (label) => js(`[...document.querySelectorAll('${chart} text[data-part="xTicks"]')].find((t) => t.textContent === '${label}')?.getAttribute('x') ?? ''`);
+  const zeroBefore = Number(await xTick('0'));
+  await click(`${chart} [data-part="axis"]`);
+  steps.axisWindow = (await text(panelHead)) === 'Osy';
+  await click('.chart-part-panel [data-part-field="xflip"]');
+  await pause(500);
+  steps.axisTurned = Number(await xTick('0')) > zeroBefore + 100 && (await plotLine()).includes('axis.xflip');
+  await click('.chart-part-panel [data-part-field="xflip"]');
+  await pause(400);
+  await click('.chart-part-panel [data-part-field="zero"]');
+  await pause(400);
+  steps.zeroLines = await exists(`${chart} .chart-zero`);
+  await click('.chart-part-panel [data-part-field="zero"]');
+  await pause(300);
+  await click('.chart-part-panel [data-part-field="xstep"]');
+  for (const ch of '0.5') contents.sendInputEvent({ type: 'char', keyCode: ch });
+  await pause(600);
+  steps.axisSpacing = (await plotLine()).includes('axis.xstep=0.5') && (await xTick('0,5')) !== '';
+  await key('Escape');
+  await pause(300);
+
   // The handles of a chart stay its handles, also where the frame of a title reaches under them.
   await drag('[data-sample="1"] .picture-handle.edge.s', 0, 40);
   await pause(300);

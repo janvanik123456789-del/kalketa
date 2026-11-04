@@ -67,6 +67,8 @@ Dnes `exp` a `ln` na řadě fungují, ale `sqrt`, `abs`, `round`, `mod`, `normin
 
 Závisí na etapě 1, protože tabulka přes parametr potřebuje funkci na řadě. Otevře etapu 4 (parametr v rovnici).
 
+**Hotovo 2026-11-04**, testy jsou v `packages/core/tests/solve-value.test.ts`. Zápis je `solve h: a == b in od .. do` kdekoli ve vzorci, nebo `solve(a == b, h: od .. do)` a `solve(a == b, h: odhad)`. Nejmenší celé číslo dává `first(podmínka, n: od .. do)`. Bod grafu bez kořene se vynechá. Soustava víc rovnic jako hodnota není, na to zůstává příkaz `solve`.
+
 | Rozšíření | Prověří |
 |---|---|
 | `solve` v těle funkce a ve sloupci tabulky | `chemie-5` (titrační křivka), `hydraulika-1`, `hydraulika-2`, `hydraulika-3` (Colebrook, návrh potrubí) |

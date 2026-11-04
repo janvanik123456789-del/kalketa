@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { defaultRegistry, evaluateSheet } from '@kalketa/core';
 import { catalogFor } from '@kalketa/i18n';
-import { buildPrintDocument, toMathML, toText } from '../src/index.js';
+import { buildPrintDocument, renderBlockHtml, toMathML, toText } from '../src/index.js';
 
 const cs = catalogFor('cs');
 const lines = (source: string) => {
@@ -57,5 +57,23 @@ describe('roots in print', () => {
     expect(plain(toText(cube!.rhs))).toBe('∛(27 m³)');
     expect(toMathML(cube!.rhs)).toContain('<mroot>');
     expect(toText(lines('b := root(16, 4)')[0]!.rhs)).toBe('root(16, 4)');
+  });
+});
+
+describe('solve and first in a formula', () => {
+  const text = (source: string) => {
+    const doc = buildPrintDocument(evaluateSheet(source), { catalog: cs, registry: defaultRegistry, digits: 4, title: 'T' });
+    return doc.blocks.map((b) => renderBlockHtml(b, cs)).join(' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+  };
+
+  it('puts no value of the sheet in place of its own unknown', () => {
+    expect(text('n := first(2^n >= 100, n: 1 .. 20)')).not.toContain('2 7');
+    expect(text('t := 5\na := solve t: t^2 == 9 in 0 .. 4')).toContain('t 2 = 9');
+  });
+
+  it('writes a small number as on paper', () => {
+    const shown = text('a := solve(y^2 == 1e-6, y: 1e-9 .. 1)');
+    expect(shown).not.toContain('1E-9');
+    expect(shown).toContain('10 −9');
   });
 });

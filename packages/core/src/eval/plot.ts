@@ -1190,7 +1190,7 @@ function contourOf(eq: { left: Expr; right: Expr }, xName: string, yName: string
 }
 
 /** Errors that leave a gap in a curve instead of failing it. */
-const GAP_CODES: ReadonlySet<string> = new Set(['E-DIV-ZERO', 'E-DOMAIN', 'E-NOT-FINITE', 'E-COMPLEX-ARG']);
+const GAP_CODES: ReadonlySet<string> = new Set(['E-DIV-ZERO', 'E-DOMAIN', 'E-NOT-FINITE', 'E-COMPLEX-ARG', 'E-SOLVE-NO-ROOT', 'E-SOLVE-NO-CONVERGENCE', 'E-SOLVE-SINGULAR']);
 
 function series(arg: Expr, ctx: EvalContext, evaluate: Evaluate): (Quantity | undefined)[] {
   const value = evaluate(arg, ctx);

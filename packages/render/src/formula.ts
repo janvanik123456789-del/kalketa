@@ -142,7 +142,7 @@ function render(expr: Expr, o: FormulaOptions): Rendered {
         const operand = render({ ...expr, value: -expr.value }, o);
         return { node: row(mo('−'), operand.node), prec: 6, negative: true };
       }
-      const n = expr.imaginary ? row(mn(o.literal(expr.value)), mi('j')) : mn(o.literal(expr.value));
+      const n = expr.imaginary ? row(literalNode(o.literal(expr.value)), mi('j')) : literalNode(o.literal(expr.value));
       return { node: expr.unit ? row(n, THIN_SPACE, mu(formatUnit(expr.unit))) : n, prec: expr.unit ? 6 : ATOM };
     }
     case 'unit':
@@ -254,7 +254,17 @@ function renderBinary(op: BinaryOperator, left: Rendered, right: Rendered): Rend
   }
 }
 
-function renderCall(expr: Extract<Expr, { kind: 'call' }>, o: FormulaOptions): Rendered {
+/** A number as written; a very small or large one as on paper: 1E-9 is 1·10⁻⁹. */
+function literalNode(text: string): MathNode {
+  const e = /^(.*)E([-+]?\d+)$/.exec(text);
+  return e ? row(mn(e[1]!), mo('·'), sup(mn('10'), mn(e[2]!.replace('-', '−').replace('+', '')))) : mn(text);
+}
+
+function renderCall(expr: Extract<Expr, { kind: 'call' }>, outer: FormulaOptions): Rendered {
+  // The unknown of solve(a == b, x: …) and the number of first(…, n: …) are their own, no value of the sheet is put in.
+  const last = expr.args[1];
+  const own = expr.name === 'solve' || expr.name === 'first' ? (expr.named[0]?.name ?? (last?.kind === 'variable' ? last.name : undefined)) : undefined;
+  const o: FormulaOptions = own === undefined ? outer : { ...outer, substitute: (e) => (e.kind === 'variable' && e.name === own ? undefined : outer.substitute?.(e)) };
   const calculus = renderCalculus(expr, o);
   if (calculus) return calculus;
   const args = expr.args.map((a) => render(a, o).node);

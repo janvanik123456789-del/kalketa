@@ -84,6 +84,8 @@ export const DIAGNOSTIC_SEVERITY = {
   'W-UNDERFLOW': 'warning',
   'W-ODE-ACCURACY': 'warning',
   'E-ODE-SINGULAR': 'error',
+  'E-SOLVE-VALUE-FORM': 'error',
+  'E-FIRST-NONE': 'error',
   'E-PLOT-FORM': 'error',
   'E-PLOT-PLACE': 'error',
   'E-PLOT-UNITS': 'error',

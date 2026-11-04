@@ -43,7 +43,7 @@ const COMPARISONS: ReadonlySet<TokenType> = new Set(['==', '!=', '<', '<=', '>',
 
 
 /** Functions with a variable of their own, named after the expression: integral(f(x), x: a .. b). */
-export const BINDING_FUNCTIONS: ReadonlySet<string> = new Set(['integral', 'derivative', 'sum', 'plot', 'roots', 'minimize', 'maximize']);
+export const BINDING_FUNCTIONS: ReadonlySet<string> = new Set(['integral', 'derivative', 'sum', 'plot', 'roots', 'minimize', 'maximize', 'solve', 'first']);
 /** Named arguments of those functions that are options, not the variable. */
 export const BINDING_OPTIONS: ReadonlySet<string> = new Set(['order', 'kind', 'title', 'samples']);
 
@@ -349,7 +349,7 @@ class LineParser {
     if (first.type === 'ident' && first.text === 'check' && this.peek(1).type !== ':=') {
       return this.parseCheck(lineSpan);
     }
-    if (first.type === 'ident' && first.text === 'solve' && this.peek(1).type !== ':=') {
+    if (first.type === 'ident' && first.text === 'solve' && this.peek(1).type !== ':=' && !this.solveCallAhead()) {
       return this.parseSolve(lineSpan);
     }
     if (first.type === 'ident' && first.text === 'derive' && this.peek(1).type !== ':=') {
@@ -389,11 +389,25 @@ class LineParser {
     return this.parseDisplay(lineSpan);
   }
 
+  /** solve(x^2 == 2, x: 0 .. 2) on a line of its own is a value; solve (a, b): the statement. */
+  private solveCallAhead(): boolean {
+    if (this.peek(1).type !== '(') return false;
+    let depth = 0;
+    for (let i = 1; ; i++) {
+      const token = this.peek(i);
+      if (token.type === 'eof' || token.type === 'newline') return false;
+      if (token.type === '(') depth++;
+      else if (token.type === ')' && --depth === 0) return ![':', '∈', ','].includes(this.peek(i + 1).type);
+    }
+  }
+
   /** How many members "==" joins at the top level of the tokens from `from` on. */
   private chainLength(from: number): number {
     let depth = 0;
     let members = 1;
     for (const token of this.tokens.slice(from)) {
+      // λ(Re) := solve l: l == … : that == is the equation's.
+      if (depth === 0 && token.type === 'ident' && token.text === 'solve') break;
       if (token.type === '(' || token.type === '[') depth++;
       else if (token.type === ')' || token.type === ']') depth--;
       else if ((token.type === '==' || token.type === '≐') && depth === 0) members++;
@@ -926,7 +940,8 @@ class LineParser {
     const token = this.next();
     const name = token.text;
     if (name === 'true' || name === 'false') return { kind: 'boolean', value: name === 'true', span: token.span };
-    if (KEYWORDS.has(name)) fail('E-SYNTAX', token.span, { expected: 'value', found: name });
+    if (name === 'solve' && this.peek().type === 'ident' && this.peek(1).type === ':') return this.parseSolveValue(token);
+    if (KEYWORDS.has(name) && !(name === 'solve' && this.peek().type === '(')) fail('E-SYNTAX', token.span, { expected: 'value', found: name });
 
     // w″ in a differential equation, w′(0 m) at a point.
     if (this.peek().type === 'prime') {
@@ -990,6 +1005,47 @@ class LineParser {
       return { kind: 'unit', unit, span: token.span };
     }
     return { kind: 'variable', name, span: token.span };
+  }
+
+  /**
+   * solve h: h·(h + c) == K in 0 .. 1, as a value inside a formula, a function or a column of a table: the same as
+   * solve(h·(h + c) == K, h: 0 .. 1). One unknown and one equation; the statement solve does the rest.
+   */
+  private parseSolveValue(start: Token): Expr {
+    const unknown = this.next();
+    if (KEYWORDS.has(unknown.text)) fail('E-RESERVED', unknown.span, { name: unknown.text });
+    this.next(); // :
+    const own = !this.defined.has(unknown.text);
+    this.defined.add(unknown.text);
+    const left = this.parseAdditive();
+    const eq = this.peek();
+    if (eq.type !== '==' && eq.type !== '=') fail('E-SYNTAX', eq.span, { expected: '==', found: eq.text || 'end-of-line' });
+    this.next();
+    const right = this.parseAdditive();
+    const equation: Expr = { kind: 'binary', operator: '==', left, right, span: spanOf(left, right) };
+    const name = { name: unknown.text, nameSpan: unknown.span };
+    let named: NamedArg[] = [];
+    let end: { span: Span } = right;
+    if (this.isKeyword('in')) {
+      this.next();
+      const low = this.parseAdditive();
+      this.expect('..', '..');
+      const high = this.parseAdditive();
+      named = [{ ...name, value: { kind: 'range', low, high, span: spanOf(low, high) } }];
+      end = high;
+    } else if (this.isKeyword('guess')) {
+      this.next();
+      const guessed = this.expect('ident', 'unknown');
+      if (guessed.text !== unknown.text) fail('E-NAMED-ARG', guessed.span, { function: 'solve', argument: guessed.text, problem: 'unknown' });
+      if (this.peek().type !== '=' && this.peek().type !== ':') fail('E-SYNTAX', this.peek().span, { expected: '=', found: this.peek().text || 'end-of-line' });
+      this.next();
+      const value = this.parseAdditive();
+      named = [{ ...name, value }];
+      end = value;
+    }
+    if (own) this.defined.delete(unknown.text);
+    const variable: Expr = { kind: 'variable', name: unknown.text, span: unknown.span };
+    return { kind: 'call', name: 'solve', args: named.length > 0 ? [equation] : [equation, variable], named, span: spanOf(start, end) };
   }
 
   /** [a, b, c] with an optional unit after it: [100, 120] CZK. */

@@ -8,7 +8,7 @@ export const CS_STATEMENT_HELP: Readonly<Record<string, { readonly summary: stri
   solve: {
     summary: 'Řešení rovnice nebo soustavy rovnic: solve x: k·x == F najde x, při kterém se obě strany rovnají. Neznámá je pak hodnota listu.',
     details:
-      'Rovnice se píše s ==. Víc neznámých a rovnic se odděluje čárkou: solve (x, y): x + y == 1, x - y == 0. in a .. b omezí hledání na interval, guess x = 1 m dá první odhad (a s ním jednotku). S oborem ∈ ℝ, ℂ, ℕ, ℕ₀ nebo ℤ (tlačítko ℝ▾) a podmínkami za čárkou (solve x ∈ ℝ, x > 0: …) vypíše všechny kořeny jako na papíře, kvadratickou rovnici s diskriminantem, a ty, které nevyhoví, označí; dva kořeny jsou pak x_1 a x_2. solve w(x): … řeší diferenciální rovnici, solve y: Kruh rovnici pojmenované relace. Zapisuje se tlačítkem solve na panelu Funkce.',
+      'Rovnice se píše s ==. Víc neznámých a rovnic se odděluje čárkou: solve (x, y): x + y == 1, x - y == 0. in a .. b omezí hledání na interval, guess x = 1 m dá první odhad (a s ním jednotku). Jedna rovnice jde použít i jako hodnota ve vzorci, ve funkci nebo ve sloupci tabulky: λ(Re) := solve l: 1/√l == … in 0.005 .. 0.1, totéž je solve(a == b, x: od .. do); v grafu se bod bez kořene vynechá. S oborem ∈ ℝ, ℂ, ℕ, ℕ₀ nebo ℤ (tlačítko ℝ▾) a podmínkami za čárkou (solve x ∈ ℝ, x > 0: …) vypíše všechny kořeny jako na papíře, kvadratickou rovnici s diskriminantem, a ty, které nevyhoví, označí; dva kořeny jsou pak x_1 a x_2. solve w(x): … řeší diferenciální rovnici, solve y: Kruh rovnici pojmenované relace. Zapisuje se tlačítkem solve na panelu Funkce.',
   },
   derive: {
     summary: 'Odvození vzorce krok po kroku: derive a == b == c ověří, že každý krok plyne z předchozího, jako by to kontroloval učitel.',
@@ -122,6 +122,7 @@ export const CS_FUNCTION_DETAILS: Readonly<Record<string, string>> = {
   re: 'Reálná část komplexního čísla, s jeho jednotkou.',
   // Řady
   cumsum: 'Řada průběžných součtů: [1, 2, 3] dá [1, 3, 6]. Jednotka zůstane, např. narůstající zatížení.',
+  first: 'Nejmenší celé číslo v rozsahu, pro které podmínka platí, zkouší se postupně: first(C <= S·1.01^t, t: 1 .. 20). Rozsah může mít jednotku a kroky jsou pak po jedné té jednotce. Když podmínka neplatí nikde, je to chyba.',
   log2: 'Kolikrát se musí 2 násobit, aby vyšlo x: log2(8) = 3. Jen pro kladná čísla.',
   argmin: 'Pořadí nejmenší položky v řadě, u matice [řádek, sloupec]. Ze shodných první.',
   argmax: 'Pořadí největší položky v řadě, u matice [řádek, sloupec]. Ze shodných první.',

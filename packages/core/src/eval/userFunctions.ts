@@ -31,7 +31,8 @@ type FunctionDefinition = Extract<Statement, { kind: 'definition' }> & { readonl
 
 /** Names that user functions (and variables) cannot take over. */
 export function isBuiltinFunction(name: string): boolean {
-  return builtinFunctions.has(name);
+  // solve(a == b, x: …) is the line solve as a value; the help knows it as that line.
+  return builtinFunctions.has(name) || name === 'solve';
 }
 
 interface FreeName {
@@ -70,7 +71,8 @@ export function freeNames(expr: Expr, bound: ReadonlySet<string>): Map<string, F
       case 'call': {
         if (!isBuiltinFunction(e.name) && !names.has(e.name) && !found.has(e.name)) found.set(e.name, { span: e.span, call: true });
         // integral(f(x), x: a .. b): x is the call's own inside f(x).
-        const own = BINDING_FUNCTIONS.has(e.name) ? e.named.filter((n) => !BINDING_OPTIONS.has(n.name)).map((n) => n.name) : [];
+        const last = e.args[1];
+        const own = BINDING_FUNCTIONS.has(e.name) ? [...e.named.filter((n) => !BINDING_OPTIONS.has(n.name)).map((n) => n.name), ...((e.name === 'solve' || e.name === 'roots') && last?.kind === 'variable' ? [last.name] : [])] : [];
         const inner = own.length ? new Set([...names, ...own]) : names;
         e.args.forEach((a) => visit(a, rowScope, inner));
         // "where:" and "by:" of table functions read the row variable r.

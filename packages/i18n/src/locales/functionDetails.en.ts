@@ -8,7 +8,7 @@ export const EN_STATEMENT_HELP: Readonly<Record<string, { readonly summary: stri
   solve: {
     summary: 'Solves an equation or a system: solve x: k·x == F finds the x at which both sides are equal. The unknown is then a value of the sheet.',
     details:
-      'The equation is written with ==. More unknowns and equations are separated by commas: solve (x, y): x + y == 1, x - y == 0. in a .. b limits the search to an interval, guess x = 1 m gives a first guess (and with it the unit). With a domain ∈ ℝ, ℂ, ℕ, ℕ₀ or ℤ (the ℝ▾ button) and conditions after a comma (solve x ∈ ℝ, x > 0: …) it writes out every root as on paper, a quadratic with its discriminant, and marks those that fail; two roots are then x_1 and x_2. solve w(x): … solves a differential equation, solve y: Circle the equation of a named relation. Written by the solve button of the Functions toolbar.',
+      'The equation is written with ==. More unknowns and equations are separated by commas: solve (x, y): x + y == 1, x - y == 0. in a .. b limits the search to an interval, guess x = 1 m gives a first guess (and with it the unit). One equation can also be a value in a formula, a function or a column of a table: λ(Re) := solve l: 1/√l == … in 0.005 .. 0.1, the same is solve(a == b, x: from .. to); a chart leaves out a point without a root. With a domain ∈ ℝ, ℂ, ℕ, ℕ₀ or ℤ (the ℝ▾ button) and conditions after a comma (solve x ∈ ℝ, x > 0: …) it writes out every root as on paper, a quadratic with its discriminant, and marks those that fail; two roots are then x_1 and x_2. solve w(x): … solves a differential equation, solve y: Circle the equation of a named relation. Written by the solve button of the Functions toolbar.',
   },
   derive: {
     summary: 'Derives a formula step by step: derive a == b == c checks that each step follows from the one before, as a teacher would.',
@@ -122,6 +122,7 @@ export const EN_FUNCTION_DETAILS: Readonly<Record<string, string>> = {
   re: 'The real part of a complex number, with its unit.',
   // Series
   cumsum: 'The series of running sums: [1, 2, 3] gives [1, 3, 6]. The unit stays, e.g. a growing load.',
+  first: 'The least whole number in a range for which a condition holds, tried one after another: first(C <= S·1.01^t, t: 1 .. 20). The range may have a unit, the steps are then of one such unit. Where the condition never holds it is an error.',
   log2: 'How many times 2 must be multiplied to give x: log2(8) = 3. For positive numbers only.',
   argmin: 'The place of the least item in a series, in a matrix [row, column]. The first of equal ones.',
   argmax: 'The place of the greatest item in a series, in a matrix [row, column]. The first of equal ones.',

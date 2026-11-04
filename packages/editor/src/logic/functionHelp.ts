@@ -97,6 +97,7 @@ export const FUNCTION_EXAMPLES: Readonly<Record<string, string>> = {
   polar: 'U := polar(230 V, 30°)',
   re: 're(3 + 4j)',
   cumsum: 'cumsum([1, 2, 3, 4] kN)',
+  first: 'first(2^n >= 100, n: 1 .. 20)',
   log2: 'log2(8)',
   argmin: 'argmin([5, 2, 9])',
   argmax: 'argmax([5, 2, 9])',

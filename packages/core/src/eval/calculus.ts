@@ -13,7 +13,7 @@
  */
 
 import { CalcError, diagnostic, fail, type Span } from '../diagnostics.js';
-import type { Expr, NamedArg } from '../lang/ast.js';
+import type { Expr, NamedArg, Statement } from '../lang/ast.js';
 import { divideDims, isDimensionless, multiplyDims, powerDim, sameDim } from '../units/dimension.js';
 import { baseUnitSymbol } from '../units/display.js';
 import type { ResolvedUnit } from '../units/unitExpr.js';
@@ -21,6 +21,7 @@ import { quantity, type Quantity, type Value } from '../values/value.js';
 import { asQuantity } from './coerce.js';
 import { withoutShownUnits, type EvalContext } from './evaluator.js';
 import { extremum, rootsOf } from './roots.js';
+import { solveStatement } from './solver.js';
 import { withBareZero } from './zero.js';
 
 type CallExpr = Extract<Expr, { kind: 'call' }>;
@@ -54,6 +55,10 @@ export function callCalculus(call: CallExpr, ctx: EvalContext, evaluate: Evaluat
       return derivative(call, ctx, evaluate);
     case 'roots':
       return rootsOf(call, ctx, evaluate);
+    case 'solve':
+      return solveValue(call, ctx, evaluate);
+    case 'first':
+      return firstWhole(call, ctx, evaluate);
     case 'minimize':
     case 'maximize': {
       const { body, variable } = parts(call, []);
@@ -65,6 +70,48 @@ export function callCalculus(call: CallExpr, ctx: EvalContext, evaluate: Evaluat
     default:
       return sum(call, ctx, evaluate);
   }
+}
+
+/**
+ * solve(eq, x: a .. b), solve(eq, x: guess), solve(eq, x): the root as a value, so a function can be defined
+ * by an equation (λ of the Colebrook equation) and a column of a table can solve one in each row.
+ */
+function solveValue(call: CallExpr, ctx: EvalContext, evaluate: Evaluate): Value {
+  const equation = call.args[0];
+  const last = call.args[1];
+  const bound = call.named[0];
+  const variable = bound ? { name: bound.name, span: bound.nameSpan } : last?.kind === 'variable' ? { name: last.name, span: last.span } : undefined;
+  if (!equation || equation.kind !== 'binary' || equation.operator !== '==' || !variable || call.named.length > 1 || call.args.length !== (bound ? 1 : 2)) return fail('E-SOLVE-VALUE-FORM', call.span);
+  const value = bound?.value;
+  const statement: Extract<Statement, { kind: 'solve' }> = {
+    kind: 'solve',
+    unknowns: [variable],
+    equations: [{ left: equation.left, right: equation.right, span: equation.span }],
+    ...(value?.kind === 'range' ? { range: { low: value.low, high: value.high } } : {}),
+    guesses: value && value.kind !== 'range' ? [{ name: variable.name, nameSpan: variable.span, value }] : [],
+    span: call.span,
+  };
+  return solveStatement(statement, ctx, evaluate).values[0]!;
+}
+
+/**
+ * first(condition, n: 1 .. 50): the least whole number in the range (or number of a unit: t: 1 yr .. 20 yr) for
+ * which the condition holds, tried one after another. When to replace a machine, how many bolts.
+ */
+function firstWhole(call: CallExpr, ctx: EvalContext, evaluate: Evaluate): Value {
+  const { body, variable } = parts(call, []);
+  const [low, high] = range(variable, call, ctx, evaluate);
+  const step = low.hint?.factor ?? 1;
+  const start = low.si / step;
+  if (Math.abs(start - Math.round(start)) > 1e-9 * Math.max(1, Math.abs(start))) fail('E-DOMAIN', variable.value.span, { function: call.name });
+  for (let k = Math.round(start); k * step <= high.si * (1 + Math.sign(high.si) * 1e-12); k++) {
+    if (k - start > MAX_TERMS) fail('E-RANGE-SIZE', call.span);
+    const here = quantity(k * step, low.dim, low.hint ? { hint: low.hint } : {});
+    const holds = evaluate(body, { ...ctx, lookup: (n, at) => (n === variable.name ? here : ctx.lookup(n, at)) });
+    if (holds.type !== 'boolean') return fail('E-TYPE', body.span, { expected: 'boolean', found: holds.type === 'quantity' ? 'number' : holds.type });
+    if (holds.value) return here;
+  }
+  return fail('E-FIRST-NONE', call.span);
 }
 
 /** The one expression of the call and its variable. */

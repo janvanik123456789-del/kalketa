@@ -1064,6 +1064,7 @@ export const CALCULUS: readonly FunctionDef[] = [
   { name: 'fit', module: 'calculus', params: 'y, x: series, kind: "linear"', arity: [1, 1] },
   { name: 'polyfit', module: 'calculus', params: 'x, y, n, steps: false', arity: [3, 3] },
   { name: 'polyval', module: 'calculus', params: 'p, x', arity: [2, 2] },
+  { name: 'first', module: 'calculus', params: 'condition, n: from .. to', arity: [1, 1] },
   { name: 'fit_s', module: 'calculus', params: 'F', arity: [1, 1] },
   { name: 'fit_se', module: 'calculus', params: 'F', arity: [1, 1] },
   { name: 'fit_r2', module: 'calculus', params: 'F', arity: [1, 1] },

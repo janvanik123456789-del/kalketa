@@ -6,7 +6,7 @@
  */
 
 import { CALCULUS, CHARTS, COMPLEX, DATES, FINANCE, LOGIC, MATH, SERIES, STATISTICS, TABLES, TRIG } from '../functions/modules.js';
-import { FunctionRegistry, type CallExpr, type Evaluate } from '../functions/registry.js';
+import { FunctionRegistry, type CallExpr, type Evaluate, type FunctionDef } from '../functions/registry.js';
 import { LINEAR } from '../functions/linear.js';
 import { INTERPOLATION } from '../functions/interpolation.js';
 import type { Value } from '../values/value.js';
@@ -15,8 +15,16 @@ export const BUILTIN_CONSTANTS: Readonly<Record<string, number>> = {
   π: Math.PI,
 };
 
+/** Functions of numbers that take a series item by item, written apart from what each computes. */
+const ITEMWISE: ReadonlySet<string> = new Set([
+  'sqrt', 'cbrt', 'root', 'abs', 'hypot', 'mod', 'sign', 'floor', 'ceil', 'round', 'log', 'factorial', 'atan2',
+  're', 'im', 'conj', 'arg',
+  'normcdf', 'norminv', 'tcdf', 'tinv', 'chi2cdf', 'chi2inv', 'fcdf', 'finv', 'nchoosek', 'binopdf', 'binocdf', 'poisspdf', 'poisscdf',
+]);
+const itemwise = (defs: readonly FunctionDef[]): FunctionDef[] => defs.map((def) => (ITEMWISE.has(def.name) ? { ...def, itemwise: true } : def));
+
 /** All built-in functions, table functions included (they are only described here). */
-export const builtinFunctions = new FunctionRegistry([MATH, TRIG, CALCULUS, LINEAR, COMPLEX, SERIES, INTERPOLATION, STATISTICS, FINANCE, DATES, LOGIC, TABLES, CHARTS]);
+export const builtinFunctions = new FunctionRegistry([MATH, TRIG, CALCULUS, LINEAR, COMPLEX, SERIES, INTERPOLATION, STATISTICS, FINANCE, DATES, LOGIC, TABLES, CHARTS].map(itemwise));
 
 /** Functions that compute from plain arguments (not table functions). */
 export const FUNCTION_NAMES: readonly string[] = builtinFunctions

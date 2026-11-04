@@ -31,6 +31,8 @@ export interface FunctionDef {
   readonly arity: readonly [number, number];
   /** Absent for functions the evaluator handles itself (table functions). */
   readonly call?: (args: Args) => Value;
+  /** Takes numbers: given a series it goes item by item, other arguments staying (tcdf(t, 5)). */
+  readonly itemwise?: boolean;
 }
 
 /** The arguments of one call, read the way a function needs them. */
@@ -38,6 +40,8 @@ export class Args {
   constructor(
     readonly call: CallExpr,
     private readonly evaluateArg: Evaluate,
+    /** The arguments already evaluated, one item of a series in place of the series. */
+    private readonly given?: readonly Value[],
   ) {}
 
   get name(): string {
@@ -53,7 +57,7 @@ export class Args {
   }
 
   value(index: number): Value {
-    return this.evaluateArg(this.expr(index));
+    return this.given?.[index] ?? this.evaluateArg(this.expr(index));
   }
 
   /** Any part of an argument (the sides of a comparison in if()). */
@@ -138,7 +142,15 @@ export class FunctionRegistry {
       const expected = min === max ? min : max === Infinity ? `${min}+` : `${min}–${max}`;
       fail('E-FUNC-ARITY', call.span, { function: call.name, expected, found });
     }
-    return def.call(new Args(call, evaluate));
+    if (!def.itemwise) return def.call(new Args(call, evaluate));
+    const given = call.args.map((arg) => evaluate(arg));
+    const series = given.filter((v) => v.type === 'vector');
+    if (series.length === 0) return def.call(new Args(call, evaluate, given));
+    const n = series[0]!.items.length;
+    const other = series.find((v) => v.items.length !== n);
+    if (other) fail('E-VECTOR-LENGTH', call.span, { left: n, right: other.items.length });
+    const items = Array.from({ length: n }, (_, i) => asQuantity(def.call!(new Args(call, evaluate, given.map((v) => (v.type === 'vector' ? v.items[i]! : v)))), call.span));
+    return { type: 'vector', items };
   }
 }
 

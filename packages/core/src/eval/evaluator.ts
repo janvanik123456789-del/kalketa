@@ -22,12 +22,12 @@ import { PREFERRED_UNITS } from '../units/registry.js';
 import { callCalculus, isBindingCall } from './calculus.js';
 import { PLOT_FUNCTION } from './plot.js';
 import { isUnboundedCall } from './derive.js';
-import { degreeOf, fitCall, polyfitCall, polyvalCall } from './fit.js';
+import { fitCall, fitStatistic, inIndexOrder, polyfitCall, polyvalCall } from './fit.js';
 import { isBareZero, withBareZero, zeroLike } from './zero.js';
 import { BINDING_FUNCTIONS } from '../lang/parser.js';
 import { asMatrix, at, inverseOf, matrix, normalized } from '../functions/linear.js';
 import { callTableFunction, COMPARE_FUNCTION, memberOf, TABLE_FUNCTIONS } from './tables.js';
-import { applyFunction, lookupFunction } from './userFunctions.js';
+import { applyFunction, applyToValues, lookupFunction } from './userFunctions.js';
 import { primeName } from './ode.js';
 import type { BlockCaller, BlockInput } from './blocks.js';
 
@@ -181,6 +181,8 @@ function evaluateRaw(expr: Expr, ctx: EvalContext): Value {
       // polyfit(x, y, n) and polyval(p, x): the same with the names of MATLAB and NumPy.
       if (expr.name === 'polyfit') return polyfitCall(expr, ctx, evaluate);
       if (expr.name === 'polyval') return polyvalCall(expr, ctx, evaluate);
+      if (expr.name === 'fit_s' || expr.name === 'fit_se' || expr.name === 'fit_r2') return fitStatistic(expr, ctx, evaluate);
+      if (expr.name === 'each') return eachCall(expr, ctx);
       if (BINDING_FUNCTIONS.has(expr.name) && (expr.name !== 'sum' || isBindingCall(expr))) return callCalculus(expr, ctx, evaluate);
       if (ctx.blocks?.has(expr.name)) return callBlock(expr, ctx);
       if (!FUNCTION_NAME_SET.has(expr.name)) return applyFunction(lookupFunction(expr, ctx), expr, ctx, evaluate);
@@ -214,9 +216,10 @@ function evaluateRaw(expr: Expr, ctx: EvalContext): Value {
       if (expr.column) fail('E-TYPE', expr.object.span, { expected: 'matrix', found: object.type === 'quantity' ? 'number' : object.type });
       // p := polyfit(x, y, 1): p[1] is the slope, as in MATLAB the coefficients from the highest power down.
       // With x in °C they are those of the reading of the thermometer, as np.polyfit gives them for the numbers.
-      const polynomial = object.type === 'function' && object.fit && degreeOf(object.fit.kind) !== undefined ? object.fit.coefficients.map((c) => c.value).reverse() : undefined;
-      if (object.type !== 'vector' && !polynomial) return fail('E-TYPE', expr.object.span, { expected: 'vector', found: object.type === 'quantity' ? 'number' : object.type });
-      const items = polynomial ?? (object as VectorValue).items;
+      // F := fit(c, x: t, kind: "exp"): F[1] is a and F[2] is b of a·e^(b·x), in the order the curve is written.
+      const fitted = object.type === 'function' && object.fit ? inIndexOrder(object.fit, object.fit.coefficients.map((c) => c.value)) : undefined;
+      if (object.type !== 'vector' && !fitted) return fail('E-TYPE', expr.object.span, { expected: 'vector', found: object.type === 'quantity' ? 'number' : object.type });
+      const items = fitted ?? (object as VectorValue).items;
       const index = asQuantity(evaluate(expr.index, ctx), expr.index.span);
       if (!isDimensionless(index.dim) || !Number.isInteger(index.si) || index.si < 1 || index.si > items.length) {
         fail('E-INDEX', expr.index.span, { index: index.si, length: items.length });
@@ -224,6 +227,15 @@ function evaluateRaw(expr: Expr, ctx: EvalContext): Value {
       return items[index.si - 1]!;
     }
   }
+}
+
+/** each(f, v): a function of the sheet for every item of a series, also one whose body would read a series as a whole. */
+function eachCall(call: Extract<Expr, { kind: 'call' }>, ctx: EvalContext): Value {
+  if (call.args.length !== 2) return fail('E-FUNC-ARITY', call.span, { function: 'each', expected: 2, found: call.args.length });
+  const [f, v] = [evaluate(call.args[0]!, ctx), evaluate(call.args[1]!, ctx)];
+  if (f.type !== 'function') return fail('E-TYPE', call.args[0]!.span, { expected: 'function', found: f.type === 'quantity' ? 'number' : f.type });
+  if (v.type !== 'vector') return fail('E-TYPE', call.args[1]!.span, { expected: 'vector', found: v.type === 'quantity' ? 'number' : v.type });
+  return { type: 'vector', items: v.items.map((q) => asQuantity(applyToValues(f, [q], call, ctx, evaluate), call.span)) };
 }
 
 /** [a, b | c, d]: a matrix row by row; every row as long, items with their own units. */

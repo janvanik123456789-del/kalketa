@@ -61,6 +61,11 @@ export interface FitInfo {
   readonly r2: number;
   readonly points: number;
   /**
+   * The residual standard deviation s and the standard errors of the coefficients, in their order; absent where
+   * no degree of freedom is left. The kinds fitted on logarithms: s of ln y, the error of a from that of ln a.
+   */
+  readonly errors?: { readonly s: Quantity; readonly coefficients: readonly Quantity[] };
+  /**
    * x an absolute temperature: the zero of its unit (0 °C). The curve is fitted on the reading,
    * c0 + c1·(T − 0 °C) + …, so the coefficients are those of the reading in °C.
    */
@@ -85,6 +90,56 @@ export interface FitInfo {
      */
     readonly linearized?: { readonly x: boolean; readonly y: boolean; readonly b0: Quantity; readonly b1: Quantity };
   };
+}
+
+/** Coefficients as F[k] reads them: of a polynomial from the highest power down, as in MATLAB; else as the curve is written. */
+export function inIndexOrder<T>(fit: FitInfo, list: readonly T[]): readonly T[] {
+  return degreeOf(fit.kind) !== undefined ? [...list].reverse() : list;
+}
+
+/** fit_s(F), fit_se(F), fit_r2(F): how good a fitted curve is. */
+export function fitStatistic(call: CallExpr, ctx: EvalContext, evaluate: Evaluate): Value {
+  if (call.args.length !== 1) return fail('E-FUNC-ARITY', call.span, { function: call.name, expected: 1, found: call.args.length });
+  const f = evaluate(call.args[0]!, ctx);
+  if (f.type !== 'function' || !f.fit) return fail('E-TYPE', call.args[0]!.span, { expected: 'fit', found: f.type === 'quantity' ? 'number' : f.type });
+  if (call.name === 'fit_r2') return quantity(f.fit.r2);
+  const errors = f.fit.errors;
+  if (!errors) return fail('E-DOMAIN', call.args[0]!.span, { function: call.name });
+  return call.name === 'fit_s' ? errors.s : { type: 'vector', items: [...inIndexOrder(f.fit, errors.coefficients)] };
+}
+
+/**
+ * The covariance of least squares coefficients per unit of s²: (XᵀX)⁻¹, the columns scaled first; undefined
+ * when no degree of freedom is left or the system is too badly conditioned to tell.
+ */
+function unitCovariance(rows: readonly (readonly number[])[]): number[][] | undefined {
+  const p = rows[0]!.length;
+  if (rows.length <= p) return undefined;
+  const norms = Array.from({ length: p }, (_, j) => Math.hypot(...rows.map((row) => row[j]!)) || 1);
+  const m = Array.from({ length: p }, (_, i) => [
+    ...Array.from({ length: p }, (__, j) => rows.reduce((s, row) => s + (row[i]! / norms[i]!) * (row[j]! / norms[j]!), 0)),
+    ...Array.from({ length: p }, (__, j) => (i === j ? 1 : 0)),
+  ]);
+  for (let col = 0; col < p; col++) {
+    let pivot = col;
+    for (let r = col + 1; r < p; r++) if (Math.abs(m[r]![col]!) > Math.abs(m[pivot]![col]!)) pivot = r;
+    if (Math.abs(m[pivot]![col]!) < 1e-13) return undefined;
+    [m[col], m[pivot]] = [m[pivot]!, m[col]!];
+    const top = m[col]!.map((v) => v / m[col]![col]!);
+    m[col] = top;
+    for (let r = 0; r < p; r++) {
+      if (r === col) continue;
+      const factor = m[r]![col]!;
+      m[r] = m[r]!.map((v, c) => v - factor * top[c]!);
+    }
+  }
+  return m.map((row, i) => row.slice(p).map((v, j) => v / (norms[i]! * norms[j]!)));
+}
+
+/** s from the residuals over the degrees of freedom, and the standard errors from the covariance. */
+function standardErrors(residuals: readonly number[], covariance: readonly (readonly number[])[]): { s: number; errors: number[] } {
+  const s = Math.sqrt(residuals.reduce((sum, r) => sum + r * r, 0) / (residuals.length - covariance.length));
+  return { s, errors: covariance.map((row, i) => s * Math.sqrt(Math.max(0, row[i]!))) };
 }
 
 /** Name of a coefficient inside the fitted function (never written by a user). */
@@ -194,6 +249,12 @@ function fitPoints(call: CallExpr, yExpr: Expr, xExpr: Expr, kind: FitKind, exac
 
   let coefficients: Quantity[];
   let body: Expr;
+  /** For the errors: the covariance of the coefficients per s², and the residuals in the space of the fit. */
+  let statistics: { covariance: number[][] | undefined; residuals: number[] };
+  const linearFit = (rows: readonly (readonly number[])[], values: readonly number[], c: readonly number[]) => ({
+    covariance: unitCovariance(rows),
+    residuals: values.map((v, i) => v - rows[i]!.reduce((s, x, j) => s + x * c[j]!, 0)),
+  });
   // Slopes of an absolute temperature are differences: °C/s, not an absolute °C.
   const yHint = deltaOf(y0.hint);
   if (degree !== undefined) {
@@ -202,8 +263,16 @@ function fitPoints(call: CallExpr, yExpr: Expr, xExpr: Expr, kind: FitKind, exac
     const [lo, hi] = [Math.min(...xv), Math.max(...xv)];
     const mid = (lo + hi) / 2;
     const half = (hi - lo) / 2 || 1;
-    const a = leastSquares(xv.map((x) => Array.from({ length: degree + 1 }, (_, k) => ((x - mid) / half) ** k)), yv, call);
+    const scaled = xv.map((x) => Array.from({ length: degree + 1 }, (_, k) => ((x - mid) / half) ** k));
+    const a = leastSquares(scaled, yv, call);
     const powers = a.map((_, k) => a.reduce((sum, aj, j) => (j < k ? sum : sum + (aj * binomial(j, k) * (-mid) ** (j - k)) / half ** j), 0));
+    // The covariance through the same change of basis: cₖ = Σ T[k][j]·aⱼ.
+    const within = linearFit(scaled, yv, a);
+    const change = a.map((_, k) => a.map((__, j) => (j < k ? 0 : (binomial(j, k) * (-mid) ** (j - k)) / half ** j)));
+    statistics = {
+      residuals: within.residuals,
+      covariance: within.covariance && change.map((row) => change.map((other) => row.reduce((s, t, i) => s + t * other.reduce((u, w, j) => u + within.covariance![i]![j]! * w, 0), 0))),
+    };
     coefficients = powers.map((v, k) => {
       const dim = divideDims(y0.dim, powerDim(x0.dim, k));
       const hint = k === 0 ? y0.hint : quotientHint(yHint, xHint, k);
@@ -212,15 +281,18 @@ function fitPoints(call: CallExpr, yExpr: Expr, xExpr: Expr, kind: FitKind, exac
     body = coefficients.slice(1).reduce<Expr>((sum, _, i) => bin('+', sum, bin('*', c(i + 1), i === 0 ? p : bin('^', p, { kind: 'number', value: i + 1, span: at }))), c(0));
   } else if (kind === 'exp') {
     const [lnA, b] = leastSquares(xv.map((x) => [1, x]), yv.map(Math.log), call);
+    statistics = linearFit(xv.map((x) => [1, x]), yv.map(Math.log), [lnA!, b!]);
     const rate = quotientHint(undefined, xHint, 1);
     coefficients = [quantity(Math.exp(lnA!), y0.dim, y0.hint ? { hint: y0.hint } : {}), quantity(b!, divideDims(DIMENSIONLESS, x0.dim), rate ? { hint: rate } : {})];
     body = bin('*', c(0), callOf('exp', bin('*', c(1), p)));
   } else if (kind === 'power') {
     const [lnA, b] = leastSquares(xv.map((x) => [1, Math.log(x / xUnit.si)]), yv.map(Math.log), call);
+    statistics = linearFit(xv.map((x) => [1, Math.log(x / xUnit.si)]), yv.map(Math.log), [lnA!, b!]);
     coefficients = [quantity(Math.exp(lnA!), y0.dim, y0.hint ? { hint: y0.hint } : {}), quantity(b!)];
     body = bin('*', c(0), bin('^', bin('/', p, u), c(1)));
   } else {
     const [a, b] = leastSquares(xv.map((x) => [1, Math.log(x / xUnit.si)]), yv, call);
+    statistics = linearFit(xv.map((x) => [1, Math.log(x / xUnit.si)]), yv, [a!, b!]);
     coefficients = [quantity(a!, y0.dim, { ...(y0.hint ? { hint: y0.hint } : {}), ...(y0.absolute ? { absolute: true } : {}) }), quantity(b!, y0.dim, yHint ? { hint: yHint } : {})];
     body = bin('+', c(0), bin('*', c(1), callOf('ln', bin('/', p, u))));
   }
@@ -273,6 +345,7 @@ function fitPoints(call: CallExpr, yExpr: Expr, xExpr: Expr, kind: FitKind, exac
       r2: total > 0 ? 1 - residual / total : 1,
       points: xv.length,
       ...(zero ? { zero } : {}),
+      ...errorsOf(statistics, coefficients, kind === 'exp' || kind === 'power' ? { logarithmic: true } : { unit: y0 }),
       ...(steps && degree !== undefined
         ? {
             steps: {
@@ -338,7 +411,8 @@ function fitForm(call: CallExpr, yExpr: Expr, xExpr: Expr, formExpr: Expr, ctx: 
   const mean = yv.reduce((s, v) => s + v, 0) / yv.length;
   const total = yv.reduce((s, v) => s + (v - mean) ** 2, 0);
   const residual = yv.reduce((s, v, i) => s + (v - predicted[i]!) ** 2, 0);
-  const fit: FitInfo = { kind: 'form', param, coefficients: coefficients.map((value, j) => ({ name: `${COEFFICIENT}${j}`, value })), r2: total > 0 ? 1 - residual / total : 1, points: xs.length };
+  const statistics = { covariance: unitCovariance(values.map((row) => row.map((q) => q.si))), residuals: yv.map((v, i) => v - predicted[i]!) };
+  const fit: FitInfo = { ...errorsOf(statistics, coefficients, { unit: y0 }), kind: 'form', param, coefficients: coefficients.map((value, j) => ({ name: `${COEFFICIENT}${j}`, value })), r2: total > 0 ? 1 - residual / total : 1, points: xs.length };
   return { ...fitted, fit };
 }
 
@@ -360,6 +434,23 @@ function capturedNames(functions: readonly Expr[], param: string, ctx: EvalConte
   };
   functions.forEach(visit);
   return into;
+}
+
+/** The errors of a fit as quantities: each in the unit of its coefficient, a difference where that is a temperature. */
+function errorsOf(statistics: { covariance: number[][] | undefined; residuals: number[] }, coefficients: readonly Quantity[], y: { logarithmic: true } | { unit: Quantity }): Pick<FitInfo, 'errors'> {
+  if (!statistics.covariance) return {};
+  const { s, errors } = standardErrors(statistics.residuals, statistics.covariance);
+  const difference = (q: Quantity, si: number) => {
+    const hint = deltaOf(q.hint);
+    return quantity(si, q.dim, hint ? { hint } : {});
+  };
+  return {
+    errors: {
+      s: 'unit' in y ? difference(y.unit, s) : quantity(s),
+      // a of a·e^(b·x) was fitted as ln a: σ(a) = a·σ(ln a).
+      coefficients: coefficients.map((q, i) => difference(q, i === 0 && 'logarithmic' in y ? q.si * errors[i]! : errors[i]!)),
+    },
+  };
 }
 
 function predict(kind: FitKind, c: readonly number[], x: number, unit: number): number {

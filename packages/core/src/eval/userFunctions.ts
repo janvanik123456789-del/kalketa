@@ -15,6 +15,7 @@
 
 import { CalcError, fail, type Span } from '../diagnostics.js';
 import type { Expr, Statement } from '../lang/ast.js';
+import { asQuantity } from './coerce.js';
 import { sameDim } from '../units/dimension.js';
 import { baseUnitSymbol } from '../units/display.js';
 import type { ResolvedUnit } from '../units/unitExpr.js';
@@ -124,7 +125,15 @@ export function applyFunction(fn: FunctionValue, call: CallExpr, ctx: EvalContex
       return fn.captured.get(name) ?? fail('E-UNDEFINED', span, { name });
     },
   };
-  const value = evaluate(fn.body, inner);
+  let value: Value;
+  try {
+    value = evaluate(fn.body, inner);
+  } catch (err) {
+    // f(series) where the body takes a number (a lookup, an integral up to x): item by item.
+    const series = args.filter((v) => v.type === 'vector');
+    if (!(err instanceof CalcError) || err.diagnostic.code !== 'E-TYPE' || series.length === 0 || series.some((v) => v.items.length !== series[0]!.items.length)) throw err;
+    return { type: 'vector', items: series[0]!.items.map((_, i) => asQuantity(applyToValues(fn, args.map((v) => (v.type === 'vector' ? v.items[i]! : v)), call, ctx, evaluate), call.span)) };
+  }
   const target = fn.target;
   if (!target) return value;
   const shown = (q: Quantity): Quantity => {
@@ -132,6 +141,13 @@ export function applyFunction(fn: FunctionValue, call: CallExpr, ctx: EvalContex
     return inTarget(q, target);
   };
   return value.type === 'quantity' ? shown(value) : value.type === 'vector' ? { type: 'vector', items: value.items.map(shown) } : value;
+}
+
+/** Calls a function with values at hand: each(f, v), and a series gone through item by item. */
+export function applyToValues(fn: FunctionValue, values: readonly Value[], call: CallExpr, ctx: EvalContext, evaluate: Evaluate): Value {
+  const name = (i: number) => `\u0000arg${i}`;
+  const inner: EvalContext = { ...ctx, lookup: (asked, span) => (asked.startsWith('\u0000arg') ? values[Number(asked.slice(4))]! : ctx.lookup(asked, span)) };
+  return applyFunction(fn, { ...call, name: fn.name, args: values.map((_, i) => ({ kind: 'variable', name: name(i), span: call.span })), named: [] }, inner, evaluate);
 }
 
 /** A value in a target unit: the unit it is shown in; a temperature shown in kelvins is a number like any other. */

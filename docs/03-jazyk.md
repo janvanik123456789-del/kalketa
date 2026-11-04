@@ -226,7 +226,7 @@ Funkce jsou v **registru funkcí** rozdělené do modulů. Každá funkce má v 
 | Matematika | `sqrt` (také `√x`), `cbrt` (také `∛x`, ze záporného čísla záporná), `root(x, n)` (n-tá odmocnina), `abs`, `min`, `max`, `hypot(a, b, …)`, `mod(a, b)`, `sign`, `floor`, `ceil`, `round(x)` / `round(x, n)`, `exp`, `ln`, `log10`, `log(x, b)`, `factorial(n)` |
 | Goniometrické a hyperbolické | `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `atan2(y, x)`, `sinh`, `cosh`, `tanh`, `asinh`, `acosh`, `atanh` |
 | Komplexní čísla | `re`, `im`, `conj`, `arg`, `polar(r, φ)` (7.1a) |
-| Řady | `range`, `sum`, `len`, `cumsum` (7.1b) |
+| Řady | `range`, `linspace`, `sum`, `prod`, `len`, `cumsum`, `cumprod`, `diff`, `trapz`, `cumtrapz`, `sort`, `ranks`, `each` (7.1b) |
 | Statistika | `mean`, `median`, `stdev` (výběrová, n − 1); rozdělení jako v MATLABu: `normcdf(x)`, `norminv(p)`, `tcdf(t, ν)`, `tinv(p, ν)` – koeficient rozšíření pro 95 % z n měření `k := tinv(0.975, n - 1)` (2026-10-26). Pro testy hypotéz `chi2cdf(x, ν)`, `chi2inv(p, ν)`, `fcdf(x, ν₁, ν₂)`, `finv(p, ν₁, ν₂)`: p-hodnota testu dobré shody `1 - chi2cdf(G, k - 1)`, analýzy rozptylu `1 - fcdf(F, k - 1, n - k)` (2026-10-27). Diskrétní: `nchoosek(n, k)` (tiskne se jako kombinační číslo), `binopdf`, `binocdf(k, n, p)`, `poisspdf`, `poisscdf(k, λ)`; `factorial(n)` se tiskne n!. Průměr a medián teplot ve °C jsou teplotou, směrodatná odchylka rozdílem; řada `[20, 25] °C` jsou teploty jako `20 °C` |
 | Finance | `npv`, `irr`, `pmt`, `payback` (7.1b) |
 | Data | `date`, `year`, `month`, `day` (7.1b) |
@@ -274,6 +274,10 @@ rok := sum(Vyroba.E)                         ' sloupec tabulky jako řada
 
 - Řada má všechny prvky stejné dimenze. S číslem nebo stejně dlouhou řadou se počítá po prvcích (`+ − · / ^`). Řady se neporovnávají (`<` je chyba).
 - Funkce: `range(od, do[, krok])`, `sum`, `mean`, `len`, `cumsum`, `min`/`max` přes řadu, `npv`, `irr`, `pmt`, `payback`.
+- Funkce čísla (`sqrt`, `abs`, `round`, `mod`, `log`, `norminv`, `tcdf` …) vezmou řadu po položkách, ostatní argumenty zůstanou: `tcdf(t, 5)`. Funkce listu taky, pokud její tělo řadu jako celek neumí; `each(f, v)` ji volá po položkách vždy.
+- `round`, `floor`, `ceil` zaokrouhlují v jednotce hodnoty: `ceil(5.5 CZK)` je 6 CZK, `round(25.6 °C)` je 26 °C, `round(x, 2)` na dvě místa.
+- Statistika řad: `var`, `cov`, `corr` (i po sloupcích matice), `quantile`, `ranks` (shodné dělí průměr, Spearman je `corr(ranks(x), ranks(y))`). `min`, `max`, `argmin`, `argmax` berou i matici, `argmin` matice dá `[řádek, sloupec]`.
+- Proložení: `F[k]` čte koeficienty každého druhu křivky, u `exp` je `F[1]` = a a `F[2]` = b z a·e^(b·x); u polynomu od nejvyšší mocniny. `fit_s(F)` je směrodatná odchylka bodů od křivky, `fit_se(F)` řada chyb koeficientů, `fit_r2(F)` R².
 - `[m]` zůstává jednotkou; řada je vše ostatní v hranatých závorkách a smí mít jednotku za sebou: `[1, 2] m`.
 - V tisku se dlouhá řada zkrátí: „[1; 2; 3; 4; 5; …; 24; 25] (25)“.
 - **Roky a počty (2026-10-28):** celé číslo bez jednotky se čtyřmi číslicemi se píše bez mezery (`2030`, `1500`), v tisku, v ose grafu i v příkazové řádce, jak dovoluje ČSN 01 6910 a jak se letopočet píše vždy; od pěti číslic s mezerou (`12 450`). Číslo s jednotkou se seskupuje dál (`2 030 mm`, `1 500 Kč`).

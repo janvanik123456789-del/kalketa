@@ -45,6 +45,16 @@ Levné k tomu, hotovo: jednotky `dkg`, `psia`, `psig`, `torr`, `Da`, `Å`, `cP`,
 
 Dnes `exp` a `ln` na řadě fungují, ale `sqrt`, `abs`, `round`, `mod`, `norminv`, `tcdf` ne. Na tomhle stojí etapy 2, 3, 5 i 7.
 
+**Hotovo 2026-11-04**, testy jsou v `packages/core/tests/series-functions.test.ts`. Tabulka níž ukazuje zadání. Co k tomu patří:
+
+- **Pořadí se jmenuje `ranks`**, protože `rank(A)` si nechává etapa 6 pro hodnost matice.
+- **`each(f, v)` je navíc.** Funkce listu sama přejde na položky, jen když její tělo řadu jako celek neumí. Když řadu umí, ale myslela se položka (`pocet(a) := sum(if(x < a, 1, 0))`), je potřeba `each`.
+- **Indexy jsou od 1:** `F[1]` je a a `F[2]` je b z a·e^(b·x). U polynomu zůstává pořadí od nejvyšší mocniny, jako v MATLABu.
+- **Statistiky proložení** jsou `fit_s`, `fit_se`, `fit_r2`. Sedí na vytištěnou regresi z Wikipedie (s_β = 1,776; s_α = 2,938).
+- **`stdev` teploty** je teď rozdíl, tedy `4,09 Δ°C` místo `4,09 °C`. Změnil se tím výpis vzoru `nejistota-prumeru-teplot`.
+- **`ekonomika-6`** už najde minimum mřížky NIST: 697 098 USD, přesně jako kniha.
+- **Zbývá:** `cov(x, y)` dvou matic, `[3 + 4j, 6 + 8j]` jako řada napsaná rovnou (etapa 5), `mode`, `skewness` a grafy statistiky (etapa 7).
+
 | Rozšíření | Prověří |
 |---|---|
 | Všechny funkce jednoho čísla na řadě, včetně funkcí listu | `elektrotechnika-1` (harmonické, Feld 6.1), `datasety-10` |

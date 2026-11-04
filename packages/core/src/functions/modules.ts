@@ -7,7 +7,8 @@
 import { rootHint } from '../units/compose.js';
 import { squareRoot, type Exact } from '../values/exact.js';
 import { fail } from '../diagnostics.js';
-import { dim, isDimensionless, powerDim, sameDim } from '../units/dimension.js';
+import { dim, DIMENSIONLESS, isDimensionless, multiplyDims, powerDim, sameDim } from '../units/dimension.js';
+import type { ResolvedUnit } from '../units/unitExpr.js';
 import { baseUnitSymbol } from '../units/display.js';
 import { civilFromDays, dateValue, daysFromCivil, daysOf, isDate, isValidDay } from '../values/date.js';
 import { quantity, type Quantity, type Value } from '../values/value.js';
@@ -35,6 +36,30 @@ function whole(x: number, exact: Exact | undefined, how: 'floor' | 'ceil' | 'rou
   const near = Math.round(x);
   if (Math.abs(x - near) <= 1e-12 * Math.max(1, Math.abs(x))) return near;
   return how === 'floor' ? Math.floor(x) : how === 'ceil' ? Math.ceil(x) : near;
+}
+
+/**
+ * round(x), floor(x), ceil(x), with n places: round(x, 2). In the unit of the value, as it is shown: ceil(5.5 CZK)
+ * is 6 CZK, round(25.6 °C) is 26 °C. (Items of a series go one by one, see ITEMWISE.)
+ */
+function rounding(how: 'floor' | 'ceil' | 'round'): FunctionDef {
+  return {
+    name: how,
+    module: 'math',
+    params: 'x, n',
+    arity: [1, 2],
+    call: (a) => {
+      const q = a.quantity(0);
+      const n = a.count > 1 ? a.number(1) : 0;
+      if (!Number.isInteger(n) || n < 0 || n > 15) a.domain(1);
+      const factor = q.hint?.factor ?? 1;
+      const offset = q.absolute ? (q.hint?.offset ?? 0) : 0;
+      const shown = (q.si - offset) / factor;
+      const scale = 10 ** n;
+      const done = n === 0 ? whole(shown, factor === 1 && offset === 0 ? q.exact : undefined, how) : whole(shown * scale, undefined, how) / scale;
+      return quantity(done * factor + offset, q.dim, { ...(q.hint ? { hint: q.hint } : {}), ...(q.absolute ? { absolute: true } : {}) });
+    },
+  };
 }
 
 function plain(name: string, module: FunctionModuleId, f: (x: number, q: Quantity) => number, domain?: (x: number) => boolean): FunctionDef {
@@ -137,6 +162,8 @@ export const MATH: readonly FunctionDef[] = [
     arity: [1, Infinity],
     call: (a) => extreme(a, (x, y) => y.si > x.si),
   },
+  { name: 'argmin', module: 'math', params: 'v', arity: [1, 1], call: (a) => whereExtreme(a, (x, y) => y < x) },
+  { name: 'argmax', module: 'math', params: 'v', arity: [1, 1], call: (a) => whereExtreme(a, (x, y) => y > x) },
   {
     name: 'hypot',
     module: 'math',
@@ -191,26 +218,13 @@ export const MATH: readonly FunctionDef[] = [
     arity: [1, 1],
     call: (a) => quantity(Math.sign(a.quantity(0).si)),
   },
-  plain('floor', 'math', (x, q) => whole(x, q.exact, 'floor')),
-  plain('ceil', 'math', (x, q) => whole(x, q.exact, 'ceil')),
-  {
-    name: 'round',
-    module: 'math',
-    params: 'x, n',
-    arity: [1, 2],
-    call: (a) => {
-      // round(x) to a whole number, round(x, n) to n decimals.
-      const x = a.number(0);
-      const n = a.count > 1 ? a.number(1) : 0;
-      if (!Number.isInteger(n) || n < 0 || n > 15) a.domain(1);
-      const scale = 10 ** n;
-      const given = asQuantity(a.value(0), a.expr(0).span);
-      return quantity(n === 0 ? whole(x, given.exact, 'round') : whole(x * scale, undefined, 'round') / scale);
-    },
-  },
+  rounding('floor'),
+  rounding('ceil'),
+  rounding('round'),
   plain('exp', 'math', Math.exp),
   plain('ln', 'math', Math.log, (x) => x > 0),
   plain('log10', 'math', Math.log10, (x) => x > 0),
+  plain('log2', 'math', Math.log2, (x) => x > 0),
   {
     name: 'log',
     module: 'math',
@@ -241,11 +255,71 @@ export const MATH: readonly FunctionDef[] = [
 ];
 
 function extreme(a: Args, better: (best: Quantity, other: Quantity) => boolean): Quantity {
-  // min(a, b, c) or min(series).
+  // min(a, b, c), min(series) or min(matrix).
   const single = a.count === 1 ? a.value(0) : undefined;
-  const values = single?.type === 'vector' ? single.items : a.sameDimension();
+  const values = single?.type === 'vector' || single?.type === 'matrix' ? single.items : a.sameDimension();
   if (values.length === 0) fail('E-FUNC-ARITY', a.call.span, { function: a.name, expected: '1+', found: 0 });
   return values.reduce((best, q) => (better(best, q) ? q : best));
+}
+
+/** Where the least or greatest item is: its place in a series; [row, column] in a matrix. The first of equal ones. */
+function whereExtreme(a: Args, better: (best: number, other: number) => boolean): Value {
+  const value = a.value(0);
+  if (value.type !== 'vector' && value.type !== 'matrix') return fail('E-TYPE', a.expr(0).span, { expected: 'vector', found: value.type === 'quantity' ? 'number' : value.type });
+  if (value.items.length === 0) a.domain(0);
+  let at = 0;
+  value.items.forEach((q, i) => {
+    if (better(value.items[at]!.si, q.si)) at = i;
+  });
+  if (value.type === 'vector') return quantity(at + 1);
+  return { type: 'vector', items: [quantity(Math.floor(at / value.cols) + 1), quantity((at % value.cols) + 1)] };
+}
+
+/** The unit of a difference of values: Δ°C for °C; an absolute temperature is no longer one. */
+function differenceOf(q: Quantity | undefined): { hint?: ResolvedUnit } {
+  if (!q?.hint) return {};
+  return q.hint.offset === undefined ? { hint: q.hint } : { hint: { symbol: q.hint.delta ?? q.hint.symbol, factor: q.hint.factor, dim: q.hint.dim } };
+}
+
+/** The unit of a product of two values (kN·m, m²), where it reads simply; kN/m·m is kN. */
+function productUnit(a: Quantity | undefined, b: Quantity | undefined): { hint?: ResolvedUnit } {
+  const [f, g] = [a?.hint, b?.hint];
+  if (!f || !g || f.offset !== undefined || g.offset !== undefined || isDimensionless(f.dim) || isDimensionless(g.dim) || /[()]/.test(f.symbol + g.symbol)) return {};
+  const [factor, dim] = [f.factor * g.factor, multiplyDims(f.dim, g.dim)];
+  if (f.symbol.endsWith(`/${g.symbol}`)) return { hint: { symbol: f.symbol.slice(0, -g.symbol.length - 1), factor, dim } };
+  if (/[·/]/.test(f.symbol + g.symbol)) return {};
+  return { hint: { symbol: f.symbol === g.symbol ? `${f.symbol}²` : `${f.symbol}·${g.symbol}`, factor, dim } };
+}
+
+/** The columns of a matrix, or two series of one length, for cov and corr. */
+function columnsOf(a: Args): { columns: (readonly Quantity[])[]; matrix: boolean } {
+  const first = a.value(0);
+  if (a.count === 1 && first.type === 'matrix') {
+    if (first.rows < 2) a.domain(0);
+    return { matrix: true, columns: Array.from({ length: first.cols }, (_, j) => Array.from({ length: first.rows }, (__, i) => first.items[i * first.cols + j]!)) };
+  }
+  const x = a.series(0);
+  const y = a.count > 1 ? a.series(1) : x;
+  if (x.length !== y.length) fail('E-VECTOR-LENGTH', a.call.span, { left: x.length, right: y.length });
+  if (x.length < 2) a.domain(0);
+  return { matrix: false, columns: [x, y] };
+}
+
+/** The sample covariance Σ(x − x̄)(y − ȳ)/(n − 1), as a plain number. */
+function covariance(x: readonly Quantity[], y: readonly Quantity[]): number {
+  const mean = (v: readonly Quantity[]) => v.reduce((s, q) => s + q.si, 0) / v.length;
+  const [mx, my] = [mean(x), mean(y)];
+  return x.reduce((s, q, i) => s + (q.si - mx) * (y[i]!.si - my), 0) / (x.length - 1);
+}
+
+/** From the areas of the trapezia: trapz(y) with a step of 1, trapz(x, y); each area in order. */
+function trapezia(a: Args): { areas: number[]; dim: Quantity['dim']; unit: { hint?: ResolvedUnit } } {
+  const y = a.series(a.count - 1);
+  const x = a.count > 1 ? a.series(0) : undefined;
+  if (x && x.length !== y.length) fail('E-VECTOR-LENGTH', a.call.span, { left: x.length, right: y.length });
+  if (y.length < 2) a.domain(a.count - 1);
+  const areas = y.slice(1).map((q, i) => ((q.si + y[i]!.si) / 2) * (x ? x[i + 1]!.si - x[i]!.si : 1));
+  return { areas, dim: x ? multiplyDims(y[0]!.dim, x[0]!.dim) : y[0]!.dim, unit: x ? productUnit(y[0], x[0]) : differenceOf(y[0]) };
 }
 
 // ---------------------------------------------------------------------------
@@ -380,6 +454,99 @@ export const SERIES: readonly FunctionDef[] = [
       return { type: 'vector', items: a.series(0).map((q) => ({ ...q, si: (running += q.si) })) };
     },
   },
+  {
+    name: 'linspace',
+    module: 'series',
+    params: 'from, to, n',
+    arity: [3, 3],
+    call: (a) => {
+      // n points from one end to the other, ends included.
+      const [from, to] = a.sameDimension(0, 2);
+      const n = a.number(2);
+      if (!Number.isInteger(n) || n < 2) a.domain(2);
+      if (n > MAX_RANGE) fail('E-RANGE-SIZE', a.call.span);
+      return { type: 'vector', items: Array.from({ length: n }, (_, i) => quantity(from!.si + ((to!.si - from!.si) * i) / (n - 1), from!.dim, keepUnit(from))) };
+    },
+  },
+  {
+    name: 'prod',
+    module: 'series',
+    params: 'v',
+    arity: [1, 1],
+    call: (a) => {
+      const items = a.series(0);
+      const hint = items.length === 2 ? productUnit(items[0], items[1]) : {};
+      return quantity(items.reduce((p, q) => p * q.si, 1), powerDim(items[0]?.dim ?? DIMENSIONLESS, items.length), hint);
+    },
+  },
+  {
+    name: 'cumprod',
+    module: 'series',
+    params: 'v',
+    arity: [1, 1],
+    call: (a) => {
+      // The running product of plain numbers: growth factors. With a unit each item would have another dimension.
+      const items = a.series(0);
+      const wrong = items.find((q) => !isDimensionless(q.dim));
+      if (wrong) fail('E-FUNC-ARG-DIM', a.expr(0).span, { function: a.name, dim: baseUnitSymbol(wrong.dim) });
+      let running = 1;
+      return { type: 'vector', items: items.map((q) => quantity((running *= q.si))) };
+    },
+  },
+  {
+    name: 'diff',
+    module: 'series',
+    params: 'v',
+    arity: [1, 1],
+    call: (a) => {
+      // Differences of neighbours, one item fewer; of temperatures, differences of temperature.
+      const items = a.series(0);
+      if (items.length < 2) a.domain(0);
+      return { type: 'vector', items: items.slice(1).map((q, i) => quantity(q.si - items[i]!.si, q.dim, differenceOf(q))) };
+    },
+  },
+  {
+    name: 'trapz',
+    module: 'series',
+    params: 'x, y',
+    arity: [1, 2],
+    call: (a) => {
+      const { areas, dim, unit } = trapezia(a);
+      return quantity(areas.reduce((s, v) => s + v, 0), dim, unit);
+    },
+  },
+  {
+    name: 'cumtrapz',
+    module: 'series',
+    params: 'x, y',
+    arity: [1, 2],
+    call: (a) => {
+      // As long as the data: 0 at the first point.
+      const { areas, dim, unit } = trapezia(a);
+      let running = 0;
+      return { type: 'vector', items: [0, ...areas].map((v) => quantity((running += v), dim, unit)) };
+    },
+  },
+  {
+    name: 'sort',
+    module: 'series',
+    params: 'v',
+    arity: [1, 1],
+    call: (a) => ({ type: 'vector', items: [...a.series(0)].sort((x, y) => x.si - y.si) }),
+  },
+  {
+    name: 'ranks',
+    module: 'series',
+    params: 'v',
+    arity: [1, 1],
+    call: (a) => {
+      // The place of each item from the least, equal items sharing the mean of their places (11.5).
+      const items = a.series(0);
+      const order = items.map((q) => q.si).sort((x, y) => x - y);
+      return { type: 'vector', items: items.map((q) => quantity((order.indexOf(q.si) + 1 + order.lastIndexOf(q.si) + 1) / 2)) };
+    },
+  },
+  { name: 'each', module: 'series', params: 'f, v', arity: [2, 2] },
 ];
 
 // ---------------------------------------------------------------------------
@@ -421,7 +588,71 @@ export const STATISTICS: readonly FunctionDef[] = [
       if (items.length < 2) a.domain();
       const mean = items.reduce((s, q) => s + q.si, 0) / items.length;
       const variance = items.reduce((s, q) => s + (q.si - mean) ** 2, 0) / (items.length - 1);
-      return quantity(Math.sqrt(variance), items[0]!.dim, keepUnit(items[0]));
+      return quantity(Math.sqrt(variance), items[0]!.dim, differenceOf(items[0]));
+    },
+  },
+  {
+    name: 'var',
+    module: 'statistics',
+    params: 'v',
+    arity: [1, 1],
+    call: (a) => {
+      // Sample variance (n − 1), the square of stdev.
+      const items = a.series(0);
+      if (items.length < 2) a.domain(0);
+      return quantity(covariance(items, items), multiplyDims(items[0]!.dim, items[0]!.dim), productUnit(items[0], items[0]));
+    },
+  },
+  {
+    name: 'cov',
+    module: 'statistics',
+    params: 'x, y',
+    arity: [1, 2],
+    call: (a) => {
+      // cov(x, y), or of a matrix: the covariances of its columns.
+      const { columns, matrix } = columnsOf(a);
+      const one = (x: readonly Quantity[], y: readonly Quantity[]) => quantity(covariance(x, y), multiplyDims(x[0]!.dim, y[0]!.dim), productUnit(x[0], y[0]));
+      if (!matrix) return one(columns[0]!, columns[1]!);
+      return { type: 'matrix', rows: columns.length, cols: columns.length, items: columns.flatMap((x) => columns.map((y) => one(x, y))) };
+    },
+  },
+  {
+    name: 'corr',
+    module: 'statistics',
+    params: 'x, y',
+    arity: [1, 2],
+    call: (a) => {
+      // Pearson's r; of a matrix: of its columns. Of ranks, corr(ranks(x), ranks(y)), it is Spearman's.
+      const { columns, matrix } = columnsOf(a);
+      const one = (x: readonly Quantity[], y: readonly Quantity[]) => {
+        const size = Math.sqrt(covariance(x, x) * covariance(y, y));
+        if (size === 0) a.domain();
+        return quantity(covariance(x, y) / size);
+      };
+      if (!matrix) return one(columns[0]!, columns[1]!);
+      return { type: 'matrix', rows: columns.length, cols: columns.length, items: columns.flatMap((x) => columns.map((y) => one(x, y))) };
+    },
+  },
+  {
+    name: 'quantile',
+    module: 'statistics',
+    params: 'v, p',
+    arity: [2, 2],
+    call: (a) => {
+      // The p-quantile between neighbouring sorted items (as R and NumPy by default): quantile(v, 0.25). Books differ a little.
+      const items = a.series(0);
+      if (items.length === 0) a.domain(0);
+      const sorted = items.map((q) => q.si).sort((x, y) => x - y);
+      const one = (p: Quantity): Quantity => {
+        if (!isDimensionless(p.dim)) fail('E-FUNC-ARG-DIM', a.expr(1).span, { function: a.name, dim: baseUnitSymbol(p.dim) });
+        if (!(p.si >= 0 && p.si <= 1)) a.domain(1);
+        const place = (sorted.length - 1) * p.si;
+        const low = Math.floor(place);
+        const high = Math.min(sorted.length - 1, low + 1);
+        return quantity(sorted[low]! + (sorted[high]! - sorted[low]!) * (place - low), items[0]!.dim, keepPlace(items));
+      };
+      const p = a.value(1);
+      return p.type === 'vector' ? { type: 'vector', items: p.items.map(one) } : one(a.quantity(1));
     },
   },
   {
@@ -833,6 +1064,9 @@ export const CALCULUS: readonly FunctionDef[] = [
   { name: 'fit', module: 'calculus', params: 'y, x: series, kind: "linear"', arity: [1, 1] },
   { name: 'polyfit', module: 'calculus', params: 'x, y, n, steps: false', arity: [3, 3] },
   { name: 'polyval', module: 'calculus', params: 'p, x', arity: [2, 2] },
+  { name: 'fit_s', module: 'calculus', params: 'F', arity: [1, 1] },
+  { name: 'fit_se', module: 'calculus', params: 'F', arity: [1, 1] },
+  { name: 'fit_r2', module: 'calculus', params: 'F', arity: [1, 1] },
   { name: 'minimize', module: 'calculus', params: 'f(x), x: a .. b', arity: [1, 1] },
   { name: 'maximize', module: 'calculus', params: 'f(x), x: a .. b', arity: [1, 1] },
 ];

@@ -1,0 +1,73 @@
+{
+  "sheet": "vazane-civky.cc",
+  "verifiedBy": "Vlastní zadání. Nezávisle v čistém Pythonu (kontrola.md): Cramerovo pravidlo pro rovnice smyček v komplexních číslech, bez matic. Odražená impedance a rovnice první smyčky jsou v listu jako posudky.",
+  "relativeTolerance": 1e-08,
+  "values": {
+    "ω": {
+      "value": 314.1592653589793,
+      "unit": "rad/s"
+    },
+    "k": {
+      "value": 0.75,
+      "unit": ""
+    },
+    "I_1a": {
+      "value": 18.712884393862012,
+      "unit": "A"
+    },
+    "I_2a": {
+      "value": 11.493076769168741,
+      "unit": "A"
+    },
+    "φ_1": {
+      "value": -1.18364266585434,
+      "unit": "rad"
+    },
+    "P": {
+      "value": 1624.9797800301324,
+      "unit": "W"
+    },
+    "Q": {
+      "value": 3985.416133125345,
+      "unit": "W"
+    },
+    "P_1": {
+      "value": 700.3440846760889,
+      "unit": "W"
+    },
+    "P_2": {
+      "value": 132.0908136220062,
+      "unit": "W"
+    },
+    "P_z": {
+      "value": 792.5448817320373,
+      "unit": "W"
+    },
+    "η": {
+      "value": 48.772599602275726,
+      "unit": "%"
+    }
+  },
+  "checks": [
+    {
+      "label": "Činný výkon zdroje se rovná ztrátám a výkonu v zátěži",
+      "passed": true
+    },
+    {
+      "label": "Proud I_1 jako z odražené impedance",
+      "passed": true
+    },
+    {
+      "label": "Řešení splňuje rovnici první smyčky",
+      "passed": true
+    },
+    {
+      "label": "Funkce výkonu dá při R_z stejnou hodnotu",
+      "passed": true
+    },
+    {
+      "label": "Činitel vazby nejvýše 1",
+      "passed": true
+    }
+  ]
+}

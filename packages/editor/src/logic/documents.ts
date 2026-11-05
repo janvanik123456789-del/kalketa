@@ -34,6 +34,11 @@ export function newTab<D, R>(doc: D, firstPane: string, file?: { ref: R; path?: 
   };
 }
 
+/** A document that has never been saved, as an import: unsaved from the start, until it is saved. */
+export function unsavedDraft<D extends object, R>(tab: DocTab<D, R>): DocTab<D, R> {
+  return { ...tab, savedDoc: { ...tab.savedDoc } };
+}
+
 export function isDirty<D, R>(tab: DocTab<D, R>): boolean {
   return tab.history.present !== tab.savedDoc;
 }

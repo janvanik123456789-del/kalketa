@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { record } from '../src/logic/history.js';
-import { closeTab, cycleTab, fileNameOf, isDirty, isPristine, newTab, openTab, type DocTab, type Tabs } from '../src/logic/documents.js';
+import { closeTab, cycleTab, fileNameOf, isDirty, isPristine, newTab, openTab, unsavedDraft, type DocTab, type Tabs } from '../src/logic/documents.js';
 
 type Tab = DocTab<string, string>;
 const file = (path: string) => newTab<string, string>(`doc ${path}`, 'main', { ref: path, path });
@@ -76,5 +76,16 @@ describe('file names', () => {
     expect(fileNameOf('C:\\Výpočty\\Nosník N1.calc')).toBe('Nosník N1.calc');
     expect(fileNameOf('/home/jan/Nosnik.calc')).toBe('Nosnik.calc');
     expect(fileNameOf('Nosnik.calc')).toBe('Nosnik.calc');
+  });
+});
+
+describe('a draft that has never been saved', () => {
+  it('is unsaved from the start and clean once saved, what is opened from a file is not', () => {
+    const doc = { source: 'a' };
+    const draft = unsavedDraft(newTab<typeof doc, string>(doc, 'main'));
+    expect(isDirty(draft)).toBe(true);
+    expect(draft.history.present).toBe(doc);
+    expect(isDirty({ ...draft, savedDoc: draft.history.present })).toBe(false);
+    expect(isDirty(newTab<typeof doc, string>(doc, 'main'))).toBe(false);
   });
 });

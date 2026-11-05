@@ -129,7 +129,7 @@ async function startScreenWithRealMouse(picture: string): Promise<{ shown: boole
  * File > Import > SMath with the real mouse, the file given to the program's own chooser: a worksheet written here with
  * a picture, a loop and an unknown function. The report shows over the new sheet; Esc closes it and the sheet calculates.
  */
-async function importWithRealMouse(picture: string): Promise<{ title: string; sections: string; frozen: string; left: number; tab: string; image: boolean; values: string; closed: boolean; ok: boolean }> {
+async function importWithRealMouse(picture: string): Promise<{ title: string; sections: string; frozen: string; left: number; tab: string; image: boolean; values: string; closed: boolean; unsaved: boolean; asked: boolean; gone: boolean; ok: boolean }> {
   const contents = smokeWindow!.webContents;
   const n = (text: string) => `<e type="operand">${text}</e>`;
   const op = (text: string, args = 2) => `<e type="operator" args="${args}">${text}</e>`;
@@ -183,14 +183,22 @@ async function importWithRealMouse(picture: string): Promise<{ title: string; se
     await image?.decode().catch(() => undefined);
     return {
       closed: !document.querySelector('.import-report'),
+      unsaved: (document.querySelector('.doc-tab.active')?.textContent.includes('•') ?? false) && document.querySelector('.statusbar')?.textContent.includes('neuloženo'),
       tab: document.querySelector('.doc-tab.active')?.textContent.replace(/[•✕×]/g, '').trim() ?? '',
       image: (image?.naturalWidth ?? 0) > 0,
       values: document.querySelector('.layer-view.active .page')?.textContent ?? '',
     };
-  })()`)) as { closed: boolean; tab: string; image: boolean; values: string };
+  })()`)) as { closed: boolean; unsaved: boolean; tab: string; image: boolean; values: string };
+  // It is in no file yet: closing it asks, and Don't save takes it away.
+  await clickOn('.doc-tab.active .doc-tab-close');
+  await pause(300);
+  const asked = (await contents.executeJavaScript(`[...document.querySelectorAll('.dialog-body')].some((d) => d.textContent.includes('Smycka'))`)) as boolean;
+  if (asked) await clickOn('.dialog-buttons button[data-choice="1"]');
+  await pause(300);
+  const gone = (await contents.executeJavaScript(`![...document.querySelectorAll('.doc-tab')].some((t) => t.textContent.includes('Smycka'))`)) as boolean;
   const ok =
-    chosen && sheet.closed && shown.sections === 'frozen left' && shown.frozen.includes(': s.') && shown.left === 2 && sheet.tab === 'Smycka' && sheet.image && sheet.values.includes('SMath') && sheet.values.includes('nepřepočítává');
-  return { ...shown, ...sheet, values: sheet.values.slice(0, 200), ok };
+    chosen && sheet.closed && sheet.unsaved && asked && gone && shown.sections === 'frozen left' && shown.frozen.includes(': s.') && shown.left === 2 && sheet.tab === 'Smycka' && sheet.image && sheet.values.includes('SMath') && sheet.values.includes('nepřepočítává');
+  return { ...shown, ...sheet, values: sheet.values.slice(0, 200), asked, gone, ok };
 }
 
 /**

@@ -40,7 +40,7 @@ import type { InsertChoice } from './components/InsertMenu.js';
 import { importedSmath } from './logic/importedSmath.js';
 import { chooseFile, desktop, emptyDocument, fileName, fileUri, largestParts, openBytes, pickAndOpen, saveDocument, tableCache, type FileRef, type OpenedFile } from './document.js';
 import { record, redo, undo, type History } from './logic/history.js';
-import { closeTab, cycleTab, fileNameOf, isDirty, isPristine, newTab, openTab, type DocTab, type Tabs } from './logic/documents.js';
+import { closeTab, cycleTab, fileNameOf, isDirty, isPristine, newTab, openTab, unsavedDraft, type DocTab, type Tabs } from './logic/documents.js';
 import { pageGeometry } from './logic/pages.js';
 import { pickOf, replacePickKey } from './logic/pick.js';
 import { deleteLineRanges, deleteLines, insertLineAfter, moveLines, replaceLines, segments } from './logic/segments.js';
@@ -748,9 +748,10 @@ export function App() {
   };
 
   /** Shows a document in a tab of its own (or switches to it when that file is already open). */
-  const openDocument = (next: SheetDocument, ref: FileRef | undefined, diagnostics: Diagnostic[] = [], blank = false) => {
+  const openDocument = (next: SheetDocument, ref: FileRef | undefined, diagnostics: Diagnostic[] = [], blank = false, draft = false) => {
     const path = ref?.kind === 'path' ? ref.path : undefined;
-    const added = newTab<SheetDocument, FileRef>(next, firstVisible(next.layers), ref ? { ref, ...(path !== undefined ? { path } : {}) } : undefined, blank);
+    const opened = newTab<SheetDocument, FileRef>(next, firstVisible(next.layers), ref ? { ref, ...(path !== undefined ? { path } : {}) } : undefined, blank);
+    const added = draft ? unsavedDraft(opened) : opened;
     setDocs((s) => openTab(s, added));
     leaveEditing();
     setNotice(diagnostics.length > 0 ? diagnostics.map((d) => formatDiagnostic(d, ui)).join(' ') : undefined);
@@ -1475,7 +1476,8 @@ export function App() {
     if (!file) return;
     try {
       const { document: draft, report } = importedSmath(file.name, new Uint8Array(await file.arrayBuffer()), language);
-      openDocument(draft, undefined);
+      // Made here and in no file yet: closing it asks, as for any unsaved work.
+      openDocument(draft, undefined, [], false, true);
       setImportReport(report);
     } catch (error) {
       setNotice(t(ui, 'import.broken', { reason: error instanceof Error ? error.message : String(error) }));

@@ -76,6 +76,7 @@ export async function runSmokeTest(pdfPath: string, context: SmokeContext): Prom
     const rowTools = await rowToolbarWithRealMouse(pdfPath.replace(/\.pdf$/i, '') + '-row-toolbar.png');
     const controls = await controlsWithRealInput(pdfPath.replace(/\.pdf$/i, '') + '-dark.png');
     const typing = await typingWithRealKeys(pdfPath.replace(/\.pdf$/i, '') + '-completion.png');
+    const imported = await importWithRealMouse(pdfPath.replace(/\.pdf$/i, '') + '-import.png');
     const printer = await printWindow('<!doctype html><meta charset="utf-8"><h1>Kalketa</h1><math><mfrac><mi>a</mi><mn>2</mn></mfrac></math>');
     const pdf = await printer.webContents.printToPDF({ preferCSSPageSize: true });
     printer.destroy();
@@ -83,8 +84,8 @@ export async function runSmokeTest(pdfPath: string, context: SmokeContext): Prom
     ok =
       state.mathFont && state.bridge && state.sideBySide && state.menus === 8 && state.toolbars > 0 && state.rows > 10 && state.summary > 0 && state.math > 0 && reshapedColumns === 3 && pdf.length > 1000 &&
       layers.deflection && layers.pickTaken.column.startsWith('→') && /mm|cm/.test(layers.pickTaken.text) && layers.newKeepsExample && layers.samplesOk && layers.derivations && layers.summaryOk && layers.definitionAtCursor && layers.sheetGridOk && layers.tableEnter && layers.solvedByFormula && layers.rootsAndExtremes && layers.userChart.ok && layers.relations.ok && layers.chartEdit && layers.quadraticSample.ok && layers.saveOnClose.ok && layers.wordPrinted && layers.wordColored && layers.paletteColored && layers.wordText.focused && layers.wordText.pane && layers.wordText.bold === 'dynamiky' && !layers.wordText.shown.includes('"') && layers.wordText.align === 'center' && layers.cellMarked === 'Síla na konci' && layers.systemFont !== '' && layers.cellFont.replace(/"/g, '').startsWith(layers.systemFont) && layers.cellDeleted && layers.paperRoots && layers.tableRowAdded && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.notesPicture === 'FIGURE+img BLOCKQUOTE' && layers.notesPlaced === 'narrower centred' && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.charts && layers.functionBar && layers.revisions && layers.roots && layers.toolIcons && layers.aiSettings && layers.aiChat && layers.pdfCleanup && layers.theoryLibrary && layers.study && layers.sheetPicture.offered && layers.sheetPicture.described && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
-    ok = ok && insertMenu.ok && rowTools.ok && controls.ok && typing.ok && start.shown && start.cards >= 20 && start.lead === 'R24-pruvodce-police' && start.pictures >= 12 && start.closed && start.tab === 'Vzor – Posouzení nosníku N1';
-    console.log(JSON.stringify({ ok, start, insertMenu, rowTools, controls, typing, ...state, reshapedColumns, layers, pdfBytes: pdf.length }));
+    ok = ok && insertMenu.ok && rowTools.ok && controls.ok && typing.ok && imported.ok && start.shown && start.cards >= 20 && start.lead === 'R24-pruvodce-police' && start.pictures >= 12 && start.closed && start.tab === 'Vzor – Posouzení nosníku N1';
+    console.log(JSON.stringify({ ok, start, insertMenu, rowTools, controls, typing, imported, ...state, reshapedColumns, layers, pdfBytes: pdf.length }));
   } catch (err) {
     console.log(JSON.stringify({ ok: false, error: (err as Error).message, console: smokeConsole.slice(-5) }));
   }
@@ -122,6 +123,74 @@ async function startScreenWithRealMouse(picture: string): Promise<{ shown: boole
   const after = (await contents.executeJavaScript(`({ closed: !document.querySelector('.start-screen'), tab: [...document.querySelectorAll('.doc-tab')].map((t) => t.textContent.replace(/[•✕×]/g, '').trim()).join('|') })`)) as { closed: boolean; tab: string };
   const { at: _at, ...rest } = seen;
   return { ...rest, ...after };
+}
+
+/**
+ * File > Import > SMath with the real mouse, the file given to the program's own chooser: a worksheet written here with
+ * a picture, a loop and an unknown function. The report shows over the new sheet; Esc closes it and the sheet calculates.
+ */
+async function importWithRealMouse(picture: string): Promise<{ title: string; sections: string; frozen: string; left: number; tab: string; image: boolean; values: string; closed: boolean; ok: boolean }> {
+  const contents = smokeWindow!.webContents;
+  const n = (text: string) => `<e type="operand">${text}</e>`;
+  const op = (text: string, args = 2) => `<e type="operator" args="${args}">${text}</e>`;
+  const fn = (text: string, args: number) => `<e type="function" args="${args}">${text}</e>`;
+  const region = (top: number, body: string) => `<region id="${top}" left="9" top="${top}" width="100" height="20">${body}</region>`;
+  const math = (input: string, result?: string) => `<math><input>${input}</input>${result ? `<result action="numeric">${result}</result>` : ''}</math>`;
+  const dot = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+  const worksheet = `<?xml version="1.0" encoding="utf-8"?><?application progid="SMath Studio"?><regions>${[
+    region(10, `<picture><raw format="png" encoding="base64">${dot}</raw></picture>`),
+    region(20, math(`${n('a')}${n('20')}${op(':')}`)),
+    region(30, math(`${n('b')}${n('1')}${fn('nobody', 1)}${op(':')}`)),
+    region(40, math(`${n('go')}${n('s')}${n('s')}${n('1')}${op('+')}${op(':')}${fn('while', 2)}`)),
+    region(50, math(n('s'), n('5'))),
+    region(60, math(`${n('a')}${n('s')}${op('/')}`, n('4'))),
+  ].join('')}</regions>`;
+  const file = join(mkdtempSync(join(tmpdir(), 'kalketa-import-')), 'Smycka.sm');
+  await writeFile(file, worksheet);
+
+  // The chooser of the system cannot be clicked by a test: the browser hands the file to the input the program made.
+  const debug = contents.debugger;
+  debug.attach('1.3');
+  await debug.sendCommand('Page.enable');
+  await debug.sendCommand('DOM.enable');
+  await debug.sendCommand('Page.setInterceptFileChooserDialog', { enabled: true });
+  const given = new Promise<boolean>((resolve) => {
+    debug.on('message', (_event, method, params: { backendNodeId?: number }) => {
+      if (method !== 'Page.fileChooserOpened') return;
+      void debug.sendCommand('DOM.setFileInputFiles', { files: [file], backendNodeId: params.backendNodeId }).then(() => resolve(true));
+    });
+    setTimeout(() => resolve(false), 5000);
+  });
+  await clickOn('.menubar-item:nth-child(1) > button');
+  await clickMenu('Import');
+  await clickMenu('SMath');
+  const chosen = await given;
+  await debug.sendCommand('Page.setInterceptFileChooserDialog', { enabled: false });
+  debug.detach();
+
+  for (let waited = 0; waited < 3000 && !(await contents.executeJavaScript(`!!document.querySelector('.import-report')`)); waited += 100) await pause(100);
+  const shown = (await contents.executeJavaScript(`({
+    title: document.querySelector('.dialog-title span')?.textContent ?? '',
+    sections: [...document.querySelectorAll('[data-import-section]')].map((s) => s.dataset.importSection).join(' '),
+    frozen: document.querySelector('[data-import-section="frozen"] li')?.textContent ?? '',
+    left: document.querySelectorAll('[data-import-section="left"] li').length,
+  })`)) as { title: string; sections: string; frozen: string; left: number };
+  await takePicture(picture);
+  await pressKey('Escape');
+  await pause(500);
+  const sheet = (await contents.executeJavaScript(`(async () => {
+    const image = document.querySelector('.layer-view.active .page img');
+    await image?.decode().catch(() => undefined);
+    return {
+      closed: !document.querySelector('.import-report'),
+      tab: document.querySelector('.doc-tab.active')?.textContent.replace(/[•✕×]/g, '').trim() ?? '',
+      image: (image?.naturalWidth ?? 0) > 0,
+      values: document.querySelector('.layer-view.active .page')?.textContent ?? '',
+    };
+  })()`)) as { closed: boolean; tab: string; image: boolean; values: string };
+  const ok =
+    chosen && sheet.closed && shown.sections === 'frozen left' && shown.frozen.includes(': s.') && shown.left === 2 && sheet.tab === 'Smycka' && sheet.image && sheet.values.includes('SMath') && sheet.values.includes('nepřepočítává');
+  return { ...shown, ...sheet, values: sheet.values.slice(0, 200), ok };
 }
 
 /**

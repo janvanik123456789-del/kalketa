@@ -27,6 +27,8 @@ export interface SmathReport {
   /** Values taken over from SMath as inputs of the sheet: they do not recalculate, and nothing has verified them. */
   readonly frozen: readonly string[];
   /** a redefined further down became a_2: SMath allows it, a sheet does not. */
+  /** Names written otherwise because of a sign in them: ripple_% is ripple_pct. */
+  readonly signs: readonly { readonly from: string; readonly to: string }[];
   readonly renamed: readonly { readonly from: string; readonly to: string }[];
   /** Stored results against the calculation here, within the digits SMath stored. */
   readonly agree: number;
@@ -866,10 +868,9 @@ export function importSmath(xml: string, registry: UnitRegistry = defaultRegistr
     if (Math.abs(inUnit - stored) <= Math.max(tolerance, 1e-12)) agree++;
     else differ.push({ name: line.stored.name, stored, here: inUnit, unit: line.stored.unit || (line.stored.own ? 'SI' : '') });
   });
-  for (const [from, to] of bySign) renamed.push({ from, to });
   const asText = new Set(left.map((l) => l.written));
   const converted = lines.filter((l) => l.written !== undefined && !l.text.startsWith('"') && !asText.has(l.written)).length;
-  return { source: `${source}\n`, report: { formulas, converted, texts, left, frozen, renamed, agree, differ, notCompared }, images };
+  return { source: `${source}\n`, report: { formulas, converted, texts, left, frozen, signs: [...bySign].map(([from, to]) => ({ from, to })), renamed, agree, differ, notCompared }, images };
 }
 
 let notNumbers = 0;

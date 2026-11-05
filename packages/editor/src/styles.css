@@ -217,6 +217,11 @@ table.functions tr:hover { background: var(--hover, rgba(0, 0, 0, 0.06)); }
 .function-help-example, .how-to-write-example { background: #f4f6f9; border: 1px solid var(--line); border-radius: 4px; padding: 6px 8px; margin: 4px 0; font: 13px Consolas, "Cascadia Mono", monospace; white-space: pre-wrap; }
 .function-help-value strong { font-weight: 600; }
 kbd { font: 12px Consolas, monospace; background: #fff; border: 1px solid #c4cad2; border-radius: 3px; padding: 0 5px; }
+.import-report { max-height: 65vh; overflow: auto; }
+.import-report p { margin: 0 0 4px; }
+.import-report h4 { margin: 12px 0 4px; }
+.import-report ul { margin: 0; padding-left: 18px; }
+.import-report li { overflow-wrap: anywhere; margin-bottom: 2px; }
 .about { display: flex; gap: 16px; align-items: flex-start; max-width: 420px; }
 .notices { max-height: 65vh; overflow: auto; margin: 0; padding: 8px; background: #fff; border: 1px solid var(--line); font: 11px/1.4 Consolas, "DejaVu Sans Mono", monospace; white-space: pre-wrap; }
 

@@ -48,6 +48,8 @@ import { FUNCTION_TEMPLATES, parseLayout, setVisible, templateParts, type Toolba
 import { createTable, importTableFile, type TableChange } from './tableActions.js';
 import { captionOf, fromFile, pictureLine, picturePath, pixelWidth, widthFor, type IncomingPicture } from './logic/pictures.js';
 import { importBlockFile } from './blockActions.js';
+import type { SmathReport } from '@kalketa/import';
+import { ImportReportDialog } from './components/ImportReportDialog.js';
 import { AboutDialog, CustomizeDialog, Dialog, FunctionHelpDialog, InsertFunctionDialog, PropertiesDialog, SettingsDialog, ShortcutsDialog } from './components/Dialogs.js';
 import { helpNamesOfLine } from './logic/functionHelp.js';
 import { FitDialog } from './components/FitDialog.js';
@@ -250,6 +252,7 @@ export function App() {
   const [selectAll, setSelectAll] = useState(0);
   const [notice, setNotice] = useState<string | undefined>();
   const [dialog, setDialog] = useState<DialogKind | undefined>();
+  const [importReport, setImportReport] = useState<SmathReport | undefined>();
   const [zoomChoice, setZoomChoice] = useState(() => (stored('kalketa.zoom') === 'fit3' ? 'fit2' : (stored('kalketa.zoom') ?? 'fit2')));
   // The layer tabs do what the Layers panel did, so the panel no longer opens by itself at start.
   // The chat pane is not opened at start: the AI is off until the user switches it on.
@@ -1473,16 +1476,7 @@ export function App() {
     try {
       const { document: draft, report } = importedSmath(file.name, new Uint8Array(await file.arrayBuffer()), language);
       openDocument(draft, undefined);
-      const left = report.formulas - report.converted;
-      setNotice(
-        [
-          t(ui, 'import.summary', { converted: report.converted, formulas: report.formulas, texts: report.texts }),
-          t(ui, 'import.compared', { agree: report.agree, differ: report.differ.length, other: report.notCompared }),
-          ...report.differ.slice(0, 3).map((d) => t(ui, 'import.differs', { name: d.name, stored: d.stored, here: d.here, unit: d.unit })),
-          ...(report.frozen.length > 0 ? [t(ui, 'import.frozen', { names: report.frozen.join(', ') })] : []),
-          ...(left > 0 ? [t(ui, 'import.leftInSheet', { count: left })] : []),
-        ].join(' '),
-      );
+      setImportReport(report);
     } catch (error) {
       setNotice(t(ui, 'import.broken', { reason: error instanceof Error ? error.message : String(error) }));
     }
@@ -3065,6 +3059,7 @@ export function App() {
         />
       )}
       {dialog === 'about' && <AboutDialog catalog={ui} onClose={() => setDialog(undefined)} />}
+      {importReport && <ImportReportDialog catalog={ui} report={importReport} onClose={() => setImportReport(undefined)} />}
       {cropping && (
         <PdfCropDialog
           catalog={ui}

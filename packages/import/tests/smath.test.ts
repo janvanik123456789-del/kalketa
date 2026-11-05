@@ -409,7 +409,7 @@ describe('a sign in a name', () => {
     expect(source).toContain('ripple_pct := 0.2');
     expect(report.left).toEqual([]);
     expect(report.agree).toBe(1);
-    expect(report.renamed).toEqual([{ from: 'ripple_%', to: 'ripple_pct' }]);
+    expect(report.signs).toEqual([{ from: 'ripple_%', to: 'ripple_pct' }]);
     expect(importSmath(sheet(region(10, math(let_('a%', n('1')))))).source).toContain('a_pct := 1');
   });
 

@@ -93,6 +93,18 @@ export class Args {
     return value.items;
   }
 
+  /** One series, or any numbers and series in a row: sum(1, 2, 3), mean(x, y). */
+  items(): readonly Quantity[] {
+    if (this.count === 1) return this.series(0);
+    const all = this.call.args.flatMap((_, i) => {
+      const value = this.value(i);
+      return value.type === 'vector' ? value.items : [this.quantity(i)];
+    });
+    const other = all.find((q) => !sameDim(q.dim, all[0]!.dim));
+    if (other) fail('E-UNIT-MISMATCH', this.call.span, { operator: this.name, left: baseUnitSymbol(all[0]!.dim), right: baseUnitSymbol(other.dim) });
+    return all;
+  }
+
   /** All arguments from `from` on as numbers of one dimension. */
   sameDimension(from = 0, to = this.count): Quantity[] {
     const values: Quantity[] = [];

@@ -12,7 +12,8 @@ import { CalcError, DependencyFailed, diagnostic, fail, type Diagnostic, type Sp
 import { asBoolean, asComplex } from '../eval/coerce.js';
 import { compare, evaluate, LINE_TIME_LIMIT_MS, withTimeLimit, writesPi, type EvalContext } from '../eval/evaluator.js';
 import { angularValue, inRotationOf, rotationKind } from '../eval/rotation.js';
-import { BUILTIN_CONSTANTS } from '../eval/functions.js';
+import { suggestName } from '../eval/suggest.js';
+import { BUILTIN_CONSTANTS, FUNCTION_NAMES } from '../eval/functions.js';
 import { defineFunction, inTarget, isBuiltinFunction } from '../eval/userFunctions.js';
 import { allRoots, solveStatement, type RootsFound } from '../eval/solver.js';
 import { solveOde, type OdeInfo } from '../eval/ode.js';
@@ -256,6 +257,17 @@ export class SheetSession {
       return [...found.filter((d) => d.code !== 'I-AMBIGUOUS-UNIT' || !added.some((a) => a.span.offset === d.span.offset)), ...added];
     };
 
+    // 12 KN and x_nett: what was probably meant, beside the error.
+    const withSuggestion = (result: StatementResult): StatementResult => {
+      const added = result.diagnostics.flatMap((d) => {
+        const written = d.code === 'E-UNKNOWN-UNIT' ? d.params['unit'] : d.code === 'E-UNDEFINED' ? d.params['name'] : d.code === 'E-FUNC-UNKNOWN' ? d.params['function'] : undefined;
+        if (typeof written !== 'string') return [];
+        const suggestion = suggestName(written, d.code === 'E-UNKNOWN-UNIT' ? registry.writableSymbols() : d.code === 'E-FUNC-UNKNOWN' ? [...FUNCTION_NAMES, ...env.keys()] : [...env.keys(), ...tables.keys()], d.code === 'E-FUNC-UNKNOWN');
+        return suggestion ? [diagnostic('I-DID-YOU-MEAN', d.span, { written, suggestion })] : [];
+      });
+      return added.length > 0 ? { ...result, diagnostics: [...result.diagnostics, ...added] } : result;
+    };
+
     statements.forEach((statement, index) => {
       const parseDiagnostics = withNamesOverUnits(parsed.diagnostics.filter((d) => within(d.span, statement.span)), statement);
 
@@ -453,11 +465,11 @@ export class SheetSession {
     return {
       source,
       sheet: parsed.sheet,
-      statements: results,
+      statements: results.map(withSuggestion),
       values,
       tables,
       imports,
-      diagnostics: results.flatMap((r) => r.diagnostics),
+      diagnostics: results.map(withSuggestion).flatMap((r) => r.diagnostics),
       checks: checkSummary(results),
       stats: { evaluated, reused },
     };

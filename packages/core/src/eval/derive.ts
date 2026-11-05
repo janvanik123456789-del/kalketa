@@ -67,7 +67,8 @@ const ATOM = '\u0000part:';
 
 /** Σ and ∫ without bounds: sum(F_i·a_i, i), integral(y^2, dS). A notation, not a value. */
 export function isUnboundedCall(expr: Expr): boolean {
-  return expr.kind === 'call' && expr.named.length === 0 && expr.args.length === 2 && (expr.name === 'integral' || expr.name === 'sum');
+  // Σ F_i·a_i over i names its index; sum(2, 3) adds two numbers.
+  return expr.kind === 'call' && expr.named.length === 0 && expr.args.length === 2 && (expr.name === 'integral' || (expr.name === 'sum' && expr.args[1]!.kind === 'variable'));
 }
 
 /**

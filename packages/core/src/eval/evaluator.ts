@@ -440,6 +440,11 @@ function noteTurnsInPower(a: Quantity, b: Quantity, leftExpr: Expr, rightExpr: E
   warnOnce(diagnostic('W-TURNS-IN-POWER', span, { unit: turns.hint!.symbol }), ctx);
 }
 
+/** The unit of a value as the sheet writes it: 1 kN + 1 m says kN and m, not kg·m/s². */
+function writtenUnit(q: Quantity): string {
+  return q.hint?.symbol ?? baseUnitSymbol(q.dim);
+}
+
 /** Two numbers (real or complex): + − · / ^ and comparisons. */
 /** Operations where a zero written without a unit takes the unit of the other side (p_a + ρ·g·0, y == 0). */
 const SUMS_AND_COMPARISONS: ReadonlySet<BinaryOperator> = new Set(['+', '-', '==', '!=', '<', '<=', '>', '>=']);
@@ -513,7 +518,7 @@ function complexBinary(op: BinaryOperator, a: Quantity, b: Quantity, leftExpr: E
   switch (op) {
     case '+':
     case '-': {
-      if (!sameDim(a.dim, b.dim)) fail('E-UNIT-MISMATCH', span, { operator: op, left: baseUnitSymbol(a.dim), right: baseUnitSymbol(b.dim) });
+      if (!sameDim(a.dim, b.dim)) fail('E-UNIT-MISMATCH', span, { operator: op, left: writtenUnit(a), right: writtenUnit(b) });
       if (a.absolute || b.absolute) fail('E-COMPLEX-ARG', span);
       const sign = op === '+' ? 1 : -1;
       return make(ar + sign * br, ai + sign * bi, a.dim, a.hint ?? b.hint);
@@ -542,7 +547,7 @@ function complexBinary(op: BinaryOperator, a: Quantity, b: Quantity, leftExpr: E
     }
     case '==':
     case '!=': {
-      if (!sameDim(a.dim, b.dim)) fail('E-UNIT-MISMATCH', span, { operator: op, left: baseUnitSymbol(a.dim), right: baseUnitSymbol(b.dim) });
+      if (!sameDim(a.dim, b.dim)) fail('E-UNIT-MISMATCH', span, { operator: op, left: writtenUnit(a), right: writtenUnit(b) });
       const tolerance = COMPARE_EPSILON * Math.max(Math.hypot(ar, ai), Math.hypot(br, bi));
       const equal = Math.hypot(ar - br, ai - bi) <= tolerance;
       return { type: 'boolean', value: op === '==' ? equal : !equal };
@@ -591,7 +596,7 @@ function keptHint(scaled: Quantity | undefined): boolean {
 
 function addSubtract(op: '+' | '-', a: Quantity, b: Quantity, span: Span, ctx: EvalContext): Quantity {
   if (!sameDim(a.dim, b.dim)) {
-    fail('E-UNIT-MISMATCH', span, { operator: op, left: baseUnitSymbol(a.dim), right: baseUnitSymbol(b.dim) });
+    fail('E-UNIT-MISMATCH', span, { operator: op, left: writtenUnit(a), right: writtenUnit(b) });
   }
   const si = op === '+' ? a.si + b.si : a.si - b.si;
   const sum = a.exact && b.exact ? (op === '+' ? X.add(a.exact, b.exact) : X.subtract(a.exact, b.exact)) : undefined;
@@ -673,7 +678,7 @@ function withoutOffset(unit: ResolvedUnit): ResolvedUnit {
 /** Comparison of two quantities with a relative tolerance. */
 export function compare(op: BinaryOperator, a: Quantity, b: Quantity, span: Span): Value {
   if (!sameDim(a.dim, b.dim)) {
-    fail('E-UNIT-MISMATCH', span, { operator: op, left: baseUnitSymbol(a.dim), right: baseUnitSymbol(b.dim) });
+    fail('E-UNIT-MISMATCH', span, { operator: op, left: writtenUnit(a), right: writtenUnit(b) });
   }
   const tolerance = COMPARE_EPSILON * Math.max(Math.abs(a.si), Math.abs(b.si));
   const diff = a.si - b.si;

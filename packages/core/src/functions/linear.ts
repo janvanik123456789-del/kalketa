@@ -482,6 +482,87 @@ export const LINEAR: readonly FunctionDef[] = [
     },
   },
   {
+    // submatrix(A, 1, 2, 2, 3): rows 1 to 2 and columns 2 to 3, counted from 1.
+    name: 'submatrix',
+    module: 'linear',
+    params: 'A, r1, r2, c1, c2',
+    arity: [5, 5],
+    call: (a) => {
+      const m = asMatrix(a.value(0), a.expr(0).span);
+      const [r1, r2, c1, c2] = [a.number(1), a.number(2), a.number(3), a.number(4)];
+      const whole = (x: number, to: number, i: number) => {
+        if (!Number.isInteger(x) || x < 1 || x > to) fail('E-INDEX', a.expr(i).span, { index: x, length: to });
+      };
+      whole(r1, m.rows, 1);
+      whole(r2, m.rows, 2);
+      whole(c1, m.cols, 3);
+      whole(c2, m.cols, 4);
+      if (r2 < r1 || c2 < c1) a.domain();
+      const items: Quantity[] = [];
+      for (let i = r1 - 1; i < r2; i++) for (let j = c1 - 1; j < c2; j++) items.push(at(m, i, j));
+      return normalized(matrix(r2 - r1 + 1, c2 - c1 + 1, items));
+    },
+  },
+  {
+    // Side by side: the same number of rows.
+    name: 'augment',
+    module: 'linear',
+    params: 'A, B',
+    arity: [2, 2],
+    call: (a) => {
+      const [x, y] = [asMatrix(a.value(0), a.expr(0).span), asMatrix(a.value(1), a.expr(1).span)];
+      if (x.rows !== y.rows) fail('E-MATRIX-SHAPE', a.call.span, { operator: a.name, left: shapeText(x), right: shapeText(y) });
+      const items: Quantity[] = [];
+      for (let i = 0; i < x.rows; i++) {
+        for (let j = 0; j < x.cols; j++) items.push(at(x, i, j));
+        for (let j = 0; j < y.cols; j++) items.push(at(y, i, j));
+      }
+      return matrix(x.rows, x.cols + y.cols, items);
+    },
+  },
+  {
+    // One under the other: the same number of columns.
+    name: 'stack',
+    module: 'linear',
+    params: 'A, B',
+    arity: [2, 2],
+    call: (a) => {
+      const [x, y] = [asMatrix(a.value(0), a.expr(0).span), asMatrix(a.value(1), a.expr(1).span)];
+      if (x.cols !== y.cols) fail('E-MATRIX-SHAPE', a.call.span, { operator: a.name, left: shapeText(x), right: shapeText(y) });
+      return normalized(matrix(x.rows + y.rows, x.cols, [...x.items, ...y.items]));
+    },
+  },
+  {
+    // Item by item, not as a matrix product.
+    name: 'hprod',
+    module: 'linear',
+    params: 'A, B',
+    arity: [2, 2],
+    call: (a) => {
+      const [x, y] = [asMatrix(a.value(0), a.expr(0).span), asMatrix(a.value(1), a.expr(1).span)];
+      if (x.rows !== y.rows || x.cols !== y.cols) fail('E-MATRIX-SHAPE', a.call.span, { operator: a.name, left: shapeText(x), right: shapeText(y) });
+      return normalized(matrix(x.rows, x.cols, x.items.map((q, k) => quantity(q.si * y.items[k]!.si, multiplyDims(q.dim, y.items[k]!.dim)))));
+    },
+  },
+  {
+    name: 'kprod',
+    module: 'linear',
+    params: 'A, B',
+    arity: [2, 2],
+    call: (a) => {
+      const [x, y] = [asMatrix(a.value(0), a.expr(0).span), asMatrix(a.value(1), a.expr(1).span)];
+      const items: Quantity[] = [];
+      for (let i = 0; i < x.rows; i++) {
+        for (let k = 0; k < y.rows; k++) {
+          for (let j = 0; j < x.cols; j++) {
+            for (let l = 0; l < y.cols; l++) items.push(quantity(at(x, i, j).si * at(y, k, l).si, multiplyDims(at(x, i, j).dim, at(y, k, l).dim)));
+          }
+        }
+      }
+      return normalized(matrix(x.rows * y.rows, x.cols * y.cols, items));
+    },
+  },
+  {
     name: 'identity',
     module: 'linear',
     params: 'n',

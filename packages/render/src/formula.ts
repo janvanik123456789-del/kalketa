@@ -263,7 +263,7 @@ function literalNode(text: string): MathNode {
 function renderCall(expr: Extract<Expr, { kind: 'call' }>, outer: FormulaOptions): Rendered {
   // The unknown of solve(a == b, x: …), the number of first(…, n: …) and the indices of matrix(…) are their own, no value of the sheet is put in.
   const last = expr.args[1];
-  const own = expr.name === 'matrix' || expr.name === 'vector' ? expr.named.map((n) => n.name) : expr.name === 'solve' || expr.name === 'first' ? [expr.named[0]?.name ?? (last?.kind === 'variable' ? last.name : undefined)] : [];
+  const own = expr.name === 'matrix' || expr.name === 'vector' || expr.name === 'max_of' || expr.name === 'min_of' ? expr.named.map((n) => n.name) : expr.name === 'solve' || expr.name === 'first' ? [expr.named[0]?.name ?? (last?.kind === 'variable' ? last.name : undefined)] : [];
   const o: FormulaOptions = own.length === 0 ? outer : { ...outer, substitute: (e) => (e.kind === 'variable' && own.includes(e.name) ? undefined : outer.substitute?.(e)) };
   const calculus = renderCalculus(expr, o);
   if (calculus) return calculus;

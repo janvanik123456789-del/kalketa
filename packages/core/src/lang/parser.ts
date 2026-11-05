@@ -51,7 +51,7 @@ const COMPARISONS: ReadonlySet<TokenType> = new Set(['==', '!=', '<', '<=', '>',
 
 
 /** Functions with a variable of their own, named after the expression: integral(f(x), x: a .. b). */
-export const BINDING_FUNCTIONS: ReadonlySet<string> = new Set(['integral', 'derivative', 'sum', 'plot', 'roots', 'minimize', 'maximize', 'solve', 'first', 'matrix', 'vector']);
+export const BINDING_FUNCTIONS: ReadonlySet<string> = new Set(['integral', 'derivative', 'sum', 'plot', 'roots', 'minimize', 'maximize', 'solve', 'first', 'matrix', 'vector', 'max_of', 'min_of']);
 /** Named arguments of those functions that are options, not the variable. */
 export const BINDING_OPTIONS: ReadonlySet<string> = new Set(['order', 'kind', 'title', 'samples']);
 

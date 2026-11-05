@@ -34,6 +34,7 @@ export const DIAGNOSTIC_SEVERITY = {
   'E-ASSIGN-WITH-EQUALS': 'error',
   'E-UNSUPPORTED': 'error',
   'I-AMBIGUOUS-UNIT': 'info',
+  'I-DID-YOU-MEAN': 'info',
   'W-BARE-UNIT': 'warning',
 
   // Names

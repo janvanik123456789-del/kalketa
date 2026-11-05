@@ -133,7 +133,7 @@ function durandKerner(a: readonly Complex[]): Complex[] {
 
 /** minimize(f(x), x: a .. b) and maximize: where in the interval f is smallest or largest. */
 export function extremum(call: CallExpr, f: (si: number) => Quantity, low: Quantity, high: Quantity): Value {
-  const sign = call.name === 'maximize' ? -1 : 1;
+  const sign = call.name === 'maximize' || call.name === 'max_of' ? -1 : 1;
   const g = (x: number): number => {
     try {
       return sign * f(x).si;

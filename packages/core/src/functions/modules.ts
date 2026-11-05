@@ -336,6 +336,14 @@ export const TRIG: readonly FunctionDef[] = [
   plain('tg', 'trig', Math.tan),
   plain('cot', 'trig', (x) => 1 / Math.tan(x)),
   plain('cotg', 'trig', (x) => 1 / Math.tan(x)),
+  plain('sec', 'trig', (x) => 1 / Math.cos(x)),
+  plain('csc', 'trig', (x) => 1 / Math.sin(x)),
+  plain('acot', 'trig', (x) => Math.PI / 2 - Math.atan(x)),
+  plain('asec', 'trig', (x) => Math.acos(1 / x), (x) => Math.abs(x) >= 1),
+  plain('acsc', 'trig', (x) => Math.asin(1 / x), (x) => Math.abs(x) >= 1),
+  plain('coth', 'trig', (x) => 1 / Math.tanh(x), (x) => x !== 0),
+  plain('sech', 'trig', (x) => 1 / Math.cosh(x)),
+  plain('csch', 'trig', (x) => 1 / Math.sinh(x), (x) => x !== 0),
   plain('asin', 'trig', Math.asin, (x) => x >= -1 && x <= 1),
   plain('acos', 'trig', Math.acos, (x) => x >= -1 && x <= 1),
   plain('atan', 'trig', Math.atan),
@@ -414,7 +422,64 @@ function withoutIm(q: Quantity): Quantity {
 
 const MAX_RANGE = 10_000;
 
+/** Whole numbers of any count, or a series of them. */
+function wholeItems(a: Args): number[] {
+  const all = a.items().map((q) => q.si);
+  if (all.some((x) => !Number.isSafeInteger(x)) || a.items().some((q) => !isDimensionless(q.dim))) a.domain();
+  return all.map(Math.abs);
+}
+
+const gcdOf = (x: number, y: number): number => (y === 0 ? x : gcdOf(y, x % y));
+
 export const SERIES: readonly FunctionDef[] = [
+  { name: 'gcd', module: 'math', params: 'a, b, …', arity: [1, Infinity], call: (a) => quantity(wholeItems(a).reduce(gcdOf, 0)) },
+  {
+    name: 'lcm',
+    module: 'math',
+    params: 'a, b, …',
+    arity: [1, Infinity],
+    call: (a) => quantity(wholeItems(a).reduce((x, y) => (x === 0 || y === 0 ? 0 : (x / gcdOf(x, y)) * y), 1)),
+  },
+  { name: 'trunc', module: 'math', params: 'x', arity: [1, 1], call: (a) => { const q = a.quantity(0); const f = q.hint?.factor ?? 1; return quantity(Math.trunc(q.si / f) * f, q.dim, keepUnit(q)); } },
+  {
+    // The square root of the sum of squares, as combinations of modes and of uncertainties write it.
+    name: 'srss',
+    module: 'series',
+    params: 'a, b, …',
+    arity: [1, Infinity],
+    call: (a) => {
+      const items = a.items();
+      return quantity(Math.hypot(...items.map((q) => q.si)), items[0]?.dim, keepUnit(items[0]));
+    },
+  },
+  {
+    name: 'sumsq',
+    module: 'series',
+    params: 'a, b, …',
+    arity: [1, Infinity],
+    call: (a) => {
+      const items = a.items();
+      return quantity(items.reduce((s, q) => s + q.si ** 2, 0), items[0] ? multiplyDims(items[0].dim, items[0].dim) : undefined);
+    },
+  },
+  {
+    name: 'reverse',
+    module: 'series',
+    params: 'v',
+    arity: [1, 1],
+    call: (a) => ({ type: 'vector', items: [...a.series(0)].reverse() }),
+  },
+  {
+    name: 'last',
+    module: 'series',
+    params: 'v',
+    arity: [1, 1],
+    call: (a) => {
+      const items = a.series(0);
+      if (items.length === 0) a.domain();
+      return items[items.length - 1]!;
+    },
+  },
   {
     name: 'range',
     module: 'series',
@@ -437,9 +502,9 @@ export const SERIES: readonly FunctionDef[] = [
     module: 'series',
     // Also sum(f(k), k: a .. b), evaluated by eval/calculus.ts.
     params: 'v',
-    arity: [1, 1],
+    arity: [1, Infinity],
     call: (a) => {
-      const items = a.series(0);
+      const items = a.items();
       return quantity(
         items.reduce((s, q) => s + q.si, 0),
         items[0]?.dim,
@@ -560,9 +625,9 @@ export const STATISTICS: readonly FunctionDef[] = [
     name: 'mean',
     module: 'statistics',
     params: 'v',
-    arity: [1, 1],
+    arity: [1, Infinity],
     call: (a) => {
-      const items = a.series(0);
+      const items = a.items();
       if (items.length === 0) a.domain();
       return quantity(items.reduce((s, q) => s + q.si, 0) / items.length, items[0]!.dim, keepPlace(items));
     },
@@ -579,6 +644,31 @@ export const STATISTICS: readonly FunctionDef[] = [
       const mid = Math.floor(sorted.length / 2);
       const value = sorted.length % 2 ? sorted[mid]! : (sorted[mid - 1]! + sorted[mid]!) / 2;
       return quantity(value, items[0]!.dim, keepPlace(items));
+    },
+  },
+  {
+    // Of a whole population (n), not a sample of it (n − 1).
+    name: 'stdevp',
+    module: 'statistics',
+    params: 'v',
+    arity: [1, 1],
+    call: (a) => {
+      const items = a.series(0);
+      if (items.length < 1) a.domain();
+      const mean = items.reduce((s, q) => s + q.si, 0) / items.length;
+      return quantity(Math.sqrt(items.reduce((s, q) => s + (q.si - mean) ** 2, 0) / items.length), items[0]!.dim, differenceOf(items[0]));
+    },
+  },
+  {
+    name: 'varp',
+    module: 'statistics',
+    params: 'v',
+    arity: [1, 1],
+    call: (a) => {
+      const items = a.series(0);
+      if (items.length < 1) a.domain();
+      const mean = items.reduce((s, q) => s + q.si, 0) / items.length;
+      return quantity(items.reduce((s, q) => s + (q.si - mean) ** 2, 0) / items.length, multiplyDims(items[0]!.dim, items[0]!.dim));
     },
   },
   {
@@ -1068,6 +1158,8 @@ export const CALCULUS: readonly FunctionDef[] = [
   { name: 'fit', module: 'calculus', params: 'y, x: series, kind: "linear"', arity: [1, 1] },
   { name: 'polyfit', module: 'calculus', params: 'x, y, n, steps: false', arity: [3, 3] },
   { name: 'polyval', module: 'calculus', params: 'p, x', arity: [2, 2] },
+  { name: 'max_of', module: 'calculus', params: 'f(x), x: a .. b', arity: [1, 1] },
+  { name: 'min_of', module: 'calculus', params: 'f(x), x: a .. b', arity: [1, 1] },
   { name: 'first', module: 'calculus', params: 'condition, n: from .. to', arity: [1, 1] },
   { name: 'matrix', module: 'linear', params: 'f(i, j), i: 1 .. n, j: 1 .. m', arity: [1, 1] },
   { name: 'vector', module: 'linear', params: 'f(i), i: 1 .. n', arity: [1, 1] },

@@ -275,6 +275,7 @@ rok := sum(Vyroba.E)                         ' sloupec tabulky jako řada
 ```
 
 - Řada má všechny prvky stejné dimenze. S číslem nebo stejně dlouhou řadou se počítá po prvcích (`+ − · / ^`). Řady se neporovnávají (`<` je chyba).
+- **Volné argumenty a extrémy (2026-11-05):** `sum(1, 2, 3)` a `mean(2, 4, 8)` berou čísla i řady za sebou; `sum(a, b)` s proměnnou `b` zůstává zápis teorie (`Σ` přes index). `max_of(M(x), x: 0 m .. L)` dá největší hodnotu s jednotkou, `min_of` nejmenší, polohu dají `maximize` a `minimize`.
 - Funkce: `range(od, do[, krok])`, `sum`, `mean`, `len`, `cumsum`, `min`/`max` přes řadu, `npv`, `irr`, `pmt`, `payback`.
 - Funkce čísla (`sqrt`, `abs`, `round`, `mod`, `log`, `norminv`, `tcdf` …) vezmou řadu po položkách, ostatní argumenty zůstanou: `tcdf(t, 5)`. Funkce listu taky, pokud její tělo řadu jako celek neumí; `each(f, v)` ji volá po položkách vždy.
 - `round`, `floor`, `ceil` zaokrouhlují v jednotce hodnoty: `ceil(5.5 CZK)` je 6 CZK, `round(25.6 °C)` je 26 °C, `round(x, 2)` na dvě místa.

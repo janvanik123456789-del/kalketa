@@ -493,3 +493,76 @@ describe('the rest of the brief', () => {
     expect(si('a := 2 t', 'a')).toBe(2000);
   });
 });
+
+describe('short things from the study of other programs', () => {
+  const near = (sheet: string, name: string, value: number) => expect(si(sheet, name) / value).toBeCloseTo(1, 10);
+
+  it('suggests what was probably meant', () => {
+    const suggestion = (sheet: string) => evaluateSheet(sheet).diagnostics.find((d) => d.code === 'I-DID-YOU-MEAN')?.params['suggestion'];
+    expect(suggestion('F := 12 KN')).toBe('kN');
+    expect(suggestion('p := 5 Mpa')).toBe('MPa');
+    expect(suggestion('x_net := 5\ny := x_nett + 1')).toBe('x_net');
+    expect(suggestion('y := sinn(1)')).toBe('sin');
+    expect(suggestion('y := average([1, 2])')).toBe('mean');
+    expect(suggestion('y := 5 wizard')).toBeUndefined();
+    expect(suggestion('abc := 1\ny := xyz + 1')).toBeUndefined();
+  });
+
+  it('names the units as written in an error', () => {
+    const d = evaluateSheet('x := 1 kN + 1 m').diagnostics.find((e) => e.code === 'E-UNIT-MISMATCH')!;
+    expect([d.params['left'], d.params['right']]).toEqual(['kN', 'm']);
+  });
+
+  it('takes numbers in a row', () => {
+    expect(si('a := sum(1, 2, 3)', 'a')).toBe(6);
+    expect(si('a := sum(2, 3)', 'a')).toBe(5);
+    expect(si('a := mean(2, 4, 9)', 'a')).toBe(5);
+    expect(si('a := sum(1 kN, [2, 3] kN) | kN', 'a')).toBe(6000);
+    expect(codes('a := sum(1 kN, 1 m)')).toContain('E-UNIT-MISMATCH');
+    expect(codes('y := sum(F_i·a_i, i)')).toContain('E-NO-BOUNDS');
+  });
+
+  it('finds the greatest and the least value with its unit', () => {
+    const beam = 'q := 10 kN/m\nl := 6 m\nM(x) := q·x·(l - x)/2\n';
+    expect(si(`${beam}a := max_of(M(x), x: 0 m .. l)`, 'a')).toBeCloseTo(45000, 3);
+    expect(si(`${beam}a := maximize(M(x), x: 0 m .. l)`, 'a')).toBeCloseTo(3, 4);
+    expect(evaluateSheet(`${beam}a := max_of(M(x), x: 0 m .. l)`).statements.at(-1)!.display!.unit).toBe('kN·m');
+    expect(si('a := min_of(x^2 - 2·x, x: 0 .. 4)', 'a')).toBeCloseTo(-1, 8);
+    // At an end of the interval too.
+    expect(si('a := max_of(x, x: 0 .. 4)', 'a')).toBeCloseTo(4, 8);
+  });
+
+  it('has the small functions, against their definitions', () => {
+    near('a := sec(1)', 'a', 1 / Math.cos(1));
+    near('a := csc(1)', 'a', 1 / Math.sin(1));
+    near('a := acot(2)', 'a', Math.atan(0.5));
+    near('a := asec(2)', 'a', Math.PI / 3);
+    near('a := acsc(2)', 'a', Math.PI / 6);
+    near('a := coth(1)', 'a', 1 / Math.tanh(1));
+    near('a := sech(1)', 'a', 1 / Math.cosh(1));
+    near('a := csch(1)', 'a', 1 / Math.sinh(1));
+    expect(si('a := gcd(12, 18, 8)', 'a')).toBe(2);
+    expect(si('a := lcm(4, 6)', 'a')).toBe(12);
+    expect(si('a := lcm([4, 6, 10])', 'a')).toBe(60);
+    expect(si('a := trunc(-2.7)', 'a')).toBe(-2);
+    expect(si('a := srss(3 kN, 4 kN)', 'a')).toBeCloseTo(5000, 8);
+    expect(si('a := sumsq(3, 4)', 'a')).toBe(25);
+    expect(si('a := stdevp([2, 4, 6])', 'a')).toBeCloseTo(Math.sqrt(8 / 3), 12);
+    expect(si('a := varp([2, 4, 6])', 'a')).toBeCloseTo(8 / 3, 12);
+    expect(si('a := last(reverse([1, 2, 3]))', 'a')).toBe(1);
+    expect(codes('a := gcd(1.5, 2)')).toContain('E-DOMAIN');
+    expect(codes('a := coth(0)')).toContain('E-DOMAIN');
+  });
+
+  it('cuts and joins matrices', () => {
+    const list = (sheet: string, name: string) => (evaluateSheet(sheet).values.get(name) as unknown as { items: { si: number }[] }).items.map((q) => q.si);
+    expect(list('A := submatrix([1, 2, 3 | 4, 5, 6 | 7, 8, 9], 2, 3, 2, 3)', 'A')).toEqual([5, 6, 8, 9]);
+    expect(list('A := submatrix([1, 2 | 3, 4], 1, 2, 2, 2)', 'A')).toEqual([2, 4]);
+    expect(list('A := augment([1 | 2], [3 | 4])', 'A')).toEqual([1, 3, 2, 4]);
+    expect(list('A := stack([1, 2 | 3, 4], [5, 6 | 7, 8])', 'A')).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+    expect(list('A := hprod([1, 2 | 3, 4], [5, 6 | 7, 8])', 'A')).toEqual([5, 12, 21, 32]);
+    expect(list('A := kprod([1, 2], transpose([1, 1]))', 'A')).toEqual([1, 1, 2, 2]);
+    expect(codes('A := submatrix([1, 2 | 3, 4], 1, 3, 1, 1)')).toContain('E-INDEX');
+    expect(codes('A := augment([1 | 2], [1 | 2 | 3])')).toContain('E-MATRIX-SHAPE');
+  });
+});

@@ -235,7 +235,6 @@ const BUILT_IN: readonly UnitDef[] = [
   { symbol: 'kmh', factor: 1 / 3.6, dim: dim({ L: 1, T: -1 }) },
   { symbol: 'kph', factor: 1 / 3.6, dim: dim({ L: 1, T: -1 }) },
   { symbol: 'knot', factor: 1852 / 3600, dim: dim({ L: 1, T: -1 }) },
-  { symbol: 'kn', factor: 1852 / 3600, dim: dim({ L: 1, T: -1 }) },
   { symbol: 'volt', factor: 1, dim: VOLTAGE },
   { symbol: 'watt', factor: 1, dim: POWER },
   { symbol: 'joule', factor: 1, dim: ENERGY },
@@ -309,6 +308,13 @@ export class UnitRegistry {
   define(def: UnitDef, baseOf?: string): void {
     this.units.set(def.symbol, def);
     if (baseOf !== undefined && !this.baseUnits.has(baseOf)) this.baseUnits.set(baseOf, def.symbol);
+  }
+
+  /** What can be written as a unit: every symbol, and the prefixed ones engineers use. */
+  writableSymbols(): string[] {
+    const common = ['k', 'M', 'G', 'm', 'μ', 'n'];
+    const all = [...this.units.values()];
+    return [...all.map((u) => u.symbol), ...all.filter((u) => u.prefixable).flatMap((u) => common.filter((p) => !u.prefixes || u.prefixes.includes(p)).map((p) => p + u.symbol))];
   }
 
   /** Whether the exact symbol is a unit (no prefixes, no spellings). */

@@ -61,6 +61,15 @@ export function callCalculus(call: CallExpr, ctx: EvalContext, evaluate: Evaluat
       return solveValue(call, ctx, evaluate);
     case 'first':
       return firstWhole(call, ctx, evaluate);
+    case 'max_of':
+    case 'min_of': {
+      // The value of the extreme, in its unit; maximize and minimize give its place.
+      const { body, variable } = parts(call, []);
+      const [low, high] = range(variable, call, ctx, evaluate);
+      const f = asFunction(body, variable.name, low, ctx, evaluate, call.span);
+      const place = extremum(call, (x) => withoutShownUnits(() => f(x)), low, high);
+      return f(asQuantity(place, call.span).si);
+    }
     case 'matrix':
       return matrixOfIndices(call, ctx, evaluate);
     case 'vector':

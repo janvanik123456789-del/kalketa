@@ -165,6 +165,7 @@ export const DIAGNOSTIC_SEVERITY = {
   'E-TABLE-EMPTY': 'error',
   'E-TABLE-FORMULA': 'error',
   'E-TABLE-ROWS': 'error',
+  'E-SOLVE-GUESS-UNIT': 'error',
   'E-INTEGRAL-DIVERGES': 'error',
   'E-BEAM-OUTSIDE': 'error',
   'E-BEAM-UNSTABLE': 'error',

@@ -89,6 +89,7 @@ const FUNCTIONS: Readonly<Record<string, string>> = {
   asinh: 'asinh', arsh: 'asinh', acosh: 'acosh', arch: 'acosh', atanh: 'atanh', arth: 'atanh',
   sqrt: 'sqrt', exp: 'exp', ln: 'ln', lg: 'log10', abs: 'abs', sign: 'sign', sgn: 'sign', round: 'round', floor: 'floor', ceil: 'ceil', mod: 'mod',
   min: 'min', max: 'max', sum: 'sum', mean: 'mean', median: 'median', stdev: 'stdev', length: 'len', det: 'det', transpose: 'transpose', inverse: 'inverse', if: 'if', rows: 'rows', cols: 'cols', trace: 'trace', norm: 'norm',
+  Min: 'min', Max: 'max', augment: 'augment', stack: 'stack', col: 'col', row: 'row', submatrix: 'submatrix', rank: 'rank', cross: 'cross',
   atan2: 'atan2', arg: 'arg', Re: 're', Im: 'im', conj: 'conj', fact: 'factorial',
 };
 
@@ -153,7 +154,10 @@ function rendered(node: Node, scope: Scope): { text: string; prec: number } {
       return { text: `"${node.text.replace(/"/g, '')}"`, prec: ATOM };
     case 'unit': {
       const value = UNITS_BY_VALUE[node.name];
-      return value ? { text: value, prec: ATOM } : { text: `[${unitName(node.name, scope)}]`, prec: ATOM };
+      if (value) return { text: value, prec: ATOM };
+      const unit = unitName(node.name, scope);
+      // A unit alone that the sheet also has as a name: [m] would be the series of that name.
+      return scope.aliases.has(node.name) ? { text: `(1 [${unit}])`, prec: ATOM } : { text: `[${unit}]`, prec: ATOM };
     }
     case 'name': {
       if (scope.local.has(node.name)) return { text: ownName(node.name), prec: ATOM };
@@ -219,6 +223,8 @@ function call(node: Extract<Node, { k: 'call' }>, scope: Scope): { text: string;
     const f = rendered(args[0]!, inner).text;
     return { text: `${name === 'sum' ? 'sum' : 'integral'}(${f}, ${ownName(variable)}: ${of(args[2]!)} .. ${of(args[3]!)})`, prec: ATOM };
   }
+  // Series go item by item here anyway.
+  if (name === 'vectorize' && args.length === 1) return rendered(args[0]!, scope);
   const own = FUNCTIONS[name];
   if (own) return { text: `${own}(${args.map(of).join(', ')})`, prec: ATOM };
   // A function of the sheet itself.
@@ -283,13 +289,53 @@ const quoted = (text: string) => `"${text.replace(/"/g, "'").replace(/\s*\n\s*/g
 interface Line {
   text: string;
   /** What SMath showed for it: its value, in its unit. */
-  stored?: { value: string; digits: number; unit: string; name: string } | undefined;
+  /** unit: the one the line asks for, its value shown so; own: a unit that came with the result alone. */
+  stored?: { value: string; digits: number; unit: string; own: string; name: string } | undefined;
   written?: string;
 }
 
 /** The digits SMath stored: 6.6e4 has two, so 66 500 agrees with it. */
 function digitsOf(number: string): number {
   return number.replace(/[eE].*$/, '').replace('.', '').replace(/^0+/, '').length || 1;
+}
+
+/** A stored result with a unit of its own: 0.25, A, * in the tokens; undefined when it is more than that. */
+function storedWithUnit(result: XmlNode, scope: Scope): { value: string; unit: string } | undefined {
+  try {
+    const tree = treeOf(result);
+    if (tree.k === 'op' && tree.op === '*' && tree.args.length === 2) {
+      const [left, right] = tree.args as [Node, Node];
+      const hasUnit = (n: Node): boolean => n.k === 'unit' || (n.k === 'bracket' && hasUnit(n.inner)) || (n.k === 'op' && n.args.some(hasUnit));
+      if (hasUnit(right) && !hasUnit(left)) {
+        const value = numberOf(left);
+        if (value !== undefined) return { value, unit: unitText(right, scope) };
+      }
+    }
+    const plain = numberOf(tree);
+    return plain === undefined ? undefined : { value: plain, unit: '' };
+  } catch (err) {
+    if (err instanceof Unconverted) return undefined;
+    throw err;
+  }
+}
+
+function numberOf(n: Node): string | undefined {
+  if (n.k === 'number') return n.text;
+  if (n.k === 'bracket') return numberOf(n.inner);
+  if (n.k === 'op' && n.op === '-' && n.args.length === 1) {
+    const inner = numberOf(n.args[0]!);
+    return inner === undefined ? undefined : `-${inner}`;
+  }
+  if (n.k === 'op' && n.op === '*' && n.args.length === 2 && n.args[1]!.k === 'op' && n.args[1]!.op === '^') {
+    const [mantissa, power] = [numberOf(n.args[0]!), n.args[1]!.args];
+    const [base, exponent] = [power[0], power[1] ? numberOf(power[1]) : undefined];
+    if (mantissa !== undefined && base?.k === 'number' && base.text === '10' && exponent !== undefined) return `${mantissa}e${exponent}`;
+  }
+  if (n.k === 'op' && n.op === '^' && n.args.length === 2 && n.args[0]!.k === 'number' && n.args[0]!.text === '10') {
+    const exponent = numberOf(n.args[1]!);
+    return exponent === undefined ? undefined : `1e${exponent}`;
+  }
+  return undefined;
 }
 
 /** A stored result as a number; undefined when it is more than a number (a matrix, a symbol). */
@@ -323,10 +369,12 @@ function storedValue(result: XmlNode): string | undefined {
 
 export function importSmath(xml: string, registry: UnitRegistry = defaultRegistry): SmathImport {
   const root = parseXml(xml);
-  if (root.name !== 'regions') throw new XmlError('not a worksheet of SMath');
+  // Newer versions: <worksheet><settings>…</settings><regions>…; older ones: <regions> alone.
+  const holders = root.name === 'regions' ? [root] : root.name === 'worksheet' ? root.children.filter((c) => c.name === 'regions') : [];
+  if (holders.length === 0) throw new XmlError('not a worksheet of SMath');
   // SMath calculates down the page and, on one height, from the left.
   const num = (r: XmlNode, name: string) => Number(r.attributes.get(name) ?? 0);
-  const regions = root.children.filter((c) => c.name === 'region').sort((a, b) => num(a, 'top') - num(b, 'top') || num(a, 'left') - num(b, 'left'));
+  const regions = holders.flatMap((h) => h.children).filter((c) => c.name === 'region').sort((a, b) => num(a, 'top') - num(b, 'top') || num(a, 'left') - num(b, 'left'));
   const scope: Scope = { registry, aliases: new Map(), local: new Set() };
   const renamed: { from: string; to: string }[] = [];
   const left: { written: string; why: NotConverted }[] = [];
@@ -360,8 +408,9 @@ export function importSmath(xml: string, registry: UnitRegistry = defaultRegistr
       const contract = contractNode && contractNode.children.length > 0 ? unitText(treeOf(contractNode), scope) : undefined;
       const { line, name } = lineOf(tree, contract, scope, renamed);
       const result = child(math, 'result');
-      const value = result && result.attributes.get('action') !== 'symbolic' ? storedValue(result) : undefined;
-      const stored = value !== undefined ? { value, digits: digitsOf(value.replace(/^-/, '')), unit: contract ?? '', name: name ?? writtenOf(tree) } : undefined;
+      const found = result && result.attributes.get('action') !== 'symbolic' ? storedWithUnit(result, scope) : undefined;
+      const value = found?.value;
+      const stored = found ? { value: found.value, digits: digitsOf(found.value.replace(/^-/, '')), unit: contract ?? '', own: contract ? '' : found.unit, name: name ?? writtenOf(tree) } : undefined;
       lines.push({ text: line, stored, written: writtenOf(tree) });
       if (result && value === undefined) notNumbers++;
     } catch (err) {
@@ -407,12 +456,21 @@ export function importSmath(xml: string, registry: UnitRegistry = defaultRegistr
       notCompared++;
       return;
     }
-    const stored = Number(line.stored.value);
-    const tolerance = 0.55 * 10 ** (1 - line.stored.digits) * Math.abs(stored);
+    // A unit stored with the result: to SI, by the calculation itself.
+    const ownScale = line.stored.own ? (evaluateSheet(`u := 1 [${line.stored.own}]`).values.get('u') as { si?: number } | undefined)?.si : 1;
+    if (ownScale === undefined) {
+      notCompared++;
+      return;
+    }
+    const stored = Number(line.stored.value) * ownScale;
+    // Half of the last digit stored: 6.6e4 stands for 65 500 to 66 500. Of the number as written, before its own unit.
+    const written = Math.abs(Number(line.stored.value));
+    const lastDigit = written > 0 ? 10 ** (Math.floor(Math.log10(written)) - line.stored.digits + 1) : 0;
+    const tolerance = 0.55 * lastDigit * ownScale;
     // Without a unit asked for, SMath shows SI: compared through the value here in SI.
     const inUnit = line.stored.unit ? here.value : valueSi(statement.value, here.value);
     if (Math.abs(inUnit - stored) <= Math.max(tolerance, 1e-12)) agree++;
-    else differ.push({ name: line.stored.name, stored, here: inUnit, unit: line.stored.unit });
+    else differ.push({ name: line.stored.name, stored, here: inUnit, unit: line.stored.unit || (line.stored.own ? 'SI' : '') });
   });
   const asText = new Set(left.map((l) => l.written));
   const converted = lines.filter((l) => l.written !== undefined && !l.text.startsWith('"') && !asText.has(l.written)).length;

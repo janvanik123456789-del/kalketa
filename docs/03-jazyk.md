@@ -105,7 +105,8 @@ Tohle je nejčastější zdroj chyb, proto pravidlo **přísnější než u konk
    *Upraveno 2026-11-05:* za lomítkem je to varování `W-NAME-AS-UNIT` na každém takovém místě, když proměnná má jiný rozměr než jednotka a ta jednotka v listu jinde jako jednotka nestojí. `100 kN/A` s plochou `A` se tak neztratí; `10 N/m` v listu s hmotností `m`, kde se metry používají, varování nemá. Čtení zůstává stejné, proměnná se píše `(100 kN)/A`.
    *Upraveno 2026-10-23:* dřív to bylo varování na každém místě. S hmotností `m` a délkami v metrech (vzor R23) svítilo varování u každého metru, a uživatel tak musel přejmenovat nejběžnější značky (m, L). Pravidlo čtení se nemění: za číslem jednotka (i uvnitř `kN·m`), samostatně stojící jméno proměnná (`m·L`, `2·L`).
    *Upraveno při implementaci F1:* původně navržené varování už při definici (`L := 5 m`) by se objevovalo pořád, protože běžná inženýrská jména (L, A, F, T, V, h, d, t, m) jsou zároveň jednotky. Varuje se proto jen tam, kde nejednoznačnost opravdu vznikne.
-4. Vynucení jednotky: `[m]` v hranatých závorkách (**inspirace EPX**, který jednotky vždy píše do hranatých závorek). Ekvivalent Calcpadové tečky `.m`, ale čitelnější.
+4. *Upraveno 2026-11-05:* samostatně stojící `[L]` s definovanou proměnnou `L` je řada s její hodnotou (`beam(…, pins: [L])`), za číslem a za `·` nebo `/` zůstává jednotkou (`2 [L]`, `kN/[A]`).
+5. Vynucení jednotky: `[m]` v hranatých závorkách (**inspirace EPX**, který jednotky vždy píše do hranatých závorek). Ekvivalent Calcpadové tečky `.m`, ale čitelnější.
 
 ### 4.2a Jednotka výsledku součinu a podílu
 

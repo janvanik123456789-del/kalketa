@@ -73,7 +73,16 @@ export interface Solved {
 
 /** Solves the statement; an inequality for its bound, then the side of the solutions. */
 export function solveStatement(statement: SolveStatement, ctx: EvalContext, evaluate: Evaluate): Solved {
-  const solved = solveEquations(statement, ctx, evaluate);
+  let solved: Solved;
+  try {
+    solved = solveEquations(statement, ctx, evaluate);
+  } catch (err) {
+    // Without an interval or a guess the unknown starts as a plain number, and then the units do not meet: says what helps.
+    if (err instanceof CalcError && err.diagnostic.code === 'E-UNIT-MISMATCH' && !statement.range && statement.guesses.length === 0 && !statement.ode) {
+      return fail('E-SOLVE-GUESS-UNIT', statement.span, { name: statement.unknowns[0]?.name ?? '' });
+    }
+    throw err;
+  }
   const relation = statement.equations[0]?.relation;
   if (!relation) noteOtherRoots(statement, solved.values[0]!, ctx, evaluate);
   return relation ? { ...solved, relation: sideOf(statement, relation, solved.values[0]!, ctx, evaluate) } : solved;

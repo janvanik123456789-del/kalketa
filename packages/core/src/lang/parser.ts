@@ -958,7 +958,10 @@ class LineParser {
         return { ...inner, span: spanOf(token, close) };
       }
       case '[': {
-        // "[m]" is a unit; anything else in brackets is a series: [100, 120, 150] CZK.
+        // "[m]" is a unit; anything else in brackets is a series: [100, 120, 150] CZK. So is [A] of a name the sheet
+        // defines, where it stands on its own (beam(pins: [L])); after a number or an operator it marks the unit (2 [L], kN/[A]).
+        const before = this.tokens[this.pos - 1]?.type;
+        if (this.peek(1).type === 'ident' && this.peek(2).type === ']' && this.defined.has(this.peek(1).text) && before !== '*' && before !== '/') return this.parseVector();
         const save = this.pos;
         const diagnosticsBefore = this.diagnostics.length;
         try {

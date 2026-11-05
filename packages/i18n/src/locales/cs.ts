@@ -143,6 +143,7 @@ export const cs: Catalog = {
     'E-BEAM-UNSTABLE': 'Konstrukce je mechanismus: podpory ji neudrží, nebo je v ní moc kloubů.',
     'W-BEAM-EQUILIBRIUM': 'Reakce nejsou v rovnováze se zatížením. Výsledek je nespolehlivý, nejspíš je konstrukce skoro mechanismus.',
     'E-INTEGRAL-DIVERGES': 'Integrál do nekonečna se neustálil: funkce neubývá dost rychle, nebo kmitá.',
+    'E-SOLVE-GUESS-UNIT': 'Program neví, v jaké jednotce {name} hledat. Zadejte první odhad s jednotkou: guess {name} = 1 Ω, nebo interval: in 1 Ω .. 10 Ω.',
     'E-PREV-PLACE': 'prev čte řádek nad sebou, patří tedy jen do vzorce sloupce tabulky.',
     'E-PREV-FORM': 'prev se píše prev(sloupec) nebo prev(sloupec, hodnota pro první řádek).',
     'E-PREV-START': 'Tabulka „{table}“: první řádek nemá nad sebou nic. Vyplňte v něm buňku, nebo napište prev({column}, hodnota pro první řádek).',

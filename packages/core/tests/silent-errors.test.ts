@@ -1047,3 +1047,31 @@ describe('π alone makes no radians', () => {
     expect(si('n := 3000\nx := π*n/30', 'x')).toBeCloseTo(100 * Math.PI, 9);
   });
 });
+
+/** docs/navrhy/ZADANI-Z-KONKURENCE.md, second round, B, D, E. */
+const COND_BY_NUMPY = 29.421080507201488;
+describe('the second round', () => {
+  it('B: cond is the ratio of the singular values, against NumPy', () => {
+    expect(si('a := cond([2, 1, 3 | 4, 7, 6 | 8, 5, 9])', 'a')).toBeCloseTo(COND_BY_NUMPY, 8);
+    expect(si('a := cond([1, 0 | 0, 1000])', 'a')).toBeCloseTo(1000, 8);
+  });
+
+  it('D: a name of the sheet in brackets is a series where it stands alone', () => {
+    const items = (sheet: string, name: string) => (evaluateSheet(sheet).values.get(name) as unknown as { items: { si: number }[] }).items.map((q) => q.si);
+    expect(items('A := 3 m\nv := [A]', 'v')).toEqual([3]);
+    expect(items('A := 3 m\nv := [A] * 2', 'v')).toEqual([6]);
+    expect(si('L := 6 m\nN := beam(L: L, EI: 20 MN·m^2, fixed: [0 m], pins: [L], q: 1 kN/m)\na := N.R_at[2]', 'a')).toBe(6);
+    // A unit where it marks one, and where no such name is.
+    expect(si('L := 5 m\nV := 2 [L] | m^3', 'V')).toBeCloseTo(0.002, 12);
+    expect(si('A := 0.01 m^2\ns := 100 kN/[A]\nb := s | kN/A', 'b')).toBeCloseTo(100000, 6);
+    expect(si('a := [m]·3', 'a')).toBe(3);
+  });
+
+  it('E: says that a guess with a unit helps', () => {
+    const sheet = 'R_v := 2 Ω\nR_2 := 5 Ω\nsolve R_1: R_v == R_1*R_2/(R_1 + R_2)';
+    expect(codes(sheet)).toEqual(['E-SOLVE-GUESS-UNIT']);
+    expect(evaluateSheet(`${sheet}\n    guess R_1 = 1 Ω`).statements.at(-1)!.solutions![0]!.display.value).toBeCloseTo(10 / 3, 8);
+    // An error of units with a guess given stays what it is.
+    expect(codes('solve x: x == 2 m\n    guess x = 1 s')).toContain('E-UNIT-MISMATCH');
+  });
+});

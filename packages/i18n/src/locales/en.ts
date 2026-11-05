@@ -143,6 +143,7 @@ export const en: Catalog = {
     'E-BEAM-UNSTABLE': 'The structure is a mechanism: its supports do not hold it, or it has too many hinges.',
     'W-BEAM-EQUILIBRIUM': 'The reactions are not in equilibrium with the load. The result cannot be relied on, the structure is probably nearly a mechanism.',
     'E-INTEGRAL-DIVERGES': 'The integral to infinity did not settle: the function does not die out fast enough, or it oscillates.',
+    'E-SOLVE-GUESS-UNIT': 'The program does not know in what unit to look for {name}. Give a first guess with a unit: guess {name} = 1 Ω, or an interval: in 1 Ω .. 10 Ω.',
     'E-PREV-PLACE': 'prev reads the row above, so it belongs only in the formula of a column of a table.',
     'E-PREV-FORM': 'prev is written prev(column) or prev(column, value for the first row).',
     'E-PREV-START': 'Table “{table}”: the first row has nothing above it. Fill in its cell, or write prev({column}, value for the first row).',

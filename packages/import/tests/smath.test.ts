@@ -143,3 +143,49 @@ describe('a worksheet of SMath', () => {
     expect(broken.source).toContain('a := 1');
   });
 });
+
+describe('files as newer versions of SMath write them', () => {
+  const worksheet = (...regions: string[]) => `<?xml version="1.0" encoding="utf-8"?><worksheet xmlns="http://smath.info/schemas/worksheet/1.0"><settings ppi="96"><identity><id>x</id></identity><calculation><precision>4</precision></calculation></settings><regions type="content">${regions.join('')}</regions></worksheet>`;
+
+  it('have the regions under a worksheet with its settings', () => {
+    const { source, report } = importSmath(worksheet(region(10, math(let_('a', n('2'))))));
+    expect(source.trim()).toBe('a := 2');
+    expect(report.converted).toBe(1);
+  });
+
+  it('store a result with its own unit, which is compared', () => {
+    const { report } = importSmath(
+      worksheet(
+        region(10, math(let_('i', n('250'), u('mA'), op('*')))),
+        region(20, math(n('i'), `${n('0.25')}${u('A')}${op('*')}`)),
+        region(30, math(n('i'), `${n('0.5')}${u('A')}${op('*')}`)),
+        region(40, math(n('i'), `${n('250')}${u('mA')}${op('*')}`)),
+      ),
+    );
+    expect(report.agree).toBe(2);
+    expect(report.differ.map((d) => d.stored)).toEqual([0.5]);
+    expect(report.notCompared).toBe(0);
+  });
+
+  it('name functions of their own way', () => {
+    const { source, report } = importSmath(
+      worksheet(
+        region(10, math(let_('a', n('1'), n('2'), fn('Max', 2)))),
+        region(20, math(let_('b', n('1'), n('2'), fn('Min', 2)))),
+        region(30, math(let_('c', `${n('1')}${n('2')}${n('2')}${n('1')}${fn('mat', 4)}`, `${n('3')}${n('4')}${n('2')}${n('1')}${fn('mat', 4)}`, fn('augment', 2)))),
+        region(40, math(let_('d', `${n('2')}${fn('vectorize', 1)}`))),
+      ),
+    );
+    expect(report.left).toEqual([]);
+    expect(source).toContain('a := max(1, 2)');
+    expect(source).toContain('b := min(1, 2)');
+    expect(source).toContain('c := augment([1 | 2], [3 | 4])');
+    expect(source).toContain('d := 2');
+  });
+
+  it('a unit alone with the name of a variable stays the unit', () => {
+    const { source } = importSmath(sheet(region(10, math(let_('m', n('5'), u('kg'), op('*')))), region(20, math(let_('x', u('m'), n('3'), op('*'))))));
+    expect(source).toContain('x := (1 [m])·3');
+    expect((evaluateSheet(source).values.get('x') as { si: number; dim: Record<string, number> }).dim['L']).toBe(1);
+  });
+});

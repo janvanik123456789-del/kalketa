@@ -657,7 +657,7 @@ export const LINEAR: readonly FunctionDef[] = [
       const m = asMatrix(a.value(0), a.expr(0).span);
       if (m.items.some((q) => q.im)) fail('E-COMPLEX-ARG', a.expr(0).span);
       square(m, a.expr(0).span, a.name);
-      const { values } = singularValues(equilibrated(numbers(m)).scaled);
+      const { values } = singularValues(numbers(m));
       const least = values[values.length - 1]!;
       if (!(least > 1e-300)) return fail('E-MATRIX-SINGULAR', a.expr(0).span, { function: a.name });
       return quantity(values[0]! / least);

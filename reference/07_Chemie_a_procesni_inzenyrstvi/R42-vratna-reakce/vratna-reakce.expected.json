@@ -1,0 +1,65 @@
+{
+  "sheet": "vratna-reakce.cc",
+  "verifiedBy": "Vlastní zadání. Nezávisle v čistém Pythonu (kontrola.md): soustava integrovaná vlastní metodou Rungeho a Kutty 4. řádu s krokem 0,5 s, bez přesného řešení. Přesné řešení je v listu jako posudek.",
+  "relativeTolerance": 1e-05,
+  "values": {
+    "a_600": {
+      "value": 0.4435325921477321,
+      "unit": "mol/l"
+    },
+    "b_600": {
+      "value": 0.556467407852267,
+      "unit": "mol/l"
+    },
+    "a_e": {
+      "value": 0.3333469330022739,
+      "unit": "mol/l"
+    },
+    "b_e": {
+      "value": 0.6666530669977253,
+      "unit": "mol/l"
+    },
+    "K": {
+      "value": 2.0,
+      "unit": ""
+    },
+    "a_r": {
+      "value": 0.3333333333333333,
+      "unit": "mol/l"
+    },
+    "b_r": {
+      "value": 0.6666666666666666,
+      "unit": "mol/l"
+    },
+    "τ": {
+      "value": 333.3333333333333,
+      "unit": "s"
+    },
+    "t_90": {
+      "value": 767.5283643313486,
+      "unit": "s"
+    },
+    "a_90": {
+      "value": 0.4000000000000069,
+      "unit": "mol/l"
+    }
+  },
+  "checks": [
+    {
+      "label": "Celkové množství se nemění",
+      "passed": true
+    },
+    {
+      "label": "Numerické řešení jako přesné",
+      "passed": true
+    },
+    {
+      "label": "Na konci je poměr koncentrací rovnovážná konstanta",
+      "passed": true
+    },
+    {
+      "label": "Za t_90 je urazeno 90 % cesty k rovnováze",
+      "passed": true
+    }
+  ]
+}

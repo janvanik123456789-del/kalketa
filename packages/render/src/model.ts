@@ -1452,6 +1452,8 @@ function otherValueNode(value: Value): MathNode | undefined {
 }
 
 function percent(ratio: number, catalog: Catalog): string {
+  // Next to nothing of a limit is said so: 7,034E-5 % would only stop the reader.
+  if (ratio !== 0 && Math.abs(ratio) < 1e-4) return `< ${formatNumber(0.01, catalog, { digits: 4 })} %`;
   return `${formatNumber(ratio * 100, catalog, { digits: 4 })} %`;
 }
 

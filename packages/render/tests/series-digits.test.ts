@@ -19,6 +19,13 @@ describe('what the print rounds away', () => {
     expect(printed('V := [10.000172, 10.000116] V {decimals=2}')).toContain('10.00');
   });
 
+  it('next to nothing of a limit is not written as a power', () => {
+    const text = printed('check "small": 1e-9 m ≤ 1 m');
+    expect(text).toContain('&lt; 0.01 %');
+    expect(text).not.toMatch(/E-\d/);
+    expect(printed('check "half": 0.5 m ≤ 1 m')).toContain('50 %');
+  });
+
   it('a number that rounds to nothing in a column has no sign', () => {
     const text = printed('table T: {rows=2}\n    | k | x {0.00} = -0.000000007·k |\n');
     expect(text).toContain('0.00');

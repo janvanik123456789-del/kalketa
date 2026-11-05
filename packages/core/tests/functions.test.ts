@@ -154,7 +154,7 @@ describe('math and statistics functions', () => {
     expectValue('floor(-7/2)', -4, '');
     expectValue('ceil(-7/2)', -3, '');
     expectValue('round(5/2)', 3, '');
-    expectValue('round(-5/2)', -2, '');
+    expectValue('round(-5/2)', -3, '');
     // Without an exact form (a unit conversion), the last bits of rounding are ignored: 12 months of 5 yr + 7 mo are 67.
     expectValue('t := 5 yr + 7 mo\nfloor(12·t/(1 yr))', 67, '');
     expectValue('floor(2.9999)', 2, '');

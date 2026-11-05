@@ -22,7 +22,7 @@
  * explanation, never a silent NaN.
  */
 
-import { CalcError, fail, type Span } from '../diagnostics.js';
+import { CalcError, diagnostic, fail, type Span } from '../diagnostics.js';
 import type { Expr, Inequality, SolveDomain, Statement } from '../lang/ast.js';
 import { isDimensionless, sameDim, type Dimension } from '../units/dimension.js';
 import { baseUnitSymbol } from '../units/display.js';
@@ -30,7 +30,7 @@ import { DIMENSIONLESS } from '../units/dimension.js';
 import type { ResolvedUnit } from '../units/unitExpr.js';
 import { quantity, type Quantity, type Value } from '../values/value.js';
 import { asQuantity } from './coerce.js';
-import type { EvalContext } from './evaluator.js';
+import { shownUnitsOff, type EvalContext } from './evaluator.js';
 import { isBareZero, withBareZero } from './zero.js';
 import { isolate, quadraticOf } from './isolate.js';
 import { substitute } from './derive.js';
@@ -75,6 +75,7 @@ export interface Solved {
 export function solveStatement(statement: SolveStatement, ctx: EvalContext, evaluate: Evaluate): Solved {
   const solved = solveEquations(statement, ctx, evaluate);
   const relation = statement.equations[0]?.relation;
+  if (!relation) noteOtherRoots(statement, solved.values[0]!, ctx, evaluate);
   return relation ? { ...solved, relation: sideOf(statement, relation, solved.values[0]!, ctx, evaluate) } : solved;
 }
 
@@ -107,6 +108,61 @@ function sideOf(statement: SolveStatement, relation: Inequality, bound: Quantity
   return fail('E-SOLVE-SIDE', statement.span, { name });
 }
 
+/**
+ * One unknown in an interval that holds more roots: the one found is as good as the others and nothing tells
+ * it apart, so it has to be said. A root where the curve only touches zero shows no change of sign and is not noticed.
+ */
+function noteOtherRoots(statement: SolveStatement, root: Quantity, ctx: EvalContext, evaluate: Evaluate): void {
+  const equation = statement.equations[0];
+  if (!statement.range || !equation || statement.unknowns.length !== 1 || statement.equations.length !== 1 || ctx.iterating || shownUnitsOff()) return;
+  if (ctx.warnings.some((w) => w.code === 'W-SOLVE-MORE-ROOTS' && w.span.offset === statement.span.offset)) return;
+  const name = statement.unknowns[0]!.name;
+  const quiet: EvalContext = { registry: ctx.registry, warnings: [], iterating: true, ...(ctx.blocks ? { blocks: ctx.blocks } : {}), lookup: ctx.lookup };
+  const f = (si: number): number => {
+    const at: EvalContext = { ...quiet, lookup: (n, span) => (n === name ? { ...root, si } : ctx.lookup(n, span)) };
+    try {
+      return asQuantity(evaluate(equation.left, at), equation.left.span).si - asQuantity(evaluate(equation.right, at), equation.right.span).si;
+    } catch (err) {
+      if (err instanceof CalcError && err.diagnostic.code !== 'E-TIME-LIMIT') return Number.NaN;
+      throw err;
+    }
+  };
+  const ends = [asQuantity(evaluate(statement.range.low, quiet), statement.range.low.span).si, asQuantity(evaluate(statement.range.high, quiet), statement.range.high.span).si];
+  const low = Math.min(ends[0]!, ends[1]!);
+  const width = Math.max(ends[0]!, ends[1]!) - low;
+  if (!(width > 0)) return;
+  const found: number[] = [];
+  let x0 = low;
+  let f0 = f(low);
+  if (f0 === 0) found.push(low);
+  for (let i = 1; i <= SCAN_STEPS; i++) {
+    const x1 = low + (width * i) / SCAN_STEPS;
+    const f1 = f(x1);
+    if (f1 === 0 && f0 !== 0) found.push(x1);
+    else if (f0 * f1 < 0) {
+      // Halving; a pole or a jump also changes the sign, but there the values do not get small.
+      let [a, fa, b] = [x0, f0, x1];
+      for (let k = 0; k < 60 && b - a > 1e-12 * width; k++) {
+        const c = (a + b) / 2;
+        const fc = f(c);
+        if (fc * fa > 0) [a, fa] = [c, fc];
+        else b = c;
+      }
+      const c = (a + b) / 2;
+      if (Math.abs(f(c)) <= 0.1 * Math.max(Math.abs(f0), Math.abs(f1))) found.push(c);
+    }
+    if (!Number.isNaN(f1)) [x0, f0] = [x1, f1];
+  }
+  const others = found.filter((x) => Math.abs(x - root.si) > 1e-6 * width);
+  if (others.length === 0) return;
+  const shown = (si: number) => {
+    const number = root.hint ? (si - (root.absolute ? (root.hint.offset ?? 0) : 0)) / root.hint.factor : si;
+    return `${Number(number.toPrecision(6))}${root.hint ? ` ${root.hint.symbol}` : ''}`;
+  };
+  const listed = others.slice(0, 5).map(shown).join('; ') + (others.length > 5 ? '; …' : '');
+  ctx.warnings.push(diagnostic('W-SOLVE-MORE-ROOTS', statement.span, { name, root: shown(root.si), others: listed }));
+}
+
 function solveEquations(statement: SolveStatement, ctx: EvalContext, evaluate: Evaluate): Solved {
   const { unknowns, equations } = statement;
   if (equations.length !== unknowns.length) {
@@ -137,7 +193,7 @@ function solveEquations(statement: SolveStatement, ctx: EvalContext, evaluate: E
     shape.map((u, i) => quantity(x[i]!, u.dim, { ...(u.hint ? { hint: u.hint } : {}), ...(u.absolute ? { absolute: true } : {}) }));
 
   // Iterations run quietly: warnings and table reads count only for the solution.
-  const quiet: EvalContext = { registry: ctx.registry, warnings: [], ...(ctx.blocks ? { blocks: ctx.blocks } : {}), lookup: ctx.lookup };
+  const quiet: EvalContext = { registry: ctx.registry, warnings: [], iterating: true, ...(ctx.blocks ? { blocks: ctx.blocks } : {}), lookup: ctx.lookup };
   const residuals = (x: readonly number[], context: EvalContext = quiet): { r: number[]; scale: number[] } => {
     const given = values(x);
     const inner: EvalContext = {

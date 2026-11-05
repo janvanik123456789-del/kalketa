@@ -20,7 +20,7 @@ import type { ResolvedUnit } from '../units/unitExpr.js';
 import { quantity, type MatrixValue, type Quantity, type Value, type VectorValue } from '../values/value.js';
 import { isPlainZero, matrix, normalized, withZerosOfUnit } from '../functions/linear.js';
 import { asComplex, asQuantity } from './coerce.js';
-import { withoutShownUnits, type EvalContext } from './evaluator.js';
+import { shownUnitsOff, warnOnce, withoutShownUnits, type EvalContext } from './evaluator.js';
 import { extremum, rootsOf } from './roots.js';
 import { solveStatement } from './solver.js';
 import { withBareZero } from './zero.js';
@@ -300,7 +300,29 @@ function derivative(call: CallExpr, ctx: EvalContext, evaluate: Evaluate): Value
   const difference =
     order.si === 1 ? (h: number) => (f(at.si + h).si - f(at.si - h).si) / (2 * h) : (h: number) => (f(at.si + h).si - 2 * f0.si + f(at.si - h).si) / (h * h);
   const value = ridders(difference, 0.05 * scale);
+  noteKink(f, at.si, scale, f0.si, call, ctx);
   return quantity(value, divideDims(f0.dim, powerDim(at.dim, order.si)), combinedHint(f0.hint, at.hint, '/', order.si));
+}
+
+/**
+ * A corner of f at x: the central difference of |x| at 0 is a calm 0, though there is no derivative. At a corner the
+ * slopes from the left and from the right stay apart however short the step; on a smooth curve they close with it.
+ */
+function noteKink(f: (si: number) => Quantity, x: number, scale: number, f0: number, call: CallExpr, ctx: EvalContext): void {
+  if (ctx.iterating || shownUnitsOff()) return;
+  const gap = (h: number): { gap: number; size: number } => {
+    const right = (f(x + h).si - f0) / h;
+    const left = (f0 - f(x - h).si) / h;
+    return { gap: Math.abs(right - left), size: Math.max(Math.abs(right), Math.abs(left)) };
+  };
+  try {
+    const wide = gap(1e-4 * scale);
+    const narrow = gap(1e-5 * scale);
+    if (narrow.gap > 0.5 * wide.gap && narrow.gap > 1e-6 * Math.max(narrow.size, Math.abs(f0) / scale)) warnOnce(diagnostic('W-DERIVATIVE-KINK', call.span, {}), ctx);
+  } catch (err) {
+    // Beside a point where f has no value: nothing to compare.
+    if (!(err instanceof CalcError)) throw err;
+  }
 }
 
 /**

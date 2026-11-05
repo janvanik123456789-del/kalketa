@@ -213,3 +213,82 @@ describe('an integral with a singularity at an end', () => {
     expect(codes('I := integral(1/abs(x - 0.3), x: 0 .. 1)')).toContain('W-CALCULUS-ACCURACY');
   });
 });
+
+/** Found by measuring against the tests of other programs (docs/navrhy/CO-PREVZIT-Z-KONKURENCE.md, chapter 1). */
+describe('what the comparison with other programs found', () => {
+  const warned = (sheet: string) => evaluateSheet(sheet).diagnostics.filter((d) => d.severity === 'warning').map((d) => d.code);
+
+  it('says when an interval holds more roots, and names them', () => {
+    const r = evaluateSheet('a := solve(x^2 == 2, x: -3 .. 3)');
+    const note = r.diagnostics.find((d) => d.code === 'W-SOLVE-MORE-ROOTS');
+    expect(note).toBeDefined();
+    expect(String(note!.params['others'])).toContain('1.41421');
+    expect(warned('solve x: x^2 == 2 in -3 .. 3')).toContain('W-SOLVE-MORE-ROOTS');
+    const three = evaluateSheet('a := solve((x^2 - x - 6)·(x^2 - 3·x + 2) == 0, x: 0 .. 4)').diagnostics.find((d) => d.code === 'W-SOLVE-MORE-ROOTS');
+    expect(String(three!.params['others'])).toMatch(/^[123]; [123]$/);
+  });
+
+  it('says nothing where there is one root, a pole beside it, or no interval', () => {
+    expect(warned('a := solve(x^3 == 2, x: 0 .. 3)')).toEqual([]);
+    expect(warned('a := solve(x^2 == 2, x: 0 .. 3)')).toEqual([]);
+    expect(warned('a := solve(tan(x) + tanh(x) == 0, x: 1.6 .. 3)')).toEqual([]);
+    expect(warned('a := solve(x^2 == 2, x: 1)')).toEqual([]);
+  });
+
+  it('gives the roots in the unit of the interval', () => {
+    const note = evaluateSheet('a := solve(x^2 == 4 m^2, x: -3 m .. 3 m)').diagnostics.find((d) => d.code === 'W-SOLVE-MORE-ROOTS');
+    expect(String(note!.params['others'])).toContain(' m');
+  });
+
+  it('solve in a function of a chart or a table stays quiet and quick when it has one root', () => {
+    expect(warned('f(c) := solve(x^3 == c, x: 0 .. 5)\ntable T: {rows=20}\n    | k | y = f(k) |\ny_1 := T.y[8]')).toEqual([]);
+  });
+
+  it('gives the same temperature on one line as on two', () => {
+    expect(si('T := 300 K | °C', 'T')).toBeCloseTo(300, 10);
+    const one = evaluateSheet('T := 300 K | °C');
+    expect(one.statements[0]!.display!.value).toBeCloseTo(26.85, 10);
+    expect(one.statements[0]!.display!.unit).toBe('°C');
+    expect(evaluateSheet('300 K | °C').statements[0]!.display!.value).toBeCloseTo(26.85, 10);
+    expect(evaluateSheet('T := 300 K\nU := T | °C').statements[1]!.display!.value).toBeCloseTo(26.85, 10);
+  });
+
+  it('keeps a difference a difference', () => {
+    expect(evaluateSheet('ΔT := 30 K | °C').statements[0]!.display!.value).toBeCloseTo(30, 10);
+    expect(evaluateSheet('a := 20 °C\nb := 5 °C\nd := a - b | Δ°C').statements[2]!.display!.value).toBeCloseTo(15, 10);
+    expect(warned('a := 20 °C\nb := 5 °C\nd := a - b | Δ°C')).toEqual([]);
+  });
+
+  it('warns of a temperature read as a difference', () => {
+    expect(warned('t := 20 °C\nd := t | Δ°C')).toContain('W-TEMP-ABSOLUTE-AS-DIFFERENCE');
+    expect(warned('t := 20 °C\nd := t | K')).toEqual([]);
+  });
+
+  it('notices a corner, not a smooth curve', () => {
+    expect(warned('a := derivative(abs(x), x: 0)')).toContain('W-DERIVATIVE-KINK');
+    expect(warned('a := derivative(abs(x - 2 m), x: 2 m)')).toContain('W-DERIVATIVE-KINK');
+    for (const smooth of ['derivative(x^2, x: 0)', 'derivative(x^2, x: 1)', 'derivative(sin(x), x: 0)', 'derivative(1e6·x^3, x: 0)', 'derivative(exp(x), x: 20)', 'derivative(abs(x), x: 3)', 'derivative(x^4, x: 0, order: 2)', 'derivative(1 m·x^2, x: 0 s)']) {
+      expect(warned(`a := ${smooth}`), smooth).toEqual([]);
+    }
+  });
+
+  it('rounds a half away from zero on both sides', () => {
+    expect(si('a := round(-4.5)', 'a')).toBe(-5);
+    expect(si('a := round(-2.5)', 'a')).toBe(-3);
+    expect(si('a := round(2.5)', 'a')).toBe(3);
+    expect(si('a := round(-0.5)', 'a')).toBe(-1);
+    expect(si('a := round(-2.4)', 'a')).toBe(-2);
+    expect(si('a := round(-2.567, 2)', 'a')).toBeCloseTo(-2.57, 12);
+    expect(si('a := round(-1.005, 2)', 'a')).toBeCloseTo(-1.01, 12);
+    expect(si('a := round(-0.2)', 'a')).toBe(0);
+    expect(Object.is(si('a := round(-0.2)', 'a'), -0)).toBe(false);
+    expect(si('a := round(-7/2)', 'a')).toBe(-4);
+  });
+
+  it('warns at a pole of the tangent, not near it', () => {
+    expect(warned('a := tan(π/2)')).toContain('W-POLE');
+    expect(warned('a := cot(π)')).toContain('W-POLE');
+    expect(warned('a := tan(π/4)')).toEqual([]);
+    expect(warned('a := tan(1.57)')).toEqual([]);
+  });
+});

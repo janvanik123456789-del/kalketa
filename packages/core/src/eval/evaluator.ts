@@ -43,6 +43,8 @@ export interface EvalContext {
   readonly blocks?: BlockCaller;
   /** prev(column) in the formula of a column of a table: the cell of the row above. */
   readonly previous?: (call: Extract<Expr, { kind: 'call' }>, ctx: EvalContext) => Value;
+  /** Inside the iterations of a solver: what is noticed here is not said, and nothing extra is looked for. */
+  readonly iterating?: boolean;
 }
 
 /** Relative tolerance for comparisons, so 0.1 + 0.2 == 0.3 holds. */
@@ -97,11 +99,21 @@ export function evaluate(expr: Expr, ctx: EvalContext): Value {
   if (value.type === 'quantity' && (!Number.isFinite(value.si) || !Number.isFinite(value.im ?? 0))) fail('E-NOT-FINITE', expr.span);
   if (expr.kind === 'binary') noteFractionBeforeUnit(expr, ctx);
   if (expr.kind === 'call' && expr.name === 'exp' && value.type === 'quantity' && value.si === 0) warnUnderflow(expr.span, ctx);
+  if (expr.kind === 'call' && hintsOff === 0 && TANGENTS.has(expr.name) && value.type === 'quantity' && !value.im && Math.abs(value.si) > POLE_SIZE) warnOnce(diagnostic('W-POLE', expr.span, { function: expr.name }), ctx);
   return value;
 }
 
+/** tan(π/2) is no number, though rounding of π/2 gives 1.6·10¹⁶: no angle short of a pole comes this close. */
+const TANGENTS: ReadonlySet<string> = new Set(['tan', 'tg', 'cot', 'cotg']);
+const POLE_SIZE = 1e15;
+
+/** True while values are worked out that no one sees (the points of an integral). */
+export function shownUnitsOff(): boolean {
+  return hintsOff > 0;
+}
+
 /** Once per place in the sheet: a formula evaluated many times (a sum, a chart) says it once. */
-function warnOnce(warning: Diagnostic, ctx: EvalContext): void {
+export function warnOnce(warning: Diagnostic, ctx: EvalContext): void {
   if (!ctx.warnings.some((w) => w.code === warning.code && w.span.offset === warning.span.offset)) ctx.warnings.push(warning);
 }
 

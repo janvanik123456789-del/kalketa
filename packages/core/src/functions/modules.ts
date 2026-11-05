@@ -25,6 +25,8 @@ import { chiSquareCdf, chiSquareQuantile, fisherCdf, fisherQuantile, normalCdf, 
  * (⌊(0.7 + 0.1)·10⌋ is 8, though the binary number is 7.999…), else with the last bits of rounding ignored.
  */
 function whole(x: number, exact: Exact | undefined, how: 'floor' | 'ceil' | 'round'): number {
+  // A half goes away from zero on both sides, as on paper and in Excel: round(-2.5) is -3 as round(2.5) is 3.
+  if (how === 'round' && x < 0) return 0 - whole(-x, exact ? { ...exact, num: -exact.num } : undefined, how);
   if (exact && exact.root === 1n) {
     // Division of bigints truncates toward zero: floor and ceil from it and the sign of the remainder.
     const { num, den } = how === 'round' ? { num: 2n * exact.num + exact.den, den: 2n * exact.den } : exact;
@@ -56,7 +58,9 @@ function rounding(how: 'floor' | 'ceil' | 'round'): FunctionDef {
       const offset = q.absolute ? (q.hint?.offset ?? 0) : 0;
       const shown = (q.si - offset) / factor;
       const scale = 10 ** n;
-      const done = n === 0 ? whole(shown, factor === 1 && offset === 0 ? q.exact : undefined, how) : whole(shown * scale, undefined, how) / scale;
+      // With places too from the exact form: round(1.005, 2) is 1.01, though the binary number lies just under 1.005.
+      const given = factor === 1 && offset === 0 ? q.exact : undefined;
+      const done = whole(shown * scale, given && n > 0 ? { ...given, num: given.num * 10n ** BigInt(n) } : given, how) / scale;
       return quantity(done * factor + offset, q.dim, { ...(q.hint ? { hint: q.hint } : {}), ...(q.absolute ? { absolute: true } : {}) });
     },
   };

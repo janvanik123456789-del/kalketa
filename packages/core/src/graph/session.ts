@@ -743,6 +743,13 @@ export class SheetSession {
       let target: ResolvedUnit | undefined;
       if (statement.target) {
         target = resolveUnit(statement.target, context.registry);
+        // T := 300 K | °C says the same as T := 300 K and U := T | °C, a temperature by its name; so does a lone 300 K | °C.
+        if (target.offset !== undefined && value.type === 'quantity' && sameDim(target.dim, value.dim)) {
+          if (statement.kind === 'definition' && !statement.params) value = temperatureByName(statement.name, value);
+          else if (statement.kind === 'display' && statement.expr.kind === 'number') value = temperatureByName('', value);
+        }
+        // t := 20 °C, t | Δ°C: 293,15 is how far 20 °C lies from absolute zero, hardly what is asked.
+        if (value.type === 'quantity' && value.absolute && target.symbol.startsWith('Δ')) ctx.warnings.push(diagnostic('W-TEMP-ABSOLUTE-AS-DIFFERENCE', statement.target.span, { unit: target.symbol }));
         if (value.type === 'vector' || value.type === 'matrix') {
           const unit = target;
           const wrong = value.items.find((q) => !sameDim(unit.dim, q.dim));

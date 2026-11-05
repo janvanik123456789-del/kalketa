@@ -16,6 +16,10 @@ export interface ChartSeries {
   readonly xs: readonly number[];
   /** NaN where the curve has no value: a gap. */
   readonly ys: readonly number[];
+  /** How far from each point its error bar reaches, up and down. */
+  readonly errors?: readonly number[];
+  /** ys are the five numbers of a box plot, drawn in the place of this series among the others. */
+  readonly box?: boolean;
   /** Drawn otherwise than the chart's kind: measured points among lines, a fitted line among points. */
   readonly mark?: 'line' | 'points';
   /** x where the curve meets the x axis, marked and labelled "x = 1,07". */
@@ -420,7 +424,7 @@ export function chartLayout(spec: ChartSpec, options: ChartOptions = {}): ChartL
   const scale = paint.font / 11;
   const xs = finite(spec.series.flatMap((s) => s.xs)).filter((v) => !spec.xLog || v > 0);
   // A reference line is there to be seen: the y axis following the values reaches it too.
-  const ys = finite([...spec.series.flatMap((s) => s.ys), ...(spec.refs ?? []).filter((l) => l.axis === 'y').map((l) => l.at)]).filter((v) => !spec.yLog || v > 0);
+  const ys = finite([...spec.series.flatMap((s) => s.ys), ...spec.series.flatMap((s) => (s.errors ? s.ys.flatMap((v, i) => [v - (s.errors![i] ?? 0), v + (s.errors![i] ?? 0)]) : [])), ...(spec.refs ?? []).filter((l) => l.axis === 'y').map((l) => l.at)]).filter((v) => !spec.yLog || v > 0);
   const bar = spec.kind === 'bar';
   const categories = bar ? [...new Set(xs)].sort((a, b) => a - b) : undefined;
   // Bars stand on zero; curves get the range of their values.
@@ -639,7 +643,7 @@ export function chartSvg(spec: ChartSpec, options: ChartOptions = {}): string {
     parts.push(text(tx, ty, spec.yTitle, `text-anchor="${up ? 'middle' : 'start'}" ${textLook(paint, 'yTitle', INK_2)}${moved('yTitle', up ? `rotate(-90 ${r(tx)} ${r(ty)})` : '')}`));
   }
 
-  const data = spec.surface ? surfaceSvg(spec, layout, format, paint.colormap, paint.font) : `<g class="chart-data">${spec.kind === 'bar' ? bars(spec, layout) : curves(spec, layout)}</g>`;
+  const data = spec.surface ? surfaceSvg(spec, layout, format, paint.colormap, paint.font) : `<g class="chart-data">${spec.kind === 'bar' ? bars(spec, layout) : curves(spec, layout)}${statistics(spec, layout)}</g>`;
   // A y axis set by hand cuts off what lies beyond it: the data in a window of the plot area.
   parts.push(
     (spec.yRange || spec.xRange) && !spec.surface
@@ -664,6 +668,30 @@ function thinned(ticks: readonly number[], size: (t: number) => number, room: nu
   const widest = Math.max(...ticks.map(size));
   const every = Math.max(1, Math.ceil((widest * ticks.length) / room));
   return ticks.filter((_, i) => i % every === 0);
+}
+
+/** Error bars and box plots, over what the curves draw. */
+function statistics(spec: ChartSpec, layout: ChartLayout): string {
+  const out: string[] = [];
+  spec.series.forEach((s, i) => {
+    const color = colorOf(layout, i);
+    if (s.box && s.ys.length === 5) {
+      const [low, q1, median, q3, high] = s.ys.map((v) => yPosition(layout, v)) as [number, number, number, number, number];
+      const x = xPosition(layout, i + 1);
+      const half = Math.min(28, (xPosition(layout, 1.5) - xPosition(layout, 1)) * 0.6);
+      out.push(
+        `<g class="chart-box" stroke="${color}" stroke-width="1.2" fill="none"><line x1="${r(x)}" x2="${r(x)}" y1="${r(low)}" y2="${r(q1)}"/><line x1="${r(x)}" x2="${r(x)}" y1="${r(q3)}" y2="${r(high)}"/><line x1="${r(x - half / 2)}" x2="${r(x + half / 2)}" y1="${r(low)}" y2="${r(low)}"/><line x1="${r(x - half / 2)}" x2="${r(x + half / 2)}" y1="${r(high)}" y2="${r(high)}"/><rect x="${r(x - half)}" y="${r(q3)}" width="${r(2 * half)}" height="${r(q1 - q3)}" fill="${color}" fill-opacity="0.15"/><line x1="${r(x - half)}" x2="${r(x + half)}" y1="${r(median)}" y2="${r(median)}" stroke-width="2"/></g>`,
+      );
+    }
+    (s.errors ?? []).forEach((e, k) => {
+      const [vx, vy] = [s.xs[k], s.ys[k]];
+      if (vx === undefined || vy === undefined || !Number.isFinite(vy) || !(e > 0)) return;
+      const px = xPosition(layout, vx);
+      const [top, bottom] = [yPosition(layout, vy + e), yPosition(layout, vy - e)];
+      out.push(`<path class="chart-error" d="M${r(px)} ${r(top)}V${r(bottom)}M${r(px - 3)} ${r(top)}H${r(px + 3)}M${r(px - 3)} ${r(bottom)}H${r(px + 3)}" stroke="${color}" stroke-width="1" fill="none"/>`);
+    });
+  });
+  return out.join('');
 }
 
 function curves(spec: ChartSpec, layout: ChartLayout): string {

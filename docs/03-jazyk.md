@@ -646,6 +646,14 @@ plot(beam_M(N, x), x: 0 m .. 10 m)
 - `frame(nodes: U, members: P)` počítá rovinný rám nebo příhradovinu ze dvou tabulek, `i_section(h, b, t_w, t_f, r)` průřezové charakteristiky profilu I.
 - **V tisku:** na rozdíl od vzorců se tu postup nedá ověřit očima, proto tisk ukáže reakce u řádku a rovnováha celku se kontroluje (`W-BEAM-EQUILIBRIUM`). Nezávislou kontrolu dává vrstva Python.
 
+### 8.4d Speciální funkce, náhoda, grafy statistiky (2026-11-05)
+
+- `integral(f(x), x: 0 .. ∞)`, také `inf` a `-∞`. Co neubývá dost rychle, je chyba `E-INTEGRAL-DIVERGES`, ne číslo.
+- `gamma`, `lgamma`, `beta`, `erf`, `erfc`, `besselj`; rozdělení s parametry `normpdf`, `normcdf(x, μ, σ)`, `norminv(p, μ, σ)`, `exppdf`, `expcdf`, `wblpdf`, `wblcdf`, `lognpdf`, `logncdf`, `gampdf`, `gamcdf`, `hygepdf`, `hygecdf`.
+- `minimize(s(a, b), a: 500, b: 1e-4)` hledá od odhadů přes víc proměnných a vrátí řadu poloh; `maximize` stejně.
+- `rnd(n, semínko, a, b)` a `rndn(n, semínko, μ, σ)`: náhodná čísla, opakovatelná semínkem. Výpočet je tak stále ověřitelný.
+- `plot(v, kind: "hist", bins: 10)`, `plot(a, b, kind: "box")`, `plot(y, x: t, kind: "points", errors: e)`; `hist_counts`, `hist_centers`, `box_values` dají čísla grafu.
+
 ### 8.4a Buňky: řádky vedle sebe (2026-10-12)
 
 Řádek stránky může mít víc buněk: text a vedle něj definici, dva výsledky, krátké výpočty ve sloupcích. Každá buňka je obyčejný řádek zápisu.

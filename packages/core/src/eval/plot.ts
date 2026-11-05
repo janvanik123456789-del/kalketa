@@ -35,8 +35,10 @@ type Evaluate = (expr: Expr, ctx: EvalContext) => Value;
 export const PLOT_FUNCTION = 'plot';
 export type PlotKind = 'line' | 'points' | 'bar' | 'map' | 'surface';
 const KINDS: readonly PlotKind[] = ['line', 'points', 'bar'];
+/** Options of the kinds made of other ones: plot(v, kind: "hist", bins: 10), plot(a, b, kind: "box"). */
+const MADE_KINDS: readonly string[] = ['hist', 'box'];
 /** Options of plot(...); every other named argument is the variable. */
-export const PLOT_OPTIONS: readonly string[] = ['kind', 'title', 'samples', 'place', 'ylim', 'xlim', 'xlabel', 'ylabel', 'xscale', 'yscale', 'hline', 'vline', 'cursors', 'roots', 'symmetry', 'extremes', 'inflections', 'area', 'tangent', 'labels', 'points', 'style', 'levels', 'view', 'cut', 'center'];
+export const PLOT_OPTIONS: readonly string[] = ['bins', 'errors', 'kind', 'title', 'samples', 'place', 'ylim', 'xlim', 'xlabel', 'ylabel', 'xscale', 'yscale', 'hline', 'vline', 'cursors', 'roots', 'symmetry', 'extremes', 'inflections', 'area', 'tangent', 'labels', 'points', 'style', 'levels', 'view', 'cut', 'center'];
 /** Curves in one chart: the categorical colours a reader still tells apart. */
 export const MAX_PLOT_SERIES = 8;
 const LINE_SAMPLES = 201;
@@ -61,6 +63,10 @@ export interface PlotSeries {
   readonly xs: readonly number[];
   /** y of every point in the unit of the y axis; NaN where the expression has no value (a gap). */
   readonly ys: readonly number[];
+  /** errors: e — how far from each point its error bar reaches, up and down, in the unit of the y axis. */
+  readonly errors?: readonly number[];
+  /** kind: "box" — ys are the five numbers of a box plot, drawn in the place of the series among the others. */
+  readonly box?: boolean;
   /** roots: true — where the curve meets the x axis (y = 0), in the unit of the x axis. */
   readonly roots?: readonly number[];
   /** symmetry: true — the vertical lines the curve is symmetric about (x = −b/(2·a) of a parabola). */
@@ -176,6 +182,8 @@ export function isPlotCall(expr: Expr): expr is CallExpr {
 
 /** A display line plot(...) | unit: samples every curve. */
 export function plotStatement(given: CallExpr, ctx: EvalContext, evaluate: Evaluate, target: ResolvedUnit | undefined, formulaOf?: (name: string) => Expr | undefined): PlotResult {
+  const made = option(given, 'kind', ctx, evaluate);
+  if (made !== undefined && MADE_KINDS.includes(made)) return madeOfOthers(made, given, ctx, evaluate, target, formulaOf);
   // area: S and points: V of a chart above their definitions: read there as units (siemens, volt), they are
   // the names the sheet defines below.
   const named = (e: Expr): Expr => (e.kind === 'unit' && e.unit.kind === 'unit-name' && (formulaOf?.(e.unit.name) ?? formulaOf?.(`#${e.unit.name}`)) ? { kind: 'variable', name: e.unit.name, span: e.span } : e);
@@ -254,6 +262,18 @@ export function plotStatement(given: CallExpr, ctx: EvalContext, evaluate: Evalu
 
   const yUnit = target ? shownInRotation(target, ys.hint) : ys.hint;
   const y = (q: Quantity | undefined) => (q ? toDisplay(q, ctx.registry, yUnit).value : NaN);
+  // errors: e, how far each point of the first curve reaches up and down; a difference, whatever the unit shown.
+  const errorsArg = call.named.find((n) => n.name === 'errors');
+  const errorBars = errorsArg
+    ? (() => {
+        const given = evaluate(errorsArg.value, ctx);
+        const items = given.type === 'vector' ? given.items : [asQuantity(given, errorsArg.value.span)];
+        return items.map((q) => {
+          if (!sameDim(q.dim, yDim)) fail('E-UNIT-MISMATCH', errorsArg.value.span, { operator: 'errors', left: baseUnitSymbol(yDim), right: baseUnitSymbol(q.dim) });
+          return Math.abs(q.si) / (yUnit?.factor ?? 1);
+        });
+      })()
+    : undefined;
   const yUnitSymbol = toDisplay(ys, ctx.registry, yUnit).unit;
   const n = columns[0]!.length;
   // The parts of a chart beyond its curves (an area, points, a tangent, the y axis by hand) are drawn where they can
@@ -335,6 +355,7 @@ export function plotStatement(given: CallExpr, ctx: EvalContext, evaluate: Evalu
     yUnit: yUnitSymbol,
     ...(x.dates ? { xDates: true } : {}),
     series: drawn.map((d, i) => {
+      if (i === 0 && errorBars && errorBars.length !== d.values.length) fail('E-VECTOR-LENGTH', errorsArg!.value.span, { left: d.values.length, right: errorBars.length });
       const pieces = contours[i];
       if (pieces) {
         const xOf = (si: number) => (Number.isNaN(si) ? NaN : xIn({ ...xs![0]!, si }));
@@ -350,6 +371,7 @@ export function plotStatement(given: CallExpr, ctx: EvalContext, evaluate: Evalu
       return {
         xs: d.at && d.at !== xs ? d.at.map((q) => toDisplay(q, ctx.registry, xs![0]!.hint).value) : x.values,
         ys: d.values.map(y),
+        ...(i === 0 && errorBars ? { errors: errorBars } : {}),
         ...(d.mark ? { mark: d.mark } : {}),
         ...(roots && roots.length > 0 ? { roots: roots.map((q) => tidy(toDisplay(q, ctx.registry, xs![0]!.hint).value, xSpan)) } : {}),
         ...(axes && axes.length > 0 ? { axes: axes.map((q) => tidy(toDisplay(q, ctx.registry, xs![0]!.hint).value, xSpan)) } : {}),
@@ -368,6 +390,37 @@ export function plotStatement(given: CallExpr, ctx: EvalContext, evaluate: Evalu
     ...(labelOffsets ? { labelOffsets } : {}),
     ...(points && points.length > 0 ? { points } : {}),
   };
+}
+
+/**
+ * A histogram is bars over the centres of its classes, by the functions anyone can call too; a box plot is the five
+ * numbers of each series, which the chart draws as a box.
+ */
+function madeOfOthers(kind: string, given: CallExpr, ctx: EvalContext, evaluate: Evaluate, target: ResolvedUnit | undefined, formulaOf?: (name: string) => Expr | undefined): PlotResult {
+  const span = given.span;
+  const call = (name: string, args: readonly Expr[]): Expr => ({ kind: 'call', name, args, named: [], span });
+  const number = (value: number): Expr => ({ kind: 'number', value, span } as Expr);
+  const rest = given.named.filter((n) => n.name !== 'kind' && n.name !== 'bins');
+  const kindArg = (value: string): NamedArg => ({ name: 'kind', nameSpan: span, value: { kind: 'string', value, span } as Expr });
+  if (given.args.length === 0) fail('E-PLOT-FORM', span, {});
+  if (kind === 'hist') {
+    const data = given.args[0]!;
+    if (given.args.length !== 1) fail('E-PLOT-FORM', given.args[1]!.span, {});
+    const binsArg = given.named.find((n) => n.name === 'bins');
+    const value = evaluate(data, ctx);
+    const count = value.type === 'vector' ? value.items.length : 1;
+    const bins: Expr = binsArg ? binsArg.value : number(Math.max(1, Math.ceil(Math.sqrt(count))));
+    return plotStatement(
+      { ...given, args: [call('hist_counts', [data, bins])], named: [{ name: 'x', nameSpan: span, value: call('hist_centers', [data, bins]) }, kindArg('bar'), ...rest] },
+      ctx,
+      evaluate,
+      target,
+      formulaOf,
+    );
+  }
+  const one: Expr = { kind: 'vector', items: [1, 1, 1, 1, 1].map(number), span } as Expr;
+  const drawn = plotStatement({ ...given, args: given.args.map((a) => call('box_values', [a])), named: [{ name: 'x', nameSpan: span, value: one }, kindArg('points'), ...rest] }, ctx, evaluate, target, formulaOf);
+  return { ...drawn, xRange: [0.5, given.args.length + 0.5], series: drawn.series.map((s) => ({ ...s, box: true })) };
 }
 
 type Curve = { readonly body: Expr; readonly name: string; readonly like: Quantity };

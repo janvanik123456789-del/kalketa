@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { evaluateSheet } from '../src/index.js';
 
@@ -900,5 +902,101 @@ describe('beams and frames', () => {
     expect(of(sheet, 'W').si / 557.1e-6).toBeCloseTo(1, 2);
     expect(of(sheet, 'P').si / 628.4e-6).toBeCloseTo(1, 2);
     expect(of(sheet, 'Z').si / 603.8e-8).toBeCloseTo(1, 2);
+  });
+});
+
+/** Stage 7 of docs/navrhy/VYBER-VZORU.md. */
+describe('special functions, random numbers, statistics charts', () => {
+  it('integrals to infinity, with their closed forms', () => {
+    const near = (sheet: string, value: number) => expect(si(`a := ${sheet}`, 'a') / value, sheet).toBeCloseTo(1, 7);
+    near('integral(exp(-x), x: 0 .. ∞)', 1);
+    near('integral(exp(-x^2), x: -∞ .. ∞)', Math.sqrt(Math.PI));
+    near('integral(1/x^2, x: 1 .. inf)', 1);
+    near('integral(exp(x), x: -inf .. 0)', 1);
+    // Planck: ∫x³/(eˣ − 1) = π⁴/15.
+    near('integral(x^3/(exp(x) - 1), x: 0 .. ∞)', Math.PI ** 4 / 15);
+    // Maxwell: normalized to 1.
+    near('integral(4/sqrt(π)·x^2·exp(-x^2), x: 0 .. ∞)', 1);
+    expect(evaluateSheet('a := integral(exp(-x/(1 m)), x: 0 m .. ∞)').statements[0]!.display!.value).toBeCloseTo(1, 7);
+    expect(codes('a := integral(1, x: 0 .. ∞)')).toContain('E-INTEGRAL-DIVERGES');
+    expect(codes('a := integral(sin(x), x: 0 .. ∞)')).toContain('E-INTEGRAL-DIVERGES');
+  });
+
+  it('the values of SciPy', () => {
+    const data = JSON.parse(readFileSync(join(import.meta.dirname, 'data', 'special.json'), 'utf8')) as { cases: [string, number][] };
+    for (const [sheet, value] of data.cases) {
+      const got = si(`a := ${sheet}`, 'a');
+      if (value === 0) expect(Math.abs(got), sheet).toBeLessThan(1e-13);
+      else if (sheet.startsWith('erfc')) expect(got / value, sheet).toBeCloseTo(1, 9);
+      else expect(got / value, sheet).toBeCloseTo(1, 8);
+    }
+  });
+
+  it('distributions with units', () => {
+    expect(si('a := normcdf(12 mm, 10 mm, 2 mm)', 'a')).toBeCloseTo(0.841344746, 8);
+    expect(si('a := norminv(0.975, 10 mm, 1 mm)', 'a')).toBeCloseTo(0.01195996, 7);
+    expect(si('a := wblcdf(2 h, 2 h, 1.5)', 'a')).toBeCloseTo(1 - Math.exp(-1), 10);
+    expect(codes('a := normcdf(1 m, 1 s, 1 s)')).toContain('E-UNIT-MISMATCH');
+    expect(si('a := normcdf(1.96)', 'a')).toBeCloseTo(0.975, 3);
+  });
+
+  it('Misra1a of NIST, from its harder start: the certified values', () => {
+    const sheet = `y := [10.07, 14.73, 17.94, 23.93, 29.61, 35.18, 40.02, 44.82, 50.76, 55.05, 61.01, 66.40, 75.47, 81.78]
+x := [77.6, 114.9, 141.1, 190.8, 239.9, 289.0, 332.8, 378.4, 434.8, 477.3, 536.8, 593.1, 689.1, 760.0]
+s(p, q) := sum((y - p·(1 - exp(-q·x)))^2)
+m := minimize(s(b_1, b_2), b_1: 500, b_2: 0.0001)
+b := m[1]
+c := m[2]`;
+    expect(si(sheet, 'b') / 238.94212918).toBeCloseTo(1, 6);
+    expect(si(sheet, 'c') / 5.5015643181e-4).toBeCloseTo(1, 6);
+  }, 30000);
+
+  it('more variables, a maximum, one variable from a guess, units', () => {
+    const list = (sheet: string) => (evaluateSheet(sheet).values.get('m') as unknown as { items: { si: number }[] }).items.map((q) => q.si);
+    const [a, b] = list('m := minimize((a - 3)^2 + (b + 1)^2, a: 0, b: 0)');
+    expect(a).toBeCloseTo(3, 5);
+    expect(b).toBeCloseTo(-1, 5);
+    expect(si('a := maximize(-(x - 2)^2, x: 5)', 'a')).toBeCloseTo(2, 5);
+    expect(si('a := minimize((x - 2 m)^2, x: 5 m)', 'a')).toBeCloseTo(2, 5);
+    expect(si('a := maximize(x·(4 - x), x: 0 .. 4)', 'a')).toBeCloseTo(2, 5);
+  });
+
+  it('random numbers repeat by a seed, and are what they should be', () => {
+    const list = (sheet: string) => (evaluateSheet(sheet).values.get('v') as unknown as { items: { si: number }[] }).items.map((q) => q.si);
+    expect(list('v := rnd(5, 7)')).toEqual(list('v := rnd(5, 7)'));
+    expect(list('v := rnd(5, 7)')).not.toEqual(list('v := rnd(5, 8)'));
+    const uniform = list('v := rnd(100000, 1)');
+    expect(uniform.every((x) => x >= 0 && x < 1)).toBe(true);
+    expect(uniform.reduce((s, x) => s + x, 0) / uniform.length).toBeCloseTo(0.5, 2);
+    expect(si('n := 100000\nu := rnd(n, 2)\nw := rnd(n, 3)\na := 4·sum(if(u^2 + w^2 < 1, 1, 0))/n'.replace('sum(if(u^2 + w^2 < 1, 1, 0))', 'sum((1 + sign(1 - u^2 - w^2))/2)'), 'a')).toBeCloseTo(Math.PI, 1);
+    const normal = list('v := rndn(100000, 5, 10 mm, 2 mm)');
+    const mean = normal.reduce((s, x) => s + x, 0) / normal.length;
+    expect(mean).toBeCloseTo(0.01, 4);
+    expect(Math.sqrt(normal.reduce((s, x) => s + (x - mean) ** 2, 0) / normal.length)).toBeCloseTo(0.002, 4);
+    expect(evaluateSheet('v := rndn(2, 5, 10 mm, 2 mm)').statements[0]!.displayList![0]!.unit).toBe('mm');
+    expect(codes('v := rnd(1.5, 1)')).toContain('E-DOMAIN');
+    expect(codes('v := rnd(0, 1)')).toContain('E-DOMAIN');
+  });
+
+  it('a histogram, a box plot, error bars', () => {
+    const plot = (sheet: string) => {
+      const r = evaluateSheet(sheet);
+      expect(r.diagnostics.filter((d) => d.severity === 'error').map((d) => d.code)).toEqual([]);
+      return r.statements.at(-1)!.plot!;
+    };
+    const list = (sheet: string) => (evaluateSheet(`v := ${sheet}`).values.get('v') as unknown as { items: { si: number }[] }).items.map((q) => q.si);
+    expect(list('hist_counts([1, 2, 2, 3, 4], 3)')).toEqual([1, 2, 2]);
+    expect(list('hist_centers([0, 3], 3)')).toEqual([0.5, 1.5, 2.5]);
+    expect(list('box_values([1, 2, 3, 4, 5])')).toEqual([1, 2, 3, 4, 5]);
+    const hist = plot('v := [1, 2, 2, 3, 4, 4, 4]\nplot(v, kind: "hist", bins: 3)');
+    expect(hist.kind).toBe('bar');
+    expect(hist.series[0]!.ys.reduce((s, y) => s + y, 0)).toBe(7);
+    const box = plot('a := [1, 2, 3, 4, 5]\nb := [2, 4, 6, 8, 10]\nplot(a, b, kind: "box")');
+    expect(box.series.map((s) => s.box)).toEqual([true, true]);
+    expect(box.series[1]!.ys).toEqual([2, 4, 6, 8, 10]);
+    expect(box.xRange).toEqual([0.5, 2.5]);
+    const bars = plot('x := [1, 2]\ny := [3 m, 4 m]\ne := [100 mm, 200 mm]\nplot(y, x: x, kind: "points", errors: e)');
+    expect(bars.series[0]!.errors).toEqual([0.1, 0.2]);
+    expect(codes('x := [1, 2]\ny := [3, 4]\nplot(y, x: x, errors: [1])')).toContain('E-VECTOR-LENGTH');
   });
 });

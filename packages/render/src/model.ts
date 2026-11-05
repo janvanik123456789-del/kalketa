@@ -1494,6 +1494,8 @@ function chartBlock(
       xs: s.xs,
       ys: s.ys,
       ...(s.mark ? { mark: s.mark } : {}),
+      ...(s.errors ? { errors: s.errors } : {}),
+      ...(s.box ? { box: true } : {}),
       ...(s.roots ? { roots: s.roots } : {}),
       ...(s.axes ? { axes: s.axes } : {}),
       ...(s.extremes ? { extremes: s.extremes } : {}),

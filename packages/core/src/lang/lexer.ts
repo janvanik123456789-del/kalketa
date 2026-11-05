@@ -53,7 +53,7 @@ const OPERATORS: readonly (readonly [string, TokenType])[] = [
 const isDigit = (ch: string | undefined): boolean => ch !== undefined && ch >= '0' && ch <= '9';
 const PRIMES: Readonly<Record<string, number>> = { '′': 1, '″': 2, '‴': 3, '⁗': 4 };
 
-const isIdentStart = (ch: string): boolean => /[\p{L}°%‰€$£¥]/u.test(ch);
+const isIdentStart = (ch: string): boolean => /[\p{L}°%‰€$£¥∞]/u.test(ch);
 // Superscript digits are not part of a name (L² is L squared), subscripts are (T₁), and so is ∞ (λ_∞, T_∞).
 const isIdentPart = (ch: string): boolean => /[\p{L}\p{Nd}\p{M}_°₀-₉∞]/u.test(ch);
 
@@ -224,7 +224,9 @@ export function tokenize(source: string, options: LexOptions = {}): LexResult {
         pos++;
         while (pos < source.length && isIdentPart(source[pos]!)) pos++;
       }
-      push('ident', start, normalizeIdentifier(source.slice(start, pos)));
+      // gamma(x) and beta(a, b) are functions; gamma alone is the letter γ, as it always was.
+      const raw = source.slice(start, pos);
+      push('ident', start, (raw === 'gamma' || raw === 'beta') && source[pos] === '(' ? raw : normalizeIdentifier(raw));
       continue;
     }
 

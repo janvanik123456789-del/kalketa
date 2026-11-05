@@ -76,6 +76,8 @@ export function callCalculus(call: CallExpr, ctx: EvalContext, evaluate: Evaluat
       return vectorOfIndices(call, ctx, evaluate);
     case 'minimize':
     case 'maximize': {
+      // minimize(s(a, b), a: 500, b: 1e-4): from guesses, any number of them.
+      if (call.named.length > 0 && call.named.every((n) => n.value.kind !== 'range')) return fromGuesses(call, ctx, evaluate);
       const { body, variable } = parts(call, []);
       const [low, high] = range(variable, call, ctx, evaluate);
       const f = asFunction(body, variable.name, low, ctx, evaluate, call.span);
@@ -127,6 +129,79 @@ function firstWhole(call: CallExpr, ctx: EvalContext, evaluate: Evaluate): Value
     if (holds.value) return here;
   }
   return fail('E-FIRST-NONE', call.span);
+}
+
+/**
+ * The least or greatest value of an expression from a guess for each variable: the simplex of Nelder and Mead in units
+ * of the guesses, begun again from where it stopped until that no longer helps. It needs no derivatives, and a long
+ * narrow valley (fitting by least squares) takes it time, not success.
+ */
+function fromGuesses(call: CallExpr, ctx: EvalContext, evaluate: Evaluate): Value {
+  if (call.args.length !== 1) return fail('E-CALCULUS-FORM', call.span, { function: call.name });
+  const body = call.args[0]!;
+  const sign = call.name === 'maximize' ? -1 : 1;
+  const guesses = call.named.map((n) => ({ name: n.name, q: asQuantity(evaluate(n.value, ctx), n.value.span) }));
+  const size = guesses.length;
+  const scales = guesses.map((g) => Math.abs(g.q.si) || 1);
+  const value = (u: readonly number[]): number => {
+    const at = guesses.map((g, i) => ({ ...g.q, si: (1 + u[i]!) * scales[i]! * (g.q.si < 0 ? -1 : 1) + (g.q.si === 0 ? -scales[i]! : 0) }));
+    const inner: EvalContext = { ...ctx, warnings: [], iterating: true, lookup: (n, where) => {
+      const i = guesses.findIndex((g) => g.name === n);
+      return i >= 0 ? at[i]! : ctx.lookup(n, where);
+    } };
+    try {
+      const q = asQuantity(evaluate(body, inner), body.span);
+      return Number.isFinite(q.si) ? sign * q.si : Infinity;
+    } catch (err) {
+      if (err instanceof CalcError && ['E-DOMAIN', 'E-DIV-ZERO', 'E-NOT-FINITE'].includes(err.diagnostic.code)) return Infinity;
+      throw err;
+    }
+  };
+  let best: number[] = new Array<number>(size).fill(0);
+  let bestValue = value(best);
+  if (!Number.isFinite(bestValue)) return fail('E-SOLVE-NO-ROOT', call.span);
+  let spread = 0.2;
+  for (let restart = 0; restart < 60; restart++) {
+    const simplex: { u: number[]; f: number }[] = [{ u: best, f: bestValue }];
+    for (let i = 0; i < size; i++) {
+      const u = [...best];
+      u[i]! += spread * (Math.abs(1 + u[i]!) || 1);
+      simplex.push({ u, f: value(u) });
+    }
+    for (let step = 0; step < 400 * size; step++) {
+      simplex.sort((p, q) => p.f - q.f);
+      const [low, high] = [simplex[0]!, simplex[size]!];
+      if (Math.abs(high.f - low.f) <= 1e-15 * (Math.abs(low.f) + 1e-300) && step > 10) break;
+      const centre = new Array<number>(size).fill(0);
+      for (let i = 0; i < size; i++) for (let j = 0; j < size; j++) centre[j]! += simplex[i]!.u[j]! / size;
+      const toward = (k: number) => centre.map((c, j) => c + k * (high.u[j]! - c));
+      const reflected = toward(-1);
+      const fr = value(reflected);
+      if (fr < low.f) {
+        const expanded = toward(-2);
+        const fe = value(expanded);
+        simplex[size] = fe < fr ? { u: expanded, f: fe } : { u: reflected, f: fr };
+      } else if (fr < simplex[size - 1]!.f) {
+        simplex[size] = { u: reflected, f: fr };
+      } else {
+        const contracted = toward(fr < high.f ? -0.5 : 0.5);
+        const fc = value(contracted);
+        if (fc < Math.min(fr, high.f)) simplex[size] = { u: contracted, f: fc };
+        else for (let i = 1; i <= size; i++) {
+          const u = simplex[i]!.u.map((v, j) => low.u[j]! + 0.5 * (v - low.u[j]!));
+          simplex[i] = { u, f: value(u) };
+        }
+      }
+    }
+    simplex.sort((p, q) => p.f - q.f);
+    const gain = bestValue - simplex[0]!.f;
+    const moved = Math.hypot(...simplex[0]!.u.map((v, j) => v - best[j]!));
+    [best, bestValue] = [simplex[0]!.u, simplex[0]!.f];
+    if (gain <= 1e-14 * (Math.abs(bestValue) + 1e-300) && moved <= 1e-9) break;
+    spread = Math.max(1e-6, moved * 0.5);
+  }
+  const results = guesses.map((g, i) => quantity((1 + best[i]!) * scales[i]! * (g.q.si < 0 ? -1 : 1) + (g.q.si === 0 ? -scales[i]! : 0), g.q.dim, g.q.hint ? { hint: g.q.hint } : {}));
+  return results.length === 1 ? results[0]! : { type: 'vector', items: results };
 }
 
 /** The one expression of the call and its variable. */
@@ -209,8 +284,46 @@ function doubleExponential(g: (x: number) => number, a: number, b: number): numb
   return undefined;
 }
 
+/** ∞ or inf as a bound of an integral: 1 for ∞, -1 for -∞, else 0. */
+function infinityIn(e: Expr): number {
+  if (e.kind === 'variable' && (e.name === '∞' || e.name === 'inf')) return 1;
+  if (e.kind === 'unit' && e.unit.kind === 'unit-name' && (e.unit.name === '∞' || e.unit.name === 'inf')) return 1;
+  if (e.kind === 'unary' && e.operator === '-') return -infinityIn(e.operand);
+  return 0;
+}
+
+/** x: 0 .. ∞ by x = a + t/(1 − t), x: −∞ .. ∞ by x = t/(1 − t²): the tanh-sinh rule handles the ends these make. */
+function integralToInfinity(call: CallExpr, ctx: EvalContext, evaluate: Evaluate, body: Expr, variable: NamedArg, lowEnd: number, highEnd: number): Value {
+  const r = variable.value as Extract<Expr, { kind: 'range' }>;
+  const finite = lowEnd === 0 ? asQuantity(evaluate(r.low, ctx), r.low.span) : highEnd === 0 ? asQuantity(evaluate(r.high, ctx), r.high.span) : quantity(0);
+  if (lowEnd >= 0 && highEnd <= 0) fail('E-CALCULUS-FORM', r.span, { function: call.name });
+  const f = asFunction(body, variable.name, finite, ctx, evaluate, call.span);
+  const point = (t: number): { x: number; weight: number } => {
+    if (lowEnd !== 0 && highEnd !== 0) return { x: t / (1 - t * t), weight: (1 + t * t) / (1 - t * t) ** 2 };
+    const u = t / (1 - t);
+    return { x: lowEnd === 0 ? finite.si + u : finite.si - u, weight: 1 / (1 - t) ** 2 };
+  };
+  let sample: Quantity | undefined;
+  const g = (t: number): number => {
+    const { x, weight } = point(t);
+    const value = sample ? withoutShownUnits(() => f(x)) : f(x);
+    sample ??= value;
+    return value.si * weight;
+  };
+  const before = ctx.warnings.length;
+  const value = lowEnd !== 0 && highEnd !== 0 ? doubleExponential(g, -1, 1) : doubleExponential(g, 0, 1);
+  for (let i = ctx.warnings.length - 1; i >= before; i--) if (ctx.warnings[i]!.code === 'W-UNDERFLOW') ctx.warnings.splice(i, 1);
+  // An integrand that does not die out (sin x) has no value: said, not guessed.
+  if (value === undefined || !sample) return fail('E-INTEGRAL-DIVERGES', call.span);
+  return quantity(value, multiplyDims(sample.dim, finite.dim), combinedHint(sample.hint, finite.hint, '*', 1));
+}
+
 function integral(call: CallExpr, ctx: EvalContext, evaluate: Evaluate): Value {
   const { body, variable } = parts(call, []);
+  if (variable.value.kind === 'range') {
+    const [lowEnd, highEnd] = [infinityIn(variable.value.low), infinityIn(variable.value.high)];
+    if (lowEnd !== 0 || highEnd !== 0) return integralToInfinity(call, ctx, evaluate, body, variable, lowEnd, highEnd);
+  }
   const [low, high] = range(variable, call, ctx, evaluate);
   // A complex integrand (a Fourier transform): its two parts one after the other.
   const complex = [0.31, 0.5, 0.83].some((t) => {

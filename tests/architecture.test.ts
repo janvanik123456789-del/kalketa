@@ -128,3 +128,26 @@ describe('modul AI je vyměnitelný', () => {
     expect(bad).toEqual([]);
   });
 });
+
+describe('the import of foreign calculations stands aside', () => {
+  it('it reads strings and bytes and needs only the core: no files, network, React or other packages', () => {
+    const bad = packageImports('import').flatMap(({ file, imports }) =>
+      imports
+        .filter(
+          (i) =>
+            (i.startsWith('@kalketa/') && i !== '@kalketa/core') ||
+            i.startsWith('react') ||
+            /^(node:)?(fs|fs\/promises|net|http|https|child_process|worker_threads)$/.test(i) ||
+            (i.startsWith('.') && !resolve(ROOT, file, '..', i).startsWith(join(ROOT, 'packages', 'import', 'src'))),
+        )
+        .map((i) => `${file} → ${i}`),
+    );
+    expect(bad).toEqual([]);
+  });
+
+  it('only the program and the command line know it', () => {
+    const others = readdirSync(join(ROOT, 'packages')).filter((pkg) => !['import', 'editor', 'cli'].includes(pkg) && statSync(join(ROOT, 'packages', pkg, 'src'), { throwIfNoEntry: false })?.isDirectory());
+    const bad = others.flatMap((pkg) => packageImports(pkg).flatMap(({ file, imports }) => imports.filter((i) => i.startsWith('@kalketa/import')).map((i) => `${file} → ${i}`)));
+    expect(bad).toEqual([]);
+  });
+});

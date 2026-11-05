@@ -555,6 +555,7 @@ export const UI_KEYS = [
   'import.left.unit',
   'import.left.form',
   'import.left.assigned',
+  'import.left.difference',
   'import.left.region',
   'import.left.error',
   'cmd.insert.canvas',

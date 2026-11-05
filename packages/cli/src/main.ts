@@ -169,7 +169,7 @@ async function main(argv: string[]): Promise<number> {
     for (const r of report.signs) console.log(`  ${t(catalog, 'import.sign', { from: r.from, to: r.to })}`);
     for (const r of report.renamed) console.log(`  ${t(catalog, 'import.renamed', { from: r.from, to: r.to })}`);
     for (const l of report.left) {
-      const why = l.why.kind === 'function' || l.why.kind === 'unit' || l.why.kind === 'region' || l.why.kind === 'assigned' ? l.why.name : l.why.kind === 'error' ? l.why.code : '';
+      const why = l.why.kind === 'function' || l.why.kind === 'unit' || l.why.kind === 'region' || l.why.kind === 'assigned' || l.why.kind === 'difference' ? l.why.name : l.why.kind === 'error' ? l.why.code : '';
       console.log(`  ${t(catalog, `import.left.${l.why.kind}` as UiKey, { written: l.written, why })}`);
     }
     console.log(out);

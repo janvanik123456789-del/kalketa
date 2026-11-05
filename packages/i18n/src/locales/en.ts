@@ -1372,6 +1372,7 @@ export const en: Catalog = {
     'import.renamed': '{from} is defined again in the file, from there on it is called {to}.',
     'import.left.function': 'As text: {written} (unknown function {why})',
     'import.left.unit': 'As text: {written} (the unit {why} means something else here or is not known)',
+    'import.left.difference': 'As text: {written} (SMath takes {why} in degrees as a temperature, here it would be a difference and the number would change)',
     'import.left.form': 'As text: {written} (the form is not understood)',
     'import.left.assigned': 'As text: {written} ({why} is assigned by a line left as text, the value here would be an old one)',
     'import.left.region': 'Skipped: {why} (this kind of region is not converted yet)',

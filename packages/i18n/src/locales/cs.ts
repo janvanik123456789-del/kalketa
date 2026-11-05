@@ -1372,6 +1372,7 @@ export const cs: Catalog = {
     'import.renamed': '{from} je v souboru definované znovu, od té chvíle se jmenuje {to}.',
     'import.left.function': 'Jako text: {written} (neznámá funkce {why})',
     'import.left.unit': 'Jako text: {written} (jednotka {why} tu znamená něco jiného nebo není)',
+    'import.left.difference': 'Jako text: {written} (SMath bere {why} ve stupních jako teplotu, tady by to byl rozdíl a číslo by se změnilo)',
     'import.left.form': 'Jako text: {written} (nerozumím zápisu)',
     'import.left.assigned': 'Jako text: {written} ({why} přiřazuje řádek, který zůstal textem; hodnota by tu byla stará)',
     'import.left.region': 'Přeskočeno: {why} (tento druh oblasti zatím nepřevádím)',

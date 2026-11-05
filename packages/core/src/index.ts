@@ -15,7 +15,7 @@ export type { Root, RootsFound } from './eval/solver.js';
 export { DOMAIN_SPELLINGS, TABLE_TOTAL, TEXT_ALIGNS, TEXT_COLORS } from './lang/ast.js';
 export { tokenize, type Token, type TokenType, type LexOptions } from './lang/lexer.js';
 export { formatExpr, writtenPlaces } from './lang/format.js';
-export { formatPicture, formatPlacement, parse, parsePicture, parsePlacement, type ParseOptions, type ParseResult, type PictureLine, type Placement } from './lang/parser.js';
+export { formatPicture, formatPlacement, isDifferenceName, parse, parsePicture, parsePlacement, type ParseOptions, type ParseResult, type PictureLine, type Placement } from './lang/parser.js';
 export * from './units/dimension.js';
 export { UnitRegistry, defaultRegistry, canonicalUnitSymbol, type UnitDef } from './units/registry.js';
 export { blockVersion, type BlockSource } from './eval/blocks.js';

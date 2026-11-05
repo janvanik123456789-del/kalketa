@@ -5,13 +5,15 @@
  * the reason, and the language does not change for it.
  */
 
-import { defaultRegistry, evaluateSheet, type UnitRegistry } from '@kalketa/core';
+import { defaultRegistry, evaluateSheet, isDifferenceName, type UnitRegistry } from '@kalketa/core';
 import { child, parseXml, XmlError, type XmlNode } from './xml.js';
 
 export type NotConverted =
   | { readonly kind: 'function'; readonly name: string }
   | { readonly kind: 'unit'; readonly name: string }
   | { readonly kind: 'form' }
+  /** ΔT := 5 °C: a temperature of 278.15 K there, a difference of 5 K here. */
+  | { readonly kind: 'difference'; readonly name: string }
   /** It reads a name that a line left as text assigns: here it would have only a value from before that. */
   | { readonly kind: 'assigned'; readonly name: string }
   | { readonly kind: 'region'; readonly name: string }
@@ -105,12 +107,18 @@ const FUNCTIONS: Readonly<Record<string, string>> = {
 
 /** Units whose name means something else here. A number means an expression in place of the unit. */
 const UNIT_NAMES: Readonly<Record<string, string>> = {
-  hr: 'h', yr: 'yr', min: 'min', '°': '°', deg: '°', Ohm: 'Ω', ohm: 'Ω', kOhm: 'kΩ', MOhm: 'MΩ', degC: '°C', degF: '°F',
+  hr: 'h', min: 'min', '°': '°', deg: '°', Ohm: 'Ω', ohm: 'Ω', kOhm: 'kΩ', MOhm: 'MΩ', degC: '°C', degF: '°F',
+  '\\0027\\': 'arcmin', '\\0022\\': 'arcsec',
 };
 const UNITS_BY_VALUE: Readonly<Record<string, string>> = {
   // The international calorie of SMath; a calorie here is the thermochemical one.
   cal: '(4.1868 [J])',
   kcal: '(4186.8 [J])',
+  // The Gregorian year and its twelfth; a year here has 365.25 days.
+  yr: '(31556952 [s])',
+  month: '(2629746 [s])',
+  // A turn is 2π there; here rpm counts turns and goes to rad/s by 2π where it is asked to. So M·n is a power, as there.
+  rpm: '(0.10471975511965977 [rad/s])',
 };
 /** In SMath h is the Planck constant, not an hour, and more of a kind: to be seen by the one who imports. */
 const UNITS_LEFT: ReadonlySet<string> = new Set(['h', 'c', 'G', 'R', 'e', 'k']);
@@ -165,7 +173,8 @@ function unitText(node: Node, scope: Scope): string {
 }
 
 function unitName(name: string, scope: Scope): string {
-  if (UNITS_LEFT.has(name)) throw new Unconverted({ kind: 'unit', name });
+  // Asked for by its name it would be the one here, of another size. rpm is the same turn in both.
+  if (UNITS_LEFT.has(name) || (UNITS_BY_VALUE[name] && name !== 'rpm')) throw new Unconverted({ kind: 'unit', name });
   const own = UNIT_NAMES[name] ?? name;
   if (!scope.registry.resolve(own)) throw new Unconverted({ kind: 'unit', name });
   return own;
@@ -444,6 +453,8 @@ function lineOf(tree: Node, contract: string | undefined, scope: Scope, renamed:
       return { line: `${shown} := vector(${body}, ${ownName(index.name)}: ${low} .. ${high})${target}`, name: shown };
     }
     if (left.k === 'name') {
+      const inDegrees = (n: Node): boolean => (n.k === 'unit' ? ['°C', '°F', 'degC', 'degF'].includes(n.name) : n.k === 'bracket' ? inDegrees(n.inner) : n.k === 'op' || n.k === 'call' ? n.args.some(inDegrees) : false);
+      if (isDifferenceName(left.name) && inDegrees(right)) throw new Unconverted({ kind: 'difference', name: left.name });
       const body = rendered(right, scope).text;
       const name = ownName(left.name);
       scope.overwritten.delete(left.name);

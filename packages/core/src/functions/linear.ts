@@ -15,6 +15,9 @@ import { quantity, type MatrixValue, type Quantity, type Value, type VectorValue
 import { solveLinear, type Exact } from '../values/exact.js';
 import type { Args, FunctionDef } from './registry.js';
 
+/** The largest system lsolve also solves in exact fractions. */
+const EXACT_SOLVE_SIZE = 12;
+
 // ---------------------------------------------------------------- building
 
 export function matrix(rows: number, cols: number, items: readonly Quantity[]): MatrixValue {
@@ -53,14 +56,65 @@ function numbers(m: MatrixValue): number[][] {
  * them (kN/m, kN | kN, kN·m: rows kN/m and kN, columns 1 and m).
  */
 function structure(m: MatrixValue, span: Span, name: string): { rows: Dimension[]; cols: Dimension[] } {
-  const rows = Array.from({ length: m.rows }, (_, i) => at(m, i, 0).dim);
-  const cols = Array.from({ length: m.cols }, (_, j) => divideDims(at(m, 0, j).dim, rows[0]!));
-  for (let i = 0; i < m.rows; i++) {
-    for (let j = 0; j < m.cols; j++) {
-      if (!sameDim(at(m, i, j).dim, multiplyDims(rows[i]!, cols[j]!))) fail('E-MATRIX-UNITS', span, { function: name, row: i + 1, col: j + 1 });
+  const rows: (Dimension | undefined)[] = new Array(m.rows).fill(undefined);
+  const cols: (Dimension | undefined)[] = new Array(m.cols).fill(undefined);
+  // A zero without a unit says nothing of its row and column: an assembled stiffness matrix has many. The items
+  // that do say link rows and columns; each group of them linked is set from its first row.
+  for (let start = 0; start < m.rows; start++) {
+    if (rows[start]) continue;
+    rows[start] = firstUnit(m, start);
+    const pending: { index: number; isRow: boolean }[] = [{ index: start, isRow: true }];
+    for (let next = pending.pop(); next; next = pending.pop()) {
+      const size = next.isRow ? m.cols : m.rows;
+      for (let other = 0; other < size; other++) {
+        const q = next.isRow ? at(m, next.index, other) : at(m, other, next.index);
+        if (isPlainZero(q)) continue;
+        if (next.isRow && !cols[other]) {
+          cols[other] = divideDims(q.dim, rows[next.index]!);
+          pending.push({ index: other, isRow: false });
+        } else if (!next.isRow && !rows[other]) {
+          rows[other] = divideDims(q.dim, cols[next.index]!);
+          pending.push({ index: other, isRow: true });
+        }
+      }
     }
   }
-  return { rows, cols };
+  const rowDims = rows.map((d) => d ?? DIMENSIONLESS);
+  const colDims = cols.map((d) => d ?? DIMENSIONLESS);
+  for (let i = 0; i < m.rows; i++) {
+    for (let j = 0; j < m.cols; j++) {
+      const q = at(m, i, j);
+      if (!isPlainZero(q) && !sameDim(q.dim, multiplyDims(rowDims[i]!, colDims[j]!))) fail('E-MATRIX-UNITS', span, { function: name, row: i + 1, col: j + 1 });
+    }
+  }
+  return { rows: rowDims, cols: colDims };
+}
+
+/** The unit of the first item of a row that has one. */
+function firstUnit(m: MatrixValue, row: number): Dimension {
+  for (let j = 0; j < m.cols; j++) if (!isPlainZero(at(m, row, j))) return at(m, row, j).dim;
+  return DIMENSIONLESS;
+}
+
+/** A zero without a unit: of a matrix put together from parts, it stands for "nothing here". */
+export function isPlainZero(q: Quantity): boolean {
+  return q.si === 0 && !q.im && isDimensionless(q.dim);
+}
+
+/** Zeros without a unit among items of one unit take it; among items of different units they stay. */
+export function withZerosOfUnit(items: readonly Quantity[]): Quantity[] {
+  const others = items.filter((q) => !isPlainZero(q));
+  const like = others[0];
+  if (!like || others.length === items.length || isDimensionless(like.dim) || others.some((q) => !sameDim(q.dim, like.dim))) return [...items];
+  const zero = quantity(0, like.dim, like.hint && !like.absolute ? { hint: like.hint } : {});
+  return items.map((q) => (isPlainZero(q) ? zero : q));
+}
+
+/** The largest size of the numbers; a spread of a large matrix into Math.max would overflow the stack. */
+function largest(a: readonly (readonly number[])[]): number {
+  let scale = Number.MIN_VALUE;
+  for (const row of a) for (const x of row) if (Math.abs(x) > scale) scale = Math.abs(x);
+  return scale;
 }
 
 /** One unit for all items (eigenvalues need it). */
@@ -80,7 +134,7 @@ function lu(a: number[][]): { lu: number[][]; perm: number[]; sign: number } | u
   const m = a.map((r) => [...r]);
   const perm = Array.from({ length: n }, (_, i) => i);
   let sign = 1;
-  const scale = Math.max(...m.flat().map(Math.abs), Number.MIN_VALUE);
+  const scale = largest(m);
   for (let k = 0; k < n; k++) {
     let p = k;
     for (let i = k + 1; i < n; i++) if (Math.abs(m[i]![k]!) > Math.abs(m[p]![k]!)) p = i;
@@ -169,7 +223,7 @@ function cholesky(a: number[][]): number[][] | undefined {
 }
 
 function symmetric(a: number[][]): boolean {
-  const scale = Math.max(...a.flat().map(Math.abs), Number.MIN_VALUE);
+  const scale = largest(a);
   return a.every((r, i) => r.every((x, j) => Math.abs(x - a[j]![i]!) <= 1e-9 * scale));
 }
 
@@ -215,6 +269,15 @@ function eigen(args: Args): { values: number[]; vectors: number[][]; dim: Dimens
     return x;
   });
   return { values, vectors: Array.from({ length: n }, (_, i) => phi.map((col) => col[i]!)), dim: divideDims(dk, dm) };
+}
+
+/** Two items on one place of a matrix put together: a place named twice in dofs adds up. */
+function added(a: Quantity, b: Quantity, span: Span): Quantity {
+  if (isPlainZero(a)) return b;
+  if (isPlainZero(b)) return a;
+  if (!sameDim(a.dim, b.dim)) fail('E-MATRIX-UNITS', span, { function: 'scatter', row: 0, col: 0 });
+  const { exact: _exact, ...rest } = a;
+  return { ...rest, si: a.si + b.si };
 }
 
 function shapeText(m: MatrixValue): string {
@@ -283,10 +346,49 @@ export const LINEAR: readonly FunctionDef[] = [
         // With every element exact (written in decimals), the solution is exact too: 96/83.
         const given = Array.from({ length: n }, (_, i) => at(b, i, c).exact);
         const coefficients = Array.from({ length: n }, (_, i) => Array.from({ length: n }, (_, j) => at(m, i, j).exact));
-        const exactly = given.every((e) => e) && coefficients.every((row) => row.every((e) => e)) ? solveLinear(coefficients as Exact[][], given as Exact[]) : undefined;
+        // Fractions only where someone reads them: over a large system their digits grow without end and the window would freeze.
+        const exactly = n <= EXACT_SOLVE_SIZE && given.every((e) => e) && coefficients.every((row) => row.every((e) => e)) ? solveLinear(coefficients as Exact[][], given as Exact[]) : undefined;
         x.forEach((value, j) => (items[j * b.cols + c] = quantity(value, divideDims(s, cols[j]!), exactly ? { exact: exactly[j]! } : {})));
       }
       return normalized(matrix(n, b.cols, items));
+    },
+  },
+  {
+    // scatter(K_e, dofs, n): the matrix (or load vector) of a member at its places in the whole: 0 in dofs is a fixed one, left out.
+    name: 'scatter',
+    module: 'linear',
+    params: 'K_e, dofs, n',
+    arity: [3, 3],
+    call: (a) => {
+      const part = a.value(0);
+      if (part.type !== 'matrix' && part.type !== 'vector') return fail('E-TYPE', a.expr(0).span, { expected: 'matrix', found: part.type === 'quantity' ? 'number' : part.type });
+      const places = a.value(1);
+      if (places.type !== 'vector') return fail('E-TYPE', a.expr(1).span, { expected: 'vector', found: places.type === 'quantity' ? 'number' : places.type });
+      const n = a.number(2);
+      if (!Number.isInteger(n) || n < 1 || n > 1000) a.domain(2);
+      const size = part.type === 'matrix' ? part.rows : part.items.length;
+      if ((part.type === 'matrix' && part.cols !== size) || places.items.length !== size) {
+        fail('E-MATRIX-SHAPE', a.call.span, { operator: a.name, left: part.type === 'matrix' ? shapeText(part) : `${size}`, right: `${places.items.length}` });
+      }
+      places.items.forEach((q) => {
+        if (!isDimensionless(q.dim) || !Number.isInteger(q.si) || q.si < 0 || q.si > n) fail('E-INDEX', a.expr(1).span, { index: q.si, length: n });
+      });
+      const dof = places.items.map((q) => q.si - 1);
+      const plain = quantity(0);
+      if (part.type === 'vector') {
+        const items = new Array<Quantity>(n).fill(plain);
+        dof.forEach((p, k) => {
+          if (p >= 0) items[p] = added(items[p]!, part.items[k]!, a.call.span);
+        });
+        return { type: 'vector', items: withZerosOfUnit(items) };
+      }
+      const items = new Array<Quantity>(n * n).fill(plain);
+      dof.forEach((p, i) => {
+        dof.forEach((q, j) => {
+          if (p >= 0 && q >= 0) items[p * n + q] = added(items[p * n + q]!, at(part, i, j), a.call.span);
+        });
+      });
+      return matrix(n, n, withZerosOfUnit(items));
     },
   },
   {

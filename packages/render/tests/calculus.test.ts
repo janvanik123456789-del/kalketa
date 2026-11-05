@@ -51,6 +51,50 @@ describe('matrices in print', () => {
   });
 });
 
+describe('a table from a range in print', () => {
+  const tableOf = (source: string) => {
+    const doc = buildPrintDocument(evaluateSheet(source), { catalog: cs, registry: defaultRegistry, digits: 4, title: 'T' });
+    const block = doc.blocks.find((b) => b.kind === 'datatable');
+    if (block?.kind !== 'datatable') throw new Error('no table');
+    return block;
+  };
+
+  it('has all its rows, not only those written, and the row of totals last', () => {
+    const block = tableOf('table S: {rows=1..3}\n    | k | B [kN] = prev(B, 1 kN)·2 |\n    | Celkem | Σ |');
+    expect(block.rows).toEqual([['1', '2'], ['2', '4'], ['3', '8'], ['Celkem', '14']]);
+    expect(block.totals).toEqual([3]);
+  });
+
+  it('writes a large number of a row whole', () => {
+    const block = tableOf('table S: {rows=12340..12341}\n    | k | x = k·0 |');
+    expect(block.rows[1]![0]!.replace(/\s/g, '')).toBe('12341');
+  });
+
+  it('a row written by hand is the first of them', () => {
+    const block = tableOf('table E: {rows=0..2}\n    | n | p = prev(p) + 1 |\n    | 0 | 5 |');
+    expect(block.rows.map((r) => r[1])).toEqual(['5', '6', '7']);
+  });
+});
+
+describe('matrices put together in print', () => {
+  const printed = (source: string) => lines(source).map((line) => toMathML(line.rhs)).join('');
+
+  it('a large matrix shows its corners and its size', () => {
+    const shown = printed('K := matrix(i + j, i: 1 .. 200, j: 1 .. 200)');
+    expect(shown).toContain('200×200');
+    expect(shown).toContain('⋱');
+    expect(shown.length).toBeLessThan(40000);
+  });
+
+  it('a small matrix is written out', () => {
+    expect(printed('K := matrix(i + j, i: 1 .. 12, j: 1 .. 12)')).not.toContain('⋱');
+  });
+
+  it('the indices of matrix stay letters, though the sheet has such a name', () => {
+    expect(printed('i := 5\nK := matrix(i^2, i: 1 .. 2, j: 1 .. 2)')).toContain('<mi>i</mi>');
+  });
+});
+
 describe('roots in print', () => {
   it('print a cube root and an n-th root with their index', () => {
     const [cube] = lines('a := ∛(27 m³)');

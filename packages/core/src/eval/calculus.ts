@@ -17,8 +17,9 @@ import type { Expr, NamedArg, Statement } from '../lang/ast.js';
 import { divideDims, isDimensionless, multiplyDims, powerDim, sameDim } from '../units/dimension.js';
 import { baseUnitSymbol } from '../units/display.js';
 import type { ResolvedUnit } from '../units/unitExpr.js';
-import { quantity, type Quantity, type Value } from '../values/value.js';
-import { asQuantity } from './coerce.js';
+import { quantity, type MatrixValue, type Quantity, type Value, type VectorValue } from '../values/value.js';
+import { isPlainZero, matrix, normalized, withZerosOfUnit } from '../functions/linear.js';
+import { asComplex, asQuantity } from './coerce.js';
 import { withoutShownUnits, type EvalContext } from './evaluator.js';
 import { extremum, rootsOf } from './roots.js';
 import { solveStatement } from './solver.js';
@@ -59,6 +60,10 @@ export function callCalculus(call: CallExpr, ctx: EvalContext, evaluate: Evaluat
       return solveValue(call, ctx, evaluate);
     case 'first':
       return firstWhole(call, ctx, evaluate);
+    case 'matrix':
+      return matrixOfIndices(call, ctx, evaluate);
+    case 'vector':
+      return vectorOfIndices(call, ctx, evaluate);
     case 'minimize':
     case 'maximize': {
       const { body, variable } = parts(call, []);
@@ -337,6 +342,14 @@ function sum(call: CallExpr, ctx: EvalContext, evaluate: Evaluate): Value {
   const [low, high] = range(variable, call, ctx, evaluate);
   if (!isDimensionless(low.dim) || !Number.isInteger(low.si) || !Number.isInteger(high.si)) fail('E-DOMAIN', variable.value.span, { function: call.name });
   if (high.si - low.si + 1 > MAX_TERMS) fail('E-RANGE-SIZE', variable.value.span);
+  // A sum of matrices or series goes item by item: the stiffness matrix of a structure from those of its members.
+  const termAt = (k: number): Value => evaluate(body, { ...ctx, lookup: (n, at) => (n === variable.name ? quantity(k) : ctx.lookup(n, at)) });
+  const opening = high.si >= low.si ? termAt(low.si) : undefined;
+  if (opening?.type === 'matrix' || opening?.type === 'vector') {
+    let total: MatrixValue | VectorValue = opening;
+    for (let k = low.si + 1; k <= high.si; k++) total = addedItems(total, termAt(k), body.span);
+    return { ...total, items: withZerosOfUnit(total.items) };
+  }
   const f = asFunction(body, variable.name, low, ctx, evaluate, call.span);
   let total: Quantity | undefined;
   for (let k = low.si; k <= high.si; k++) {
@@ -344,6 +357,62 @@ function sum(call: CallExpr, ctx: EvalContext, evaluate: Evaluate): Value {
     total = total ? { ...total, si: total.si + term.si } : term;
   }
   return total ?? quantity(0);
+}
+
+/** A term added to a matrix or series, item by item; a zero without a unit (outside a member) adds nothing. */
+function addedItems(total: MatrixValue | VectorValue, term: Value, span: Span): MatrixValue | VectorValue {
+  const shape = (v: Value) => (v.type === 'matrix' ? `${v.rows}×${v.cols}` : v.type === 'vector' ? `${v.items.length}` : v.type);
+  if (term.type !== total.type || shape(term) !== shape(total)) fail('E-MATRIX-SHAPE', span, { operator: 'Σ', left: shape(total), right: shape(term) });
+  const added = (term as MatrixValue | VectorValue).items;
+  const items = total.items.map((a, k) => {
+    const b = added[k]!;
+    if (isPlainZero(b)) return a;
+    if (isPlainZero(a)) return b;
+    if (!sameDim(a.dim, b.dim)) fail('E-UNIT-MISMATCH', span, { operator: 'Σ', left: baseUnitSymbol(a.dim), right: baseUnitSymbol(b.dim) });
+    const { exact: _exact, ...rest } = a;
+    const im = (a.im ?? 0) + (b.im ?? 0);
+    return { ...rest, si: a.si + b.si, ...(im ? { im } : {}) };
+  });
+  return { ...total, items };
+}
+
+/** matrix(f(i, j), i: 1 .. n, j: 1 .. m): a matrix from the indices of its items. */
+function matrixOfIndices(call: CallExpr, ctx: EvalContext, evaluate: Evaluate): Value {
+  const [rowVar, colVar] = call.named;
+  if (call.args.length !== 1 || call.named.length !== 2) return fail('E-CALCULUS-FORM', call.span, { function: call.name });
+  const body = call.args[0]!;
+  const rows = wholeNumbers(rowVar!, call, ctx, evaluate);
+  const cols = wholeNumbers(colVar!, call, ctx, evaluate);
+  if (rows.length * cols.length > MAX_TERMS) fail('E-RANGE-SIZE', call.span);
+  const items: Quantity[] = [];
+  for (const i of rows) {
+    for (const j of cols) {
+      const lookup = (n: string, at: Span): Value => (n === rowVar!.name ? quantity(i) : n === colVar!.name ? quantity(j) : ctx.lookup(n, at));
+      items.push(asComplex(evaluate(body, { ...ctx, lookup }), body.span));
+    }
+  }
+  return normalized(matrix(rows.length, cols.length, withZerosOfUnit(items)));
+}
+
+/** vector(f(i), i: 1 .. n): a series from the index of its items, all of one unit. */
+function vectorOfIndices(call: CallExpr, ctx: EvalContext, evaluate: Evaluate): Value {
+  const { body, variable } = parts(call, []);
+  const numbers = wholeNumbers(variable, call, ctx, evaluate);
+  if (numbers.length > MAX_TERMS) fail('E-RANGE-SIZE', call.span);
+  const items = withZerosOfUnit(
+    numbers.map((k) => asComplex(evaluate(body, { ...ctx, lookup: (n, at) => (n === variable.name ? quantity(k) : ctx.lookup(n, at)) }), body.span)),
+  );
+  items.forEach((q) => {
+    if (!sameDim(q.dim, items[0]!.dim)) fail('E-UNIT-MISMATCH', body.span, { operator: ',', left: baseUnitSymbol(items[0]!.dim), right: baseUnitSymbol(q.dim) });
+  });
+  return { type: 'vector', items };
+}
+
+function wholeNumbers(variable: NamedArg, call: CallExpr, ctx: EvalContext, evaluate: Evaluate): number[] {
+  const [low, high] = range(variable, call, ctx, evaluate);
+  if (!isDimensionless(low.dim) || !Number.isInteger(low.si) || !Number.isInteger(high.si) || high.si < low.si) fail('E-DOMAIN', variable.value.span, { function: call.name });
+  if (high.si - low.si + 1 > MAX_TERMS) fail('E-RANGE-SIZE', variable.value.span);
+  return Array.from({ length: high.si - low.si + 1 }, (_, k) => low.si + k);
 }
 
 // ---------------------------------------------------------------- units

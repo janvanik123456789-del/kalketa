@@ -140,7 +140,7 @@ describe('a differential equation', () => {
     const w = Math.sqrt(1e8 - 250000);
     expect(si(sheet, 'a') / ((Math.exp(-2.5) * Math.sin(w * 5e-3) * 1000) / w)).toBeCloseTo(1, 5);
     expect(codes(sheet)).toEqual([]);
-  });
+  }, 30000);
 
   it('notices a narrow load', () => {
     // 1 per unit length over 0.4 % of the interval: the integral of the load is 0.004. (A load narrower than

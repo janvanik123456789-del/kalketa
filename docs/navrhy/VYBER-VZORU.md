@@ -76,6 +76,8 @@ Závisí na etapě 1, protože tabulka přes parametr potřebuje funkci na řad�
 
 ## Etapa 3: opakování a stavba tabulek a matic
 
+**Hotovo 2026-11-05:** `prev(sloupec, start)`, `table T: {rows=a..b}`, `sum` přes matice a řady, `matrix(…)`, `vector(…)`, `scatter(…)`. Ověřeno testy `packages/core/tests/recurrence-assembly.test.ts`. Podpory jen v tlaku (`stavebni-statika-13`) ještě napsané nejsou.
+
 Závisí na etapě 1. Otevírá numerické metody a metodu konečných prvků.
 
 | Rozšíření | Prověří |

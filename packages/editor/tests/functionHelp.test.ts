@@ -17,7 +17,8 @@ describe('the help of the functions', () => {
     for (const def of builtinFunctions.all()) {
       const example = FUNCTION_EXAMPLES[def.name];
       expect(example, def.name).toBeTruthy();
-      expect(example!.replace(/^table[\s\S]*\|\n/m, ''), def.name).toContain(`${def.name}(`);
+      // prev belongs in the head of a table, the others stand below theirs.
+      expect(def.name === 'prev' ? example! : example!.replace(/^table[\s\S]*\|\n/m, ''), def.name).toContain(`${def.name}(`);
       const r = evaluateSheet(example!);
       expect(r.diagnostics.filter((d) => d.severity !== 'info').map((d) => `${def.name}: ${d.code}`), def.name).toEqual([]);
     }

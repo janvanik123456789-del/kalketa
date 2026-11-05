@@ -1092,6 +1092,19 @@ async function layersWithRealInput(picture: string) {
   }
   await pressKey('Enter');
   await typeText('g_z := sum(R_z.g_d)');
+  // A table from a range: its rows made from {rows=…}, a column reading the row above.
+  await pressKey('Enter');
+  await typeText('table U_v: {rows=3}');
+  smokeWindow!.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Enter', modifiers: ['shift'] });
+  smokeWindow!.webContents.sendInputEvent({ type: 'char', keyCode: '\r', modifiers: ['shift'] });
+  smokeWindow!.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'Enter', modifiers: ['shift'] });
+  await pause(150);
+  for (const ch of '    | k | B = prev(B, 100)·2 |') {
+    contents.sendInputEvent({ type: 'char', keyCode: ch });
+    await pause(120);
+  }
+  await pressKey('Enter');
+  await typeText('B_3 := U_v.B[3]');
   // Cells: a text, Tab, a definition beside it on one row.
   await pressKey('Enter');
   await typeText('"Síla na konci"');
@@ -1200,7 +1213,9 @@ async function layersWithRealInput(picture: string) {
     // A rounded result of a derivation: set after ≐, the step holds.
     const recap = [...document.querySelectorAll('.layer-view.active .page .datatable tr.total')].some((r) => r.textContent.replace(/\\s+/g, '').includes('Celkem3,975,36')) && [...document.querySelectorAll('.layer-view.active .page .row')].some((r) => r.textContent.replace(/\\s+/g, '').includes('5,36kN/m²'));
     const rounded = [...document.querySelectorAll('.layer-view.active .page .row')].some((r) => r.textContent.replace(/\\s+/g, '').includes('≐5,5mm') && !r.classList.contains('has-error'));
-    const cells = [...document.querySelectorAll('.layer-view.active .page .cells-group')].some((g) => g.querySelectorAll(':scope > .cell').length === 2 && g.textContent.includes('Síla na konci') && g.textContent.replace(/\\s+/g, '').includes('1600N'));
+    // Three rows made from {rows=3}, each from the one above: 200, 400, 800.
+    const recurrence = [...document.querySelectorAll('.layer-view.active .page .datatable')].some((t) => t.textContent.includes('U') && t.querySelectorAll('tbody tr').length === 3 && t.textContent.includes('800')) && rows.some((r) => r.endsWith('=800'));
+    const cells =[...document.querySelectorAll('.layer-view.active .page .cells-group')].some((g) => g.querySelectorAll(':scope > .cell').length === 2 && g.textContent.includes('Síla na konci') && g.textContent.replace(/\\s+/g, '').includes('1600N'));
     // The text and the formula on one baseline: the bottoms of their letters level (no step).
     const level = (() => {
       const group = [...document.querySelectorAll('.layer-view.active .page .cells-group')].find((g) => g.textContent.includes('Síla na konci'));
@@ -1213,7 +1228,7 @@ async function layersWithRealInput(picture: string) {
       const m = letter.getBoundingClientRect();
       return Math.abs(t.bottom - m.bottom) < Math.max(3, t.height * 0.3);
     })();
-    return level && cells && recap && rounded && measured && inequality && rows.some((r) => r.includes('roots') && r.endsWith('=[2;3]')) && rows.some((r) => r.includes('argmax') && r.endsWith('=2'));
+    return level && cells && recap && recurrence && rounded && measured && inequality && rows.some((r) => r.includes('roots') && r.endsWith('=[2;3]')) && rows.some((r) => r.includes('argmax') && r.endsWith('=2'));
   })()`)) as boolean;
   // A click on the table in the sheet opens it as a grid; Enter in its last row adds one; Esc closes it.
   await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .page .row')].find((r) => r.querySelector('table.data-table')).id = 'smoke-table-row'`);

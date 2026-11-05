@@ -335,6 +335,7 @@ A[1, 2]                                    ' prvek: řádek, sloupec (od 1)
 - **Jednotky výsledků:** `det`, `inverse` a `lsolve` potřebují matici, jejíž jednotky mají tvar *jednotka řádku × jednotka sloupce* (matice tuhosti ho má). Z ní plynou jednotky výsledku: řešení K·x = F má u posunu m a u pootočení žádnou jednotku. Vlastní čísla potřebují jednu jednotku pro celou matici; `eigenvals(K, M)` z N/m a kg dá 1/s² (ω²).
 - **Řada má jeden rozměr** (kvůli financím a součtům); vektor s různými jednotkami se píše jako sloupec `[1 kN | 0 kN·m]`. Výsledek s různými jednotkami (řešení soustavy) se v tisku ukáže s jednotkou u každého prvku.
 - **Tisk:** matice jako tabulka v hranatých závorkách, společná jednotka za závorkou; zapsaná matice (jen čísla) se ukáže jednou, jako zadaná hodnota.
+- **Stavba matice (2026-11-05):** `matrix(f(i, j), i: 1 .. n, j: 1 .. m)` a `vector(f(i), i: 1 .. n)` z indexů položek. `sum(…, e: 1 .. m)` sčítá i matice a řady po položkách. `scatter(K_e, místa, n)` dá matici prvku na jejích místech v celku n×n (nebo sloupec zatížení); `0` mezi místy je pevný stupeň volnosti a vynechá se, místo uvedené dvakrát se sečte. Tuhost konstrukce je tedy `K := sum(scatter(k(e), místa(e), n), e: 1 .. m)`. Nuly z `scatter`, `matrix` a `sum` neurčují jednotku řádku ani sloupce, takže `lsolve` a `det` zvládnou i kN/m s kN·m. Řádek krát sloupec je číslo, řada před řádkem je sloupec (`b·transpose(b)`). Matice větší než 12×12 se v tisku zkrátí na rohy a rozměr.
 - Chyby: nesouhlasí rozměry (`E-MATRIX-SHAPE`), není čtvercová (`E-MATRIX-SQUARE`), jednotky nemají tvar řádek × sloupec (`E-MATRIX-UNITS`), singulární matice (`E-MATRIX-SINGULAR`), vlastní čísla nesymetrické matice (`E-MATRIX-SYMMETRIC`).
 
 ### 7.1e Grafy
@@ -600,6 +601,15 @@ table Mereni:
   - Výsledek se převede na jednotku záhlaví. Jiný rozměr je chyba `E-TABLE-FORMULA`.
   - Buňka `Σ` sečte sloupec od posledního řádku součtů, takže jde i o mezisoučty (stálé, proměnné). Řádek součtů nepatří mezi data: `sum(Stale.g_d)` sečte jen řádky položek.
   - V tisku je vzorec pod záhlavím sloupce a řádek součtů tučně s čarou nad ním. Jména sloupců se sázejí jako ve vzorcích (g_k s indexem).
+- **Předchozí řádek a tabulka z rozsahu (2026-11-05), např. splátkový kalendář:**
+
+  ```text
+  table S: {rows=1..n}
+      | k | i = prev(B, P)·r | B = prev(B, P)·(1 + r) - pay |
+  ```
+
+  - `{rows=1..n}` udělá řádek pro každé celé číslo a to číslo stojí v prvním sloupci, není-li počítaný. `{rows=n}` počítá od 1. Meze smějí číst jména nad tabulkou, nejvýš 100 000 řádků. Řádky napsané ručně jsou první z nich (začátek, výjimka), řádek součtů zůstává na konci.
+  - `prev(B)` je buňka sloupce `B` o řádek výš. Počítá se po řádcích zleva, takže se smí číst i sloupec vpravo. V prvním řádku platí `prev(B, P)` nebo ručně vyplněná buňka; jinak `E-PREV-START`. Argument musí být jméno sloupce a `prev` mimo vzorec sloupce je chyba `E-PREV-PLACE`.
 - *Na později (kosmetika):* úprava v mřížce přímo v listu, formáty jako v Excelu (procenta, vědecký zápis, zarovnání, tučně, pozadí) z nabídky pravého tlačítka.
 
 ### 8.4a Buňky: řádky vedle sebe (2026-10-12)

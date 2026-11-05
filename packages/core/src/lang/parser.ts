@@ -43,7 +43,7 @@ const COMPARISONS: ReadonlySet<TokenType> = new Set(['==', '!=', '<', '<=', '>',
 
 
 /** Functions with a variable of their own, named after the expression: integral(f(x), x: a .. b). */
-export const BINDING_FUNCTIONS: ReadonlySet<string> = new Set(['integral', 'derivative', 'sum', 'plot', 'roots', 'minimize', 'maximize', 'solve', 'first']);
+export const BINDING_FUNCTIONS: ReadonlySet<string> = new Set(['integral', 'derivative', 'sum', 'plot', 'roots', 'minimize', 'maximize', 'solve', 'first', 'matrix', 'vector']);
 /** Named arguments of those functions that are options, not the variable. */
 export const BINDING_OPTIONS: ReadonlySet<string> = new Set(['order', 'kind', 'title', 'samples']);
 
@@ -175,10 +175,22 @@ function sheetTables(source: string, options: ParseOptions): { tables: { stateme
     // table Pavlik: {across} — set across in print; table Varianty: {variants=B} — variants of the calculation.
     const words = (head[2] ?? '').split(/\s+/).filter(Boolean);
     const variants = words.map((word) => /^variants(?:=(.+))?$/.exec(word)).find((m) => m);
-    for (const word of words) if (word !== 'across' && !/^variants(=.+)?$/.test(word)) diagnostics.push(diagnostic('W-FORMAT', lineSpan(i), { item: word }));
+    for (const word of words) if (word !== 'across' && !/^variants(=.+)?$/.test(word) && !/^rows=.+$/.test(word)) diagnostics.push(diagnostic('W-FORMAT', lineSpan(i), { item: word }));
     const tableFormat: LineFormat = { ...(words.includes('across') ? { across: true } : {}), ...(variants ? { variants: variants[1] ?? (true as const) } : {}) };
+    // table Splatky: {rows=1..n}: a row for each whole number; the bounds read the names above the table.
+    const rowsWord = words.find((word) => word.startsWith('rows='))?.slice('rows='.length);
+    const bound = (text: string): Expr | undefined => {
+      const read = parse(text, { isUnit: options.isUnit, predefined: [...(options.predefined ?? []), ...namesAbove(lines, i)] });
+      const statement = read.sheet.statements.find((s) => s.kind !== 'comment');
+      if (statement?.kind === 'display' && read.diagnostics.every((d) => d.severity !== 'error')) return statement.expr;
+      diagnostics.push(diagnostic('E-TABLE-SCHEMA', lineSpan(i), { table: head[1]!, problem: 'formula', value: text }));
+      return undefined;
+    };
+    const rowBounds = rowsWord?.split('..').map(bound);
+    const rowRange = rowBounds?.length === 2 && rowBounds[0] && rowBounds[1] ? { low: rowBounds[0], high: rowBounds[1] } : rowBounds?.length === 1 && rowBounds[0] ? { high: rowBounds[0] } : undefined;
+    if (rowBounds && rowBounds.length > 2) diagnostics.push(diagnostic('E-TABLE-SCHEMA', lineSpan(i), { table: head[1]!, problem: 'formula', value: rowsWord! }));
     tables.push({
-      statement: { kind: 'table', name: head[1]!, nameSpan: { offset: starts[i]! + nameAt, length: head[1]!.length, line: i + 1, column: nameAt + 1 }, columns, rows, span, ...(Object.keys(tableFormat).length > 0 ? { format: tableFormat } : {}) },
+      statement: { kind: 'table', name: head[1]!, nameSpan: { offset: starts[i]! + nameAt, length: head[1]!.length, line: i + 1, column: nameAt + 1 }, columns, rows, span, ...(rowRange ? { rowRange } : {}), ...(Object.keys(tableFormat).length > 0 ? { format: tableFormat } : {}) },
       diagnostics,
     });
     for (let n = i; n <= end; n++) blank.add(n);

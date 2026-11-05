@@ -425,7 +425,26 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
         const totals: number[] = [];
         let data = 0;
         let total = 0;
-        const rows = s.rows.map((row, n) => {
+        // A table from a range ({rows=1..12}) has more rows than its text: they are read from its values.
+        const cellOf = (value: Value | null | undefined, i: number): string => {
+          if (value?.type === 'text') return value.value;
+          if (s.columns[i]?.formula || value?.type !== 'quantity') return shown(value, i) ?? '';
+          const number = value.hint ? (value.si - (value.hint.offset ?? 0)) / value.hint.factor : value.si;
+          return cellText(String(number), s.columns[i]?.format, columns[i]?.numeric ?? false, decimalSign);
+        };
+        const fromRange = (t: NonNullable<typeof table>): string[][] => {
+          const out: string[][] = [];
+          t.rows.forEach((cells, n) => {
+            out.push(cells.map(cellOf));
+            for (const sums of t.totals ?? []) {
+              if (sums.after !== n + 1) continue;
+              totals.push(out.length);
+              out.push(sums.cells.map((cell, i) => (cell?.type === 'text' ? cell.value : (shown(cell, i) ?? ''))));
+            }
+          });
+          return out;
+        };
+        const rows = s.rowRange && table ? fromRange(table) : s.rows.map((row, n) => {
           if (row.some((cell) => cell.trim() === TABLE_TOTAL)) {
             totals.push(n);
             const cells = table?.totals?.[total++]?.cells;
@@ -1387,19 +1406,28 @@ function telling(items: readonly { value: number; unit: string; im?: number }[],
   return format;
 }
 
+/** The most rows or columns of a matrix written out in full. */
+const MATRIX_SHOWN = 12;
+
 /** A matrix in brackets; one unit for all items stands after it, else each item has its own. */
 function matrixNode(m: { rows: number; cols: number; items: readonly { value: number; unit: string; im?: number }[] }, format: NumberFormat): MathNode {
   const unit = m.items[0]?.unit ?? '';
   const shared = m.items.every((item) => item.unit === unit);
   // The unit stands after the brackets, the numbers are still of it: an amount of money keeps its whole part.
   const own = shared && unit ? (value: number) => format(value, unit) : format;
-  const cells = Array.from({ length: m.rows }, (_, i) =>
-    Array.from({ length: m.cols }, (_, j) => {
+  // A large matrix does not fit on a page and no one reads it there: its corners and its size.
+  const large = m.rows > MATRIX_SHOWN || m.cols > MATRIX_SHOWN;
+  const places = (size: number): (number | undefined)[] =>
+    size > MATRIX_SHOWN ? [0, 1, 2, 3, undefined, size - 2, size - 1] : Array.from({ length: size }, (_, k) => k);
+  const cells = places(m.rows).map((i) =>
+    places(m.cols).map((j) => {
+      if (i === undefined) return mo(j === undefined ? '⋱' : '⋮');
+      if (j === undefined) return mo('⋯');
       const item = m.items[i * m.cols + j]!;
       return valueNode(item.value, shared ? '' : item.unit, own, item.im);
     }),
   );
-  return row(mo('['), table(cells), mo(']'), ...(shared && unit ? unitAfter(unit) : []));
+  return row(mo('['), table(cells), mo(']'), ...(shared && unit ? unitAfter(unit) : []), ...(large ? [mtext(` (${m.rows}×${m.cols})`)] : []));
 }
 
 /** "A_kruh(d)" or "σ(M; W)". */

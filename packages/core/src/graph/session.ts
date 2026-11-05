@@ -8,7 +8,7 @@
  * changed.
  */
 
-import { CalcError, DependencyFailed, diagnostic, type Diagnostic, type Span } from '../diagnostics.js';
+import { CalcError, DependencyFailed, diagnostic, fail, type Diagnostic, type Span } from '../diagnostics.js';
 import { asBoolean, asComplex } from '../eval/coerce.js';
 import { compare, evaluate, LINE_TIME_LIMIT_MS, withTimeLimit, type EvalContext } from '../eval/evaluator.js';
 import { BUILTIN_CONSTANTS } from '../eval/functions.js';
@@ -24,7 +24,7 @@ import { TABLE_TOTAL, type BinaryOperator, type Expr, type Inequality, type Line
 import { parse } from '../lang/parser.js';
 import { buildTable, rowLabel, type ColumnSchema, type Table, type TableBuildResult, type TableRead } from '../tables/table.js';
 import { COMPARE_FUNCTION } from '../eval/tables.js';
-import { sameDim } from '../units/dimension.js';
+import { isDimensionless, sameDim } from '../units/dimension.js';
 import { isDifferenceName } from '../lang/parser.js';
 import { baseUnitSymbol, toDisplay, type DisplayValue } from '../units/display.js';
 import { defaultRegistry, type UnitRegistry } from '../units/registry.js';
@@ -810,6 +810,61 @@ function valueOrNothing(f: () => Value): Value | undefined {
   }
 }
 
+/** The most rows {rows=…} makes: more would not be read by anyone, and a slip in a bound must not freeze the window. */
+const MAX_GENERATED_ROWS = 100_000;
+
+/**
+ * The rows of a table with {rows=0..12}: one for each whole number, which stands in the first column unless that one
+ * is calculated. Rows written by hand are the first of them (a start, an exception), rows of totals stay at the end.
+ */
+function rowsOfRange(
+  statement: Extract<Statement, { kind: 'table' }>,
+  registry: UnitRegistry,
+  outer: (name: string, span: Span) => Value,
+  diagnostics: Diagnostic[],
+): { written: readonly (readonly string[])[]; generated: ReadonlySet<readonly string[]> } {
+  const generated = new Set<readonly string[]>();
+  const range = statement.rowRange;
+  // While the head is being typed the table has no columns yet.
+  if (!range || statement.columns.length === 0) return { written: statement.rows, generated };
+  const wrong =() => diagnostics.push(diagnostic('E-TABLE-ROWS', statement.span, { table: statement.name, max: MAX_GENERATED_ROWS }));
+  const whole = (expr: Expr): number | undefined => {
+    const value = evaluate(expr, { registry, warnings: [], lookup: outer });
+    return value.type === 'quantity' && !value.im && isDimensionless(value.dim) && Number.isInteger(value.si) ? value.si : undefined;
+  };
+  let low: number | undefined;
+  let high: number | undefined;
+  try {
+    low = range.low ? whole(range.low) : 1;
+    high = whole(range.high);
+  } catch (err) {
+    if (err instanceof DependencyFailed) return { written: statement.rows, generated };
+    if (!(err instanceof CalcError)) throw err;
+    diagnostics.push({ ...err.diagnostic, span: statement.span });
+    return { written: statement.rows, generated };
+  }
+  if (low === undefined || high === undefined || high < low || high - low + 1 > MAX_GENERATED_ROWS) {
+    wrong();
+    return { written: statement.rows, generated };
+  }
+  const isTotal = (r: readonly string[]) => r.some((cell) => cell.trim() === TABLE_TOTAL);
+  const blank = (r: readonly string[]) => r.every((cell) => cell.trim() === '');
+  const numbered = !statement.columns[0]?.formula;
+  const by = statement.rows.filter((r) => !isTotal(r) && !blank(r));
+  const totals = statement.rows.filter(isTotal);
+  const rows: (readonly string[])[] = [];
+  for (let k = low; k <= high; k++) {
+    const hand = by[k - low];
+    const row = statement.columns.map((_, c) => hand?.[c] ?? '');
+    if (numbered && row[0]!.trim() === '') row[0] = String(k);
+    rows.push(row);
+    generated.add(row);
+  }
+  // More rows by hand than the range has: none of them is lost.
+  rows.push(...by.slice(high - low + 1));
+  return { written: [...rows, ...totals], generated };
+}
+
 /**
  * A table written in the sheet as a table of the data layer: a column whose
  * cells are all numbers holds quantities in its unit, any other one text.
@@ -818,7 +873,9 @@ function sheetTable(statement: Extract<Statement, { kind: 'table' }>, registry: 
   const numeric = (text: string) => /^[-+]?(\d+\.?\d*|\.\d+)(e[-+]?\d+)?$/i.test(text.replace(/[\s\u00a0]/g, '').replace(',', '.'));
   // A row of totals (a cell Σ) is no row of data: it sums the rows above it.
   const isTotal = (r: readonly string[]) => r.some((cell) => cell.trim() === TABLE_TOTAL);
-  const dataRows = statement.rows.filter((r) => !isTotal(r));
+  const rangeDiagnostics: Diagnostic[] = [];
+  const { written, generated } = rowsOfRange(statement, registry, outer, rangeDiagnostics);
+  const dataRows = written.filter((r) => !isTotal(r));
   const columns: ColumnSchema[] = statement.columns.map((column, c) => {
     const cells = dataRows.map((r) => (r[c] ?? '').trim()).filter((t) => t !== '');
     const type = column.formula || (cells.length > 0 && cells.every(numeric)) ? 'quantity' : column.unit ? 'quantity' : 'text';
@@ -826,39 +883,50 @@ function sheetTable(statement: Extract<Statement, { kind: 'table' }>, registry: 
   });
   // Numbers are stored with a dot; a comma typed in a cell is a decimal comma.
   const clean = (r: readonly string[]) => r.map((cell, c) => (columns[c]?.type === 'quantity' ? cell.replace(/[\s\u00a0]/g, '').replace(',', '.') : cell));
-  const kept = statement.rows.filter((r) => isTotal(r) || r.some((cell) => cell !== ''));
+  const kept = written.filter((r) => isTotal(r) || generated.has(r) || r.some((cell) => cell !== ''));
   const built = buildTable({ name: statement.name, columns }, kept.filter((r) => !isTotal(r)).map(clean), registry);
   // The table's own problems point at its line.
-  const diagnostics = built.diagnostics.map((d) => ({ ...d, span: statement.span }));
+  const diagnostics = [...rangeDiagnostics, ...built.diagnostics.map((d) => ({ ...d, span: statement.span }))];
   if (!statement.columns.some((c) => c.formula) && !kept.some(isTotal)) return { table: built.table, diagnostics };
 
-  const rows = built.table.rows.map((r) => [...r]);
-  // Calculated columns, left to right: an empty cell gets the formula with the cells of its row.
-  for (const [c, column] of statement.columns.entries()) {
-    if (!column.formula) continue;
-    const unit = built.table.columns[c]?.resolvedUnit;
+  const rows = built.table.rows.map((r): (Value | null)[] => [...r]);
+  // Calculated columns: row by row, from the left, so a formula may read its left neighbours and, through prev, the row above.
+  const stopped = new Set<number>();
+  withTimeLimit(LINE_TIME_LIMIT_MS, () => {
     for (const [r, row] of rows.entries()) {
-      if (row[c] !== null) continue;
-      const lookup = (name: string, span: Span): Value => {
-        const at = statement.columns.findIndex((col) => col.name === name);
-        if (at < 0) return outer(name, span);
-        const cell = row[at];
-        if (!cell) throw new CalcError(diagnostic('E-TABLE-EMPTY', statement.span, { table: statement.name, column: name, row: String(r + 1) }));
-        return cell;
-      };
-      try {
-        const value = evaluate(column.formula, { registry, warnings: [], lookup });
-        if (value.type !== 'quantity') throw new CalcError(diagnostic('E-TABLE-FORMULA', statement.span, { table: statement.name, column: column.name, found: typeName(value), unit: column.unit ?? '' }));
-        if (unit && !sameDim(value.dim, unit.dim)) throw new CalcError(diagnostic('E-TABLE-FORMULA', statement.span, { table: statement.name, column: column.name, found: baseUnitSymbol(value.dim), unit: column.unit ?? '' }));
-        row[c] = unit ? { ...value, hint: unit } : value;
-      } catch (err) {
-        if (!(err instanceof CalcError) && !(err instanceof DependencyFailed)) throw err;
-        if (err instanceof CalcError) diagnostics.push({ ...err.diagnostic, span: statement.span });
-        // One report for the column, not one for each row.
-        break;
+      for (const [c, column] of statement.columns.entries()) {
+        if (!column.formula || stopped.has(c) || row[c] !== null) continue;
+        const unit = built.table.columns[c]?.resolvedUnit;
+        const lookup = (name: string, span: Span): Value => {
+          const at = statement.columns.findIndex((col) => col.name === name);
+          if (at < 0) return outer(name, span);
+          const cell = row[at];
+          if (!cell) throw new CalcError(diagnostic('E-TABLE-EMPTY', statement.span, { table: statement.name, column: name, row: String(r + 1) }));
+          return cell;
+        };
+        const previous = (call: Extract<Expr, { kind: 'call' }>, ctx: EvalContext): Value => {
+          const [target, start] = call.args;
+          if (target?.kind !== 'variable' || call.args.length > 2 || call.named.length > 0) return fail('E-PREV-FORM', call.span);
+          const at = statement.columns.findIndex((col) => col.name === target.name);
+          if (at < 0) return fail('E-TABLE-COLUMN', target.span, { table: statement.name, column: target.name });
+          if (r === 0) return start ? evaluate(start, ctx) : fail('E-PREV-START', call.span, { table: statement.name, column: target.name });
+          const cell = rows[r - 1]![at];
+          return cell ?? fail('E-TABLE-EMPTY', call.span, { table: statement.name, column: target.name, row: String(r) });
+        };
+        try {
+          const value = evaluate(column.formula, { registry, warnings: [], lookup, previous });
+          if (value.type !== 'quantity') throw new CalcError(diagnostic('E-TABLE-FORMULA', statement.span, { table: statement.name, column: column.name, found: typeName(value), unit: column.unit ?? '' }));
+          if (unit && !sameDim(value.dim, unit.dim)) throw new CalcError(diagnostic('E-TABLE-FORMULA', statement.span, { table: statement.name, column: column.name, found: baseUnitSymbol(value.dim), unit: column.unit ?? '' }));
+          row[c] = unit ? { ...value, hint: unit } : value;
+        } catch (err) {
+          if (!(err instanceof CalcError) && !(err instanceof DependencyFailed)) throw err;
+          if (err instanceof CalcError) diagnostics.push({ ...err.diagnostic, span: statement.span });
+          // One report for the column, not one for each row.
+          stopped.add(c);
+        }
       }
     }
-  }
+  });
   // Rows of totals: each column with Σ summed over the rows of data since the last row of totals.
   const totals: { after: number; cells: (Value | null)[] }[] = [];
   let after = 0;

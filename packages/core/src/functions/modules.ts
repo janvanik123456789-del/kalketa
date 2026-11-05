@@ -1065,6 +1065,8 @@ export const CALCULUS: readonly FunctionDef[] = [
   { name: 'polyfit', module: 'calculus', params: 'x, y, n, steps: false', arity: [3, 3] },
   { name: 'polyval', module: 'calculus', params: 'p, x', arity: [2, 2] },
   { name: 'first', module: 'calculus', params: 'condition, n: from .. to', arity: [1, 1] },
+  { name: 'matrix', module: 'linear', params: 'f(i, j), i: 1 .. n, j: 1 .. m', arity: [1, 1] },
+  { name: 'vector', module: 'linear', params: 'f(i), i: 1 .. n', arity: [1, 1] },
   { name: 'fit_s', module: 'calculus', params: 'F', arity: [1, 1] },
   { name: 'fit_se', module: 'calculus', params: 'F', arity: [1, 1] },
   { name: 'fit_r2', module: 'calculus', params: 'F', arity: [1, 1] },
@@ -1082,6 +1084,8 @@ export const TABLES: readonly FunctionDef[] = [
   { name: 'find_min', module: 'tables', params: 'T, by: column, where: condition', arity: [1, 1] },
   { name: 'find_max', module: 'tables', params: 'T, by: column, where: condition', arity: [1, 1] },
   { name: 'filter', module: 'tables', params: 'T, where: condition', arity: [1, 1] },
+  // In the formula of a column: the cell of the row above (graph/session.ts).
+  { name: 'prev', module: 'tables', params: 'column, start', arity: [1, 2] },
   // Calculated by the session: the sheet again for each variant (graph/session.ts).
   { name: 'compare', module: 'tables', params: 'Variants, name, …', arity: [2, 32] },
 ];

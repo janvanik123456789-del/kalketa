@@ -187,7 +187,7 @@ export type Statement =
    *       | t [s] | T [°C] {0.0} |
    *       | 0     | 20.1         |
    */
-  | (StatementBase & { readonly kind: 'table'; readonly name: string; readonly nameSpan: Span; readonly columns: readonly SheetColumn[]; readonly rows: readonly (readonly string[])[] })
+  | (StatementBase & { readonly kind: 'table'; readonly name: string; readonly nameSpan: Span; readonly columns: readonly SheetColumn[]; readonly rows: readonly (readonly string[])[]; /** table T: {rows=0..12}: rows made for each whole number; {rows=n} from 1. */ readonly rowRange?: { readonly low?: Expr; readonly high: Expr } })
   /**
    * A derivation on its own (theory): derive a == b == c; every step is checked to hold.
    * relation: relation a == b — an equation that holds by the theory or the task (x² + y² = r²), not

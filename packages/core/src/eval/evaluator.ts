@@ -41,6 +41,8 @@ export interface EvalContext {
   readonly tableReads?: TableRead[];
   /** Blocks of the sheet, callable by name. */
   readonly blocks?: BlockCaller;
+  /** prev(column) in the formula of a column of a table: the cell of the row above. */
+  readonly previous?: (call: Extract<Expr, { kind: 'call' }>, ctx: EvalContext) => Value;
 }
 
 /** Relative tolerance for comparisons, so 0.1 + 0.2 == 0.3 holds. */
@@ -169,6 +171,7 @@ function evaluateRaw(expr: Expr, ctx: EvalContext): Value {
       return evaluateBinary(expr.operator, expr.left, expr.right, expr.span, ctx);
     case 'call': {
       if (TABLE_FUNCTIONS.has(expr.name)) return callTableFunction(expr, ctx, evaluate);
+      if (expr.name === 'prev') return ctx.previous ? ctx.previous(expr, ctx) : fail('E-PREV-PLACE', expr.span);
       // integral(f(x), x: a .. b), derivative(f(x), x: a), sum(f(k), k: 1 .. n): a variable of their own.
       // A chart is a line of its own: plot(M(x), x: 0 m .. L).
       if (expr.name === PLOT_FUNCTION) fail('E-PLOT-PLACE', expr.span, {});
@@ -370,9 +373,12 @@ function matrixBinary(op: BinaryOperator, left: Value, right: Value, leftExpr: E
     if (right.type === 'quantity') return each(left as MatrixValue, (q) => arithmetic(op, q, right, leftExpr, rightExpr, span, ctx));
     if (op === '/') return fail('E-TYPE', rightExpr.span, { expected: 'number', found: right.type });
     if (left.type === 'quantity') return each(right as MatrixValue, (q) => arithmetic(op, left, q, leftExpr, rightExpr, span, ctx));
-    const a = left.type === 'vector' ? matrix(1, left.items.length, left.items) : asMatrix(left, leftExpr.span);
     const b = asMatrix(right, rightExpr.span);
+    // A series before a row is a column: b·transpose(b) is the matrix of a member. Before anything else it is a row.
+    const a = left.type !== 'vector' ? asMatrix(left, leftExpr.span) : b.rows === 1 && left.items.length > 1 ? matrix(left.items.length, 1, left.items) : matrix(1, left.items.length, left.items);
     const result = product(a, b, leftExpr, rightExpr, span, ctx);
+    // A row times a column is a number: transpose(b)·u.
+    if (left.type === 'matrix' && result.rows === 1 && result.cols === 1) return result.items[0]!;
     // v·A gives a row, A·v a column: both come out as series.
     return result.rows === 1 && left.type === 'vector' ? { type: 'vector', items: result.items } : normalized(result);
   }

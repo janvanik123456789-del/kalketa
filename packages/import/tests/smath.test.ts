@@ -189,3 +189,25 @@ describe('files as newer versions of SMath write them', () => {
     expect((evaluateSheet(source).values.get('x') as { si: number; dim: Record<string, number> }).dim['L']).toBe(1);
   });
 });
+
+describe('what real worksheets hold', () => {
+  it('a calculation inside a collapsed area, in place', () => {
+    const area = `<region id="5" left="9" top="20"><area collapsed="true" />${region(900, math(let_('b', n('a'), n('1'), op('+'))))}${region(800, math(let_('a', n('1'))))}</region>`;
+    const { source } = importSmath(sheet(region(10, math(let_('z', n('5')))), area, region(30, math(n('b'), n('2')))));
+    expect(source.trim().split('\n')).toEqual(['z := 5', 'a := 1', 'b := a + 1', 'b']);
+  });
+
+  it('text in the language asked for', () => {
+    const texts = '<text lang="rus"><p>Балка</p></text><text lang="eng"><p>Beam</p></text><text lang="ces"><p>Nosník</p></text>';
+    const one = sheet(region(10, texts));
+    expect(importSmath(one).source.trim()).toBe('"Beam"');
+    expect(importSmath(one, undefined, 'cs').source.trim()).toBe('"Nosník"');
+    expect(importSmath(sheet(region(10, '<text lang="rus"><p>Балка</p></text>'))).source.trim()).toBe('"Балка"');
+  });
+
+  it('a derivative of a function being defined, eval', () => {
+    const { source } = importSmath(sheet(region(10, math(`${n('x')}${fn('f', 1)}${n('x')}${n('2')}${op('^')}${op(':')}`)), region(20, math(`${n('x')}${fn('g', 1)}${n('x')}${fn('f', 1)}${n('x')}${fn('diff', 2)}${op(':')}`)), region(30, math(let_('c', n('3'), fn('g', 1), fn('eval', 1))))));
+    const r = evaluateSheet(source);
+    expect((r.values.get('c') as { si: number }).si).toBeCloseTo(6, 6);
+  });
+});

@@ -149,7 +149,7 @@ async function main(argv: string[]): Promise<number> {
     const bytes = new Uint8Array(readFileSync(file));
     let imported: SmathImport;
     try {
-      imported = importSmath(new TextDecoder().decode(bytes));
+      imported = importSmath(new TextDecoder().decode(bytes), defaultRegistry, values.lang.slice(0, 2));
     } catch (err) {
       if (!(err instanceof XmlError)) throw err;
       console.error(t(catalog, 'import.broken', { reason: err.message }));

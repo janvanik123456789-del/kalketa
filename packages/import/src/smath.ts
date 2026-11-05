@@ -89,7 +89,7 @@ const FUNCTIONS: Readonly<Record<string, string>> = {
   asinh: 'asinh', arsh: 'asinh', acosh: 'acosh', arch: 'acosh', atanh: 'atanh', arth: 'atanh',
   sqrt: 'sqrt', exp: 'exp', ln: 'ln', lg: 'log10', abs: 'abs', sign: 'sign', sgn: 'sign', round: 'round', floor: 'floor', ceil: 'ceil', mod: 'mod',
   min: 'min', max: 'max', sum: 'sum', mean: 'mean', median: 'median', stdev: 'stdev', length: 'len', det: 'det', transpose: 'transpose', inverse: 'inverse', if: 'if', rows: 'rows', cols: 'cols', trace: 'trace', norm: 'norm',
-  Min: 'min', Max: 'max', augment: 'augment', stack: 'stack', col: 'col', row: 'row', submatrix: 'submatrix', rank: 'rank', cross: 'cross',
+  tr: 'trace', Min: 'min', Max: 'max', augment: 'augment', stack: 'stack', col: 'col', row: 'row', submatrix: 'submatrix', rank: 'rank', cross: 'cross',
   atan2: 'atan2', arg: 'arg', Re: 're', Im: 'im', conj: 'conj', fact: 'factorial',
 };
 
@@ -223,8 +223,15 @@ function call(node: Extract<Node, { k: 'call' }>, scope: Scope): { text: string;
     const f = rendered(args[0]!, inner).text;
     return { text: `${name === 'sum' ? 'sum' : 'integral'}(${f}, ${ownName(variable)}: ${of(args[2]!)} .. ${of(args[3]!)})`, prec: ATOM };
   }
-  // Series go item by item here anyway.
-  if (name === 'vectorize' && args.length === 1) return rendered(args[0]!, scope);
+  // Series go item by item here anyway, and everything is calculated at once.
+  if ((name === 'vectorize' || name === 'eval') && args.length === 1) return rendered(args[0]!, scope);
+  // diff(f(x), x): the derivative at x, of a function of x being defined.
+  if (name === 'diff' && args.length === 2 && args[1]!.k === 'name') {
+    const variable = ownName(args[1]!.name);
+    return { text: `derivative(${of(args[0]!)}, ${variable}: ${variable})`, prec: ATOM };
+  }
+  // Its third argument is the second value of the series there: the step here.
+  if (name === 'range' && args.length === 2) return { text: `range(${of(args[0]!)}, ${of(args[1]!)})`, prec: ATOM };
   const own = FUNCTIONS[name];
   if (own) return { text: `${own}(${args.map(of).join(', ')})`, prec: ATOM };
   // A function of the sheet itself.
@@ -367,14 +374,22 @@ function storedValue(result: XmlNode): string | undefined {
   }
 }
 
-export function importSmath(xml: string, registry: UnitRegistry = defaultRegistry): SmathImport {
+/** A text is in more languages: the first one wanted that it has, else the first it has. */
+const LANGUAGE_CODES: Readonly<Record<string, readonly string[]>> = { cs: ['ces', 'cze', 'cs'], en: ['eng', 'en'] };
+
+export function importSmath(xml: string, registry: UnitRegistry = defaultRegistry, language = 'en'): SmathImport {
+  const wanted = [...(LANGUAGE_CODES[language] ?? [language]), ...LANGUAGE_CODES['en']!];
   const root = parseXml(xml);
   // Newer versions: <worksheet><settings>…</settings><regions>…; older ones: <regions> alone.
   const holders = root.name === 'regions' ? [root] : root.name === 'worksheet' ? root.children.filter((c) => c.name === 'regions') : [];
   if (holders.length === 0) throw new XmlError('not a worksheet of SMath');
   // SMath calculates down the page and, on one height, from the left.
   const num = (r: XmlNode, name: string) => Number(r.attributes.get(name) ?? 0);
-  const regions = holders.flatMap((h) => h.children).filter((c) => c.name === 'region').sort((a, b) => num(a, 'top') - num(b, 'top') || num(a, 'left') - num(b, 'left'));
+  const byPlace = (a: XmlNode, b: XmlNode) => num(a, 'top') - num(b, 'top') || num(a, 'left') - num(b, 'left');
+  // An area holds regions of its own, also when it is collapsed: the calculation may lie there. They come where it stands.
+  const flat = (regions: readonly XmlNode[]): XmlNode[] =>
+    [...regions].sort(byPlace).flatMap((r) => (child(r, 'area') ? flat(r.children.filter((c) => c.name === 'region')) : [r]));
+  const regions = flat(holders.flatMap((h) => h.children).filter((c) => c.name === 'region'));
   const scope: Scope = { registry, aliases: new Map(), local: new Set() };
   const renamed: { from: string; to: string }[] = [];
   const left: { written: string; why: NotConverted }[] = [];
@@ -383,7 +398,8 @@ export function importSmath(xml: string, registry: UnitRegistry = defaultRegistr
   let texts = 0;
   for (const region of regions) {
     const math = child(region, 'math');
-    const text = child(region, 'text');
+    const variants = region.children.filter((c) => c.name === 'text');
+    const text = wanted.map((code) => variants.find((v) => v.attributes.get('lang') === code)).find(Boolean) ?? variants[0];
     if (text) {
       const words = paragraphs(text);
       if (words) {

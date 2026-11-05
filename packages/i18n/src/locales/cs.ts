@@ -130,6 +130,7 @@ export const cs: Catalog = {
     'W-DERIVATIVE-KINK': 'V tomto bodě má křivka zlom: zleva a zprava vychází různá směrnice, takže derivace neexistuje. Číslo je jen jejich průměr.',
     'W-POLE': '{function} tady míří do nekonečna (pól). Velké číslo vzniklo jen zaokrouhlením úhlu, není to skutečná hodnota.',
     'W-TURNS-IN-POWER': 'Moment krát {unit} není výkon, chybí 2π. Výkon je M·ω, tedy 2·π·n·M. Pokud je to práce za otáčku, zapište ji v J a varování zmizí.',
+    'W-NAME-AS-UNIT': '„{name}“ se tu čte jako jednotka, ne jako proměnná {name}, protože za číslem platí jednotka. Pro proměnnou dejte číslo s jednotkou do závorky: (200 mm)/{name}. Pro jednotku napište [{name}].',
     'E-PREV-PLACE': 'prev čte řádek nad sebou, patří tedy jen do vzorce sloupce tabulky.',
     'E-PREV-FORM': 'prev se píše prev(sloupec) nebo prev(sloupec, hodnota pro první řádek).',
     'E-PREV-START': 'Tabulka „{table}“: první řádek nemá nad sebou nic. Vyplňte v něm buňku, nebo napište prev({column}, hodnota pro první řádek).',

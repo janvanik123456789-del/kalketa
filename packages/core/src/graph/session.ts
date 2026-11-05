@@ -241,8 +241,23 @@ export class SheetSession {
     const variantTables = new Map<string, { table: Table; chosen?: string }>();
     const usedVariantSessions = new Map<string, SheetSession>();
 
+    // 100 kN/A with an area A: the unit is what the rule reads, hardly what is meant. Unless the unit stands elsewhere in the
+    // sheet as a unit (N/m with a mass m, in a sheet of metres), which says this is meant too.
+    const withNamesOverUnits = (found: Diagnostic[], statement: Statement): Diagnostic[] => {
+      const added: Diagnostic[] = [];
+      for (const reading of parsed.unitReadings?.overNames ?? []) {
+        if (!within(reading.span, statement.span) || parsed.unitReadings?.units.has(reading.name)) continue;
+        const value = env.get(reading.name);
+        const param = statement.kind === 'definition' && statement.params?.some((p) => p.name === reading.name);
+        const unit = resolveUnit({ kind: 'unit-name', name: reading.name, span: reading.span }, registry);
+        if (param || (value?.ok && value.value.type === 'quantity' && !sameDim(value.value.dim, unit.dim))) added.push(diagnostic('W-NAME-AS-UNIT', reading.span, { name: reading.name }));
+      }
+      if (added.length === 0) return found;
+      return [...found.filter((d) => d.code !== 'I-AMBIGUOUS-UNIT' || !added.some((a) => a.span.offset === d.span.offset)), ...added];
+    };
+
     statements.forEach((statement, index) => {
-      const parseDiagnostics = parsed.diagnostics.filter((d) => within(d.span, statement.span));
+      const parseDiagnostics = withNamesOverUnits(parsed.diagnostics.filter((d) => within(d.span, statement.span)), statement);
 
       if (statement.kind === 'heading' && statement.format?.pos !== undefined) {
         closePosition();

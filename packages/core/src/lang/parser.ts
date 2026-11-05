@@ -26,9 +26,17 @@ export interface ParseOptions {
   readonly predefined?: Iterable<string>;
 }
 
+export interface UnitReadings {
+  /** Names of the sheet read as units right after a slash: 100 kN/A. */
+  readonly overNames: { readonly name: string; readonly span: Span }[];
+  /** Units that stand anywhere else, so plainly meant as units. */
+  readonly units: Set<string>;
+}
+
 export interface ParseResult {
   readonly sheet: Sheet;
   readonly diagnostics: Diagnostic[];
+  readonly unitReadings?: UnitReadings;
 }
 
 const KEYWORDS = new Set(['and', 'or', 'not', 'true', 'false', 'check', 'source', 'solve', 'in', 'guess', 'dimension', 'unit', 'input', 'derive', 'relation']);
@@ -58,6 +66,7 @@ export function parse(source: string, options: ParseOptions): ParseResult {
   const units = new Set<string>();
   // Variables already said to be read as units after a number: said once per sheet.
   const noted = new Set<string>();
+  const readings: UnitReadings = { overNames: [], units: new Set() };
   // A table goes in among the statements where it stands, and is a name from there on.
   const pending = [...tables];
   const tablesBefore = (offset: number) => {
@@ -83,7 +92,7 @@ export function parse(source: string, options: ParseOptions): ParseResult {
       continue;
     }
 
-    const parser = new LineParser(tokens, options, defined, diagnostics, units, noted);
+    const parser = new LineParser(tokens, options, defined, diagnostics, units, noted, readings);
     let statement: Statement;
     try {
       statement = parser.parseStatement();
@@ -98,7 +107,7 @@ export function parse(source: string, options: ParseOptions): ParseResult {
   }
   tablesBefore(Infinity);
 
-  return { sheet: { statements }, diagnostics };
+  return { sheet: { statements }, diagnostics, unitReadings: readings };
 }
 
 const TABLE_HEAD = /^table[ \t]+([\p{L}_][\p{L}\p{N}_]*)[ \t]*:[ \t]*(?:\{([^{}]*)\})?[ \t]*$/u;
@@ -313,6 +322,7 @@ class LineParser {
     private readonly diagnostics: Diagnostic[],
     private readonly units: Set<string>,
     private readonly noted: Set<string> = new Set(),
+    private readonly readings: UnitReadings = { overNames: [], units: new Set() },
   ) {
     const last = tokens[tokens.length - 1]!;
     // Synthetic end-of-line token placed right after the last real token.
@@ -1217,6 +1227,10 @@ class LineParser {
     } else if (token.type === 'ident') {
       this.next();
       if (!this.isUnit(token.text)) fail('E-UNKNOWN-UNIT', token.span, { unit: token.text });
+      // kN/A with an area A: read as per ampere; whether to say so the session decides, it knows what A holds.
+      const overName = !explicit && this.defined.has(token.text) && this.tokens[this.pos - 2]?.type === '/';
+      if (overName) this.readings.overNames.push({ name: token.text, span: token.span });
+      else this.readings.units.add(token.text);
       if (!explicit && this.defined.has(token.text) && !this.noted.has(token.text)) {
         this.noted.add(token.text);
         this.diagnostics.push(diagnostic('I-AMBIGUOUS-UNIT', token.span, { name: token.text }));

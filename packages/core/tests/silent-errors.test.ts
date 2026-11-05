@@ -391,3 +391,36 @@ describe('turns and radians', () => {
     expect(warned('ω := 100 rad/s\nM := 100 N*m\nP := M*ω | kW')).toEqual([]);
   });
 });
+
+/** docs/navrhy/ZADANI-Z-KONKURENCE.md, 1.12. */
+describe('a name after a unit', () => {
+  const warned = (sheet: string) => evaluateSheet(sheet).diagnostics.filter((d) => d.severity === 'warning').map((d) => d.code);
+
+  it('warns where the reading is hardly what is meant', () => {
+    expect(warned('A := 0.01 m^2\ns := 100 kN/A')).toEqual(['W-NAME-AS-UNIT']);
+    expect(warned('L := 6 m\nq := 60 kN/L')).toEqual(['W-NAME-AS-UNIT']);
+    expect(warned('h := 3 m\nq := 60 kN/h')).toEqual(['W-NAME-AS-UNIT']);
+    expect(warned('f(A) := 100 kN/A')).toEqual(['W-NAME-AS-UNIT']);
+  });
+
+  it('at every place, and it stands beside the error of units', () => {
+    expect(warned('A := 0.01 m^2\ns := 100 kN/A\nt_2 := 200 kN/A')).toEqual(['W-NAME-AS-UNIT', 'W-NAME-AS-UNIT']);
+    const r = evaluateSheet('d := 450 mm\nk := 1 + sqrt(200 mm/d)');
+    expect(r.diagnostics.map((x) => x.code)).toContain('W-NAME-AS-UNIT');
+    expect(r.diagnostics.map((x) => x.code)).toContain('E-UNIT-MISMATCH');
+  });
+
+  it('keeps quiet where the unit is meant', () => {
+    expect(warned('d := 450 mm\nx := (200 mm)/d')).toEqual([]);
+    expect(warned('m := 5 kg\na := 10 N/m\nb := 2 m')).toEqual([]);
+    expect(warned('b := 2 m\nm := 5 kg\na := 10 N/m')).toEqual([]);
+    // The name holds what the unit is: 5 km/d with a day in d.
+    expect(warned('d := 2 h\nv := 5 km/d')).toEqual([]);
+    expect(warned('A := 0.01 m^2\ns := 100 kN/[A]')).toEqual([]);
+    expect(warned('s := 100 kN/m\nx := 5 kN/h')).toEqual([]);
+  });
+
+  it('counts as written: the brackets give what was meant', () => {
+    expect(si('d := 450 mm\nk := 1 + sqrt((200 mm)/d)', 'k')).toBeCloseTo(1 + Math.sqrt(200 / 450), 12);
+  });
+});

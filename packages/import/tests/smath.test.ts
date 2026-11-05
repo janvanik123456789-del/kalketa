@@ -297,7 +297,7 @@ describe('what a loop left as text assigns', () => {
     const { source, report } = importSmath(
       sheet(region(10, math(let_('next', n('1')))), region(20, math(let_('steps', n('0')))), region(30, math(loop)), region(40, shown('steps', '5'))),
     );
-    expect(source).toContain("steps := 5 ' result of a loop from SMath, not recalculated");
+    expect(source).toContain("steps := 5 ' value from SMath, not recalculated, not verified");
     // Its start value goes with the loop.
     expect(source).toContain('"steps : 0"');
     expect(source).not.toContain('steps := 0');
@@ -383,7 +383,7 @@ describe('the result of a loop taken over from SMath', () => {
   it('a matrix too; in the language of the document', () => {
     const value = `${n('2')}${n('1')}${op('-', 1)}${n('2')}${n('1')}${fn('mat', 4)}`;
     const { source } = importSmath(sheet(region(10, math(loop)), region(20, shown('s', value))), undefined, 'cs');
-    expect(source).toContain("s := [2 | -1] ' výsledek smyčky ze SMathu, nepřepočítává se");
+    expect(source).toContain("s := [2 | -1] ' hodnota ze SMathu, nepřepočítává se, neověřeno");
     expect(evaluateSheet(source).statements.filter((s) => s.status === 'error')).toEqual([]);
   });
 
@@ -399,5 +399,43 @@ describe('the result of a loop taken over from SMath', () => {
     const { source, report } = importSmath(sheet(region(10, math(loop)), region(20, shown('s', `${n('q')}${n('2')}${op('*')}`))));
     expect(source).toContain('(SMath)');
     expect(report.frozen).toEqual([]);
+  });
+});
+
+describe('a sign in a name', () => {
+  it('ripple_% is ripple_pct, said in the report, and what reads it calculates', () => {
+    const shown = `<math><input>${n('ripple_%')}${n('2')}${op('*')}</input><result action="numeric">${n('0.4')}</result></math>`;
+    const { source, report } = importSmath(sheet(region(10, math(let_('ripple_%', n('.2')))), region(20, shown)));
+    expect(source).toContain('ripple_pct := 0.2');
+    expect(report.left).toEqual([]);
+    expect(report.agree).toBe(1);
+    expect(report.renamed).toEqual([{ from: 'ripple_%', to: 'ripple_pct' }]);
+    expect(importSmath(sheet(region(10, math(let_('a%', n('1')))))).source).toContain('a_pct := 1');
+  });
+
+  it('two names that would become one stay apart: the second goes to text', () => {
+    const { source, report } = importSmath(sheet(region(10, math(let_('a_pct', n('1')))), region(20, math(let_('a%', n('2'))))));
+    expect(source).toContain('a_pct := 1');
+    expect(report.left.map((l) => l.why.kind)).toEqual(['form']);
+    const other = importSmath(sheet(region(10, math(let_('a%', n('1')))), region(20, math(let_('a_pct', n('2')))))).report;
+    expect(other.left.map((l) => l.why.kind)).toEqual(['form']);
+  });
+
+  it('a sign alone is no name', () => {
+    expect(importSmath(sheet(region(10, math(let_('%', n('1')))))).report.left.map((l) => l.why.kind)).toEqual(['form']);
+  });
+
+  it('every import starts clean', () => {
+    importSmath(sheet(region(10, math(let_('a%', n('1'))))));
+    expect(importSmath(sheet(region(10, math(let_('a_pct', n('1')))))).report.left).toEqual([]);
+  });
+});
+
+describe('a value taken over from SMath', () => {
+  it('after a line left as text that is no loop too', () => {
+    const shown = `<math><input>${n('v')}</input><result action="numeric">${n('7')}</result></math>`;
+    const { source, report } = importSmath(sheet(region(10, math(let_('v', n('1'), fn('MaximaThing', 1)))), region(20, shown)));
+    expect(source).toContain("v := 7 ' value from SMath, not recalculated, not verified");
+    expect(report.frozen).toEqual(['v']);
   });
 });

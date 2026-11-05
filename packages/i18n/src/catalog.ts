@@ -548,7 +548,7 @@ export const UI_KEYS = [
   'import.left.function',
   'import.left.unit',
   'import.left.form',
-  'import.left.loop',
+  'import.left.assigned',
   'import.left.region',
   'import.left.error',
   'cmd.insert.canvas',

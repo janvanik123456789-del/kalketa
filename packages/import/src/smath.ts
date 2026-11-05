@@ -12,8 +12,8 @@ export type NotConverted =
   | { readonly kind: 'function'; readonly name: string }
   | { readonly kind: 'unit'; readonly name: string }
   | { readonly kind: 'form' }
-  /** It reads a name that what stayed as text assigns: here it would have only a value from before that. */
-  | { readonly kind: 'loop'; readonly name: string }
+  /** It reads a name that a line left as text assigns: here it would have only a value from before that. */
+  | { readonly kind: 'assigned'; readonly name: string }
   | { readonly kind: 'region'; readonly name: string }
   | { readonly kind: 'error'; readonly code: string };
 
@@ -24,7 +24,7 @@ export interface SmathReport {
   readonly texts: number;
   /** What stayed as text, with the reason. */
   readonly left: readonly { readonly written: string; readonly why: NotConverted }[];
-  /** Results of loops taken over from SMath as inputs of the sheet: they do not recalculate. */
+  /** Values taken over from SMath as inputs of the sheet: they do not recalculate, and nothing has verified them. */
   readonly frozen: readonly string[];
   /** a redefined further down became a_2: SMath allows it, a sheet does not. */
   readonly renamed: readonly { readonly from: string; readonly to: string }[];
@@ -57,7 +57,9 @@ class Unconverted extends Error {
   }
 }
 
-const NUMBER = /^\d+(\.\d+)?([eE][-+]?\d+)?$/;
+/** SMath also keeps .2 and 2. as they were typed. */
+const NUMBER = /^(\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?$/;
+const numberText = (text: string) => text.replace(/^\./, '0.').replace(/\.(?=$|[eE])/, '');
 
 /** Postfix tokens to a tree. */
 function treeOf(container: XmlNode): Node {
@@ -70,7 +72,7 @@ function treeOf(container: XmlNode): Node {
       const style = e.attributes.get('style');
       if (style === 'unit') stack.push({ k: 'unit', name: text });
       else if (style === 'string') stack.push({ k: 'string', text: e.text });
-      else if (NUMBER.test(text)) stack.push({ k: 'number', text });
+      else if (NUMBER.test(text)) stack.push({ k: 'number', text: numberText(text) });
       else stack.push({ k: 'name', name: text });
     } else if (type === 'bracket') {
       const inner = stack.pop();
@@ -115,10 +117,20 @@ const PRECEDENCE: Readonly<Record<string, number>> = { or: 1, and: 2, '==': 3, '
 const OPERATORS: Readonly<Record<string, string>> = { '+': '+', '-': '-', '*': '·', '/': '/', '^': '^', '=': '==', '≡': '==', '≠': '!=', '<': '<', '>': '>', '≤': '<=', '≥': '>=', '|': 'or', '&': 'and' };
 const KEYWORDS: ReadonlySet<string> = new Set(['in', 'guess', 'solve', 'check', 'derive', 'table', 'unit', 'relation', 'and', 'or', 'not', 'true', 'false', 'source', 'block', 'input', 'output', 'use']);
 
-/** A name of SMath as a name here: F.y is F_y; what cannot be written goes to text. */
+/** Names written otherwise because of a sign in them, of the import under way: ripple_% is ripple_pct. */
+let bySign = new Map<string, string>();
+let asWritten = new Set<string>();
+
+/** A name of SMath as a name here: F.y is F_y; what cannot be written goes to text, and so do two names that would become one. */
 function ownName(name: string): string {
-  const written = name.replace(/\./g, '_');
+  const dots = name.replace(/\./g, '_');
+  const written = /^\p{L}/u.test(dots) ? dots.replace(/_?[%‰]/g, (sign) => `_${sign.endsWith('%') ? 'pct' : 'permille'}`) : dots;
   if (!/^[\p{L}][\p{L}\p{N}_]*$/u.test(written) || KEYWORDS.has(written)) throw new Unconverted({ kind: 'form' });
+  const signed = written !== dots;
+  const taken = signed ? asWritten.has(written) || [...bySign].some(([from, to]) => to === written && from !== name) : [...bySign.values()].includes(written);
+  if (taken) throw new Unconverted({ kind: 'form' });
+  if (signed) bySign.set(name, written);
+  else asWritten.add(written);
   return written;
 }
 
@@ -177,7 +189,7 @@ function rendered(node: Node, scope: Scope): { text: string; prec: number } {
     }
     case 'name': {
       if (scope.local.has(node.name)) return { text: ownName(node.name), prec: ATOM };
-      if (scope.overwritten.has(node.name)) throw new Unconverted({ kind: 'loop', name: node.name });
+      if (scope.overwritten.has(node.name)) throw new Unconverted({ kind: 'assigned', name: node.name });
       const formula = scope.formulas.get(node.name);
       if (formula) return { text: formula, prec: ATOM };
       if (node.name === 'π' || node.name === 'pi') return { text: 'π', prec: ATOM };
@@ -530,8 +542,8 @@ function frozenValue(math: XmlNode, contract: string | undefined, scope: Scope):
 
 /** What stands beside a value taken over from SMath: a document in its language, so here and not in the catalog. */
 const FROZEN_NOTE: Readonly<Record<string, string>> = {
-  cs: 'výsledek smyčky ze SMathu, nepřepočítává se',
-  en: 'result of a loop from SMath, not recalculated',
+  cs: 'hodnota ze SMathu, nepřepočítává se, neověřeno',
+  en: 'value from SMath, not recalculated, not verified',
 };
 
 /** A formula left as text, with what SMath had for it. */
@@ -646,6 +658,8 @@ function storedValue(result: XmlNode): string | undefined {
 const LANGUAGE_CODES: Readonly<Record<string, readonly string[]>> = { cs: ['ces', 'cze', 'cs'], en: ['eng', 'en'] };
 
 export function importSmath(xml: string, registry: UnitRegistry = defaultRegistry, language = 'en'): SmathImport {
+  bySign = new Map();
+  asWritten = new Set();
   const wanted = [...(LANGUAGE_CODES[language] ?? [language]), ...LANGUAGE_CODES['en']!];
   const root = parseXml(xml);
   // Newer versions: <worksheet><settings>…</settings><regions>…; older ones: <regions> alone.
@@ -732,7 +746,8 @@ export function importSmath(xml: string, registry: UnitRegistry = defaultRegistr
       tree = treeOf(input);
       const contractNode = child(math, 'contract');
       const contract = contractNode && contractNode.children.length > 0 ? unitText(treeOf(contractNode), scope) : undefined;
-      // What a loop assigned, shown: its result as an input, marked, so the rest of the sheet goes on calculating.
+      // What a line left as text assigned, shown: its value as an input, marked, so the rest of the sheet goes on calculating.
+      // The file may have been saved without recalculating, so it is not called verified.
       const taken = tree.k === 'name' && scope.overwritten.has(tree.name) ? frozenValue(math, contract, scope) : undefined;
       if (taken !== undefined && tree.k === 'name') {
         const own = ownName(tree.name);
@@ -851,6 +866,7 @@ export function importSmath(xml: string, registry: UnitRegistry = defaultRegistr
     if (Math.abs(inUnit - stored) <= Math.max(tolerance, 1e-12)) agree++;
     else differ.push({ name: line.stored.name, stored, here: inUnit, unit: line.stored.unit || (line.stored.own ? 'SI' : '') });
   });
+  for (const [from, to] of bySign) renamed.push({ from, to });
   const asText = new Set(left.map((l) => l.written));
   const converted = lines.filter((l) => l.written !== undefined && !l.text.startsWith('"') && !asText.has(l.written)).length;
   return { source: `${source}\n`, report: { formulas, converted, texts, left, frozen, renamed, agree, differ, notCompared }, images };

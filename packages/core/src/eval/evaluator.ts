@@ -30,6 +30,7 @@ import { callTableFunction, COMPARE_FUNCTION, memberOf, TABLE_FUNCTIONS } from '
 import { applyFunction, applyToValues, lookupFunction } from './userFunctions.js';
 import { primeName } from './ode.js';
 import { inRotationOf, rotationKind } from './rotation.js';
+import { beamCall, frameCall } from './structures.js';
 import type { BlockCaller, BlockInput } from './blocks.js';
 
 export interface EvalContext {
@@ -193,6 +194,8 @@ function evaluateRaw(expr: Expr, ctx: EvalContext): Value {
       // Σ and ∫ without bounds are a notation of theory: no value to calculate.
       if (isUnboundedCall(expr)) fail('E-NO-BOUNDS', expr.span, { function: expr.name });
       // fit(y, x: series, kind: "linear"): a curve through measured points, as a function.
+      if (expr.name === 'beam') return beamCall(expr, ctx, evaluate);
+      if (expr.name === 'frame') return frameCall(expr, ctx, evaluate);
       if (expr.name === 'fit') return fitCall(expr, ctx, evaluate);
       // polyfit(x, y, n) and polyval(p, x): the same with the names of MATLAB and NumPy.
       if (expr.name === 'polyfit') return polyfitCall(expr, ctx, evaluate);

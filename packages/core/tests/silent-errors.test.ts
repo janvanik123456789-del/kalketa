@@ -706,3 +706,199 @@ describe('linear algebra and whole numbers, stage 6', () => {
     expect(si('n := (36 g)/molar_mass("H2O")', 'n')).toBeCloseTo(36 / 18.015, 3);
   });
 });
+
+/** Stage 4 of docs/navrhy/VYBER-VZORU.md, against closed forms. */
+describe('more differential equations together, and a number sought', () => {
+  const at = (sheet: string, name: string) => {
+    const r = evaluateSheet(sheet);
+    expect(r.diagnostics.filter((d) => d.severity === 'error').map((d) => `${d.code} ${d.span.line}`)).toEqual([]);
+    return (r.values.get(name) as { si: number }).si;
+  };
+
+  it('A ⇌ B: first order, exchange towards equilibrium', () => {
+    const sheet = 'k_1 := 0.1 1/s\nk_2 := 0.05 1/s\nsolve (a(t), b(t)): a′ == -k_1·a + k_2·b, b′ == k_1·a - k_2·b in 0 s .. 30 s\n    a(0 s) == 1 mol/l\n    b(0 s) == 0 mol/l\nx := a(10 s)\ny := b(10 s)\nz := a′(10 s)';
+    const eq = 1000 * (0.05 / 0.15);
+    const exact = eq + (1000 - eq) * Math.exp(-0.15 * 10);
+    expect(at(sheet, 'x') / exact).toBeCloseTo(1, 7);
+    expect(at(sheet, 'x') + at(sheet, 'y')).toBeCloseTo(1000, 7);
+    // The highest derivative goes in straight lines between the points of the grid.
+    expect(at(sheet, 'z') / (-0.1 * exact + 0.05 * (1000 - exact))).toBeCloseTo(1, 3);
+  });
+
+  it('an RLC circuit in state equations: the same as its closed form', () => {
+    const sheet = 'R := 10 Ω\nL_c := 1 mH\nC_c := 10 μF\nU := 10 V\nsolve (i(t), u(t)): L_c·i′ == U - R·i - u, C_c·u′ == i in 0 s .. 2 ms\n    i(0 s) == 0 A\n    u(0 s) == 0 V\nx := i(0.5 ms)';
+    const [r, l, c] = [10, 1e-3, 1e-5];
+    const alpha = r / (2 * l);
+    const w = Math.sqrt(1 / (l * c) - alpha * alpha);
+    expect(at(sheet, 'x') / ((10 / (l * w)) * Math.exp(-alpha * 5e-4) * Math.sin(w * 5e-4))).toBeCloseTo(1, 6);
+  });
+
+  it('highest derivatives that mix: coupled coils', () => {
+    // L·i₁′ + M·i₂′ = U, M·i₁′ + L·i₂′ = 0 with no resistance: i₁′ = U·L/(L² − M²).
+    const sheet = 'L_c := 2 H\nM_c := 1 H\nU := 3 V\nsolve (p(t), q(t)): L_c·p′ + M_c·q′ == U, M_c·p′ + L_c·q′ == 0 V in 0 s .. 1 s\n    p(0 s) == 0 A\n    q(0 s) == 0 A\nx := p(1 s)\ny := q(1 s)';
+    expect(at(sheet, 'x')).toBeCloseTo((3 * 2) / 3, 8);
+    expect(at(sheet, 'y')).toBeCloseTo((-3 * 1) / 3, 8);
+  });
+
+  it('second order with first order, conditions at both ends', () => {
+    // u″ = 2 with u(0) = 0, u(1) = 1 gives u = x²; v′ = u, v(0) = 0 gives v = x³/3.
+    const sheet = 'solve (u(x), v(x)): u″ == 2, v′ == u in 0 .. 1\n    u(0) == 0\n    u(1) == 1\n    v(0) == 0\na := u(0.5)\nb := v(1)';
+    expect(at(sheet, 'a')).toBeCloseTo(0.25, 8);
+    expect(at(sheet, 'b')).toBeCloseTo(1 / 3, 8);
+  });
+
+  it('the critical force of a strut, and which mode comes from which guess', () => {
+    const base = (guess: string) => `E_I := 2000 kN·m^2\nL_p := 4 m\nsolve w(x), P: E_I·w″ + P·w == 0 in 0 m .. L_p\n    w(0 m) == 0 m\n    w(L_p) == 0 m\n    w′(0 m) == 0.01\n    guess P = ${guess}\nF := P | kN`;
+    const euler = (Math.PI ** 2 * 2000) / 16;
+    expect(at(base('1000 kN'), 'P') / (euler * 1000)).toBeCloseTo(1, 6);
+    expect(at(base('4800 kN'), 'P') / (4 * euler * 1000)).toBeCloseTo(1, 6);
+    expect(evaluateSheet(base('1000 kN')).statements.at(-1)!.display!.unit).toBe('kN');
+  });
+
+  it('a natural frequency written the same way', () => {
+    const sheet = 'c := 340 m/s\nl := 1 m\nsolve p(x), ω_n: c^2·p″ + ω_n^2·p == 0 in 0 m .. l\n    p(0 m) == 0 Pa\n    p(l) == 0 Pa\n    p′(0 m) == 1 Pa/m\n    guess ω_n = 1000 1/s\nf := ω_n';
+    expect(at(sheet, 'f') / (Math.PI * 340)).toBeCloseTo(1, 6);
+  });
+
+  it('says what is missing', () => {
+    expect(codes('solve (a(t), b(t)): a′ == b, b′ == a in 0 .. 1\n    a(0) == 1')).toContain('E-ODE-CONDITIONS');
+    expect(codes('solve w(x), P: w″ + P·w == 0 in 0 .. 1\n    w(0) == 0\n    w(1) == 0\n    w′(0) == 1')).toContain('E-ODE-GUESS');
+    expect(codes('solve (a(t), b(s)): a′ == b, b′ == a in 0 .. 1\n    a(0) == 1\n    b(0) == 0').length).toBeGreaterThan(0);
+  });
+
+  it('one equation goes on as before', () => {
+    expect(at('solve y(x): y′ == y in 0 .. 1\n    y(0) == 1\na := y(1)', 'a')).toBeCloseTo(Math.E, 8);
+  });
+});
+
+/** Point 10 of the order after the study: every value below against a closed form of a textbook. */
+describe('beams and frames', () => {
+  const EI = 20e6;
+  const q = 10e3;
+  const of = (sheet: string, name: string) => {
+    const r = evaluateSheet(sheet);
+    expect(r.diagnostics.filter((d) => d.severity !== 'info').map((d) => `${d.code} ${d.span.line}`)).toEqual([]);
+    return r.values.get(name) as unknown as { si: number; items: { si: number }[] };
+  };
+  const close = (got: number, want: number) => {
+    if (want === 0) expect(Math.abs(got)).toBeLessThan(1e-6);
+    else expect(got / want).toBeCloseTo(1, 7);
+  };
+  const beam = 'N := beam(L: 6 m, EI: 20 MN·m^2, pins: [0 m, 6 m], q: 10 kN/m)\n';
+
+  it('a simple beam under a uniform load', () => {
+    close(of(`${beam}a := N.M_max`, 'a').si, (q * 36) / 8);
+    close(of(`${beam}a := N.w_max`, 'a').si, (5 * q * 6 ** 4) / (384 * EI));
+    close(of(`${beam}a := N.R[1]`, 'a').si, 3 * q);
+    close(of(`${beam}a := beam_M(N, 2 m)`, 'a').si, (q * 2 * 4) / 2);
+    close(of(`${beam}a := beam_V(N, 2 m)`, 'a').si, q);
+    close(of(`${beam}a := beam_w(N, 3 m)`, 'a').si, (5 * q * 6 ** 4) / (384 * EI));
+    close(of(`${beam}a := beam_slope(N, 0 m)`, 'a').si, (q * 216) / (24 * EI));
+    expect(evaluateSheet(`${beam}a := N.M_max`).statements.at(-1)!.display!.unit).toBe('kN·m');
+  });
+
+  it('a cantilever with a force at its end', () => {
+    const c = 'N := beam(L: 3 m, EI: 20 MN·m^2, fixed: [0 m], at: [3 m], F: [5 kN])\n';
+    close(of(`${c}a := beam_w(N, 3 m)`, 'a').si, (5e3 * 27) / (3 * EI));
+    close(of(`${c}a := N.R[1]`, 'a').si, 5e3);
+    close(of(`${c}a := N.M_min`, 'a').si, -15e3);
+    close(Math.abs(of(`${c}a := N.R_M[1]`, 'a').si), 15e3);
+  });
+
+  it('a force off the middle', () => {
+    const c = 'N := beam(L: 10 m, EI: 20 MN·m^2, pins: [0 m, 10 m], at: [3 m], F: [10 kN])\n';
+    close(of(`${c}a := beam_w(N, 3 m)`, 'a').si, (10e3 * 9 * 49) / (3 * EI * 10));
+    close(of(`${c}a := N.M_max`, 'a').si, (10e3 * 3 * 7) / 10);
+    close(of(`${c}a := N.R[2]`, 'a').si, 3e3);
+  });
+
+  it('two equal spans: 3/8, 10/8, 3/8 of qL', () => {
+    const c = 'N := beam(L: 8 m, EI: 20 MN·m^2, pins: [0 m, 4 m, 8 m], q: 10 kN/m)\n';
+    close(of(`${c}a := N.R[1]`, 'a').si, (3 / 8) * q * 4);
+    close(of(`${c}a := N.R[2]`, 'a').si, (10 / 8) * q * 4);
+    close(of(`${c}a := N.M_min`, 'a').si, (-q * 16) / 8);
+    close(of(`${c}a := beam_w(N, 4 m)`, 'a').si, 0);
+  });
+
+  it('fixed and propped ends', () => {
+    const both = 'N := beam(L: 6 m, EI: 20 MN·m^2, fixed: [0 m, 6 m], q: 10 kN/m)\n';
+    close(of(`${both}a := N.M_min`, 'a').si, (-q * 36) / 12);
+    close(of(`${both}a := N.M_max`, 'a').si, (q * 36) / 24);
+    close(of(`${both}a := N.w_max`, 'a').si, (q * 6 ** 4) / (384 * EI));
+    const propped = 'N := beam(L: 6 m, EI: 20 MN·m^2, fixed: [0 m], pins: [6 m], q: 10 kN/m)\n';
+    close(of(`${propped}a := N.R_at[2]`, 'a').si, 6);
+    close(of(`${propped}a := N.R[2]`, 'a').si, (3 / 8) * q * 6);
+    close(of(`${propped}a := N.M_min`, 'a').si, (-q * 36) / 8);
+  });
+
+  it('a hinge: fixed, hinge at 2 m, pin at 6 m, by hand', () => {
+    const c = 'N := beam(L: 6 m, EI: 20 MN·m^2, fixed: [0 m], pins: [6 m], hinges: [2 m], q: 10 kN/m)\n';
+    // The part right of the hinge hangs on it: 20 kN there.
+    close(of(`${c}a := N.R[2]`, 'a').si, 20e3);
+    close(of(`${c}a := N.R[1]`, 'a').si, 40e3);
+    close(of(`${c}a := beam_M(N, 2 m)`, 'a').si, 0);
+    close(of(`${c}a := N.M_min`, 'a').si, -(20e3 * 2 + (q * 4) / 2));
+    // Deflection at the hinge from the cantilever: P·a³/3EI + q·a⁴/8EI.
+    close(of(`${c}a := beam_w(N, 2 m)`, 'a').si, (20e3 * 8) / (3 * EI) + (q * 16) / (8 * EI));
+  });
+
+  it('an overhang, a moment at a point, a load as a function', () => {
+    const over = 'N := beam(L: 6 m, EI: 20 MN·m^2, pins: [0 m, 4 m], at: [6 m], F: [10 kN])\n';
+    close(of(`${over}a := N.R[2]`, 'a').si, (10e3 * 6) / 4);
+    close(of(`${over}a := N.R[1]`, 'a').si, -(10e3 * 2) / 4);
+    close(of(`${over}a := N.M_min`, 'a').si, -20e3);
+    const moment = 'N := beam(L: 4 m, EI: 20 MN·m^2, pins: [0 m, 4 m], moments_at: [0 m], M: [8 kN·m])\n';
+    close(of(`${moment}a := abs(N.R[1])`, 'a').si, 2e3);
+    const load = 'p(x) := 12 kN/m·x/(6 m)\nN := beam(L: 6 m, EI: 20 MN·m^2, pins: [0 m, 6 m], q: p)\n';
+    close(of(`${load}a := N.R[1]`, 'a').si, (12e3 * 6) / 6);
+    close(of(`${load}a := N.R[2]`, 'a').si, (12e3 * 6) / 3);
+  });
+
+  it('says what cannot be', () => {
+    expect(codes('N := beam(L: 6 m, EI: 20 MN·m^2, pins: [0 m], q: 10 kN/m)')).toContain('E-BEAM-UNSTABLE');
+    expect(codes('N := beam(L: 6 m, EI: 20 MN·m^2, pins: [7 m, 0 m], q: 10 kN/m)')).toContain('E-BEAM-OUTSIDE');
+    expect(codes('N := beam(L: 6 m, EI: 20 MN·m^2, pins: [0 m, 6 m], q: 10 kN)')).toContain('E-UNIT-MISMATCH');
+    expect(codes('N := beam(L: 6 m, EI: 20 MN·m^2, pins: [0 m, 6 m], at: [1 m], F: [1 kN, 2 kN])')).toContain('E-VECTOR-LENGTH');
+    expect(codes('N := beam(L: 6 m, EI: 20 MN·m^2, supports: [0 m])')).toContain('E-NAMED-ARG');
+    expect(codes('a := beam_M(5, 1 m)')).toContain('E-TYPE');
+  });
+
+  it('draws its curves', () => {
+    const r = evaluateSheet(`${beam}plot(beam_M(N, x), x: 0 m .. 6 m)`);
+    expect(r.diagnostics.filter((d) => d.severity !== 'info')).toEqual([]);
+    expect(r.statements.at(-1)!.plot!.yUnit).toBe('kN·m');
+  });
+
+  const table = (head: string, rows: string[]) => [`    | ${head} |`, ...rows.map((row) => `    | ${row} |`)].join('\n');
+
+  it('a cantilever column as a frame: F·H³/3EI, and the base moment', () => {
+    const sheet = `table U:\n${table('x [m] | y [m] | fix_x | fix_y | fix_r | F_x [kN]', ['0 | 0 | 1 | 1 | 1 | 0', '0 | 3 | 0 | 0 | 0 | 5'])}\ntable P:\n${table('i | j | EA [MN] | EI [MN·m^2]', ['1 | 2 | 500 | 20'])}\nR := frame(nodes: U, members: P)\na := R.ux[2]\nb := R.R_x[1]\nc := abs(R.R_M[1])`;
+    close(of(sheet, 'a').si, (5e3 * 27) / (3 * EI));
+    close(of(sheet, 'b').si, -5e3);
+    close(of(sheet, 'c').si, 15e3);
+  });
+
+  it('a beam as a frame under q, the reactions and the end moments', () => {
+    const sheet = `table U:\n${table('x [m] | y [m] | fix_x | fix_y | fix_r', ['0 | 0 | 1 | 1 | 1', '6 | 0 | 0 | 1 | 1'])}\ntable P:\n${table('i | j | EA [MN] | EI [MN·m^2] | q [kN/m]', ['1 | 2 | 500 | 20 | 10'])}\nR := frame(nodes: U, members: P)\na := R.R_y[1]\nb := R.M_i[1]\nc := R.M_j[1]`;
+    close(of(sheet, 'a').si, 3 * q);
+    close(Math.abs(of(sheet, 'b').si), (q * 36) / 12);
+    close(Math.abs(of(sheet, 'c').si), (q * 36) / 12);
+  });
+
+  it('a two-bar truss: N = F/(2·sin α), and the sag from the work of the bars', () => {
+    const sheet = `table U:\n${table('x [m] | y [m] | fix_x | fix_y | F_y [kN]', ['0 | 0 | 1 | 1 | 0', '4 | 0 | 1 | 1 | 0', '2 | -1.5 | 0 | 0 | -10'])}\ntable P:\n${table('i | j | EA [MN]', ['1 | 3 | 100', '2 | 3 | 100'])}\nR := frame(nodes: U, members: P)\na := R.N[1]\nb := R.uy[3]`;
+    const sin = 1.5 / 2.5;
+    const n = 10e3 / (2 * sin);
+    close(of(sheet, 'a').si, n);
+    close(of(sheet, 'b').si, -((n * n * 2.5 * 2) / 100e6) / 10e3);
+  });
+
+  it('a rolled section against the catalogue: IPE 300', () => {
+    const sheet = 'S := i_section(300 mm, 150 mm, 7.1 mm, 10.7 mm, 15 mm)\nA := S.A\nJ := S.I_y\nW := S.W_y\nP := S.W_pl\nZ := S.I_z';
+    expect(of(sheet, 'A').si / 53.81e-4).toBeCloseTo(1, 2);
+    expect(of(sheet, 'J').si / 8356e-8).toBeCloseTo(1, 2);
+    expect(of(sheet, 'W').si / 557.1e-6).toBeCloseTo(1, 2);
+    expect(of(sheet, 'P').si / 628.4e-6).toBeCloseTo(1, 2);
+    expect(of(sheet, 'Z').si / 603.8e-8).toBeCloseTo(1, 2);
+  });
+});

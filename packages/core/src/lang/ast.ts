@@ -217,7 +217,7 @@ export type Statement =
       /** The names the statement finds and defines. */
       readonly unknowns: readonly Param[];
       /** solve w(x): a differential equation; the unknown is a function of this variable. */
-      readonly ode?: { readonly variable: string; readonly span: Span };
+      readonly ode?: { readonly variable: string; readonly span: Span; /** solve (a(t), b(t)), solve w(x), P: which unknowns are functions, the others numbers; absent for one function alone. */ readonly functions?: readonly string[] };
       readonly equations: readonly Equation[];
       /** "in 0 .. 10": interval of a single unknown. */
       readonly range?: { readonly low: Expr; readonly high: Expr };

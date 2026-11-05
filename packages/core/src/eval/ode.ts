@@ -77,7 +77,7 @@ interface Condition {
 }
 
 /** The highest derivative of `name` an expression reads (0: none). */
-function orderIn(expr: Expr, name: string): number {
+export function orderIn(expr: Expr, name: string): number {
   let order = 0;
   const walk = (node: unknown) => {
     if (Array.isArray(node)) return node.forEach(walk);
@@ -91,7 +91,7 @@ function orderIn(expr: Expr, name: string): number {
 }
 
 /** A condition: w(a) == v or w′(a) == v (either side), at a point; its order and both sides. */
-function conditionOf(equation: Equation, name: string): { order: number; at: Expr; value: Expr } | undefined {
+export function conditionOf(equation: Equation, name: string): { order: number; at: Expr; value: Expr } | undefined {
   const point = (e: Expr): { order: number; at: Expr } | undefined => {
     if (e.kind === 'call' && e.name === name && e.args.length === 1 && e.named.length === 0) return { order: 0, at: e.args[0]! };
     if (e.kind === 'prime' && e.name === name && e.arg) return { order: e.order, at: e.arg };

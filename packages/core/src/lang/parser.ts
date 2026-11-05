@@ -644,22 +644,30 @@ class LineParser {
       if (unknowns.some((u) => u.name === token.text)) fail('E-REDEFINED', token.span, { name: token.text });
       unknowns.push({ name: token.text, span: token.span });
     };
-    let ode: { variable: string; span: Span } | undefined;
+    let ode: { variable: string; span: Span; functions?: readonly string[] } | undefined;
+    const functions: string[] = [];
+    /** One unknown; x(t) is a function of a differential equation. */
+    const unknownOrFunction = () => {
+      unknown();
+      if (this.peek().type !== '(') return;
+      this.next();
+      const variable = this.expect('ident', 'parameter');
+      this.expect(')', ')');
+      if (ode && ode.variable !== variable.text) fail('E-SYNTAX', variable.span, { expected: ode.variable, found: variable.text });
+      ode = { variable: variable.text, span: variable.span };
+      functions.push(unknowns[unknowns.length - 1]!.name);
+    };
     if (this.peek().type === '(') {
       this.next();
-      do unknown();
+      do unknownOrFunction();
       while (this.peek().type === ',' && this.next());
       this.expect(')', ')');
     } else {
-      unknown();
-      // solve w(x): the unknown is a function, of a differential equation.
-      if (this.peek().type === '(') {
-        this.next();
-        const variable = this.expect('ident', 'parameter');
-        this.expect(')', ')');
-        ode = { variable: variable.text, span: variable.span };
-      }
+      unknownOrFunction();
+      // solve w(x), P: a number sought along with the curve.
+      if (ode) while (this.peek().type === ',' && this.next()) unknownOrFunction();
     }
+    if (ode && (unknowns.length > 1 || functions.length > 1)) (ode as { functions?: readonly string[] }).functions = functions;
     // The unknowns are names from here on, even where they spell a unit (t, s); so is the variable of a function.
     unknowns.forEach((u) => this.defined.add(u.name));
     // Conditions of the solution, as on paper: x ∈ ℝ, x > 0.
@@ -729,7 +737,7 @@ class LineParser {
       }
     }
     if (equations.length === 0) fail('E-SYNTAX', this.end.span, { expected: '==', found: 'end-of-line' });
-    if (range && unknowns.length !== 1) fail('E-SYNTAX', range.low.span, { expected: 'guess', found: 'in' });
+    if (range && unknowns.length !== 1 && !ode) fail('E-SYNTAX', range.low.span, { expected: 'guess', found: 'in' });
     // An inequality has a side of its bound: one unknown, one inequality.
     const inequality = equations.find((e) => e.relation);
     if (inequality && (unknowns.length !== 1 || equations.length !== 1)) fail('E-SOLVE-INEQUALITY', inequality.span);

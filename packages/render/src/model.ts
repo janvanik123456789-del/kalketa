@@ -598,8 +598,10 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
         }
         // Its solution is a function: said how it was found, read below as w(x), w′(x).
         if (s.ode && r.ode && s.unknowns[0]) {
-          const head = row(nameNode(s.unknowns[0].name), paren(nameNode(s.ode.variable)));
-          lines.push({ role: 'result', lhs: head, op: '', rhs: mtext(t(catalog, 'print.odeSolved', { order: String(r.ode.order), steps: String(r.ode.steps) })), lead: '⇒' });
+          for (const name of s.ode.functions ?? [s.unknowns[0].name]) {
+            const head = row(nameNode(name), paren(nameNode(s.ode.variable)));
+            lines.push({ role: 'result', lhs: head, op: '', rhs: mtext(t(catalog, 'print.odeSolved', { order: String(r.ode.order), steps: String(r.ode.steps) })), lead: '⇒' });
+          }
         }
         for (const found of r.solutions ?? []) {
           const value = valueNode(found.display.value, found.display.unit, numberFormat(spec), found.display.im, dateFormat, lineMode.exact ? found.display.exact : undefined, lineMode.polar);

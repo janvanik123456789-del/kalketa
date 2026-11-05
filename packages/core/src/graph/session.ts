@@ -17,6 +17,7 @@ import { BUILTIN_CONSTANTS, FUNCTION_NAMES } from '../eval/functions.js';
 import { defineFunction, inTarget, isBuiltinFunction } from '../eval/userFunctions.js';
 import { allRoots, solveStatement, type RootsFound } from '../eval/solver.js';
 import { solveOde, type OdeInfo } from '../eval/ode.js';
+import { solveOdeSystem } from '../eval/odeSystem.js';
 import { isPlotCall, plotStatement, type PlotResult } from '../eval/plot.js';
 import { checkDerivation, type DerivationStep, type SheetRelation } from '../eval/derive.js';
 import { DIMENSIONLESS_NAME } from '../lang/parser.js';
@@ -74,6 +75,8 @@ export interface StatementResult {
   readonly position?: string;
   /** A differential equation solved (solve w(x): …): its order and interval; the function is the value. */
   readonly ode?: OdeInfo;
+  /** solve (a(t), b(t)) or solve w(x), P: what each of the names found holds. */
+  readonly odeValues?: ReadonlyMap<string, Value>;
   /** Values found by a solve statement, in the order of its unknowns; the formula of one expressed. */
   readonly solutions?: readonly { readonly name: string; readonly value: Quantity; readonly display: DisplayValue; readonly formula?: Expr; readonly relation?: Inequality }[];
   /** The equation of a solve line with the functions of the sheet written out (y′(x) = 0 as 2·a·x + b = 0). */
@@ -421,7 +424,10 @@ export class SheetSession {
       if (statement.kind === 'solve') {
         statement.unknowns.forEach((u, i) => {
           // The solution of a differential equation is a function, its value.
-          if (statement.ode) return env.set(u.name, result.status === 'ok' && result.value ? { ok: true, value: result.value } : { ok: false });
+          if (statement.ode) {
+            const found = result.status === 'ok' ? (result.odeValues?.get(u.name) ?? result.value) : undefined;
+            return env.set(u.name, found ? { ok: true, value: found } : { ok: false });
+          }
           // Under conditions: the roots kept, one as a value, more as a vector (x[1], x[2]); none, no value.
           if (result.roots) {
             // The roots as printed, x₁ and x₂, are names too (x_1, x_2) for what follows: an integral
@@ -715,6 +721,14 @@ export class SheetSession {
           return { left: own.left, right: own.right, span: e.span };
         });
         return this.evaluateValue({ ...statement, equations }, context, ctx, dependencies, tableReads);
+      }
+      if (statement.kind === 'solve' && statement.ode?.functions) {
+        const { values, info } = solveOdeSystem(statement, ctx, evaluate);
+        const numbers = statement.unknowns.flatMap((u) => {
+          const value = values.get(u.name);
+          return value?.type === 'quantity' ? [{ name: u.name, value, display: toDisplay(value, context.registry) }] : [];
+        });
+        return { status: 'ok', odeValues: values, ode: info, ...(numbers.length > 0 ? { solutions: numbers } : {}), dependencies, tableReads, diagnostics: ctx.warnings };
       }
       if (statement.kind === 'solve' && statement.ode) {
         const { fn, info } = solveOde(statement, ctx, evaluate);

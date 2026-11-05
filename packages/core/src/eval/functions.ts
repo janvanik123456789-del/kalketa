@@ -8,6 +8,7 @@
 import { CALCULUS, CHARTS, COMPLEX, DATES, FINANCE, LOGIC, MATH, SERIES, STATISTICS, TABLES, TRIG } from '../functions/modules.js';
 import { FunctionRegistry, type CallExpr, type Evaluate, type FunctionDef } from '../functions/registry.js';
 import { LINEAR } from '../functions/linear.js';
+import { STRUCTURES } from '../functions/structures.js';
 import { INTERPOLATION } from '../functions/interpolation.js';
 import type { Diagnostic } from '../diagnostics.js';
 import type { Value } from '../values/value.js';
@@ -25,7 +26,7 @@ const ITEMWISE: ReadonlySet<string> = new Set([
 const itemwise = (defs: readonly FunctionDef[]): FunctionDef[] => defs.map((def) => (ITEMWISE.has(def.name) ? { ...def, itemwise: true } : def));
 
 /** All built-in functions, table functions included (they are only described here). */
-export const builtinFunctions = new FunctionRegistry([MATH, TRIG, CALCULUS, LINEAR, COMPLEX, SERIES, INTERPOLATION, STATISTICS, FINANCE, DATES, LOGIC, TABLES, CHARTS].map(itemwise));
+export const builtinFunctions = new FunctionRegistry([MATH, TRIG, CALCULUS, STRUCTURES, LINEAR, COMPLEX, SERIES, INTERPOLATION, STATISTICS, FINANCE, DATES, LOGIC, TABLES, CHARTS].map(itemwise));
 
 /** Functions that compute from plain arguments (not table functions). */
 export const FUNCTION_NAMES: readonly string[] = builtinFunctions

@@ -616,6 +616,36 @@ table Mereni:
   - `prev(B)` je buňka sloupce `B` o řádek výš. Počítá se po řádcích zleva, takže se smí číst i sloupec vpravo. V prvním řádku platí `prev(B, P)` nebo ručně vyplněná buňka; jinak `E-PREV-START`. Argument musí být jméno sloupce a `prev` mimo vzorec sloupce je chyba `E-PREV-PLACE`.
 - *Na později (kosmetika):* úprava v mřížce přímo v listu, formáty jako v Excelu (procenta, vědecký zápis, zarovnání, tučně, pozadí) z nabídky pravého tlačítka.
 
+### 8.4b Soustavy diferenciálních rovnic a hledané číslo (2026-11-05)
+
+```text
+solve (a(t), b(t)): a′ == -k_1·a + k_2·b, b′ == k_1·a - k_2·b in 0 s .. 60 s
+    a(0 s) == 1 mol/l
+    b(0 s) == 0 mol/l
+
+solve w(x), P: E·I·w″ + P·w == 0 in 0 m .. L
+    w(0 m) == 0 m, w(L) == 0 m, w′(0 m) == 0.01
+    guess P = 800 kN
+```
+
+- Víc křivek téže proměnné se píše do závorky, čísla hledaná spolu s nimi za ně. Každá rovnice je lineární v nejvyšších derivacích, ty se smějí míchat (`L_1·i_1′ + M·i_2′ == u`).
+- Podmínek je tolik, kolik je derivací všech křivek dohromady, plus jedna na každé hledané číslo. U kritické síly tak přibývá podmínka velikosti tvaru (`w′(0 m) == 0.01`), jinak by nulová křivka vyhověla každému `P`.
+- Hledané číslo musí mít odhad `guess`, a právě ten rozhoduje, který tvar vyjde: u prutu `P ≈ π²EI/L²` první, `4π²EI/L²` druhý.
+- Výsledkem jsou funkce `a(t)`, `b(t)`, `w(x)` s derivacemi a číslo `P`. Osamělá síla a vnitřní podpora se řeší jinak, přes nosníky.
+
+### 8.4c Nosníky, rámy a průřezy (2026-11-05)
+
+```text
+N := beam(L: 10 m, EI: 20 MN·m^2, pins: [0 m, 6 m], fixed: [10 m], hinges: [8 m], q: 5 kN/m, at: [3 m], F: [20 kN])
+M_max := N.M_max
+plot(beam_M(N, x), x: 0 m .. 10 m)
+```
+
+- Deformační metoda, přesná v uzlech a bez sítě: víc polí, vetknutí, klouby, převisy, osamělé síly a momenty, `q` jako číslo nebo funkce. Dolů a s tahem dole je kladně, `dM/dx = V`.
+- Výsledek je záznam: `N.R` reakce nahoru v pořadí podpor (místa `N.R_at`), `N.R_M`, `N.M_max`, `N.M_min`, `N.V_max`, `N.w_max`; křivky `beam_M(N, x)`, `beam_V`, `beam_w`, `beam_slope`.
+- `frame(nodes: U, members: P)` počítá rovinný rám nebo příhradovinu ze dvou tabulek, `i_section(h, b, t_w, t_f, r)` průřezové charakteristiky profilu I.
+- **V tisku:** na rozdíl od vzorců se tu postup nedá ověřit očima, proto tisk ukáže reakce u řádku a rovnováha celku se kontroluje (`W-BEAM-EQUILIBRIUM`). Nezávislou kontrolu dává vrstva Python.
+
 ### 8.4a Buňky: řádky vedle sebe (2026-10-12)
 
 Řádek stránky může mít víc buněk: text a vedle něj definici, dva výsledky, krátké výpočty ve sloupcích. Každá buňka je obyčejný řádek zápisu.

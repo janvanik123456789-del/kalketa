@@ -94,12 +94,12 @@ Vstup: [ZADANI-Z-KONKURENCE.md](ZADANI-Z-KONKURENCE.md), [CO-PREVZIT-Z-KONKURENC
 2. **Otáčky a Hz ztrácejí 2π (1.18).** Výkon vychází 2π krát menší bez varování. Rozhodnutí o jazyce, po něm projít všechny vzory.
 3. **Jméno proměnné za jednotkou (1.12).** `100 kN/A` se čte jako na ampér.
 4. **Zbytek priority 1 a 2 ze zadání:** 1.8, 1.14, 1.13, 1.9, 1.16, 1.15, 1.17. Limit hloubky výrazu (1.15) je potřeba před importem cizích souborů.
-5. **Testy převzaté z CivilKitu a Quire, zkouška vzorů na nulu a extrémy.** Pustit až po bodech 2 a 3, jinak by jen znovu hlásily známé.
+5. **Testy převzaté z CivilKitu a Quire, zkouška vzorů na nulu a extrémy.** *Jednotky hotovo; 696 běhů vzorů na nulu a extrémy bez výjimky a nekonečna. Kořeny a integrály CivilKitu trvale převzaté nejsou, jejich zápis nemá jednoduchý převod.*
 6. **Krátké s přímým užitkem:** „Měl jste na mysli…?“ a čitelná chyba jednotek, jednotky ze starých knih, `max_of` s polohou, drobné funkce (`gcd` a `lcm` z etapy 6 sem), `sum(1, 2, 3)`, práce s maticemi (`submatrix`, spojení, normy).
 7. **Řídicí kóty, etapy 1 a 2 návrhu kresby.** *Hotovo 2026-11-05*, rychlé schéma a průřez v nabídce Vložit.
 8. **Etapa 5, komplexní čísla.** Největší změřená mezera (ze 56 případů prošlo 6), s vlastními čísly nesymetrické matice. Předchází etapě 4, protože etapa 4 je z velké části hotová a nic na ní nestojí. Pak etapa 6 (`rank`, `cond`).
 9. **Etapa 4 bez osamělé síly:** soustavy rovnic, neznámý parametr.
-10. **Nosníky a rámy (rozbor 3.1).** Měření ukázalo, že jedno pole Kalketa počítá výborně; chybí víc polí, klouby a osamělé síly. Přechází sem osamělá síla a vnitřní podpora z etapy 4. Napřed rozhodnout podobu v tisku.
+10. **Nosníky a rámy (rozbor 3.1).** *Hotovo 2026-11-05: `beam`, `frame`, `i_section`; bez kombinací zatížení a kritických sil rámu.* Měření ukázalo, že jedno pole Kalketa počítá výborně; chybí víc polí, klouby a osamělé síly. Přechází sem osamělá síla a vnitřní podpora z etapy 4. Napřed rozhodnout podobu v tisku.
 11. **Import SMath, etapa 1.** Nezávislý, může začít dřív, když o něj bude zájem. Potřebuje bod 4 (1.15).
 12. **Etapa 7,** s předlohou speciálních funkcí z MathPrime. Knihovna vzorců, přeskupení vzorce a nejistoty měření zatím bez místa, chtějí vlastní rozhodnutí. Podpory jen v tlaku a vzory k etapám 0 až 3 průběžně.
 

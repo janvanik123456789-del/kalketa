@@ -28,6 +28,11 @@ describe('calculus in print', () => {
     expect(toText(derivative!.rhs)).toBe('d/(dx)w(x)|_x=2');
     const [second] = lines('derivative(x³, x: 2, order: 2)');
     expect(toText(second!.rhs)).toContain('d^2');
+    // An order by a name is not left out, a point that is the variable itself not repeated.
+    const [named] = lines('n := 5\nH(z) := derivative(exp(z), z: z, order: n)');
+    expect(toText(named!.rhs)).toContain('d^n');
+    expect(toText(named!.rhs)).toContain('z^n');
+    expect(toText(named!.rhs)).not.toContain('|');
     const [sum] = lines('n := 10\nsum(1/k², k: 1 .. n)');
     expect(toMathML(sum!.rhs)).toContain('<munderover><mo>∑</mo>');
   });

@@ -58,7 +58,15 @@ describe('derivative', () => {
     expectValue('w(x) := 2 mm·(x/(1 m))²\nderivative(w(x), x: 1 m)', 4, 'mm/m', 7);
     // The curvature, second derivative: mm/m².
     expectValue('w(x) := 2 mm·(x/(1 m))²\nderivative(w(x), x: 1 m, order: 2)', 4, 'mm/m²', 5);
-    expect(codes('derivative(x², x: 1, order: 3)')).toEqual(['E-DOMAIN']);
+    expect(codes('derivative(x², x: 1, order: 1.5)')).toEqual(['E-DOMAIN']);
+    expect(codes('derivative(x², x: 1, order: 11)')).toEqual(['E-DOMAIN']);
+    expect(codes('derivative(abs(x), x: 1, order: 3)')).toEqual(['E-DOMAIN']);
+    // Orders above the second go by the formula, the order may be a parameter.
+    expectValue('derivative(x², x: 1, order: 3)', 0, '', 9);
+    expectValue('derivative(x³, x: 2, order: 0)', 8, '', 9);
+    expectValue('derivative(sin(x), x: 0, order: 5)', 1, '', 12);
+    expectValue('s(t) := sin(2·t)\nderivative(s(x), x: 0, order: 3)', -8, '', 12);
+    expectValue('He(z, n) := (-1)^n·exp(z²/2)·derivative(exp(-z²/2), z: z, order: n)\nHe(2, 5)', -18, '', 10);
   });
 });
 

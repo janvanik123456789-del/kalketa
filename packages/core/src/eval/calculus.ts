@@ -22,8 +22,9 @@ import { exact } from '../values/exact.js';
 import { isPlainZero, matrix, normalized, withZerosOfUnit } from '../functions/linear.js';
 import { asComplex, asQuantity } from './coerce.js';
 import { shownUnitsOff, warnOnce, withoutShownUnits, type EvalContext } from './evaluator.js';
+import { differentiate } from './differentiate.js';
 import { extremum, rootsOf } from './roots.js';
-import { solveStatement } from './solver.js';
+import { inlineCalls, solveStatement } from './solver.js';
 import { withBareZero } from './zero.js';
 
 type CallExpr = Extract<Expr, { kind: 'call' }>;
@@ -432,13 +433,23 @@ function integralOfPart(call: CallExpr, ctx: EvalContext, evaluate: Evaluate, pa
 
 // ---------------------------------------------------------------- derivative
 
+/** Enough for what is written by hand; a formula doubles with every order. */
+const MAX_ORDER = 10;
+
 function derivative(call: CallExpr, ctx: EvalContext, evaluate: Evaluate): Value {
   const { body, variable } = parts(call, ['order']);
   if (variable.value.kind === 'range') fail('E-CALCULUS-FORM', variable.value.span, { function: call.name });
   const at = asQuantity(evaluate(variable.value, ctx), variable.value.span);
   const orderArg = call.named.find((n) => n.name === 'order');
   const order = orderArg ? asQuantity(evaluate(orderArg.value, ctx), orderArg.value.span) : quantity(1);
-  if (!isDimensionless(order.dim) || (order.si !== 1 && order.si !== 2)) fail('E-DOMAIN', orderArg?.value.span ?? call.span, { function: call.name });
+  if (!isDimensionless(order.dim) || !Number.isInteger(order.si) || order.si < 0 || order.si > MAX_ORDER) fail('E-DOMAIN', orderArg?.value.span ?? call.span, { function: call.name });
+  // Higher orders by hand, as formulas: differences of differences would be mostly noise by then.
+  if (order.si === 0 || order.si > 2) {
+    let formula: Expr | undefined = inlineCalls(body, ctx);
+    for (let i = 0; i < order.si && formula; i++) formula = differentiate(formula, variable.name);
+    if (!formula) fail('E-DOMAIN', orderArg?.value.span ?? call.span, { function: call.name });
+    return asFunction(formula, variable.name, at, ctx, evaluate, call.span)(at.si);
+  }
   const f = asFunction(body, variable.name, at, ctx, evaluate, call.span);
   const f0 = f(at.si);
   // A step from the size of the point, or of its unit when the point is zero (0 m, 0 mm).

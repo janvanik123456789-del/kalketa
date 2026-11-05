@@ -1366,6 +1366,7 @@ export const en: Catalog = {
     'import.left.function': 'As text: {written} (unknown function {why})',
     'import.left.unit': 'As text: {written} (the unit {why} means something else here or is not known)',
     'import.left.form': 'As text: {written} (the form is not understood)',
+    'import.left.loop': 'As text: {written} (a loop left as text assigns {why}, the value here would be an old one)',
     'import.left.region': 'Skipped: {why} (this kind of region is not converted yet)',
     'import.left.error': 'As text: {written} (the calculation reports {why})',
     'cmd.insert.canvas': 'C&anvas…',

@@ -300,6 +300,7 @@ Data se píší v jazyce tisku: „29. 9. 2026“.
 F := integral(q·x·(L − x)/2, x: 0 m .. L)       ' ∫₀ᴸ … dx
 φ := derivative(w(x), x: L/2)                    ' d/dx w(x) v bodě x = L/2
 κ := derivative(w(x), x: L/2, order: 2)          ' druhá derivace
+y := derivative(sin(x), x: 0, order: 5)          ' vyšší řády derivací vzorce, do 10
 S := sum(1/k², k: 1 .. 100)                      ' Σ přes k
 ```
 

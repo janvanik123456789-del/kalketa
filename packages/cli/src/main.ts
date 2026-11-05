@@ -158,7 +158,7 @@ async function main(argv: string[]): Promise<number> {
     // A draft: a new sheet, the original goes with it and stays as it was.
     const title = basename(file, extname(file));
     const fresh = newDocument(title, imported.source);
-    const doc = { ...fresh, files: new Map([...fresh.files, [`sources/original.sm`, bytes]]) };
+    const doc = { ...fresh, files: new Map([...fresh.files, ...imported.images.map((i) => [i.path, i.bytes] as const), [`sources/original.sm`, bytes]]) };
     const out = values.out ?? file.slice(0, -extname(file).length) + FILE_EXTENSION;
     await saveSheetFile(doc, out);
     const { report } = imported;
@@ -167,7 +167,7 @@ async function main(argv: string[]): Promise<number> {
     for (const d of report.differ) console.log(`  ${t(catalog, 'import.differs', { name: d.name, stored: d.stored, here: d.here, unit: d.unit })}`);
     for (const r of report.renamed) console.log(`  ${t(catalog, 'import.renamed', { from: r.from, to: r.to })}`);
     for (const l of report.left) {
-      const why = l.why.kind === 'function' || l.why.kind === 'unit' || l.why.kind === 'region' ? l.why.name : l.why.kind === 'error' ? l.why.code : '';
+      const why = l.why.kind === 'function' || l.why.kind === 'unit' || l.why.kind === 'region' || l.why.kind === 'loop' ? l.why.name : l.why.kind === 'error' ? l.why.code : '';
       console.log(`  ${t(catalog, `import.left.${l.why.kind}` as UiKey, { written: l.written, why })}`);
     }
     console.log(out);

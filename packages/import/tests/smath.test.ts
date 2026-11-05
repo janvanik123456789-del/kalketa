@@ -211,3 +211,155 @@ describe('what real worksheets hold', () => {
     expect((r.values.get('c') as { si: number }).si).toBeCloseTo(6, 6);
   });
 });
+
+describe('data of SMath as a matrix with names in it', () => {
+  const s = (text: string) => `<e type="operand" style="string">${text}</e>`;
+  const planets = region(
+    30,
+    math(let_('data', s('Sun'), `${n('1.9891')}${n('10')}${n('30')}${op('^')}${op('*')}${u('kg')}${op('*')}`, `${n('6.955')}${n('10')}${n('5')}${op('^')}${op('*')}${u('km')}${op('*')}`, s('Earth'), `${n('5.9736')}${n('10')}${n('24')}${op('^')}${op('*')}${u('kg')}${op('*')}`, `${n('6.3781')}${n('10')}${n('3')}${op('^')}${op('*')}${u('km')}${op('*')}`, n('2'), n('3'), fn('mat', 8))),
+  );
+  const gravity = region(10, math(`${n('M')}${n('R')}${fn('g', 2)}${n('G')}${n('M')}${op('*')}${n('R')}${n('2')}${op('^')}${op('/')}${op(':')}`));
+  const constant = region(20, math(let_('G', n('6.6728e-11'), u('m'), n('3'), op('^'), op('*'), u('kg'), u('s'), n('2'), op('^'), op('*'), op('/')).replace(`${n('6.6728e-11')}`, n('6.6728e-11'))));
+
+  it('becomes a table, a function goes under what it reads, an assignment over a range a series', () => {
+    const { source, report } = importSmath(
+      sheet(
+        gravity,
+        constant,
+        planets,
+        region(40, math(let_('k', n('1'), n('data'), fn('rows', 1), fn('range', 2)))),
+        region(50, math(`${n('r')}${n('k')}${n('2')}${fn('el', 3)}${n('data')}${n('k')}${n('2')}${fn('el', 3)}${n('data')}${n('k')}${n('3')}${fn('el', 3)}${fn('g', 2)}${op(':')}`)),
+        region(60, math(n('r'))),
+      ),
+    );
+    expect(source).toContain('table data:\n    | c1 | c2 [kg] | c3 [km] |\n    | Sun |');
+    expect(source).toContain('r_c2 := vector(g(data.c2[k], data.c3[k]), k: 1 .. 2)');
+    expect(source.indexOf('g(M, R) :=')).toBeGreaterThan(source.indexOf('G :='));
+    expect(report.left).toEqual([]);
+    const r = evaluateSheet(source);
+    const items = (r.values.get('r_c2') as unknown as { items: { si: number }[] }).items.map((q) => q.si);
+    expect(items[1]).toBeCloseTo(9.7985, 3);
+    expect(items[0]).toBeCloseTo(274.39, 1);
+  });
+
+  it('a matrix of numbers stays a matrix', () => {
+    const { source } = importSmath(sheet(region(10, math(let_('A', n('1'), n('2'), n('2'), n('1'), fn('mat', 4))))));
+    expect(source.trim()).toBe('A := [1 | 2]');
+  });
+
+  it('a column of mixed units stays as written, with the reason', () => {
+    const { report } = importSmath(sheet(region(10, math(let_('D', s('a'), `${n('1')}${u('m')}${op('*')}`, s('b'), `${n('1')}${u('s')}${op('*')}`, n('2'), n('2'), fn('mat', 6))))));
+    expect(report.left.map((l) => l.why.kind)).toEqual(['form']);
+  });
+});
+
+describe('pictures and charts of a worksheet', () => {
+  it('a picture comes out of the file and stands in the sheet', () => {
+    const png = 'iVBORw0KGgo=';
+    const { source, images, report } = importSmath(sheet(region(10, `<picture><raw format="png" encoding="base64">${png}</raw></picture>`)));
+    expect(source.trim()).toBe('![](images/smath/picture-1.png)');
+    expect([...images[0]!.bytes.slice(0, 4)]).toEqual([0x89, 0x50, 0x4e, 0x47]);
+    expect(report.left).toEqual([]);
+    expect(evaluateSheet(source).diagnostics).toEqual([]);
+  });
+
+  const plot = (body: string, attrs = 'scale_x="1" scale_y="1" transpose_x="0" transpose_y="0"') => `<region id="9" left="9" top="50" width="300" height="240"><plot type="2d" ${attrs}><input>${body}</input></plot></region>`;
+  const fx = region(10, math(`${n('x')}${fn('f', 1)}${n('x')}${n('2')}${op('^')}${op(':')}`));
+
+  it('a curve of x is a chart, in the view it has there', () => {
+    const { source, report } = importSmath(sheet(fx, plot(`${n('x')}${fn('f', 1)}`)));
+    // Without a version of the plot in the file: 6.15·300/240 pixels a unit.
+    expect(source).toContain('plot(f(x), x: -19.51 .. 19.51, ylim: -15.61 .. 15.61)');
+    expect(report.left).toEqual([]);
+    const r = evaluateSheet(source);
+    expect(r.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+    expect(r.statements.at(-1)!.plot).toBeDefined();
+  });
+
+  it('more curves together; a moved view', () => {
+    const { source } = importSmath(sheet(fx, plot(`${n('x')}${fn('f', 1)}${n('x')}${n('1')}${op('+')}${n('2')}${n('1')}${fn('sys', 4)}`, 'scale_x="2" scale_y="1" transpose_x="-30" transpose_y="12"')));
+    expect(source).toContain('plot(f(x), x + 1, x: -15.61 .. 23.41, ylim: -8.585 .. 7.024)');
+  });
+
+  it('what draws otherwise stays a mark, with the reason', () => {
+    const { report } = importSmath(sheet(plot(n('plotter'))));
+    expect(report.left).toEqual([{ written: 'plot', why: { kind: 'region', name: 'plot' } }]);
+    const unknown = importSmath(sheet(plot(`${n('x')}${fn('nobody', 1)}`)));
+    expect(unknown.report.left.map((l) => l.why.kind)).toEqual(['region']);
+  });
+});
+
+describe('what a loop left as text assigns', () => {
+  const loop = `${n('next')}${n('steps')}${n('steps')}${n('1')}${op('+')}${op(':')}${fn('while', 2)}`;
+  const shown = (name: string, value: string) => `<math><input>${n(name)}</input><result action="numeric">${n(value)}</result></math>`;
+
+  it('is not read at its value from before the loop: the sheet shows what SMath had, as text', () => {
+    const { source, report } = importSmath(
+      sheet(region(10, math(let_('next', n('1')))), region(20, math(let_('steps', n('0')))), region(30, math(loop)), region(40, shown('steps', '5'))),
+    );
+    expect(source).toContain('"steps = 5 (SMath)"');
+    expect(source.trim().split('\n').filter((l) => l === 'steps')).toEqual([]);
+    expect(report.differ).toEqual([]);
+    expect(report.left.map((l) => l.why)).toEqual([{ kind: 'function', name: 'while' }, { kind: 'loop', name: 'steps' }]);
+  });
+
+  it('a name defined again after the loop is good again', () => {
+    const { source } = importSmath(sheet(region(10, math(loop)), region(20, math(let_('steps', n('3')))), region(30, shown('steps', '3'))));
+    expect(source).toContain('steps := 3');
+    expect(source.trim().endsWith('steps')).toBe(true);
+  });
+
+  it('what a function assigns inside stays in it', () => {
+    const body = `${n('x')}${fn('h', 1)}${n('x')}${n('t')}${n('1')}${op(':')}${fn('nobody', 2)}${op(':')}`;
+    const { source } = importSmath(sheet(region(10, math(let_('t', n('2')))), region(20, math(body)), region(30, shown('t', '2'))));
+    expect(source.trim().endsWith('t')).toBe(true);
+  });
+});
+
+describe('a family of curves with a derivative of its own order, as Hermite polynomials in SMath', () => {
+  const he = region(10, math(`${n('z')}${n('n')}${fn('H', 2)}${n('1')}${op('-', 1)}<e type="bracket">(</e>${n('n')}${op('^')}${n('e')}${n('z')}${n('2')}${op('^')}${n('2')}${op('/')}${op('^')}${op('*')}${n('e')}${n('z')}${n('2')}${op('^')}${n('2')}${op('/')}${op('-', 1)}${op('^')}${n('z')}${n('n')}${fn('diff', 3)}${op('*')}${op(':')}`));
+  const chart = `<region id="9" left="9" top="50" width="350" height="351"><plot type="2d" scale_x="2.78092082758705" scale_y="11.7378793127595" transpose_x="0" transpose_y="0"><input>${n('x')}${n('0')}${fn('H', 2)}${n('x')}${n('5')}${fn('H', 2)}${n('2')}${n('1')}${fn('sys', 4)}</input></plot></region>`;
+
+  it('is drawn in the view the screen of SMath shows: x about ±2.4, y about ±10.3', () => {
+    const { source, report } = importSmath(sheet(he, chart));
+    expect(report.left).toEqual([]);
+    expect(source).toContain('plot(H(x, 0), H(x, 5), x: -2.431 .. 2.431, ylim: -10.29 .. 10.29)');
+    const r = evaluateSheet(`${source}H(2, 5)\nH(1, 3)\n`);
+    expect(r.statements.filter((s) => s.status === 'error')).toEqual([]);
+    expect(r.statements.at(-2)!.display!.value).toBeCloseTo(-18, 8);
+    expect(r.statements.at(-1)!.display!.value).toBeCloseTo(-2, 8);
+  });
+});
+
+describe('a loop that only fills a vector by its index', () => {
+  const fx = region(10, math(`${n('x')}${fn('f', 1)}${n('x')}${fn('sin', 1)}${op(':')}`));
+  const N = region(20, math(let_('N', n('9'))));
+
+  it('with x still free it is written out where it is read: a Maclaurin series as in SMath', () => {
+    const fill = `${n('i')}${n('1')}${n('N')}${fn('range', 2)}${n('f')}${n('i')}${fn('el', 2)}${n('x')}${fn('f', 1)}${n('x')}${n('i')}${fn('diff', 3)}${op(':')}${fn('for', 3)}`;
+    const g = `${n('x')}${fn('g', 1)}${n('f')}${op(':')}`;
+    const series = `${n('x')}${fn('fmc', 1)}${n('0')}${fn('f', 1)}${n('0')}${fn('g', 1)}${n('n')}${fn('el', 2)}${n('x')}${n('n')}${op('^')}${op('*')}${n('n')}${op('!', 1)}${op('/')}<e type="bracket">(</e>${n('n')}${n('1')}${n('N')}${fn('sum', 4)}${op('+')}${op(':')}`;
+    const { source, report } = importSmath(sheet(fx, N, region(30, math(fill)), region(40, math(g)), region(50, math(series))));
+    expect(report.left).toEqual([]);
+    expect(source).toContain('g(x) := vector(derivative(f(x), x: x, order: i), i: 1 .. N)');
+    const r = evaluateSheet(`${source}fmc(1)\nfmc(3)\n`);
+    expect(r.statements.filter((s) => s.status === 'error')).toEqual([]);
+    expect(r.statements.at(-2)!.display!.value).toBeCloseTo(Math.sin(1), 5);
+    // Nine terms of the series at 3: 3 − 4.5 + 2.025 − 0.43393 + 0.05424.
+    expect(r.statements.at(-1)!.display!.value).toBeCloseTo(0.14531, 4);
+  });
+
+  it('with numbers it is a vector here; the form with a counter as well', () => {
+    const fill = `${n('k')}${n('1')}${op(':')}${n('k')}${n('3')}${op('≤')}${n('k')}${n('k')}${n('1')}${op('+')}${op(':')}${n('v')}${n('k')}${fn('el', 2)}${n('k')}${n('2')}${op('^')}${op(':')}${fn('for', 4)}`;
+    const { source, report } = importSmath(sheet(region(10, math(fill))));
+    expect(source.trim()).toBe('v := vector(k^2, k: 1 .. 3)');
+    expect(report.left).toEqual([]);
+    expect((evaluateSheet(source).values.get('v') as unknown as { items: { si: number }[] }).items.map((q) => q.si)).toEqual([1, 4, 9]);
+  });
+
+  it('a loop that reads what it fills stays a program', () => {
+    const fill = `${n('k')}${n('1')}${n('3')}${fn('range', 2)}${n('v')}${n('k')}${fn('el', 2)}${n('v')}${n('k')}${n('1')}${op('-')}${fn('el', 2)}${n('1')}${op('+')}${op(':')}${fn('for', 3)}`;
+    const { report } = importSmath(sheet(region(10, math(fill))));
+    expect(report.left.map((l) => l.why)).toEqual([{ kind: 'function', name: 'for' }]);
+  });
+});

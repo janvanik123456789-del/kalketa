@@ -355,9 +355,12 @@ function renderCalculus(expr: Extract<Expr, { kind: 'call' }>, o: FormulaOptions
   const d = mi('d', true);
   if (expr.name === 'derivative') {
     if (variable.value.kind === 'range') return undefined;
-    const second = expr.named.some((n) => n.name === 'order' && n.value.kind === 'number' && n.value.value === 2);
-    const operator = second ? frac(sup(d, mn('2')), row(d, sup(x, mn('2')))) : frac(d, row(d, x));
-    // The point: d/dx f |x = a.
+    // Any order but the first shows, also one given by a name: dⁿ/dxⁿ.
+    const order = expr.named.find((n) => n.name === 'order')?.value;
+    const shownOrder = order && !(order.kind === 'number' && order.value === 1) ? render(order, o).node : undefined;
+    const operator = shownOrder ? frac(sup(d, shownOrder), row(d, sup(x, shownOrder))) : frac(d, row(d, x));
+    // The point: d/dx f |x = a; none to say where the point is x itself.
+    if (variable.value.kind === 'variable' && variable.value.name === variable.name) return { node: row(operator, wrap(body, body.prec < 5)), prec: 5 };
     const at = sub(mo('|'), row(x, mo('='), render(variable.value, o).node));
     return { node: row(operator, wrap(body, body.prec < 5), at), prec: 5 };
   }

@@ -19,6 +19,13 @@ describe('what the print rounds away', () => {
     expect(printed('V := [10.000172, 10.000116] V {decimals=2}')).toContain('10.00');
   });
 
+  it('a number that rounds to nothing in a column has no sign', () => {
+    const text = printed('table T: {rows=2}\n    | k | x {0.00} = -0.000000007·k |\n');
+    expect(text).toContain('0.00');
+    expect(text).not.toContain('−0.00');
+    expect(printed('table T: {rows=1}\n    | k | x {0.00} = -0.5·k |\n')).toContain('−0.50');
+  });
+
   it('keeps the whole part of money in a series and a matrix', () => {
     expect(printed('M := [697123 USD, 2 USD | 3 USD, 4 USD]\nx := M')).toMatch(/697,123/);
     expect(printed('S := [697123 USD, 2 USD]\nx := S')).toMatch(/697,123/);

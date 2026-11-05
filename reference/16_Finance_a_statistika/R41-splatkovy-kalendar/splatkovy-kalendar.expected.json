@@ -1,0 +1,57 @@
+{
+  "sheet": "splatkovy-kalendar.cc",
+  "verifiedBy": "Vlastní zadání. Nezávisle v čistém Pythonu (kontrola.md): splátka půlením intervalu z podmínky nulového zůstatku, kalendář v cyklu měsíc po měsíci, bez vzorce pro anuitu. Uzavřený vzorec pro zůstatek po 12 splátkách je v listu jako posudek.",
+  "relativeTolerance": 1e-06,
+  "values": {
+    "pay": {
+      "value": 9126.58123546651,
+      "unit": "Kč"
+    },
+    "urok_1": {
+      "value": 1500.0,
+      "unit": "Kč"
+    },
+    "urok_n": {
+      "value": 45.40587679337013,
+      "unit": "Kč"
+    },
+    "U": {
+      "value": 28556.924476795353,
+      "unit": "Kč"
+    },
+    "placeno": {
+      "value": 328556.9244767944,
+      "unit": "Kč"
+    },
+    "podil": {
+      "value": 9.518974825598452,
+      "unit": "%"
+    },
+    "i_ef": {
+      "value": 6.167781186449828,
+      "unit": "%"
+    },
+    "B_12": {
+      "value": 205921.8314779147,
+      "unit": "Kč"
+    }
+  },
+  "checks": [
+    {
+      "label": "Po poslední splátce nezbývá dluh",
+      "passed": true
+    },
+    {
+      "label": "Úmory dají dohromady celý úvěr",
+      "passed": true
+    },
+    {
+      "label": "Úroky jsou rozdíl zaplaceného a půjčeného",
+      "passed": true
+    },
+    {
+      "label": "Zůstatek po 12 splátkách jako z uzavřeného vzorce",
+      "passed": true
+    }
+  ]
+}

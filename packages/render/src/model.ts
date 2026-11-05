@@ -420,7 +420,7 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
           if (value?.type !== 'quantity') return undefined;
           const number = value.hint ? (value.si - (value.hint.offset ?? 0)) / value.hint.factor : value.si;
           const decimals = s.columns[i]?.format ? (/[.,](0+)/.exec(s.columns[i]!.format!)?.[1]?.length ?? 0) : undefined;
-          return (decimals === undefined ? numberFormat({ digits: 4 })(number) : number.toFixed(decimals).replace('.', decimalSign)).replace('-', '−');
+          return (decimals === undefined ? numberFormat({ digits: 4 })(number) : fixedPlaces(number, decimals).replace('.', decimalSign)).replace('-', '−');
         };
         const totals: number[] = [];
         let data = 0;
@@ -1053,13 +1053,19 @@ function tableRows(table: Extract<Value, { type: 'table' }>['table'], format: (v
   return { columns, rows: table.rows.map((row) => row.map(text)) };
 }
 
+/** A number to its places; what rounds to nothing has no sign: −0,00 says nothing a reader should stop at. */
+function fixedPlaces(value: number, decimals: number): string {
+  const text = value.toFixed(decimals);
+  return /^-0(\.0*)?$/.test(text) ? text.slice(1) : text;
+}
+
 function cellText(cell: string, format: string | undefined, numeric: boolean, decimalSign: string): string {
   const text = cell.trim();
   if (!numeric || text === '') return text;
   const value = Number(text.replace(',', '.'));
   if (!Number.isFinite(value)) return text;
   const decimals = format ? (/[.,](0+)/.exec(format)?.[1]?.length ?? 0) : undefined;
-  const shown = decimals === undefined ? text.replace(',', '.') : value.toFixed(decimals);
+  const shown = decimals === undefined ? text.replace(',', '.') : fixedPlaces(value, decimals);
   return shown.replace('.', decimalSign).replace('-', '−');
 }
 

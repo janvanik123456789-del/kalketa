@@ -685,6 +685,17 @@ describe('linear algebra and whole numbers, stage 6', () => {
     expect((r.values.get('b') as unknown as { value: string }).value).toBe('1; 5; 3; 4');
   });
 
+  it('balances an equation to whole numbers: 2 KMnO4 + 16 HCl = 2 KCl + 2 MnCl2 + 5 Cl2 + 8 H2O', () => {
+    const items = (sheet: string, name: string) => (evaluateSheet(sheet).values.get(name) as unknown as { items: { si: number }[] }).items.map((q) => q.si);
+    const A = 'A := [1, 0, -1, 0, 0, 0 | 1, 0, 0, -1, 0, 0 | 4, 0, 0, 0, 0, -1 | 0, 1, 0, 0, 0, -2 | 0, 1, -1, -2, -2, 0]';
+    expect(items(`${A}\nc := whole(nullspace(A))`, 'c')).toEqual([2, 16, 2, 2, 5, 8]);
+    expect(items('c := whole([-0.5, -1, 1.5])', 'c')).toEqual([1, 2, -3]);
+    expect(items('c := whole([0, 0.25, 0.75])', 'c')).toEqual([0, 1, 3]);
+    expect(codes('c := whole([0, 0])')).toContain('E-DOMAIN');
+    expect(codes('c := whole([1, π])')).toContain('E-DOMAIN');
+    expect(codes('c := whole([1 m, 2 m])')).toContain('E-DOMAIN');
+  });
+
   it('writes a number as a fraction, or says it cannot', () => {
     const text = (sheet: string) => (evaluateSheet(sheet).values.get('a') as unknown as { value: string }).value;
     expect(text('a := rat(0.75)')).toBe('3/4');

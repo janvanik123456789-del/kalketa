@@ -236,6 +236,7 @@ export const cs: Catalog = {
     singvals: 'Singulární hodnoty.',
     nullspace: 'Řešení A·x = 0.',
     rat: 'Číslo jako zlomek.',
+    whole: 'Nejmenší celá čísla ve stejném poměru.',
     molar_mass: 'Molární hmotnost ze vzorce.',
     submatrix: 'Výřez matice: řádky r1 až r2, sloupce c1 až c2.',
     augment: 'Dvě matice vedle sebe.',

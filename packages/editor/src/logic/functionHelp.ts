@@ -119,6 +119,7 @@ export const FUNCTION_EXAMPLES: Readonly<Record<string, string>> = {
   singvals: 'singvals([3, 0 | 0, 4])',
   nullspace: 'nullspace([1, 2 | 2, 4])',
   rat: 'rat(0.75)',
+  whole: 'whole([0.125, 1, 0.3125])',
   molar_mass: 'molar_mass("Ca3(PO4)2")',
   submatrix: 'submatrix([1, 2 | 3, 4], 1, 1, 1, 2)',
   augment: 'augment([1 | 2], [3 | 4])',

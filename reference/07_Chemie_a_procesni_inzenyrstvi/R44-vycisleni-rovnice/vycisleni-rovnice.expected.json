@@ -1,0 +1,69 @@
+{
+  "sheet": "vycisleni-rovnice.cc",
+  "verifiedBy": "Vlastní zadání. Nezávisle v čistém Pythonu (kontrola.md): nulový prostor Gaussovou-Jordanovou eliminací v přesných zlomcích, molární hmotnosti součtem atomových hmotností (IUPAC, zkrácené hodnoty). Bilance prvků a hmotnosti jsou v listu jako posudky.",
+  "relativeTolerance": 1e-08,
+  "values": {
+    "h": {
+      "value": 5,
+      "unit": ""
+    },
+    "M_1": {
+      "value": 158.032,
+      "unit": "g/mol"
+    },
+    "M_5": {
+      "value": 70.9,
+      "unit": "g/mol"
+    },
+    "m_l": {
+      "value": 899.392,
+      "unit": "g/mol"
+    },
+    "m_p": {
+      "value": 899.392,
+      "unit": "g/mol"
+    },
+    "n_1": {
+      "value": 0.06327832337754379,
+      "unit": "mol"
+    },
+    "n_2": {
+      "value": 0.5062265870203503,
+      "unit": "mol"
+    },
+    "n_5": {
+      "value": 0.15819580844385947,
+      "unit": "mol"
+    },
+    "m_2": {
+      "value": 18.456008909587933,
+      "unit": "g"
+    },
+    "m_5": {
+      "value": 11.216082818669637,
+      "unit": "g"
+    },
+    "V_5": {
+      "value": 3.5457960325442057,
+      "unit": "l"
+    }
+  },
+  "checks": [
+    {
+      "label": "Počet atomů každého prvku je na obou stranách stejný",
+      "passed": true
+    },
+    {
+      "label": "Koeficienty 2, 16, 2, 2, 5, 8",
+      "passed": true
+    },
+    {
+      "label": "Rovnice má jediné vyčíslení",
+      "passed": true
+    },
+    {
+      "label": "Hmotnost se zachovává",
+      "passed": true
+    }
+  ]
+}

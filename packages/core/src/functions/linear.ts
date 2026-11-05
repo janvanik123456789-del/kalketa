@@ -706,6 +706,27 @@ export const LINEAR: readonly FunctionDef[] = [
     },
   },
   {
+    // The smallest whole numbers in the same ratio: the coefficients of a chemical equation from its null space.
+    name: 'whole',
+    module: 'series',
+    params: 'v',
+    arity: [1, 1],
+    call: (a) => {
+      const value = a.value(0);
+      const items = value.type === 'vector' || value.type === 'matrix' ? value.items : [a.quantity(0)];
+      const fractions = items.map((q) => (isDimensionless(q.dim) && !q.im ? fractionOf(q.si) : undefined) ?? a.domain(0));
+      const gcd = (x: number, y: number): number => (y === 0 ? Math.abs(x) : gcd(y, x % y));
+      const denominators = fractions.reduce((l, [, d]) => (l / gcd(l, d)) * d, 1);
+      const whole = fractions.map(([n, d]) => (n * denominators) / d);
+      const common = whole.reduce((g, x) => gcd(g, x), 0);
+      if (common === 0 || !whole.every((x) => Number.isSafeInteger(x))) return a.domain(0);
+      // The first that is not zero is positive: reactants on the left, as an equation is written.
+      const sign = Math.sign(whole.find((x) => x !== 0)!);
+      const out = whole.map((x) => quantity((sign * x) / common));
+      return value.type === 'vector' || value.type === 'matrix' ? { ...value, items: out } : out[0]!;
+    },
+  },
+  {
     name: 'molar_mass',
     module: 'statistics',
     params: '"formula"',

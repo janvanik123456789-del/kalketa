@@ -141,6 +141,7 @@ export const CS_FUNCTION_DETAILS: Readonly<Record<string, string>> = {
   cond: 'Číslo podmíněnosti, poměr největší a nejmenší singulární hodnoty. Číslo 10^k znamená ztrátu asi k platných číslic výsledku lsolve.',
   singvals: 'Singulární hodnoty matice od největší, v SI.',
   nullspace: 'Vektory, které matice zobrazí na nulu, ve sloupcích, největší položka každého je 1. Jeden vektor je řada. Bez nich je to chyba.',
+  whole: 'Nejmenší celá čísla ve stejném poměru jako položky řady: whole([0.125, 1, 0.3125]) je [2, 16, 5]. První nenulová položka je kladná. Z nulového prostoru matice prvků tak vyjdou koeficienty chemické rovnice. Položky, které nejsou blízko žádného zlomku, jsou chyba.',
   rat: 'Číslo jako zlomek v textu, řada jako zlomky: rat(0.75) je „3/4“. Je to jen zápis, dál se s ním nepočítá. Kde žádný blízký zlomek není, je to chyba.',
   molar_mass: 'Molární hmotnost ze vzorce v g/mol, se závorkami a hydráty: molar_mass("CuSO4·5H2O"). Atomové hmotnosti IUPAC 2021, zkrácené.',
   submatrix: 'Výřez matice: submatrix(A, 1, 2, 2, 3) dá řádky 1 až 2 a sloupce 2 až 3, počítáno od 1. Jeden sloupec je řada.',

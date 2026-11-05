@@ -236,6 +236,7 @@ export const en: Catalog = {
     singvals: 'The singular values.',
     nullspace: 'The solutions of A·x = 0.',
     rat: 'A number as a fraction.',
+    whole: 'The smallest whole numbers in the same ratio.',
     molar_mass: 'The molar mass of a formula.',
     submatrix: 'A part of a matrix: rows r1 to r2, columns c1 to c2.',
     augment: 'Two matrices side by side.',

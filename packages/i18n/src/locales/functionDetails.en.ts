@@ -141,6 +141,7 @@ export const EN_FUNCTION_DETAILS: Readonly<Record<string, string>> = {
   cond: 'The condition number, the ratio of the greatest and the least singular value. A number of 10^k means losing about k digits of a result of lsolve.',
   singvals: 'The singular values of a matrix, the greatest first, in SI.',
   nullspace: 'The vectors a matrix sends to zero, as columns, the greatest item of each is 1. One vector is a series. Without any it is an error.',
+  whole: 'The smallest whole numbers in the same ratio as the items of a series: whole([0.125, 1, 0.3125]) is [2, 16, 5]. The first item that is not zero is positive. So the null space of the matrix of elements gives the coefficients of a chemical equation. Items that are not near a fraction are an error.',
   rat: 'A number as a fraction in text, a series as fractions: rat(0.75) is “3/4”. Only a way of writing, nothing calculates with it. Where no fraction is near, it is an error.',
   molar_mass: 'The molar mass of a formula in g/mol, with brackets and hydrates: molar_mass("CuSO4·5H2O"). Atomic weights IUPAC 2021, abridged.',
   submatrix: 'A part of a matrix: submatrix(A, 1, 2, 2, 3) gives rows 1 to 2 and columns 2 to 3, counted from 1. One column is a series.',

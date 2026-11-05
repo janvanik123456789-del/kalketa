@@ -281,6 +281,7 @@ rok := sum(Vyroba.E)                         ' sloupec tabulky jako řada
 - Funkce: `range(od, do[, krok])`, `sum`, `mean`, `len`, `cumsum`, `min`/`max` přes řadu, `npv`, `irr`, `pmt`, `payback`.
 - Funkce čísla (`sqrt`, `abs`, `round`, `mod`, `log`, `norminv`, `tcdf` …) vezmou řadu po položkách, ostatní argumenty zůstanou: `tcdf(t, 5)`. Funkce listu taky, pokud její tělo řadu jako celek neumí; `each(f, v)` ji volá po položkách vždy.
 - `round`, `floor`, `ceil` zaokrouhlují v jednotce hodnoty: `ceil(5.5 CZK)` je 6 CZK, `round(25.6 °C)` je 26 °C, `round(x, 2)` na dvě místa.
+- **Celá čísla v poměru (2026-11-05):** `whole(v)` dá nejmenší celá čísla ve stejném poměru, první nenulové kladné. `whole(nullspace(A))` z matice prvků vyčíslí chemickou rovnici, třeba KMnO₄ + HCl na 2, 16, 2, 2, 5, 8.
 - Statistika řad: `var`, `cov`, `corr` (i po sloupcích matice), `quantile`, `ranks` (shodné dělí průměr, Spearman je `corr(ranks(x), ranks(y))`). `min`, `max`, `argmin`, `argmax` berou i matici, `argmin` matice dá `[řádek, sloupec]`.
 - Proložení: `F[k]` čte koeficienty každého druhu křivky, u `exp` je `F[1]` = a a `F[2]` = b z a·e^(b·x); u polynomu od nejvyšší mocniny. `fit_s(F)` je směrodatná odchylka bodů od křivky, `fit_se(F)` řada chyb koeficientů, `fit_r2(F)` R².
 - `[m]` zůstává jednotkou; řada je vše ostatní v hranatých závorkách a smí mít jednotku za sebou: `[1, 2] m`.

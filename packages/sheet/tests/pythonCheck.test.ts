@@ -20,7 +20,7 @@ describe('a calculation checked in Python', () => {
         { name: 'x', value: 2, unit: '', rel: 1e-9 },
         { name: 'm', value: 1, unit: 'kg', rel: 1e-6 },
         { name: 'v', value: 10, unit: 'kg', rel: 1e-6 },
-        { name: 'v', value: 10, unit: 'furlong', rel: 1e-6 },
+        { name: 'v', value: 10, unit: 'smoot', rel: 1e-6 },
       ],
       sheet,
     );

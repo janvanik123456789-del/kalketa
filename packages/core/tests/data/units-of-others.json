@@ -1,0 +1,6168 @@
+{
+"notice": "Values taken from the tests of CivilKit Calcs (MIT, calcpad-core/tests/xunit_UnitsTests.rs, transcribed from CalcpadCE, MIT) and of Quire (MIT or Apache-2.0, crates/quire-eval/tests/smath_units.rs). Numbers only, as test data.",
+"conversions": [
+{
+"from": "1",
+"to": "%",
+"value": 100.0
+},
+{
+"from": "1",
+"to": "‰",
+"value": 1000.0
+},
+{
+"from": "dag",
+"to": "g",
+"value": 10.0
+},
+{
+"from": "hg",
+"to": "g",
+"value": 100.0
+},
+{
+"from": "kg",
+"to": "g",
+"value": 1000.0
+},
+{
+"from": "t",
+"to": "g",
+"value": 1000000.0
+},
+{
+"from": "kt",
+"to": "g",
+"value": 1000000000.0
+},
+{
+"from": "Mt",
+"to": "g",
+"value": 1000000000000.0
+},
+{
+"from": "Gt",
+"to": "g",
+"value": 1000000000000000.0
+},
+{
+"from": "dg",
+"to": "g",
+"value": 0.1
+},
+{
+"from": "cg",
+"to": "g",
+"value": 0.01
+},
+{
+"from": "mg",
+"to": "g",
+"value": 0.001
+},
+{
+"from": "μg",
+"to": "g",
+"value": 1e-06
+},
+{
+"from": "ng",
+"to": "g",
+"value": 1e-09
+},
+{
+"from": "pg",
+"to": "g",
+"value": 1e-12
+},
+{
+"from": "Da",
+"to": "kg",
+"value": 1.6605390666050506e-27
+},
+{
+"from": "gr",
+"to": "g",
+"value": 0.06479891
+},
+{
+"from": "dr",
+"to": "g",
+"value": 1.7718451953125
+},
+{
+"from": "oz",
+"to": "g",
+"value": 28.349523125
+},
+{
+"from": "lb",
+"to": "g",
+"value": 453.59237
+},
+{
+"from": "kipm",
+"to": "kg",
+"value": 453.59237
+},
+{
+"from": "kip_m",
+"to": "kg",
+"value": 453.59237
+},
+{
+"from": "klb",
+"to": "kg",
+"value": 453.59237
+},
+{
+"from": "st",
+"to": "g",
+"value": 6350.29318
+},
+{
+"from": "qr",
+"to": "g",
+"value": 12700.58636
+},
+{
+"from": "cwt_US",
+"to": "g",
+"value": 45359.237
+},
+{
+"from": "cwt_UK",
+"to": "g",
+"value": 50802.34544
+},
+{
+"from": "ton_US",
+"to": "g",
+"value": 907184.74
+},
+{
+"from": "ton_UK",
+"to": "g",
+"value": 1016046.9088
+},
+{
+"from": "slug",
+"to": "g",
+"value": 14593.90294
+},
+{
+"from": "km",
+"to": "m",
+"value": 1000.0
+},
+{
+"from": "dm",
+"to": "m",
+"value": 0.1
+},
+{
+"from": "cm",
+"to": "m",
+"value": 0.01
+},
+{
+"from": "mm",
+"to": "m",
+"value": 0.001
+},
+{
+"from": "μm",
+"to": "m",
+"value": 1e-06
+},
+{
+"from": "nm",
+"to": "m",
+"value": 1e-09
+},
+{
+"from": "pm",
+"to": "m",
+"value": 1e-12
+},
+{
+"from": "AU",
+"to": "m",
+"value": 149597870700.0
+},
+{
+"from": "ly",
+"to": "m",
+"value": 9460730472580800.0
+},
+{
+"from": "th",
+"to": "m",
+"value": 2.54e-05
+},
+{
+"from": "in",
+"to": "m",
+"value": 0.0254
+},
+{
+"from": "ft",
+"to": "m",
+"value": 0.3048
+},
+{
+"from": "yd",
+"to": "m",
+"value": 0.9144
+},
+{
+"from": "ch",
+"to": "m",
+"value": 20.1168
+},
+{
+"from": "fur",
+"to": "m",
+"value": 201.168
+},
+{
+"from": "mi",
+"to": "m",
+"value": 1609.344
+},
+{
+"from": "ftm",
+"to": "m",
+"value": 1.8288
+},
+{
+"from": "ftm_US",
+"to": "m",
+"value": 1.8288
+},
+{
+"from": "ftm_UK",
+"to": "m",
+"value": 1.852
+},
+{
+"from": "cable",
+"to": "m",
+"value": 182.88
+},
+{
+"from": "cable_UK",
+"to": "m",
+"value": 185.2
+},
+{
+"from": "cable_US",
+"to": "m",
+"value": 219.456
+},
+{
+"from": "nmi",
+"to": "m",
+"value": 1852.0
+},
+{
+"from": "li",
+"to": "m",
+"value": 0.201168
+},
+{
+"from": "rod",
+"to": "m",
+"value": 5.0292
+},
+{
+"from": "pole",
+"to": "m",
+"value": 5.0292
+},
+{
+"from": "perch",
+"to": "m",
+"value": 5.0292
+},
+{
+"from": "lea",
+"to": "m",
+"value": 4828.032
+},
+{
+"from": "a",
+"to": "m^2",
+"value": 100.0
+},
+{
+"from": "daa",
+"to": "m^2",
+"value": 1000.0
+},
+{
+"from": "ha",
+"to": "m^2",
+"value": 10000.0
+},
+{
+"from": "rood",
+"to": "m^2",
+"value": 1011.7141056
+},
+{
+"from": "ac",
+"to": "m^2",
+"value": 4046.8564224
+},
+{
+"from": "L",
+"to": "dm^3",
+"value": 1.0
+},
+{
+"from": "dL",
+"to": "L",
+"value": 0.1
+},
+{
+"from": "cL",
+"to": "L",
+"value": 0.01
+},
+{
+"from": "mL",
+"to": "cm^3",
+"value": 1.0
+},
+{
+"from": "μL",
+"to": "mm^3",
+"value": 1.0
+},
+{
+"from": "nL",
+"to": "L",
+"value": 1e-09
+},
+{
+"from": "pL",
+"to": "L",
+"value": 1e-12
+},
+{
+"from": "hL",
+"to": "L",
+"value": 100.0
+},
+{
+"from": "fl_dr_UK",
+"to": "L",
+"value": 0.0035516328125
+},
+{
+"from": "fl_oz_UK",
+"to": "L",
+"value": 0.0284130625
+},
+{
+"from": "gi_UK",
+"to": "L",
+"value": 0.1420653125
+},
+{
+"from": "pt_UK",
+"to": "L",
+"value": 0.56826125
+},
+{
+"from": "qt_UK",
+"to": "L",
+"value": 1.1365225
+},
+{
+"from": "gal_UK",
+"to": "L",
+"value": 4.54609
+},
+{
+"from": "bbl_UK",
+"to": "L",
+"value": 163.65924
+},
+{
+"from": "pk_UK",
+"to": "L",
+"value": 9.09218
+},
+{
+"from": "bu_UK",
+"to": "L",
+"value": 36.36872
+},
+{
+"from": "fl_dr_US",
+"to": "L",
+"value": 0.0036966911953125
+},
+{
+"from": "fl_oz_US",
+"to": "L",
+"value": 0.0295735295625
+},
+{
+"from": "gi_US",
+"to": "L",
+"value": 0.11829411825
+},
+{
+"from": "pt_US",
+"to": "L",
+"value": 0.473176473
+},
+{
+"from": "qt_US",
+"to": "L",
+"value": 0.946352946
+},
+{
+"from": "gal_US",
+"to": "L",
+"value": 3.785411784
+},
+{
+"from": "bbl_US",
+"to": "L",
+"value": 119.240471196
+},
+{
+"from": "pt_dry",
+"to": "L",
+"value": 0.5506104713575
+},
+{
+"from": "qt_dry",
+"to": "L",
+"value": 1.101220942715
+},
+{
+"from": "gal_dry",
+"to": "L",
+"value": 4.40488377086
+},
+{
+"from": "bbl_dry",
+"to": "L",
+"value": 115.628198985075
+},
+{
+"from": "pk_US",
+"to": "L",
+"value": 8.80976754172
+},
+{
+"from": "bu_US",
+"to": "L",
+"value": 35.23907016688
+},
+{
+"from": "ms",
+"to": "s",
+"value": 0.001
+},
+{
+"from": "μs",
+"to": "s",
+"value": 1e-06
+},
+{
+"from": "ns",
+"to": "s",
+"value": 1e-09
+},
+{
+"from": "ps",
+"to": "s",
+"value": 1e-12
+},
+{
+"from": "min",
+"to": "s",
+"value": 60.0
+},
+{
+"from": "h",
+"to": "min",
+"value": 60.0
+},
+{
+"from": "d",
+"to": "h",
+"value": 24.0
+},
+{
+"from": "kmh",
+"to": "km/h",
+"value": 1.0
+},
+{
+"from": "mph",
+"to": "mi/h",
+"value": 1.0
+},
+{
+"from": "knot",
+"to": "nmi/h",
+"value": 1.0
+},
+{
+"from": "Hz",
+"to": "s^-1",
+"value": 1.0
+},
+{
+"from": "kHz",
+"to": "Hz",
+"value": 1000.0
+},
+{
+"from": "MHz",
+"to": "Hz",
+"value": 1000000.0
+},
+{
+"from": "GHz",
+"to": "Hz",
+"value": 1000000000.0
+},
+{
+"from": "THz",
+"to": "Hz",
+"value": 1000000000000.0
+},
+{
+"from": "mHz",
+"to": "Hz",
+"value": 0.001
+},
+{
+"from": "μHz",
+"to": "Hz",
+"value": 1e-06
+},
+{
+"from": "nHz",
+"to": "Hz",
+"value": 1e-09
+},
+{
+"from": "pHz",
+"to": "Hz",
+"value": 1e-12
+},
+{
+"from": "kA",
+"to": "A",
+"value": 1000.0
+},
+{
+"from": "MA",
+"to": "A",
+"value": 1000000.0
+},
+{
+"from": "GA",
+"to": "A",
+"value": 1000000000.0
+},
+{
+"from": "TA",
+"to": "A",
+"value": 1000000000000.0
+},
+{
+"from": "mA",
+"to": "A",
+"value": 0.001
+},
+{
+"from": "μA",
+"to": "A",
+"value": 1e-06
+},
+{
+"from": "nA",
+"to": "A",
+"value": 1e-09
+},
+{
+"from": "pA",
+"to": "A",
+"value": 1e-12
+},
+{
+"from": "Ah",
+"to": "A*h",
+"value": 1.0
+},
+{
+"from": "mAh",
+"to": "Ah",
+"value": 0.001
+},
+{
+"from": "Δ°C",
+"to": "°C",
+"value": 1.0
+},
+{
+"from": "Δ°C",
+"to": "K",
+"value": 1.0
+},
+{
+"from": "Δ°F",
+"to": "°F",
+"value": 1.0
+},
+{
+"from": "Δ°F",
+"to": "°R",
+"value": 1.0
+},
+{
+"from": "°C",
+"to": "Δ°C",
+"value": 1.0
+},
+{
+"from": "K",
+"to": "Δ°C",
+"value": 1.0
+},
+{
+"from": "°F",
+"to": "Δ°F",
+"value": 1.0
+},
+{
+"from": "°R",
+"to": "Δ°F",
+"value": 1.0
+},
+{
+"from": "N",
+"to": "kg*m/s^2",
+"value": 1.0
+},
+{
+"from": "daN",
+"to": "N",
+"value": 10.0
+},
+{
+"from": "hN",
+"to": "N",
+"value": 100.0
+},
+{
+"from": "kN",
+"to": "N",
+"value": 1000.0
+},
+{
+"from": "MN",
+"to": "N",
+"value": 1000000.0
+},
+{
+"from": "GN",
+"to": "N",
+"value": 1000000000.0
+},
+{
+"from": "TN",
+"to": "N",
+"value": 1000000000000.0
+},
+{
+"from": "Nm",
+"to": "N*m",
+"value": 1.0
+},
+{
+"from": "kNm",
+"to": "kN*m",
+"value": 1.0
+},
+{
+"from": "gf",
+"to": "N",
+"value": 0.00980665
+},
+{
+"from": "kgf",
+"to": "N",
+"value": 9.80665
+},
+{
+"from": "tf",
+"to": "N",
+"value": 9806.65
+},
+{
+"from": "dyn",
+"to": "N",
+"value": 1e-05
+},
+{
+"from": "ozf",
+"to": "N",
+"value": 0.278013851
+},
+{
+"from": "oz_f",
+"to": "N",
+"value": 0.278013851
+},
+{
+"from": "lbf",
+"to": "N",
+"value": 4.4482216153
+},
+{
+"from": "lb_f",
+"to": "N",
+"value": 4.4482216153
+},
+{
+"from": "kip",
+"to": "N",
+"value": 4448.2216153
+},
+{
+"from": "kipf",
+"to": "N",
+"value": 4448.2216153
+},
+{
+"from": "kip_f",
+"to": "N",
+"value": 4448.2216153
+},
+{
+"from": "tonf_US",
+"to": "N",
+"value": 8896.443230521
+},
+{
+"from": "tonf_UK",
+"to": "N",
+"value": 9964.01641818352
+},
+{
+"from": "pdl",
+"to": "N",
+"value": 0.138254954376
+},
+{
+"from": "Pa",
+"to": "N/m^2",
+"value": 1.0
+},
+{
+"from": "daPa",
+"to": "Pa",
+"value": 10.0
+},
+{
+"from": "hPa",
+"to": "Pa",
+"value": 100.0
+},
+{
+"from": "kPa",
+"to": "Pa",
+"value": 1000.0
+},
+{
+"from": "MPa",
+"to": "Pa",
+"value": 1000000.0
+},
+{
+"from": "GPa",
+"to": "Pa",
+"value": 1000000000.0
+},
+{
+"from": "TPa",
+"to": "Pa",
+"value": 1000000000000.0
+},
+{
+"from": "dPa",
+"to": "Pa",
+"value": 0.1
+},
+{
+"from": "cPa",
+"to": "Pa",
+"value": 0.01
+},
+{
+"from": "mPa",
+"to": "Pa",
+"value": 0.001
+},
+{
+"from": "μPa",
+"to": "Pa",
+"value": 1e-06
+},
+{
+"from": "nPa",
+"to": "Pa",
+"value": 1e-09
+},
+{
+"from": "pPa",
+"to": "Pa",
+"value": 1e-12
+},
+{
+"from": "bar",
+"to": "Pa",
+"value": 100000.0
+},
+{
+"from": "mbar",
+"to": "Pa",
+"value": 100.0
+},
+{
+"from": "μbar",
+"to": "Pa",
+"value": 0.1
+},
+{
+"from": "atm",
+"to": "Pa",
+"value": 101325.0
+},
+{
+"from": "mmHg",
+"to": "Pa",
+"value": 133.322387415
+},
+{
+"from": "at",
+"to": "Pa",
+"value": 98066.5
+},
+{
+"from": "Torr",
+"to": "Pa",
+"value": 133.32236842
+},
+{
+"from": "osi",
+"to": "Pa",
+"value": 430.922330894662
+},
+{
+"from": "osf",
+"to": "Pa",
+"value": 2.99251618676848
+},
+{
+"from": "psi",
+"to": "Pa",
+"value": 6894.75729322959
+},
+{
+"from": "ksi",
+"to": "Pa",
+"value": 6894757.29322959
+},
+{
+"from": "tsi",
+"to": "Pa",
+"value": 15444256.3366971
+},
+{
+"from": "psf",
+"to": "Pa",
+"value": 47.880258980761
+},
+{
+"from": "ksf",
+"to": "Pa",
+"value": 47880.258980761
+},
+{
+"from": "tsf",
+"to": "Pa",
+"value": 107251.780115952
+},
+{
+"from": "inHg",
+"to": "Pa",
+"value": 3386.389
+},
+{
+"from": "P",
+"to": "Pa*s",
+"value": 0.1
+},
+{
+"from": "cP",
+"to": "Pa*s",
+"value": 0.001
+},
+{
+"from": "St",
+"to": "m^2/s",
+"value": 0.0001
+},
+{
+"from": "cSt",
+"to": "m^2/s",
+"value": 1e-06
+},
+{
+"from": "J",
+"to": "kg*m^2*s^-2",
+"value": 1.0
+},
+{
+"from": "kJ",
+"to": "J",
+"value": 1000.0
+},
+{
+"from": "MJ",
+"to": "J",
+"value": 1000000.0
+},
+{
+"from": "GJ",
+"to": "J",
+"value": 1000000000.0
+},
+{
+"from": "TJ",
+"to": "J",
+"value": 1000000000000.0
+},
+{
+"from": "mJ",
+"to": "J",
+"value": 0.001
+},
+{
+"from": "μJ",
+"to": "J",
+"value": 1e-06
+},
+{
+"from": "nJ",
+"to": "J",
+"value": 1e-09
+},
+{
+"from": "pJ",
+"to": "J",
+"value": 1e-12
+},
+{
+"from": "Wh",
+"to": "J",
+"value": 3600.0
+},
+{
+"from": "kWh",
+"to": "J",
+"value": 3600000.0
+},
+{
+"from": "MWh",
+"to": "J",
+"value": 3600000000.0
+},
+{
+"from": "GWh",
+"to": "J",
+"value": 3600000000000.0
+},
+{
+"from": "TWh",
+"to": "J",
+"value": 3600000000000000.0
+},
+{
+"from": "VAh",
+"to": "J",
+"value": 3600.0
+},
+{
+"from": "kVAh",
+"to": "J",
+"value": 3600000.0
+},
+{
+"from": "MVAh",
+"to": "J",
+"value": 3600000000.0
+},
+{
+"from": "GVAh",
+"to": "J",
+"value": 3600000000000.0
+},
+{
+"from": "VARh",
+"to": "J",
+"value": 3600.0
+},
+{
+"from": "kVARh",
+"to": "J",
+"value": 3600000.0
+},
+{
+"from": "MVARh",
+"to": "J",
+"value": 3600000000.0
+},
+{
+"from": "GVARh",
+"to": "J",
+"value": 3600000000000.0
+},
+{
+"from": "erg",
+"to": "J",
+"value": 1e-07
+},
+{
+"from": "eV",
+"to": "J",
+"value": 1.6021773300241367e-19
+},
+{
+"from": "keV",
+"to": "J",
+"value": 1.6021773300241366e-16
+},
+{
+"from": "MeV",
+"to": "J",
+"value": 1.6021773300241366e-13
+},
+{
+"from": "GeV",
+"to": "J",
+"value": 1.6021773300241368e-10
+},
+{
+"from": "TeV",
+"to": "J",
+"value": 1.6021773300241367e-07
+},
+{
+"from": "PeV",
+"to": "J",
+"value": 0.00016021773300241366
+},
+{
+"from": "EeV",
+"to": "J",
+"value": 0.16021773300241368
+},
+{
+"from": "BTU",
+"to": "J",
+"value": 1055.05585262
+},
+{
+"from": "therm_US",
+"to": "J",
+"value": 105480400.0
+},
+{
+"from": "therm_UK",
+"to": "J",
+"value": 105505585.262
+},
+{
+"from": "quad",
+"to": "J",
+"value": 1.05505585262e+18
+},
+{
+"from": "cal",
+"to": "J",
+"value": 4.1868
+},
+{
+"from": "kcal",
+"to": "J",
+"value": 4186.8
+},
+{
+"from": "W",
+"to": "kg*m^2*s^-3",
+"value": 1.0
+},
+{
+"from": "kW",
+"to": "W",
+"value": 1000.0
+},
+{
+"from": "MW",
+"to": "W",
+"value": 1000000.0
+},
+{
+"from": "GW",
+"to": "W",
+"value": 1000000000.0
+},
+{
+"from": "TW",
+"to": "W",
+"value": 1000000000000.0
+},
+{
+"from": "mW",
+"to": "W",
+"value": 0.001
+},
+{
+"from": "μW",
+"to": "W",
+"value": 1e-06
+},
+{
+"from": "nW",
+"to": "W",
+"value": 1e-09
+},
+{
+"from": "pW",
+"to": "W",
+"value": 1e-12
+},
+{
+"from": "hp",
+"to": "W",
+"value": 745.6998715822702
+},
+{
+"from": "hp_M",
+"to": "W",
+"value": 735.49875
+},
+{
+"from": "ks",
+"to": "W",
+"value": 735.49875
+},
+{
+"from": "hp_E",
+"to": "W",
+"value": 746.0
+},
+{
+"from": "hp_S",
+"to": "W",
+"value": 9812.5
+},
+{
+"from": "VA",
+"to": "W",
+"value": 1.0
+},
+{
+"from": "kVA",
+"to": "W",
+"value": 1000.0
+},
+{
+"from": "MVA",
+"to": "W",
+"value": 1000000.0
+},
+{
+"from": "GVA",
+"to": "W",
+"value": 1000000000.0
+},
+{
+"from": "TVA",
+"to": "W",
+"value": 1000000000000.0
+},
+{
+"from": "mVA",
+"to": "W",
+"value": 0.001
+},
+{
+"from": "μVA",
+"to": "W",
+"value": 1e-06
+},
+{
+"from": "nVA",
+"to": "W",
+"value": 1e-09
+},
+{
+"from": "pVA",
+"to": "W",
+"value": 1e-12
+},
+{
+"from": "VAR",
+"to": "W",
+"value": 1.0
+},
+{
+"from": "kVAR",
+"to": "W",
+"value": 1000.0
+},
+{
+"from": "MVAR",
+"to": "W",
+"value": 1000000.0
+},
+{
+"from": "GVAR",
+"to": "W",
+"value": 1000000000.0
+},
+{
+"from": "TVAR",
+"to": "W",
+"value": 1000000000000.0
+},
+{
+"from": "mVAR",
+"to": "W",
+"value": 0.001
+},
+{
+"from": "μVAR",
+"to": "W",
+"value": 1e-06
+},
+{
+"from": "nVAR",
+"to": "W",
+"value": 1e-09
+},
+{
+"from": "pVAR",
+"to": "W",
+"value": 1e-12
+},
+{
+"from": "C",
+"to": "s*A",
+"value": 1.0
+},
+{
+"from": "kC",
+"to": "C",
+"value": 1000.0
+},
+{
+"from": "MC",
+"to": "C",
+"value": 1000000.0
+},
+{
+"from": "GC",
+"to": "C",
+"value": 1000000000.0
+},
+{
+"from": "TC",
+"to": "C",
+"value": 1000000000000.0
+},
+{
+"from": "mC",
+"to": "C",
+"value": 0.001
+},
+{
+"from": "μC",
+"to": "C",
+"value": 1e-06
+},
+{
+"from": "nC",
+"to": "C",
+"value": 1e-09
+},
+{
+"from": "pC",
+"to": "C",
+"value": 1e-12
+},
+{
+"from": "V",
+"to": "kg*m^2*s^-3*A^-1",
+"value": 1.0
+},
+{
+"from": "kV",
+"to": "V",
+"value": 1000.0
+},
+{
+"from": "MV",
+"to": "V",
+"value": 1000000.0
+},
+{
+"from": "GV",
+"to": "V",
+"value": 1000000000.0
+},
+{
+"from": "TV",
+"to": "V",
+"value": 1000000000000.0
+},
+{
+"from": "mV",
+"to": "V",
+"value": 0.001
+},
+{
+"from": "μV",
+"to": "V",
+"value": 1e-06
+},
+{
+"from": "nV",
+"to": "V",
+"value": 1e-09
+},
+{
+"from": "pV",
+"to": "V",
+"value": 1e-12
+},
+{
+"from": "F",
+"to": "kg^-1*m^-2*s^4*A^2",
+"value": 1.0
+},
+{
+"from": "kF",
+"to": "F",
+"value": 1000.0
+},
+{
+"from": "MF",
+"to": "F",
+"value": 1000000.0
+},
+{
+"from": "GF",
+"to": "F",
+"value": 1000000000.0
+},
+{
+"from": "TF",
+"to": "F",
+"value": 1000000000000.0
+},
+{
+"from": "mF",
+"to": "F",
+"value": 0.001
+},
+{
+"from": "μF",
+"to": "F",
+"value": 1e-06
+},
+{
+"from": "nF",
+"to": "F",
+"value": 1e-09
+},
+{
+"from": "pF",
+"to": "F",
+"value": 1e-12
+},
+{
+"from": "Ω",
+"to": "kg*m^2*s^-3*A^-2",
+"value": 1.0
+},
+{
+"from": "kΩ",
+"to": "Ω",
+"value": 1000.0
+},
+{
+"from": "MΩ",
+"to": "Ω",
+"value": 1000000.0
+},
+{
+"from": "GΩ",
+"to": "Ω",
+"value": 1000000000.0
+},
+{
+"from": "TΩ",
+"to": "Ω",
+"value": 1000000000000.0
+},
+{
+"from": "mΩ",
+"to": "Ω",
+"value": 0.001
+},
+{
+"from": "μΩ",
+"to": "Ω",
+"value": 1e-06
+},
+{
+"from": "nΩ",
+"to": "Ω",
+"value": 1e-09
+},
+{
+"from": "pΩ",
+"to": "Ω",
+"value": 1e-12
+},
+{
+"from": "S",
+"to": "kg^-1*m^-2*s^3*A^2",
+"value": 1.0
+},
+{
+"from": "kS",
+"to": "S",
+"value": 1000.0
+},
+{
+"from": "MS",
+"to": "S",
+"value": 1000000.0
+},
+{
+"from": "GS",
+"to": "S",
+"value": 1000000000.0
+},
+{
+"from": "TS",
+"to": "S",
+"value": 1000000000000.0
+},
+{
+"from": "mS",
+"to": "S",
+"value": 0.001
+},
+{
+"from": "μS",
+"to": "S",
+"value": 1e-06
+},
+{
+"from": "nS",
+"to": "S",
+"value": 1e-09
+},
+{
+"from": "pS",
+"to": "S",
+"value": 1e-12
+},
+{
+"from": "℧",
+"to": "S",
+"value": 1.0
+},
+{
+"from": "k℧",
+"to": "S",
+"value": 1000.0
+},
+{
+"from": "M℧",
+"to": "S",
+"value": 1000000.0
+},
+{
+"from": "G℧",
+"to": "S",
+"value": 1000000000.0
+},
+{
+"from": "T℧",
+"to": "S",
+"value": 1000000000000.0
+},
+{
+"from": "m℧",
+"to": "S",
+"value": 0.001
+},
+{
+"from": "μ℧",
+"to": "S",
+"value": 1e-06
+},
+{
+"from": "n℧",
+"to": "S",
+"value": 1e-09
+},
+{
+"from": "p℧",
+"to": "S",
+"value": 1e-12
+},
+{
+"from": "Wb",
+"to": "kg*m^2*s^-2*A^-1",
+"value": 1.0
+},
+{
+"from": "kWb",
+"to": "Wb",
+"value": 1000.0
+},
+{
+"from": "MWb",
+"to": "Wb",
+"value": 1000000.0
+},
+{
+"from": "GWb",
+"to": "Wb",
+"value": 1000000000.0
+},
+{
+"from": "TWb",
+"to": "Wb",
+"value": 1000000000000.0
+},
+{
+"from": "mWb",
+"to": "Wb",
+"value": 0.001
+},
+{
+"from": "μWb",
+"to": "Wb",
+"value": 1e-06
+},
+{
+"from": "nWb",
+"to": "Wb",
+"value": 1e-09
+},
+{
+"from": "pWb",
+"to": "Wb",
+"value": 1e-12
+},
+{
+"from": "T",
+"to": "kg*s^-2*A^-1",
+"value": 1.0
+},
+{
+"from": "kT",
+"to": "T",
+"value": 1000.0
+},
+{
+"from": "MT",
+"to": "T",
+"value": 1000000.0
+},
+{
+"from": "GT",
+"to": "T",
+"value": 1000000000.0
+},
+{
+"from": "TT",
+"to": "T",
+"value": 1000000000000.0
+},
+{
+"from": "mT",
+"to": "T",
+"value": 0.001
+},
+{
+"from": "μT",
+"to": "T",
+"value": 1e-06
+},
+{
+"from": "nT",
+"to": "T",
+"value": 1e-09
+},
+{
+"from": "pT",
+"to": "T",
+"value": 1e-12
+},
+{
+"from": "H",
+"to": "kg*m^2*s^-2*A^-2",
+"value": 1.0
+},
+{
+"from": "kH",
+"to": "H",
+"value": 1000.0
+},
+{
+"from": "MH",
+"to": "H",
+"value": 1000000.0
+},
+{
+"from": "GH",
+"to": "H",
+"value": 1000000000.0
+},
+{
+"from": "TH",
+"to": "H",
+"value": 1000000000000.0
+},
+{
+"from": "mH",
+"to": "H",
+"value": 0.001
+},
+{
+"from": "μH",
+"to": "H",
+"value": 1e-06
+},
+{
+"from": "nH",
+"to": "H",
+"value": 1e-09
+},
+{
+"from": "pH",
+"to": "H",
+"value": 1e-12
+},
+{
+"from": "Bq",
+"to": "s^-1",
+"value": 1.0
+},
+{
+"from": "kBq",
+"to": "Bq",
+"value": 1000.0
+},
+{
+"from": "MBq",
+"to": "Bq",
+"value": 1000000.0
+},
+{
+"from": "GBq",
+"to": "Bq",
+"value": 1000000000.0
+},
+{
+"from": "TBq",
+"to": "Bq",
+"value": 1000000000000.0
+},
+{
+"from": "mBq",
+"to": "Bq",
+"value": 0.001
+},
+{
+"from": "μBq",
+"to": "Bq",
+"value": 1e-06
+},
+{
+"from": "nBq",
+"to": "Bq",
+"value": 1e-09
+},
+{
+"from": "pBq",
+"to": "Bq",
+"value": 1e-12
+},
+{
+"from": "Ci",
+"to": "Bq",
+"value": 37000000000.0
+},
+{
+"from": "Rd",
+"to": "Bq",
+"value": 1000000.0
+},
+{
+"from": "Gy",
+"to": "m^2*s^-2",
+"value": 1.0
+},
+{
+"from": "kGy",
+"to": "Gy",
+"value": 1000.0
+},
+{
+"from": "MGy",
+"to": "Gy",
+"value": 1000000.0
+},
+{
+"from": "GGy",
+"to": "Gy",
+"value": 1000000000.0
+},
+{
+"from": "TGy",
+"to": "Gy",
+"value": 1000000000000.0
+},
+{
+"from": "mGy",
+"to": "Gy",
+"value": 0.001
+},
+{
+"from": "μGy",
+"to": "Gy",
+"value": 1e-06
+},
+{
+"from": "nGy",
+"to": "Gy",
+"value": 1e-09
+},
+{
+"from": "pGy",
+"to": "Gy",
+"value": 1e-12
+},
+{
+"from": "Sv",
+"to": "m^2*s^-2",
+"value": 1.0
+},
+{
+"from": "kSv",
+"to": "Sv",
+"value": 1000.0
+},
+{
+"from": "MSv",
+"to": "Sv",
+"value": 1000000.0
+},
+{
+"from": "GSv",
+"to": "Sv",
+"value": 1000000000.0
+},
+{
+"from": "TSv",
+"to": "Sv",
+"value": 1000000000000.0
+},
+{
+"from": "mSv",
+"to": "Sv",
+"value": 0.001
+},
+{
+"from": "μSv",
+"to": "Sv",
+"value": 1e-06
+},
+{
+"from": "nSv",
+"to": "Sv",
+"value": 1e-09
+},
+{
+"from": "pSv",
+"to": "Sv",
+"value": 1e-12
+},
+{
+"from": "lx",
+"to": "lm/m^2",
+"value": 1.0
+},
+{
+"from": "kat",
+"to": "mol/s",
+"value": 1.0
+},
+{
+"from": "deg",
+"to": "°",
+"value": 1.0
+},
+{
+"from": "grad",
+"to": "°",
+"value": 0.9
+},
+{
+"from": "rev",
+"to": "°",
+"value": 360.0
+},
+{
+"from": "bbl_UK",
+"to": "gal_UK",
+"value": 36.0
+},
+{
+"from": "bbl_UK",
+"to": "qt_UK",
+"value": 144.0
+},
+{
+"from": "bbl_UK",
+"to": "pt_UK",
+"value": 288.0
+},
+{
+"from": "bbl_UK",
+"to": "gi_UK",
+"value": 1152.0
+},
+{
+"from": "bbl_UK",
+"to": "fl_oz_UK",
+"value": 5760.0
+},
+{
+"from": "bbl_UK",
+"to": "fl_dr_UK",
+"value": 46080.0
+},
+{
+"from": "fl_oz_UK",
+"to": "fl_dr_UK",
+"value": 8.0
+},
+{
+"from": "gi_UK",
+"to": "fl_oz_UK",
+"value": 5.0
+},
+{
+"from": "pt_UK",
+"to": "gi_UK",
+"value": 4.0
+},
+{
+"from": "qt_UK",
+"to": "pt_UK",
+"value": 2.0
+},
+{
+"from": "gal_UK",
+"to": "qt_UK",
+"value": 4.0
+},
+{
+"from": "bbl_US",
+"to": "gal_US",
+"value": 31.5
+},
+{
+"from": "bbl_US",
+"to": "qt_US",
+"value": 126.0
+},
+{
+"from": "bbl_US",
+"to": "pt_US",
+"value": 252.0
+},
+{
+"from": "bbl_US",
+"to": "gi_US",
+"value": 1008.0
+},
+{
+"from": "bbl_US",
+"to": "fl_oz_US",
+"value": 4032.0
+},
+{
+"from": "bbl_US",
+"to": "fl_dr_US",
+"value": 32256.0
+},
+{
+"from": "fl_oz_US",
+"to": "fl_dr_US",
+"value": 8.0
+},
+{
+"from": "gi_US",
+"to": "fl_oz_US",
+"value": 4.0
+},
+{
+"from": "pt_US",
+"to": "gi_US",
+"value": 4.0
+},
+{
+"from": "qt_US",
+"to": "pt_US",
+"value": 2.0
+},
+{
+"from": "gal_US",
+"to": "qt_US",
+"value": 4.0
+},
+{
+"from": "bu_US",
+"to": "pk_US",
+"value": 4.0
+},
+{
+"from": "bu_US",
+"to": "gal_dry",
+"value": 8.0
+},
+{
+"from": "bu_US",
+"to": "qt_dry",
+"value": 32.0
+},
+{
+"from": "bu_US",
+"to": "pt_dry",
+"value": 64.0
+},
+{
+"from": "26.25gal_dry",
+"to": "bbl_dry",
+"value": 1.0
+},
+{
+"from": "bu_UK",
+"to": "pk_UK",
+"value": 4.0
+}
+],
+"smathUnits": [
+{
+"smath": "%",
+"name": "%",
+"factor": 0.01,
+"offset": 0.0,
+"dim": [
+0,
+0,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "\\0022\\",
+"name": "arcsec",
+"factor": 4.84813681109536e-06,
+"offset": 0.0,
+"dim": [
+0,
+0,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "\\0027\\",
+"name": "arcmin",
+"factor": 0.0002908882086657216,
+"offset": 0.0,
+"dim": [
+0,
+0,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "a",
+"name": "a",
+"factor": 100.0,
+"offset": 0.0,
+"dim": [
+2,
+0,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "A",
+"name": "A",
+"factor": 1.0,
+"offset": 0.0,
+"dim": [
+0,
+0,
+0,
+1,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "acre",
+"name": "acre",
+"factor": 4046.8564224,
+"offset": 0.0,
+"dim": [
+2,
+0,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "Angstrom",
+"name": "Angstrom",
+"factor": 1e-10,
+"offset": 0.0,
+"dim": [
+1,
+0,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "arcmin",
+"name": "arcmin",
+"factor": 0.0002908882086657216,
+"offset": 0.0,
+"dim": [
+0,
+0,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "arcsec",
+"name": "arcsec",
+"factor": 4.84813681109536e-06,
+"offset": 0.0,
+"dim": [
+0,
+0,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "atm",
+"name": "atm",
+"factor": 101325.0,
+"offset": 0.0,
+"dim": [
+-1,
+1,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "atom",
+"name": "atom",
+"factor": 1.6605391e-24,
+"offset": 0.0,
+"dim": [
+0,
+0,
+0,
+0,
+0,
+1,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "au",
+"name": "au",
+"factor": 149597870700.0,
+"offset": 0.0,
+"dim": [
+1,
+0,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "bar",
+"name": "bar",
+"factor": 100000.0,
+"offset": 0.0,
+"dim": [
+-1,
+1,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "barn",
+"name": "barn",
+"factor": 1e-28,
+"offset": 0.0,
+"dim": [
+2,
+0,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "bohr",
+"name": "bohr",
+"factor": 5.291772108e-11,
+"offset": 0.0,
+"dim": [
+1,
+0,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "Bq",
+"name": "Bq",
+"factor": 1.0,
+"offset": 0.0,
+"dim": [
+0,
+0,
+-1,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "BTU",
+"name": "BTU",
+"factor": 1055.05585262,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "C",
+"name": "C",
+"factor": 1.0,
+"offset": 0.0,
+"dim": [
+0,
+0,
+1,
+1,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "c",
+"name": "c",
+"factor": 299792458.0,
+"offset": 0.0,
+"dim": [
+1,
+0,
+-1,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-05
+},
+{
+"smath": "ca",
+"name": "ca",
+"factor": 1.0,
+"offset": 0.0,
+"dim": [
+2,
+0,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "cal",
+"name": "cal.IT",
+"factor": 4.1868,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "cd",
+"name": "cd",
+"factor": 1.0,
+"offset": 0.0,
+"dim": [
+0,
+0,
+0,
+0,
+0,
+0,
+1
+],
+"tolerance": 1e-09
+},
+{
+"smath": "Ci",
+"name": "Ci",
+"factor": 37000000000.0,
+"offset": 0.0,
+"dim": [
+0,
+0,
+-1,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "cm",
+"name": "cm",
+"factor": 0.01,
+"offset": 0.0,
+"dim": [
+1,
+0,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "ct",
+"name": "ct",
+"factor": 0.0002,
+"offset": 0.0,
+"dim": [
+0,
+1,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "D",
+"name": "D",
+"factor": 3.3356409500000006e-30,
+"offset": 0.0,
+"dim": [
+1,
+0,
+1,
+1,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "daa",
+"name": "daa",
+"factor": 1000.0,
+"offset": 0.0,
+"dim": [
+2,
+0,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "day",
+"name": "day",
+"factor": 86400.0,
+"offset": 0.0,
+"dim": [
+0,
+0,
+1,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "deg",
+"name": "deg",
+"factor": 0.017453292519943295,
+"offset": 0.0,
+"dim": [
+0,
+0,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "den",
+"name": "den",
+"factor": 1.11e-07,
+"offset": 0.0,
+"dim": [
+-1,
+1,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "dm",
+"name": "dm",
+"factor": 0.1,
+"offset": 0.0,
+"dim": [
+1,
+0,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "dpi",
+"name": "dpi",
+"factor": 39.37007874015748,
+"offset": 0.0,
+"dim": [
+-1,
+0,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "dS",
+"name": "dS",
+"factor": 0.1,
+"offset": 0.0,
+"dim": [
+-2,
+-1,
+3,
+2,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "dyn",
+"name": "dyn",
+"factor": 1e-05,
+"offset": 0.0,
+"dim": [
+1,
+1,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "dyne",
+"name": "dyne",
+"factor": 1e-05,
+"offset": 0.0,
+"dim": [
+1,
+1,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "e",
+"name": "e",
+"factor": 1.6021764874e-19,
+"offset": 0.0,
+"dim": [
+0,
+0,
+1,
+1,
+0,
+0,
+0
+],
+"tolerance": 1e-05
+},
+{
+"smath": "erg",
+"name": "erg",
+"factor": 1e-07,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "eV",
+"name": "eV",
+"factor": 1.6021766340000001e-19,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "F",
+"name": "F",
+"factor": 1.0,
+"offset": 0.0,
+"dim": [
+-2,
+-1,
+4,
+2,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "farad",
+"name": "farad",
+"factor": 1.0,
+"offset": 0.0,
+"dim": [
+-2,
+-1,
+4,
+2,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "faraday",
+"name": "faraday",
+"factor": 96485.3328959,
+"offset": 0.0,
+"dim": [
+0,
+0,
+1,
+1,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "Fd",
+"name": "Fd",
+"factor": 96485.3328959,
+"offset": 0.0,
+"dim": [
+0,
+0,
+1,
+1,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "Fr",
+"name": "Fr",
+"factor": 3.3356409500000003e-10,
+"offset": 0.0,
+"dim": [
+0,
+0,
+1,
+1,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "ft",
+"name": "ft",
+"factor": 0.3048,
+"offset": 0.0,
+"dim": [
+1,
+0,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "furlong",
+"name": "furlong",
+"factor": 201.168,
+"offset": 0.0,
+"dim": [
+1,
+0,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "G",
+"name": "G",
+"factor": 0.0001,
+"offset": 0.0,
+"dim": [
+0,
+1,
+-2,
+-1,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "g",
+"name": "g",
+"factor": 0.001,
+"offset": 0.0,
+"dim": [
+0,
+1,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "g.e",
+"name": "g.e",
+"factor": 9.80665,
+"offset": 0.0,
+"dim": [
+1,
+0,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-05
+},
+{
+"smath": "G.N",
+"name": "G.N",
+"factor": 6.674286699999999e-11,
+"offset": 0.0,
+"dim": [
+3,
+-1,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-05
+},
+{
+"smath": "gal",
+"name": "gal",
+"factor": 0.0037854119678,
+"offset": 0.0,
+"dim": [
+3,
+0,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-06
+},
+{
+"smath": "gauss",
+"name": "gauss",
+"factor": 0.0001,
+"offset": 0.0,
+"dim": [
+0,
+1,
+-2,
+-1,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "GBq",
+"name": "GBq",
+"factor": 1000000000.0,
+"offset": 0.0,
+"dim": [
+0,
+0,
+-1,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "GeV",
+"name": "GeV",
+"factor": 1.602176634e-10,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "gf",
+"name": "gf",
+"factor": 0.00980665,
+"offset": 0.0,
+"dim": [
+1,
+1,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "GHz",
+"name": "GHz",
+"factor": 1000000000.0,
+"offset": 0.0,
+"dim": [
+0,
+0,
+-1,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "Gi",
+"name": "Gi",
+"factor": 0.7957747154594768,
+"offset": 0.0,
+"dim": [
+0,
+0,
+0,
+1,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "GJ",
+"name": "GJ",
+"factor": 1000000000.0,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "GN",
+"name": "GN",
+"factor": 1000000000.0,
+"offset": 0.0,
+"dim": [
+1,
+1,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "gon",
+"name": "gon",
+"factor": 0.015707963267948967,
+"offset": 0.0,
+"dim": [
+0,
+0,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "GPa",
+"name": "GPa",
+"factor": 1000000000.0,
+"offset": 0.0,
+"dim": [
+-1,
+1,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "grad",
+"name": "grad",
+"factor": 0.015707963267948967,
+"offset": 0.0,
+"dim": [
+0,
+0,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "gram",
+"name": "gram",
+"factor": 0.001,
+"offset": 0.0,
+"dim": [
+0,
+1,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "GW",
+"name": "GW",
+"factor": 1000000000.0,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-3,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "Gy",
+"name": "Gy",
+"factor": 1.0,
+"offset": 0.0,
+"dim": [
+2,
+0,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "H",
+"name": "H",
+"factor": 1.0,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-2,
+-2,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "h",
+"name": "ℎ",
+"factor": 6.626068963299999e-34,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-1,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-05
+},
+{
+"smath": "ha",
+"name": "ha",
+"factor": 10000.0,
+"offset": 0.0,
+"dim": [
+2,
+0,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "henry",
+"name": "henry",
+"factor": 1.0,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-2,
+-2,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "hhp",
+"name": "hhp",
+"factor": 746.043,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-3,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "hp",
+"name": "hp",
+"factor": 745.6998715822702,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-3,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "hr",
+"name": "hr",
+"factor": 3600.0,
+"offset": 0.0,
+"dim": [
+0,
+0,
+1,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "Hz",
+"name": "Hz",
+"factor": 1.0,
+"offset": 0.0,
+"dim": [
+0,
+0,
+-1,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "in",
+"name": "in",
+"factor": 0.025400000000000002,
+"offset": 0.0,
+"dim": [
+1,
+0,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "inHg",
+"name": "inHg",
+"factor": 3386.3889999999997,
+"offset": 0.0,
+"dim": [
+-1,
+1,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "J",
+"name": "J",
+"factor": 1.0,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "joule",
+"name": "joule",
+"factor": 1.0,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "K",
+"name": "K",
+"factor": 1.0,
+"offset": 0.0,
+"dim": [
+0,
+0,
+0,
+0,
+1,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "k",
+"name": "k",
+"factor": 1.3806504239999998e-23,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-2,
+0,
+-1,
+0,
+0
+],
+"tolerance": 1e-05
+},
+{
+"smath": "kA",
+"name": "kA",
+"factor": 1000.0,
+"offset": 0.0,
+"dim": [
+0,
+0,
+0,
+1,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "kat",
+"name": "kat",
+"factor": 1.0,
+"offset": 0.0,
+"dim": [
+0,
+0,
+-1,
+0,
+0,
+1,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "katal",
+"name": "katal",
+"factor": 1.0,
+"offset": 0.0,
+"dim": [
+0,
+0,
+-1,
+0,
+0,
+1,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "kBq",
+"name": "kBq",
+"factor": 1000.0,
+"offset": 0.0,
+"dim": [
+0,
+0,
+-1,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "kcal",
+"name": "kcal.IT",
+"factor": 4186.8,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "keV",
+"name": "keV",
+"factor": 1.6021766340000001e-16,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "kg",
+"name": "kg",
+"factor": 1.0,
+"offset": 0.0,
+"dim": [
+0,
+1,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "kgf",
+"name": "kgf",
+"factor": 9.80665,
+"offset": 0.0,
+"dim": [
+1,
+1,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "kHz",
+"name": "kHz",
+"factor": 1000.0,
+"offset": 0.0,
+"dim": [
+0,
+0,
+-1,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "kip",
+"name": "kip",
+"factor": 4448.2216152605,
+"offset": 0.0,
+"dim": [
+1,
+1,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "kJ",
+"name": "kJ",
+"factor": 1000.0,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "klm",
+"name": "klm",
+"factor": 1000.0,
+"offset": 0.0,
+"dim": [
+0,
+0,
+0,
+0,
+0,
+0,
+1
+],
+"tolerance": 1e-09
+},
+{
+"smath": "klx",
+"name": "klx",
+"factor": 1000.0,
+"offset": 0.0,
+"dim": [
+-2,
+0,
+0,
+0,
+0,
+0,
+1
+],
+"tolerance": 1e-09
+},
+{
+"smath": "km",
+"name": "km",
+"factor": 1000.0,
+"offset": 0.0,
+"dim": [
+1,
+0,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "kmol",
+"name": "kmol",
+"factor": 1000.0,
+"offset": 0.0,
+"dim": [
+0,
+0,
+0,
+0,
+0,
+1,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "kN",
+"name": "kN",
+"factor": 1000.0,
+"offset": 0.0,
+"dim": [
+1,
+1,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "kn",
+"name": "kn",
+"factor": 0.514444,
+"offset": 0.0,
+"dim": [
+1,
+0,
+-1,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-06
+},
+{
+"smath": "knot",
+"name": "knot",
+"factor": 0.514444,
+"offset": 0.0,
+"dim": [
+1,
+0,
+-1,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-06
+},
+{
+"smath": "kohm",
+"name": "kohm",
+"factor": 1000.0,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-3,
+-2,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "kPa",
+"name": "kPa",
+"factor": 1000.0,
+"offset": 0.0,
+"dim": [
+-1,
+1,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "kph",
+"name": "kph",
+"factor": 0.2777777777777778,
+"offset": 0.0,
+"dim": [
+1,
+0,
+-1,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "kpsi",
+"name": "kpsi",
+"factor": 6894757.293168359,
+"offset": 0.0,
+"dim": [
+-1,
+1,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "ks",
+"name": "ks",
+"factor": 1000.0,
+"offset": 0.0,
+"dim": [
+0,
+0,
+1,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "ksf",
+"name": "ksf",
+"factor": 47880.2589803358,
+"offset": 0.0,
+"dim": [
+-1,
+1,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "ksi",
+"name": "ksi",
+"factor": 6894757.29316836,
+"offset": 0.0,
+"dim": [
+-1,
+1,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "kV",
+"name": "kV",
+"factor": 1000.0,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-3,
+-1,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "kW",
+"name": "kW",
+"factor": 1000.0,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-3,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "kΩ",
+"name": "kΩ",
+"factor": 1000.0,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-3,
+-2,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "L",
+"name": "L",
+"factor": 0.001,
+"offset": 0.0,
+"dim": [
+3,
+0,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "lb",
+"name": "lb",
+"factor": 0.45359236999999997,
+"offset": 0.0,
+"dim": [
+0,
+1,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "lb.m",
+"name": "lb.m",
+"factor": 0.45359236999999997,
+"offset": 0.0,
+"dim": [
+0,
+1,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "lbf",
+"name": "lbf",
+"factor": 4.4482216152605,
+"offset": 0.0,
+"dim": [
+1,
+1,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "lbm",
+"name": "lbm",
+"factor": 0.45359236999999997,
+"offset": 0.0,
+"dim": [
+0,
+1,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "lbmol",
+"name": "lbmol",
+"factor": 453.59236999999996,
+"offset": 0.0,
+"dim": [
+0,
+0,
+0,
+0,
+0,
+1,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "lm",
+"name": "lm",
+"factor": 1.0,
+"offset": 0.0,
+"dim": [
+0,
+0,
+0,
+0,
+0,
+0,
+1
+],
+"tolerance": 1e-09
+},
+{
+"smath": "lx",
+"name": "lx",
+"factor": 1.0,
+"offset": 0.0,
+"dim": [
+-2,
+0,
+0,
+0,
+0,
+0,
+1
+],
+"tolerance": 1e-09
+},
+{
+"smath": "ly",
+"name": "ly",
+"factor": 9460730472580800.0,
+"offset": 0.0,
+"dim": [
+1,
+0,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "m",
+"name": "m",
+"factor": 1.0,
+"offset": 0.0,
+"dim": [
+1,
+0,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "m.e",
+"name": "m.e",
+"factor": 9.109382154500001e-31,
+"offset": 0.0,
+"dim": [
+0,
+1,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-05
+},
+{
+"smath": "m.n",
+"name": "m.n",
+"factor": 1.6749272118400002e-27,
+"offset": 0.0,
+"dim": [
+0,
+1,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-05
+},
+{
+"smath": "m.p",
+"name": "m.p",
+"factor": 1.67262163783e-27,
+"offset": 0.0,
+"dim": [
+0,
+1,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-05
+},
+{
+"smath": "mA",
+"name": "mA",
+"factor": 0.001,
+"offset": 0.0,
+"dim": [
+0,
+0,
+0,
+1,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "MBq",
+"name": "MBq",
+"factor": 1000000.0,
+"offset": 0.0,
+"dim": [
+0,
+0,
+-1,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "mC",
+"name": "mC",
+"factor": 0.001,
+"offset": 0.0,
+"dim": [
+0,
+0,
+1,
+1,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "mCi",
+"name": "mCi",
+"factor": 37000000.0,
+"offset": 0.0,
+"dim": [
+0,
+0,
+-1,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "MeV",
+"name": "MeV",
+"factor": 1.602176634e-13,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "mF",
+"name": "mF",
+"factor": 0.001,
+"offset": 0.0,
+"dim": [
+-2,
+-1,
+4,
+2,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "Mg",
+"name": "Mg",
+"factor": 1000.0,
+"offset": 0.0,
+"dim": [
+0,
+1,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "mg",
+"name": "mg",
+"factor": 1e-06,
+"offset": 0.0,
+"dim": [
+0,
+1,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "mH",
+"name": "mH",
+"factor": 0.001,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-2,
+-2,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "MHz",
+"name": "MHz",
+"factor": 1000000.0,
+"offset": 0.0,
+"dim": [
+0,
+0,
+-1,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "mi",
+"name": "mi",
+"factor": 1609.344,
+"offset": 0.0,
+"dim": [
+1,
+0,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "micron",
+"name": "micron",
+"factor": 1e-06,
+"offset": 0.0,
+"dim": [
+1,
+0,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "mile",
+"name": "mile",
+"factor": 1609.344,
+"offset": 0.0,
+"dim": [
+1,
+0,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "min",
+"name": "min",
+"factor": 60.0,
+"offset": 0.0,
+"dim": [
+0,
+0,
+1,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "MJ",
+"name": "MJ",
+"factor": 1000000.0,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "mJ",
+"name": "mJ",
+"factor": 0.001,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "mL",
+"name": "mL",
+"factor": 1e-06,
+"offset": 0.0,
+"dim": [
+3,
+0,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "mm",
+"name": "mm",
+"factor": 0.001,
+"offset": 0.0,
+"dim": [
+1,
+0,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "mmHg",
+"name": "mmHg",
+"factor": 133.322387415,
+"offset": 0.0,
+"dim": [
+-1,
+1,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "mmol",
+"name": "mmol",
+"factor": 0.001,
+"offset": 0.0,
+"dim": [
+0,
+0,
+0,
+0,
+0,
+1,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "MN",
+"name": "MN",
+"factor": 1000000.0,
+"offset": 0.0,
+"dim": [
+1,
+1,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "mN",
+"name": "mN",
+"factor": 0.001,
+"offset": 0.0,
+"dim": [
+1,
+1,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "Mohm",
+"name": "Mohm",
+"factor": 1000000.0,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-3,
+-2,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "mohm",
+"name": "mohm",
+"factor": 0.001,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-3,
+-2,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "mol",
+"name": "mol",
+"factor": 1.0,
+"offset": 0.0,
+"dim": [
+0,
+0,
+0,
+0,
+0,
+1,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "month",
+"name": "month",
+"factor": 2629746.0,
+"offset": 0.0,
+"dim": [
+0,
+0,
+1,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "MPa",
+"name": "MPa",
+"factor": 1000000.0,
+"offset": 0.0,
+"dim": [
+-1,
+1,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "mph",
+"name": "mph",
+"factor": 0.44704,
+"offset": 0.0,
+"dim": [
+1,
+0,
+-1,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "ms",
+"name": "ms",
+"factor": 0.001,
+"offset": 0.0,
+"dim": [
+0,
+0,
+1,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "mS",
+"name": "mS",
+"factor": 0.001,
+"offset": 0.0,
+"dim": [
+-2,
+-1,
+3,
+2,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "mT",
+"name": "mT",
+"factor": 0.001,
+"offset": 0.0,
+"dim": [
+0,
+1,
+-2,
+-1,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "mV",
+"name": "mV",
+"factor": 0.001,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-3,
+-1,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "MW",
+"name": "MW",
+"factor": 1000000.0,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-3,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "mW",
+"name": "mW",
+"factor": 0.001,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-3,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "mWb",
+"name": "mWb",
+"factor": 0.001,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-2,
+-1,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "Mx",
+"name": "Mx",
+"factor": 1e-08,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-2,
+-1,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "MΩ",
+"name": "MΩ",
+"factor": 1000000.0,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-3,
+-2,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "mΩ",
+"name": "mΩ",
+"factor": 0.001,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-3,
+-2,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "N",
+"name": "N",
+"factor": 1.0,
+"offset": 0.0,
+"dim": [
+1,
+1,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "N.A",
+"name": "N.A",
+"factor": 6.0221415099999995e+23,
+"offset": 0.0,
+"dim": [
+0,
+0,
+0,
+0,
+0,
+-1,
+0
+],
+"tolerance": 1e-05
+},
+{
+"smath": "nA",
+"name": "nA",
+"factor": 1e-09,
+"offset": 0.0,
+"dim": [
+0,
+0,
+0,
+1,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "nC",
+"name": "nC",
+"factor": 1e-09,
+"offset": 0.0,
+"dim": [
+0,
+0,
+1,
+1,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "nF",
+"name": "nF",
+"factor": 1e-09,
+"offset": 0.0,
+"dim": [
+-2,
+-1,
+4,
+2,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "nH",
+"name": "nH",
+"factor": 1e-09,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-2,
+-2,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "nJ",
+"name": "nJ",
+"factor": 1e-09,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "nm",
+"name": "nm",
+"factor": 1e-09,
+"offset": 0.0,
+"dim": [
+1,
+0,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "nmi",
+"name": "nmi",
+"factor": 1852.0,
+"offset": 0.0,
+"dim": [
+1,
+0,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "nmol",
+"name": "nmol",
+"factor": 1e-09,
+"offset": 0.0,
+"dim": [
+0,
+0,
+0,
+0,
+0,
+1,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "nN",
+"name": "nN",
+"factor": 1e-09,
+"offset": 0.0,
+"dim": [
+1,
+1,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "ns",
+"name": "ns",
+"factor": 1e-09,
+"offset": 0.0,
+"dim": [
+0,
+0,
+1,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "nt",
+"name": "nt",
+"factor": 1.0,
+"offset": 0.0,
+"dim": [
+-2,
+0,
+0,
+0,
+0,
+0,
+1
+],
+"tolerance": 1e-09
+},
+{
+"smath": "nV",
+"name": "nV",
+"factor": 1e-09,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-3,
+-1,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "nW",
+"name": "nW",
+"factor": 1e-09,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-3,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "Oe",
+"name": "Oe",
+"factor": 79.5775,
+"offset": 0.0,
+"dim": [
+-1,
+0,
+0,
+1,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "ohm",
+"name": "ohm",
+"factor": 1.0,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-3,
+-2,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "ounce",
+"name": "ounce",
+"factor": 0.028349523125,
+"offset": 0.0,
+"dim": [
+0,
+1,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "oz",
+"name": "oz",
+"factor": 0.028349523125,
+"offset": 0.0,
+"dim": [
+0,
+1,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "P",
+"name": "P",
+"factor": 0.1,
+"offset": 0.0,
+"dim": [
+-1,
+1,
+-1,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "pA",
+"name": "pA",
+"factor": 1e-12,
+"offset": 0.0,
+"dim": [
+0,
+0,
+0,
+1,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "Pa",
+"name": "Pa",
+"factor": 1.0,
+"offset": 0.0,
+"dim": [
+-1,
+1,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "pC",
+"name": "pC",
+"factor": 1e-12,
+"offset": 0.0,
+"dim": [
+0,
+0,
+1,
+1,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "pc",
+"name": "pc",
+"factor": 3.08567758149137e+16,
+"offset": 0.0,
+"dim": [
+1,
+0,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "pF",
+"name": "pF",
+"factor": 1e-12,
+"offset": 0.0,
+"dim": [
+-2,
+-1,
+4,
+2,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "pJ",
+"name": "pJ",
+"factor": 1e-12,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "pm",
+"name": "pm",
+"factor": 1e-12,
+"offset": 0.0,
+"dim": [
+1,
+0,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "pN",
+"name": "pN",
+"factor": 1e-12,
+"offset": 0.0,
+"dim": [
+1,
+1,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "poise",
+"name": "poise",
+"factor": 0.1,
+"offset": 0.0,
+"dim": [
+-1,
+1,
+-1,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "pound",
+"name": "pound",
+"factor": 0.45359236999999997,
+"offset": 0.0,
+"dim": [
+0,
+1,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "ppb",
+"name": "ppb",
+"factor": 1e-09,
+"offset": 0.0,
+"dim": [
+0,
+0,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "ppm",
+"name": "ppm",
+"factor": 1e-06,
+"offset": 0.0,
+"dim": [
+0,
+0,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "ps",
+"name": "ps",
+"factor": 1e-12,
+"offset": 0.0,
+"dim": [
+0,
+0,
+1,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "pS",
+"name": "pS",
+"factor": 1e-12,
+"offset": 0.0,
+"dim": [
+-2,
+-1,
+3,
+2,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "psf",
+"name": "psf",
+"factor": 47.8802589803358,
+"offset": 0.0,
+"dim": [
+-1,
+1,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "psi",
+"name": "psi",
+"factor": 6894.75729316836,
+"offset": 0.0,
+"dim": [
+-1,
+1,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "pV",
+"name": "pV",
+"factor": 1e-12,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-3,
+-1,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "pW",
+"name": "pW",
+"factor": 1e-12,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-3,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "R.m",
+"name": "R.m",
+"factor": 8.31447215,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-2,
+0,
+-1,
+-1,
+0
+],
+"tolerance": 1e-05
+},
+{
+"smath": "rad",
+"name": "rad",
+"factor": 1.0,
+"offset": 0.0,
+"dim": [
+0,
+0,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "radpm",
+"name": "radpm",
+"factor": 0.016666666666666666,
+"offset": 0.0,
+"dim": [
+0,
+0,
+-1,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "rph",
+"name": "rph",
+"factor": 0.0017453292519943296,
+"offset": 0.0,
+"dim": [
+0,
+0,
+-1,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "rpm",
+"name": "rev/'min",
+"factor": 0.10471975511965977,
+"offset": 0.0,
+"dim": [
+0,
+0,
+-1,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "s",
+"name": "s",
+"factor": 1.0,
+"offset": 0.0,
+"dim": [
+0,
+0,
+1,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "S",
+"name": "S",
+"factor": 1.0,
+"offset": 0.0,
+"dim": [
+-2,
+-1,
+3,
+2,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "sb",
+"name": "sb",
+"factor": 10000.0,
+"offset": 0.0,
+"dim": [
+-2,
+0,
+0,
+0,
+0,
+0,
+1
+],
+"tolerance": 1e-09
+},
+{
+"smath": "sec",
+"name": "sec",
+"factor": 1.0,
+"offset": 0.0,
+"dim": [
+0,
+0,
+1,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "slug",
+"name": "slug",
+"factor": 14.5939029372064,
+"offset": 0.0,
+"dim": [
+0,
+1,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "Smoot",
+"name": "Smoot",
+"factor": 1.7018,
+"offset": 0.0,
+"dim": [
+1,
+0,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "sr",
+"name": "sr",
+"factor": 1.0,
+"offset": 0.0,
+"dim": [
+0,
+0,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "St",
+"name": "St",
+"factor": 0.0001,
+"offset": 0.0,
+"dim": [
+2,
+0,
+-1,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "statC",
+"name": "statC",
+"factor": 3.3356409500000003e-10,
+"offset": 0.0,
+"dim": [
+0,
+0,
+1,
+1,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "stokes",
+"name": "stokes",
+"factor": 0.0001,
+"offset": 0.0,
+"dim": [
+2,
+0,
+-1,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "Sv",
+"name": "Sv",
+"factor": 1.0,
+"offset": 0.0,
+"dim": [
+2,
+0,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "T",
+"name": "T",
+"factor": 1.0,
+"offset": 0.0,
+"dim": [
+0,
+1,
+-2,
+-1,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "t",
+"name": "t",
+"factor": 1000.0,
+"offset": 0.0,
+"dim": [
+0,
+1,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "tesla",
+"name": "tesla",
+"factor": 1.0,
+"offset": 0.0,
+"dim": [
+0,
+1,
+-2,
+-1,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "TeV",
+"name": "TeV",
+"factor": 1.6021766340000001e-07,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "THz",
+"name": "THz",
+"factor": 1000000000000.0,
+"offset": 0.0,
+"dim": [
+0,
+0,
+-1,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "TJ",
+"name": "TJ",
+"factor": 1000000000000.0,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "TN",
+"name": "TN",
+"factor": 1000000000000.0,
+"offset": 0.0,
+"dim": [
+1,
+1,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "ton",
+"name": "ton",
+"factor": 907.1847399999999,
+"offset": 0.0,
+"dim": [
+0,
+1,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "tonf",
+"name": "tonf",
+"factor": 8896.443230521,
+"offset": 0.0,
+"dim": [
+1,
+1,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "tonne",
+"name": "tonne",
+"factor": 1000.0,
+"offset": 0.0,
+"dim": [
+0,
+1,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "tonnef",
+"name": "tonnef",
+"factor": 9806.65,
+"offset": 0.0,
+"dim": [
+1,
+1,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "torr",
+"name": "torr",
+"factor": 133.32236842105263,
+"offset": 0.0,
+"dim": [
+-1,
+1,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "u",
+"name": "u",
+"factor": 1.6605388628e-27,
+"offset": 0.0,
+"dim": [
+0,
+1,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-05
+},
+{
+"smath": "V",
+"name": "V",
+"factor": 1.0,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-3,
+-1,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "volt",
+"name": "volt",
+"factor": 1.0,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-3,
+-1,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "W",
+"name": "W",
+"factor": 1.0,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-3,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "watt",
+"name": "watt",
+"factor": 1.0,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-3,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "Wb",
+"name": "Wb",
+"factor": 1.0,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-2,
+-1,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "week",
+"name": "week",
+"factor": 604800.0,
+"offset": 0.0,
+"dim": [
+0,
+0,
+1,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "yd",
+"name": "yd",
+"factor": 0.9144000000000001,
+"offset": 0.0,
+"dim": [
+1,
+0,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "yr",
+"name": "yr.Gregorian",
+"factor": 31556951.999999996,
+"offset": 0.0,
+"dim": [
+0,
+0,
+1,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "°",
+"name": "°",
+"factor": 0.017453292519943295,
+"offset": 0.0,
+"dim": [
+0,
+0,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "°C",
+"name": "°C",
+"factor": 1.0,
+"offset": 273.15,
+"dim": [
+0,
+0,
+0,
+0,
+1,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "°F",
+"name": "°F",
+"factor": 0.5555555555555556,
+"offset": 255.3722222222222,
+"dim": [
+0,
+0,
+0,
+0,
+1,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "°Ra",
+"name": "°Ra",
+"factor": 0.5555555555555556,
+"offset": 0.0,
+"dim": [
+0,
+0,
+0,
+0,
+1,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "°Re",
+"name": "°Re",
+"factor": 1.25,
+"offset": 273.15,
+"dim": [
+0,
+0,
+0,
+0,
+1,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "Å",
+"name": "Å",
+"factor": 1e-10,
+"offset": 0.0,
+"dim": [
+1,
+0,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "Δ°C",
+"name": "Δ°C",
+"factor": 1.0,
+"offset": 0.0,
+"dim": [
+0,
+0,
+0,
+0,
+1,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "Δ°F",
+"name": "Δ°F",
+"factor": 0.5555555555555556,
+"offset": 0.0,
+"dim": [
+0,
+0,
+0,
+0,
+1,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "Δ°Re",
+"name": "Δ°Re",
+"factor": 1.25,
+"offset": 0.0,
+"dim": [
+0,
+0,
+0,
+0,
+1,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "ε.0",
+"name": "ε.0",
+"factor": 8.85418781762039e-12,
+"offset": 0.0,
+"dim": [
+-3,
+-1,
+4,
+2,
+0,
+0,
+0
+],
+"tolerance": 1e-05
+},
+{
+"smath": "μ.0",
+"name": "μ.0",
+"factor": 1.2566370614359173e-06,
+"offset": 0.0,
+"dim": [
+1,
+1,
+-2,
+-2,
+0,
+0,
+0
+],
+"tolerance": 1e-05
+},
+{
+"smath": "μA",
+"name": "μA",
+"factor": 1e-06,
+"offset": 0.0,
+"dim": [
+0,
+0,
+0,
+1,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "μC",
+"name": "μC",
+"factor": 1e-06,
+"offset": 0.0,
+"dim": [
+0,
+0,
+1,
+1,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "μCi",
+"name": "μCi",
+"factor": 37000.0,
+"offset": 0.0,
+"dim": [
+0,
+0,
+-1,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "μF",
+"name": "μF",
+"factor": 1e-06,
+"offset": 0.0,
+"dim": [
+-2,
+-1,
+4,
+2,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "μg",
+"name": "μg",
+"factor": 1e-09,
+"offset": 0.0,
+"dim": [
+0,
+1,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "μH",
+"name": "μH",
+"factor": 1e-06,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-2,
+-2,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "μJ",
+"name": "μJ",
+"factor": 1e-06,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "μm",
+"name": "μm",
+"factor": 1e-06,
+"offset": 0.0,
+"dim": [
+1,
+0,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "μmol",
+"name": "μmol",
+"factor": 1e-06,
+"offset": 0.0,
+"dim": [
+0,
+0,
+0,
+0,
+0,
+1,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "μN",
+"name": "μN",
+"factor": 1e-06,
+"offset": 0.0,
+"dim": [
+1,
+1,
+-2,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "μs",
+"name": "μs",
+"factor": 1e-06,
+"offset": 0.0,
+"dim": [
+0,
+0,
+1,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "μS",
+"name": "μS",
+"factor": 1e-06,
+"offset": 0.0,
+"dim": [
+-2,
+-1,
+3,
+2,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "μT",
+"name": "μT",
+"factor": 1e-06,
+"offset": 0.0,
+"dim": [
+0,
+1,
+-2,
+-1,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "μV",
+"name": "μV",
+"factor": 1e-06,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-3,
+-1,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "μW",
+"name": "μW",
+"factor": 1e-06,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-3,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "μWb",
+"name": "μWb",
+"factor": 1e-06,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-2,
+-1,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "Ω",
+"name": "Ω",
+"factor": 1.0,
+"offset": 0.0,
+"dim": [
+2,
+1,
+-3,
+-2,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+},
+{
+"smath": "‰",
+"name": "‰",
+"factor": 0.001,
+"offset": 0.0,
+"dim": [
+0,
+0,
+0,
+0,
+0,
+0,
+0
+],
+"tolerance": 1e-09
+}
+]
+}

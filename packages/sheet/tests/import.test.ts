@@ -53,7 +53,7 @@ describe('inferTable', () => {
   });
 
   it('reports unknown units instead of guessing', () => {
-    const result = inferTable('T', [['x [furlong]'], ['1']], registry);
+    const result = inferTable('T', [['x [smoot]'], ['1']], registry);
     expect(result.diagnostics.map((d) => d.code)).toEqual(['W-TABLE-UNIT']);
     expect(result.schema.columns[0]).toEqual({ name: 'x', type: 'quantity' });
   });

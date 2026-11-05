@@ -13,7 +13,7 @@ export type RotationKind = 'turns' | 'angle';
 
 const PER_SECOND = dim({ T: -1 });
 const TURNS = /^(?:[kMGTmμµ]?Hz|rpm|rps|min⁻¹|1\/min|min\^-1)$/;
-const ANGLE = /^(?:rad|°)\/(?:s|min|h)$/;
+const ANGLE = /^(?:rad|°|deg|rev)\/(?:s|min|h)$/;
 
 export function rotationKind(unit: ResolvedUnit | undefined): RotationKind | undefined {
   if (!unit || !sameDim(unit.dim, PER_SECOND)) return undefined;

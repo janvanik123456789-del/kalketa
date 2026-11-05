@@ -566,3 +566,143 @@ describe('short things from the study of other programs', () => {
     expect(codes('A := augment([1 | 2], [1 | 2 | 3])')).toContain('E-MATRIX-SHAPE');
   });
 });
+
+/** Stages 5 and 6 of docs/navrhy/VYBER-VZORU.md; the values against NumPy and SciPy in tests/data. */
+describe('complex numbers to the end', () => {
+  const pair = (sheet: string, name: string): [number, number] => {
+    const q = evaluateSheet(sheet).values.get(name) as unknown as { si: number; im?: number };
+    return [q.si, q.im ?? 0];
+  };
+  const close = (sheet: string, re: number, im: number) => {
+    const [a, b] = pair(`z := ${sheet}`, 'z');
+    expect(a, sheet).toBeCloseTo(re, 10);
+    expect(b, sheet).toBeCloseTo(im, 10);
+  };
+
+  it('takes the functions', () => {
+    close('exp(1 + 2j)', Math.E * Math.cos(2), Math.E * Math.sin(2));
+    close('ln(1 + 1j)', Math.log(Math.SQRT2), Math.PI / 4);
+    close('sin(1 + 1j)', Math.sin(1) * Math.cosh(1), Math.cos(1) * Math.sinh(1));
+    close('cos(1 + 1j)', Math.cos(1) * Math.cosh(1), -Math.sin(1) * Math.sinh(1));
+    close('cosh(1 + 1j)', Math.cosh(1) * Math.cos(1), Math.sinh(1) * Math.sin(1));
+    close('tanh(1 + 1j)', 1.0839233273386946, 0.27175258531951174);
+    close('tan(1 + 1j)', 0.27175258531951174, 1.0839233273386946);
+    close('2^(1 + 1j)', 2 * Math.cos(Math.LN2), 2 * Math.sin(Math.LN2));
+    close('(1j)^(1j)', Math.exp(-Math.PI / 2), 0);
+    // Euler.
+    close('exp(1j·π) + 1', 0, 0);
+  });
+
+  it('keeps errors where a real answer is asked for', () => {
+    expect(codes('z := ln(-1)')).toContain('E-DOMAIN');
+    expect(codes('z := atan(1 + 1j)')).toContain('E-COMPLEX-ARG');
+    expect(codes('z := (2 m)^(1j)')).toContain('E-COMPLEX-ARG');
+    expect(codes('z := stdev([1 + 1j, 2, 3])')).toContain('E-COMPLEX-ARG');
+    expect(codes('z := max([1 + 1j, 2])')).toContain('E-COMPLEX-ARG');
+  });
+
+  it('adds complex terms, integrates a complex integrand', () => {
+    expect(pair('z := sum([1 + 1j, 2 + 3j])', 'z')).toEqual([3, 4]);
+    expect(pair('z := mean([1 + 1j, 3 + 3j])', 'z')).toEqual([2, 2]);
+    const [a, b] = pair('z := sum(exp(1j·2·π·k/8), k: 0 .. 7)', 'z');
+    expect(Math.hypot(a, b)).toBeLessThan(1e-12);
+    // ∫₀^π e^(jx) dx = 2j.
+    const [re, im] = pair('z := integral(exp(1j·x), x: 0 .. π)', 'z');
+    expect(re).toBeCloseTo(0, 9);
+    expect(im).toBeCloseTo(2, 9);
+    // Of a rectangular pulse: sin(w)/w·2 at w = 1.
+    const [fr, fi] = pair('z := integral(exp(-1j·x), x: -1 .. 1)', 'z');
+    expect(fr).toBeCloseTo(2 * Math.sin(1), 9);
+    expect(fi).toBeCloseTo(0, 9);
+  });
+
+  it('solves complex matrices, with units', () => {
+    // Coupled coils: (1 + 2j)·I1 + 1j·I2 = 10, 1j·I1 + (1 + 2j)·I2 = 0. By hand I1 = 10·(1 + 2j)/((1 + 2j)² + 1) = 10·(1 + 2j)/(−2 + 4j).
+    const sheet = 'Z := [(1 + 2j) Ω, 1j Ω | 1j Ω, (1 + 2j) Ω]\nI := lsolve(Z, [10 V | 0 V])\ni := I[1]\nd := det(Z)\nJ := inverse(Z)\nj_1 := J[1, 1]';
+    const [re, im] = pair(sheet, 'i');
+    expect(re).toBeCloseTo(3, 10);
+    expect(im).toBeCloseTo(-4, 10);
+    expect(pair(sheet, 'd')).toEqual([-2, 4]);
+    expect(pair(sheet, 'j_1')[0]).toBeCloseTo(0.3, 10);
+    expect(evaluateSheet(sheet).diagnostics.filter((x) => x.severity === 'error')).toEqual([]);
+  });
+
+  it('gives the eigenvalues of any square matrix', () => {
+    const list = (sheet: string) => (evaluateSheet(sheet).values.get('v') as unknown as { items: { si: number; im?: number }[] }).items;
+    const a = list('v := eigenvals([1, 2 | 3, 4])');
+    expect(a[0]!.si).toBeCloseTo((5 - Math.sqrt(33)) / 2, 10);
+    expect(a[1]!.si).toBeCloseTo((5 + Math.sqrt(33)) / 2, 10);
+    // A rotation: ±j, exact pair.
+    const b = list('v := eigenvals([0, -1 | 1, 0])');
+    expect(b[0]!.si).toBeCloseTo(0, 12);
+    expect(b[0]!.im).toBeCloseTo(1, 12);
+    expect(b[1]!.im).toBe(-b[0]!.im!);
+    // State matrix of a damped oscillator ω₀ = 2, ζ = 0.25: −0.5 ± j·√3.75.
+    const c = list('v := eigenvals([0, 1 | -4, -1])');
+    expect(c[0]!.si).toBeCloseTo(-0.5, 10);
+    expect(c[0]!.im).toBeCloseTo(Math.sqrt(3.75), 10);
+    // A symmetric one goes the old way, real.
+    expect(list('v := eigenvals([2, 1 | 1, 2])').map((q) => q.si)).toEqual([1, 3].map((x) => expect.closeTo(x, 10)));
+  });
+
+  it('gives eigenvectors that hold', () => {
+    const r = evaluateSheet('A := [0, 1 | -4, -1]\nv := eigenvals(A)\nV := eigenvecs(A)\nx := A·[V[1, 1] | V[2, 1]]\ny := v[1]·V[1, 1]');
+    const x = (r.values.get('x') as unknown as { items: { si: number; im?: number }[] }).items[0]!;
+    const y = r.values.get('y') as unknown as { si: number; im?: number };
+    expect(x.si).toBeCloseTo(y.si, 8);
+    expect(x.im ?? 0).toBeCloseTo(y.im ?? 0, 8);
+  });
+
+  it('unwraps a phase', () => {
+    const v = (evaluateSheet('v := unwrap([3, -3, -2.9])').values.get('v') as unknown as { items: { si: number }[] }).items.map((q) => q.si);
+    expect(v[1]).toBeCloseTo(-3 + 2 * Math.PI, 12);
+    expect(v[2]).toBeCloseTo(-2.9 + 2 * Math.PI, 12);
+  });
+});
+
+describe('linear algebra and whole numbers, stage 6', () => {
+  it('rank, cond, singular values, null space', () => {
+    expect(si('a := rank([1, 2 | 2, 4])', 'a')).toBe(1);
+    expect(si('a := rank([1, 0 | 0, 1])', 'a')).toBe(2);
+    expect(si('a := rank([1, 2, 3 | 4, 5, 6 | 7, 8, 9])', 'a')).toBe(2);
+    expect(si('a := rank([1, 2, 3 | 4, 5, 6])', 'a')).toBe(2);
+    expect(si('a := cond([1, 0 | 0, 1])', 'a')).toBeCloseTo(1, 12);
+    const n = (evaluateSheet('v := nullspace([1, 2 | 2, 4])').values.get('v') as unknown as { items: { si: number }[] }).items.map((q) => q.si);
+    expect(n[0]).toBeCloseTo(1, 10);
+    expect(n[1]).toBeCloseTo(-0.5, 10);
+    expect(codes('v := nullspace([1, 0 | 0, 1])')).toContain('E-NULLSPACE-NONE');
+    const s = (evaluateSheet('v := singvals([3, 0 | 0, 4])').values.get('v') as unknown as { items: { si: number }[] }).items.map((q) => q.si);
+    expect(s[0]).toBeCloseTo(4, 12);
+    expect(s[1]).toBeCloseTo(3, 12);
+  });
+
+  it('balances a chemical equation from the null space: C3H8 + 5 O2 = 3 CO2 + 4 H2O', () => {
+    const r = evaluateSheet('A := [3, 0, -1, 0 | 8, 0, 0, -2 | 0, 2, -2, -1]\nv := nullspace(A)\nb := rat(v/v[1]·1)\nc := v/v[1]');
+    const c = (r.values.get('c') as unknown as { items: { si: number }[] }).items.map((q) => q.si);
+    [1, 5, 3, 4].forEach((x, i) => expect(c[i]).toBeCloseTo(x, 9));
+    expect((r.values.get('b') as unknown as { value: string }).value).toBe('1; 5; 3; 4');
+  });
+
+  it('writes a number as a fraction, or says it cannot', () => {
+    const text = (sheet: string) => (evaluateSheet(sheet).values.get('a') as unknown as { value: string }).value;
+    expect(text('a := rat(0.75)')).toBe('3/4');
+    expect(text('a := rat(-1/3)')).toBe('-1/3');
+    expect(text('a := rat(2)')).toBe('2');
+    expect(codes('a := rat(π)')).toContain('E-DOMAIN');
+    expect(codes('a := rat(2 m)')).toContain('E-DOMAIN');
+  });
+
+  it('reads a chemical formula', () => {
+    const grams = (formula: string) => si(`a := molar_mass("${formula}")`, 'a') * 1000;
+    expect(grams('H2O')).toBeCloseTo(18.015, 3);
+    expect(grams('CaCO3')).toBeCloseTo(100.086, 3);
+    expect(grams('Ca3(PO4)2')).toBeCloseTo(310.174, 2);
+    expect(grams('CuSO4·5H2O')).toBeCloseTo(249.68, 1);
+    expect(grams('CO')).toBeCloseTo(28.01, 2);
+    expect(grams('Co')).toBeCloseTo(58.933, 3);
+    expect(evaluateSheet('a := molar_mass("H2O")').statements[0]!.display!.unit).toBe('g/mol');
+    expect(codes('a := molar_mass("Xx2")')).toContain('E-FORMULA');
+    expect(codes('a := molar_mass("Ca(OH")')).toContain('E-FORMULA');
+    expect(si('n := (36 g)/molar_mass("H2O")', 'n')).toBeCloseTo(36 / 18.015, 3);
+  });
+});

@@ -5,6 +5,8 @@
  * the drawing is drawn as SVG, sharp at any zoom and in PDF.
  */
 
+import { drivenScene, type LengthOf } from './driven.js';
+
 /** Version of the scene format; older scenes are brought up to it when read (migrate). */
 export const CANVAS_VERSION = 1;
 
@@ -51,7 +53,7 @@ export type CanvasItem =
    * A dimension: the length between two points, drawn at `offset` beside them (along the
    * normal of the direction from point 1 to 2, turned to the left), with its label (l, 150, Δl).
    */
-  | (ItemBase & { readonly type: 'dimension'; readonly x1: number; readonly y1: number; readonly x2: number; readonly y2: number; readonly offset: number; readonly text: string; readonly size: number; readonly stroke: Stroke })
+  | (ItemBase & { readonly type: 'dimension'; readonly x1: number; readonly y1: number; readonly x2: number; readonly y2: number; readonly offset: number; readonly text: string; readonly size: number; readonly stroke: Stroke; /** Its {name} sets how long the stretch is drawn (driven.ts). */ readonly driving?: boolean })
   /**
    * An arc around (cx, cy): from the angle `start` by `sweep` degrees (on screen, clockwise
    * from the right), with an arrowhead at its end for a moment or a rotation.
@@ -110,7 +112,10 @@ export function fontFamilyOf(font: TextFont | undefined): string {
  * The values of the calculation a canvas shows: {L} in a text or a label becomes "5 m"
  * and changes with the input. The host gives them; the canvas knows no calculation.
  */
-export type LiveValues = (name: string) => string | undefined;
+export type LiveValues = ((name: string) => string | undefined) & {
+  /** The length of a name, for driving dimensions; a host without it draws the sketch as it is. */
+  readonly lengthOf?: LengthOf;
+};
 
 const LIVE = /\{([\p{L}_][\p{L}\p{N}_]*)\}/gu;
 
@@ -144,6 +149,8 @@ export interface CanvasScene {
   /** Size of the drawing in millimetres. */
   readonly width: number;
   readonly height: number;
+  /** Millimetres of the drawing per metre of the structure under driving dimensions; absent: to fit the sketch. */
+  readonly scale?: number;
   /** Bottom to top: later items are drawn over earlier ones. */
   readonly items: readonly CanvasItem[];
 }
@@ -161,7 +168,7 @@ export function readScene(bytes: Uint8Array | undefined): CanvasScene {
   try {
     const value = JSON.parse(new TextDecoder().decode(bytes)) as Partial<CanvasScene>;
     if (typeof value.width !== 'number' || typeof value.height !== 'number' || !Array.isArray(value.items)) return emptyScene();
-    return migrate({ version: typeof value.version === 'number' ? value.version : 1, width: value.width, height: value.height, items: value.items });
+    return migrate({ version: typeof value.version === 'number' ? value.version : 1, width: value.width, height: value.height, ...(typeof value.scale === 'number' ? { scale: value.scale } : {}), items: value.items });
   } catch {
     return emptyScene();
   }
@@ -192,7 +199,8 @@ export function sceneSvg(scene: CanvasScene, resolveFile: (path: string) => stri
 }
 
 /** The inside of the drawing (markers and items), for an editor that draws its own <svg>. */
-export function sceneBody(scene: CanvasScene, resolveFile: (path: string) => string | undefined = () => undefined, values?: LiveValues): string {
+export function sceneBody(given: CanvasScene, resolveFile: (path: string) => string | undefined = () => undefined, values?: LiveValues): string {
+  const scene = drivenScene(given, values?.lengthOf).scene;
   return arrowDefs(scene) + scene.items.map((item) => itemSvg(item, resolveFile, values)).join('');
 }
 

@@ -9,6 +9,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type DragEvent as ReactDragEvent, type MouseEvent as ReactMouseEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { FontOptions } from './FontOptions.js';
+import { DRAWING_SCALES, drivenScene } from '../driven.js';
 import { sceneBody, type CanvasItem, type CanvasScene, type LiveValues, type TextFont } from '../scene.js';
 import { addItem, boxOf, drawn, endMoved, endsOf, findItem, isSupportTool, itemAt, itemsIn, moved, newId, placedSupport, removeItem, reordered, replaceItem, resized, snap, turned, type Corner, type Tool } from '../edit.js';
 import { fromFile, isPictureType, picturePath, pixelSize, type CanvasPicture } from './pictures.js';
@@ -467,6 +468,38 @@ export function CanvasEditor(props: CanvasEditorProps) {
             ))}
           </select>
           <span className="canvas-sep" />
+          <label title={text('drivingHelp')}>
+            <input
+              type="checkbox"
+              data-canvas="driving"
+              disabled={item?.type !== 'dimension'}
+              checked={item?.type === 'dimension' && !!item.driving}
+              onChange={(e) => {
+                if (item?.type !== 'dimension') return;
+                const { driving: _driving, ...plain } = item;
+                commit(replaceItem(scene, e.target.checked ? { ...plain, driving: true } : plain));
+              }}
+            />{' '}
+            {text('driving')}
+          </label>
+          <select
+            value={scene.scale ?? 0}
+            title={text('drawingScale')}
+            data-canvas="scale"
+            onChange={(e) => {
+              const { scale: _scale, ...plain } = scene;
+              const chosenScale = Number(e.target.value);
+              commit(chosenScale > 0 ? { ...plain, scale: chosenScale } : plain);
+            }}
+          >
+            <option value={0}>{text('scaleFit')}</option>
+            {DRAWING_SCALES.map((s) => (
+              <option key={s} value={s}>
+                1:{1000 / s}
+              </option>
+            ))}
+          </select>
+          <span className="canvas-sep" />
           <button type="button" disabled={item?.type !== 'support'} title={text('turn')} data-canvas="turn" onClick={() => item && commit(replaceItem(scene, turned(item)))}>
             ⟳
           </button>
@@ -495,6 +528,16 @@ export function CanvasEditor(props: CanvasEditorProps) {
             ↷
           </button>
     </>
+  );
+
+  // What the driving dimensions cannot do, said while drawing; the drawing itself stays whole.
+  const notes = drivenScene(scene, props.values?.lengthOf).notes;
+  const noteBar = notes.length > 0 && (
+    <div className="canvas-notes" data-canvas="notes">
+      {notes.map((note, i) => (
+        <div key={i}>{text(`note.${note.kind}`).replace('{name}', note.name ?? '')}</div>
+      ))}
+    </div>
   );
 
   const writer = writing && (
@@ -566,6 +609,7 @@ export function CanvasEditor(props: CanvasEditorProps) {
         <div className="canvas-inline" onDragOver={(e) => e.preventDefault()} onDrop={drop}>
           {stage}
         </div>
+        {noteBar}
         {writer}
       </>
     );
@@ -579,6 +623,7 @@ export function CanvasEditor(props: CanvasEditorProps) {
         <div className="canvas-stage" ref={stageBox} onDragOver={(e) => e.preventDefault()} onDrop={drop}>
           {stage}
         </div>
+        {noteBar}
         {writer}
         <div className="canvas-buttons">
           <span className="canvas-info">

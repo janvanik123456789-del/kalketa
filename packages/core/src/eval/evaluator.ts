@@ -260,7 +260,7 @@ function matrixOf(expr: Extract<Expr, { kind: 'matrix' }>, ctx: EvalContext): Ma
   const items: Quantity[] = [];
   for (const row of expr.rows) {
     if (row.length !== cols) fail('E-MATRIX-SHAPE', expr.span, { operator: '|', left: String(cols), right: String(row.length) });
-    for (const item of row) items.push(asQuantity(evaluate(item, ctx), item.span));
+    for (const item of row) items.push(asComplex(evaluate(item, ctx), item.span));
   }
   return matrix(expr.rows.length, cols, withBareZeros(items, expr.rows.flat()));
 }
@@ -280,11 +280,11 @@ function withBareZeros(items: Quantity[], exprs: readonly Expr[]): Quantity[] {
 function vectorOf(expr: Extract<Expr, { kind: 'vector' }>, ctx: EvalContext): VectorValue {
   const evaluated = expr.items.map((item) => evaluate(item, ctx));
   // [0, 2 m, 5 m]: a zero without a unit is one of the others.
-  const single = evaluated.every((v) => v.type !== 'vector') ? withBareZeros(evaluated.map((v, i) => asQuantity(v, expr.items[i]!.span)), expr.items) : undefined;
+  const single = evaluated.every((v) => v.type !== 'vector') ? withBareZeros(evaluated.map((v, i) => asComplex(v, expr.items[i]!.span)), expr.items) : undefined;
   const items: Quantity[] = [];
   expr.items.forEach((item, i) => {
     const value = evaluated[i]!;
-    const parts = single ? [single[i]!] : value.type === 'vector' ? value.items : [asQuantity(value, item.span)];
+    const parts = single ? [single[i]!] : value.type === 'vector' ? value.items : [asComplex(value, item.span)];
     for (const q of parts) {
       const first = items[0];
       if (first && !sameDim(first.dim, q.dim)) fail('E-UNIT-MISMATCH', item.span, { operator: ',', left: baseUnitSymbol(first.dim), right: baseUnitSymbol(q.dim) });
@@ -534,7 +534,15 @@ function complexBinary(op: BinaryOperator, a: Quantity, b: Quantity, leftExpr: E
       return make((ar * br + ai * bi) / d, (ai * br - ar * bi) / d, divideDims(a.dim, b.dim), hint);
     }
     case '^': {
-      if (bi || !isDimensionless(b.dim)) fail('E-COMPLEX-ARG', rightExpr.span);
+      if (!isDimensionless(b.dim)) fail('E-COMPLEX-ARG', rightExpr.span);
+      if (bi) {
+        // z^w = e^(w·ln z), the principal value; of a plain number only, a unit to a complex power means nothing.
+        if (!isDimensionless(a.dim)) fail('E-COMPLEX-ARG', leftExpr.span);
+        if (ar === 0 && ai === 0) return make(0, 0, a.dim);
+        const [lnR, phi] = [Math.log(Math.hypot(ar, ai)), Math.atan2(ai, ar)];
+        const [x, y] = [br * lnR - bi * phi, br * phi + bi * lnR];
+        return make(Math.exp(x) * Math.cos(y), Math.exp(x) * Math.sin(y), a.dim);
+      }
       if (ai === 0 && ar === 0) return make(0, 0, powerDim(a.dim, br));
       // Principal value: r^p ∠ p·φ.
       const r = Math.hypot(ar, ai) ** br;

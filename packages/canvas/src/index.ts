@@ -9,3 +9,4 @@
 
 export * from './scene.js';
 export * from './edit.js';
+export * from './driven.js';

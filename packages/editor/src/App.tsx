@@ -9,8 +9,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { defaultRegistry, formatPicture, parsePicture, rowLabel, TEXT_COLORS, toDecimalComma, type Diagnostic, type Expr, type Statement } from '@kalketa/core';
 import { catalogFor, CATALOGS, formatDate, formatDiagnostic, formatNumber, t, unitGap, type Catalog, type UiKey } from '@kalketa/i18n';
-import { buildPrintDocument, printHtml, renderBlockHtml, revisionFooter, type PrintAppendix, type PrintBlock } from '@kalketa/render';
-import { emptyScene, readScene, writeScene, type CanvasScene } from '@kalketa/canvas';
+import { buildPrintDocument, canvasValues, printHtml, renderBlockHtml, revisionFooter, type PrintAppendix, type PrintBlock } from '@kalketa/render';
+import { beamSketch, drivenScene, emptyScene, readScene, sectionSketch, writeScene, type CanvasScene } from '@kalketa/canvas';
 import { CanvasEditor } from '@kalketa/canvas/editor';
 import { withAiLayer, copyWithoutAiRecords, hasAiRecords, compareWithSheet, sheetHas, readOutput, addLayer, allDiagnostics, appendixLayers, blockAppendices, documentBlocks, isRemovable, LayerSessions, MAIN_LAYER, removeLayer, freezeRevision, removeRevision, revisionDocument, revisionState, shortHash, tablesByLayer, theorySections, updateLayer, withTheoryIds, conversationsOf, hasConversations, withConversation, withoutConversation, aiMemoryOf, withAiMemory, linkedLibraries, librarySections, entriesOf, newSheetsOf, withEntries, studyAdvice, studyNotes, LARGE_STUDY_PAGES, type StudySettings, aiMadeLines, type SheetEntry, evaluateDocument, type ChangeEntry, type Conversation, type AddableLayerKind, type Layer, type RevisionState, type SheetDocument } from '@kalketa/sheet';
 import { buildCommands, shortcutOf, type Command } from './commands.js';
@@ -369,12 +369,7 @@ export function App() {
     (l.kind === 'data' ? (layerTables.get(l.id)?.length ?? 0) > 0 : Boolean(l.text?.trim()));
   // What a canvas shows for {L}: the value of L in the sheet, as its line shows it (5 m).
   const liveValues = useMemo(() => {
-    const shown = new Map<string, string>();
-    for (const r of evaluation.main.statements) {
-      if (r.statement.kind !== 'definition' || !r.display) continue;
-      shown.set(r.statement.name, `${formatNumber(r.display.value, ui, { digits: 4 })}${r.display.unit ? ` ${r.display.unit}` : ''}`.replace('-', '−'));
-    }
-    return (name: string) => shown.get(name);
+    return canvasValues(evaluation.main, ui);
   }, [evaluation.main, ui]);
   const resolveFile = useCallback((path: string) => fileUri(doc, path, liveValues), [doc, liveValues]);
   const openKey = openPanes.join('|');
@@ -1415,7 +1410,7 @@ export function App() {
       key={`${mode}:${path}`}
       mode={mode}
       fonts={systemFonts}
-      scene={readScene(doc.files.get(path))}
+      scene={drivenScene(readScene(doc.files.get(path)), liveValues.lengthOf).scene}
       language={ui.locale}
       ask={ask}
       chooseImage={() => chooseFile('image/*')}
@@ -1437,19 +1432,26 @@ export function App() {
   );
 
   /** Insert > Canvas: an empty drawing as wide as the text, put in like a picture, opened at once. */
-  const insertCanvas = () => {
+  const insertCanvas = (given?: CanvasScene) => {
     const into = layer.kind === 'sheet' || layer.kind === 'calc' ? layer : doc.layers[0]!;
     let n = 1;
     while (doc.files.has(`canvases/platno-${n}.json`)) n++;
     const path = `canvases/platno-${n}.json`;
     const textWidth = geometry.width - geometry.margin.left - geometry.margin.right;
-    const scene = emptyScene(Math.round(textWidth * 0.9), Math.round(textWidth * 0.45));
+    const scene = given ?? emptyScene(Math.round(textWidth * 0.9), Math.round(textWidth * 0.45));
     const current = textOf(into);
     const at = (into.id === layer.id ? currentRange()?.end : undefined) ?? lastRowInView(into.id) ?? current.split('\n').length;
     setLayerText(into, insertLineAfter(current, at, formatPicture({ caption: '', path, width: 90 })), undefined, new Map([[path, writeScene(scene)]]));
     setEditing(undefined);
     reveal.current = { layer: into.id, line: at + 1 };
     openCanvas(path);
+  };
+
+  /** Insert > Beam scheme, Section: a ready drawing with driving dimensions, by the names the sheet has. */
+  const insertSketch = (kind: 'beam' | 'section') => {
+    const first = (names: readonly string[]) => names.find((name) => liveValues(name) !== undefined);
+    if (kind === 'beam') insertCanvas(beamSketch(first(['L', 'l', 'L_1', 'L_p', 'l_1']) ?? 'L', first(['q', 'q_d', 'q_Ed', 'g', 'p'])));
+    else insertCanvas({ ...sectionSketch({ h: 'h', b: 'b', t_w: 't_w', t_f: 't_f' }), scale: 200 });
   };
 
   const insertPictureFile = async () => {
@@ -2046,6 +2048,7 @@ export function App() {
       insertTemplate,
       insertPicture: () => void insertPictureFile(),
       insertCanvas,
+      insertSketch,
     },
   });
 
@@ -2288,7 +2291,7 @@ export function App() {
     },
     {
       label: t(ui, 'menu.insert'),
-      items: [cmd('insert.text'), cmd('insert.definition'), cmd('insert.check'), cmd('insert.pick'), cmd('insert.pageBreak'), cmd('insert.clear'), sep, cmd('insert.picture'), cmd('insert.canvas'), cmd('insert.function'), cmd('insert.chart'), cmd('insert.fit'), cmd('insert.sheetTable'), cmd('insert.newTable'), cmd('insert.importTable'), cmd('insert.block'),
+      items: [cmd('insert.text'), cmd('insert.definition'), cmd('insert.check'), cmd('insert.pick'), cmd('insert.pageBreak'), cmd('insert.clear'), sep, cmd('insert.picture'), cmd('insert.canvas'), cmd('insert.beamScheme'), cmd('insert.sectionScheme'), cmd('insert.function'), cmd('insert.chart'), cmd('insert.fit'), cmd('insert.sheetTable'), cmd('insert.newTable'), cmd('insert.importTable'), cmd('insert.block'),
         ...(doc.blocks.size > 0
           ? [
               {

@@ -12,7 +12,7 @@ import type { ResolvedUnit } from '../units/unitExpr.js';
 import { baseUnitSymbol } from '../units/display.js';
 import { civilFromDays, dateValue, daysFromCivil, daysOf, isDate, isValidDay } from '../values/date.js';
 import { quantity, type Quantity, type Value } from '../values/value.js';
-import { asBoolean, asQuantity } from '../eval/coerce.js';
+import { asBoolean, asComplex, asQuantity } from '../eval/coerce.js';
 import { compare } from '../eval/evaluator.js';
 import { withBareZero } from '../eval/zero.js';
 import type { Expr } from '../lang/ast.js';
@@ -66,7 +66,28 @@ function rounding(how: 'floor' | 'ceil' | 'round'): FunctionDef {
   };
 }
 
+/** The same functions of a complex number, the principal value where there are more. */
+const OF_COMPLEX: Readonly<Record<string, (a: number, b: number) => [number, number]>> = {
+  exp: (a, b) => [Math.exp(a) * Math.cos(b), Math.exp(a) * Math.sin(b)],
+  ln: (a, b) => [Math.log(Math.hypot(a, b)), Math.atan2(b, a)],
+  log10: (a, b) => [Math.log(Math.hypot(a, b)) / Math.LN10, Math.atan2(b, a) / Math.LN10],
+  log2: (a, b) => [Math.log(Math.hypot(a, b)) / Math.LN2, Math.atan2(b, a) / Math.LN2],
+  sin: (a, b) => [Math.sin(a) * Math.cosh(b), Math.cos(a) * Math.sinh(b)],
+  cos: (a, b) => [Math.cos(a) * Math.cosh(b), -Math.sin(a) * Math.sinh(b)],
+  sinh: (a, b) => [Math.sinh(a) * Math.cos(b), Math.cosh(a) * Math.sin(b)],
+  cosh: (a, b) => [Math.cosh(a) * Math.cos(b), Math.sinh(a) * Math.sin(b)],
+  tan: (a, b) => {
+    const d = Math.cos(2 * a) + Math.cosh(2 * b);
+    return [Math.sin(2 * a) / d, Math.sinh(2 * b) / d];
+  },
+  tanh: (a, b) => {
+    const d = Math.cosh(2 * a) + Math.cos(2 * b);
+    return [Math.sinh(2 * a) / d, Math.sin(2 * b) / d];
+  },
+};
+
 function plain(name: string, module: FunctionModuleId, f: (x: number, q: Quantity) => number, domain?: (x: number) => boolean): FunctionDef {
+  const ofComplex = OF_COMPLEX[name === 'tg' ? 'tan' : name];
   return {
     name,
     module,
@@ -76,11 +97,17 @@ function plain(name: string, module: FunctionModuleId, f: (x: number, q: Quantit
       const value = a.value(0);
       const one = (q: Quantity): Quantity => {
         if (!isDimensionless(q.dim)) fail('E-FUNC-ARG-DIM', a.expr(0).span, { function: a.name, dim: baseUnitSymbol(q.dim) });
+        if (q.im && ofComplex) {
+          const [re, im] = ofComplex(q.si, q.im);
+          if (!Number.isFinite(re) || !Number.isFinite(im)) a.domain(0);
+          return quantity(re, undefined, { im });
+        }
+        if (q.im) fail('E-COMPLEX-ARG', a.expr(0).span);
         if (domain && !domain(q.si)) a.domain(0);
         return quantity(f(q.si, q));
       };
       if (value.type === 'vector') return { type: 'vector', items: value.items.map(one) };
-      return one(asQuantity(value, a.expr(0).span));
+      return one(asComplex(value, a.expr(0).span));
     },
   };
 }
@@ -505,10 +532,11 @@ export const SERIES: readonly FunctionDef[] = [
     arity: [1, Infinity],
     call: (a) => {
       const items = a.items();
+      const im = items.reduce((s, q) => s + (q.im ?? 0), 0);
       return quantity(
         items.reduce((s, q) => s + q.si, 0),
         items[0]?.dim,
-        keepUnit(items[0]),
+        { ...keepUnit(items[0]), ...(im ? { im } : {}) },
       );
     },
   },
@@ -629,7 +657,8 @@ export const STATISTICS: readonly FunctionDef[] = [
     call: (a) => {
       const items = a.items();
       if (items.length === 0) a.domain();
-      return quantity(items.reduce((s, q) => s + q.si, 0) / items.length, items[0]!.dim, keepPlace(items));
+      const im = items.reduce((s, q) => s + (q.im ?? 0), 0) / items.length;
+      return quantity(items.reduce((s, q) => s + q.si, 0) / items.length, items[0]!.dim, { ...keepPlace(items), ...(im ? { im } : {}) });
     },
   },
   {

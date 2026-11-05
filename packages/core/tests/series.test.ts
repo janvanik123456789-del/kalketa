@@ -67,7 +67,7 @@ describe('series', () => {
     expect(codes('[1 m, 2 s]')).toEqual(['E-UNIT-MISMATCH']);
     expect(codes('[1, 2] < 3')).toEqual(['E-TYPE']);
     expect(codes('sum(5)')).toEqual(['E-TYPE']);
-    expect(codes('[1 + 2j]')).toEqual(['E-COMPLEX-ARG']);
+    expect(codes('stdev([1 + 2j, 3])')).toEqual(['E-COMPLEX-ARG']);
   });
 
   it('take a table column', () => {

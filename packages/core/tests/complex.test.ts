@@ -76,9 +76,9 @@ describe('complex numbers', () => {
   });
 
   it('are refused where only real numbers make sense', () => {
-    expect(codes('sin(1j)')).toEqual(['E-COMPLEX-ARG']);
+    expect(codes('atan(1j)')).toEqual(['E-COMPLEX-ARG']);
     expect(codes('check (3 + 4j) ≤ 5')).toEqual(['E-COMPLEX-ORDER']);
-    expect(codes('2^(1j)')).toEqual(['E-COMPLEX-ARG']);
+    expect(codes('(2 m)^(1j)')).toEqual(['E-COMPLEX-ARG']);
     expect(codes('5j °C')).toEqual(['E-COMPLEX-ARG']);
   });
 

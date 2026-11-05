@@ -35,6 +35,15 @@ export interface FunctionDef {
   readonly itemwise?: boolean;
 }
 
+/**
+ * Functions that read complex items of a series or a matrix as they are. Any other reads their real numbers, and a
+ * complex item would lose its other part without a word, so it is refused.
+ */
+const TAKES_COMPLEX_ITEMS: ReadonlySet<string> = new Set([
+  'sum', 'mean', 'len', 'reverse', 'last', 'lsolve', 'det', 'inverse', 'eigenvals', 'eigenvecs', 'transpose', 'row', 'col', 'diag', 'rows', 'cols', 'submatrix', 'augment', 'stack', 'scatter',
+  'exp', 'ln', 'log10', 'log2', 'sin', 'cos', 'tan', 'tg', 'sinh', 'cosh', 'tanh', 'if',
+]);
+
 /** The arguments of one call, read the way a function needs them. */
 export class Args {
   constructor(
@@ -59,7 +68,9 @@ export class Args {
   }
 
   value(index: number): Value {
-    return this.given?.[index] ?? this.evaluateArg(this.expr(index));
+    const value = this.given?.[index] ?? this.evaluateArg(this.expr(index));
+    if ((value.type === 'vector' || value.type === 'matrix') && !TAKES_COMPLEX_ITEMS.has(this.name) && value.items.some((q) => q.im)) fail('E-COMPLEX-ARG', this.expr(index).span);
+    return value;
   }
 
   /** Any part of an argument (the sides of a comparison in if()). */
@@ -88,9 +99,8 @@ export class Args {
   series(index: number): readonly Quantity[] {
     const value = this.value(index);
     // [1 | 2 | 3] and transpose of a series are one too.
-    if (value.type === 'matrix' && (value.cols === 1 || value.rows === 1)) return value.items;
-    if (value.type !== 'vector') return fail('E-TYPE', this.expr(index).span, { expected: 'vector', found: value.type === 'quantity' ? 'number' : value.type });
-    return value.items;
+    const items = value.type === 'matrix' && (value.cols === 1 || value.rows === 1) ? value.items : value.type === 'vector' ? value.items : fail('E-TYPE', this.expr(index).span, { expected: 'vector', found: value.type === 'quantity' ? 'number' : value.type });
+    return items;
   }
 
   /** One series, or any numbers and series in a row: sum(1, 2, 3), mean(x, y). */

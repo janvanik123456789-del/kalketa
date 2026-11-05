@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addItem, drawn, itemsIn, liveNames, turned, emptyScene, endMoved, itemAt, migrate, moved, newId, readScene, reordered, resized, sceneSvg, writeScene, type CanvasItem } from '../src/index.js';
+import { addItem, beamSketch, drawn, drivenScene, sectionSketch, itemsIn, liveNames, turned, emptyScene, endMoved, itemAt, migrate, moved, newId, readScene, reordered, resized, sceneSvg, writeScene, type CanvasItem } from '../src/index.js';
 import { htmlOf, runsOf, type RichNode } from '../src/editor/richText.js';
 
 const rect: CanvasItem = { id: 'i1', type: 'rect', x: 10, y: 10, w: 20, h: 10, stroke: { color: '#000', width: 0.5 }, fill: 'none' };
@@ -149,5 +149,110 @@ describe('texts written as in a word processor, values of the calculation, choos
     expect(itemsIn(scene, 0, 0, 100, 100)).toEqual(['i1', 'f1']);
     expect(sceneSvg(scene)).toMatch(/<g class="cc-force">.*>F<\/text><\/g>/);
     expect(sceneSvg(addItem(emptyScene(), drawn('hinge', 'h1', 0, 0, 5, 5, '#000', 0.35, 'none')))).toContain('cc-hinge');
+  });
+});
+
+describe('a drawing driven by the calculation', () => {
+  const stroke = { color: '#000', width: 0.35 };
+  const dimension = (id: string, x1: number, y1: number, x2: number, y2: number, text: string): CanvasItem => ({ id, type: 'dimension', x1, y1, x2, y2, offset: 5, text, size: 3, stroke, driving: true });
+  const line = (id: string, x1: number, y1: number, x2: number, y2: number): CanvasItem => ({ id, type: 'line', x1, y1, x2, y2, stroke });
+  const lengths = (given: Record<string, number | 'other'>) => (name: string) => given[name];
+  const item = (scene: { items: readonly CanvasItem[] }, id: string) => scene.items.find((i) => i.id === id) as unknown as { x1: number; y1: number; x2: number; y2: number };
+
+  it('gives a stretch its length and all points follow, in the proportion of the sketch', () => {
+    const scene = { ...emptyScene(200, 100), scale: 20, items: [dimension('d', 10, 50, 110, 50, '{L}'), line('l', 10, 50, 110, 50), line('m', 60, 40, 60, 60), line('out', 120, 50, 130, 50)] };
+    const { scene: shown, notes } = drivenScene(scene, lengths({ L: 6 }));
+    expect(notes).toEqual([]);
+    expect(item(shown, 'l').x2 - item(shown, 'l').x1).toBeCloseTo(120, 9);
+    expect(item(shown, 'm').x1).toBeCloseTo(70, 9);
+    // A point past the stretch moves with its end, at its distance.
+    expect(item(shown, 'out').x1).toBeCloseTo(140, 9);
+    expect(item(shown, 'out').x2).toBeCloseTo(150, 9);
+    // Nothing happens across: y stays.
+    expect(item(shown, 'm').y1).toBe(40);
+  });
+
+  it('a dimension in a dimension: the numbers of the proposal', () => {
+    const at = (L: number, a: number, scale: number) => {
+      const scene = { ...emptyScene(200, 100), scale, items: [dimension('L', 20, 50, 120, 50, '{L}'), dimension('a', 20, 40, 60, 40, '{a}'), line('f', 60, 30, 60, 50)] };
+      return item(drivenScene(scene, lengths({ L, a })).scene, 'f').x1 - 20;
+    };
+    expect(at(6, 2.5, 20)).toBeCloseTo(50, 9);
+    expect(at(12, 2.5, 10)).toBeCloseTo(25, 9);
+  });
+
+  it('fits the sketch by itself, and the same scale holds on both axes', () => {
+    const scene = { ...emptyScene(200, 100), items: [dimension('L', 10, 80, 110, 80, '{L}'), dimension('h', 150, 10, 150, 60, '{h}'), line('v', 150, 10, 150, 60)] };
+    const shown = drivenScene(scene, lengths({ L: 10, h: 2 })).scene;
+    // 100 mm for 10 m is 10 mm/m; 50 mm for 2 m would be 25, the smaller one holds.
+    expect(item(shown, 'v').y2 - item(shown, 'v').y1).toBeCloseTo(20, 9);
+    // Again gives the same: the drawing saved as the new sketch does not jump.
+    const again = drivenScene(shown, lengths({ L: 10, h: 2 })).scene;
+    expect(item(again, 'v').y2).toBeCloseTo(item(shown, 'v').y2, 9);
+  });
+
+  it('keeps sizes of marks and lettering, moves their place', () => {
+    const scene = { ...emptyScene(200, 100), scale: 10, items: [dimension('L', 10, 50, 110, 50, '{L}'), { id: 's', type: 'support', kind: 'pin', x: 110, y: 50, size: 6, angle: 0, stroke } as CanvasItem] };
+    const s = drivenScene(scene, lengths({ L: 5 })).scene.items[1] as Extract<CanvasItem, { type: 'support' }>;
+    expect([s.x, s.size]).toEqual([60, 6]);
+  });
+
+  it.each([
+    ['unknown', '{X}', {}],
+    ['not-positive', '{L}', { L: 0 }],
+    ['not-positive', '{L}', { L: -2 }],
+    ['not-length', '{F}', { F: 'other' as const }],
+    ['no-name', 'L = 5', {}],
+  ])('stays as sketched with a note: %s %s', (kind, label, given) => {
+    const scene = { ...emptyScene(200, 100), items: [dimension('d', 10, 50, 110, 50, label), line('l', 10, 50, 110, 50)] };
+    const { scene: shown, notes } = drivenScene(scene, lengths(given as Record<string, number>));
+    expect(notes.map((n) => n.kind)).toEqual([kind]);
+    expect(item(shown, 'l').x2).toBe(110);
+  });
+
+  it('what does not fit or crosses is not used, the rest holds', () => {
+    const inner = { ...emptyScene(200, 100), scale: 10, items: [dimension('L', 10, 50, 110, 50, '{L}'), dimension('a', 10, 40, 50, 40, '{a}'), line('l', 10, 50, 110, 50)] };
+    const r = drivenScene(inner, lengths({ L: 5, a: 7 }));
+    expect(r.notes).toEqual([{ kind: 'does-not-fit', name: 'a' }]);
+    expect(item(r.scene, 'l').x2 - item(r.scene, 'l').x1).toBeCloseTo(50, 9);
+    const crossing = { ...emptyScene(200, 100), items: [dimension('p', 10, 50, 60, 50, '{p}'), dimension('q', 40, 40, 90, 40, '{q}'), line('l', 10, 50, 90, 50)] };
+    const c = drivenScene(crossing, lengths({ p: 1, q: 1 }));
+    expect(c.notes.map((n) => n.kind)).toEqual(['crossing', 'crossing']);
+    expect(item(c.scene, 'l').x2).toBe(90);
+  });
+
+  it('says when a scale does not fit the canvas', () => {
+    const scene = { ...emptyScene(100, 50), scale: 100, items: [dimension('L', 10, 25, 90, 25, '{L}')] };
+    expect(drivenScene(scene, lengths({ L: 6 })).notes).toEqual([{ kind: 'over-canvas' }]);
+  });
+
+  it('is drawn so in the SVG, and only with a host that gives lengths', () => {
+    const scene = { ...emptyScene(200, 100), scale: 10, items: [dimension('L', 10, 50, 110, 50, '{L}'), line('l', 10, 50, 110, 50)] };
+    const values = Object.assign((name: string) => (name === 'L' ? '5 m' : undefined), { lengthOf: lengths({ L: 5 }) });
+    expect(sceneSvg(scene, undefined, values)).toContain('x2="60"');
+    expect(sceneSvg(scene, undefined, (name) => (name === 'L' ? '5 m' : undefined))).toContain('x2="110"');
+  });
+
+  it('survives saving; an older file has no such fields', () => {
+    const scene = { ...emptyScene(200, 100), scale: 20, items: [dimension('L', 10, 50, 110, 50, '{L}')] };
+    const read = readScene(writeScene(scene));
+    expect(read.scale).toBe(20);
+    expect((read.items[0] as Extract<CanvasItem, { type: 'dimension' }>).driving).toBe(true);
+    expect(readScene(writeScene(emptyScene())).scale).toBeUndefined();
+  });
+
+  it('the ready sketches follow: a beam, and a section in scale', () => {
+    const beam = drivenScene(beamSketch('L', 'q'), lengths({ L: 8 }));
+    expect(beam.notes).toEqual([]);
+    const roller = beam.scene.items.find((i) => i.type === 'support' && i.kind === 'roller') as Extract<CanvasItem, { type: 'support' }>;
+    expect(roller.x).toBeCloseTo(120, 9);
+    const names = { h: 'h', b: 'b', t_w: 't_w', t_f: 't_f' };
+    const ipe = drivenScene({ ...sectionSketch(names), scale: 200 }, lengths({ h: 0.3, b: 0.15, t_w: 0.0071, t_f: 0.0107 }));
+    expect(ipe.notes).toEqual([]);
+    const web = ipe.scene.items.find((i) => i.id === 's2') as unknown as { w: number; h: number };
+    const top = ipe.scene.items.find((i) => i.id === 's1') as unknown as { w: number; h: number };
+    expect(top.w).toBeCloseTo(0.15 * 200, 6);
+    expect(web.w).toBeCloseTo(0.0071 * 200, 6);
+    expect(top.h).toBeCloseTo(0.0107 * 200, 6);
   });
 });

@@ -98,6 +98,7 @@ export interface CommandContext {
     insertTemplate(template: string, line?: boolean): void;
     insertPicture(): void;
     insertCanvas(): void;
+  insertSketch(kind: 'beam' | 'section'): void;
   };
 }
 
@@ -152,7 +153,9 @@ export function buildCommands(ctx: CommandContext): Map<string, Command> {
   add('insert.pageBreak', 'insert', () => a.insert('pageBreak'), { shortcut: 'Ctrl+Enter' });
   add('insert.clear', 'insert', () => a.insert('clear'));
   add('insert.picture', 'insert', a.insertPicture);
-  add('insert.canvas', 'insert', a.insertCanvas);
+  add('insert.canvas', 'insert', () => a.insertCanvas());
+  add('insert.beamScheme', 'insert', () => a.insertSketch('beam'));
+  add('insert.sectionScheme', 'insert', () => a.insertSketch('section'));
   add('insert.chart', 'insert', a.insertChart);
   add('insert.fit', 'insert', a.fitCurve);
   add('insert.function', 'insert', a.insertFunction, { shortcut: 'Shift+F3' });

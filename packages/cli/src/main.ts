@@ -20,7 +20,7 @@
  *   Imports a table into a sheet folder (tables/<Table>/schema.json + data.csv).
  */
 
-import { isCanvasPath, readScene, sceneDataUri } from '@kalketa/canvas';
+import { isCanvasPath, readScene, sceneDataUri, type LiveValues } from '@kalketa/canvas';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { basename, extname, join } from 'node:path';
 import { parseArgs } from 'node:util';
@@ -30,7 +30,7 @@ import { appendixLayers, blockAppendices, evaluateDocument, FILE_EXTENSION, impo
 import { openSheet, saveSheetFile, writeFolder, writeTable } from './files.js';
 import { htmlToPdf } from './pdf.js';
 import { formatReport, formatTrace } from './report.js';
-import { printHtml, revisionFooter } from '@kalketa/render';
+import { canvasValues, printHtml, revisionFooter } from '@kalketa/render';
 
 const USAGE = [
   'Usage:',
@@ -121,7 +121,7 @@ async function main(argv: string[]): Promise<number> {
       ...(doc.layout.style ? { style: doc.layout.style } : {}),
       ...(doc.layout.chartStyle ? { chartStyle: doc.layout.chartStyle } : {}),
       ...(doc.layout.money ? { money: doc.layout.money } : {}),
-      resolveFile: (path) => dataUri(path, doc.files.get(path), doc.files),
+      resolveFile: (path) => dataUri(path, doc.files.get(path), doc.files, canvasValues(result, printCatalog)),
       appendices: [...appendixLayers(doc.layers, evaluation, (layer) => t(printCatalog, `layer.kind.${layer.kind}` as UiKey)), ...blockAppendices(evaluation.main)],
       footer: revisionFooter(printCatalog, {
         hash: shortHash(revision.hash),
@@ -205,9 +205,9 @@ const MIME: Readonly<Record<string, string>> = {
 };
 
 /** Embeds a file of the sheet into the HTML, so the printout is self-contained. */
-function dataUri(path: string, data: Uint8Array | undefined, files?: ReadonlyMap<string, Uint8Array>): string | undefined {
-  // A canvas is drawn from its scene, its pictures from the same files.
-  if (data && isCanvasPath(path)) return sceneDataUri(readScene(data), (inner) => (isCanvasPath(inner) ? undefined : dataUri(inner, files?.get(inner))));
+function dataUri(path: string, data: Uint8Array | undefined, files?: ReadonlyMap<string, Uint8Array>, values?: LiveValues): string | undefined {
+  // A canvas is drawn from its scene, with the values of the calculation; its pictures from the same files.
+  if (data && isCanvasPath(path)) return sceneDataUri(readScene(data), (inner) => (isCanvasPath(inner) ? undefined : dataUri(inner, files?.get(inner))), values);
   const mime = MIME[extname(path).toLowerCase()];
   if (!data || !mime) return undefined;
   return `data:${mime};base64,${Buffer.from(data).toString('base64')}`;

@@ -50,7 +50,7 @@ export function fileUri(doc: SheetDocument, path: string, values?: LiveValues): 
   if (isCanvasPath(path)) {
     if (!data) return undefined;
     const scene = readScene(data);
-    const key = liveNames(scene).map((name) => values?.(name) ?? '').join('\u0000');
+    const key = liveNames(scene).map((name) => `${values?.(name) ?? ''}\u0001${values?.lengthOf?.(name) ?? ''}`).join('\u0000');
     const cached = canvasCache.get(data);
     if (cached?.key === key) return cached.uri;
     const uri = sceneDataUri(scene, (inner) => (isCanvasPath(inner) ? undefined : fileUri(doc, inner)), values);

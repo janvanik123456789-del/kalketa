@@ -92,7 +92,7 @@ describe('matrices', () => {
     const modes = numbersOf('eigenvecs([2, -1 | -1, 2])') as number[][];
     expect(modes.map((r) => Math.abs(r[0]!))).toEqual([1, 1]);
     expect(Math.abs(modes[0]![1]! + modes[1]![1]!)).toBeLessThan(1e-9);
-    expect(codes('eigenvals([1, 2 | 3, 4])')).toEqual(['E-MATRIX-SYMMETRIC']);
+    expect(codes('eigenvals([1, 2 | 3, 4], [1, 0 | 0, 1])')).toEqual(['E-MATRIX-SYMMETRIC']);
   });
 
   it('work inside user functions', () => {

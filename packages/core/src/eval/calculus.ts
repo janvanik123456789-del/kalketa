@@ -146,13 +146,15 @@ function range(variable: NamedArg, call: CallExpr, ctx: EvalContext, evaluate: E
 }
 
 /** The expression as a function of its variable: the value of the variable carries the dimension and unit of `like`. */
-function asFunction(body: Expr, name: string, like: Quantity, ctx: EvalContext, evaluate: Evaluate, span: Span): (si: number) => Quantity {
+function asFunction(body: Expr, name: string, like: Quantity, ctx: EvalContext, evaluate: Evaluate, span: Span, part?: 're' | 'im'): (si: number) => Quantity {
   let dim: Quantity['dim'] | undefined;
   return (si: number) => {
     const local: Value = quantity(si, like.dim, like.hint ? { hint: like.hint } : {});
     const inner: EvalContext = { ...ctx, lookup: (n, at) => (n === name ? local : ctx.lookup(n, at)) };
-    const value = asQuantity(evaluate(body, inner), body.span);
-    if (value.im) fail('E-COMPLEX-ARG', body.span);
+    const given = asComplex(evaluate(body, inner), body.span);
+    if (given.im && !part) fail('E-COMPLEX-ARG', body.span);
+    const { im: _im, exact: _given, ...real } = given;
+    const value: Quantity = !part ? given : part === 're' ? real : { ...real, si: given.im ?? 0 };
     // Every value of the expression must have the same dimension.
     if (dim === undefined) dim = value.dim;
     else if (!sameDim(dim, value.dim)) fail('E-UNIT-MISMATCH', span, { operator: '∫', left: baseUnitSymbol(dim), right: baseUnitSymbol(value.dim) });
@@ -210,7 +212,28 @@ function doubleExponential(g: (x: number) => number, a: number, b: number): numb
 function integral(call: CallExpr, ctx: EvalContext, evaluate: Evaluate): Value {
   const { body, variable } = parts(call, []);
   const [low, high] = range(variable, call, ctx, evaluate);
-  const f = asFunction(body, variable.name, low, ctx, evaluate, call.span);
+  // A complex integrand (a Fourier transform): its two parts one after the other.
+  const complex = [0.31, 0.5, 0.83].some((t) => {
+    const at = quantity(low.si + (high.si - low.si) * t, low.dim, low.hint ? { hint: low.hint } : {});
+    try {
+      return !!asComplex(evaluate(body, { ...ctx, warnings: [], lookup: (n, where) => (n === variable.name ? at : ctx.lookup(n, where)) }), body.span).im;
+    } catch (err) {
+      if (err instanceof CalcError) return false;
+      throw err;
+    }
+  });
+  if (complex) {
+    const re = integralOfPart(call, ctx, evaluate, 're') as Quantity;
+    const im = integralOfPart(call, ctx, evaluate, 'im') as Quantity;
+    return { ...re, ...(im.si ? { im: im.si } : {}) };
+  }
+  return integralOfPart(call, ctx, evaluate, undefined);
+}
+
+function integralOfPart(call: CallExpr, ctx: EvalContext, evaluate: Evaluate, part: 're' | 'im' | undefined): Value {
+  const { body, variable } = parts(call, []);
+  const [low, high] = range(variable, call, ctx, evaluate);
+  const f = asFunction(body, variable.name, low, ctx, evaluate, call.span, part);
   let sample: Quantity | undefined;
   let evaluations = 0;
   const g = (x: number) => {
@@ -382,11 +405,17 @@ function sum(call: CallExpr, ctx: EvalContext, evaluate: Evaluate): Value {
     for (let k = low.si + 1; k <= high.si; k++) total = addedItems(total, termAt(k), body.span);
     return { ...total, items: withZerosOfUnit(total.items) };
   }
-  const f = asFunction(body, variable.name, low, ctx, evaluate, call.span);
   let total: Quantity | undefined;
   for (let k = low.si; k <= high.si; k++) {
-    const term = f(k);
-    total = total ? { ...total, si: total.si + term.si } : term;
+    const term = asComplex(k === low.si && opening ? opening : termAt(k), body.span);
+    if (total && !sameDim(total.dim, term.dim)) fail('E-UNIT-MISMATCH', call.span, { operator: '∫', left: baseUnitSymbol(total.dim), right: baseUnitSymbol(term.dim) });
+    if (!total) total = term;
+    else {
+      const { exact: _exact, ...rest } = total;
+      const im = (total.im ?? 0) + (term.im ?? 0);
+      total = { ...rest, si: total.si + term.si, ...(im ? { im } : {}) };
+      if (!im && total.im) delete (total as { im?: number }).im;
+    }
   }
   return total ?? quantity(0);
 }

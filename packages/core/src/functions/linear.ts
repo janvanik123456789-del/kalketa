@@ -13,6 +13,7 @@ import { DIMENSIONLESS, divideDims, isDimensionless, multiplyDims, powerDim, sam
 import { baseUnitSymbol } from '../units/display.js';
 import { quantity, type MatrixValue, type Quantity, type Value, type VectorValue } from '../values/value.js';
 import { exact, solveLinear, type Exact } from '../values/exact.js';
+import { complexDet, complexLu, complexSolve, eigenvalues, eigenvector, fractionOf, molarMass, singularValues, size, type C } from './general.js';
 import type { Args, FunctionDef } from './registry.js';
 
 /** The largest system lsolve also solves in exact fractions. */
@@ -47,6 +48,27 @@ export function asMatrix(value: Value, span: Span): MatrixValue {
 function square(m: MatrixValue, span: Span, name: string): number {
   if (m.rows !== m.cols) fail('E-MATRIX-SQUARE', span, { function: name, rows: m.rows, cols: m.cols });
   return m.rows;
+}
+
+function pairs(m: MatrixValue): C[][] {
+  return Array.from({ length: m.rows }, (_, i) => Array.from({ length: m.cols }, (_, j): C => [at(m, i, j).si, at(m, i, j).im ?? 0]));
+}
+
+/** A·x = b with complex numbers (coupled coils, an impedance matrix); units as in the real case. */
+function complexLsolve(a: Args, m: MatrixValue, b: MatrixValue, rows: readonly Dimension[]): Value {
+  const n = m.rows;
+  const { cols } = structure(m, a.expr(0).span, a.name);
+  const d = complexLu(pairs(m));
+  if (!d) return fail('E-MATRIX-SINGULAR', a.expr(0).span, { function: a.name });
+  const items: Quantity[] = new Array<Quantity>(n * b.cols);
+  for (let c = 0; c < b.cols; c++) {
+    const s = divideDims(at(b, 0, c).dim, rows[0]!);
+    for (let i = 1; i < n; i++) if (!sameDim(at(b, i, c).dim, multiplyDims(rows[i]!, s))) fail('E-MATRIX-UNITS', a.expr(1).span, { function: a.name, row: i + 1, col: c + 1 });
+    complexSolve(d, Array.from({ length: n }, (_, i): C => [at(b, i, c).si, at(b, i, c).im ?? 0])).forEach(([re, im], j) => {
+      items[j * b.cols + c] = quantity(re, divideDims(s, cols[j]!), im ? { im } : {});
+    });
+  }
+  return normalized(matrix(n, b.cols, items));
 }
 
 function numbers(m: MatrixValue): number[][] {
@@ -362,6 +384,38 @@ function added(a: Quantity, b: Quantity, span: Span): Quantity {
   return { ...rest, si: a.si + b.si };
 }
 
+/**
+ * One square matrix that is not real and symmetric: its eigenvalues, by real part and then with the positive
+ * imaginary part first; undefined for what the symmetric way takes (and for a pair K, M, which it alone can do).
+ */
+function generalEigen(a: Args): { values: C[]; dim: Dimension } | undefined {
+  if (a.count !== 1) return undefined;
+  const m = asMatrix(a.value(0), a.expr(0).span);
+  const n = square(m, a.expr(0).span, a.name);
+  const dim = uniform(m, a.expr(0).span, a.name);
+  if (m.items.every((q) => !q.im) && symmetric(numbers(m))) return undefined;
+  const found = eigenvalues(pairs(m));
+  if (!found) return fail('E-EIGEN-NO-CONVERGENCE', a.expr(0).span);
+  const scale = found.reduce((big, v) => Math.max(big, size(v)), Number.MIN_VALUE);
+  const real = m.items.every((q) => !q.im);
+  const values = found.map(([re, im]): C => [Math.abs(re) <= 1e-13 * scale ? 0 : re, Math.abs(im) <= 1e-11 * scale ? 0 : im]);
+  // Of a real matrix the complex ones come in exact pairs; rounding must not make them differ in the last digits.
+  if (real) {
+    const done = new Set<number>();
+    values.forEach((v, i) => {
+      if (v[1] === 0 || done.has(i)) return;
+      const j = values.findIndex((w, k) => k !== i && !done.has(k) && Math.abs(w[0] - v[0]) <= 1e-9 * scale && Math.abs(w[1] + v[1]) <= 1e-9 * scale);
+      if (j < 0) return;
+      const [re, im] = [(v[0] + values[j]![0]) / 2, (v[1] - values[j]![1]) / 2];
+      values[i] = [re, im];
+      values[j] = [re, -im];
+      done.add(i).add(j);
+    });
+  }
+  void n;
+  return { values: values.sort((p, q) => p[0] - q[0] || q[1] - p[1]), dim };
+}
+
 function shapeText(m: MatrixValue): string {
   return `${m.rows}×${m.cols}`;
 }
@@ -391,6 +445,12 @@ export const LINEAR: readonly FunctionDef[] = [
       const n = square(m, a.expr(0).span, a.name);
       const { rows, cols } = structure(m, a.expr(0).span, a.name);
       const dim = rows.reduce((d, r, i) => multiplyDims(d, multiplyDims(r, cols[i]!)), DIMENSIONLESS);
+      if (m.items.some((q) => q.im)) {
+        const c = complexLu(pairs(m), 0);
+        if (!c) return quantity(0, dim);
+        const [re, im] = complexDet(c);
+        return quantity(re, dim, im ? { im } : {});
+      }
       // Written in decimals, the determinant is known exactly, however small: the Hilbert matrix of 12 has 2.6·10⁻⁷⁸.
       const whole = n <= EXACT_SOLVE_SIZE ? exactDeterminant(m) : undefined;
       if (whole) return quantity(whole.value, dim, whole.form ? { exact: whole.form } : {});
@@ -423,6 +483,7 @@ export const LINEAR: readonly FunctionDef[] = [
       const b = asMatrix(a.value(1), a.expr(1).span);
       if (b.rows !== n) fail('E-MATRIX-SHAPE', a.call.span, { operator: a.name, left: shapeText(m), right: shapeText(b) });
       const { rows, cols } = structure(m, a.expr(0).span, a.name);
+      if (m.items.some((q) => q.im) || b.items.some((q) => q.im)) return complexLsolve(a, m, b, rows);
       const scales = equilibrated(numbers(m));
       const d = lu(scales.scaled);
       if (!d) return fail('E-MATRIX-SINGULAR', a.expr(0).span, { function: a.name });
@@ -563,6 +624,122 @@ export const LINEAR: readonly FunctionDef[] = [
     },
   },
   {
+    name: 'rank',
+    module: 'linear',
+    params: 'A',
+    arity: [1, 1],
+    call: (a) => {
+      const m = asMatrix(a.value(0), a.expr(0).span);
+      if (m.items.some((q) => q.im)) fail('E-COMPLEX-ARG', a.expr(0).span);
+      const { values } = singularValues(numbers(m));
+      const top = values[0] ?? 0;
+      return quantity(values.filter((v) => v > 1e-11 * top).length);
+    },
+  },
+  {
+    name: 'singvals',
+    module: 'linear',
+    params: 'A',
+    arity: [1, 1],
+    call: (a) => {
+      const m = asMatrix(a.value(0), a.expr(0).span);
+      if (m.items.some((q) => q.im)) fail('E-COMPLEX-ARG', a.expr(0).span);
+      const dim = uniform(m, a.expr(0).span, a.name);
+      return series(singularValues(numbers(m)).values.map((v) => quantity(v, dim)));
+    },
+  },
+  {
+    name: 'cond',
+    module: 'linear',
+    params: 'A',
+    arity: [1, 1],
+    call: (a) => {
+      const m = asMatrix(a.value(0), a.expr(0).span);
+      if (m.items.some((q) => q.im)) fail('E-COMPLEX-ARG', a.expr(0).span);
+      square(m, a.expr(0).span, a.name);
+      const { values } = singularValues(equilibrated(numbers(m)).scaled);
+      const least = values[values.length - 1]!;
+      if (!(least > 1e-300)) return fail('E-MATRIX-SINGULAR', a.expr(0).span, { function: a.name });
+      return quantity(values[0]! / least);
+    },
+  },
+  {
+    name: 'nullspace',
+    module: 'linear',
+    params: 'A',
+    arity: [1, 1],
+    call: (a) => {
+      const m = asMatrix(a.value(0), a.expr(0).span);
+      if (m.items.some((q) => q.im)) fail('E-COMPLEX-ARG', a.expr(0).span);
+      const { values, v } = singularValues(numbers(m));
+      const top = values[0] ?? 0;
+      const free = values.map((value, j) => (value <= 1e-11 * top ? j : -1)).filter((j) => j >= 0);
+      if (free.length === 0) return fail('E-NULLSPACE-NONE', a.expr(0).span);
+      const columns = free.map((j) => {
+        const column = v.map((row) => row[j]!);
+        const big = column.reduce((best, x) => (Math.abs(x) > Math.abs(best) ? x : best), 0);
+        return column.map((x) => {
+          const scaled = x / big;
+          return Math.abs(scaled) < 1e-12 ? 0 : scaled;
+        });
+      });
+      const items: Quantity[] = [];
+      for (let i = 0; i < m.cols; i++) for (const column of columns) items.push(quantity(column[i]!));
+      return normalized(matrix(m.cols, columns.length, items));
+    },
+  },
+  {
+    // As text: nothing calculates with it, it is how a result is read.
+    name: 'rat',
+    module: 'series',
+    params: 'x',
+    arity: [1, 1],
+    call: (a) => {
+      const value = a.value(0);
+      const items = value.type === 'vector' || value.type === 'matrix' ? value.items : [a.quantity(0)];
+      const shown = items.map((q) => {
+        const found = isDimensionless(q.dim) && !q.im ? fractionOf(q.si) : undefined;
+        if (!found) return a.domain(0);
+        return found[1] === 1 ? String(found[0]) : `${found[0]}/${found[1]}`;
+      });
+      return { type: 'text', value: shown.join('; ') };
+    },
+  },
+  {
+    name: 'molar_mass',
+    module: 'statistics',
+    params: '"formula"',
+    arity: [1, 1],
+    call: (a) => {
+      const given = a.value(0);
+      if (given.type !== 'text') return fail('E-TYPE', a.expr(0).span, { expected: 'text', found: given.type === 'quantity' ? 'number' : given.type });
+      const mass = molarMass(given.value);
+      if (mass === undefined) return fail('E-FORMULA', a.expr(0).span, { formula: given.value });
+      // kg/mol in SI, shown in g/mol.
+      return quantity(mass / 1000, multiplyDims({ M: 1 }, { N: -1 }), { hint: { symbol: 'g/mol', factor: 1e-3, dim: multiplyDims({ M: 1 }, { N: -1 }) } });
+    },
+  },
+  {
+    name: 'unwrap',
+    module: 'series',
+    params: 'v',
+    arity: [1, 1],
+    call: (a) => {
+      const items = a.series(0);
+      let shift = 0;
+      return series(
+        items.map((q, i) => {
+          if (i > 0) {
+            const step = q.si - items[i - 1]!.si;
+            if (step > Math.PI) shift -= 2 * Math.PI;
+            else if (step < -Math.PI) shift += 2 * Math.PI;
+          }
+          return quantity(q.si + shift, q.dim, q.hint ? { hint: q.hint } : {});
+        }),
+      );
+    },
+  },
+  {
     name: 'identity',
     module: 'linear',
     params: 'n',
@@ -683,6 +860,11 @@ export const LINEAR: readonly FunctionDef[] = [
     params: 'K, M',
     arity: [1, 2],
     call: (a) => {
+      const general = generalEigen(a);
+      if (general) {
+        const hintOf = a.value(0).type === 'matrix' ? (a.value(0) as MatrixValue).items[0]?.hint : undefined;
+        return series(general.values.map(([re, im]) => quantity(re, general.dim, { ...(hintOf ? { hint: hintOf } : {}), ...(im ? { im } : {}) })));
+      }
       const { values, dim } = eigen(a);
       // Of one matrix in one unit (a stress tensor in MPa) the values keep that unit: principal stresses in MPa.
       const given = a.count === 1 ? a.value(0) : undefined;
@@ -696,6 +878,20 @@ export const LINEAR: readonly FunctionDef[] = [
     params: 'K, M',
     arity: [1, 2],
     call: (a) => {
+      const general = generalEigen(a);
+      if (general) {
+        const n = general.values.length;
+        const columns = general.values.map((value) => eigenvector(pairs(asMatrix(a.value(0), a.expr(0).span)), value));
+        const items: Quantity[] = [];
+        for (let i = 0; i < n; i++) {
+          for (let j = 0; j < n; j++) {
+            const [re, im] = columns[j]![i]!;
+            const clean = Math.abs(im) <= 1e-9 * Math.max(1, Math.abs(re)) ? 0 : im;
+            items.push(quantity(re, undefined, clean ? { im: clean } : {}));
+          }
+        }
+        return normalized(matrix(n, n, items));
+      }
       const { vectors } = eigen(a);
       const n = vectors.length;
       // Each column scaled so its largest item is 1.
@@ -719,6 +915,17 @@ function index(a: Args, k: number, size: number): number {
 export function inverseOf(m: MatrixValue, span: Span, name: string): MatrixValue {
   const n = square(m, span, name);
   const { rows, cols } = structure(m, span, name);
+  if (m.items.some((q) => q.im)) {
+    const c = complexLu(pairs(m));
+    if (!c) return fail('E-MATRIX-SINGULAR', span, { function: name });
+    const inverse: Quantity[] = new Array<Quantity>(n * n);
+    for (let k = 0; k < n; k++) {
+      complexSolve(c, Array.from({ length: n }, (_, i) => (i === k ? ([1, 0] as C) : ([0, 0] as C)))).forEach(([re, im], r) => {
+        inverse[r * n + k] = quantity(re, powerDim(multiplyDims(rows[k]!, cols[r]!), -1), im ? { im } : {});
+      });
+    }
+    return matrix(n, n, inverse);
+  }
   const d = lu(numbers(m));
   if (!d) return fail('E-MATRIX-SINGULAR', span, { function: name });
   const items: Quantity[] = new Array<Quantity>(n * n);

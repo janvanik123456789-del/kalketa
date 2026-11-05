@@ -537,6 +537,8 @@ export const UI_KEYS = [
   'settings.canvasInline',
   'settings.canvasWindow',
   'cmd.insert.canvas',
+  'cmd.insert.beamScheme',
+  'cmd.insert.sectionScheme',
   'cmd.insert.sheetTable',
   'cmd.insert.chart',
   'cmd.insert.fit',

@@ -6,6 +6,7 @@
  * lines) -> HTML. Pure functions; no file access.
  */
 
+export { canvasValues } from './canvasValues.js';
 import type { SheetResult, UnitRegistry } from '@kalketa/core';
 import { formatDate, t, type Catalog } from '@kalketa/i18n';
 import { appendixHtml, renderBlocksHtml, renderHtml, type CalcStyle, type DerivationMarks, type PageNumbers } from './html.js';

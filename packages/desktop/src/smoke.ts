@@ -2129,6 +2129,22 @@ async function layersWithRealInput(picture: string) {
     canvasOk = mechanics && canvasNarrower && writingOpen && framed === 2 &&
       /<rect x="[\d.]+" y="[\d.]+" width="[\d.]+"/.test(items) && shown.includes('<rect') && shown.includes('marker-end') && shown.includes('L = 5 m') && reopened === 3 && inlineEditing && windowEditing && !(await contents.executeJavaScript(`!!document.querySelector('.canvas-window, .canvas-inline')`));
   }
+  // Insert > Beam scheme: a ready drawing with a driving dimension, opened; its dimension has the box ticked when chosen.
+  await clickOn('.menubar-item:nth-child(4) > button');
+  await clickMenu('Schéma nosníku');
+  await pause(500);
+  const scheme = (await contents.executeJavaScript(`(() => {
+    const svg = document.querySelector('.canvas-svg');
+    return { open: !!svg, driving: !!document.querySelector('[data-canvas="driving"]'), scale: !!document.querySelector('[data-canvas="scale"]'), roller: svg ? svg.querySelectorAll('g line').length : 0 };
+  })()`)) as { open: boolean; driving: boolean; scale: boolean; roller: number };
+  await clickOn('[data-canvas="done"]');
+  await pause(400);
+  canvasOk = canvasOk && scheme.open && scheme.driving && scheme.scale && scheme.roller > 3;
+  // The scheme goes away again, the rest of this check counts the pictures of the sheet.
+  await clickOn('.sheet-scroll');
+  await clickOn('.menubar-item:nth-child(2) > button');
+  await clickMenu('Zpět');
+  await pause(300);
   const besideText = sideGroup.rows === '3,4' && sideGroup.picture && sideGroup.side !== '' && widened > parseFloat(sideGroup.side) && movedPicture && wrapped && cleared && unwrapped && placedFree && strictPlaced && canvasOk;
   const pictures = pasted.img && resized && dropped === 'Obr. 1: Schéma nosníku' && fileCopied && pastedIdle && pictureMenu.menu >= 5 && pictureMenu.full && pictureMenu.caption.includes('Detail kotvení') && besideText;
 

@@ -183,7 +183,6 @@ const ICONS: Readonly<Record<string, ReactElement>> = {
   ),
   'view.fit1': <path {...S} d="M6.5 2.5h7v15h-7z" />,
   'view.fit2': <path {...S} d="M2.5 3.5h6.5v13H2.5zM11 3.5h6.5v13H11z" />,
-  'view.fit3': <path {...S} d="M1.5 4.5h5v11h-5zM7.5 4.5h5v11h-5zM13.5 4.5h5v11h-5z" />,
   'view.paneDetails': (
     <>
       <path {...S} d="M2.5 3.5h15v13h-15zM12 3.5v13" />

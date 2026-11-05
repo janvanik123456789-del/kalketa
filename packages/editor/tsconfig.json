@@ -26,6 +26,9 @@
       "@kalketa/sheet": [
         "../sheet/src/index.ts"
       ],
+      "@kalketa/import": [
+        "../import/src/index.ts"
+      ],
       "@kalketa/render": [
         "../render/src/index.ts"
       ],

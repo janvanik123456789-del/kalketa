@@ -69,6 +69,8 @@ export interface CommandContext {
     /** Marks every row of the sheet (outside a text field; there Ctrl+A selects its text). */
     selectAll(): void;
     setZoom(choice: string): void;
+  /** One page: the layer being worked on alone. */
+  onePage(): void;
     zoomBy(direction: 1 | -1): void;
     setPane(pane: 'details' | 'nav' | 'tables' | 'layers' | 'chat' | 'none'): void;
     toggleTableEditor(): void;
@@ -98,6 +100,7 @@ export interface CommandContext {
     insertTemplate(template: string, line?: boolean): void;
     insertPicture(): void;
     insertCanvas(): void;
+  importSmathFile(): void;
   insertSketch(kind: 'beam' | 'section'): void;
   };
 }
@@ -120,6 +123,7 @@ export function buildCommands(ctx: CommandContext): Map<string, Command> {
   add('file.pdf', 'file', a.exportPdf, { enabled: ctx.desktop });
   add('file.example', 'file', a.example);
   add('file.start', 'file', a.start);
+  add('file.importSmath', 'file', () => a.importSmathFile());
   add('file.exit', 'file', a.exit, { shortcut: 'Alt+F4', enabled: ctx.desktop });
 
   add('edit.undo', 'edit', a.undo, { shortcut: 'Ctrl+Z', enabled: ctx.canUndo });
@@ -131,9 +135,8 @@ export function buildCommands(ctx: CommandContext): Map<string, Command> {
   add('edit.deleteLine', 'edit', a.deleteLine, { shortcut: 'Ctrl+Shift+K' });
   add('edit.selectAll', 'edit', a.selectAll, { shortcut: 'Ctrl+A' });
 
-  add('view.fit1', 'view', () => a.setZoom('fit1'), { checked: ctx.zoomChoice === 'fit1' });
+  add('view.fit1', 'view', a.onePage, { checked: ctx.zoomChoice === 'fit1' });
   add('view.fit2', 'view', () => a.setZoom('fit2'), { checked: ctx.zoomChoice === 'fit2' });
-  add('view.fit3', 'view', () => a.setZoom('fit3'), { checked: ctx.zoomChoice === 'fit3' });
   add('view.zoomIn', 'view', () => a.zoomBy(1), { shortcut: 'Ctrl++' });
   add('view.zoomOut', 'view', () => a.zoomBy(-1), { shortcut: 'Ctrl+-' });
   add('view.zoom100', 'view', () => a.setZoom('1'), { shortcut: 'Ctrl+0', checked: ctx.zoomChoice === '1' });

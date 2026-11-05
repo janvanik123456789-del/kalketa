@@ -155,7 +155,7 @@ export function defaultLayout(): ToolbarLayout {
         builtin: true,
         visible: true,
         place: dock('top', 0, 2),
-        items: ['view.zoomOut', 'view.zoomIn', SEPARATOR, 'view.fit1', 'view.fit2', 'view.fit3', SEPARATOR, 'view.paneDetails', 'view.paneTables', 'view.paneChat'],
+        items: ['view.zoomOut', 'view.zoomIn', SEPARATOR, 'view.fit1', 'view.fit2', SEPARATOR, 'view.paneDetails', 'view.paneTables', 'view.paneChat'],
       },
       {
         id: 'functions',
@@ -289,7 +289,8 @@ export function parseLayout(json: string | null): ToolbarLayout {
     );
     const missing = fallback.toolbars.filter((b) => !valid.some((t) => t.id === b.id));
     const known = typeof stored.items === 'number' ? stored.items : 1;
-    const updated = valid.map((t) => withAddedItems(t, known));
+    // A button of a command that is gone goes too, from a toolbar of one's own as well.
+    const updated = valid.map((t) => withAddedItems(t, known)).map((t) => (t.items.includes('view.fit3') ? { ...t, items: t.items.filter((i) => i !== 'view.fit3') } : t));
     return compactBands({ version: 1, items: ITEMS_VERSION, toolbars: [...updated, ...missing] });
   } catch {
     return fallback;

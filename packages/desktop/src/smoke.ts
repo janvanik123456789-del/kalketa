@@ -709,11 +709,41 @@ async function layersWithRealInput(picture: string) {
   // No AI is connected: the sheet has no AI notes, neither as a tab nor in View > Layers side by side.
   const aiTabWhileEmpty = (await contents.executeJavaScript(`!!document.querySelector('.layer-tab[data-layer="ai"]')`)) as boolean;
   await clickOn('.menubar-item:nth-child(3) > button');
-  await clickMenu('Vrstvy vedle sebe');
+  await clickMenu('Druhá stránka');
   const aiTabAfterClose = (await contents.executeJavaScript(`[...document.querySelectorAll('.menu-panel .menu-row')].some((r) => r.textContent.includes('✦'))`)) as boolean;
   await pressKey('Escape');
   await pressKey('Escape');
   await clickOn('.layer-tab[data-layer="main"]');
+  // File > Import > SMath: files of other programs apart from Open.
+  await clickOn('.menubar-item:nth-child(1) > button');
+  await clickMenu('Import');
+  await pause(200);
+  const importOffered = (await contents.executeJavaScript(`[...document.querySelectorAll('.menu-panel .menu-row .menu-label')].some((l) => l.textContent.includes('SMath'))`)) as boolean;
+  await pressKey('Escape');
+  await pressKey('Escape');
+  if (!importOffered) throw new Error('File > Import > SMath is not offered');
+  // View > Second page: a layer beside the sheet, a page in each panel; then the sheet going on, two pages in one.
+  const layerLabel = (await contents.executeJavaScript(`document.querySelector('.layer-tab[data-layer="data"]').textContent.trim()`)) as string;
+  await clickOn('.menubar-item:nth-child(3) > button');
+  await clickMenu('Druhá stránka');
+  await pause(200);
+  const offered = (await contents.executeJavaScript(`[...document.querySelectorAll('.menu-panel .menu-row .menu-label')].map((l) => l.textContent)`)) as string[];
+  await clickMenu(offered.find((o) => o.includes(layerLabel)) ?? offered[1]!);
+  await pause(500);
+  const beside = (await contents.executeJavaScript(`(() => {
+    const views = [...document.querySelectorAll('.workspace > .layer-view')];
+    const page = views[0]?.querySelector('.page')?.getBoundingClientRect();
+    return { views: views.length, second: !!views[1]?.querySelector('select[data-second-page]'), fills: !!page && page.width > views[0].getBoundingClientRect().width * 0.7 };
+  })()`)) as { views: number; second: boolean; fills: boolean };
+  await clickOn('.menubar-item:nth-child(3) > button');
+  await clickMenu('Druhá stránka');
+  await clickMenu('Pokračování listu');
+  await pause(500);
+  const going = (await contents.executeJavaScript(`(() => {
+    const pages = [...document.querySelectorAll('.layer-view.active .page')].map((p) => p.getBoundingClientRect());
+    return { views: document.querySelectorAll('.workspace > .layer-view').length, row: pages.length > 1 && Math.abs(pages[0].top - pages[1].top) < 2 };
+  })()`)) as { views: number; row: boolean };
+  if (!(beside.views === 2 && beside.second && beside.fills && going.views === 1 && going.row)) throw new Error(`second page: ${JSON.stringify({ beside, going })}`);
   await takePicture(picture);
   const state = (await contents.executeJavaScript(`({
     tabs: document.querySelectorAll('.layer-tab:not(.add)').length,

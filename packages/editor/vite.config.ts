@@ -15,6 +15,7 @@ export default defineConfig(({ command }) => ({
       { find: /^@kalketa\/core$/, replacement: src('core') },
       { find: /^@kalketa\/i18n$/, replacement: src('i18n') },
       { find: /^@kalketa\/sheet$/, replacement: src('sheet') },
+      { find: /^@kalketa\/import$/, replacement: src('import') },
       { find: /^@kalketa\/render$/, replacement: src('render') },
       { find: /^@kalketa\/canvas$/, replacement: src('canvas') },
       { find: /^@kalketa\/chart$/, replacement: src('chart') },

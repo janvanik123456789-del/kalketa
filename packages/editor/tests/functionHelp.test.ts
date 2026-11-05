@@ -1,3 +1,4 @@
+import { importedSmath } from '../src/logic/importedSmath.js';
 import { builtinFunctions, evaluateSheet } from '@kalketa/core';
 import { CATALOGS } from '@kalketa/i18n';
 import { describe, expect, it } from 'vitest';
@@ -114,5 +115,17 @@ describe('the help of the functions', () => {
     expect(functionAtCursor('y := hypo', 9)).toBeUndefined();
     expect(functionAtCursor('y := hypot', 10)?.name).toBe('hypot');
     expect(functionAtCursor('y := a + b', 10)).toBeUndefined();
+  });
+});
+
+describe('a worksheet imported in the program', () => {
+  it('is a draft in a sheet of its own, with the original inside and no file yet', () => {
+    const xml = '<?xml version="1.0"?><worksheet><settings/><regions><region id="1" left="1" top="1"><math><input><e type="operand">a</e><e type="operand">2</e><e type="operator" args="2">:</e></input></math></region></regions></worksheet>';
+    const bytes = new TextEncoder().encode(xml);
+    const { document, report } = importedSmath('Beam.sm', bytes, 'cs');
+    expect(document.manifest.title).toBe('Beam');
+    expect(document.source.trim()).toBe('a := 2');
+    expect(document.files.get('sources/original.sm')).toBe(bytes);
+    expect(report.converted).toBe(1);
   });
 });

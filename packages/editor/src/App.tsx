@@ -37,6 +37,7 @@ import { Ribbon } from './components/Ribbon.js';
 import { CONTROLS_KEY, readControls } from './logic/controls.js';
 import { NavigatorPane, type CheckItem, type OutlineItem, type ProblemItem } from './components/NavigatorPane.js';
 import type { InsertChoice } from './components/InsertMenu.js';
+import { importedSmath } from './logic/importedSmath.js';
 import { chooseFile, desktop, emptyDocument, fileName, fileUri, largestParts, openBytes, pickAndOpen, saveDocument, tableCache, type FileRef, type OpenedFile } from './document.js';
 import { record, redo, undo, type History } from './logic/history.js';
 import { closeTab, cycleTab, fileNameOf, isDirty, isPristine, newTab, openTab, type DocTab, type Tabs } from './logic/documents.js';
@@ -111,7 +112,7 @@ const SLOW_CALCULATION_MS = 100;
 const SETTLE_MS = 600;
 const linesIn = (text: string) => text.split('\n').length;
 /** Layers open side by side at most. */
-const MAX_PANES = 3;
+const MAX_PANES = 2;
 
 // Small remembered preferences; storage may be unavailable.
 function stored(key: string): string | null {
@@ -249,7 +250,7 @@ export function App() {
   const [selectAll, setSelectAll] = useState(0);
   const [notice, setNotice] = useState<string | undefined>();
   const [dialog, setDialog] = useState<DialogKind | undefined>();
-  const [zoomChoice, setZoomChoice] = useState(() => stored('kalketa.zoom') ?? 'fit2');
+  const [zoomChoice, setZoomChoice] = useState(() => (stored('kalketa.zoom') === 'fit3' ? 'fit2' : (stored('kalketa.zoom') ?? 'fit2')));
   // The layer tabs do what the Layers panel did, so the panel no longer opens by itself at start.
   // The chat pane is not opened at start: the AI is off until the user switches it on.
   const [pane, setPane] = useState<Pane>(() => (['details', 'nav', 'tables', 'none'].includes(stored('kalketa.pane') ?? '') ? (stored('kalketa.pane') as Pane) : stored('kalketa.pane') === 'layers' ? 'none' : 'details'));
@@ -484,10 +485,21 @@ export function App() {
     leaveEditing();
   };
 
-  const toggleBeside = (id: string) => {
-    const open = openPanes.indexOf(id);
-    if (open >= 0) closePane(open);
-    else openBeside(id);
+  /** View > One page: the layer being worked on alone. */
+  const onePage = () => {
+    setPanes([layer.id]);
+    setActivePane(0);
+    setZoom('fit1');
+    leaveEditing();
+  };
+
+  /** What stands on the second page: the sheet going on, or a layer beside it (the theory while writing). The first page stays. */
+  const chooseSecondPage = (id: string | undefined) => {
+    const first = openPanes[0]!;
+    setPanes(id && id !== first ? [first, id] : [first]);
+    setActivePane(0);
+    setZoom('fit2');
+    leaveEditing();
   };
 
   const newLayer = async (kind: AddableLayerKind) => {
@@ -1454,6 +1466,27 @@ export function App() {
     else insertCanvas({ ...sectionSketch({ h: 'h', b: 'b', t_w: 't_w', t_f: 't_f' }), scale: 200 });
   };
 
+  /** File > Import > SMath: a new sheet as a draft, the original inside it, what was found said at once. */
+  const importSmathFile = async () => {
+    const file = await chooseFile('.sm');
+    if (!file) return;
+    try {
+      const { document: draft, report } = importedSmath(file.name, new Uint8Array(await file.arrayBuffer()), language);
+      openDocument(draft, undefined);
+      const left = report.formulas - report.converted;
+      setNotice(
+        [
+          t(ui, 'import.summary', { converted: report.converted, formulas: report.formulas, texts: report.texts }),
+          t(ui, 'import.compared', { agree: report.agree, differ: report.differ.length, other: report.notCompared }),
+          ...report.differ.slice(0, 3).map((d) => t(ui, 'import.differs', { name: d.name, stored: d.stored, here: d.here, unit: d.unit })),
+          ...(left > 0 ? [t(ui, 'import.leftInSheet', { count: left })] : []),
+        ].join(' '),
+      );
+    } catch (error) {
+      setNotice(t(ui, 'import.broken', { reason: error instanceof Error ? error.message : String(error) }));
+    }
+  };
+
   const insertPictureFile = async () => {
     const file = await chooseFile('image/*');
     const picture = file ? await fromFile(file) : undefined;
@@ -1887,7 +1920,8 @@ export function App() {
 
   const geometry = pageGeometry(doc.layout.paper, doc.layout.orientation);
   const pageWidthPx = geometry.width * MM_TO_PX;
-  const fitPages = zoomChoice.startsWith('fit') ? Number(zoomChoice.slice(3)) : 0;
+  // A layer as the second page takes the place of the continuation: one page in each panel.
+  const fitPages = zoomChoice.startsWith('fit') ? (openPanes.length > 1 ? 1 : Number(zoomChoice.slice(3))) : 0;
   // Panels side by side share the width; "fit" fits pages into one panel.
   const panelWidth = scrollWidth;
   // The chosen number of pages side by side is kept even in a narrow panel (down to 20 %).
@@ -2005,6 +2039,7 @@ export function App() {
         setSelected(undefined);
       },
       setZoom,
+    onePage,
       zoomBy,
       setPane: choosePane,
       toggleTableEditor: () => setTableEditor((v) => !v),
@@ -2048,6 +2083,7 @@ export function App() {
       insertTemplate,
       insertPicture: () => void insertPictureFile(),
       insertCanvas,
+      importSmathFile,
       insertSketch,
     },
   });
@@ -2200,6 +2236,8 @@ export function App() {
         cmd('file.new'),
         cmd('file.open'),
         cmd('file.start'),
+        // Files of other programs apart from Open: what comes from them is a draft, with its report.
+        { kind: 'submenu', label: t(ui, 'menu.import'), items: [cmd('file.importSmath')] },
         {
           kind: 'submenu',
           label: t(ui, 'menu.recent'),
@@ -2257,7 +2295,21 @@ export function App() {
       items: [
         cmd('view.fit1'),
         cmd('view.fit2'),
-        cmd('view.fit3'),
+        {
+          kind: 'submenu',
+          label: t(ui, 'menu.secondPage'),
+          items: [
+            { kind: 'action' as const, label: t(ui, 'view.secondContinues'), checked: openPanes.length === 1 && zoomChoice === 'fit2', run: () => chooseSecondPage(undefined) },
+            ...doc.layers
+              .filter((l) => l.id !== openPanes[0])
+              .map((l) => ({
+                kind: 'action' as const,
+                label: `${LAYER_GLYPH[l.kind]} ${nameOf(l)}`,
+                checked: openPanes[1] === l.id,
+                run: () => chooseSecondPage(l.id),
+              })),
+          ],
+        },
         sep,
         cmd('view.zoomIn'),
         cmd('view.zoomOut'),
@@ -2265,16 +2317,6 @@ export function App() {
         sep,
         { kind: 'submenu', label: t(ui, 'menu.pane'), items: [cmd('view.paneDetails'), cmd('view.paneNav'), cmd('view.paneTables'), cmd('view.paneLayers'), cmd('view.paneChat'), cmd('view.paneNone')] },
         cmd('view.tableEditor'),
-        {
-          kind: 'submenu',
-          label: t(ui, 'menu.sideBySide'),
-          items: doc.layers.map((l) => ({
-            kind: 'action' as const,
-            label: `${LAYER_GLYPH[l.kind]} ${nameOf(l)}`,
-            checked: openPanes.includes(l.id) && openPanes.length > 1,
-            run: () => toggleBeside(l.id),
-          })),
-        },
         sep,
         {
           kind: 'submenu',
@@ -2763,7 +2805,22 @@ export function App() {
                   >
                     {openPanes.length > 1 && (
                       <header className="layer-view-head">
-                        <span className="glyph">{LAYER_GLYPH[l.kind]}</span> {nameOf(l)}
+                        {i === 0 ? (
+                          <>
+                            <span className="glyph">{LAYER_GLYPH[l.kind]}</span> {nameOf(l)}
+                          </>
+                        ) : (
+                          <select data-second-page value={l.id} title={t(ui, 'menu.secondPage').replace('&', '')} onChange={(e) => chooseSecondPage(e.target.value || undefined)}>
+                            <option value="">{t(ui, 'view.secondContinues')}</option>
+                            {doc.layers
+                              .filter((other) => other.id !== openPanes[0])
+                              .map((other) => (
+                                <option key={other.id} value={other.id}>
+                                  {LAYER_GLYPH[other.kind]} {nameOf(other)}
+                                </option>
+                              ))}
+                          </select>
+                        )}
                         <span className="grow" />
                         <button type="button" title={t(ui, 'layers.closePane')} onClick={() => closePane(i)}>
                           ✕

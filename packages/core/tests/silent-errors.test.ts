@@ -898,10 +898,11 @@ describe('beams and frames', () => {
   it('a rolled section against the catalogue: IPE 300', () => {
     const sheet = 'S := i_section(300 mm, 150 mm, 7.1 mm, 10.7 mm, 15 mm)\nA := S.A\nJ := S.I_y\nW := S.W_y\nP := S.W_pl\nZ := S.I_z';
     expect(of(sheet, 'A').si / 53.81e-4).toBeCloseTo(1, 2);
-    expect(of(sheet, 'J').si / 8356e-8).toBeCloseTo(1, 2);
-    expect(of(sheet, 'W').si / 557.1e-6).toBeCloseTo(1, 2);
-    expect(of(sheet, 'P').si / 628.4e-6).toBeCloseTo(1, 2);
-    expect(of(sheet, 'Z').si / 603.8e-8).toBeCloseTo(1, 2);
+    // To the digits the tables have: a tolerance of 1 % once hid a fillet 16 times too stiff.
+    expect(of(sheet, 'J').si / 8356e-8).toBeCloseTo(1, 3);
+    expect(of(sheet, 'W').si / 557.1e-6).toBeCloseTo(1, 3);
+    expect(of(sheet, 'P').si / 628.4e-6).toBeCloseTo(1, 3);
+    expect(of(sheet, 'Z').si / 603.8e-8).toBeCloseTo(1, 3);
   });
 });
 

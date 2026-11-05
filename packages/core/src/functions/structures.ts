@@ -39,7 +39,8 @@ function iSection(h: number, b: number, tw: number, tf: number, r: number): Reco
   const c = r * ((10 - 3 * Math.PI) / (12 - 3 * Math.PI));
   const web = h - 2 * tf;
   const A = 2 * b * tf + web * tw + 4 * fillet;
-  const ownFillet = (1 / 3 - Math.PI / 16) * r ** 4 - fillet * c * c;
+  // A square without a quarter circle, about the edge through the corner: r⁴/3 − (π/4 − 2/3 + π/16)·r⁴.
+  const ownFillet = (1 - (5 * Math.PI) / 16) * r ** 4 - fillet * c * c;
   const armY = web / 2 - c;
   const armZ = tw / 2 + c;
   const I_y = (b * h ** 3 - (b - tw) * web ** 3) / 12 + 4 * (ownFillet + fillet * armY * armY);

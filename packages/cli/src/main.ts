@@ -165,6 +165,7 @@ async function main(argv: string[]): Promise<number> {
     console.log(t(catalog, 'import.summary', { converted: report.converted, formulas: report.formulas, texts: report.texts }));
     console.log(t(catalog, 'import.compared', { agree: report.agree, differ: report.differ.length, other: report.notCompared }));
     for (const d of report.differ) console.log(`  ${t(catalog, 'import.differs', { name: d.name, stored: d.stored, here: d.here, unit: d.unit })}`);
+    if (report.frozen.length > 0) console.log(t(catalog, 'import.frozen', { names: report.frozen.join(', ') }));
     for (const r of report.renamed) console.log(`  ${t(catalog, 'import.renamed', { from: r.from, to: r.to })}`);
     for (const l of report.left) {
       const why = l.why.kind === 'function' || l.why.kind === 'unit' || l.why.kind === 'region' || l.why.kind === 'loop' ? l.why.name : l.why.kind === 'error' ? l.why.code : '';

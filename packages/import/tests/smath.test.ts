@@ -293,14 +293,18 @@ describe('what a loop left as text assigns', () => {
   const loop = `${n('next')}${n('steps')}${n('steps')}${n('1')}${op('+')}${op(':')}${fn('while', 2)}`;
   const shown = (name: string, value: string) => `<math><input>${n(name)}</input><result action="numeric">${n(value)}</result></math>`;
 
-  it('is not read at its value from before the loop: the sheet shows what SMath had, as text', () => {
+  it('is not read at its value from before the loop: what SMath had becomes a marked input', () => {
     const { source, report } = importSmath(
       sheet(region(10, math(let_('next', n('1')))), region(20, math(let_('steps', n('0')))), region(30, math(loop)), region(40, shown('steps', '5'))),
     );
-    expect(source).toContain('"steps = 5 (SMath)"');
-    expect(source.trim().split('\n').filter((l) => l === 'steps')).toEqual([]);
+    expect(source).toContain("steps := 5 ' result of a loop from SMath, not recalculated");
+    // Its start value goes with the loop.
+    expect(source).toContain('"steps : 0"');
+    expect(source).not.toContain('steps := 0');
     expect(report.differ).toEqual([]);
-    expect(report.left.map((l) => l.why)).toEqual([{ kind: 'function', name: 'while' }, { kind: 'loop', name: 'steps' }]);
+    expect(report.frozen).toEqual(['steps']);
+    expect(report.left.map((l) => l.why)).toEqual([{ kind: 'function', name: 'while' }]);
+    expect(evaluateSheet(source).statements.filter((s) => s.status === 'error')).toEqual([]);
   });
 
   it('a name defined again after the loop is good again', () => {
@@ -361,5 +365,39 @@ describe('a loop that only fills a vector by its index', () => {
     const fill = `${n('k')}${n('1')}${n('3')}${fn('range', 2)}${n('v')}${n('k')}${fn('el', 2)}${n('v')}${n('k')}${n('1')}${op('-')}${fn('el', 2)}${n('1')}${op('+')}${op(':')}${fn('for', 3)}`;
     const { report } = importSmath(sheet(region(10, math(fill))));
     expect(report.left.map((l) => l.why)).toEqual([{ kind: 'function', name: 'for' }]);
+  });
+});
+
+describe('the result of a loop taken over from SMath', () => {
+  const loop = `${n('go')}${n('s')}${n('s')}${n('1')}${op('+')}${op(':')}${fn('while', 2)}`;
+  const shown = (name: string, value: string) => `<math><input>${n(name)}</input><result action="numeric">${value}</result></math>`;
+
+  it('the rest of the sheet goes on calculating from it, and is compared', () => {
+    const control = `<math><input>${n('a')}${n('s')}${op('/')}</input><result action="numeric">${n('371')}</result></math>`;
+    const { source, report } = importSmath(sheet(region(5, math(let_('a', n('20405')))), region(10, math(loop)), region(20, shown('s', n('55'))), region(30, control)));
+    expect(source).toContain('a/s');
+    expect(report.agree).toBe(1);
+    expect(report.left.map((l) => l.why.kind)).toEqual(['function']);
+  });
+
+  it('a matrix too; in the language of the document', () => {
+    const value = `${n('2')}${n('1')}${op('-', 1)}${n('2')}${n('1')}${fn('mat', 4)}`;
+    const { source } = importSmath(sheet(region(10, math(loop)), region(20, shown('s', value))), undefined, 'cs');
+    expect(source).toContain("s := [2 | -1] ' výsledek smyčky ze SMathu, nepřepočítává se");
+    expect(evaluateSheet(source).statements.filter((s) => s.status === 'error')).toEqual([]);
+  });
+
+  it('a start value something else reads keeps its line, the result gets a name of its own', () => {
+    const { source, report } = importSmath(sheet(region(5, math(let_('s', n('1')))), region(6, math(let_('t', n('s'), n('2'), op('+')))), region(10, math(loop)), region(20, shown('s', n('9')))));
+    expect(source).toContain('s := 1');
+    expect(source).toContain("s_2 := 9 '");
+    expect(report.renamed).toEqual([{ from: 's', to: 's_2' }]);
+    expect(report.frozen).toEqual(['s_2']);
+  });
+
+  it('what is more than numbers stays text with what SMath had', () => {
+    const { source, report } = importSmath(sheet(region(10, math(loop)), region(20, shown('s', `${n('q')}${n('2')}${op('*')}`))));
+    expect(source).toContain('(SMath)');
+    expect(report.frozen).toEqual([]);
   });
 });

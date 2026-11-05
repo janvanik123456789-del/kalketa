@@ -223,8 +223,13 @@ function evaluateRaw(expr: Expr, ctx: EvalContext): Value {
     case 'index': {
       const object = evaluate(expr.object, ctx);
       if (object.type === 'matrix') {
-        // A[i, j], counted from 1.
-        if (!expr.column) return fail('E-INDEX', expr.span, { index: '?', length: `${object.rows}×${object.cols}` });
+        // A[i, j], counted from 1; one index is enough where there is one row or one column.
+        if (!expr.column) {
+          if (object.rows !== 1 && object.cols !== 1) return fail('E-INDEX', expr.span, { index: '?', length: `${object.rows}×${object.cols}` });
+          const q = asQuantity(evaluate(expr.index, ctx), expr.index.span);
+          if (!isDimensionless(q.dim) || !Number.isInteger(q.si) || q.si < 1 || q.si > object.items.length) fail('E-INDEX', expr.index.span, { index: q.si, length: object.items.length });
+          return object.items[q.si - 1]!;
+        }
         const position = (e: Expr, size: number) => {
           const q = asQuantity(evaluate(e, ctx), e.span);
           if (!isDimensionless(q.dim) || !Number.isInteger(q.si) || q.si < 1 || q.si > size) fail('E-INDEX', e.span, { index: q.si, length: size });

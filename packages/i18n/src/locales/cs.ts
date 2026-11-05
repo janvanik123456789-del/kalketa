@@ -570,6 +570,7 @@ export const cs: Catalog = {
     'cmd.file.start': '&Úvodní obrazovka',
     'cmd.file.importSmath': '&SMath (.sm)…',
     'menu.import': '&Import',
+    'import.frozen': 'Výsledky smyček ze SMathu jsou v listu jako zadání a nepřepočítávají se: {names}.',
     'import.leftInSheet': 'Co nešlo převést ({count}), zůstalo v listu jako text.',
     'cmd.tools.intent': 'Nový výpočet ze &záměru (AI)…',
     'start.intent': 'Napsat zadání pro AI…',

@@ -24,6 +24,10 @@ describe('matrices', () => {
     expectValue('A := [1, 2 | 3, 4] kN\nA[1, 2]', 2, 'kN');
     expect(codes('[1, 2 | 3]')).toEqual(['E-MATRIX-SHAPE']);
     expect(codes('A := [1, 2 | 3, 4]\nA[3, 1]')).toEqual(['E-INDEX']);
+    // One index only where there is one column or one row.
+    expect(codes('A := [1, 2 | 3, 4]\nA[1]')).toEqual(['E-INDEX']);
+    expect(codes('b := [1 | 2]\nb[3]')).toEqual(['E-INDEX']);
+    expect(codes('b := [1 | 2]\nb[2]')).toEqual([]);
   });
 
   it('show each item in its unit, or all in a target unit', () => {

@@ -24,6 +24,8 @@ export interface SmathReport {
   readonly texts: number;
   /** What stayed as text, with the reason. */
   readonly left: readonly { readonly written: string; readonly why: NotConverted }[];
+  /** Results of loops taken over from SMath as inputs of the sheet: they do not recalculate. */
+  readonly frozen: readonly string[];
   /** a redefined further down became a_2: SMath allows it, a sheet does not. */
   readonly renamed: readonly { readonly from: string; readonly to: string }[];
   /** Stored results against the calculation here, within the digits SMath stored. */
@@ -507,6 +509,31 @@ function storedWords(math: XmlNode, scope: Scope): string | undefined {
   }
 }
 
+/** The value SMath stored, as an input of the sheet; undefined for what is more than numbers and units. */
+function frozenValue(math: XmlNode, contract: string | undefined, scope: Scope): string | undefined {
+  const result = child(math, 'result');
+  if (!result || result.children.length === 0) return undefined;
+  const constant = (n: Node): boolean =>
+    n.k === 'number' || n.k === 'unit' || (n.k === 'bracket' ? constant(n.inner) : (n.k === 'op' || n.k === 'call') && (n.k === 'op' || n.name === 'mat') && n.args.every(constant));
+  const hasUnit = (n: Node): boolean => n.k === 'unit' || (n.k === 'bracket' ? hasUnit(n.inner) : (n.k === 'op' || n.k === 'call') && n.args.some(hasUnit));
+  try {
+    const tree = treeOf(result);
+    if (!constant(tree) || (contract && tree.k === 'call')) return undefined;
+    const clean: Scope = { ...scope, overwritten: new Set(), columns: new Map(), tables: new Map(), local: new Set(), aliases: new Map(), formulas: new Map() };
+    const value = rendered(tree, clean).text;
+    return contract && !hasUnit(tree) ? `${value} [${contract}]` : value;
+  } catch (err) {
+    if (err instanceof Unconverted) return undefined;
+    throw err;
+  }
+}
+
+/** What stands beside a value taken over from SMath: a document in its language, so here and not in the catalog. */
+const FROZEN_NOTE: Readonly<Record<string, string>> = {
+  cs: 'výsledek smyčky ze SMathu, nepřepočítává se',
+  en: 'result of a loop from SMath, not recalculated',
+};
+
 /** A formula left as text, with what SMath had for it. */
 const asWords = (written: string, stored: string | undefined): string => quoted(stored ? `${written} = ${stored} (SMath)` : written);
 
@@ -647,6 +674,7 @@ export function importSmath(xml: string, registry: UnitRegistry = defaultRegistr
   const plotPixels = major > 1 || (major === 1 && minor >= 9) ? undefined : 6.15;
   const renamed: { from: string; to: string }[] = [];
   const left: { written: string; why: NotConverted }[] = [];
+  const frozen: string[] = [];
   const lines: Line[] = [];
   let formulas = 0;
   let texts = 0;
@@ -704,6 +732,32 @@ export function importSmath(xml: string, registry: UnitRegistry = defaultRegistr
       tree = treeOf(input);
       const contractNode = child(math, 'contract');
       const contract = contractNode && contractNode.children.length > 0 ? unitText(treeOf(contractNode), scope) : undefined;
+      // What a loop assigned, shown: its result as an input, marked, so the rest of the sheet goes on calculating.
+      const taken = tree.k === 'name' && scope.overwritten.has(tree.name) ? frozenValue(math, contract, scope) : undefined;
+      if (taken !== undefined && tree.k === 'name') {
+        const own = ownName(tree.name);
+        const before = scope.aliases.get(tree.name);
+        let shown = before ?? own;
+        if (before !== undefined) {
+          const reads = new RegExp(`(^|[^\\p{L}\\p{N}_.])${before}($|[^\\p{L}\\p{N}_])`, 'u');
+          const at = lines.findIndex((l) => l.text.startsWith(`${before} :=`));
+          const read = lines.slice(at + 1).some((l) => !l.text.startsWith('"') && reads.test(l.text));
+          // The start value of the loop goes with the loop; read by something else, it keeps its line.
+          if (at >= 0 && !read) lines[at] = { text: quoted(lines[at]!.written ?? lines[at]!.text) };
+          else {
+            let n = 2;
+            const names = new Set(scope.aliases.values());
+            while (names.has(`${own}_${n}`)) n++;
+            shown = `${own}_${n}`;
+            renamed.push({ from: own, to: shown });
+          }
+        }
+        scope.overwritten.delete(tree.name);
+        scope.aliases.set(tree.name, shown);
+        frozen.push(shown);
+        lines.push({ text: `${shown} := ${taken} ' ${FROZEN_NOTE[language] ?? FROZEN_NOTE['en']!}`, written: writtenOf(tree), words });
+        continue;
+      }
       const { line, name } = lineOf(tree, contract, scope, renamed);
       const result = child(math, 'result');
       const found = result && result.attributes.get('action') !== 'symbolic' ? storedWithUnit(result, scope) : undefined;
@@ -799,7 +853,7 @@ export function importSmath(xml: string, registry: UnitRegistry = defaultRegistr
   });
   const asText = new Set(left.map((l) => l.written));
   const converted = lines.filter((l) => l.written !== undefined && !l.text.startsWith('"') && !asText.has(l.written)).length;
-  return { source: `${source}\n`, report: { formulas, converted, texts, left, renamed, agree, differ, notCompared }, images };
+  return { source: `${source}\n`, report: { formulas, converted, texts, left, frozen, renamed, agree, differ, notCompared }, images };
 }
 
 let notNumbers = 0;

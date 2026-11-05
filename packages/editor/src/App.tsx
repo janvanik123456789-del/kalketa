@@ -1479,6 +1479,7 @@ export function App() {
           t(ui, 'import.summary', { converted: report.converted, formulas: report.formulas, texts: report.texts }),
           t(ui, 'import.compared', { agree: report.agree, differ: report.differ.length, other: report.notCompared }),
           ...report.differ.slice(0, 3).map((d) => t(ui, 'import.differs', { name: d.name, stored: d.stored, here: d.here, unit: d.unit })),
+          ...(report.frozen.length > 0 ? [t(ui, 'import.frozen', { names: report.frozen.join(', ') })] : []),
           ...(left > 0 ? [t(ui, 'import.leftInSheet', { count: left })] : []),
         ].join(' '),
       );

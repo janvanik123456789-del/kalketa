@@ -159,6 +159,7 @@ export const UI_KEYS = [
   'cmd.file.start',
   'cmd.file.importSmath',
   'menu.import',
+  'import.frozen',
   'import.leftInSheet',
   'cmd.tools.intent',
   'start.intent',

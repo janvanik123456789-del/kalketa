@@ -570,6 +570,7 @@ export const en: Catalog = {
     'cmd.file.start': 'Star&t screen',
     'cmd.file.importSmath': '&SMath (.sm)…',
     'menu.import': '&Import',
+    'import.frozen': 'Results of loops from SMath are inputs of the sheet and do not recalculate: {names}.',
     'import.leftInSheet': 'What could not be converted ({count}) stays in the sheet as text.',
     'cmd.tools.intent': 'New calculation from an &intent (AI)…',
     'start.intent': 'Describe it to the AI…',

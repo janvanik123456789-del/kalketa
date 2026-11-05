@@ -10,6 +10,7 @@ export default defineConfig({
       '@kalketa/core': src('core'),
       '@kalketa/i18n': src('i18n'),
       '@kalketa/sheet': src('sheet'),
+      '@kalketa/import': src('import'),
       '@kalketa/render': src('render'),
       '@kalketa/canvas': src('canvas'),
       '@kalketa/chart-editor/logic': fileURLToPath(new URL('./packages/chart-editor/src/logic/index.ts', import.meta.url)),

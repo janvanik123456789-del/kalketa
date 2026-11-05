@@ -21,6 +21,9 @@
       "path": "../sheet"
     },
     {
+      "path": "../import"
+    },
+    {
       "path": "../render"
     },
     {

@@ -11,6 +11,7 @@
  *   Prints the sheet as a classical technical calculation (HTML, optionally PDF).
  *   The printout uses the sheet's own language when it has one.
  *
+ * kalketa import <file.sm> [--out file.kalk]
  * kalketa pack <file.cc> [--out file.kalk] [--title "…"]
  * kalketa unpack <file.kalk> [--into folder]
  *   Converts between an unpacked folder and a .kalk file.
@@ -20,13 +21,14 @@
  *   Imports a table into a sheet folder (tables/<Table>/schema.json + data.csv).
  */
 
+import { importSmath, XmlError, type SmathImport } from '@kalketa/import';
 import { isCanvasPath, readScene, sceneDataUri, type LiveValues } from '@kalketa/canvas';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { basename, extname, join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { defaultRegistry, traceName, type Diagnostic } from '@kalketa/core';
 import { catalogFor, formatDiagnostic, t, type Catalog, type UiKey } from '@kalketa/i18n';
-import { appendixLayers, blockAppendices, evaluateDocument, FILE_EXTENSION, importTable, parseCsv, readWorkbook, revisionState, shortHash } from '@kalketa/sheet';
+import { appendixLayers, blockAppendices, evaluateDocument, FILE_EXTENSION, importTable, newDocument, parseCsv, readWorkbook, revisionState, shortHash } from '@kalketa/sheet';
 import { openSheet, saveSheetFile, writeFolder, writeTable } from './files.js';
 import { htmlToPdf } from './pdf.js';
 import { formatReport, formatTrace } from './report.js';
@@ -37,6 +39,7 @@ const USAGE = [
   '  kalketa run <sheet.kalk|sheet.cc> [--lang <language>] [--digits <n>]',
   '  kalketa trace <sheet.kalk|sheet.cc> <name> [--lang <language>]',
   '  kalketa print <sheet.kalk|sheet.cc> [--out <file.html>] [--pdf <file.pdf>] [--lang <language>]',
+  '  kalketa import <worksheet.sm> [--out <file.kalk>]',
   '  kalketa pack <sheet.cc> [--out <file.kalk>] [--title <title>]',
   '  kalketa unpack <sheet.kalk> [--into <folder>]',
   '  kalketa import-table <file.csv|file.xlsx> --name <Table> [--sheet <name>] [--into <folder>] [--source <title>]',
@@ -136,6 +139,39 @@ async function main(argv: string[]): Promise<number> {
       console.log(values.pdf);
     }
     return result.diagnostics.some((d) => d.severity === 'error') ? 1 : 0;
+  }
+
+  if (command === 'import' && file) {
+    if (extname(file).toLowerCase() !== '.sm') {
+      console.error(t(catalog, 'import.kind'));
+      return 2;
+    }
+    const bytes = new Uint8Array(readFileSync(file));
+    let imported: SmathImport;
+    try {
+      imported = importSmath(new TextDecoder().decode(bytes));
+    } catch (err) {
+      if (!(err instanceof XmlError)) throw err;
+      console.error(t(catalog, 'import.broken', { reason: err.message }));
+      return 1;
+    }
+    // A draft: a new sheet, the original goes with it and stays as it was.
+    const title = basename(file, extname(file));
+    const fresh = newDocument(title, imported.source);
+    const doc = { ...fresh, files: new Map([...fresh.files, [`sources/original.sm`, bytes]]) };
+    const out = values.out ?? file.slice(0, -extname(file).length) + FILE_EXTENSION;
+    await saveSheetFile(doc, out);
+    const { report } = imported;
+    console.log(t(catalog, 'import.summary', { converted: report.converted, formulas: report.formulas, texts: report.texts }));
+    console.log(t(catalog, 'import.compared', { agree: report.agree, differ: report.differ.length, other: report.notCompared }));
+    for (const d of report.differ) console.log(`  ${t(catalog, 'import.differs', { name: d.name, stored: d.stored, here: d.here, unit: d.unit })}`);
+    for (const r of report.renamed) console.log(`  ${t(catalog, 'import.renamed', { from: r.from, to: r.to })}`);
+    for (const l of report.left) {
+      const why = l.why.kind === 'function' || l.why.kind === 'unit' || l.why.kind === 'region' ? l.why.name : l.why.kind === 'error' ? l.why.code : '';
+      console.log(`  ${t(catalog, `import.left.${l.why.kind}` as UiKey, { written: l.written, why })}`);
+    }
+    console.log(out);
+    return 0;
   }
 
   if (command === 'pack' && file) {

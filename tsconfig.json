@@ -20,6 +20,9 @@
       "path": "packages/chart"
     },
     {
+      "path": "packages/import"
+    },
+    {
       "path": "packages/cli"
     },
     {

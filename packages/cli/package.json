@@ -11,6 +11,7 @@
     "@kalketa/core": "*",
     "@kalketa/i18n": "*",
     "@kalketa/sheet": "*",
+    "@kalketa/import": "*",
     "@kalketa/render": "*",
     "@kalketa/canvas": "*"
   },

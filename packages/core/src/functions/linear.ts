@@ -12,7 +12,7 @@ import { diagnostic, fail, type Span } from '../diagnostics.js';
 import { DIMENSIONLESS, divideDims, isDimensionless, multiplyDims, powerDim, sameDim, type Dimension } from '../units/dimension.js';
 import { baseUnitSymbol } from '../units/display.js';
 import { quantity, type MatrixValue, type Quantity, type Value, type VectorValue } from '../values/value.js';
-import { divide, exact, multiply, negate, solveLinear, subtract, toNumber, type Exact } from '../values/exact.js';
+import { exact, solveLinear, type Exact } from '../values/exact.js';
 import type { Args, FunctionDef } from './registry.js';
 
 /** The largest system lsolve also solves in exact fractions. */
@@ -193,42 +193,57 @@ function conditionOf(a: readonly (readonly number[])[], d: { lu: number[][]; per
   return norm(Array.from({ length: n }, (_, j) => a.map((row) => row[j]!))) * norm(inverse);
 }
 
-/** The determinant in fractions, or undefined when an item has no exact form or a square root. */
-function exactDeterminant(m: MatrixValue): Exact | undefined {
+/**
+ * The determinant in fractions of its own size, or undefined when an item has no exact form or a square root.
+ * The exact form of a value is limited, so the Hilbert matrix of 12 (2.6·10⁻⁷⁸) leaves it on the way.
+ */
+function exactDeterminant(m: MatrixValue): { value: number; form?: Exact } | undefined {
   const n = m.rows;
-  const a: Exact[][] = [];
+  const gcd = (x: bigint, y: bigint): bigint => {
+    let [p, q] = [x < 0n ? -x : x, y < 0n ? -y : y];
+    while (q !== 0n) [p, q] = [q, p % q];
+    return p;
+  };
+  type Fraction = readonly [bigint, bigint];
+  const reduced = (num: bigint, den: bigint): Fraction => {
+    const g = gcd(num, den) || 1n;
+    return den < 0n ? [-num / g, -den / g] : [num / g, den / g];
+  };
+  const a: Fraction[][] = [];
   for (let i = 0; i < n; i++) {
-    const row: Exact[] = [];
+    const row: Fraction[] = [];
     for (let j = 0; j < n; j++) {
       const e = at(m, i, j).exact;
       if (!e || e.root !== 1n) return undefined;
-      row.push(e);
+      row.push([e.num, e.den]);
     }
     a.push(row);
   }
-  let det = exact(1n)!;
+  let det: Fraction = [1n, 1n];
   for (let k = 0; k < n; k++) {
-    const p = a.findIndex((row, i) => i >= k && row[k]!.num !== 0n);
-    if (p < 0) return exact(0n);
+    const p = a.findIndex((row, i) => i >= k && row[k]![0] !== 0n);
+    if (p < 0) return { value: 0, form: exact(0n)! };
     if (p !== k) {
       [a[p], a[k]] = [a[k]!, a[p]!];
-      det = negate(det);
+      det = [-det[0], det[1]];
     }
-    const next = multiply(det, a[k]![k]!);
-    if (!next) return undefined;
-    det = next;
+    const pivot = a[k]![k]!;
+    det = reduced(det[0] * pivot[0], det[1] * pivot[1]);
     for (let i = k + 1; i < n; i++) {
-      const f = divide(a[i]![k]!, a[k]![k]!);
-      if (!f) return undefined;
+      const [fn, fd] = reduced(a[i]![k]![0] * pivot[1], a[i]![k]![1] * pivot[0]);
       for (let j = k; j < n; j++) {
-        const term = multiply(f, a[k]![j]!);
-        const value = term && subtract(a[i]![j]!, term);
-        if (!value) return undefined;
-        a[i]![j] = value;
+        const [xn, xd] = a[i]![j]!;
+        const [yn, yd] = a[k]![j]!;
+        a[i]![j] = reduced(xn * fd * yd - fn * yn * xd, xd * fd * yd);
       }
     }
   }
-  return det;
+  // Both parts cut to about 60 bits first: a Number of each could overflow.
+  const shiftOf = (x: bigint) => Math.max(0, (x < 0n ? -x : x).toString(2).length - 60);
+  const [up, down] = [shiftOf(det[0]), shiftOf(det[1])];
+  const value = (Number(det[0] >> BigInt(up)) / Number(det[1] >> BigInt(down))) * 2 ** (up - down);
+  const form = exact(det[0], det[1]);
+  return { value, ...(form ? { form } : {}) };
 }
 
 /** Eigenvalues and eigenvectors (columns) of a symmetric matrix: Jacobi rotations. */
@@ -378,7 +393,7 @@ export const LINEAR: readonly FunctionDef[] = [
       const dim = rows.reduce((d, r, i) => multiplyDims(d, multiplyDims(r, cols[i]!)), DIMENSIONLESS);
       // Written in decimals, the determinant is known exactly, however small: the Hilbert matrix of 12 has 2.6·10⁻⁷⁸.
       const whole = n <= EXACT_SOLVE_SIZE ? exactDeterminant(m) : undefined;
-      if (whole) return quantity(toNumber(whole), dim, { exact: whole });
+      if (whole) return quantity(whole.value, dim, whole.form ? { exact: whole.form } : {});
       const a0 = numbers(m);
       // A pivot lost in rounding: no zero can be told from a very small number. Not rounded to 0, and said so.
       if (!lu(a0)) a.warn(diagnostic('W-ILL-CONDITIONED', a.call.span, { function: a.name }));

@@ -121,3 +121,25 @@ describe('solve and first in a formula', () => {
     expect(shown).toContain('10 −9');
   });
 });
+
+describe('charts of statistics in print', () => {
+  const svg = (source: string) => {
+    const doc = buildPrintDocument(evaluateSheet(source), { catalog: cs, registry: defaultRegistry, digits: 4, title: 'T' });
+    return doc.blocks.map((block) => renderBlockHtml(block, cs)).join('');
+  };
+
+  it('draws a box for each series, error bars at the points, bars of a histogram', () => {
+    const box = svg('a := [1, 2, 3, 4, 5]\nb := [2, 4, 6, 8, 10]\nplot(a, b, kind: "box")');
+    expect(box.match(/chart-box/g)?.length).toBe(2);
+    const errors = svg('x := [1, 2]\ny := [3, 4]\ne := [0.5, 0.5]\nplot(y, x: x, kind: "points", errors: e)');
+    expect(errors.match(/chart-error/g)?.length).toBe(2);
+    expect(svg('v := [1, 2, 2, 3, 4, 4, 4]\nplot(v, kind: "hist", bins: 3)')).toContain('<svg');
+  });
+
+  it('prints a beam with its reactions, a system of equations and the number found', () => {
+    expect(svg('N := beam(L: 6 m, EI: 20 MN·m^2, pins: [0 m, 6 m], q: 10 kN/m)')).toContain('R = 30; 30 kN');
+    const ode = svg('solve w(x), P: w″ + P·w == 0 in 0 .. 1\n    w(0) == 0\n    w(1) == 0\n    w′(0) == 1\n    guess P = 9');
+    expect(ode).toContain('P');
+    expect(ode).toContain('9,87');
+  });
+});

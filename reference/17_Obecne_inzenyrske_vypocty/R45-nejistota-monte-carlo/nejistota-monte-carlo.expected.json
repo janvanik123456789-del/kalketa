@@ -1,0 +1,61 @@
+{
+  "sheet": "nejistota-monte-carlo.cc",
+  "verifiedBy": "Vlastní zadání. Nezávisle v čistém Pythonu (kontrola.md): momenty numerickou integrací přes normální a rovnoměrné rozdělení, citlivosti konečnými diferencemi. Výsledky simulace závisí na generátoru, a proto tu nejsou; ověřují je posudky listu proti přesným momentům.",
+  "relativeTolerance": 1e-06,
+  "values": {
+    "P_0": {
+      "value": 1017.3076923076923,
+      "unit": "W"
+    },
+    "u_R": {
+      "value": 1.1547005383792517,
+      "unit": "Ω"
+    },
+    "c_U": {
+      "value": 8.84615384609333,
+      "unit": "W/V"
+    },
+    "c_R": {
+      "value": -19.56360947463054,
+      "unit": "W/Ω"
+    },
+    "u_P": {
+      "value": 34.85115533790195,
+      "unit": "W"
+    },
+    "E_U2": {
+      "value": 52908.99999999997,
+      "unit": "V²"
+    },
+    "E_R1": {
+      "value": 0.01924026028343766,
+      "unit": "1/Ω"
+    },
+    "P_e": {
+      "value": 1017.9829313364027,
+      "unit": "W"
+    },
+    "u_e": {
+      "value": 34.8853774471673,
+      "unit": "W"
+    }
+  },
+  "checks": [
+    {
+      "label": "Střední hodnota ze simulace jako přesná, v rozptylu simulace",
+      "passed": true
+    },
+    {
+      "label": "Nejistota ze simulace jako přesná, do 2 %",
+      "passed": true
+    },
+    {
+      "label": "Lineární odhad GUM jako přesná nejistota, do 1 %",
+      "passed": true
+    },
+    {
+      "label": "Interval 95 % ze simulace jako P_0 ± 2·u_P, do 1 %",
+      "passed": true
+    }
+  ]
+}

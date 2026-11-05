@@ -1003,6 +1003,12 @@ c := m[2]`;
     const hist = plot('v := [1, 2, 2, 3, 4, 4, 4]\nplot(v, kind: "hist", bins: 3)');
     expect(hist.kind).toBe('bar');
     expect(hist.series[0]!.ys.reduce((s, y) => s + y, 0)).toBe(7);
+    // The unit asked for of a histogram is that of its values, along x: the counts have none.
+    const inMm = plot('L := [1 m, 1.2 m, 1.2 m, 1.4 m]\nplot(L, kind: "hist", bins: 2) | mm');
+    expect(inMm.xUnit).toBe('mm');
+    expect(inMm.series[0]!.xs.map((x) => Math.round(x))).toEqual([1100, 1300]);
+    expect(inMm.series[0]!.ys).toEqual([1, 3]);
+    expect(codes('L := [1 m, 2 m]\nplot(L, kind: "hist", bins: 2) | s')).toContain('E-TARGET-UNIT');
     const box = plot('a := [1, 2, 3, 4, 5]\nb := [2, 4, 6, 8, 10]\nplot(a, b, kind: "box")');
     expect(box.series.map((s) => s.box)).toEqual([true, true]);
     expect(box.series[1]!.ys).toEqual([2, 4, 6, 8, 10]);

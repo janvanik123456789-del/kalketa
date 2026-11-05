@@ -410,13 +410,22 @@ function madeOfOthers(kind: string, given: CallExpr, ctx: EvalContext, evaluate:
     const value = evaluate(data, ctx);
     const count = value.type === 'vector' ? value.items.length : 1;
     const bins: Expr = binsArg ? binsArg.value : number(Math.max(1, Math.ceil(Math.sqrt(count))));
-    return plotStatement(
+    const drawn = plotStatement(
       { ...given, args: [call('hist_counts', [data, bins])], named: [{ name: 'x', nameSpan: span, value: call('hist_centers', [data, bins]) }, kindArg('bar'), ...rest] },
       ctx,
       evaluate,
-      target,
+      undefined,
       formulaOf,
     );
+    if (!target) return drawn;
+    // plot(L, kind: "hist") | mm: the values lie along x, the counts up have no unit, so the unit asked for is that of x.
+    const centers = evaluate(call('hist_centers', [data, bins]), ctx);
+    const items = centers.type === 'vector' ? centers.items : [];
+    const dimOf = items[0]?.dim ?? quantity(0).dim;
+    if (!sameDim(target.dim, dimOf)) throw new CalcError(diagnostic('E-TARGET-UNIT', span, { unit: target.symbol, found: baseUnitSymbol(dimOf) }));
+    const shown = (si: number) => (si - (target.offset ?? 0)) / target.factor;
+    const xs = items.map((q) => shown(q.si));
+    return { ...drawn, xUnit: target.symbol, series: drawn.series.map((s) => ({ ...s, xs })), ...(drawn.xRange ? { xRange: [xs[0]!, xs[xs.length - 1]!] as const } : {}) };
   }
   const one: Expr = { kind: 'vector', items: [1, 1, 1, 1, 1].map(number), span } as Expr;
   const drawn = plotStatement({ ...given, args: given.args.map((a) => call('box_values', [a])), named: [{ name: 'x', nameSpan: span, value: one }, kindArg('points'), ...rest] }, ctx, evaluate, target, formulaOf);

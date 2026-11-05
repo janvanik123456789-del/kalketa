@@ -17,6 +17,8 @@ export interface ResolvedUnit {
   readonly symbol: string;
   readonly factor: number;
   readonly dim: Dimension;
+  /** rpm or Hz shown of a value held in radians (ω := 3000 rpm | rpm), see eval/rotation.ts. */
+  readonly angular?: boolean;
   /** Set only for a lone absolute temperature unit (°C, °F). */
   readonly offset?: number;
   /** Difference unit matching an absolute one (°C -> Δ°C). */

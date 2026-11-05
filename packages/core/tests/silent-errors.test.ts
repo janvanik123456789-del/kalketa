@@ -180,9 +180,10 @@ describe('an angular velocity by its name', () => {
     expect(shown('ω_0 := 1/sqrt(4 mH·2 μF)', 'ω_0')).toBe('rad/s');
   });
 
-  it('leaves a frequency and a unit written by hand', () => {
+  it('leaves a frequency; a value in turns becomes radians, or M·ω would be 2π short', () => {
     expect(shown('f := 1/sqrt(4 mH·2 μF)', 'f')).toBe('Hz');
-    expect(shown('ω := 50 Hz', 'ω')).toBe('Hz');
+    expect(shown('ω := 50 Hz', 'ω')).toBe('rad/s');
+    expect(si('ω := 50 Hz', 'ω')).toBeCloseTo(100 * Math.PI, 10);
   });
 });
 
@@ -290,5 +291,103 @@ describe('what the comparison with other programs found', () => {
     expect(warned('a := cot(π)')).toContain('W-POLE');
     expect(warned('a := tan(π/4)')).toEqual([]);
     expect(warned('a := tan(1.57)')).toEqual([]);
+  });
+});
+
+/** docs/navrhy/ZADANI-Z-KONKURENCE.md, 1.18: SI writes Hz and rad/s both as 1/s, so 2π got lost without a word. */
+describe('turns and radians', () => {
+  const shown = (sheet: string): [number, string] => {
+    const d = evaluateSheet(sheet).statements.at(-1)!.display!;
+    return [d.value, d.unit ?? ''];
+  };
+  const close = (sheet: string, value: number, unit: string) => {
+    const [v, u] = shown(sheet);
+    expect(u, sheet).toBe(unit);
+    expect(v / value, sheet).toBeCloseTo(1, 9);
+  };
+  const warned = (sheet: string) => evaluateSheet(sheet).diagnostics.filter((d) => d.severity === 'warning').map((d) => d.code);
+  const TWO_PI = 2 * Math.PI;
+
+  it('convert with 2π', () => {
+    close('3000 rpm | rad/s', 100 * Math.PI, 'rad/s');
+    close('ω := 314 rad/s\nω | rpm', (314 / TWO_PI) * 60, 'rpm');
+    close('1 Hz | rad/s', TWO_PI, 'rad/s');
+    close('ω_0 := sqrt(40 N/m / (10 kg))\nω_0 | Hz', 2 / TWO_PI, 'Hz');
+    close('n := 1450 min^-1\nn | rad/s', (1450 * TWO_PI) / 60, 'rad/s');
+    close('180 °/s | rpm', 30, 'rpm');
+  });
+
+  it('give the power of a moment and an angular velocity', () => {
+    close('M := 100 N*m\nω := 3000 rpm\nM*ω | kW', 10 * Math.PI, 'kW');
+    close('M := 100 N*m\nω := 50 Hz\nM*ω | kW', 10 * Math.PI, 'kW');
+    close('ω := 3000 rpm', 100 * Math.PI, 'rad/s');
+  });
+
+  it('ω shown in rpm goes on in radians', () => {
+    close('ω := 3000 rpm | rpm', 3000, 'rpm');
+    close('M := 100 N*m\nω := 3000 rpm | rpm\nM*ω | kW', 10 * Math.PI, 'kW');
+    close('ω := 3000 rpm | rpm\nω | rad/s', 100 * Math.PI, 'rad/s');
+    close('ω := 3000 rpm | rpm\nω | rpm', 3000, 'rpm');
+  });
+
+  it('do not count 2π twice', () => {
+    close('n := 3000 rpm\n2*π*n | rad/s', 100 * Math.PI, 'rad/s');
+    close('n := 3000 rpm\nn*2*π | rad/s', 100 * Math.PI, 'rad/s');
+    close('f := 50 Hz\nω := 2·π·f | rad/s', 100 * Math.PI, 'rad/s');
+    close('f := 50 Hz\n2*3.14159*f | rad/s', 2 * 3.14159 * 50, 'rad/s');
+    close('ω := 314 rad/s\nf := ω/(2·π) | Hz', 314 / TWO_PI, 'Hz');
+    close('ω := 314 rad/s\nn := ω/(2·π) | rpm', (314 / TWO_PI) * 60, 'rpm');
+    close('ω := 314 rad/s\nn := ω/2/π | Hz', 314 / TWO_PI, 'Hz');
+    close('ω := 314 rad/s\nn := ω | rpm\nm := 2·π·n | rad/s', 314, 'rad/s');
+  });
+
+  it('leave what stays in its kind', () => {
+    close('3000 rpm | Hz', 50, 'Hz');
+    close('50 Hz | rpm', 3000, 'rpm');
+    close('ω := 2·π·60 Hz\nv := ω·2 m | m/s', 2 * Math.PI * 120, 'm/s');
+    close('f := 50 Hz\nT := 1/f | s', 0.02, 's');
+    close('60 rad/s | rad/min', 3600, 'rad/min');
+    close('ω := 100 rad/s\nx := ω/2 | rpm', (50 / TWO_PI) * 60, 'rpm');
+  });
+
+  it('assume nothing of a plain 1/s', () => {
+    close('5 1/s | rad/s', 5, 'rad/s');
+    close('5 1/s | Hz', 5, 'Hz');
+    close('k := 40 N/m\nm := 10 kg\nw := sqrt(k/m)\nw | rad/s', 2, 'rad/s');
+    close('T := 0.02 s\nf := 1/T | Hz', 50, 'Hz');
+  });
+
+  it('add and compare in the kind of the left side', () => {
+    close('2 Hz + 1 rad/s | Hz', 2 + 1 / TWO_PI, 'Hz');
+    close('1 rad/s + 1 Hz | rad/s', 1 + TWO_PI, 'rad/s');
+    expect(evaluateSheet('a := 100 rad/s > 20 Hz').values.get('a')).toMatchObject({ value: false });
+    expect(evaluateSheet('a := 200 rad/s > 20 Hz').values.get('a')).toMatchObject({ value: true });
+  });
+
+  it('take a column of a table, a series and a function to their unit', () => {
+    close('table T:\n    | n [rpm] | w [rad/s] = n |\n    | 3000    |               |\nx := T.w[1] | rad/s', 100 * Math.PI, 'rad/s');
+    const list = evaluateSheet('v := [1 Hz, 2 Hz] | rad/s').statements[0]!.displayList!;
+    expect(list[1]!.value).toBeCloseTo(2 * TWO_PI, 10);
+    close('w(f) := f | rad/s\nw(1 Hz)', TWO_PI, 'rad/s');
+  });
+
+  it('draw a chart in the unit asked for', () => {
+    const plot = (sheet: string) => evaluateSheet(sheet).statements.at(-1)!.plot!;
+    const inRpm = plot('w(x) := (100 rad/s)·x\nplot(w(x), x: 0 .. 1) | rpm');
+    expect(inRpm.yUnit).toBe('rpm');
+    expect(inRpm.series[0]!.ys.at(-1)! / ((100 / TWO_PI) * 60)).toBeCloseTo(1, 9);
+    const inRadians = plot('n(x) := (60 rpm)·x\nplot(n(x), x: 0 .. 1) | rad/s');
+    expect(inRadians.series[0]!.ys.at(-1)! / TWO_PI).toBeCloseTo(1, 9);
+  });
+
+  it('warn of a moment times turns, in no other product', () => {
+    const power = 'M := 100 N*m\nn := 3000 rpm\n';
+    expect(warned(`${power}P := M*n | kW`)).toContain('W-TURNS-IN-POWER');
+    expect(warned(`${power}P := n*M | kW`)).toContain('W-TURNS-IN-POWER');
+    expect(warned('M := 100 N*m\nf := 50 Hz\nP := M*f | kW')).toContain('W-TURNS-IN-POWER');
+    for (const fine of ['P := 2*π*n*M | kW', 'P := M*2*π*n | kW', 'P := n*M*2*π | kW', 'P := M*n*2*π/60 | kW']) expect(warned(power + fine), fine).toEqual([]);
+    expect(warned('W := 100 J\nf := 50 Hz\nP := W*f | kW')).toEqual([]);
+    expect(warned('m := 2 kg\nn := 3000 rpm\nx := m*n')).toEqual([]);
+    expect(warned('ω := 100 rad/s\nM := 100 N*m\nP := M*ω | kW')).toEqual([]);
   });
 });

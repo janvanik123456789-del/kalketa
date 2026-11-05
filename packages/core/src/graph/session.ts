@@ -10,7 +10,8 @@
 
 import { CalcError, DependencyFailed, diagnostic, fail, type Diagnostic, type Span } from '../diagnostics.js';
 import { asBoolean, asComplex } from '../eval/coerce.js';
-import { compare, evaluate, LINE_TIME_LIMIT_MS, withTimeLimit, type EvalContext } from '../eval/evaluator.js';
+import { compare, evaluate, LINE_TIME_LIMIT_MS, withTimeLimit, writesPi, type EvalContext } from '../eval/evaluator.js';
+import { angularValue, inRotationOf, rotationKind } from '../eval/rotation.js';
 import { BUILTIN_CONSTANTS } from '../eval/functions.js';
 import { defineFunction, inTarget, isBuiltinFunction } from '../eval/userFunctions.js';
 import { allRoots, solveStatement, type RootsFound } from '../eval/solver.js';
@@ -765,7 +766,11 @@ export class SheetSession {
         }
       }
       // T_2 := 894.45 K, T_2 := p_2·V/(m·r): a temperature by its name; ΔT := 10 K stays a difference.
-      if (statement.kind === 'definition' && !statement.params && value.type === 'quantity') value = angularVelocityByName(statement.name, temperatureByName(statement.name, value));
+      if (statement.kind === 'definition' && !statement.params && value.type === 'quantity') {
+        value = angularVelocityByName(statement.name, temperatureByName(statement.name, value), target !== undefined);
+        // ω := 3000 rpm | rpm goes on in radians and is still shown in rpm.
+        if (target && value.type === 'quantity' && value.hint?.angular) target = value.hint;
+      }
       // {decimals=2 rounded}: the rows below go on with the value as shown, not the exact one.
       if (statement.format?.rounded && value.type === 'quantity') value = roundedAsShown(value, statement.format, context.registry, target);
       const display = value.type === 'quantity' ? toDisplay(value, context.registry, target) : undefined;
@@ -782,7 +787,8 @@ export class SheetSession {
         ...(displayMatrix ? { displayMatrix } : {}),
         dependencies,
         tableReads,
-        diagnostics: ctx.warnings,
+        // 2·π·n·M in any order: the warning of its n·M does not hold.
+        diagnostics: writesPi(statement.expr) ? ctx.warnings.filter((w) => w.code !== 'W-TURNS-IN-POWER') : ctx.warnings,
       };
     } catch (err) {
       if (err instanceof DependencyFailed) {
@@ -924,7 +930,7 @@ function sheetTable(statement: Extract<Statement, { kind: 'table' }>, registry: 
           const value = evaluate(column.formula, { registry, warnings: [], lookup, previous });
           if (value.type !== 'quantity') throw new CalcError(diagnostic('E-TABLE-FORMULA', statement.span, { table: statement.name, column: column.name, found: typeName(value), unit: column.unit ?? '' }));
           if (unit && !sameDim(value.dim, unit.dim)) throw new CalcError(diagnostic('E-TABLE-FORMULA', statement.span, { table: statement.name, column: column.name, found: baseUnitSymbol(value.dim), unit: column.unit ?? '' }));
-          row[c] = unit ? { ...value, hint: unit } : value;
+          row[c] = unit ? { ...inRotationOf(value, unit), hint: unit } : value;
         } catch (err) {
           if (!(err instanceof CalcError) && !(err instanceof DependencyFailed)) throw err;
           if (err instanceof CalcError) diagnostics.push({ ...err.diagnostic, span: statement.span });
@@ -965,7 +971,9 @@ function sheetTable(statement: Extract<Statement, { kind: 'table' }>, registry: 
  * the thermodynamic one: it goes on as a temperature written in K, so 1/T_K (Arrhenius, a thermistor) gives no warning.
  */
 /** ω := 1/√(L·C): an angular velocity is named so, and shown in rad/s, not in the Hz of a frequency. */
-function angularVelocityByName(name: string, q: Quantity): Quantity {
+function angularVelocityByName(name: string, q: Quantity, targeted: boolean): Quantity {
+  // ω := 3000 rpm is 314 rad/s: M·ω has to be the power.
+  if (/^(ω|omega)(_|$)/.test(name) && !q.im && rotationKind(q.hint) === 'turns') return angularValue(q, targeted);
   if (q.hint || q.im || !/^(ω|omega)(_|$)/.test(name) || !sameDim(q.dim, dim({ T: -1 }))) return q;
   return { ...q, hint: { symbol: 'rad/s', factor: 1, dim: q.dim } };
 }

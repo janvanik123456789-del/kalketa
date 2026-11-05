@@ -54,6 +54,7 @@ export const DIAGNOSTIC_SEVERITY = {
   'W-SOLVE-MORE-ROOTS': 'warning',
   'W-DERIVATIVE-KINK': 'warning',
   'W-POLE': 'warning',
+  'W-TURNS-IN-POWER': 'warning',
   'W-PLOT-LOG-VALUES': 'warning',
   'W-TEMP-LOW-KELVIN': 'warning',
   'E-POWER-DIM': 'error',

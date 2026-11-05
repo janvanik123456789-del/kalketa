@@ -129,6 +129,7 @@ export const cs: Catalog = {
     'W-SOLVE-MORE-ROOTS': 'V zadaném intervalu má rovnice víc kořenů. Vzal se {name} = {root}, další jsou u {others}. Který je správný, určíte zúžením intervalu.',
     'W-DERIVATIVE-KINK': 'V tomto bodě má křivka zlom: zleva a zprava vychází různá směrnice, takže derivace neexistuje. Číslo je jen jejich průměr.',
     'W-POLE': '{function} tady míří do nekonečna (pól). Velké číslo vzniklo jen zaokrouhlením úhlu, není to skutečná hodnota.',
+    'W-TURNS-IN-POWER': 'Moment krát {unit} není výkon, chybí 2π. Výkon je M·ω, tedy 2·π·n·M. Pokud je to práce za otáčku, zapište ji v J a varování zmizí.',
     'E-PREV-PLACE': 'prev čte řádek nad sebou, patří tedy jen do vzorce sloupce tabulky.',
     'E-PREV-FORM': 'prev se píše prev(sloupec) nebo prev(sloupec, hodnota pro první řádek).',
     'E-PREV-START': 'Tabulka „{table}“: první řádek nemá nad sebou nic. Vyplňte v něm buňku, nebo napište prev({column}, hodnota pro první řádek).',

@@ -129,6 +129,7 @@ export const en: Catalog = {
     'W-SOLVE-MORE-ROOTS': 'The equation has more roots in this interval. {name} = {root} was taken, others lie at {others}. Narrow the interval to say which is meant.',
     'W-DERIVATIVE-KINK': 'The curve has a corner here: the slopes from the left and from the right differ, so there is no derivative. The number is only their mean.',
     'W-POLE': '{function} goes to infinity here (a pole). The large number comes only from rounding the angle, it is no real value.',
+    'W-TURNS-IN-POWER': 'A moment times {unit} is no power, it is 2π short. Power is M·ω, that is 2·π·n·M. If this is a work per turn, write it in J and the warning goes.',
     'E-PREV-PLACE': 'prev reads the row above, so it belongs only in the formula of a column of a table.',
     'E-PREV-FORM': 'prev is written prev(column) or prev(column, value for the first row).',
     'E-PREV-START': 'Table “{table}”: the first row has nothing above it. Fill in its cell, or write prev({column}, value for the first row).',

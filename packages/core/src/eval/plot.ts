@@ -24,6 +24,7 @@ import type { UnitRegistry } from '../units/registry.js';
 import type { ResolvedUnit } from '../units/unitExpr.js';
 import { daysOf, isDate } from '../values/date.js';
 import { quantity, type Quantity, type Value } from '../values/value.js';
+import { shownInRotation } from './rotation.js';
 import { asQuantity } from './coerce.js';
 import { freeNames } from './userFunctions.js';
 import type { EvalContext } from './evaluator.js';
@@ -251,7 +252,7 @@ export function plotStatement(given: CallExpr, ctx: EvalContext, evaluate: Evalu
   });
   if (target && !sameDim(target.dim, yDim)) throw new CalcError(diagnostic('E-TARGET-UNIT', call.span, { unit: target.symbol, found: baseUnitSymbol(yDim) }));
 
-  const yUnit = target ?? ys.hint;
+  const yUnit = target ? shownInRotation(target, ys.hint) : ys.hint;
   const y = (q: Quantity | undefined) => (q ? toDisplay(q, ctx.registry, yUnit).value : NaN);
   const yUnitSymbol = toDisplay(ys, ctx.registry, yUnit).unit;
   const n = columns[0]!.length;
@@ -859,7 +860,7 @@ function surfaceStatement(call: CallExpr, binders: readonly NamedArg[], ctx: Eva
   const other = grid.flat().find((q) => q && !sameDim(q.dim, first.dim));
   if (other) fail('E-PLOT-UNITS', body.span, { left: baseUnitSymbol(first.dim, ctx.registry.baseSymbols()), right: baseUnitSymbol(other.dim, ctx.registry.baseSymbols()) });
   if (target && !sameDim(target.dim, first.dim)) throw new CalcError(diagnostic('E-TARGET-UNIT', call.span, { unit: target.symbol, found: baseUnitSymbol(first.dim) }));
-  const zUnit = target ?? first.hint;
+  const zUnit = target ? shownInRotation(target, first.hint) : first.hint;
   const z = grid.map((column) => column.map((q) => (q ? toDisplay(q, ctx.registry, zUnit).value : NaN)));
   const xShown = (si: number) => toDisplay(at(x0, si), ctx.registry, x0.hint ?? x1.hint);
   const yShown = (si: number) => toDisplay(at(y0, si), ctx.registry, y0.hint ?? y1.hint);

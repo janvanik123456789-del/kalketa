@@ -23,6 +23,7 @@ import type { FunctionValue, Quantity, Value } from '../values/value.js';
 import type { EvalContext } from './evaluator.js';
 import { BINDING_FUNCTIONS, BINDING_OPTIONS } from '../lang/parser.js';
 import { BUILTIN_CONSTANTS, builtinFunctions } from './functions.js';
+import { inRotationOf } from './rotation.js';
 import { ROW_VARIABLE, TABLE_FUNCTIONS } from './tables.js';
 
 type Evaluate = (expr: Expr, ctx: EvalContext) => Value;
@@ -153,7 +154,8 @@ export function applyToValues(fn: FunctionValue, values: readonly Value[], call:
 }
 
 /** A value in a target unit: the unit it is shown in; a temperature shown in kelvins is a number like any other. */
-export function inTarget(q: Quantity, target: ResolvedUnit): Quantity {
+export function inTarget(given: Quantity, target: ResolvedUnit): Quantity {
+  const q = inRotationOf(given, target);
   if (!q.absolute || target.offset !== undefined) return { ...q, hint: target };
   const { absolute: _, ...plain } = q;
   return { ...plain, hint: target };

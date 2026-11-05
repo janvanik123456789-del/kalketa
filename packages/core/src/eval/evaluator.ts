@@ -29,6 +29,7 @@ import { asMatrix, at, inverseOf, matrix, normalized } from '../functions/linear
 import { callTableFunction, COMPARE_FUNCTION, memberOf, TABLE_FUNCTIONS } from './tables.js';
 import { applyFunction, applyToValues, lookupFunction } from './userFunctions.js';
 import { primeName } from './ode.js';
+import { inRotationOf, rotationKind } from './rotation.js';
 import type { BlockCaller, BlockInput } from './blocks.js';
 
 export interface EvalContext {
@@ -417,12 +418,26 @@ function product(a: MatrixValue, b: MatrixValue, leftExpr: Expr, rightExpr: Expr
 const PER_SECOND = dim({ T: -1 });
 const RADIANS_PER_SECOND: ResolvedUnit = { symbol: 'rad/s', factor: 1, dim: PER_SECOND };
 
-/** π written in a factor (2·π, π·n/30): the product is an angle, or an angle per time. */
-function writesPi(e: Expr): boolean {
+/** π written in a factor (2·π, π·n/30, 6.283): the product is an angle, or an angle per time. */
+export function writesPi(e: Expr): boolean {
   if (e.kind === 'variable') return e.name === 'π' || e.name === 'pi';
+  if (e.kind === 'number' && !e.unit) return [Math.PI, 2 * Math.PI].some((pi) => Math.abs(e.value - pi) <= 0.005 * pi);
   if (e.kind === 'binary') return (e.operator === '*' || e.operator === '/') && (writesPi(e.left) || (e.operator === '*' && writesPi(e.right)));
   if (e.kind === 'unary') return writesPi(e.operand);
   return false;
+}
+
+const ENERGY = dim({ M: 1, L: 2, T: -2 });
+
+/**
+ * M·n with n in rpm or Hz: a moment times turns is 2π short of a power. Not a work in joules times a frequency,
+ * W·f is a power as it stands.
+ */
+function noteTurnsInPower(a: Quantity, b: Quantity, leftExpr: Expr, rightExpr: Expr, span: Span, ctx: EvalContext): void {
+  if (writesPi(leftExpr) || writesPi(rightExpr)) return;
+  const [turns, moment] = rotationKind(a.hint) === 'turns' ? [a, b] : [b, a];
+  if (rotationKind(turns.hint) !== 'turns' || !sameDim(moment.dim, ENERGY) || !moment.hint || /J$/.test(moment.hint.symbol)) return;
+  warnOnce(diagnostic('W-TURNS-IN-POWER', span, { unit: turns.hint!.symbol }), ctx);
 }
 
 /** Two numbers (real or complex): + − · / ^ and comparisons. */
@@ -430,9 +445,11 @@ function writesPi(e: Expr): boolean {
 const SUMS_AND_COMPARISONS: ReadonlySet<BinaryOperator> = new Set(['+', '-', '==', '!=', '<', '<=', '>', '>=']);
 
 function arithmetic(op: BinaryOperator, left: Value, right: Value, leftExpr: Expr, rightExpr: Expr, span: Span, ctx: EvalContext): Value {
-  const [a, b] = SUMS_AND_COMPARISONS.has(op)
+  const [a, given] = SUMS_AND_COMPARISONS.has(op)
     ? withBareZero(asComplex(left, leftExpr.span), asComplex(right, rightExpr.span), leftExpr, rightExpr)
     : [asComplex(left, leftExpr.span), asComplex(right, rightExpr.span)];
+  // 2 Hz + 1 rad/s, ω > 50 Hz: the right side in the kind of rotation of the left one.
+  const b = SUMS_AND_COMPARISONS.has(op) ? inRotationOf(given, a.hint) : given;
   if (a.im || b.im) return complexBinary(op, a, b, leftExpr, rightExpr, span, ctx);
 
   switch (op) {
@@ -464,6 +481,9 @@ function arithmetic(op: BinaryOperator, left: Value, right: Value, leftExpr: Exp
       if (!hintsOff && (writesPi(leftExpr) || (op === '*' && writesPi(rightExpr))) && sameDim(product, PER_SECOND) && (op === '*' || b.si !== 0)) {
         return quantity(op === '*' ? a.si * b.si : a.si / b.si, PER_SECOND, { hint: RADIANS_PER_SECOND, ...exact });
       }
+      // ω/(2·π): its turns, no more an angular velocity, though a number scales it.
+      if (!hintsOff && op === '/' && writesPi(rightExpr) && rotationKind(a.hint) === 'angle' && b.si !== 0 && isDimensionless(b.dim)) return quantity(a.si / b.si, a.dim, exact);
+      if (!hintsOff && op === '*') noteTurnsInPower(a, b, leftExpr, rightExpr, span, ctx);
       if (a.si !== 0 && b.si !== 0 && (op === '*' ? a.si * b.si : a.si / b.si) === 0) warnUnderflow(span, ctx);
       if (op === '*') return quantity(a.si * b.si, multiplyDims(a.dim, b.dim), { ...hint, ...exact });
       if (b.si === 0) fail('E-DIV-ZERO', rightExpr.span);

@@ -483,10 +483,13 @@ function arithmetic(op: BinaryOperator, left: Value, right: Value, leftExpr: Exp
       // Exactly as well, where both are exact (absolute temperatures are no fractions of anything).
       const exactly = a.exact && b.exact && !a.absolute && !b.absolute ? (op === '*' ? X.multiply(a.exact, b.exact) : X.divide(a.exact, b.exact)) : undefined;
       const exact = exactly ? { exact: exactly } : {};
-      // 2·π·f, 2·π·n: an angular velocity, shown in rad/s, not in the Hz or min⁻¹ of the frequency;
-      // 2·π/T likewise.
-      const product = op === '*' ? multiplyDims(a.dim, b.dim) : divideDims(a.dim, b.dim);
-      if (!hintsOff && (writesPi(leftExpr) || (op === '*' && writesPi(rightExpr))) && sameDim(product, PER_SECOND) && (op === '*' || b.si !== 0)) {
+      // 2·π·f, 2·π·n: an angular velocity, shown in rad/s, not in the Hz or min⁻¹ of the frequency; 2·π/T likewise.
+      // π times a frequency, that is: π/(2·L²)·√(E·I/m) has π in it and comes out in 1/s, yet it is a frequency itself.
+      const anglePerTime =
+        op === '*'
+          ? (writesPi(leftExpr) && isDimensionless(a.dim) && sameDim(b.dim, PER_SECOND)) || (writesPi(rightExpr) && isDimensionless(b.dim) && sameDim(a.dim, PER_SECOND))
+          : writesPi(leftExpr) && isDimensionless(a.dim) && sameDim(divideDims(a.dim, b.dim), PER_SECOND);
+      if (!hintsOff && anglePerTime && (op === '*' || b.si !== 0)) {
         return quantity(op === '*' ? a.si * b.si : a.si / b.si, PER_SECOND, { hint: RADIANS_PER_SECOND, ...exact });
       }
       // ω/(2·π): its turns, no more an angular velocity, though a number scales it.

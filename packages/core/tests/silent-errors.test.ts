@@ -1000,3 +1000,50 @@ c := m[2]`;
     expect(codes('x := [1, 2]\ny := [3, 4]\nplot(y, x: x, errors: [1])')).toContain('E-VECTOR-LENGTH');
   });
 });
+
+/** docs/navrhy/ZADANI-Z-KONKURENCE.md, second round, A: π in a formula made radians of a frequency. */
+describe('π alone makes no radians', () => {
+  const shown = (sheet: string): [number, string] => {
+    const d = evaluateSheet(sheet).statements.at(-1)!.display!;
+    return [d.value, d.unit ?? ''];
+  };
+  const close = (sheet: string, value: number, unit: string) => {
+    const [v, u] = shown(sheet);
+    expect(u, sheet).toBe(unit);
+    expect(v / value, sheet).toBeCloseTo(1, 6);
+  };
+  const strut = 'L := 6 m\nE := 210 GPa\nI := 8356 cm^4\nm := 30 kg/m\n';
+  const first = (Math.PI / (2 * 36)) * Math.sqrt((210e9 * 8356e-8) / 30);
+
+  it('a natural frequency of a beam is in Hz, with or without asking', () => {
+    close(`${strut}f := π/(2*L^2)*sqrt(E*I/m) | Hz`, first, 'Hz');
+    close(`${strut}f := π/(2*L^2)*sqrt(E*I/m)`, first, 'Hz');
+    close(`${strut}n_1 := π/(2*L^2)*sqrt(E*I/m) | Hz`, first, 'Hz');
+    close(`${strut}x := π/(2*L^2)*sqrt(E*I/m)`, first, 'Hz');
+  });
+
+  it('ω holds radians whatever gave it', () => {
+    close('v := 10 m/s\nr := 2 m\nω := v/r\nf := ω | Hz', 5 / (2 * Math.PI), 'Hz');
+    close('v := 10 m/s\nr := 2 m\nω := v/r', 5, 'rad/s');
+    close('ω := 5 1/s\nf := ω | Hz', 5 / (2 * Math.PI), 'Hz');
+  });
+
+  it('a name f is in cycles, though π stands in its formula', () => {
+    close('k := 40 N/m\nm := 10 kg\nf := π*sqrt(k/m)', 2 * Math.PI, 'Hz');
+    close('k := 40 N/m\nm := 10 kg\nf_1 := π*sqrt(k/m) | Hz', 2 * Math.PI, 'Hz');
+    close('g := 5 Hz\nw := 2*π*g', 10 * Math.PI, 'rad/s');
+  });
+
+  it('breaks nothing of what held', () => {
+    close('k := 40 N/m\nm := 10 kg\n1/(2*π)*sqrt(k/m) | Hz', 1 / Math.PI, 'Hz');
+    close('L_c := 1 mH\nC_c := 1 μF\n1/(2*π*sqrt(L_c*C_c)) | Hz', 1 / (2 * Math.PI * Math.sqrt(1e-9)), 'Hz');
+    close('k := 40 N/m\nm := 10 kg\nω := sqrt(k/m)\nω/(2*π) | Hz', 1 / Math.PI, 'Hz');
+    close('f_0 := 50 Hz\nw_1 := 2*π*f_0\nw_1/(2*π) | Hz', 50, 'Hz');
+    close('n := 3000 rpm\n2*π*n | rad/s', 100 * Math.PI, 'rad/s');
+    close('n := 1450 1/min\nd := 0.3 m\nπ*d*n | m/s', (Math.PI * 0.3 * 1450) / 60, 'm/s');
+    close('M := 100 N*m\nn := 3000 rpm\n2*π*M*n | kW', 10 * Math.PI, 'kW');
+    close('T := 0.2 s\nω_T := 2*π/T', 10 * Math.PI, 'rad/s');
+    close('T := 0.2 s\n2*π/T', 10 * Math.PI, 'rad/s');
+    expect(si('n := 3000\nx := π*n/30', 'x')).toBeCloseTo(100 * Math.PI, 9);
+  });
+});

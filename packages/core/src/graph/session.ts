@@ -782,6 +782,11 @@ export class SheetSession {
         const given = context.inputs.get(statement.name);
         if (given) value = acceptInput(statement, value, given, context.blockStack.at(-1) ?? '');
       }
+      // f := π·√(k/m): a name f is a frequency, in cycles; π in its formula makes no radians of it.
+      if (statement.kind === 'definition' && !statement.params && /^f(_|\d|$)/.test(statement.name) && value.type === 'quantity' && rotationKind(value.hint) === 'angle' && writesPi(statement.expr)) {
+        const { hint: _hint, ...cycles } = value;
+        value = cycles;
+      }
       let target: ResolvedUnit | undefined;
       if (statement.target) {
         target = resolveUnit(statement.target, context.registry);
@@ -1015,8 +1020,10 @@ function sheetTable(statement: Extract<Statement, { kind: 'table' }>, registry: 
 function angularVelocityByName(name: string, q: Quantity, targeted: boolean): Quantity {
   // ω := 3000 rpm is 314 rad/s: M·ω has to be the power.
   if (/^(ω|omega)(_|$)/.test(name) && !q.im && rotationKind(q.hint) === 'turns') return angularValue(q, targeted);
-  if (q.hint || q.im || !/^(ω|omega)(_|$)/.test(name) || !sameDim(q.dim, dim({ T: -1 }))) return q;
-  return { ...q, hint: { symbol: 'rad/s', factor: 1, dim: q.dim } };
+  if (q.im || !/^(ω|omega)(_|$)/.test(name) || !sameDim(q.dim, dim({ T: -1 })) || rotationKind(q.hint) === 'angle') return q;
+  // ω := v/r: what the name says holds for any value of 1/s, so ω | Hz takes off the 2π. A unit asked for stays shown.
+  const { exact: _exact, ...plain } = q;
+  return { ...plain, hint: { symbol: 'rad/s', factor: 1, dim: q.dim } };
 }
 
 /**

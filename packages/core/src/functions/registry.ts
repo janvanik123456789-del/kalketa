@@ -7,7 +7,7 @@
  * a field's own library, later a plug-in) is added without touching the core.
  */
 
-import { fail } from '../diagnostics.js';
+import { fail, type Diagnostic } from '../diagnostics.js';
 import type { Expr } from '../lang/ast.js';
 import { isDimensionless, sameDim } from '../units/dimension.js';
 import { baseUnitSymbol } from '../units/display.js';
@@ -42,6 +42,8 @@ export class Args {
     private readonly evaluateArg: Evaluate,
     /** The arguments already evaluated, one item of a series in place of the series. */
     private readonly given?: readonly Value[],
+    /** Says something about the result (a spline beyond its points, a matrix hardly solvable). */
+    readonly warn: (warning: Diagnostic) => void = () => {},
   ) {}
 
   get name(): string {
@@ -85,6 +87,8 @@ export class Args {
   /** A series: a table column or [a, b, c]. */
   series(index: number): readonly Quantity[] {
     const value = this.value(index);
+    // [1 | 2 | 3] and transpose of a series are one too.
+    if (value.type === 'matrix' && (value.cols === 1 || value.rows === 1)) return value.items;
     if (value.type !== 'vector') return fail('E-TYPE', this.expr(index).span, { expected: 'vector', found: value.type === 'quantity' ? 'number' : value.type });
     return value.items;
   }
@@ -133,7 +137,7 @@ export class FunctionRegistry {
   }
 
   /** Evaluates a call of a function that computes itself (not a table function). */
-  call(call: CallExpr, evaluate: Evaluate): Value {
+  call(call: CallExpr, evaluate: Evaluate, warn?: (warning: Diagnostic) => void): Value {
     const def = this.defs.get(call.name);
     if (!def?.call) return fail('E-FUNC-UNKNOWN', call.span, { function: call.name });
     const [min, max] = def.arity;
@@ -142,14 +146,14 @@ export class FunctionRegistry {
       const expected = min === max ? min : max === Infinity ? `${min}+` : `${min}–${max}`;
       fail('E-FUNC-ARITY', call.span, { function: call.name, expected, found });
     }
-    if (!def.itemwise) return def.call(new Args(call, evaluate));
+    if (!def.itemwise) return def.call(new Args(call, evaluate, undefined, warn));
     const given = call.args.map((arg) => evaluate(arg));
     const series = given.filter((v) => v.type === 'vector');
-    if (series.length === 0) return def.call(new Args(call, evaluate, given));
+    if (series.length === 0) return def.call(new Args(call, evaluate, given, warn));
     const n = series[0]!.items.length;
     const other = series.find((v) => v.items.length !== n);
     if (other) fail('E-VECTOR-LENGTH', call.span, { left: n, right: other.items.length });
-    const items = Array.from({ length: n }, (_, i) => asQuantity(def.call!(new Args(call, evaluate, given.map((v) => (v.type === 'vector' ? v.items[i]! : v)))), call.span));
+    const items = Array.from({ length: n }, (_, i) => asQuantity(def.call!(new Args(call, evaluate, given.map((v) => (v.type === 'vector' ? v.items[i]! : v)), warn)), call.span));
     return { type: 'vector', items };
   }
 }

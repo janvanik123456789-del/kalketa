@@ -424,3 +424,72 @@ describe('a name after a unit', () => {
     expect(si('d := 450 mm\nk := 1 + sqrt((200 mm)/d)', 'k')).toBeCloseTo(1 + Math.sqrt(200 / 450), 12);
   });
 });
+
+/** docs/navrhy/ZADANI-Z-KONKURENCE.md, the rest of priorities 1 and 2. */
+describe('the rest of the brief', () => {
+  const warned = (sheet: string) => evaluateSheet(sheet).diagnostics.filter((d) => d.severity === 'warning').map((d) => d.code);
+  const shownOf = (sheet: string) => {
+    const d = evaluateSheet(sheet).statements.at(-1)!.display!;
+    return [Number(d.value.toPrecision(5)), d.unit];
+  };
+
+  it('1.8 says when a curve goes beyond its points', () => {
+    const data = 'x := [0, 10, 20]\ny := [0, 100, 400]\n';
+    expect(warned(`${data}a := spline(x, y, 25)`)).toEqual(['W-INTERP-BEYOND']);
+    expect(warned(`${data}a := pchip(x, y, 25)`)).toEqual(['W-INTERP-BEYOND']);
+    expect(warned(`${data}a := pchip(x, y, 15)`)).toEqual([]);
+    expect(warned(`${data}a := interp1(x, y, 25, "linear", "extrap")`)).toEqual([]);
+  });
+
+  it('1.14 takes a prefix that reads', () => {
+    expect(shownOf('F := 100 kN\nA := 300 mm * 500 mm\nF/A')).toEqual([0.66667, 'MPa']);
+    // The scale of the calculation stays while the number reads.
+    expect(shownOf('F := 800 N\nA := 1000 mm^2\nF/A')).toEqual([0.8, 'MPa']);
+    expect(shownOf('F := 500 kN\nA := 100 mm^2\nF/A')).toEqual([5, 'GPa']);
+    expect(shownOf('M := 20 kN·m\nW := 100 cm^3\nM/W')).toEqual([200, 'MPa']);
+  });
+
+  it('1.13 tells a matrix of different scales from a singular one', () => {
+    const r = evaluateSheet('u := lsolve([1e12, 1 | 1, 1e-6], [1e12 | 2])');
+    expect(r.diagnostics.map((d) => d.code)).toEqual([]);
+    const [a, b] = (r.values.get('u') as unknown as { items: { si: number }[] }).items;
+    // By hand: 1e12·x + y = 1e12, x + 1e-6·y = 2.
+    expect(a!.si).toBeCloseTo(0.999999, 5);
+    expect(b!.si / 1000001).toBeCloseTo(1, 6);
+    expect(codes('u := lsolve([1, 2 | 2, 4], [1 | 2])')).toContain('E-MATRIX-SINGULAR');
+  });
+
+  const HILBERT = (n: number) => `H := matrix(1/(i + j - 1), i: 1 .. ${n}, j: 1 .. ${n})\n`;
+
+  it('1.9 keeps a very small determinant, and warns of what cannot be told', () => {
+    const r = evaluateSheet(`${HILBERT(12)}a := det(H)`);
+    expect(r.diagnostics).toEqual([]);
+    expect(si(`${HILBERT(12)}a := det(H)`, 'a') / 2.6377e-78).toBeCloseTo(1, 3);
+    expect(si('a := det([1, 2, 3 | 4, 5, 6 | 7, 8, 9])', 'a')).toBe(0);
+    expect(warned(`${HILBERT(10)}f := vector(1, i: 1 .. 10)\nu := lsolve(H, f)`)).toEqual(['W-ILL-CONDITIONED']);
+    expect(warned(`${HILBERT(4)}f := vector(1, i: 1 .. 4)\nu := lsolve(H, f)`)).toEqual([]);
+    // Without an exact form: the matrix of 1..9 times a number written by a function.
+    expect(warned('c := sqrt(2)\na := det(c·[1, 2, 3 | 4, 5, 6 | 7, 8, 9])')).toEqual(['W-ILL-CONDITIONED']);
+  });
+
+  it('1.16 takes a column of a matrix as a series', () => {
+    expect(si('a := mean([1 | 2 | 3])', 'a')).toBe(2);
+    expect(si('a := sum([1 | 2 | 3])', 'a')).toBe(6);
+    expect(si('a := len([1 | 2 | 3])', 'a')).toBe(3);
+    expect(codes('a := mean([1, 2 | 3, 4])')).toContain('E-TYPE');
+  });
+
+  it('1.15 reports a too long expression on its line', () => {
+    const long = (n: number) => `x := ${Array.from({ length: n }, () => '1').join(' + ')}\ny := 2`;
+    expect(codes(long(3000))).toContain('E-EXPR-DEPTH');
+    expect(si(long(3000), 'y')).toBe(2);
+    expect(si(long(800), 'x')).toBe(800);
+    expect(codes(`x := ${'('.repeat(20000)}1${')'.repeat(20000)}\ny := 2`)).toContain('E-EXPR-DEPTH');
+  });
+
+  it('1.17 has no centitonne', () => {
+    expect(codes('a := 1 ct | kg').length).toBeGreaterThan(0);
+    expect(si('a := 2 kt', 'a')).toBe(2e6);
+    expect(si('a := 2 t', 'a')).toBe(2000);
+  });
+});

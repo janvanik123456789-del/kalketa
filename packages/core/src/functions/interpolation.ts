@@ -10,7 +10,7 @@
  * stops with an error unless "extrap" is given; spline and pchip go on, as in MATLAB.
  */
 
-import { fail } from '../diagnostics.js';
+import { diagnostic, fail } from '../diagnostics.js';
 import { sameDim } from '../units/dimension.js';
 import { baseUnitSymbol } from '../units/display.js';
 import { quantity, type Quantity, type Value } from '../values/value.js';
@@ -67,6 +67,7 @@ function interpolate(a: Args, method: Method, beyond: boolean): Value {
     if (!beyond && (q.si < x[0]! || q.si > x[x.length - 1]!)) {
       fail('E-INTERP-RANGE', a.expr(2).span, { function: a.name });
     }
+    if (beyond && a.name !== 'interp1' && (q.si < x[0]! || q.si > x[x.length - 1]!)) a.warn(diagnostic('W-INTERP-BEYOND', a.call.span, { function: a.name }));
     return quantity(valueAt(curve, method, q.si), y0.dim, { ...(y0.hint ? { hint: y0.hint } : {}), ...(y0.absolute ? { absolute: true } : {}) });
   };
   const xi = a.value(2);

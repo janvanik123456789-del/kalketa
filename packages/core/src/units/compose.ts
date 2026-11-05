@@ -119,8 +119,10 @@ function composeUnit(op: '*' | '/', a: ResolvedUnit, b: ResolvedUnit, units: Uni
       const d = units.dimOf(name);
       return d !== undefined && Object.keys(d).length === 1 && ['M', 'L', 'T'].includes(Object.keys(d)[0]!);
     });
-    const named = units.ownUnit(dim, factor, mixed ? value : undefined, basic);
-    if (named) return { unit: named, byValue: mixed };
+    // Units of one kind mixed: down while the number is below 1 (193 MPa, not 0,193 GPa). Else the scale of the
+    // calculation stays (N/mm² is MPa, also 0,8 MPa), unless the number gets lost in it: kN/mm² of 0,000667 GPa is 0,667 MPa.
+    const named = units.ownUnit(dim, factor, value, basic, mixed ? 1 : 0.1);
+    if (named) return { unit: named, byValue: true };
   }
   // mm² · m is not a unit to show: two units of one dimension stay apart only in SI (m³).
   // Mixed units: what shows depends on the value (193 MPa, not 0,193 GPa).
@@ -167,7 +169,7 @@ export interface UnitNames {
    * by the usual prefixes: 1e6 Pa -> MPa, 1e7 Pa -> MPa, 1 N -> N; smaller
    * while `value` (SI) would show below 1 in it: 1.93e8 Pa in GPa -> MPa.
    */
-  ownUnit(dim: Dimension, factor: number, value?: number, energy?: boolean): ResolvedUnit | undefined;
+  ownUnit(dim: Dimension, factor: number, value?: number, energy?: boolean, least?: number): ResolvedUnit | undefined;
   /** A power of a length unit of exactly this size: 1e-6 m² -> mm², 1e-6 m³ -> cm³. */
   lengthPower(dim: Dimension, factor: number): ResolvedUnit | undefined;
 }
@@ -187,7 +189,7 @@ export function unitNames(resolve: (symbol: string) => { dim: Dimension; factor:
   return {
     hasOwnName: (dim) => named.some((n) => sameDim(n.dim, dim)),
     dimOf: (symbol) => resolve(symbol)?.dim,
-    ownUnit: (dim, factor, value, energy) => {
+    ownUnit: (dim, factor, value, energy, least = 1) => {
       const base = named.find((n) => sameDim(n.dim, dim)) ?? (energy && joule && sameDim(joule.dim, dim) ? { symbol: 'J', dim } : undefined);
       if (!base) return undefined;
       const sizes = PREFIXES.flatMap((p) => {
@@ -197,7 +199,7 @@ export function unitNames(resolve: (symbol: string) => { dim: Dimension; factor:
       const down = [...sizes].sort((a, b) => b.factor - a.factor);
       let fits = down.find((s) => s.factor <= factor * (1 + 1e-9)) ?? down.at(-1);
       // 0,193 GPa reads as 193 MPa.
-      while (fits && value !== undefined && value !== 0 && Math.abs(value) / fits.factor < 1) {
+      while (fits && value !== undefined && value !== 0 && Math.abs(value) / fits.factor < least) {
         const smaller = down[down.indexOf(fits) + 1];
         if (!smaller) break;
         fits = smaller;

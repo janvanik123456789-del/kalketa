@@ -204,7 +204,7 @@ function evaluateRaw(expr: Expr, ctx: EvalContext): Value {
       if (!FUNCTION_NAME_SET.has(expr.name)) return applyFunction(lookupFunction(expr, ctx), expr, ctx, evaluate);
       const extra = expr.named[0];
       if (extra) fail('E-NAMED-ARG', extra.nameSpan, { function: expr.name, argument: extra.name, problem: 'unknown' });
-      return callFunction(expr, (arg) => evaluate(arg, ctx));
+      return callFunction(expr, (arg) => evaluate(arg, ctx), (warning) => warnOnce(warning, ctx));
     }
     case 'range':
       // A range belongs to a variable: x: 0 m .. L.

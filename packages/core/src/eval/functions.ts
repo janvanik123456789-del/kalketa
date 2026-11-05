@@ -9,6 +9,7 @@ import { CALCULUS, CHARTS, COMPLEX, DATES, FINANCE, LOGIC, MATH, SERIES, STATIST
 import { FunctionRegistry, type CallExpr, type Evaluate, type FunctionDef } from '../functions/registry.js';
 import { LINEAR } from '../functions/linear.js';
 import { INTERPOLATION } from '../functions/interpolation.js';
+import type { Diagnostic } from '../diagnostics.js';
 import type { Value } from '../values/value.js';
 
 export const BUILTIN_CONSTANTS: Readonly<Record<string, number>> = {
@@ -34,6 +35,6 @@ export const FUNCTION_NAMES: readonly string[] = builtinFunctions
 /** The same as a set: asked at every call of a function (inside an integral, many thousand times). */
 export const FUNCTION_NAME_SET: ReadonlySet<string> = new Set(FUNCTION_NAMES);
 
-export function callFunction(call: CallExpr, evaluate: Evaluate): Value {
-  return builtinFunctions.call(call, evaluate);
+export function callFunction(call: CallExpr, evaluate: Evaluate, warn?: (warning: Diagnostic) => void): Value {
+  return builtinFunctions.call(call, evaluate, warn);
 }

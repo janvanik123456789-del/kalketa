@@ -8,15 +8,19 @@
  * units at all; eigenvalues need one unit for the whole matrix.
  */
 
-import { fail, type Span } from '../diagnostics.js';
+import { diagnostic, fail, type Span } from '../diagnostics.js';
 import { DIMENSIONLESS, divideDims, isDimensionless, multiplyDims, powerDim, sameDim, type Dimension } from '../units/dimension.js';
 import { baseUnitSymbol } from '../units/display.js';
 import { quantity, type MatrixValue, type Quantity, type Value, type VectorValue } from '../values/value.js';
-import { solveLinear, type Exact } from '../values/exact.js';
+import { divide, exact, multiply, negate, solveLinear, subtract, toNumber, type Exact } from '../values/exact.js';
 import type { Args, FunctionDef } from './registry.js';
 
 /** The largest system lsolve also solves in exact fractions. */
 const EXACT_SOLVE_SIZE = 12;
+/** A solution loses this much of its 16 digits, so at most 5 are left: worth a word. */
+const LOST_DIGITS_CONDITION = 1e11;
+/** Above this the inverse that tells the condition number takes longer than the solution; a large mesh is seldom the case. */
+const MAX_CONDITION_SIZE = 300;
 
 // ---------------------------------------------------------------- building
 
@@ -129,7 +133,7 @@ function uniform(m: MatrixValue, span: Span, name: string): Dimension {
 // ---------------------------------------------------------------- numerics
 
 /** LU decomposition with partial pivoting; undefined for a singular matrix. */
-function lu(a: number[][]): { lu: number[][]; perm: number[]; sign: number } | undefined {
+function lu(a: number[][], smallest = 1e-14): { lu: number[][]; perm: number[]; sign: number } | undefined {
   const n = a.length;
   const m = a.map((r) => [...r]);
   const perm = Array.from({ length: n }, (_, i) => i);
@@ -138,7 +142,7 @@ function lu(a: number[][]): { lu: number[][]; perm: number[]; sign: number } | u
   for (let k = 0; k < n; k++) {
     let p = k;
     for (let i = k + 1; i < n; i++) if (Math.abs(m[i]![k]!) > Math.abs(m[p]![k]!)) p = i;
-    if (Math.abs(m[p]![k]!) <= 1e-14 * scale) return undefined;
+    if (Math.abs(m[p]![k]!) <= smallest * scale) return undefined;
     if (p !== k) {
       [m[p], m[k]] = [m[k]!, m[p]!];
       [perm[p], perm[k]] = [perm[k]!, perm[p]!];
@@ -162,6 +166,69 @@ function luSolve(d: { lu: number[][]; perm: number[] }, b: readonly number[]): n
     y[i] = y[i]! / d.lu[i]![i]!;
   }
   return y;
+}
+
+/**
+ * Rows and columns scaled so the largest item of each is 1: [1e12, 1 | 1, 1e-6] is no singular matrix, only one of
+ * very different units. The scales give x back: A·x = b is (R·A·C)·(C⁻¹·x) = R·b.
+ */
+function equilibrated(a: readonly (readonly number[])[]): { scaled: number[][]; rows: number[]; cols: number[] } {
+  const rows = a.map((row) => {
+    const big = Math.max(...row.map(Math.abs));
+    return big > 0 ? 1 / big : 1;
+  });
+  const cols = a[0]!.map((_, j) => {
+    let big = 0;
+    a.forEach((row, i) => (big = Math.max(big, Math.abs(row[j]!) * rows[i]!)));
+    return big > 0 ? 1 / big : 1;
+  });
+  return { scaled: a.map((row, i) => row.map((x, j) => x * rows[i]! * cols[j]!)), rows, cols };
+}
+
+/** How many digits a solution loses: the condition number, the sum norm of a matrix times that of its inverse. */
+function conditionOf(a: readonly (readonly number[])[], d: { lu: number[][]; perm: number[] }): number {
+  const n = a.length;
+  const norm = (columns: readonly (readonly number[])[]) => Math.max(...columns.map((c) => c.reduce((sum, x) => sum + Math.abs(x), 0)));
+  const inverse = Array.from({ length: n }, (_, j) => luSolve(d, Array.from({ length: n }, (_, i) => (i === j ? 1 : 0))));
+  return norm(Array.from({ length: n }, (_, j) => a.map((row) => row[j]!))) * norm(inverse);
+}
+
+/** The determinant in fractions, or undefined when an item has no exact form or a square root. */
+function exactDeterminant(m: MatrixValue): Exact | undefined {
+  const n = m.rows;
+  const a: Exact[][] = [];
+  for (let i = 0; i < n; i++) {
+    const row: Exact[] = [];
+    for (let j = 0; j < n; j++) {
+      const e = at(m, i, j).exact;
+      if (!e || e.root !== 1n) return undefined;
+      row.push(e);
+    }
+    a.push(row);
+  }
+  let det = exact(1n)!;
+  for (let k = 0; k < n; k++) {
+    const p = a.findIndex((row, i) => i >= k && row[k]!.num !== 0n);
+    if (p < 0) return exact(0n);
+    if (p !== k) {
+      [a[p], a[k]] = [a[k]!, a[p]!];
+      det = negate(det);
+    }
+    const next = multiply(det, a[k]![k]!);
+    if (!next) return undefined;
+    det = next;
+    for (let i = k + 1; i < n; i++) {
+      const f = divide(a[i]![k]!, a[k]![k]!);
+      if (!f) return undefined;
+      for (let j = k; j < n; j++) {
+        const term = multiply(f, a[k]![j]!);
+        const value = term && subtract(a[i]![j]!, term);
+        if (!value) return undefined;
+        a[i]![j] = value;
+      }
+    }
+  }
+  return det;
 }
 
 /** Eigenvalues and eigenvectors (columns) of a symmetric matrix: Jacobi rotations. */
@@ -309,7 +376,13 @@ export const LINEAR: readonly FunctionDef[] = [
       const n = square(m, a.expr(0).span, a.name);
       const { rows, cols } = structure(m, a.expr(0).span, a.name);
       const dim = rows.reduce((d, r, i) => multiplyDims(d, multiplyDims(r, cols[i]!)), DIMENSIONLESS);
-      const d = lu(numbers(m));
+      // Written in decimals, the determinant is known exactly, however small: the Hilbert matrix of 12 has 2.6·10⁻⁷⁸.
+      const whole = n <= EXACT_SOLVE_SIZE ? exactDeterminant(m) : undefined;
+      if (whole) return quantity(toNumber(whole), dim, { exact: whole });
+      const a0 = numbers(m);
+      // A pivot lost in rounding: no zero can be told from a very small number. Not rounded to 0, and said so.
+      if (!lu(a0)) a.warn(diagnostic('W-ILL-CONDITIONED', a.call.span, { function: a.name }));
+      const d = lu(a0, 0);
       if (!d) return quantity(0, dim);
       let det = d.sign;
       for (let i = 0; i < n; i++) det *= d.lu[i]![i]!;
@@ -335,14 +408,16 @@ export const LINEAR: readonly FunctionDef[] = [
       const b = asMatrix(a.value(1), a.expr(1).span);
       if (b.rows !== n) fail('E-MATRIX-SHAPE', a.call.span, { operator: a.name, left: shapeText(m), right: shapeText(b) });
       const { rows, cols } = structure(m, a.expr(0).span, a.name);
-      const d = lu(numbers(m));
+      const scales = equilibrated(numbers(m));
+      const d = lu(scales.scaled);
       if (!d) return fail('E-MATRIX-SINGULAR', a.expr(0).span, { function: a.name });
+      if (n <= MAX_CONDITION_SIZE && conditionOf(scales.scaled, d) > LOST_DIGITS_CONDITION) a.warn(diagnostic('W-ILL-CONDITIONED', a.call.span, { function: a.name }));
       const items: Quantity[] = new Array<Quantity>(n * b.cols);
       for (let c = 0; c < b.cols; c++) {
         // The right side: b(i) = row(i) · s, the same s in every row.
         const s = divideDims(at(b, 0, c).dim, rows[0]!);
         for (let i = 1; i < n; i++) if (!sameDim(at(b, i, c).dim, multiplyDims(rows[i]!, s))) fail('E-MATRIX-UNITS', a.expr(1).span, { function: a.name, row: i + 1, col: c + 1 });
-        const x = luSolve(d, Array.from({ length: n }, (_, i) => at(b, i, c).si));
+        const x = luSolve(d, Array.from({ length: n }, (_, i) => at(b, i, c).si * scales.rows[i]!)).map((v, j) => v * scales.cols[j]!);
         // With every element exact (written in decimals), the solution is exact too: 96/83.
         const given = Array.from({ length: n }, (_, i) => at(b, i, c).exact);
         const coefficients = Array.from({ length: n }, (_, i) => Array.from({ length: n }, (_, j) => at(m, i, j).exact));

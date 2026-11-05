@@ -22,6 +22,8 @@ export interface UnitDef {
   /** Symbol of the matching temperature-difference unit (°C -> Δ°C). */
   readonly delta?: string;
   readonly prefixable?: boolean;
+  /** The prefixes it takes, where not all of them make sense. */
+  readonly prefixes?: readonly string[];
   /** A currency: a sheet may define it anew by its rate ("unit EUR := 24.7 CZK"). */
   readonly currency?: boolean;
 }
@@ -83,7 +85,8 @@ const BUILT_IN: readonly UnitDef[] = [
   { symbol: 'ha', factor: 1e4, dim: AREA },
   { symbol: 'L', factor: 1e-3, dim: VOLUME, prefixable: true },
   { symbol: 'l', factor: 1e-3, dim: VOLUME, prefixable: true },
-  { symbol: 't', factor: 1e3, dim: M, prefixable: true },
+  // Only upwards: a centitonne is nobody's unit, and ct is a carat.
+  { symbol: 't', factor: 1e3, dim: M, prefixable: true, prefixes: ['k', 'M', 'G'] },
   { symbol: 'lb', factor: 0.45359237, dim: M },
   { symbol: 'dkg', factor: 0.01, dim: M },
   { symbol: 'Da', factor: 1.6605390666e-27, dim: M, prefixable: true },
@@ -248,7 +251,7 @@ export class UnitRegistry {
     for (const [prefix, scale] of PREFIXES) {
       if (!symbol.startsWith(prefix) || symbol.length === prefix.length) continue;
       const base = this.units.get(symbol.slice(prefix.length));
-      if (base?.prefixable) {
+      if (base?.prefixable && (!base.prefixes || base.prefixes.includes(prefix))) {
         return { symbol, factor: scale * base.factor, dim: base.dim };
       }
     }

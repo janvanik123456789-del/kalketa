@@ -55,6 +55,21 @@ export const BINDING_FUNCTIONS: ReadonlySet<string> = new Set(['integral', 'deri
 /** Named arguments of those functions that are options, not the variable. */
 export const BINDING_OPTIONS: ReadonlySet<string> = new Set(['order', 'kind', 'title', 'samples']);
 
+/** Deeper expressions fail on the line: everything that reads them is recursive, and a file may come from anyone. */
+const MAX_EXPRESSION_DEPTH = 1000;
+
+/** Whether a statement nests deeper than the limit. Goes by a list of its own, as the statement itself may not fit the stack. */
+function deeperThan(statement: Statement, limit: number): boolean {
+  const pending: { node: object; depth: number }[] = [{ node: statement, depth: 0 }];
+  for (let item = pending.pop(); item; item = pending.pop()) {
+    if (item.depth > limit) return true;
+    for (const child of Object.values(item.node)) {
+      if (child && typeof child === 'object') pending.push({ node: child as object, depth: item.depth + (Array.isArray(child) ? 0 : 1) });
+    }
+  }
+  return false;
+}
+
 export function parse(source: string, options: ParseOptions): ParseResult {
   // Tables written in the sheet are read on their own: their cells are text, not expressions.
   const { tables, rest } = sheetTables(source, options);
@@ -96,7 +111,11 @@ export function parse(source: string, options: ParseOptions): ParseResult {
     let statement: Statement;
     try {
       statement = parser.parseStatement();
-    } catch (err) {
+      const tooDeep = deeperThan(statement, MAX_EXPRESSION_DEPTH);
+      if (tooDeep) fail('E-EXPR-DEPTH', statement.span, { depth: MAX_EXPRESSION_DEPTH });
+    } catch (given) {
+      // Brackets in brackets beyond what the stack holds: an error of that line, not of the program.
+      const err = given instanceof RangeError ? new CalcError(diagnostic('E-EXPR-DEPTH', spanOf(tokens[0]!, tokens[tokens.length - 1]!), { depth: MAX_EXPRESSION_DEPTH })) : given;
       if (!(err instanceof CalcError)) throw err;
       diagnostics.push(err.diagnostic);
       const name = parser.definitionName();

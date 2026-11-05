@@ -18,6 +18,7 @@ import { divideDims, isDimensionless, multiplyDims, powerDim, sameDim } from '..
 import { baseUnitSymbol } from '../units/display.js';
 import type { ResolvedUnit } from '../units/unitExpr.js';
 import { quantity, type MatrixValue, type Quantity, type Value, type VectorValue } from '../values/value.js';
+import { exact } from '../values/exact.js';
 import { isPlainZero, matrix, normalized, withZerosOfUnit } from '../functions/linear.js';
 import { asComplex, asQuantity } from './coerce.js';
 import { shownUnitsOff, warnOnce, withoutShownUnits, type EvalContext } from './evaluator.js';
@@ -409,7 +410,7 @@ function matrixOfIndices(call: CallExpr, ctx: EvalContext, evaluate: Evaluate): 
   const items: Quantity[] = [];
   for (const i of rows) {
     for (const j of cols) {
-      const lookup = (n: string, at: Span): Value => (n === rowVar!.name ? quantity(i) : n === colVar!.name ? quantity(j) : ctx.lookup(n, at));
+      const lookup = (n: string, at: Span): Value => (n === rowVar!.name ? indexValue(i) : n === colVar!.name ? indexValue(j) : ctx.lookup(n, at));
       items.push(asComplex(evaluate(body, { ...ctx, lookup }), body.span));
     }
   }
@@ -422,12 +423,17 @@ function vectorOfIndices(call: CallExpr, ctx: EvalContext, evaluate: Evaluate): 
   const numbers = wholeNumbers(variable, call, ctx, evaluate);
   if (numbers.length > MAX_TERMS) fail('E-RANGE-SIZE', call.span);
   const items = withZerosOfUnit(
-    numbers.map((k) => asComplex(evaluate(body, { ...ctx, lookup: (n, at) => (n === variable.name ? quantity(k) : ctx.lookup(n, at)) }), body.span)),
+    numbers.map((k) => asComplex(evaluate(body, { ...ctx, lookup: (n, at) => (n === variable.name ? indexValue(k) : ctx.lookup(n, at)) }), body.span)),
   );
   items.forEach((q) => {
     if (!sameDim(q.dim, items[0]!.dim)) fail('E-UNIT-MISMATCH', body.span, { operator: ',', left: baseUnitSymbol(items[0]!.dim), right: baseUnitSymbol(q.dim) });
   });
   return { type: 'vector', items };
+}
+
+/** An index is an exact number: 1/(i + j - 1) stays a fraction. */
+function indexValue(k: number): Quantity {
+  return quantity(k, undefined, { exact: exact(BigInt(k))! });
 }
 
 function wholeNumbers(variable: NamedArg, call: CallExpr, ctx: EvalContext, evaluate: Evaluate): number[] {

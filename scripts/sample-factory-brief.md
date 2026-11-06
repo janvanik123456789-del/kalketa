@@ -47,6 +47,8 @@ Then look at your pictures, as tests see numbers only: `node scripts/sample-pict
 
 Fix your files until it says OK. Never change a test, an expected value to fit a wrong result, or anything outside your folder. If Kalketa itself cannot do something or computes something wrong, do not work around it silently: report it.
 
+Do not run `npm run smoke`: it tries the whole program in about 12 minutes, and a sample changes no program code. It runs once for a batch, when the program was fixed for the samples, and before a push.
+
 ## Report
 
 Briefly: files made, how the results compare with the source, assumptions, source errors found, anything Kalketa could not do, and anything you are unsure of.

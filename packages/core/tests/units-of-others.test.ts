@@ -61,6 +61,9 @@ describe('the units of SMath', () => {
 describe('old units with a value of their definition', () => {
   it.each([
     ['1 kgf | N', 9.80665],
+    ['1 kp | N', 9.80665],
+    ['1 Mp | kN', 9.80665],
+    ['5 kp/cm^2 | MPa', 0.4903325],
     ['1 at | Pa', 98066.5],
     ['1 slug | lb', 32.17404855643],
     ['1 mph | m/s', 0.44704],

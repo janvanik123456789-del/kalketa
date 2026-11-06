@@ -174,6 +174,9 @@ const BUILT_IN: readonly UnitDef[] = [
 
   // Of old textbooks and of other programs: the same quantities by other names.
   { symbol: 'kgf', factor: 9.80665, dim: FORCE },
+  // The kilopond of Czech and German textbooks is the same kilogram-force, the megapond a thousand of them.
+  { symbol: 'kp', factor: 9.80665, dim: FORCE },
+  { symbol: 'Mp', factor: 9806.65, dim: FORCE },
   { symbol: 'gf', factor: 9.80665e-3, dim: FORCE },
   { symbol: 'tf', factor: 9806.65, dim: FORCE },
   { symbol: 'dyn', factor: 1e-5, dim: FORCE },

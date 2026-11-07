@@ -1,0 +1,59 @@
+{
+  "id": "polocas-eliminace",
+  "field": "15",
+  "group": {
+    "cs": "Farmakokinetika",
+    "en": "Pharmacokinetics"
+  },
+  "title": {
+    "cs": "Biologický poločas",
+    "en": "Elimination half-life"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R33",
+      "en": "Kalketa, sample R33"
+    },
+    "sample": "R33"
+  },
+  "status": "verified",
+  "formula": "t_12 == ln(2)/k_e",
+  "quantities": {
+    "t_12": {
+      "name": {
+        "cs": "poločas eliminace",
+        "en": "half-life"
+      },
+      "unit": "h",
+      "example": "6 h"
+    },
+    "k_e": {
+      "name": {
+        "cs": "rychlostní konstanta eliminace",
+        "en": "elimination rate constant"
+      },
+      "unit": "h^-1",
+      "example": "0.1155 h^-1"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "k_e": "0.1155 h^-1"
+      },
+      "expect": {
+        "t_12": "6.00127 h"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "eliminace",
+      "lék"
+    ],
+    "en": [
+      "elimination",
+      "drug"
+    ]
+  }
+}

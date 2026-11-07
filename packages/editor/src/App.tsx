@@ -44,6 +44,11 @@ import { closeTab, cycleTab, fileNameOf, isDirty, isPristine, newTab, openTab, u
 import { pageGeometry } from './logic/pages.js';
 import { pickOf, replacePickKey } from './logic/pick.js';
 import { deleteLineRanges, deleteLines, insertLineAfter, moveLines, replaceLines, segments } from './logic/segments.js';
+import { dropChangedExampleMarks } from './logic/exampleMark.js';
+import { FormulaLibraryDialog } from './components/FormulaLibraryDialog.js';
+import { FORMULA_LIBRARY } from './formulaLibrary.js';
+import { FAVOURITES_KEY, readFavourites, toggleFavourite } from './logic/formulaFavourites.js';
+import { insertion, sheetNames, text as libraryText, type Entry } from '@kalketa/library';
 import { FUNCTION_TEMPLATES, parseLayout, setVisible, templateParts, type ToolbarLayout } from './logic/toolbars.js';
 import { createTable, importTableFile, type TableChange } from './tableActions.js';
 import { captionOf, fromFile, pictureLine, picturePath, pixelWidth, widthFor, type IncomingPicture } from './logic/pictures.js';
@@ -87,7 +92,7 @@ type Tab = DocTab<SheetDocument, FileRef>;
 /** Rows copied by Ctrl+C with what they use (pictures, tables), for Ctrl+V in any calculation of the window. */
 let rowClipboard: { readonly text: string; readonly files: ReadonlyMap<string, Uint8Array>; readonly tables: SheetDocument['tables'] } | undefined;
 
-type DialogKind = 'settings' | 'properties' | 'revisions' | 'customize' | 'shortcuts' | 'functions' | 'insertFunction' | 'about' | 'study' | 'fit' | 'chart';
+type DialogKind = 'settings' | 'properties' | 'revisions' | 'customize' | 'shortcuts' | 'functions' | 'insertFunction' | 'insertFormula' | 'about' | 'study' | 'fit' | 'chart';
 
 const MM_TO_PX = 96 / 25.4;
 const PAGE_GAP_PX = 24;
@@ -212,6 +217,9 @@ export function App() {
   // The start screen: at a start of the program with no files to open again, and from File > Start screen.
   // Another window (Window > New window) was asked for to write in: it starts with the empty calculation.
   const [controls, setControls] = useState(() => readControls(stored(CONTROLS_KEY)));
+  const [favourites, setFavourites] = useState(() => readFavourites(stored(FAVOURITES_KEY)));
+  /** The formula of the library the dialog opens on (a favourite chosen in "/"). */
+  const [formulaShown, setFormulaShown] = useState<string | undefined>(undefined);
   const [startOpen, setStartOpen] = useState(() => controls.startScreen && !new URLSearchParams(location.search).has('blank') && !(!!desktop && sessionFiles().length > 0));
   // A new calculation from its intent: asked for ('pending'), then the tab whose next conversation it is.
   const [intentFor, setIntentFor] = useState<number | 'pending' | undefined>();
@@ -368,6 +376,7 @@ export function App() {
     l.kind === 'sheet' ||
     l.kind === 'calc' ||
     l.kind === 'sources' ||
+    l.kind === 'python' ||
     // AI notes are in use with notes or with conversations kept in them.
     (l.kind === 'ai' && hasConversations(doc.files, l.id)) ||
     (l.kind === 'data' ? (layerTables.get(l.id)?.length ?? 0) > 0 : Boolean(l.text?.trim()));
@@ -415,7 +424,15 @@ export function App() {
       .filter(isDirty)
       .map((d) => t(ui, d.fileRef === undefined ? 'editor.unsavedNew' : 'editor.unsavedFile', { name: docLabel(d) }))
       .join(', ');
-    desktop?.setCloseGuard({ dirty: anyDirty, message: t(ui, 'editor.closeUnsaved', { names }), save: t(ui, 'editor.save'), discard: t(ui, 'editor.dontSave'), cancel: t(ui, 'editor.cancel') });
+    desktop?.setCloseGuard({
+      dirty: anyDirty,
+      message: t(ui, 'editor.closeUnsaved', { names }),
+      save: t(ui, 'editor.save'),
+      discard: t(ui, 'editor.dontSave'),
+      cancel: t(ui, 'editor.cancel'),
+      textMenu: { cut: t(ui, 'cmd.edit.cut'), copy: t(ui, 'cmd.edit.copy'), paste: t(ui, 'cmd.edit.paste'), selectAll: t(ui, 'cmd.edit.selectAll') },
+      hang: { message: t(ui, 'hang.message'), wait: t(ui, 'hang.wait'), reload: t(ui, 'hang.reload') },
+    });
     if (!anyDirty || desktop) return;
     const warn = (e: BeforeUnloadEvent) => e.preventDefault();
     window.addEventListener('beforeunload', warn);
@@ -736,7 +753,9 @@ export function App() {
   };
 
   /** Replaces lines of a layer; a line being edited keeps its editor over all its lines. */
-  const replaceIn = (target: Layer, start: number, end: number, lines: string) => {
+  const replaceIn = (target: Layer, start: number, end: number, given: string) => {
+    // An example value of the formula library written over is the user's own: the mark {example} goes.
+    const lines = dropChangedExampleMarks(textOf(target).split('\n').slice(start - 1, end).join('\n'), given);
     setLayerText(target, replaceLines(textOf(target), start, end, lines), `${target.id}:line:${start}`);
     if (target.id === layer.id && editing?.start === start) setEditing({ start, end: start + lines.split('\n').length - 1 });
   };
@@ -1193,9 +1212,17 @@ export function App() {
     const others = docs.tabs
       .filter((d) => d.id !== tab.id && d.history.present.source.trim())
       .map((d) => ({ title: d.history.present.manifest.title, source: d.history.present.source }));
+    // The auxiliary calculations of this sheet (Pomocný výpočet), with what the program found in them.
+    const auxiliary = doc.layers
+      .filter((l) => l.kind === 'calc')
+      .map((l) => {
+        const result = evaluation.aux.get(l.id);
+        const findings = result ? (sheetContext(nameOf(l), result).findings ?? []) : [];
+        return { name: nameOf(l), source: l.text ?? '', ...(findings.length > 0 ? { findings } : {}) };
+      });
     return {
       // A section both in the sources and in a library goes once, from the library.
-      sheet: { ...sheetContext(doc.manifest.title, evaluation.main), ...((pickedDetail.current ?? doc.layout.detail) ? { detail: pickedDetail.current ?? doc.layout.detail } : {}), theory: withoutDuplicates(theorySections(layers), fromLibraries.sections), libraries: fromLibraries.libraries, ...(changes.length > 0 ? { changes } : {}), ...(others.length > 0 ? { others } : {}) },
+      sheet: { ...sheetContext(doc.manifest.title, evaluation.main), ...((pickedDetail.current ?? doc.layout.detail) ? { detail: pickedDetail.current ?? doc.layout.detail } : {}), theory: withoutDuplicates(theorySections(layers), fromLibraries.sections), libraries: fromLibraries.libraries, ...(changes.length > 0 ? { changes } : {}), ...(others.length > 0 ? { others } : {}), ...(auxiliary.length > 0 ? { auxiliary } : {}) },
       languageGuide: languageGuide(),
       ...(memory.trim() ? { memory } : {}),
     };
@@ -1229,6 +1256,15 @@ export function App() {
       // The lines changed since it was proposed: it no longer fits, nothing is changed.
       if (!entry.before || !now || now.length !== entry.before.length || now.some((l, i) => l !== entry.before![i])) return present;
       return withEntries({ ...present, source: applyProposal(present.source, asProposal(entry)) }, [{ ...entry, state: 'accepted', decided }]);
+    });
+  /** Lines an open proposal only puts in, put after another line of the sheet (0: at the top) before it is decided. */
+  const moveProposal = (entryId: string, after: number) =>
+    changeWith((present) => {
+      const entry = entriesOf(present).find((e) => e.id === entryId);
+      const last = present.source.split('\n').length;
+      if (!entry || entry.state !== 'open' || !entry.insert) return present;
+      const line = Math.max(0, Math.min(after, last));
+      return line === entry.from ? present : withEntries(present, [{ ...entry, from: line, to: line, before: [] }]);
     });
   /** Open proposals that still fit the sheet, by id. */
   const fittingOpen = (present: SheetDocument, ids: readonly string[]) =>
@@ -1367,8 +1403,10 @@ export function App() {
         language: ui.locale,
         sheet,
         languageGuide: guide,
-        turns: turns.map((t) => ({ role: t.role, text: t.text })),
+        turns: turns.map((t) => ({ role: t.role, text: t.text, ...(t.sent ? { sent: t.sent } : {}), ...(t.reasoning ? { reasoning: t.reasoning } : {}) })),
         ...(memory ? { memory } : {}),
+        ...(aiSettings.context ? { context: aiSettings.context } : {}),
+        ...(conversation.window ? { window: conversation.window } : {}),
       })
       .then((result) => {
         if (!result.ok) return;
@@ -1528,6 +1566,46 @@ export function App() {
     }
   };
 
+  // Formulas of the library: lines put in after a line of the layer, with what the sheet has above it.
+  const formulaLanguage = printCatalog.locale.startsWith('cs') ? 'cs' : 'en';
+  const uiLanguage = ui.locale.startsWith('cs') ? 'cs' : 'en';
+  const putFormulaLines = (lines: readonly string[], after: number) => {
+    setSource(insertLineAfter(text, after, lines.join('\n')));
+    setEditing(undefined);
+    reveal.current = { layer: layer.id, line: after + lines.length };
+  };
+  const favouriteEntries = favourites.map((id) => FORMULA_LIBRARY.find((e) => e.id === id)).filter((e): e is Entry => !!e);
+  // The right button on a line: each favourite with its quantities, the formula rearranged for the one chosen.
+  const formulaMenu = (after: number): MenuItem[] =>
+    favouriteEntries.length === 0
+      ? []
+      : [
+          {
+            kind: 'submenu',
+            label: t(ui, 'formulaLib.menu'),
+            items: [
+              ...favouriteEntries.map((e): MenuItem => ({
+                kind: 'submenu',
+                label: libraryText(e.title, uiLanguage),
+                items: Object.keys(e.quantities).map((q): MenuItem => ({
+                  kind: 'action',
+                  label: `${q}  ${libraryText(e.quantities[q]!.name, uiLanguage)}`,
+                  run: () => putFormulaLines(insertion(e, q, sheetNames(result, after), formulaLanguage).lines, after),
+                })),
+              })),
+              { kind: 'separator' },
+              {
+                kind: 'action',
+                label: t(ui, 'formulaLib.more'),
+                run: () => {
+                  setFormulaShown(undefined);
+                  setDialog('insertFormula');
+                },
+              },
+            ],
+          },
+        ];
+
   // The "/" menu of an empty line: lines to write (‸ is the cursor) and actions of the program.
   const insertChoices: InsertChoice[] = [
     { id: 'definition', icon: '≔', label: t(ui, 'insertMenu.definition'), example: 'M_Ed := q·L²/8', template: '‸ := ', keywords: 'definition value formula hodnota vzorec' },
@@ -1541,6 +1619,9 @@ export function App() {
     { id: 'picture', icon: '▣', label: t(ui, 'insertMenu.picture'), example: '![Schéma](images/schema.png)', keywords: 'picture image obrázek' },
     { id: 'canvas', icon: '✎', label: t(ui, 'insertMenu.canvas'), example: t(ui, 'insertMenu.canvasExample'), keywords: 'canvas sketch drawing plátno náčrt' },
     { id: 'function', icon: 'f(x)', label: t(ui, 'insertMenu.function'), example: 'interpolate(…), integral(…)', keywords: 'function funkce' },
+    { id: 'formula', icon: 'σ=', label: t(ui, 'formulaLib.slash'), example: 'σ := M/W | MPa', keywords: 'formula library vzorec knihovna' },
+    // Favourite formulas by their title: "/ohyb" finds the bending stress, Enter opens the dialog on it.
+    ...favouriteEntries.map((e): InsertChoice => ({ id: `formula:${e.id}`, icon: '★', label: libraryText(e.title, uiLanguage), example: e.formula.replace('==', '='), keywords: `${Object.keys(e.quantities).join(' ')} ${e.title.en}` })),
     { id: 'fit', icon: '≈', label: t(ui, 'insertMenu.fit'), example: 'fit(Body.y, x: Body.x, kind: "poly2")', keywords: 'fit curve proložení křivka' },
     { id: 'pick', icon: '→', label: t(ui, 'insertMenu.pick'), example: 'profil := pick(Profily, "IPE 200")', keywords: 'pick row table řádek tabulka výběr' },
     { id: 'relation', icon: '⇔', label: t(ui, 'insertMenu.relation'), example: 'relation F == m·a', template: 'relation ‸ == ', keywords: 'relation vztah' },
@@ -1561,8 +1642,15 @@ export function App() {
         return insertCanvas();
       case 'function':
         return setDialog('insertFunction');
+      case 'formula':
+        setFormulaShown(undefined);
+        return setDialog('insertFormula');
       case 'fit':
         return commands.get('insert.fit')?.run();
+    }
+    if (choice.id.startsWith('formula:')) {
+      setFormulaShown(choice.id.slice('formula:'.length));
+      setDialog('insertFormula');
     }
   };
   const insertMenu = { title: t(ui, 'insertMenu.title'), empty: t(ui, 'insertMenu.empty'), choices: insertChoices, onAction: insertAction };
@@ -1666,11 +1754,14 @@ export function App() {
       return { ...present, layers: updateLayer(layers, own.id, { text: `${before ? `${before}\n\n` : ''}${noteText(note)}` }) };
     });
   };
-  /** A check of an answer kept in the sources (a new sources layer when there is none), to be run there again. */
+  /**
+   * A check of an answer kept in the layer of checks in Python (made when the sheet has none): apart from the theory
+   * of the sources and from the auxiliary calculations, nothing of it flows into the sheet; it can be run there again.
+   */
   const keepCheck = (code: string) => {
     changeWith((present) => {
-      const own = present.layers.find((l) => l.kind === 'sources');
-      const added = own ? undefined : addLayer(present.layers, 'sources', t(ui, 'check.heading'));
+      const own = present.layers.find((l) => l.kind === 'python');
+      const added = own ? undefined : addLayer(present.layers, 'python', t(ui, 'layer.kind.python'));
       const layers = added?.layers ?? present.layers;
       const id = own?.id ?? added!.id;
       const before = (layers.find((l) => l.id === id)?.text ?? '').trimEnd();
@@ -2065,6 +2156,10 @@ export function App() {
         setDialog('functions');
       },
       insertFunction: () => setDialog('insertFunction'),
+      insertFormula: () => {
+        setFormulaShown(undefined);
+        setDialog('insertFormula');
+      },
       fitCurve: () => {
         setFitEdit(undefined);
         setDialog('fit');
@@ -2330,7 +2425,7 @@ export function App() {
     },
     {
       label: t(ui, 'menu.insert'),
-      items: [cmd('insert.text'), cmd('insert.definition'), cmd('insert.check'), cmd('insert.pick'), cmd('insert.pageBreak'), cmd('insert.clear'), sep, cmd('insert.picture'), cmd('insert.canvas'), cmd('insert.beamScheme'), cmd('insert.sectionScheme'), cmd('insert.function'), cmd('insert.chart'), cmd('insert.fit'), cmd('insert.sheetTable'), cmd('insert.newTable'), cmd('insert.importTable'), cmd('insert.block'),
+      items: [cmd('insert.text'), cmd('insert.definition'), cmd('insert.check'), cmd('insert.pick'), cmd('insert.pageBreak'), cmd('insert.clear'), sep, cmd('insert.picture'), cmd('insert.canvas'), cmd('insert.beamScheme'), cmd('insert.sectionScheme'), cmd('insert.function'), cmd('insert.formula'), cmd('insert.chart'), cmd('insert.fit'), cmd('insert.sheetTable'), cmd('insert.newTable'), cmd('insert.importTable'), cmd('insert.block'),
         ...(doc.blocks.size > 0
           ? [
               {
@@ -2345,7 +2440,7 @@ export function App() {
             ]
           : []),
         sep,
-        { kind: 'submenu', label: t(ui, 'menu.layer'), items: [cmd('insert.layerCalc'), cmd('insert.layerData'), cmd('insert.layerSources')] },
+        { kind: 'submenu', label: t(ui, 'menu.layer'), items: [cmd('insert.layerCalc'), cmd('insert.layerData'), cmd('insert.layerSources'), cmd('insert.layerPython')] },
       ],
     },
     {
@@ -2437,7 +2532,7 @@ export function App() {
         />
       );
     }
-    if (l.kind === 'ai' || l.kind === 'sources') {
+    if (l.kind === 'ai' || l.kind === 'sources' || l.kind === 'python') {
       return (
         <PythonRunnerContext.Provider key={l.id} value={pythonRunner}>
         <NotesView
@@ -2513,6 +2608,7 @@ export function App() {
           {...(footer && l.kind === 'sheet' ? { footer } : {})}
           editing={active ? editing : undefined}
           {...(controls.insertMenu ? { insertMenu } : {})}
+          formulaMenu={formulaMenu}
           rowToolbar={controls.rowToolbar}
           autoDefine={controls.autoDefine}
           autocorrect={controls.autocorrect}
@@ -2649,7 +2745,9 @@ export function App() {
                           setActiveChat((all) => ({ ...all, [tab.id]: id }));
                           const last = turns[turns.length - 1];
                           changeWith((present) => {
-                            let next = withConversation(present, { id, started, provider: aiSettings.provider, ...(aiSettings.model ? { model: aiSettings.model } : {}), ...(chat?.intent || intentFor === tab.id ? { intent: true } : {}), turns });
+                            // The window of the conversation (its summary) stays as it was kept.
+                            const kept = conversationsOf(present).find((c) => c.id === id)?.window;
+                            let next = withConversation(present, { id, started, provider: aiSettings.provider, ...(aiSettings.model ? { model: aiSettings.model } : {}), ...(chat?.intent || intentFor === tab.id ? { intent: true } : {}), ...(kept ? { window: kept } : {}), turns });
                             if (last?.role !== 'assistant') return next;
                             // Changes the answer proposes go into the journal, open, with the lines they replace as they are now.
                             const known = new Set(entriesOf(next).map((e) => e.id));
@@ -2693,6 +2791,16 @@ export function App() {
                         }}
                         proposals={(turn) => (chat ? proposalViews(entriesOf(doc).filter((e) => e.id.startsWith(`${chat.id}:${turn}:`))) : [])}
                         onDecide={decideProposal}
+                        onMoveProposal={moveProposal}
+                        {...(chat?.window ? { contextWindow: chat.window } : {})}
+                        onWindow={(window) => {
+                          const id = chat?.id ?? startedChat.current[tab.id];
+                          if (!id) return;
+                          changeWith((present) => {
+                            const now = conversationsOf(present).find((c) => c.id === id);
+                            return now ? withConversation(present, { ...now, window }) : present;
+                          }, 'ai-chat');
+                        }}
                         onReview={reviewProposal}
                       answerProposals={answerProposals}
                       onAcceptAll={acceptAll}
@@ -3058,6 +3166,31 @@ export function App() {
             insertTemplate(FUNCTION_TEMPLATES.find((f) => f.id === name)?.text ?? `${name}(‸)`);
           }}
           onClose={() => setDialog(undefined)}
+        />
+      )}
+      {dialog === 'insertFormula' && (
+        <FormulaLibraryDialog
+          catalog={ui}
+          entries={FORMULA_LIBRARY}
+          language={formulaLanguage}
+          decimalComma={decimalComma}
+          sheet={sheetNames(result, currentRange()?.end ?? lineCount)}
+          favourites={favourites}
+          {...(formulaShown ? { initial: formulaShown } : {})}
+          onToggleFavourite={(id) => {
+            const next = toggleFavourite(favourites, id);
+            setFavourites(next);
+            remember(FAVOURITES_KEY, JSON.stringify(next));
+          }}
+          onInsert={(lines) => {
+            setDialog(undefined);
+            setFormulaShown(undefined);
+            putFormulaLines(lines, currentRange()?.end ?? lineCount);
+          }}
+          onClose={() => {
+            setDialog(undefined);
+            setFormulaShown(undefined);
+          }}
         />
       )}
       {dialog === 'about' && <AboutDialog catalog={ui} onClose={() => setDialog(undefined)} />}

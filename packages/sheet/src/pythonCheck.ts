@@ -80,12 +80,36 @@ export interface PythonComparison {
   readonly state: 'agree' | 'differ' | 'missing' | 'units' | 'unit';
 }
 
-/** The value of a name in the sheet: defined, found by a solve, or a value of the sheet. */
+/** Greek letters as a script spells them: Python names are written in Latin letters (lambda is even a keyword). */
+const GREEK: Readonly<Record<string, string>> = {
+  alpha: 'α', beta: 'β', gamma: 'γ', delta: 'δ', epsilon: 'ε', eps: 'ε', zeta: 'ζ', eta: 'η', theta: 'θ', iota: 'ι', kappa: 'κ',
+  lambda: 'λ', lam: 'λ', lambda_: 'λ', mu: 'μ', nu: 'ν', xi: 'ξ', pi: 'π', rho: 'ρ', sigma: 'σ', tau: 'τ', upsilon: 'υ', phi: 'φ',
+  chi: 'χ', psi: 'ψ', omega: 'ω', Gamma: 'Γ', Delta: 'Δ', Theta: 'Θ', Lambda: 'Λ', Xi: 'Ξ', Pi: 'Π', Sigma: 'Σ', Phi: 'Φ', Psi: 'Ψ', Omega: 'Ω',
+};
+
+/**
+ * The name with Greek letters for the parts a script spelled out: sigma_dov → σ_dov, lam → λ, Delta_T → ΔT as well as
+ * Δ_T. Undefined when nothing was spelled out.
+ */
+export function greekNames(name: string): string[] {
+  const parts = name.split('_');
+  if (!parts.some((p) => p in GREEK)) return [];
+  const spelled = parts.map((p) => GREEK[p] ?? p);
+  const joined = spelled.join('_');
+  // A capital letter of a difference or sum goes before the name without a stroke: ΔT, ΣF.
+  const glued = /^[ΔΣ]_/.test(joined) ? [joined.slice(0, 1) + joined.slice(2)] : [];
+  return [joined, ...glued];
+}
+
+/** The value of a name in the sheet: defined, found by a solve, or a value of the sheet; a spelled Greek name too. */
 function sheetValue(sheet: SheetResult, name: string): Quantity | undefined {
-  const solved = sheet.statements.flatMap((s) => s.solutions ?? []).find((s) => s.name === name)?.value;
-  if (solved?.type === 'quantity') return solved;
-  const value = sheet.values.get(name);
-  return value?.type === 'quantity' ? value : undefined;
+  for (const candidate of [name, ...greekNames(name)]) {
+    const solved = sheet.statements.flatMap((s) => s.solutions ?? []).find((s) => s.name === candidate)?.value;
+    if (solved?.type === 'quantity') return solved;
+    const value = sheet.values.get(candidate);
+    if (value?.type === 'quantity') return value;
+  }
+  return undefined;
 }
 
 /** Whether the sheet has a value of this name (defined or found by a solve). */

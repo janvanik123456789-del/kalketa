@@ -1,0 +1,19 @@
+{
+  "name": "@kalketa/library",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The formula library: entries as data, rearranged for the quantity sought and written into a sheet.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@kalketa/core": "*"
+  },
+  "license": "MIT"
+}

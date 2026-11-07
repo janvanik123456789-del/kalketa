@@ -1,0 +1,68 @@
+{
+  "id": "ohybove-napeti",
+  "field": "03",
+  "group": {
+    "cs": "Pružnost a pevnost",
+    "en": "Strength of materials"
+  },
+  "title": {
+    "cs": "Ohybové napětí",
+    "en": "Bending stress"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R1",
+      "en": "Kalketa, sample R1"
+    },
+    "sample": "R1"
+  },
+  "status": "verified",
+  "formula": "σ == M/W",
+  "quantities": {
+    "σ": {
+      "name": {
+        "cs": "ohybové napětí",
+        "en": "bending stress"
+      },
+      "unit": "MPa",
+      "example": "160 MPa"
+    },
+    "M": {
+      "name": {
+        "cs": "ohybový moment",
+        "en": "bending moment"
+      },
+      "unit": "kN·m",
+      "example": "54 kN·m"
+    },
+    "W": {
+      "name": {
+        "cs": "průřezový modul",
+        "en": "section modulus"
+      },
+      "unit": "cm^3",
+      "example": "324 cm^3"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "M": "54 kN·m",
+        "W": "324 cm^3"
+      },
+      "expect": {
+        "σ": "166.667 MPa"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "ohyb",
+      "nosník"
+    ],
+    "en": [
+      "bending",
+      "beam"
+    ]
+  }
+}

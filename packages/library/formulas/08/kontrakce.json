@@ -1,0 +1,66 @@
+{
+  "id": "kontrakce",
+  "field": "08",
+  "group": {
+    "cs": "Zkouška tahem",
+    "en": "Tensile test"
+  },
+  "title": {
+    "cs": "Kontrakce po přetržení",
+    "en": "Reduction of area"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R27",
+      "en": "Kalketa, sample R27"
+    },
+    "sample": "R27"
+  },
+  "status": "verified",
+  "formula": "Z == (S_0 - S_u)/S_0",
+  "quantities": {
+    "Z": {
+      "name": {
+        "cs": "kontrakce",
+        "en": "reduction of area"
+      },
+      "unit": "%",
+      "example": "60 %"
+    },
+    "S_0": {
+      "name": {
+        "cs": "původní plocha průřezu",
+        "en": "original cross-section area"
+      },
+      "unit": "mm^2",
+      "example": "78.54 mm^2"
+    },
+    "S_u": {
+      "name": {
+        "cs": "plocha v místě lomu",
+        "en": "area at the fracture"
+      },
+      "unit": "mm^2",
+      "example": "31.17 mm^2"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "S_0": "78.54 mm^2",
+        "S_u": "31.17 mm^2"
+      },
+      "expect": {
+        "Z": "60.3132 %"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "zúžení"
+    ],
+    "en": [
+      "necking"
+    ]
+  }
+}

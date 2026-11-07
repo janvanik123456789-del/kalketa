@@ -18,7 +18,9 @@ contextBridge.exposeInMainWorld('kalketaDesktop', {
   print: (html: string): Promise<boolean> => ipcRenderer.invoke('kalketa:print', html),
   exportPdf: (request: { html: string; suggestedName: string }): Promise<string | undefined> => ipcRenderer.invoke('kalketa:export-pdf', request),
   newWindow: (): Promise<void> => ipcRenderer.invoke('kalketa:new-window'),
-  setCloseGuard: (guard: { dirty: boolean; message: string; save?: string; discard: string; cancel: string }): void => ipcRenderer.send('kalketa:close-guard', guard),
+  /** A step the editor takes now (reading an answer, the checks of it): the last ones go to logs/hang.log when it hangs. */
+  diagStep: (step: string): void => ipcRenderer.send('kalketa:diag-step', step),
+  setCloseGuard: (guard: { dirty: boolean; message: string; save?: string; discard: string; cancel: string; textMenu?: { cut: string; copy: string; paste: string; selectAll: string }; hang?: { message: string; wait: string; reload: string } }): void => ipcRenderer.send('kalketa:close-guard', guard),
   onSaveAndClose: (listener: () => void): void => {
     ipcRenderer.on('kalketa:save-and-close', () => listener());
   },
@@ -49,7 +51,7 @@ contextBridge.exposeInMainWorld('kalketaDesktop', {
   aiFormula: (ask: unknown): Promise<unknown> => ipcRenderer.invoke('kalketa:ai-formula', ask),
   aiChatCancel: (id: string): Promise<void> => ipcRenderer.invoke('kalketa:ai-chat-cancel', id),
   onAiChatEvent: (listener: (piece: { id: string; text?: string; thinking?: string; cut?: boolean }) => void): void => {
-    ipcRenderer.on('kalketa:ai-chat-event', (_event, piece: { id: string; text?: string; thinking?: string; cut?: boolean }) => listener(piece));
+    ipcRenderer.on('kalketa:ai-chat-event', (_event, piece: { id: string; text?: string; thinking?: string; cut?: boolean; phase?: 'context' | 'summing' | 'reading'; tokens?: number }) => listener(piece));
   },
   aiTry: (provider: string, model: string, url?: string): Promise<unknown> => ipcRenderer.invoke('kalketa:ai-try', provider, model, url),
   onOpenFile: (listener: (file: OpenedFile) => void): void => {

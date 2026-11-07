@@ -465,8 +465,19 @@ function parts(xs: readonly number[], ys: readonly number[], integral: number): 
 function pointsOf(call: CallExpr, xDim: Dimension, yDim: Dimension, ctx: EvalContext, evaluate: Evaluate, xIn: (q: Quantity) => number, y: (q: Quantity) => number): { x: number; y: number }[] | undefined {
   const arg = call.named.find((n) => n.name === 'points');
   if (!arg) return undefined;
-  const v = evaluate(arg.value, ctx);
-  const pairs = v.type === 'vector' && v.items.length === 2 ? [[v.items[0]!, v.items[1]!]] : v.type === 'matrix' && v.cols === 2 ? Array.from({ length: v.rows }, (_, i) => [v.items[2 * i]!, v.items[2 * i + 1]!]) : undefined;
+  // Written out in brackets ([Q_b, H_b], [x₁, y₁ | x₂, y₂]): each coordinate on its own, x and y in their own
+  // units. Taken as one series first, a flow and a height would be "incompatible units" of the series.
+  const written = arg.value;
+  const own = (e: Expr) => asQuantity(evaluate(e, ctx), e.span);
+  const pairs =
+    written.kind === 'vector' && written.items.length === 2
+      ? [[own(written.items[0]!), own(written.items[1]!)]]
+      : written.kind === 'matrix' && written.rows.every((r) => r.length === 2)
+        ? written.rows.map((r) => [own(r[0]!), own(r[1]!)])
+        : (() => {
+            const v = evaluate(written, ctx);
+            return v.type === 'vector' && v.items.length === 2 ? [[v.items[0]!, v.items[1]!]] : v.type === 'matrix' && v.cols === 2 ? Array.from({ length: v.rows }, (_, i) => [v.items[2 * i]!, v.items[2 * i + 1]!]) : undefined;
+          })();
   if (!pairs) return fail('E-PLOT-POINTS', arg.value.span, {});
   return pairs.map(([px, py]) => {
     if (!sameDim(px!.dim, xDim) || !sameDim(py!.dim, yDim) || px!.im || py!.im) fail('E-PLOT-POINTS', arg.value.span, {});
@@ -1094,7 +1105,11 @@ function sampleCount(call: CallExpr, kind: PlotKind, ctx: EvalContext, evaluate:
 
 /** The expression at x, with x its own variable (as in an integral). */
 function evaluateAt(body: Expr, name: string, x: Quantity, ctx: EvalContext, evaluate: Evaluate): Value {
-  const inner: EvalContext = { ...ctx, lookup: (n, at) => (n === name ? x : ctx.lookup(n, at)) };
+  // An axis of temperatures in °C: the variable is the thermodynamic temperature, as in an integral over the same
+  // range, so c_p(T)/T warns of no absolute temperature in a product at each of the points (the axis stays in °C).
+  const { absolute: _absolute, ...thermodynamic } = x;
+  const own = x.absolute ? thermodynamic : x;
+  const inner: EvalContext = { ...ctx, lookup: (n, at) => (n === name ? own : ctx.lookup(n, at)) };
   return evaluate(body, inner);
 }
 

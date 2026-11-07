@@ -107,6 +107,8 @@ export const DIAGNOSTIC_SEVERITY = {
   'E-DERIVE-UNITS': 'error',
   'W-DERIVE-UNVERIFIED': 'warning',
   'W-FORMAT': 'warning',
+  'E-CITATION': 'error',
+  'W-EXAMPLE-VALUE': 'warning',
   'W-PLOT-NO-AREA': 'warning',
   'W-PLOT-NO-POINTS': 'warning',
   'W-PLOT-NO-TANGENT': 'warning',

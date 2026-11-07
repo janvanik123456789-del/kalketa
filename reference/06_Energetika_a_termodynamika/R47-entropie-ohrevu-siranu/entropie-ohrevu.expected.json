@@ -1,0 +1,57 @@
+{
+  "sheet": "entropie-ohrevu.cc",
+  "verifiedBy": "Nezávisle v Pythonu (kontrola.md): entropie numerickou kvadraturou i uzavřeným integrálem po členech, teplo uzavřeným integrálem c_p, střední teplota T_s = Q/ΔS. Zdroj uvádí ΔS = 820 J/K; shoda do zaokrouhlení zdroje (819,6 J/K).",
+  "relativeTolerance": 1e-09,
+  "values": {
+    "n": {
+      "value": 5.73855158957879,
+      "unit": "mol"
+    },
+    "T_1": {
+      "value": 298.15,
+      "unit": "K"
+    },
+    "T_2": {
+      "value": 700.15,
+      "unit": "K"
+    },
+    "ΔS": {
+      "value": 819.6053312333964,
+      "unit": "J/K"
+    },
+    "ΔS_ruc": {
+      "value": 819.6053312333964,
+      "unit": "J/K"
+    },
+    "Q": {
+      "value": 392.4386932168353,
+      "unit": "kJ"
+    },
+    "T_s": {
+      "value": 478.8142271186396,
+      "unit": "K"
+    },
+    "T_arit": {
+      "value": 499.15,
+      "unit": "K"
+    }
+  },
+  "checks": [
+    {
+      "label": "Integrál a výpočet po členech se shodují",
+      "passed": true
+    },
+    {
+      "label": "Shoda se zdrojem (820 J/K, zaokrouhleno)",
+      "passed": true
+    },
+    {
+      "label": "Střední teplota leží mezi T_1 a T_2",
+      "passed": true
+    },
+    {
+      "label": "Entropie roste (ohřev je vratný, ΔS > 0)",
+      "passed": true
+    }
+  ]
+}

@@ -1,0 +1,68 @@
+{
+  "id": "kapacitni-reaktance",
+  "field": "05",
+  "group": {
+    "cs": "Střídavé obvody",
+    "en": "AC circuits"
+  },
+  "title": {
+    "cs": "Kapacitní reaktance",
+    "en": "Capacitive reactance"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R37",
+      "en": "Kalketa, sample R37"
+    },
+    "sample": "R37"
+  },
+  "status": "verified",
+  "formula": "X_C == 1/(ω·C)",
+  "quantities": {
+    "X_C": {
+      "name": {
+        "cs": "reaktance kondenzátoru",
+        "en": "reactance of the capacitor"
+      },
+      "unit": "Ω",
+      "example": "318.3 Ω"
+    },
+    "ω": {
+      "name": {
+        "cs": "úhlová frekvence",
+        "en": "angular frequency"
+      },
+      "unit": "rad/s",
+      "example": "314.16 rad/s"
+    },
+    "C": {
+      "name": {
+        "cs": "kapacita",
+        "en": "capacitance"
+      },
+      "unit": "µF",
+      "example": "10 µF"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "ω": "314.16 rad/s",
+        "C": "10 µF"
+      },
+      "expect": {
+        "X_C": "318.309 Ω"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "kondenzátor",
+      "kapacita"
+    ],
+    "en": [
+      "capacitor",
+      "capacitance"
+    ]
+  }
+}

@@ -1,12 +1,16 @@
 /**
  * Providers the user can pick in the settings: Claude, and servers with the
- * OpenAI-style API that need no key: LM Studio, Ollama, or any other at an
- * address the user gives (e.g. llama.cpp or an own server).
+ * OpenAI-style API: LM Studio, Ollama, or any other at an address the user gives
+ * (e.g. llama.cpp or an own server). These need no key unless they are set to ask
+ * for one (LM Studio with authentication, llama.cpp --api-key, vLLM, a server of
+ * the company); then the key goes as "Authorization: Bearer".
  */
 
 export interface ModelChoice {
   readonly id: string;
   readonly name: string;
+  /** Tokens the model can take in, where the server says (Strata meta.context, llama.cpp/vLLM max_model_len…). */
+  readonly context?: number;
 }
 
 export interface ProviderInfo {
@@ -14,8 +18,10 @@ export interface ProviderInfo {
   readonly name: string;
   /** How the program talks to it: Claude's own API, or the OpenAI-style API local servers offer. */
   readonly api: 'anthropic' | 'openai-compatible';
-  /** Shows the field for an API key. A local server needs none. */
+  /** Shows the field for an API key, and nothing is asked without one. */
   readonly needsKey: boolean;
+  /** Shows the field for an API key too, but it may stay empty: a server that asks for one. */
+  readonly optionalKey?: boolean;
   /** Runs on this computer; nothing leaves it. */
   readonly local: boolean;
   /** Where a local server listens by default. */
@@ -47,9 +53,9 @@ export const PROVIDERS: readonly ProviderInfo[] = [
       { id: 'claude-fable-5-1', name: 'Claude Fable 5.1' },
     ],
   },
-  { id: 'lmstudio', name: 'LM Studio', api: 'openai-compatible', needsKey: false, local: true, baseUrl: 'http://127.0.0.1:1234', defaultModel: '', models: [] },
-  { id: 'ollama', name: 'Ollama', api: 'openai-compatible', needsKey: false, local: true, baseUrl: 'http://127.0.0.1:11434', defaultModel: '', models: [] },
-  { id: 'server', name: 'Other server', api: 'openai-compatible', needsKey: false, local: true, baseUrl: 'http://127.0.0.1:8080/v1', urlEditable: true, defaultModel: '', models: [] },
+  { id: 'lmstudio', name: 'LM Studio', api: 'openai-compatible', needsKey: false, optionalKey: true, local: true, baseUrl: 'http://127.0.0.1:1234', defaultModel: '', models: [] },
+  { id: 'ollama', name: 'Ollama', api: 'openai-compatible', needsKey: false, optionalKey: true, local: true, baseUrl: 'http://127.0.0.1:11434', defaultModel: '', models: [] },
+  { id: 'server', name: 'Other server', api: 'openai-compatible', needsKey: false, optionalKey: true, local: true, baseUrl: 'http://127.0.0.1:8080/v1', urlEditable: true, defaultModel: '', models: [] },
 ];
 
 /** An address a server may have: http or https, nothing else. */

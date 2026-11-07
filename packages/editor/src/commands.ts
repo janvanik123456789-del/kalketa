@@ -80,12 +80,14 @@ export interface CommandContext {
     fitCurve(): void;
     /** Insert > Function…: a built-in function found by name or by what it does. */
     insertFunction(): void;
+    /** Insert > Formula…: a formula of the library rearranged for the quantity sought. */
+    insertFormula(): void;
     /** Insert > Chart…: the dialog of the kind of chart. */
     insertChart(): void;
     newTable(): void;
     importTable(): void;
     insertBlock(): void;
-    addLayer(kind: 'calc' | 'data' | 'sources'): void;
+    addLayer(kind: 'calc' | 'data' | 'sources' | 'python'): void;
     settings(): void;
     toggleAi(): void;
     study(): void;
@@ -162,6 +164,7 @@ export function buildCommands(ctx: CommandContext): Map<string, Command> {
   add('insert.chart', 'insert', a.insertChart);
   add('insert.fit', 'insert', a.fitCurve);
   add('insert.function', 'insert', a.insertFunction, { shortcut: 'Shift+F3' });
+  add('insert.formula', 'insert', a.insertFormula, { shortcut: 'Shift+F4' });
   add('insert.sheetTable', 'insert', () => a.insert('sheetTable'));
   add('insert.newTable', 'insert', a.newTable);
   add('insert.importTable', 'insert', a.importTable);
@@ -169,6 +172,7 @@ export function buildCommands(ctx: CommandContext): Map<string, Command> {
   add('insert.layerCalc', 'insert', () => a.addLayer('calc'));
   add('insert.layerData', 'insert', () => a.addLayer('data'));
   add('insert.layerSources', 'insert', () => a.addLayer('sources'));
+  add('insert.layerPython', 'insert', () => a.addLayer('python'));
 
   add('tools.settings', 'tools', a.settings);
   add('tools.ai', 'tools', a.toggleAi, { checked: ctx.aiOn });

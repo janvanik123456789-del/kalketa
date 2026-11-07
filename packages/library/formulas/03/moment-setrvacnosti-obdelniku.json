@@ -1,0 +1,70 @@
+{
+  "id": "moment-setrvacnosti-obdelniku",
+  "field": "03",
+  "group": {
+    "cs": "Pružnost a pevnost",
+    "en": "Strength of materials"
+  },
+  "title": {
+    "cs": "Moment setrvačnosti obdélníku",
+    "en": "Second moment of area of a rectangle"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R11",
+      "en": "Kalketa, sample R11"
+    },
+    "sample": "R11"
+  },
+  "status": "verified",
+  "formula": "I == b·h^3/12",
+  "quantities": {
+    "I": {
+      "name": {
+        "cs": "moment setrvačnosti",
+        "en": "second moment of area"
+      },
+      "unit": "cm^4",
+      "example": "6667 cm^4"
+    },
+    "b": {
+      "name": {
+        "cs": "šířka průřezu",
+        "en": "width of the section"
+      },
+      "unit": "m",
+      "example": "0.1 m"
+    },
+    "h": {
+      "name": {
+        "cs": "výška průřezu",
+        "en": "height of the section"
+      },
+      "unit": "m",
+      "example": "0.2 m"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "b": "0.1 m",
+        "h": "0.2 m"
+      },
+      "expect": {
+        "I": "6666.67 cm^4"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "průřez",
+      "obdélník",
+      "kvadratický moment"
+    ],
+    "en": [
+      "section",
+      "rectangle",
+      "moment of inertia"
+    ]
+  }
+}

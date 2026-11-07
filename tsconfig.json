@@ -23,6 +23,9 @@
       "path": "packages/import"
     },
     {
+      "path": "packages/library"
+    },
+    {
       "path": "packages/cli"
     },
     {

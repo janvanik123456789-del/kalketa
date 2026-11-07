@@ -1,0 +1,77 @@
+{
+  "id": "prostup-tepla",
+  "field": "03",
+  "group": {
+    "cs": "Tepelné výpočty",
+    "en": "Heat"
+  },
+  "title": {
+    "cs": "Tepelný tok výměníkem",
+    "en": "Heat flow through an exchanger"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R2",
+      "en": "Kalketa, sample R2"
+    },
+    "sample": "R2"
+  },
+  "status": "verified",
+  "formula": "Q == k·A·ΔT",
+  "quantities": {
+    "Q": {
+      "name": {
+        "cs": "tepelný tok",
+        "en": "heat flow"
+      },
+      "unit": "kW",
+      "example": "301.6 kW"
+    },
+    "k": {
+      "name": {
+        "cs": "součinitel prostupu tepla",
+        "en": "overall heat transfer coefficient"
+      },
+      "unit": "W/(m^2·K)",
+      "example": "640 W/(m^2·K)"
+    },
+    "A": {
+      "name": {
+        "cs": "teplosměnná plocha",
+        "en": "heat transfer area"
+      },
+      "unit": "m^2",
+      "example": "10.9 m^2"
+    },
+    "ΔT": {
+      "name": {
+        "cs": "střední rozdíl teplot",
+        "en": "mean temperature difference"
+      },
+      "unit": "K",
+      "example": "43.2 K"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "k": "640 W/(m^2·K)",
+        "A": "10.9 m^2",
+        "ΔT": "43.2 K"
+      },
+      "expect": {
+        "Q": "301.363 kW"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "výměník",
+      "plocha"
+    ],
+    "en": [
+      "exchanger",
+      "area"
+    ]
+  }
+}

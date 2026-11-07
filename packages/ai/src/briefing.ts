@@ -14,6 +14,13 @@ import { selectTheory } from './theorySearch.js';
 export interface ChatTurn {
   readonly role: 'user' | 'assistant';
   readonly text: string;
+  /**
+   * Of a question: the text that went to the model, with the state of the sheet then. It goes again exactly so: a
+   * server reads only what follows a conversation it has read (and a hybrid model only from points it saved).
+   */
+  readonly sent?: string;
+  /** Of an answer: what the model thought before it (reasoning_content), sent back with the answer for the same reason. */
+  readonly reasoning?: string;
   /** ISO time it was written. */
   readonly time?: string;
   /** For an answer: the model that wrote it. */
@@ -24,6 +31,11 @@ export interface ChatTurn {
   readonly theory?: { readonly sent: readonly string[]; readonly total: number };
   /** A turn the program wrote, not the user: the result of the checks in Python of the answer before it. */
   readonly check?: true;
+  /**
+   * Of such a turn: for each python block of the answer before it, whether it ran and every result it reported
+   * agreed with the sheet. Only a check that agreed is offered to be kept in the layer Check in Python.
+   */
+  readonly agreed?: readonly boolean[];
 }
 
 export interface BriefingInput {
@@ -56,9 +68,16 @@ export const INTENT_RULES = `This conversation starts a new calculation from its
 3. Sheet: only when the user confirms the outline, write the whole calculation into this sheet as one change block that replaces all its lines. Start with its title as a level-one heading, then a text line stating the subject of the calculation in the user's words (in Czech it begins "Předmět výpočtu:"), then the inputs, each assumption with a comment.
 If the user asks to skip a step, skip it.`;
 
-/** The briefing, and which theory sections it carries. */
+/**
+ * The briefing in two parts. `text` is what stays the same through a conversation (who the model is, the rules, the
+ * guide of the language, the company rules): it goes first, as the system prompt. `state` is the sheet as it is now
+ * (its numbered lines, findings, theory, layers, journal, memory): it goes with the latest question. A server keeps
+ * what it has read of a conversation and reads only what follows (prefix caching): with the sheet first, every
+ * accepted change made it read the whole conversation again, minutes on a local model; now only the newest turn.
+ */
 export interface PreparedBriefing {
   readonly text: string;
+  readonly state: string;
   readonly theory?: { readonly sent: readonly string[]; readonly total: number; readonly whole: boolean };
 }
 
@@ -101,8 +120,29 @@ export function numbered(source: string): string {
     .join('\n');
 }
 
+/** The whole briefing in one text: the steady part and the state of the sheet (for tools and tests). */
 export function briefing(input: BriefingInput): string {
-  return prepareBriefing(input).text;
+  const { text, state } = prepareBriefing(input);
+  return `${text}\n\n${state}`;
+}
+
+/** Where the state of the sheet ends and the question begins in the latest message. */
+export const QUESTION_MARK = '=== The question ===';
+
+/** The latest question as it goes to the model: the sheet as it is now, then the question. */
+export function questionWithState(question: string, state: string): string {
+  return `=== The sheet as it is now ===\n${state}\n\n${QUESTION_MARK}\n${question}`;
+}
+
+/**
+ * The turns as they go to the model: each earlier question exactly as it went then (`sent`, with the state of the
+ * sheet then), the latest one with the state as it is now. The start of the conversation is then what the server
+ * has read already, and it reads only what is new.
+ */
+export function withSheetState(turns: readonly ChatTurn[], state: string): ChatTurn[] {
+  const last = turns.map((t) => t.role).lastIndexOf('user');
+  if (last < 0) return [...turns, { role: 'user', text: state }];
+  return turns.map((t, i) => (i === last ? { ...t, text: questionWithState(t.text, state) } : t.role === 'user' && t.sent ? { ...t, text: t.sent } : t));
 }
 
 export function prepareBriefing(input: BriefingInput): PreparedBriefing {
@@ -139,6 +179,10 @@ ${sheet.theory!.filter((s) => s.id).map((s) => `[${s.id}] ${s.title}`).join('\n'
     input.intent ? INTENT_RULES : '',
     writingRules(sheet.detail),
     input.languageGuide ? `Calculation language:\n${input.languageGuide}` : '',
+    `The sheet as it is now (its numbered lines, findings, theory, layers, your earlier proposals, memory) comes in the user's latest message, before the question. Earlier messages were written against earlier states of the sheet: line numbers in them may be out of date; the latest state is right.`,
+    input.companyInstructions ? `Company rules (they take precedence):\n${input.companyInstructions}` : '',
+  ];
+  const state = [
     `The sheet "${sheet.title}" (read-only for you):\n${numbered(sheet.source)}`,
     sheet.findings && sheet.findings.length > 0 ? `Findings of the program (errors, warnings, checks):\n${sheet.findings.join('\n')}` : 'The program found no errors and no failed checks.',
     sheet.theory && sheet.theory.length > 0
@@ -148,16 +192,19 @@ ${sheet.theory!.filter((s) => s.id).map((s) => `[${s.id}] ${s.title}`).join('\n'
 
 ${sheet.libraries && sheet.libraries.length > 0 ? `Theory libraries: ${sheet.libraries.map((l) => `[${l.key}] ${l.title} (source: ${l.source})`).join('; ')}.\n\n` : ''}${contents}${selection!.sections.length > 0 ? theoryText(selection!.sections) : '(No section matches the question.)'}`
       : '',
+    sheet.auxiliary && sheet.auxiliary.length > 0
+      ? `Auxiliary calculations of this sheet: its layers beside the printed sheet, by name. The printed sheet uses their values by name. A change block changes only the printed sheet; for a layer, write what to put there in a code block and say which layer, and the user puts it in. Checks in Python are no auxiliary calculation: they run from the answer, and the user keeps them in the layer Check in Python, apart from the sheet, the auxiliary calculations and the theory.\n${auxiliaryText(sheet.auxiliary)}`
+      : '',
     sheet.others && sheet.others.length > 0 ? `Other sheets open in the program, for reference and inspiration only (you cannot change them):\n${othersText(sheet.others)}` : '',
     sheet.changes && sheet.changes.length > 0 ? `Changes you proposed for this sheet and what the user decided (line numbers as they were then; the sheet above already contains the accepted ones):
 ${changesText(sheet.changes)}` : '',
     input.memory?.trim()
       ? `Memory of this sheet from earlier conversations (kept by you; where it disagrees with the sheet above, the sheet is right):\n${input.memory.trim()}`
       : '',
-    input.companyInstructions ? `Company rules (they take precedence):\n${input.companyInstructions}` : '',
   ];
   return {
     text: parts.filter((p) => p !== '').join('\n\n'),
+    state: state.filter((p) => p !== '').join('\n\n'),
     ...(selection ? { theory: { sent: selection.sections.flatMap((s) => (s.id ? [s.id] : [])), total: selection.total, whole: selection.whole } } : {}),
   };
 }
@@ -169,6 +216,16 @@ ${changesText(sheet.changes)}` : '',
 /** Of the other open sheets, at most this much text goes to the model, each and together. */
 const MAX_OTHER_CHARS = 6000;
 const MAX_OTHERS_CHARS = 15000;
+
+/** The auxiliary calculations for the model: name, numbered text and findings, the longest cut as other sheets are. */
+export function auxiliaryText(layers: NonNullable<AiSheetContext['auxiliary']>): string {
+  return layers
+    .map((l) => {
+      const text = l.source.trim() ? numbered(l.source.length > MAX_OTHER_CHARS ? `${l.source.slice(0, MAX_OTHER_CHARS)}\n[… cut]` : l.source) : '(empty)';
+      return `### Layer "${l.name}"\n${text}${l.findings && l.findings.length > 0 ? `\nFindings:\n${l.findings.join('\n')}` : ''}`;
+    })
+    .join('\n\n');
+}
 
 /** The other open sheets for the model: title and text, the longest ones cut. */
 export function othersText(others: readonly { readonly title: string; readonly source: string }[]): string {

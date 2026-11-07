@@ -4,7 +4,7 @@
  * user's language; nothing it writes changes the calculation. The answer
  * appears as it is written; Stop ends it.
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { AI_OFF, checkCitations, checksNeedAnswer, CITED_ID, parseChoices, parseNotes, parsePythonChecks, providerById, pythonReport, sheetNeedsAnswer, sheetReport, withoutAnswerBlocks, withoutProposals, type AiSettings, type ChatTurn, type CheckReport, type SheetCheck, type ChoiceBlock, type CitableSection, type NoteBlock } from '@kalketa/ai';
 import { formatNumber, t, type Catalog, type UiKey } from '@kalketa/i18n';
 import { notesHtml } from '@kalketa/render';
@@ -23,10 +23,13 @@ function escapeAttr(text: string): string {
 const MAX_THOUGHT = 6000;
 
 /** Pieces of answers by request, from the one listener the bridge allows. */
-const listeners = new Map<string, (piece: { readonly text?: string; readonly thinking?: string; readonly cut?: boolean }) => void>();
+/** How often an answer being written is drawn again: often enough to read along, rarely enough to stay light. */
+const SHOW_EVERY_MS = 120;
+
+const listeners = new Map<string, (piece: { readonly text?: string; readonly thinking?: string; readonly cut?: boolean; readonly phase?: 'context' | 'summing' | 'reading'; readonly tokens?: number }) => void>();
 let listening = false;
 
-function listen(id: string, listener: (piece: { readonly text?: string; readonly thinking?: string; readonly cut?: boolean }) => void): () => void {
+function listen(id: string, listener: (piece: { readonly text?: string; readonly thinking?: string; readonly cut?: boolean; readonly phase?: 'context' | 'summing' | 'reading'; readonly tokens?: number }) => void): () => void {
   if (!listening && desktop) {
     desktop.onAiChatEvent((piece) => listeners.get(piece.id)?.(piece));
     listening = true;
@@ -60,6 +63,12 @@ export interface ChatPaneProps {
   proposals?(turn: number): readonly ProposalView[];
   /** The user accepts or rejects a proposed change. */
   onDecide?(id: string, accept: boolean): void;
+  /** The conversation window kept with the conversation (older turns summed up). */
+  readonly contextWindow?: { readonly upTo: number; readonly summary: string; readonly time?: string };
+  /** A new summary made at a jump of the window: kept with the conversation. */
+  onWindow?(window: { readonly upTo: number; readonly summary: string; readonly time?: string }): void;
+  /** Puts the lines of an open proposal after another line of the sheet. */
+  onMoveProposal?(id: string, after: number): void;
   /** The user reviewed the lines of an accepted change. */
   onReview?(id: string): void;
   /** The open proposals of the answer at this turn, whether they go together, and what they do together. */
@@ -102,7 +111,7 @@ export interface AnswerProposals {
   readonly effect?: ProposalEffect;
 }
 
-export function ChatPane({ catalog, settings, aiOn, onAiOn, intent, turns, theory, onTurns, context, onOpenSettings, onNew, libraries = [], onLibraries, onToggleLibrary, proposals, onDecide, onReview, answerProposals, onAcceptAll, onNewSheet, newSheets, onOpenSheet, runCheck, checkSheet, onCheckToSources, onChoice, onKeepNote, noteKept }: ChatPaneProps) {
+export function ChatPane({ catalog, settings, aiOn, onAiOn, intent, turns, theory, onTurns, context, onOpenSettings, onNew, libraries = [], onLibraries, onToggleLibrary, proposals, onDecide, onMoveProposal, contextWindow, onWindow, onReview, answerProposals, onAcceptAll, onNewSheet, newSheets, onOpenSheet, runCheck, checkSheet, onCheckToSources, onChoice, onKeepNote, noteKept }: ChatPaneProps) {
   const [libraryMenu, setLibraryMenu] = useState(false);
   // The menu of libraries closes like any menu: a click anywhere else, or Esc.
   useEffect(() => {
@@ -126,23 +135,25 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, intent, turns, theor
   const [draft, setDraft] = useState('');
   // `thought`: the model's thinking so far (its end), shown folded while the answer has not begun.
   // `cut`: the model thought past the limit of the settings; asked again without thinking.
-  const [answer, setAnswer] = useState<{ id: string; text: string; thinking: boolean; thought: string; started: number; cut?: boolean }>();
+  const [answer, setAnswer] = useState<{ id: string; text: string; thinking: boolean; thought: string; started: number; cut?: boolean; phase?: 'context' | 'summing' | 'reading'; tokens?: number; last?: number }>();
   const thoughtBox = useRef<HTMLDivElement>(null);
   // The latest thinking stays in view while it grows.
   useEffect(() => {
     const box = thoughtBox.current;
     if (box) box.scrollTop = box.scrollHeight;
   }, [answer?.thought]);
-  // Seconds since the question, so a model thinking for a minute does not look stuck.
-  const [, setTick] = useState(0);
-  useEffect(() => {
-    if (!answer || answer.text) return;
-    const timer = setInterval(() => setTick((n) => n + 1), 1000);
-    return () => clearInterval(timer);
-  }, [answer?.id, answer?.text === '']);
   const [error, setError] = useState<string>();
+  // How full the conversation window was at the last question: shown as a bar in the head of the pane.
+  const [usage, setUsage] = useState<{ readonly sent: number; readonly context: number; readonly summedUp: number }>();
   // The checks in Python of the last answer are running.
   const [checking, setChecking] = useState(false);
+  // Seconds since the question and since the last piece, so a model working for minutes does not look stuck.
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (!answer && !checking) return;
+    const timer = setInterval(() => setTick((n) => n + 1), 1000);
+    return () => clearInterval(timer);
+  }, [answer?.id, checking]);
   const list = useRef<HTMLDivElement>(null);
   const provider = providerById(settings.provider);
 
@@ -184,6 +195,9 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, intent, turns, theor
       : '';
     return html + summary + given;
   };
+
+  // The finished turns drawn once and kept while an answer is being written (see `history` below).
+  const historyCache = useRef<{ deps: readonly unknown[]; node: ReactNode }>(undefined);
 
   if (!desktop) return <div className="chat-pane"><p className="hint">{t(catalog, 'ai.desktopOnly')}</p></div>;
   if (settings.provider === AI_OFF || !provider) {
@@ -271,7 +285,9 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, intent, turns, theor
       },
     };
     const text = [sheetWrong ? sheetReport(sheet!, sheetWords) : '', codes.length > 0 ? pythonReport(reports, words, (n) => formatNumber(n, catalog, { digits: 2 })) : ''].filter(Boolean).join('\n\n');
-    const report: ChatTurn = { role: 'user', text, time: new Date().toISOString(), check: true };
+    // Which checks agreed with the sheet: only those are offered to be kept (a wrong check kept is worse than none).
+    const agreed = reports.map((r) => r.ok && !r.declined && !r.postponed && r.rows.length > 0 && r.rows.every((row) => row.state === 'agree'));
+    const report: ChatTurn = { role: 'user', text, time: new Date().toISOString(), check: true, ...(codes.length > 0 ? { agreed } : {}) };
     const next = [...answered, report];
     onTurns(next);
     if ((sheetWrong || (codes.length > 0 && checksNeedAnswer(reports))) && round < MAX_CHECK_ROUNDS) await askModel(next, round + 1);
@@ -282,17 +298,46 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, intent, turns, theor
     let answered: ChatTurn[] | undefined;
     const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     setAnswer({ id, text: '', thinking: false, thought: '', started: Date.now() });
-    const stop = listen(id, (piece) =>
-      setAnswer((a) =>
-        a && a.id === id
-          ? piece.cut
-            ? { ...a, cut: true, thinking: false, thought: '', started: Date.now() }
-            : { ...a, text: a.text + (piece.text ?? ''), thinking: a.thinking || !!piece.thinking, thought: (a.thought + (piece.thinking ?? '')).slice(-MAX_THOUGHT) }
-          : a,
-      ),
-    );
+    // A model sends its answer in thousands of pieces; drawn on each one, a long conversation kept the window busy
+    // for minutes after the answer had come. The pieces are gathered and the answer drawn at most every SHOW_EVERY_MS.
+    const pending = { text: '', thought: '', thinking: false };
+    let lastPiece = Date.now();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const flush = () => {
+      if (timer !== undefined) clearTimeout(timer);
+      timer = undefined;
+      const p = { ...pending };
+      pending.text = '';
+      pending.thought = '';
+      pending.thinking = false;
+      if (!p.text && !p.thought && !p.thinking) return;
+      setAnswer((a) => (a && a.id === id ? { ...a, text: a.text + p.text, thinking: a.thinking || p.thinking, thought: (a.thought + p.thought).slice(-MAX_THOUGHT), last: lastPiece } : a));
+    };
+    const unlisten = listen(id, (piece) => {
+      const phase = piece.phase;
+      if (phase) {
+        const tokens = piece.tokens;
+        setAnswer((a) => (a && a.id === id ? { ...a, phase, ...(tokens !== undefined ? { tokens } : {}), last: Date.now() } : a));
+        return;
+      }
+      lastPiece = Date.now();
+      if (piece.cut) {
+        flush();
+        setAnswer((a) => (a && a.id === id ? { ...a, cut: true, thinking: false, thought: '', started: Date.now() } : a));
+        return;
+      }
+      pending.text += piece.text ?? '';
+      pending.thought = (pending.thought + (piece.thinking ?? '')).slice(-MAX_THOUGHT);
+      pending.thinking ||= !!piece.thinking;
+      timer ??= setTimeout(flush, SHOW_EVERY_MS);
+    });
+    const stop = () => {
+      unlisten();
+      if (timer !== undefined) clearTimeout(timer);
+    };
     try {
       const { sheet, languageGuide, memory } = context();
+      desktop?.diagStep?.(`chat: asking, ${asked.length} turns, round ${round}`);
       const result = await desktop!.aiChat({
         id,
         provider: provider.id,
@@ -300,6 +345,8 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, intent, turns, theor
         ...(settings.url ? { url: settings.url } : {}),
         ...(settings.effort ? { effort: settings.effort } : {}),
         ...(settings.thinkingLimit !== undefined ? { thinkingLimit: settings.thinkingLimit } : {}),
+        ...(settings.context ? { context: settings.context } : {}),
+        ...(contextWindow ? { window: contextWindow } : {}),
         language: catalog.locale,
         sheet,
         languageGuide,
@@ -308,13 +355,21 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, intent, turns, theor
         ...(runCheck ? { python: true } : {}),
         ...(intent ? { intent: true } : {}),
       });
+      desktop?.diagStep?.(result.ok ? `chat: answer of ${result.text.length} chars` : `chat: no answer (${result.problem})`);
+      if (result.usage) setUsage(result.usage);
+      // A jump of the window: the new summary is kept with the conversation before the answer is.
+      if (result.window) onWindow?.(result.window);
       // An answer the length limit cut keeps a note saying so; no answer at all is not kept, the user is told why.
+      // The question as it went (with the state of the sheet then) goes again so: the server reads only what is new.
+      const lastQuestion = asked.map((t) => t.role).lastIndexOf('user');
+      const keptAsked = result.asked !== undefined && lastQuestion >= 0 ? asked.map((t, n) => (n === lastQuestion ? { ...t, sent: result.asked! } : t)) : asked;
       if (result.ok)
         onTurns(
           (answered = [
-          ...asked,
+          ...keptAsked,
           {
             role: 'assistant',
+            ...(result.reasoning ? { reasoning: result.reasoning } : {}),
             // Notes kept with the answer: cut by the length limit, or written without thinking past the limit.
             text: `${result.text}${result.truncated ? `\n\n*${t(catalog, 'chat.truncated')}*` : ''}${result.thinkingCut ? `\n\n*${t(catalog, 'chat.thinkingCut')}*` : ''}`,
             time: new Date().toISOString(),
@@ -332,7 +387,11 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, intent, turns, theor
       stop();
       setAnswer(undefined);
     }
-    if (answered) await checkAnswer(answered, round);
+    if (answered) {
+      desktop?.diagStep?.('chat: checking the answer');
+      await checkAnswer(answered, round);
+      desktop?.diagStep?.('chat: answer checked');
+    }
   };
 
   /** The question of the level of detail in the language of the program, whatever language the model wrote it in. */
@@ -362,12 +421,115 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, intent, turns, theor
     void desktop!.aiChatCancel(answer.id);
   };
 
+  // The finished turns: drawn again when they or the sheet change, not on each piece of an answer being written.
+  const busy = !!answer;
+  const deps = [turns, busy, checking, catalog, theory, proposals, onMoveProposal, answerProposals, newSheets, noteKept, onKeepNote, onCheckToSources];
+  const kept = historyCache.current;
+  const history: ReactNode =
+    kept && kept.deps.length === deps.length && kept.deps.every((d, i) => d === deps[i])
+      ? kept.node
+      : (historyCache.current = {
+          deps,
+          node: (
+            turns.map((turn, i) =>
+            // Answers come in Markdown (bold, lists, headings); the same safe subset as notes, no HTML passes.
+            turn.role === 'assistant' ? (
+              <div key={i} className="chat-turn assistant">
+                <div dangerouslySetInnerHTML={{ __html: answerHtml(turn.text, turn.theory) }} />
+                {(proposals?.(i) ?? []).map((view, n) => (
+                  <ProposalCard key={view.entry.id} view={view} n={n + 1} catalog={catalog} onDecide={(id, accept) => onDecide?.(id, accept)} {...(onReview ? { onReview } : {})} {...(onMoveProposal ? { onMove: onMoveProposal } : {})} />
+                ))}
+                {(newSheets?.(i) ?? []).map((view) => (
+                  <NewSheetCard key={view.entry.id} view={view} catalog={catalog} onOpen={(id) => onOpenSheet?.(id)} />
+                ))}
+                {parseChoices(turn.text).map(shownChoice).map((choice, n) => (
+                  <div key={`choice${n}`} className="chat-choice">
+                    {choice.question && <div className="chat-choice-question">{choice.question}</div>}
+                    {choice.options.map((option) => (
+                      // Only the last answer still waits for a pick; an older question was answered by what followed.
+                      <button key={option.value} type="button" className="chat-choice-option" data-value={option.value} disabled={i !== turns.length - 1 || busy || checking} onClick={() => void choose(choice, option)}>
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                ))}
+                {onKeepNote &&
+                  parseNotes(turn.text).map((note, n) => {
+                    const kept = noteKept?.(note) ?? false;
+                    return (
+                      <div key={`note${n}`} className="chat-note-card">
+                        <div className="chat-note-head">{t(catalog, 'note.head', { title: note.title || '…' })}</div>
+                        <div className="chat-note-text" dangerouslySetInnerHTML={{ __html: notesHtml(note.text) }} />
+                        <button type="button" className="chat-note-keep" disabled={kept} onClick={() => onKeepNote(note)}>
+                          {kept ? t(catalog, 'note.kept') : t(catalog, note.target === 'ai' ? 'note.toAi' : 'note.toSources')}
+                        </button>
+                      </div>
+                    );
+                  })}
+                {onCheckToSources &&
+                  parsePythonChecks(turn.text).map((code, n) => {
+                    // Of the run that followed the answer: a check that disagreed or did not run is not offered.
+                    const next = turns[i + 1];
+                    const ok = next?.check && next.agreed ? next.agreed[n] === true : true;
+                    return ok ? (
+                      <button key={`py${n}`} type="button" className="chat-check-keep" title={t(catalog, 'check.keepTip')} onClick={() => onCheckToSources(code)}>
+                        {t(catalog, 'check.keep')}
+                      </button>
+                    ) : (
+                      <span key={`py${n}`} className="chat-check-not-kept muted">
+                        {t(catalog, 'check.keepNot')}
+                      </span>
+                    );
+                  })}
+                {(() => {
+                  const all = answerProposals?.(i);
+                  if (!all) return null;
+                  return (
+                    <div className="proposal-all">
+                      {all.ids.length > 1 && !all.together && <div className="muted">{t(catalog, 'proposal.notTogether')}</div>}
+                      {all.effect && <EffectLines effect={all.effect} catalog={catalog} title={t(catalog, 'proposal.together')} />}
+                      <div className="proposal-actions">
+                        {all.ids.length > 1 && (
+                          <button type="button" className="proposal-accept-all default" disabled={!all.together} onClick={() => onAcceptAll?.(all.ids)}>
+                            {t(catalog, 'proposal.acceptAll', { count: String(all.ids.length) })}
+                          </button>
+                        )}
+                        <button type="button" className="proposal-new-sheet" title={t(catalog, 'proposal.newSheetTip')} disabled={!all.together} onClick={() => onNewSheet?.(all.ids)}>
+                          {t(catalog, 'proposal.newSheet')}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            ) : turn.check ? (
+              // The program's report of the checks in Python: a table, as the model got it.
+              <div key={i} className="chat-turn check" dangerouslySetInnerHTML={{ __html: notesHtml(turn.text) }} />
+            ) : (
+              <div key={i} className="chat-turn user">
+                {turn.text}
+              </div>
+            ),
+          )
+          ),
+        }).node;
+
   return (
     <div className="chat-pane">
       <div className="chat-head">
+        {/* The run indicator in the head: seen also when the conversation is scrolled away from the answer. */}
+        {(answer || checking) && <span className={`chat-run${answer && (answer.text || answer.thinking) && Date.now() - (answer.last ?? answer.started) >= SILENT_SECONDS * 1000 ? ' quiet' : ''}`} title={t(catalog, 'chat.running')} />}
         <span className="chat-model" title={settings.model}>
           {provider.urlEditable ? t(catalog, 'ai.otherServer') : provider.name} · {settings.model || t(catalog, 'ai.firstModel')}
         </span>
+        {usage && (
+          <span
+            className={`chat-context${usage.sent > usage.context * 0.6 ? ' full' : ''}`}
+            title={t(catalog, 'chat.contextTip', { sent: formatNumber(usage.sent, catalog), context: formatNumber(usage.context, catalog), summed: String(usage.summedUp) })}
+          >
+            <span className="chat-context-bar" style={{ width: `${Math.min(100, Math.round((100 * usage.sent) / usage.context))}%` }} />
+          </span>
+        )}
         {onToggleLibrary && (
           <span className="chat-libraries">
             <button type="button" className="chat-library-button" title={t(catalog, 'chat.librariesTip')} onClick={() => (setLibraryMenu((v) => !v), onLibraries?.())}>
@@ -404,77 +566,7 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, intent, turns, theor
       </div>
       <div className="chat-messages" ref={list}>
         {turns.length === 0 && !answer && <p className="hint">{t(catalog, 'chat.empty')}</p>}
-        {turns.map((turn, i) =>
-          // Answers come in Markdown (bold, lists, headings); the same safe subset as notes, no HTML passes.
-          turn.role === 'assistant' ? (
-            <div key={i} className="chat-turn assistant">
-              <div dangerouslySetInnerHTML={{ __html: answerHtml(turn.text, turn.theory) }} />
-              {(proposals?.(i) ?? []).map((view, n) => (
-                <ProposalCard key={view.entry.id} view={view} n={n + 1} catalog={catalog} onDecide={(id, accept) => onDecide?.(id, accept)} {...(onReview ? { onReview } : {})} />
-              ))}
-              {(newSheets?.(i) ?? []).map((view) => (
-                <NewSheetCard key={view.entry.id} view={view} catalog={catalog} onOpen={(id) => onOpenSheet?.(id)} />
-              ))}
-              {parseChoices(turn.text).map(shownChoice).map((choice, n) => (
-                <div key={`choice${n}`} className="chat-choice">
-                  {choice.question && <div className="chat-choice-question">{choice.question}</div>}
-                  {choice.options.map((option) => (
-                    // Only the last answer still waits for a pick; an older question was answered by what followed.
-                    <button key={option.value} type="button" className="chat-choice-option" data-value={option.value} disabled={i !== turns.length - 1 || !!answer || checking} onClick={() => void choose(choice, option)}>
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-              ))}
-              {onKeepNote &&
-                parseNotes(turn.text).map((note, n) => {
-                  const kept = noteKept?.(note) ?? false;
-                  return (
-                    <div key={`note${n}`} className="chat-note-card">
-                      <div className="chat-note-head">{t(catalog, 'note.head', { title: note.title || '…' })}</div>
-                      <div className="chat-note-text" dangerouslySetInnerHTML={{ __html: notesHtml(note.text) }} />
-                      <button type="button" className="chat-note-keep" disabled={kept} onClick={() => onKeepNote(note)}>
-                        {kept ? t(catalog, 'note.kept') : t(catalog, note.target === 'ai' ? 'note.toAi' : 'note.toSources')}
-                      </button>
-                    </div>
-                  );
-                })}
-              {onCheckToSources &&
-                parsePythonChecks(turn.text).map((code, n) => (
-                  <button key={`py${n}`} type="button" className="chat-check-keep" title={t(catalog, 'check.keepTip')} onClick={() => onCheckToSources(code)}>
-                    {t(catalog, 'check.keep')}
-                  </button>
-                ))}
-              {(() => {
-                const all = answerProposals?.(i);
-                if (!all) return null;
-                return (
-                  <div className="proposal-all">
-                    {all.ids.length > 1 && !all.together && <div className="muted">{t(catalog, 'proposal.notTogether')}</div>}
-                    {all.effect && <EffectLines effect={all.effect} catalog={catalog} title={t(catalog, 'proposal.together')} />}
-                    <div className="proposal-actions">
-                      {all.ids.length > 1 && (
-                        <button type="button" className="proposal-accept-all default" disabled={!all.together} onClick={() => onAcceptAll?.(all.ids)}>
-                          {t(catalog, 'proposal.acceptAll', { count: String(all.ids.length) })}
-                        </button>
-                      )}
-                      <button type="button" className="proposal-new-sheet" title={t(catalog, 'proposal.newSheetTip')} disabled={!all.together} onClick={() => onNewSheet?.(all.ids)}>
-                        {t(catalog, 'proposal.newSheet')}
-                      </button>
-                    </div>
-                  </div>
-                );
-              })()}
-            </div>
-          ) : turn.check ? (
-            // The program's report of the checks in Python: a table, as the model got it.
-            <div key={i} className="chat-turn check" dangerouslySetInnerHTML={{ __html: notesHtml(turn.text) }} />
-          ) : (
-            <div key={i} className="chat-turn user">
-              {turn.text}
-            </div>
-          ),
-        )}
+        {history}
         {checking && <div className="chat-turn check writing">{t(catalog, 'check.running')}</div>}
         {answer &&
           (answer.text ? (
@@ -485,16 +577,15 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, intent, turns, theor
               {answer.thought.trim() ? (
                 // Folded: a click shows what the model is thinking about, so a long wait is not a blank one.
                 <details className="chat-thought">
-                  <summary>{t(catalog, 'chat.thinking', { seconds: String(Math.floor((Date.now() - answer.started) / 1000)) })}</summary>
+                  <summary>{t(catalog, 'chat.thoughtShow')}</summary>
                   <div ref={thoughtBox} className="chat-thought-text">
                     {answer.thought}
                   </div>
                 </details>
-              ) : (
-                t(catalog, answer.thinking ? 'chat.thinking' : 'chat.waiting', { seconds: String(Math.floor((Date.now() - answer.started) / 1000)) })
-              )}
+              ) : null}
             </div>
           ))}
+        {answer && <AnswerStatus answer={answer} catalog={catalog} />}
         {error && <div className="chat-error">{error}</div>}
       </div>
       <div className="chat-input-row">
@@ -523,6 +614,40 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, intent, turns, theor
         )}
       </div>
       <p className="hint chat-note">{t(catalog, 'chat.note')}</p>
+    </div>
+  );
+}
+
+/** Seconds after which a silent model is said to be silent: a local model may compute that long, the user decides. */
+const SILENT_SECONDS = 30;
+
+/**
+ * What the program waits for while an answer is coming: the phase (the context of the model asked, the older part
+ * of the conversation summed up, the question read by the model, thinking, writing), the time since the question
+ * and, when the model has sent nothing for a while, how long, so the user can tell a long computation from a hang.
+ */
+function AnswerStatus({ answer, catalog }: { readonly answer: { readonly text: string; readonly thinking: boolean; readonly started: number; readonly phase?: 'context' | 'summing' | 'reading'; readonly tokens?: number; readonly last?: number }; readonly catalog: Catalog }) {
+  const now = Date.now();
+  const seconds = String(Math.floor((now - answer.started) / 1000));
+  const silent = Math.floor((now - (answer.last ?? answer.started)) / 1000);
+  const doing = answer.text
+    ? t(catalog, 'chat.phase.writing', { seconds })
+    : answer.thinking
+      ? t(catalog, 'chat.thinking', { seconds })
+      : answer.phase === 'context'
+        ? t(catalog, 'chat.phase.context', { seconds })
+        : answer.phase === 'summing'
+          ? t(catalog, 'chat.phase.summing', { seconds })
+          : answer.phase === 'reading'
+            ? t(catalog, 'chat.phase.reading', { seconds, tokens: formatNumber(answer.tokens ?? 0, catalog) })
+            : t(catalog, 'chat.waiting', { seconds });
+  // Reading a long question sends nothing by its nature; silence counts once the model has begun to answer.
+  const quiet = (answer.text || answer.thinking) && silent >= SILENT_SECONDS;
+  return (
+    <div className={`chat-status${quiet ? ' quiet' : ''}`} data-phase={answer.text ? 'writing' : answer.thinking ? 'thinking' : (answer.phase ?? 'waiting')}>
+      <span className="chat-status-dot" />
+      {doing}
+      {quiet && <span className="chat-status-quiet">{t(catalog, 'chat.phase.silent', { seconds: String(silent) })}</span>}
     </div>
   );
 }

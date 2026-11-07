@@ -1,0 +1,68 @@
+{
+  "id": "moment-prosteho-nosniku",
+  "field": "04",
+  "group": {
+    "cs": "Nosníky",
+    "en": "Beams"
+  },
+  "title": {
+    "cs": "Největší moment prostého nosníku, rovnoměrné zatížení",
+    "en": "Largest moment of a simple beam, uniform load"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R1",
+      "en": "Kalketa, sample R1"
+    },
+    "sample": "R1"
+  },
+  "status": "verified",
+  "formula": "M == q·L^2/8",
+  "quantities": {
+    "M": {
+      "name": {
+        "cs": "největší ohybový moment",
+        "en": "largest bending moment"
+      },
+      "unit": "kN·m",
+      "example": "54 kN·m"
+    },
+    "q": {
+      "name": {
+        "cs": "spojité zatížení",
+        "en": "uniform load"
+      },
+      "unit": "kN/m",
+      "example": "12 kN/m"
+    },
+    "L": {
+      "name": {
+        "cs": "rozpětí",
+        "en": "span"
+      },
+      "unit": "m",
+      "example": "6 m"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "q": "12 kN/m",
+        "L": "6 m"
+      },
+      "expect": {
+        "M": "54 kN·m"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "ohyb",
+      "spojité zatížení"
+    ],
+    "en": [
+      "bending",
+      "distributed load"
+    ]
+  }
+}

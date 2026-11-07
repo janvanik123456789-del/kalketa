@@ -1,0 +1,77 @@
+{
+  "id": "hmotnost-latky-v-roztoku",
+  "field": "07",
+  "group": {
+    "cs": "Roztoky",
+    "en": "Solutions"
+  },
+  "title": {
+    "cs": "Hmotnost látky pro roztok dané koncentrace",
+    "en": "Mass of a substance for a solution of given concentration"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R3",
+      "en": "Kalketa, sample R3"
+    },
+    "sample": "R3"
+  },
+  "status": "verified",
+  "formula": "m == c·V·M",
+  "quantities": {
+    "m": {
+      "name": {
+        "cs": "hmotnost látky",
+        "en": "mass of the substance"
+      },
+      "unit": "g",
+      "example": "5.844 g"
+    },
+    "c": {
+      "name": {
+        "cs": "látková koncentrace",
+        "en": "molar concentration"
+      },
+      "unit": "mol/L",
+      "example": "0.1 mol/L"
+    },
+    "V": {
+      "name": {
+        "cs": "objem roztoku",
+        "en": "volume of the solution"
+      },
+      "unit": "L",
+      "example": "1 L"
+    },
+    "M": {
+      "name": {
+        "cs": "molární hmotnost",
+        "en": "molar mass"
+      },
+      "unit": "g/mol",
+      "example": "58.44 g/mol"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "c": "0.1 mol/L",
+        "V": "1 L",
+        "M": "58.44 g/mol"
+      },
+      "expect": {
+        "m": "5.844 g"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "navážka",
+      "molarita"
+    ],
+    "en": [
+      "weighing",
+      "molarity"
+    ]
+  }
+}

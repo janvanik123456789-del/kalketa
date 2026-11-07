@@ -1,0 +1,68 @@
+{
+  "id": "otacky-vretena",
+  "field": "10",
+  "group": {
+    "cs": "Obrábění",
+    "en": "Machining"
+  },
+  "title": {
+    "cs": "Otáčky vřetena z řezné rychlosti",
+    "en": "Spindle speed from the cutting speed"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R29",
+      "en": "Kalketa, sample R29"
+    },
+    "sample": "R29"
+  },
+  "status": "verified",
+  "formula": "n == v_c/(π·D)",
+  "quantities": {
+    "n": {
+      "name": {
+        "cs": "otáčky vřetena",
+        "en": "spindle speed"
+      },
+      "unit": "min^-1",
+      "example": "955 min^-1"
+    },
+    "v_c": {
+      "name": {
+        "cs": "řezná rychlost",
+        "en": "cutting speed"
+      },
+      "unit": "m/min",
+      "example": "150 m/min"
+    },
+    "D": {
+      "name": {
+        "cs": "průměr obrobku",
+        "en": "diameter of the workpiece"
+      },
+      "unit": "mm",
+      "example": "50 mm"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "v_c": "150 m/min",
+        "D": "50 mm"
+      },
+      "expect": {
+        "n": "954.93 min^-1"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "soustružení",
+      "řezná rychlost"
+    ],
+    "en": [
+      "turning",
+      "cutting speed"
+    ]
+  }
+}

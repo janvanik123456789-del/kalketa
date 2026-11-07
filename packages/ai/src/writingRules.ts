@@ -17,7 +17,7 @@ export const DETAIL_RULES: Readonly<Record<DetailLevel, string>> = {
   3. the derivation down to the formula: derive a == b (a step per line; the program checks each step follows from the relations above);
   4. the definition with the formula: name := formula | unit (the print puts the numbers in).
   A formula taken from the theory is still derived from its relations, not copied. Number the equations ({eq}) and refer to them in text as (#name) where it helps.`,
-  teaching: `Level "teaching": as "paper", and in addition a text line before each step explaining in plain words why it holds (the physics, not the algebra), a sketch or picture of the sheet referred to where it helps, and every result checked independently in Python when the program can run checks.`,
+  teaching: `Level "teaching": as "paper", and in addition a text line before each step explaining in plain words why it holds (the physics, not the algebra), a sketch or picture of the sheet referred to where it helps, and every result checked independently in Python when the program can run checks: in the same answer, the change block with the calculation first, the python block with its check right after it.`,
 };
 
 /** The rules for writing a calculation into the sheet; with the level the user chose, or the request to ask for one. */

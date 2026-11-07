@@ -1,0 +1,101 @@
+{
+  "sheet": "mkp-stena.cc",
+  "verifiedBy": "Nezávisle v čistém Pythonu (kontrola.md): prvek s konstantní deformací po složkách bez matic, plná matice 8 × 8 složená z obou prvků, soustava Gaussovou eliminací, reakce z řádků podepřených uzlů, napětí σ = D·B·u. Stejné výsledky dala i dřívější kontrola NumPy (plná matice 8 × 8). Zdroj sám (posunutí −38,7; −3,9; −28,2; −19,1 μm) se neshoduje kvůli chybám v maticích tuhosti prvků: ani s jeho vytištěnou maticí nevycházejí jeho vlastní posunutí.",
+  "relativeTolerance": 0.000001,
+  "values": {
+    "u_3": {
+      "value": -28.434782608695652,
+      "unit": "μm"
+    },
+    "v_3": {
+      "value": 3.3913043478260856,
+      "unit": "μm"
+    },
+    "u_4": {
+      "value": -19.82608695652174,
+      "unit": "μm"
+    },
+    "v_4": {
+      "value": -20.86956521739131,
+      "unit": "μm"
+    },
+    "R_x1": {
+      "value": 12.608695652173916,
+      "unit": "kN"
+    },
+    "R_y1": {
+      "value": 30.00000000000001,
+      "unit": "kN"
+    },
+    "R_x2": {
+      "value": -2.6086956521739157,
+      "unit": "kN"
+    },
+    "R_y2": {
+      "value": -10,
+      "unit": "kN"
+    },
+    "σ_x1": {
+      "value": -86.95652173913048,
+      "unit": "kPa"
+    },
+    "σ_y1": {
+      "value": -434.78260869565236,
+      "unit": "kPa"
+    },
+    "τ_xy1": {
+      "value": -165.21739130434787,
+      "unit": "kPa"
+    },
+    "σ_x2": {
+      "value": -165.2173913043479,
+      "unit": "kPa"
+    },
+    "σ_y2": {
+      "value": 34.78260869565213,
+      "unit": "kPa"
+    },
+    "τ_xy2": {
+      "value": -34.78260869565216,
+      "unit": "kPa"
+    }
+  },
+  "checks": [
+    {
+      "label": "Prvek 1 je při posunutí jako tuhé těleso bez sil",
+      "passed": true
+    },
+    {
+      "label": "Prvek 2 je při posunutí jako tuhé těleso bez sil",
+      "passed": true
+    },
+    {
+      "label": "Reakce vyvažují zatížení ve vodorovném směru",
+      "passed": true
+    },
+    {
+      "label": "Reakce vyvažují zatížení ve svislém směru",
+      "passed": true
+    },
+    {
+      "label": "Moment k uzlu 1 je v rovnováze",
+      "passed": true
+    },
+    {
+      "label": "Sestavená tuhost K je symetrická",
+      "passed": true
+    },
+    {
+      "label": "Chyba zdroje v prvku 1: K[u_1, u_2] je −1,0 násobitele, ne +1,0",
+      "passed": true
+    },
+    {
+      "label": "Chyba zdroje v prvku 2: K[u_3, v_3] je 0,6 násobitele, ne 0,2",
+      "passed": true
+    },
+    {
+      "label": "Zdrojová matice dá jiné posunutí než zdroj sám (u_3 ≈ −26,95 μm, ne −38,7 μm)",
+      "passed": true
+    }
+  ]
+}

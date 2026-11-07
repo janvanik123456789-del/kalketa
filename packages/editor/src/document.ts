@@ -88,7 +88,9 @@ export interface DesktopBridge {
   exportPdf(request: { html: string; suggestedName: string }): Promise<string | undefined>;
   /** Opens another editor window with an empty calculation. */
   newWindow(): Promise<void>;
-  setCloseGuard(guard: { dirty: boolean; message: string; save?: string; discard: string; cancel: string }): void;
+  /** A step the editor takes now; the last ones are written down if the window hangs. */
+  diagStep?(step: string): void;
+  setCloseGuard(guard: { dirty: boolean; message: string; save?: string; discard: string; cancel: string; textMenu?: { cut: string; copy: string; paste: string; selectAll: string }; hang?: { message: string; wait: string; reload: string } }): void;
   /** The window is to close and the person chose Save: the page saves its documents, then calls closeWindow. */
   onSaveAndClose?(listener: () => void): void;
   /** Closes the window now, its documents saved (no question any more). */
@@ -116,8 +118,8 @@ export interface DesktopBridge {
   aiTry(provider: string, model: string, url?: string): Promise<{ readonly ok: true; readonly reply: string; readonly ms: number } | { readonly ok: false; readonly problem: string; readonly detail?: string }>;
   /** A conversation turn; the answer arrives in pieces through onAiChatEvent, the promise gives the whole. */
   aiChat(ask: AiChatAsk): Promise<
-    | { readonly ok: true; readonly text: string; readonly model: string; readonly truncated?: boolean; readonly thinkingCut?: boolean; readonly theory?: { readonly sent: readonly string[]; readonly total: number } }
-    | { readonly ok: false; readonly problem: string; readonly detail?: string }
+    | ({ readonly ok: true; readonly text: string; readonly model: string; readonly truncated?: boolean; readonly thinkingCut?: boolean; readonly theory?: { readonly sent: readonly string[]; readonly total: number } } & WindowNews)
+    | ({ readonly ok: false; readonly problem: string; readonly detail?: string } & WindowNews)
   >;
   aiChatCancel(id: string): Promise<void>;
   /** The sheet's memory rewritten by the model when a conversation ends; its text is the answer. */
@@ -141,12 +143,22 @@ export interface DesktopBridge {
   /** Saves a library into one of the folders; an existing file only with `replace`. */
   theorySave(request: { folder: TheoryFolder; sheetPath?: string; title: string; bytes: Uint8Array; replace?: boolean }): Promise<{ readonly path: string; readonly exists?: boolean }>;
   theoryFolders(sheetPath?: string): Promise<{ readonly kind: TheoryFolder; readonly dir: string }[]>;
-  onAiChatEvent(listener: (piece: { readonly id: string; readonly text?: string; readonly thinking?: string; readonly cut?: boolean }) => void): void;
+  onAiChatEvent(listener: (piece: { readonly id: string; readonly text?: string; readonly thinking?: string; readonly cut?: boolean; readonly phase?: 'context' | 'summing' | 'reading'; readonly tokens?: number }) => void): void;
   /** Local servers running now, with their models, by provider. */
   aiDiscover(): Promise<Record<string, readonly { readonly id: string; readonly name: string }[]>>;
 }
 
 export type TheoryFolder = 'project' | 'company' | 'user';
+
+/** What a request did to the conversation window: a new summary (at a jump), and how full it is. */
+export interface WindowNews {
+  /** The latest question exactly as it went to the model (with the state of the sheet), kept with it. */
+  readonly asked?: string;
+  /** What the model thought before its answer, kept with the answer. */
+  readonly reasoning?: string;
+  readonly window?: { readonly upTo: number; readonly summary: string; readonly time?: string };
+  readonly usage?: { readonly sent: number; readonly context: number; readonly summedUp: number };
+}
 
 export interface AiChatAsk {
   readonly id: string;
@@ -167,9 +179,13 @@ export interface AiChatAsk {
     readonly libraries?: readonly { readonly key: string; readonly title: string; readonly source: string }[];
   };
   readonly languageGuide?: string;
-  readonly turns: readonly { readonly role: 'user' | 'assistant'; readonly text: string; readonly theory?: { readonly sent: readonly string[]; readonly total: number } }[];
+  readonly turns: readonly { readonly role: 'user' | 'assistant'; readonly text: string; readonly sent?: string; readonly reasoning?: string; readonly theory?: { readonly sent: readonly string[]; readonly total: number } }[];
   /** The sheet's memory from earlier conversations. */
   readonly memory?: string;
+  /** The older turns of the conversation summed up so far; the main process keeps the window under the context. */
+  readonly window?: { readonly upTo: number; readonly summary: string; readonly time?: string };
+  /** The context of the model in tokens (settings); the default of the provider without it. */
+  readonly context?: number;
   /** A new calculation from its intent: the model asks, agrees an outline, then writes the sheet. */
   readonly intent?: boolean;
 }
@@ -181,7 +197,7 @@ export interface AiKeyState {
 }
 
 export type AiConnectionResult =
-  | { readonly ok: true; readonly models: readonly { readonly id: string; readonly name: string }[] }
+  | { readonly ok: true; readonly models: readonly { readonly id: string; readonly name: string; readonly context?: number }[] }
   | { readonly ok: false; readonly problem: string; readonly detail?: string };
 
 export interface DesktopFile {

@@ -1,0 +1,88 @@
+{
+  "id": "sila-vody-na-stenu",
+  "field": "03",
+  "group": {
+    "cs": "Tekutiny",
+    "en": "Fluids"
+  },
+  "title": {
+    "cs": "Síla vody na svislou stěnu",
+    "en": "Force of water on a vertical wall"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R14",
+      "en": "Kalketa, sample R14"
+    },
+    "sample": "R14"
+  },
+  "status": "verified",
+  "formula": "F == ρ·g·l·h^2/2",
+  "quantities": {
+    "F": {
+      "name": {
+        "cs": "výsledná síla",
+        "en": "resultant force"
+      },
+      "unit": "MN",
+      "example": "441.45 MN"
+    },
+    "ρ": {
+      "name": {
+        "cs": "hustota vody",
+        "en": "density of water"
+      },
+      "unit": "kg/m^3",
+      "example": "1000 kg/m^3"
+    },
+    "g": {
+      "name": {
+        "cs": "tíhové zrychlení",
+        "en": "gravitational acceleration"
+      },
+      "unit": "m/s^2",
+      "example": "9.81 m/s^2"
+    },
+    "l": {
+      "name": {
+        "cs": "délka stěny",
+        "en": "length of the wall"
+      },
+      "unit": "m",
+      "example": "100 m"
+    },
+    "h": {
+      "name": {
+        "cs": "hloubka vody",
+        "en": "depth of water"
+      },
+      "unit": "m",
+      "example": "30 m"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "ρ": "1000 kg/m^3",
+        "g": "9.81 m/s^2",
+        "l": "100 m",
+        "h": "30 m"
+      },
+      "expect": {
+        "F": "441.45 MN"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "hráz",
+      "stěna",
+      "tlak"
+    ],
+    "en": [
+      "dam",
+      "wall",
+      "pressure"
+    ]
+  }
+}

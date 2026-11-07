@@ -484,7 +484,10 @@ function arithmetic(op: BinaryOperator, left: Value, right: Value, leftExpr: Exp
       const composed = hintsOff || scaled || combined || !a.hint || !b.hint || (a.absolute && shiftedScale(a)) || (b.absolute && shiftedScale(b)) ? undefined : composedHint(op, a.hint, b.hint, ownNames(ctx.registry), op === '*' ? a.si * b.si : a.si / b.si);
       // A share divided by a plain number stays a share: i/4 of 6,96 % is 1,74 %, not 0,0174 (200 · 21 % is still 42).
       const share = op === '/' && scaled === a && !!a.hint && isDimensionless(a.dim) && !b.hint;
-      const hint = keptHint(scaled) || share ? { hint: scaled!.hint! } : combined ? { hint: combined } : composed ? { hint: composed } : {};
+      const shown = keptHint(scaled) || share ? scaled!.hint! : combined ?? composed;
+      // Ω/mH shown in kHz: a frequency only by the look of it, its origin in turns is not known.
+      const unsure = shown && !shown.chosen && rotationKind(shown) === 'turns' && rotationKind(a.hint) !== 'turns' && rotationKind(b.hint) !== 'turns';
+      const hint = shown ? { hint: unsure ? { ...shown, chosen: true } : shown } : {};
       // Exactly as well, where both are exact (absolute temperatures are no fractions of anything).
       const exactly = a.exact && b.exact && !a.absolute && !b.absolute ? (op === '*' ? X.multiply(a.exact, b.exact) : X.divide(a.exact, b.exact)) : undefined;
       const exact = exactly ? { exact: exactly } : {};

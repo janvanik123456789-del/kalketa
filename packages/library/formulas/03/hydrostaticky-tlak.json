@@ -1,0 +1,79 @@
+{
+  "id": "hydrostaticky-tlak",
+  "field": "03",
+  "group": {
+    "cs": "Tekutiny",
+    "en": "Fluids"
+  },
+  "title": {
+    "cs": "Hydrostatický tlak",
+    "en": "Hydrostatic pressure"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R10",
+      "en": "Kalketa, sample R10"
+    },
+    "sample": "R10"
+  },
+  "status": "verified",
+  "formula": "p == ρ·g·h",
+  "quantities": {
+    "p": {
+      "name": {
+        "cs": "tlak v hloubce",
+        "en": "pressure at the depth"
+      },
+      "unit": "kPa",
+      "example": "29.43 kPa"
+    },
+    "ρ": {
+      "name": {
+        "cs": "hustota kapaliny",
+        "en": "density of the liquid"
+      },
+      "unit": "kg/m^3",
+      "example": "1000 kg/m^3"
+    },
+    "g": {
+      "name": {
+        "cs": "tíhové zrychlení",
+        "en": "gravitational acceleration"
+      },
+      "unit": "m/s^2",
+      "example": "9.81 m/s^2"
+    },
+    "h": {
+      "name": {
+        "cs": "hloubka",
+        "en": "depth"
+      },
+      "unit": "m",
+      "example": "3 m"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "ρ": "1000 kg/m^3",
+        "g": "9.81 m/s^2",
+        "h": "3 m"
+      },
+      "expect": {
+        "p": "29.43 kPa"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "tlak",
+      "voda",
+      "hloubka"
+    ],
+    "en": [
+      "pressure",
+      "water",
+      "depth"
+    ]
+  }
+}

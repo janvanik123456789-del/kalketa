@@ -58,7 +58,7 @@ describe('sample calculations shipped with the program', () => {
     const guide = exampleDocument('R24-pruvodce-police', 'Sample', 'en');
     expect(guide.source).toContain('# Book shelf');
     expect(guide.layers.find((l) => l.id === 'sources')?.text).toContain('# The board as a simply supported beam');
-    expect(guide.layers.find((l) => l.id === 'python')).toMatchObject({ name: 'Check in Python' });
+    expect(guide.layers.find((l) => l.id === 'python')).toMatchObject({ kind: 'python' });
     expect(guide.layers.find((l) => l.id === 'python')?.text).toContain('# Check in Python');
     expect(guide.tables.get('Dreviny')?.dataCsv).toContain('spruce, pine');
     expect(new TextDecoder().decode(guide.files.get('images/police.en.svg'))).toContain('board section');
@@ -92,7 +92,8 @@ describe('sample calculations shipped with the program', () => {
     const tank = exampleDocument('R15-vytok-z-nadrze');
     expect(tank.layers.find((l) => l.kind === 'sources')?.text).toContain('## Bernoulliho rovnice');
     // Its check in Python is a layer of its own after the theory, which keeps only theory.
-    expect(tank.layers.filter((l) => l.kind === 'sources').map((l) => l.name ?? 'Podklady')).toEqual(['Podklady', 'Kontrola v Pythonu']);
+    expect(tank.layers.filter((l) => l.kind === 'sources').map((l) => l.name ?? 'Podklady')).toEqual(['Podklady']);
+    expect(tank.layers.filter((l) => l.kind === 'python')).toHaveLength(1);
     expect(tank.layers.find((l) => l.id === 'python')?.text).toContain('```python');
     expect(tank.layers.find((l) => l.id === 'sources')?.text).not.toContain('```python');
     expect(exampleDocument('R1-nosnik').layers.some((l) => l.kind === 'sources')).toBe(false);

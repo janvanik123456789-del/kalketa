@@ -137,7 +137,7 @@ export function exampleDocument(id = DEFAULT_SAMPLE, prefix = 'Vzor', language =
   const layers = [
     ...base.layers,
     ...(notes === undefined ? [] : [{ ...notesLayer, id: 'sources', kind: 'sources' as const, text: notes }]),
-    ...(check === undefined ? [] : [{ ...notesLayer, id: 'python', kind: 'sources' as const, name: own === 'en' ? 'Check in Python' : 'Kontrola v Pythonu', text: check }]),
+    ...(check === undefined ? [] : [{ ...notesLayer, id: 'python', kind: 'python' as const, text: check }]),
   ];
   let layout = base.layout;
   const setting = Object.entries(SAMPLE_LAYOUTS).find(([path]) => path.includes(`/${id}/`))?.[1];

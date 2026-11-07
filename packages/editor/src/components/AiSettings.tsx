@@ -6,7 +6,7 @@
  * them for their models as soon as one is picked.
  */
 import { useEffect, useState } from 'react';
-import { AI_EFFORTS, AI_OFF, DEFAULT_THINKING_LIMIT, THINKING_LIMITS, allowedProviders, isLoopback, modelAllowed, NO_POLICY, parseAiPolicy, providerById, type AiPolicy, type AiSettings, type ModelChoice, type ProviderInfo } from '@kalketa/ai';
+import { AI_EFFORTS, AI_OFF, DEFAULT_CONTEXT, DEFAULT_THINKING_LIMIT, THINKING_LIMITS, allowedProviders, isLoopback, modelAllowed, NO_POLICY, parseAiPolicy, providerById, type AiPolicy, type AiSettings, type ModelChoice, type ProviderInfo } from '@kalketa/ai';
 import { formatNumber, t, type Catalog, type UiKey } from '@kalketa/i18n';
 import { desktop, type AiKeyState } from '../document.js';
 
@@ -73,8 +73,11 @@ export function AiSettingsSection({ catalog, draft, onChange, aiOn = true }: { c
       // A local server offers what it has: without a choice yet, its first model.
       const first = result.models.find((m) => modelAllowed(policy, m.id));
       const keep = result.models.some((m) => m.id === draft.settings.model);
-      if (first && !keep) onChange({ ...draft, key: '', settings: { ...draft.settings, provider: provider.id, model: first.id } });
       const model = keep ? draft.settings.model : first?.id;
+      // The context of the model, where the server says it, fills the field unless the user wrote one.
+      const context = result.models.find((m) => m.id === model)?.context;
+      const settings = { ...draft.settings, provider: provider.id, ...(model ? { model } : {}), ...(context && !draft.settings.context ? { context } : {}) };
+      if ((first && !keep) || (context && !draft.settings.context)) onChange({ ...draft, key: '', settings });
       if (ask && model && provider.api === 'openai-compatible') {
         setStatus(t(catalog, 'ai.asking', { model }));
         const answer = await desktop!.aiTry(provider.id, model, url);
@@ -177,10 +180,27 @@ export function AiSettingsSection({ catalog, draft, onChange, aiOn = true }: { c
               </select>
             </label>
           )}
-          {provider.needsKey && (
+          <label className="field">
+            <span>{t(catalog, 'ai.context')}</span>
+            <input
+              type="number"
+              className="ai-context"
+              min={2048}
+              step={1024}
+              value={draft.settings.context ?? ''}
+              placeholder={formatNumber(provider.local ? DEFAULT_CONTEXT.local : DEFAULT_CONTEXT.remote, catalog)}
+              title={t(catalog, 'ai.contextTip')}
+              onChange={(e) => {
+                const n = Math.floor(Number(e.target.value));
+                const { context: _old, ...rest } = draft.settings;
+                setSettings(e.target.value.trim() && Number.isFinite(n) && n >= 2048 ? { ...rest, context: n } : rest);
+              }}
+            />
+          </label>
+          {(provider.needsKey || provider.optionalKey) && (
             <>
               <label className="field">
-                <span>{t(catalog, 'ai.key')}</span>
+                <span>{t(catalog, provider.needsKey ? 'ai.key' : 'ai.keyOptional')}</span>
                 <input
                   type="password"
                   className="ai-key"

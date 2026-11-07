@@ -1,0 +1,61 @@
+{
+  "id": "plocha-kruhu",
+  "field": "03",
+  "group": {
+    "cs": "Pružnost a pevnost",
+    "en": "Strength of materials"
+  },
+  "title": {
+    "cs": "Plocha kruhového průřezu",
+    "en": "Area of a circular section"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R27",
+      "en": "Kalketa, sample R27"
+    },
+    "sample": "R27"
+  },
+  "status": "verified",
+  "formula": "S == π·d^2/4",
+  "quantities": {
+    "S": {
+      "name": {
+        "cs": "plocha průřezu",
+        "en": "cross-section area"
+      },
+      "unit": "mm^2",
+      "example": "78.54 mm^2"
+    },
+    "d": {
+      "name": {
+        "cs": "průměr",
+        "en": "diameter"
+      },
+      "unit": "mm",
+      "example": "10 mm"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "d": "10 mm"
+      },
+      "expect": {
+        "S": "78.5398 mm^2"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "kruh",
+      "průměr",
+      "tyč"
+    ],
+    "en": [
+      "circle",
+      "diameter",
+      "bar"
+    ]
+  }
+}

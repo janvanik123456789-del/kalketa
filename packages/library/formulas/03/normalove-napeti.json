@@ -1,0 +1,70 @@
+{
+  "id": "normalove-napeti",
+  "field": "03",
+  "group": {
+    "cs": "Pružnost a pevnost",
+    "en": "Strength of materials"
+  },
+  "title": {
+    "cs": "Normálové napětí v tahu",
+    "en": "Normal stress in tension"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R27",
+      "en": "Kalketa, sample R27"
+    },
+    "sample": "R27"
+  },
+  "status": "verified",
+  "formula": "σ == F/S",
+  "quantities": {
+    "σ": {
+      "name": {
+        "cs": "normálové napětí",
+        "en": "normal stress"
+      },
+      "unit": "MPa",
+      "example": "423 MPa"
+    },
+    "F": {
+      "name": {
+        "cs": "osová síla",
+        "en": "axial force"
+      },
+      "unit": "kN",
+      "example": "41.5 kN"
+    },
+    "S": {
+      "name": {
+        "cs": "plocha průřezu",
+        "en": "cross-section area"
+      },
+      "unit": "mm^2",
+      "example": "98.2 mm^2"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "F": "41.5 kN",
+        "S": "98.2 mm^2"
+      },
+      "expect": {
+        "σ": "422.607 MPa"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "tah",
+      "tlak",
+      "napětí"
+    ],
+    "en": [
+      "tension",
+      "compression",
+      "stress"
+    ]
+  }
+}

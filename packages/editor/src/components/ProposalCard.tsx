@@ -71,9 +71,31 @@ export function EffectLines({ effect, catalog, title }: { effect: ProposalEffect
   );
 }
 
-export function ProposalCard({ view, n, catalog, onDecide, onReview }: { view: ProposalView; n: number; catalog: Catalog; onDecide(id: string, accept: boolean): void; onReview?(id: string): void }) {
+export function ProposalCard({ view, n, catalog, onDecide, onReview, onMove }: { view: ProposalView; n: number; catalog: Catalog; onDecide(id: string, accept: boolean): void; onReview?(id: string): void; onMove?(id: string, after: number): void }) {
   const { entry, fits, effect } = view;
-  const where = entry.insert
+  // Lines only put in: the person may put them after another line before accepting (the model counted wrong, or
+  // the solution belongs under the picture). Lines that replace others stay where they are.
+  const movable = !!onMove && !!entry.insert && entry.state === 'open';
+  const where = movable
+    ? (
+        <label className="proposal-where" title={t(catalog, 'proposal.moveTip')}>
+          {t(catalog, 'proposal.insertAt')}{' '}
+          <input
+            type="number"
+            className="proposal-line"
+            min={0}
+            defaultValue={entry.from}
+            key={entry.from}
+            onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+            onBlur={(e) => {
+              const line = Math.floor(Number(e.currentTarget.value));
+              if (Number.isFinite(line) && line >= 0 && line !== entry.from) onMove!(entry.id, line);
+              else e.currentTarget.value = String(entry.from);
+            }}
+          />
+        </label>
+      )
+    : entry.insert
     ? t(catalog, 'proposal.insert', { line: String(entry.from) })
     : entry.from === entry.to
       ? t(catalog, 'proposal.line', { line: String(entry.from) })

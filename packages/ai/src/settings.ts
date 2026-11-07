@@ -19,6 +19,11 @@ export interface AiSettings {
    * thinking. Absent: DEFAULT_THINKING_LIMIT; 0: no limit.
    */
   readonly thinkingLimit?: number;
+  /**
+   * How many tokens the model can take in (its context), as the server said or the user wrote. Absent: the default of
+   * the provider (DEFAULT_CONTEXT). The conversation window of Kalketa is kept under a share of it.
+   */
+  readonly context?: number;
 }
 
 export const THINKING_LIMITS: readonly number[] = [0, 2000, 4000, 8000];
@@ -42,5 +47,6 @@ export function parseAiSettings(value: unknown): AiSettings {
   const url = provider.urlEditable && typeof raw['url'] === 'string' ? serverUrl(raw['url']) : undefined;
   const effort = AI_EFFORTS.find((e) => e === raw['effort']);
   const thinkingLimit = THINKING_LIMITS.find((n) => n === raw['thinkingLimit']);
-  return { provider: provider.id, model, ...(url ? { url } : {}), ...(effort ? { effort } : {}), ...(thinkingLimit !== undefined ? { thinkingLimit } : {}) };
+  const context = typeof raw['context'] === 'number' && Number.isInteger(raw['context']) && raw['context'] >= 2048 && raw['context'] <= 10_000_000 ? raw['context'] : undefined;
+  return { provider: provider.id, model, ...(url ? { url } : {}), ...(effort ? { effort } : {}), ...(thinkingLimit !== undefined ? { thinkingLimit } : {}), ...(context !== undefined ? { context } : {}) };
 }

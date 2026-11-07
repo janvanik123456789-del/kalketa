@@ -50,6 +50,13 @@ const fakeApi = createServer((request, response) => {
     return;
   }
   requests++;
+  // A local server set to ask for a key takes only its own; without one it answers too (as LM Studio unguarded).
+  const auth = request.headers['authorization'];
+  if (request.url?.startsWith('/local/') && auth !== undefined && auth !== 'Bearer local-smoke-key') {
+    response.writeHead(401, { 'content-type': 'application/json' });
+    response.end(JSON.stringify({ error: 'unauthorized' }));
+    return;
+  }
   // A local server (stands in for LM Studio): no key, an embedding model that must not be offered.
   if (request.url === '/local/v1/models') {
     response.writeHead(200, { 'content-type': 'application/json' });
@@ -86,8 +93,11 @@ const fakeApi = createServer((request, response) => {
         return;
       }
       // The chat: answers in pieces what it was given, so the test sees the briefing arrived.
-      const system = body.messages[0]?.content ?? '';
-      const question = body.messages.at(-1)?.content ?? '';
+      // The steady briefing is the system message; the sheet as it is now comes in the latest message before the question.
+      const latest = String(body.messages.at(-1)?.content ?? '');
+      const mark = '=== The question ===\n';
+      const system = `${body.messages[0]?.content ?? ''}\n\n${latest.includes(mark) ? latest.slice(0, latest.indexOf(mark)) : ''}`;
+      const question = latest.includes(mark) ? latest.slice(latest.indexOf(mark) + mark.length) : latest;
       const title = /The sheet "([^"]+)"/.exec(system)?.[1] ?? '?';
       // Cites the first theory section with words from it, and a section the sheet does not have.
       const section = /^\[(T\d+)\] [^\n]+\n(\S+ \S+ \S+)/m.exec(system);

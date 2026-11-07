@@ -22,6 +22,13 @@ import { withAiLayer, withoutEmptyAiLayer } from './layers.js';
 export interface ConversationTurn {
   readonly role: 'user' | 'assistant';
   readonly text: string;
+  /**
+   * Of a question: the text that went to the model, with the state of the sheet then. It goes again exactly so: a
+   * server reads only what follows a conversation it has read (and a hybrid model only from points it saved).
+   */
+  readonly sent?: string;
+  /** Of an answer: what the model thought before it (reasoning_content), sent back with the answer for the same reason. */
+  readonly reasoning?: string;
   /** ISO time it was written. */
   readonly time?: string;
   /** For an answer: the model that wrote it. */
@@ -32,6 +39,11 @@ export interface ConversationTurn {
   readonly citations?: readonly { readonly id: string; readonly status: 'ok' | 'unknown' | 'misquoted'; readonly quote?: string }[];
   /** A turn the program wrote: the result of the checks in Python of the answer before it. */
   readonly check?: true;
+  /**
+   * Of such a turn: for each python block of the answer before it, whether it ran and every result it reported
+   * agreed with the sheet. Only a check that agreed is offered to be kept in the layer Check in Python.
+   */
+  readonly agreed?: readonly boolean[];
 }
 
 export interface Conversation {
@@ -46,6 +58,11 @@ export interface Conversation {
   readonly remembered?: number;
   /** It makes a new calculation from its intent (questions, outline, then the sheet). */
   readonly intent?: boolean;
+  /**
+   * The conversation window: turns before `upTo` go to the model as this summary (made by the model at a jump), so a
+   * long conversation stays under the context of the model; the turns themselves stay here, the user reads them all.
+   */
+  readonly window?: { readonly upTo: number; readonly summary: string; readonly time?: string };
 }
 
 function path(layerId: string): string {
@@ -108,17 +125,28 @@ export interface SheetEntry {
 
 export type JournalEntry = ChangeEntry | SheetEntry;
 
+/**
+ * The journal read from its bytes, by those bytes: the chat asks for it for every answer on every redraw, and a
+ * long conversation has a journal of tens of kilobytes. A changed journal is new bytes, so it is read again.
+ */
+const journals = new WeakMap<Uint8Array, readonly { id: string; kind: string }[]>();
+
 /** Every entry of the journal, of every kind (one this program does not know stays as it is). */
 function journalOf(doc: SheetDocument): { id: string; kind: string }[] {
   const layer = doc.layers.find((l) => l.kind === 'ai');
   const data = layer && doc.files.get(entriesPath(layer.id));
   if (!data) return [];
+  const known = journals.get(data);
+  if (known) return [...known];
+  let read: { id: string; kind: string }[];
   try {
     const value = JSON.parse(strFromU8(data)) as { entries?: unknown };
-    return (Array.isArray(value.entries) ? value.entries : []).filter((e): e is { id: string; kind: string } => typeof e === 'object' && e !== null && typeof (e as { id?: unknown }).id === 'string');
+    read = (Array.isArray(value.entries) ? value.entries : []).filter((e): e is { id: string; kind: string } => typeof e === 'object' && e !== null && typeof (e as { id?: unknown }).id === 'string');
   } catch {
-    return [];
+    read = [];
   }
+  journals.set(data, read);
+  return [...read];
 }
 
 /** The proposed changes of the journal, oldest first. */

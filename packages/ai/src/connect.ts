@@ -33,6 +33,18 @@ const anthropicClient: ClientFactory = (apiKey) => new Anthropic({ apiKey, authT
 /** A local server answers at once or not at all. */
 const LOCAL_TIMEOUT_MS = 3000;
 
+/** Headers of a request to a server with the OpenAI-style API: its key, when the user gave one. */
+function serverHeaders(apiKey: string | undefined, json = true): Record<string, string> {
+  const key = apiKey?.trim();
+  return { ...(json ? { 'content-type': 'application/json' } : {}), ...(key ? { authorization: `Bearer ${key}` } : {}) };
+}
+
+/** A refusal of a server: 401 and 403 are about the key (none given, or not taken), the rest as the server said. */
+async function refusal(response: Response, apiKey: string | undefined): Promise<{ ok: false; problem: ConnectionProblem; detail?: string }> {
+  if (response.status === 401 || response.status === 403) return { ok: false, problem: apiKey?.trim() ? 'badKey' : 'noKey' };
+  return { ok: false, problem: 'provider', detail: `${response.status} ${(await response.text().catch(() => '')).slice(0, 200)}`.trim() };
+}
+
 /**
  * Where a local server listens: the address the user gave (where the provider
  * allows one), else KALKETA_AI_URL_<ID> (e.g. KALKETA_AI_URL_OLLAMA), else the default.
@@ -52,7 +64,7 @@ export async function testConnection(providerId: string, apiKey: string | undefi
   const provider = providerById(providerId);
   if (!provider) return { ok: false, problem: 'noProvider' };
   if (provider.needsKey && !apiKey?.trim()) return { ok: false, problem: 'noKey' };
-  if (provider.api === 'openai-compatible') return localModels(provider, transport.fetch ?? fetch, url);
+  if (provider.api === 'openai-compatible') return localModels(provider, transport.fetch ?? fetch, url, apiKey);
   try {
     const models: ModelChoice[] = [];
     for await (const model of (transport.anthropic ?? anthropicClient)(apiKey!.trim()).models.list()) models.push({ id: model.id, name: model.display_name });
@@ -62,33 +74,45 @@ export async function testConnection(providerId: string, apiKey: string | undefi
   }
 }
 
-/** Local servers that run now, with their models. */
-export async function discoverLocal(transport: Transport = {}): Promise<Record<string, readonly ModelChoice[]>> {
+/**
+ * Local servers that run now, with their models (keys by provider, where the user gave one). A server that
+ * asks for a key it has not got runs too: it is found with no models, the settings then ask for the key.
+ */
+export async function discoverLocal(transport: Transport = {}, keys: Readonly<Record<string, string>> = {}): Promise<Record<string, readonly ModelChoice[]>> {
   const found: Record<string, readonly ModelChoice[]> = {};
   await Promise.all(
     PROVIDERS.filter((p) => p.local).map(async (p) => {
-      const result = await localModels(p, transport.fetch ?? fetch);
+      const result = await localModels(p, transport.fetch ?? fetch, undefined, keys[p.id]);
       if (result.ok) found[p.id] = result.models;
+      else if (result.problem === 'noKey' || result.problem === 'badKey') found[p.id] = [];
     }),
   );
   return found;
 }
 
 /** GET /v1/models, which LM Studio and Ollama both offer. */
-async function localModels(provider: ProviderInfo, fetchFn: typeof fetch, url?: string): Promise<ConnectionResult> {
+async function localModels(provider: ProviderInfo, fetchFn: typeof fetch, url?: string, apiKey?: string): Promise<ConnectionResult> {
   if (provider.urlEditable && url !== undefined && !serverUrl(url)) return { ok: false, problem: 'badUrl' };
   let response: Response;
   try {
-    response = await fetchFn(`${localUrl(provider, url)}/v1/models`, { signal: AbortSignal.timeout(LOCAL_TIMEOUT_MS) });
+    response = await fetchFn(`${localUrl(provider, url)}/v1/models`, { headers: serverHeaders(apiKey, false), signal: AbortSignal.timeout(LOCAL_TIMEOUT_MS) });
   } catch {
     return { ok: false, problem: 'notRunning' };
   }
-  if (!response.ok) return { ok: false, problem: 'provider', detail: `${response.status} ${response.statusText}`.trim() };
+  if (!response.ok) return refusal(response, apiKey);
   try {
-    const body = (await response.json()) as { data?: { id?: unknown }[] };
-    const ids = (body.data ?? []).map((m) => m.id).filter((id): id is string => typeof id === 'string');
-    // Embedding models only turn text into numbers; they cannot answer.
-    return { ok: true, models: ids.filter((id) => !/embed/i.test(id)).map((id) => ({ id, name: id })) };
+    const body = (await response.json()) as { data?: Record<string, unknown>[] };
+    // The context of a model, where the server says it: Strata (meta.context), vLLM (max_model_len), others.
+    const contextOf = (m: Record<string, unknown>): number | undefined => {
+      const meta = typeof m['meta'] === 'object' && m['meta'] !== null ? (m['meta'] as Record<string, unknown>) : {};
+      const n = [meta['context'], meta['n_ctx'], m['context_length'], m['max_context_length'], m['loaded_context_length'], m['max_model_len']].find((v) => typeof v === 'number' && Number.isInteger(v) && v >= 2048);
+      return n as number | undefined;
+    };
+    const models = (body.data ?? [])
+      .filter((m) => typeof m['id'] === 'string' && !/embed/i.test(m['id'] as string))
+      // Embedding models only turn text into numbers; they cannot answer.
+      .map((m) => ({ id: m['id'] as string, name: m['id'] as string, ...(contextOf(m) ? { context: contextOf(m)! } : {}) }));
+    return { ok: true, models };
   } catch {
     return { ok: false, problem: 'provider', detail: 'not a model list' };
   }
@@ -104,7 +128,7 @@ const ANSWER_TIMEOUT_MS = 180_000;
  * Asks a model of a local server one short question, so the user sees that it
  * really answers. Only for servers with the OpenAI-style API: they cost nothing.
  */
-export async function tryModel(providerId: string, model: string, transport: Transport = {}, url?: string): Promise<AnswerResult> {
+export async function tryModel(providerId: string, model: string, transport: Transport = {}, url?: string, apiKey?: string): Promise<AnswerResult> {
   const provider = providerById(providerId);
   if (!provider || provider.api !== 'openai-compatible') return { ok: false, problem: 'noProvider' };
   if (provider.urlEditable && url !== undefined && !serverUrl(url)) return { ok: false, problem: 'badUrl' };
@@ -113,14 +137,14 @@ export async function tryModel(providerId: string, model: string, transport: Tra
   try {
     response = await (transport.fetch ?? fetch)(`${localUrl(provider, url)}/v1/chat/completions`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: serverHeaders(apiKey),
       body: JSON.stringify({ model, messages: [{ role: 'user', content: 'Reply with the single word OK.' }], max_tokens: 400 }),
       signal: AbortSignal.timeout(ANSWER_TIMEOUT_MS),
     });
   } catch (error) {
     return error instanceof Error && error.name === 'TimeoutError' ? { ok: false, problem: 'provider', detail: 'timeout' } : { ok: false, problem: 'notRunning' };
   }
-  if (!response.ok) return { ok: false, problem: 'provider', detail: `${response.status} ${(await response.text().catch(() => '')).slice(0, 200)}`.trim() };
+  if (!response.ok) return refusal(response, apiKey);
   try {
     const body = (await response.json()) as { choices?: { message?: { content?: unknown } }[] };
     const content = body.choices?.[0]?.message?.content;
@@ -233,7 +257,7 @@ export async function askAboutImage(request: ImageRequest, transport: Transport 
     try {
       response = await (transport.fetch ?? fetch)(`${localUrl(provider, request.url)}/v1/chat/completions`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: serverHeaders(request.apiKey),
         body: JSON.stringify({
           model: request.model,
           stream: false,
@@ -248,7 +272,7 @@ export async function askAboutImage(request: ImageRequest, transport: Transport 
     } catch {
       return request.signal?.aborted ? { ok: false, problem: 'cancelled' } : { ok: false, problem: 'notRunning' };
     }
-    if (!response.ok) return { ok: false, problem: 'provider', detail: `${response.status} ${(await response.text().catch(() => '')).slice(0, 200)}`.trim() };
+    if (!response.ok) return refusal(response, request.apiKey);
     const body = (await response.json().catch(() => ({}))) as { model?: string; choices?: { message?: { content?: string | null }; finish_reason?: string | null }[] };
     const result = finished(body.choices?.[0]?.message?.content ?? '', body.model ?? request.model, body.choices?.[0]?.finish_reason === 'length');
     // The whole room spent on thinking, nothing written: once more without thinking.
@@ -292,7 +316,7 @@ async function chatOpenAi(provider: ProviderInfo, request: ChatRequest, fetchFn:
   try {
     response = await fetchFn(`${localUrl(provider, request.url)}/v1/chat/completions`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: serverHeaders(request.apiKey),
       body: JSON.stringify({
         model: request.model,
         stream: true,
@@ -302,14 +326,15 @@ async function chatOpenAi(provider: ProviderInfo, request: ChatRequest, fetchFn:
         ...(request.effort ? { reasoning_effort: request.effort } : {}),
         // No thinking at all, in the vLLM / llama.cpp spelling too.
         ...(request.effort === 'none' ? { chat_template_kwargs: { enable_thinking: false } } : {}),
-        messages: [{ role: 'system', content: request.system }, ...request.turns.map((t) => ({ role: t.role, content: t.text }))],
+        // An answer goes back with what the model thought before it, so the template draws it as the model wrote it.
+        messages: [{ role: 'system', content: request.system }, ...request.turns.map((t) => ({ role: t.role, content: t.text, ...(t.role === 'assistant' && t.reasoning ? { reasoning_content: t.reasoning } : {}) }))],
       }),
       signal: own.signal,
     });
   } catch {
     return request.signal?.aborted ? { ok: false, problem: 'cancelled' } : { ok: false, problem: 'notRunning' };
   }
-  if (!response.ok || !response.body) return { ok: false, problem: 'provider', detail: `${response.status} ${(await response.text().catch(() => '')).slice(0, 200)}`.trim() };
+  if (!response.ok || !response.body) return refusal(response, request.apiKey);
   let text = '';
   let model = request.model;
   let atLimit = false;

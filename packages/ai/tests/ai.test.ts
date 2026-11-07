@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { describe, expect, it } from 'vitest';
-import { AI_OFF, applyPolicy, briefing, languageName, allowedProviders, DEFAULT_AI_SETTINGS, parseAiPolicy, parseAiSettings, PROVIDERS } from '@kalketa/ai';
+import { AI_OFF, applyPolicy, briefing, languageName, allowedProviders, DEFAULT_AI_SETTINGS, parseAiPolicy, parseAiSettings, prepareBriefing, providerById, PROVIDERS, QUESTION_MARK, withSheetState } from '@kalketa/ai';
 import { chat, discoverLocal, testConnection, tryModel, type ClientFactory } from '@kalketa/ai/connect';
 
 describe('AI settings', () => {
@@ -125,6 +125,46 @@ describe('local servers', () => {
     expect(await tryModel('anthropic', 'claude-opus-5-5', { fetch: fetchFn })).toEqual({ ok: false, problem: 'noProvider' });
   });
 
+  describe('that ask for a key', () => {
+    // A server set to ask for a key (LM Studio with authentication, llama.cpp --api-key): 401 without the right one.
+    const guarded = (seen: string[] = []): typeof fetch =>
+      (async (url: string | URL | Request, init?: RequestInit) => {
+        const auth = new Headers(init?.headers).get('authorization') ?? '';
+        seen.push(auth);
+        if (auth !== 'Bearer tajny') return new Response('{"error":"unauthorized"}', { status: 401 });
+        if (String(url).endsWith('/v1/models')) return new Response(JSON.stringify({ data: [{ id: 'qwen' }] }), { status: 200 });
+        return new Response(JSON.stringify({ choices: [{ message: { role: 'assistant', content: 'OK' } }] }), { status: 200 });
+      }) as typeof fetch;
+
+    it('get it as a bearer token, and none without it', async () => {
+      const seen: string[] = [];
+      expect(await testConnection('server', ' tajny ', { fetch: guarded(seen) })).toMatchObject({ ok: true, models: [{ id: 'qwen' }] });
+      expect(await tryModel('lmstudio', 'qwen', { fetch: guarded(seen) }, undefined, 'tajny')).toMatchObject({ ok: true, reply: 'OK' });
+      expect(seen).toEqual(['Bearer tajny', 'Bearer tajny']);
+      const open: string[] = [];
+      await testConnection('ollama', undefined, { fetch: guarded(open) });
+      expect(open).toEqual(['']);
+    });
+
+    it('say the key is missing or not taken, not a server error', async () => {
+      expect(await testConnection('server', undefined, { fetch: guarded() })).toEqual({ ok: false, problem: 'noKey' });
+      expect(await testConnection('server', 'spatny', { fetch: guarded() })).toEqual({ ok: false, problem: 'badKey' });
+      expect(await tryModel('server', 'qwen', { fetch: guarded() })).toEqual({ ok: false, problem: 'noKey' });
+      expect(await chat({ provider: 'server', model: 'qwen', apiKey: 'spatny', system: '', turns: [], onText: () => {} }, { fetch: guarded() })).toEqual({ ok: false, problem: 'badKey' });
+    });
+
+    it('are found running without the key, with no models yet', async () => {
+      const found = await discoverLocal({ fetch: guarded() });
+      expect(found['lmstudio']).toEqual([]);
+      expect(await discoverLocal({ fetch: guarded() }, { lmstudio: 'tajny' })).toMatchObject({ lmstudio: [{ id: 'qwen' }] });
+    });
+
+    it('offer the field for the key, which may stay empty', () => {
+      for (const id of ['lmstudio', 'ollama', 'server']) expect(providerById(id)).toMatchObject({ needsKey: false, optionalKey: true });
+      expect(providerById('anthropic')).toMatchObject({ needsKey: true });
+    });
+  });
+
   it('keep an empty model until the server is asked', () => {
     expect(parseAiSettings({ provider: 'lmstudio' })).toEqual({ provider: 'lmstudio', model: '' });
   });
@@ -132,6 +172,14 @@ describe('local servers', () => {
 
 describe('briefing', () => {
   const sheet = { title: 'Beam', source: 'L := 6 m\nM := q·L²/8', findings: ['line 2: error E-UNDEFINED: q is not defined'] };
+
+  it('shows the auxiliary calculations of the sheet, numbered, and says how to change them', () => {
+    const text = briefing({ language: 'cs', sheet: { ...sheet, auxiliary: [{ name: 'Pomocný výpočet', source: 'q := 12 kN/m', findings: ['line 1 = 12 kN/m'] }, { name: 'Prázdná', source: '' }] } });
+    expect(text).toContain('### Layer "Pomocný výpočet"\n  1 | q := 12 kN/m');
+    expect(text).toContain('line 1 = 12 kN/m');
+    expect(text).toContain('### Layer "Prázdná"\n(empty)');
+    expect(text).toContain('A change block changes only the printed sheet');
+  });
 
   it('is English, asks for answers in the user language and numbers the lines', () => {
     const text = briefing({ language: 'cs', sheet, languageGuide: 'Built-in functions: sqrt(x).' });
@@ -145,9 +193,41 @@ describe('briefing', () => {
   });
 
   it('puts the company rules last', () => {
-    const text = briefing({ language: 'en', sheet: { ...sheet, findings: [] }, companyInstructions: 'Eurocodes with Czech national annexes.' });
-    expect(text.trimEnd().endsWith('Eurocodes with Czech national annexes.')).toBe(true);
-    expect(text).toContain('no errors and no failed checks');
+    const prepared = prepareBriefing({ language: 'en', sheet: { ...sheet, findings: [] }, companyInstructions: 'Eurocodes with Czech national annexes.' });
+    expect(prepared.text.trimEnd().endsWith('Eurocodes with Czech national annexes.')).toBe(true);
+    expect(prepared.state).toContain('no errors and no failed checks');
+  });
+
+  it('keeps the start of a conversation the same while the sheet changes, so a server reads only what is new', () => {
+    const before = prepareBriefing({ language: 'cs', sheet: { ...sheet, findings: [] }, languageGuide: 'Guide.', python: { numpy: false } });
+    const after = prepareBriefing({ language: 'cs', sheet: { ...sheet, source: `${sheet.source}\nq := 12 kN/m`, findings: ['line 3 = 12 kN/m'] }, languageGuide: 'Guide.', python: { numpy: false }, query: 'jiná otázka' });
+    expect(after.text).toBe(before.text);
+    expect(before.text).not.toContain('M := q·L²/8');
+    expect(after.state).toContain('3 | q := 12 kN/m');
+    const asked = [
+      { role: 'user' as const, text: 'Přesuň obrázky.' },
+      { role: 'assistant' as const, text: 'Hotovo.' },
+      { role: 'user' as const, text: 'Spočítej část 1.' },
+    ];
+    const sent = withSheetState(asked, after.state);
+    // The turns before the latest question go as they were; the state of the sheet and the question are the last message.
+    expect(sent.slice(0, 2)).toEqual(asked.slice(0, 2));
+    expect(sent[2]!.text.startsWith('=== The sheet as it is now ===\n')).toBe(true);
+    expect(sent[2]!.text.endsWith(`${QUESTION_MARK}\nSpočítej část 1.`)).toBe(true);
+  });
+
+  it('sends an earlier question exactly as it went, with the sheet as it was then', () => {
+    const first = prepareBriefing({ language: 'cs', sheet: { ...sheet, findings: [] } });
+    const asked = [{ role: 'user' as const, text: 'Spočítej část 1.' }];
+    const went = withSheetState(asked, first.state)[0]!.text;
+    // The answer came; the sheet changed; the next question goes with the new state, the first one as it went.
+    const later = prepareBriefing({ language: 'cs', sheet: { ...sheet, source: `${sheet.source}\nq := 12 kN/m`, findings: [] } });
+    const turns = [{ role: 'user' as const, text: 'Spočítej část 1.', sent: went }, { role: 'assistant' as const, text: 'Hotovo.', reasoning: 'Nejdřív reakce.' }, { role: 'user' as const, text: 'Ověř to.' }];
+    const next = withSheetState(turns, later.state);
+    expect(next[0]!.text).toBe(went);
+    expect(next[1]).toMatchObject({ text: 'Hotovo.', reasoning: 'Nejdřív reakce.' });
+    expect(next[2]!.text).toContain('q := 12 kN/m');
+    expect(next[0]!.text).not.toContain('q := 12 kN/m');
   });
 });
 
@@ -205,6 +285,19 @@ describe('chat with a local server', () => {
     expect(body.messages).toEqual([{ role: 'system', content: 'SYSTEM' }, { role: 'user', content: 'Co je M?' }]);
   });
 
+  it('sends an answer back with what the model thought before it', async () => {
+    const seen: { body?: string } = {};
+    const turns = [
+      { role: 'user' as const, text: 'Spočítej.' },
+      { role: 'assistant' as const, text: 'Hotovo.', reasoning: 'Nejdřív reakce.' },
+      { role: 'user' as const, text: 'Ověř.' },
+    ];
+    await chat({ provider: 'server', model: 'qwen', system: 'S', turns, onText: () => {} }, { fetch: streaming([event({ content: 'OK' })], seen) });
+    const messages = JSON.parse(seen.body!).messages;
+    expect(messages[2]).toEqual({ role: 'assistant', content: 'Hotovo.', reasoning_content: 'Nejdřív reakce.' });
+    expect(messages[1]).toEqual({ role: 'user', content: 'Spočítej.' });
+  });
+
   it('passes the thinking depth the user chose', async () => {
     const seen: { body?: string } = {};
     await chat({ provider: 'server', model: 'qwen', system: '', turns: [], effort: 'low', onText: () => {} }, { fetch: streaming([event({ content: 'OK' })], seen) });
@@ -246,5 +339,16 @@ describe('an answer that hits the length limit', () => {
 
   it('with nothing at all, not at the limit, says there is no answer', async () => {
     expect(await ask([{ choices: [{ delta: {}, finish_reason: 'stop' }] }])).toEqual({ ok: false, problem: 'empty' });
+  });
+});
+
+describe('checks in Python come after the sheet', () => {
+  it('the rule says so first, before how to write a check', async () => {
+    const { pythonRule } = await import('../src/pythonChecks.js');
+    const rule = pythonRule(false);
+    expect(rule.indexOf('Order, always: the calculation goes into the sheet first')).toBe(2);
+    expect(rule).toContain('never first, never instead of the sheet');
+    expect(rule).toContain('the check comes in the same answer right after the change block');
+    expect(rule).toContain('Do not put it off to a later answer');
   });
 });

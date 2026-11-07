@@ -151,3 +151,25 @@ describe('the import of foreign calculations stands aside', () => {
     expect(bad).toEqual([]);
   });
 });
+
+describe('the formula library is data and a little code beside the core', () => {
+  it('it needs only the core: no files, network, React or other packages', () => {
+    const bad = packageImports('library').flatMap(({ file, imports }) =>
+      imports
+        .filter(
+          (i) =>
+            (i.startsWith('@kalketa/') && i !== '@kalketa/core') ||
+            i.startsWith('react') ||
+            /^(node:)?(fs|fs\/promises|net|http|https|child_process|worker_threads)$/.test(i) ||
+            (i.startsWith('.') && !resolve(ROOT, file, '..', i).startsWith(join(ROOT, 'packages', 'library', 'src'))),
+        )
+        .map((i) => `${file} → ${i}`),
+    );
+    expect(bad).toEqual([]);
+  });
+
+  it('the core knows no formula of it', () => {
+    const bad = packageImports('core').flatMap(({ file, imports }) => imports.filter((i) => i.startsWith('@kalketa/library')).map((i) => `${file} → ${i}`));
+    expect(bad).toEqual([]);
+  });
+});

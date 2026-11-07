@@ -1,0 +1,68 @@
+{
+  "id": "modul-pruzne-energie",
+  "field": "08",
+  "group": {
+    "cs": "Zkouška tahem",
+    "en": "Tensile test"
+  },
+  "title": {
+    "cs": "Modul pružné energie",
+    "en": "Modulus of resilience"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R27",
+      "en": "Kalketa, sample R27"
+    },
+    "sample": "R27"
+  },
+  "status": "verified",
+  "formula": "U_r == R_e^2/(2·E)",
+  "quantities": {
+    "U_r": {
+      "name": {
+        "cs": "pružná energie v objemu",
+        "en": "elastic energy per volume"
+      },
+      "unit": "MJ/m^3",
+      "example": "0.4 MJ/m^3"
+    },
+    "R_e": {
+      "name": {
+        "cs": "mez kluzu",
+        "en": "yield strength"
+      },
+      "unit": "MPa",
+      "example": "400 MPa"
+    },
+    "E": {
+      "name": {
+        "cs": "modul pružnosti",
+        "en": "modulus of elasticity"
+      },
+      "unit": "GPa",
+      "example": "200 GPa"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "R_e": "400 MPa",
+        "E": "200 GPa"
+      },
+      "expect": {
+        "U_r": "0.4 MJ/m^3"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "energie",
+      "houževnatost"
+    ],
+    "en": [
+      "energy",
+      "resilience"
+    ]
+  }
+}

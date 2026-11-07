@@ -29,8 +29,8 @@ function LockIcon() {
   );
 }
 
-export const LAYER_GLYPH: Readonly<Record<LayerKind, string>> = { sheet: '▤', calc: '∑', data: '▦', ai: '✦', sources: '❝' };
-export const NEW_LAYER_KINDS = ['calc', 'data', 'sources'] as const;
+export const LAYER_GLYPH: Readonly<Record<LayerKind, string>> = { sheet: '▤', calc: '∑', data: '▦', ai: '✦', sources: '❝', python: 'Py' };
+export const NEW_LAYER_KINDS = ['calc', 'data', 'sources', 'python'] as const;
 
 interface PaneProps {
   readonly layers: readonly Layer[];
@@ -59,7 +59,7 @@ export function LayersPane({ layers, active, catalog, used, open, nameOf, onActi
       <ol className="layer-list">
         {layers.map((layer, i) => {
           const main = layer.kind === 'sheet';
-          const printable = layer.kind === 'calc' || layer.kind === 'sources' || layer.kind === 'ai';
+          const printable = layer.kind === 'calc' || layer.kind === 'sources' || layer.kind === 'ai' || layer.kind === 'python';
           return (
             <li key={layer.id} className={`layer-item${layer.id === active ? ' active' : open.includes(layer.id) ? ' open' : ''}${layer.visible ? '' : ' hidden'}`} data-layer={layer.id}>
               <div className="layer-head">
@@ -184,7 +184,7 @@ export function LayerTabs({ layers, shown, active, open, catalog, used, commands
   const layerMenu = (layer: Layer): MenuItem[] => {
     const main = layer.kind === 'sheet';
     const i = layers.indexOf(layer);
-    const printable = layer.kind === 'calc' || layer.kind === 'sources' || layer.kind === 'ai';
+    const printable = layer.kind === 'calc' || layer.kind === 'sources' || layer.kind === 'ai' || layer.kind === 'python';
     const items: MenuItem[] = [
       { kind: 'action', label: t(catalog, 'layers.openBeside'), enabled: layer.visible, run: () => onOpenBeside(layer.id) },
       { kind: 'separator' },

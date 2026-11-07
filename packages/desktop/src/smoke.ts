@@ -77,15 +77,17 @@ export async function runSmokeTest(pdfPath: string, context: SmokeContext): Prom
     const controls = await controlsWithRealInput(pdfPath.replace(/\.pdf$/i, '') + '-dark.png');
     const typing = await typingWithRealKeys(pdfPath.replace(/\.pdf$/i, '') + '-completion.png');
     const imported = await importWithRealMouse(pdfPath.replace(/\.pdf$/i, '') + '-import.png');
+    // In a tab of its own, last: the lines it puts in would be offered to the typing above.
+    const formulaLibrary = await formulaLibraryWithRealInput(pdfPath.replace(/\.pdf$/i, '') + '-formula-library.png');
     const printer = await printWindow('<!doctype html><meta charset="utf-8"><h1>Kalketa</h1><math><mfrac><mi>a</mi><mn>2</mn></mfrac></math>');
     const pdf = await printer.webContents.printToPDF({ preferCSSPageSize: true });
     printer.destroy();
     await writeFile(pdfPath, pdf);
     ok =
       state.mathFont && state.bridge && state.sideBySide && state.menus === 8 && state.toolbars > 0 && state.rows > 10 && state.summary > 0 && state.math > 0 && reshapedColumns === 3 && pdf.length > 1000 &&
-      layers.deflection && layers.pickTaken.column.startsWith('→') && /mm|cm/.test(layers.pickTaken.text) && layers.newKeepsExample && layers.samplesOk && layers.derivations && layers.summaryOk && layers.definitionAtCursor && layers.sheetGridOk && layers.tableEnter && layers.solvedByFormula && layers.rootsAndExtremes && layers.userChart.ok && layers.relations.ok && layers.chartEdit && layers.quadraticSample.ok && layers.saveOnClose.ok && layers.wordPrinted && layers.wordColored && layers.paletteColored && layers.wordText.focused && layers.wordText.pane && layers.wordText.bold === 'dynamiky' && !layers.wordText.shown.includes('"') && layers.wordText.align === 'center' && layers.cellMarked === 'Síla na konci' && layers.systemFont !== '' && layers.cellFont.replace(/"/g, '').startsWith(layers.systemFont) && layers.cellDeleted && layers.paperRoots && layers.tableRowAdded && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.notesPicture === 'FIGURE+img BLOCKQUOTE' && layers.notesPlaced === 'narrower centred' && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.charts && layers.functionBar && layers.revisions && layers.roots && layers.toolIcons && layers.aiSettings && layers.aiChat && layers.pdfCleanup && layers.theoryLibrary && layers.study && layers.sheetPicture.offered && layers.sheetPicture.described && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 3 && layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
-    ok = ok && insertMenu.ok && rowTools.ok && controls.ok && typing.ok && imported.ok && start.shown && start.cards >= 20 && start.lead === 'R24-pruvodce-police' && start.pictures >= 12 && start.closed && start.tab === 'Vzor – Posouzení nosníku N1';
-    console.log(JSON.stringify({ ok, start, insertMenu, rowTools, controls, typing, imported, ...state, reshapedColumns, layers, pdfBytes: pdf.length }));
+      layers.deflection && layers.pickTaken.column.startsWith('→') && /mm|cm/.test(layers.pickTaken.text) && layers.newKeepsExample && layers.samplesOk && layers.derivations && layers.summaryOk && layers.definitionAtCursor && layers.sheetGridOk && layers.tableEnter && layers.solvedByFormula && layers.rootsAndExtremes && layers.userChart.ok && layers.relations.ok && layers.chartEdit && layers.quadraticSample.ok && layers.saveOnClose.ok && layers.wordPrinted && layers.wordColored && layers.paletteColored && layers.wordText.focused && layers.wordText.pane && layers.wordText.bold === 'dynamiky' && !layers.wordText.shown.includes('"') && layers.wordText.align === 'center' && layers.cellMarked === 'Síla na konci' && layers.systemFont !== '' && layers.cellFont.replace(/"/g, '').startsWith(layers.systemFont) && layers.cellDeleted && layers.paperRoots && layers.tableRowAdded && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.notesPicture === 'FIGURE+img BLOCKQUOTE' && layers.notesPlaced === 'narrower centred' && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.charts && layers.functionBar && layers.revisions && layers.roots && layers.toolIcons && layers.aiSettings && layers.aiChat && layers.pdfCleanup && layers.theoryLibrary && layers.study && layers.sheetPicture.offered && layers.sheetPicture.described && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 4 && layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
+    ok = ok && insertMenu.ok && formulaLibrary.ok && rowTools.ok && controls.ok && typing.ok && imported.ok && start.shown && start.cards >= 20 && start.lead === 'R24-pruvodce-police' && start.pictures >= 12 && start.closed && start.tab === 'Vzor – Posouzení nosníku N1';
+    console.log(JSON.stringify({ ok, start, insertMenu, formulaLibrary, rowTools, controls, typing, imported, ...state, reshapedColumns, layers, pdfBytes: pdf.length }));
   } catch (err) {
     console.log(JSON.stringify({ ok: false, error: (err as Error).message, console: smokeConsole.slice(-5) }));
   }
@@ -238,6 +240,75 @@ async function insertMenuWithRealKeys(picture: string): Promise<{ all: number; p
     await pressKey('Backspace');
   }
   return { all: slashAll, pos: slashPos, line: slashLine, chart: slashChart, ok: slashAll >= 15 && slashPos === 'check position' && slashLine === 'check "Kladný kořen": x > 0' && slashChart };
+}
+
+/**
+ * Insert → Formula from the library with the real mouse and keys, in a calculation of its own: a moment typed, the
+ * bending stress found by "ohyb", σ chosen; the moment of the sheet is taken, the section modulus comes as an example
+ * value with a warning, and writing over its value takes the warning away.
+ */
+async function formulaLibraryWithRealInput(picture: string): Promise<{ found: string; rows: string[]; before: string; after: string; byMenu: string; edited: string[]; ok: boolean }> {
+  const contents = smokeWindow!.webContents;
+  await clickOn('.doc-tab-new');
+  await pause(500);
+  await clickOn('.layer-view.active .page .row[data-line="1"]');
+  await pressKey('End');
+  await pressKey('Enter');
+  await typeText('M := 54 kN*m');
+  await clickOn('.sheet-scroll');
+  await pause(300);
+  await clickOn('.layer-view.active .page .row[data-line="2"]');
+  await pressKey('Escape');
+  await clickOn('.menubar-item:nth-child(4) > button');
+  await clickMenu('Vzorec z knihovny');
+  await pause(400);
+  await typeText('ohyb');
+  await pause(200);
+  const found = (await contents.executeJavaScript(`[...document.querySelectorAll('.formula-library-item')].map((b) => b.dataset.formula).join(' ')`)) as string;
+  await clickOn('[data-formula="ohybove-napeti"]');
+  // Starred, so the right button on a line offers it.
+  await clickOn('.formula-library-favourite');
+  await clickOn('[data-quantity="σ"]');
+  await pause(200);
+  await takePicture(picture);
+  await clickOn('.dialog-buttons button.default');
+  await pause(500);
+  const sheet = () =>
+    contents.executeJavaScript(`({
+      rows: [...document.querySelectorAll('.layer-view.active .page .row')].map((r) => r.textContent.replace(/\\s+/g, ' ').trim()).filter(Boolean),
+      status: document.querySelector('.statusbar')?.textContent ?? '',
+    })`) as Promise<{ rows: string[]; status: string }>;
+  const inserted = await sheet();
+  // The example value written over: the line of W opened, emptied with Backspace and typed again with 300 and
+  // the mark as it was; the value changed, so the mark goes.
+  await contents.executeJavaScript(`document.querySelectorAll('#smoke-w-row').forEach((e) => e.removeAttribute('id')); [...document.querySelectorAll('.layer-view.active .page .row[data-line]')].find((r) => r.textContent.includes('průřezový modul'))?.setAttribute('id', 'smoke-w-row')`);
+  await clickOn('#smoke-w-row');
+  await pause(200);
+  await pressKey('End');
+  const length = (await contents.executeJavaScript(`document.querySelector('textarea.row-editor')?.value.length ?? 0`)) as number;
+  for (let i = 0; i < length; i++) await pressKey('Backspace');
+  await typeText("W := 300 cm^3 {example}  ' průřezový modul");
+  await clickOn('.sheet-scroll');
+  await pause(400);
+  const edited = await sheet();
+  // The favourite by the right button on the heading: W from it again, the names of the sheet below given way to.
+  await clickOn('.layer-view.active .page .row[data-line="1"]', [], 'right');
+  await pause(200);
+  await clickMenu('Vzorec z knihovny');
+  await clickMenu('Ohybové napětí');
+  await clickMenu('W');
+  await pause(500);
+  const favourite = await sheet();
+  const byMenu = favourite.rows.length === edited.rows.length + 3 && /chyba: 0/.test(favourite.status) && /varování: 2/.test(favourite.status);
+  const ok =
+    byMenu &&
+    found.split(' ')[0] === 'ohybove-napeti' &&
+    inserted.rows.some((r) => r.includes('166,7') && r.includes('Kalketa, vzor R1')) &&
+    !inserted.rows.some((r) => r.includes('M_2') || r.includes('M₂')) &&
+    /varování: 1/.test(inserted.status) &&
+    edited.rows.some((r) => r.replace(/\s+/g, '').includes('=180MPa')) &&
+    /varování: 0/.test(edited.status) && /chyba: 0/.test(edited.status);
+  return { found, rows: inserted.rows.slice(0, 6), before: inserted.status, after: edited.status, byMenu: `${favourite.rows.length - edited.rows.length} ${favourite.status}`, edited: edited.rows.slice(0, 6), ok };
 }
 
 /**
@@ -1843,6 +1914,22 @@ async function layersWithRealInput(picture: string) {
   await clickMenu('Šířka');
   await clickMenu('100 %');
   await pause(300);
+  // The submenu may open already under the resting pointer and close again on the click: once more if it did not take.
+  const fullWidth = () =>
+    contents.executeJavaScript(`(() => {
+      const row = document.querySelector('.layer-view.active .row[data-line="${pasted.line}"]');
+      const figure = row?.querySelector('figure');
+      const body = row?.closest('.page-body');
+      return !!figure && !!body && Math.abs(figure.getBoundingClientRect().width - body.getBoundingClientRect().width) < 3;
+    })()`) as Promise<boolean>;
+  if (!(await fullWidth())) {
+    await pressKey('Escape');
+    await clickOn(`.layer-view.active .row[data-line="${pasted.line}"] figure img`);
+    await clickMenu('Šířka');
+    await pause(200);
+    await clickMenu('100 %');
+    await pause(400);
+  }
   await clickOn(`.layer-view.active .row[data-line="${pasted.line}"] figure img`);
   await clickMenu('Popisek');
   await pause(200);
@@ -2532,7 +2619,7 @@ async function layersWithRealInput(picture: string) {
   await takePicture(picture.replace(/[.]png$/, '-theory.png'));
   // The check in Python, a layer of its own beside the theory: run by a click in the built-in Python, its results beside the sheet.
   const theoryWithoutPython = (await contents.executeJavaScript(`!document.querySelector('.layer-view.active .python-run')`)) as boolean;
-  await contents.executeJavaScript(`[...document.querySelectorAll('.layer-tab')].find((t) => t.textContent.includes('Kontrola v Pythonu'))?.setAttribute('data-smoke-python', '')`);
+  await contents.executeJavaScript(`[...document.querySelectorAll('.layer-tab')].find((t) => t.textContent.includes('Ověření v Pythonu'))?.setAttribute('data-smoke-python', '')`);
   await clickOn('[data-smoke-python]');
   await pause(1000);
   await clickOn('.layer-view.active .python-run');
@@ -3852,6 +3939,12 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
   // While the model thinks, its thinking is a folded line; a click opens it.
   for (let i = 0; i < 20 && !(await contents.executeJavaScript(`!!document.querySelector('.chat-thought summary')`)); i++) await pause(100);
   const thoughtFolded = (await contents.executeJavaScript(`!document.querySelector('.chat-thought')?.open`)) as boolean;
+  // The run indicator: a line under the answer says what the model does, a dot in the head says it works.
+  const running = (await contents.executeJavaScript(`({
+    phase: document.querySelector('.chat-status')?.getAttribute('data-phase') ?? '',
+    text: document.querySelector('.chat-status')?.textContent ?? '',
+    dot: !!document.querySelector('.chat-head .chat-run, .chat-run'),
+  })`)) as { phase: string; text: string; dot: boolean };
   await clickOn('.chat-thought summary');
   await pause(200);
   const thought = (await contents.executeJavaScript(`document.querySelector('.chat-thought')?.open ? document.querySelector('.chat-thought-text')?.textContent ?? '' : ''`)) as string;
@@ -3870,7 +3963,7 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
   let layerShown = { memory: '', sheet: [] as string[], unknown: [] as string[], hiddenConversations: -1 };
   let resumed: string[] = [];
   let newSheet = { head: '', others: '', opened: { tab: '', rows: 0, marked: 0, errors: '' }, state: '' };
-  let pythonChat = { checks: 0, first: '', last: '', answers: 0, told: '', keep: 0, tables: 0, kept: false, askedFirst: false, declined: false, copyWithoutAi: false };
+  let pythonChat = { checks: 0, first: '', last: '', answers: 0, told: '', keep: 0, notKept: 0, tables: 0, kept: false, askedFirst: false, declined: false, copyWithoutAi: false };
   let sheetCheck = { checks: 0, report: '', answers: '' };
   let answerBlocks = { choiceButtons: '', levelAnswer: '', noteButton: '', noteAfter: '' };
   let intentFlow = { placeholder: '', answers: [] as string[], sheet: '', ok: false };
@@ -4013,14 +4106,19 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
     pythonChat = (await contents.executeJavaScript(`(() => {
       const checks = [...${checkTurns}].map((t) => t.textContent);
       const answers = [...document.querySelectorAll('.chat-pane .chat-turn.assistant:not(.writing)')].map((t) => t.textContent).filter((t) => t.includes('python:'));
-      return { checks: checks.length, first: checks[0] ?? '', last: checks[checks.length - 1] ?? '', answers: answers.length, told: answers[0] ?? '', keep: document.querySelectorAll('.chat-pane .chat-check-keep').length, tables: document.querySelectorAll('.chat-pane .chat-turn.check table').length, kept: false, askedFirst: false, declined: false, copyWithoutAi: false };
+      return { checks: checks.length, first: checks[0] ?? '', last: checks[checks.length - 1] ?? '', answers: answers.length, told: answers[0] ?? '', keep: document.querySelectorAll('.chat-pane .chat-check-keep').length, notKept: document.querySelectorAll('.chat-pane .chat-check-not-kept').length, tables: document.querySelectorAll('.chat-pane .chat-turn.check table').length, kept: false, askedFirst: false, declined: false, copyWithoutAi: false };
     })()`)) as typeof pythonChat;
     await takePicture(picture.replace(/[.]png$/, '-ai-python.png'));
-    // The corrected check kept in the sources: it says so.
+    // The corrected check kept in the layer Ověření v Pythonu, not in the sources: it says so.
     await contents.executeJavaScript(`[...document.querySelectorAll('.chat-pane .chat-check-keep')].pop()?.setAttribute('data-smoke-keep', '')`);
     await clickOn('[data-smoke-keep]');
     await pause(500);
-    pythonChat = { ...pythonChat, kept: (await contents.executeJavaScript(`document.body.textContent.includes('Ověření je uložené v Podkladech.')`)) as boolean };
+    pythonChat = {
+      ...pythonChat,
+      kept: (await contents.executeJavaScript(
+        `document.body.textContent.includes('Ověření je uložené ve vrstvě Ověření v Pythonu.') && [...document.querySelectorAll('.layer-tab')].some((t) => t.textContent.includes('Ověření v Pythonu'))`,
+      )) as boolean,
+    };
     // Taken back, so the sources stay as the later steps expect them.
     await clickOn('.menubar-item:nth-child(2) > button');
     await clickMenu('Zpět');
@@ -4132,7 +4230,7 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
   await clickMenu('Boční panel');
   await clickMenu(back);
   await pause(300);
-  await writeFile(picture.replace(/[.]png$/, '-ai-chat.json'), JSON.stringify({ pasted, unpasted, typed, theory, offered, quietWhileOff, head, shown, cutOff, cleared, aiTab, layerShown, kept, resumed, proposal, together, newSheet, pythonChat, sheetCheck, answerBlocks, paneTabs, thoughtFolded, thought, intentFlow }, null, 2));
+  await writeFile(picture.replace(/[.]png$/, '-ai-chat.json'), JSON.stringify({ running, pasted, unpasted, typed, theory, offered, quietWhileOff, head, shown, cutOff, cleared, aiTab, layerShown, kept, resumed, proposal, together, newSheet, pythonChat, sheetCheck, answerBlocks, paneTabs, thoughtFolded, thought, intentFlow }, null, 2));
   return (
     pasted === 'Klopení je ztráta stability ohýbaného nosníku. Vloženo ze schránky.' && unpasted === 'Klopení je ztráta stability ohýbaného nosníku.' &&
     typed === 'H2:Klopení|P:Klopení je ztráta stability ohýbaného nosníku.' && theory.heading === 'Klopení' && /^T\d+$/.test(theory.badge) &&
@@ -4155,14 +4253,15 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
     proposal.printAsks.startsWith('Výpočet obsahuje řádky navržené AI') && proposal.printClosed &&
     newSheet.head === 'Nový list: Nosník se silou · řádků: 4' && Number(newSheet.others) >= 2 &&
     newSheet.opened.tab.startsWith('Nosník se silou') && newSheet.opened.marked >= 3 && newSheet.opened.errors.startsWith('chyba: 0') && newSheet.state.startsWith('Otevřeno jako „Nosník se silou“') &&
-    pythonChat.checks === 2 && pythonChat.answers === 2 && pythonChat.told.includes('python: ano') && pythonChat.first.includes('✗') && pythonChat.last.includes('✓') && !pythonChat.last.includes('✗') && pythonChat.keep === 2 && pythonChat.tables === 2 && pythonChat.kept && pythonChat.askedFirst && pythonChat.declined && pythonChat.copyWithoutAi &&
+    pythonChat.checks === 2 && pythonChat.answers === 2 && pythonChat.told.includes('python: ano') && pythonChat.first.includes('✗') && pythonChat.last.includes('✓') && !pythonChat.last.includes('✗') && pythonChat.keep === 1 && pythonChat.notKept === 1 && pythonChat.tables === 2 && pythonChat.kept && pythonChat.askedFirst && pythonChat.declined && pythonChat.copyWithoutAi &&
     sheetCheck.checks === 1 && sheetCheck.report.includes('Kontrola navrženého listu') && sheetCheck.report.includes('„smoke_d“ už je definováno') && sheetCheck.report.includes('t_v2 == t_v') && sheetCheck.report.includes('777') && sheetCheck.report.includes('Smoke dost dlouhé') && sheetCheck.answers === 'zdvojeno: první|zdvojeno: opraveno' &&
     intentFlow.ok &&
     answerBlocks.choiceButtons === 'Stručně: vzorec, dosazení, výsledek|Jako na papíře: vztahy, odvození krok po kroku|Výukově: navíc vysvětlení a ověření v Pythonu' && answerBlocks.levelAnswer.includes('úroveň: paper') && answerBlocks.noteButton === 'Vložit do Poznámek AI' && answerBlocks.noteAfter === 'Vloženo' &&
     thinkingCut.includes('Odpověď hned.') && thinkingCut.includes('bez přemýšlení') &&
     together.allButton === 'Přijmout vše (2)' && together.acceptedAll === 2 && together.undoneAll === 0 &&
     together.copy.tab.includes('(upravená kopie)') && together.copy.rows === 2 && together.copy.marked === 2 && together.copy.badges === 2 && together.original.rows === 0 && together.original.state === 2 &&
-    paneTabs === 'Podrobnosti Navigace *Tabulky Vrstvy AI|tables' && thoughtFolded && thought === 'Nejdřív zkontroluji průhyb na řádku 12.'
+    paneTabs === 'Podrobnosti Navigace *Tabulky Vrstvy AI|tables' && thoughtFolded && thought === 'Nejdřív zkontroluji průhyb na řádku 12.' &&
+    running.phase === 'thinking' && running.text.startsWith('přemýšlí') && running.dot && !(await contents.executeJavaScript(`!!document.querySelector('.chat-status, .chat-run')`))
   );
 }
 
@@ -4262,6 +4361,18 @@ async function aiSettingsWithRealInput(contents: Electron.WebContents, picture: 
   await clickOn('.ai-test');
   await waitForStatus('odpověděl');
   const answered = await read();
+  // A server that asks for a key: a wrong one is refused as a key (so it was sent), the right one answers.
+  await clickOn('.ai-key');
+  await typeText('zly-klic');
+  await clickOn('.ai-test');
+  await waitForStatus('nepřijal');
+  const keyRefused = await read();
+  await clickOn('.ai-key');
+  await pressKey('A', ['control']);
+  await typeText('local-smoke-key');
+  await clickOn('.ai-test');
+  await waitForStatus('odpověděl');
+  const keyTaken = await read();
   await clickOn('.ai-url');
   await pressKey('A', ['control']);
   await typeText('ftp://server');
@@ -4269,7 +4380,7 @@ async function aiSettingsWithRealInput(contents: Electron.WebContents, picture: 
   await waitForStatus('http://');
   const wrongUrl = await read();
   // What the dialog showed at each step, for finding a failed check.
-  await writeFile(picture.replace(/[.]png$/, '-ai-settings.json'), JSON.stringify({ off, claude, bad, good, reopened, forgotten, local, absent, other, answered, wrongUrl }, null, 2));
+  await writeFile(picture.replace(/[.]png$/, '-ai-settings.json'), JSON.stringify({ off, claude, bad, good, reopened, forgotten, local, absent, other, answered, keyRefused, keyTaken, wrongUrl }, null, 2));
   await pressKey('Escape');
   await pause(300);
 
@@ -4282,11 +4393,12 @@ async function aiSettingsWithRealInput(contents: Electron.WebContents, picture: 
     saved.includes('"provider":"anthropic"') && sealed &&
     reopened.provider === 'anthropic' && reopened.keyPlaceholder.startsWith('klíč je zadán') && reopened.forget &&
     !forgotten.forget && forgotten.keyPlaceholder === '' &&
-    local.provider === 'lmstudio' && !local.keyField && local.model === 'local-smoke-7b' && !local.models.includes('text-embedding-smoke') && local.status.includes('Dostupné modely: 1') &&
+    local.provider === 'lmstudio' && local.keyField && local.model === 'local-smoke-7b' && !local.models.includes('text-embedding-smoke') && local.status.includes('Dostupné modely: 1') &&
     local.providers.some((p) => p.startsWith('LM Studio') && p.includes('běží')) && local.providers.some((p) => p.startsWith('Ollama') && !p.includes('běží')) &&
     absent.provider === 'ollama' && absent.status.includes('Ollama v tomto počítači neběží') &&
     other.provider === 'server' && other.model === 'local-smoke-7b' && other.url === 'http://127.0.0.1:8080/v1' && other.providers.some((p) => p.startsWith('Jiný server') && p.includes('běží')) &&
     answered.status.includes('local-smoke-7b odpověděl') && answered.status.includes('„OK“') &&
+    keyRefused.status.includes('nepřijal') && keyTaken.status.includes('local-smoke-7b odpověděl') && keyTaken.forget &&
     wrongUrl.url === 'ftp://server' && wrongUrl.status.includes('musí začínat http://')
   );
 }

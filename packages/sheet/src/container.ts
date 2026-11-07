@@ -123,12 +123,12 @@ const TABLE_ENTRY = /^tables\/([^/]+)\/(schema\.json|data\.csv)$/;
 const LAYERS = 'layers.json';
 /** Text of a layer: a calculation or notes. */
 const LAYER_TEXT = /^layers\/([^/]+)\/(sheet\.cc|notes\.md)$/;
-const LAYER_KINDS: readonly LayerKind[] = ['sheet', 'calc', 'data', 'ai', 'sources'];
+const LAYER_KINDS: readonly LayerKind[] = ['sheet', 'calc', 'data', 'ai', 'sources', 'python'];
 const BLOCK_ENTRY = /^blocks\/([^/]+)\/(block\.cc|block\.json)$/;
 
 function layerTextPath(layer: Layer): string | undefined {
   if (layer.kind === 'calc') return `layers/${layer.id}/sheet.cc`;
-  if (layer.kind === 'ai' || layer.kind === 'sources') return `layers/${layer.id}/notes.md`;
+  if (layer.kind === 'ai' || layer.kind === 'sources' || layer.kind === 'python') return `layers/${layer.id}/notes.md`;
   return undefined;
 }
 

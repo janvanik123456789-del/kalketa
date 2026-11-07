@@ -1,0 +1,59 @@
+{
+  "id": "blasius",
+  "field": "03",
+  "group": {
+    "cs": "Tekutiny",
+    "en": "Fluids"
+  },
+  "title": {
+    "cs": "Součinitel tření hladkého potrubí (Blasius)",
+    "en": "Friction factor of a smooth pipe (Blasius)"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R21",
+      "en": "Kalketa, sample R21"
+    },
+    "sample": "R21"
+  },
+  "status": "verified",
+  "formula": "λ == 0.3164/Re^(1/4)",
+  "quantities": {
+    "λ": {
+      "name": {
+        "cs": "součinitel tření",
+        "en": "friction factor"
+      },
+      "unit": "",
+      "example": "0.021"
+    },
+    "Re": {
+      "name": {
+        "cs": "Reynoldsovo číslo",
+        "en": "Reynolds number"
+      },
+      "unit": "",
+      "example": "50000"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "Re": "50000"
+      },
+      "expect": {
+        "λ": "0.0211589"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "ztráty",
+      "tření"
+    ],
+    "en": [
+      "losses",
+      "friction"
+    ]
+  }
+}

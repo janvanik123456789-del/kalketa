@@ -45,6 +45,8 @@ export interface EditRange {
 interface Props {
   /** The menu of "/" at the start of a line being edited. */
   readonly insertMenu?: InsertMenuSetup;
+  /** Favourite formulas of the library put in after a line (the right button on it); none without favourites. */
+  readonly formulaMenu?: (afterLine: number) => readonly MenuItem[];
   /** The floating toolbar above the line being edited (Settings > Controls); on unless false. */
   readonly rowToolbar?: boolean;
   /** "=" after a new name becomes ":=" (Settings > Controls); on unless false. */
@@ -952,7 +954,9 @@ export function SheetView(props: Props) {
               // The marks of the line by hand: it opens as written in the language.
               const raw: MenuItem = { kind: 'action', label: t(props.uiCatalog, 'textProps.raw'), run: () => { setRawAt(seg.start); props.onEdit({ start: seg.start, end: seg.end }); } };
               const open = editing?.start === seg.start ? textFormat.current : undefined;
-              if (!open) return [...textMenuItems(seg, props.uiCatalog, change), { kind: 'separator' }, raw];
+              // Under a heading a formula is put in as often as after a line of the calculation.
+              const formulas = props.formulaMenu?.(seg.end) ?? [];
+              if (!open) return [...textMenuItems(seg, props.uiCatalog, change), { kind: 'separator' }, raw, ...(formulas.length > 0 ? [{ kind: 'separator' } as MenuItem, ...formulas] : [])];
               const ui = props.uiCatalog;
               const own = [t(ui, 'textStyle.bold'), t(ui, 'textStyle.italic'), t(ui, 'textStyle.color')];
               return [
@@ -977,7 +981,8 @@ export function SheetView(props: Props) {
             const display = row?.display ?? row?.solutions?.[0]?.display;
             const shown = display && !display.im && Number.isFinite(display.value) ? (n: number) => `${formatNumber(display.value, props.printCatalog, { decimals: n }).replace('-', '−')}${display.unit ? ` ${display.unit}` : ''}` : undefined;
             const own = blockByLine.get(formatMenu.seg.start);
-            const items = [...formatMenuItems(formatMenu.seg, props.uiCatalog, change, shown, own?.kind === 'equation' && own.number !== undefined, own ? blockLatex(own) : undefined, !!display?.im), ...sliderItems(formatMenu.seg)];
+            const formulas = props.formulaMenu?.(formatMenu.seg.end) ?? [];
+            const items = [...formatMenuItems(formatMenu.seg, props.uiCatalog, change, shown, own?.kind === 'equation' && own.number !== undefined, own ? blockLatex(own) : undefined, !!display?.im), ...sliderItems(formatMenu.seg), ...(formulas.length > 0 ? [{ kind: 'separator' } as MenuItem, ...formulas] : [])];
             const solveLine = formatMenu.solveLine;
             return solveLine
               ? [{ kind: 'action' as const, label: t(props.uiCatalog, 'solve.toDefinition'), run: () => props.onReplace(formatMenu.seg.start, formatMenu.seg.end, solveLine) }, { kind: 'separator' as const }, ...items]

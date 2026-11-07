@@ -1,0 +1,77 @@
+{
+  "id": "vykon-cerpadla",
+  "field": "03",
+  "group": {
+    "cs": "Tekutiny",
+    "en": "Fluids"
+  },
+  "title": {
+    "cs": "Výkon předaný kapalině čerpadlem",
+    "en": "Power given to the liquid by a pump"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R21",
+      "en": "Kalketa, sample R21"
+    },
+    "sample": "R21"
+  },
+  "status": "verified",
+  "formula": "P == ρ·Q·e",
+  "quantities": {
+    "P": {
+      "name": {
+        "cs": "výkon",
+        "en": "power"
+      },
+      "unit": "W",
+      "example": "60 W"
+    },
+    "ρ": {
+      "name": {
+        "cs": "hustota kapaliny",
+        "en": "density of the liquid"
+      },
+      "unit": "kg/m^3",
+      "example": "1000 kg/m^3"
+    },
+    "Q": {
+      "name": {
+        "cs": "průtok",
+        "en": "flow rate"
+      },
+      "unit": "l/s",
+      "example": "1.2 l/s"
+    },
+    "e": {
+      "name": {
+        "cs": "měrná energie čerpadla",
+        "en": "specific energy of the pump"
+      },
+      "unit": "J/kg",
+      "example": "50 J/kg"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "ρ": "1000 kg/m^3",
+        "Q": "1.2 l/s",
+        "e": "50 J/kg"
+      },
+      "expect": {
+        "P": "60 W"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "čerpadlo",
+      "příkon"
+    ],
+    "en": [
+      "pump",
+      "power"
+    ]
+  }
+}

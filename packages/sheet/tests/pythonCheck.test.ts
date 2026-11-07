@@ -31,3 +31,22 @@ describe('a calculation checked in Python', () => {
     expect(rows[2]!.difference).toBeCloseTo(0.0005, 6);
   });
 });
+
+describe('names a script spells in Latin letters', () => {
+  it('meet the Greek names of the sheet', async () => {
+    const { greekNames } = await import('../src/pythonCheck.js');
+    expect(greekNames('sigma_dov')).toEqual(['σ_dov']);
+    expect(greekNames('lam')).toEqual(['λ']);
+    expect(greekNames('Delta_T')).toEqual(['Δ_T', 'ΔT']);
+    expect(greekNames('M_P')).toEqual([]);
+    const rows = compareWithSheet(
+      [
+        { name: 'sigma_dov', value: 321.818, unit: 'MPa', rel: 1e-4 },
+        { name: 'lambda', value: 0.0225, unit: '', rel: 1e-3 },
+        { name: 'Delta_T', value: 5, unit: 'K', rel: 1e-9 },
+      ],
+      evaluateSheet('σ_dov := 1770 MPa/5.5\nλ := 0.0225\nΔT := 5 K'),
+    );
+    expect(rows.map((r) => r.state)).toEqual(['agree', 'agree', 'agree']);
+  });
+});

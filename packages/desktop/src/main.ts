@@ -17,6 +17,7 @@ import { basename, dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { stat } from 'node:fs/promises';
 import { registerAiBridge } from './ai.js';
+import { allowCallStacks, enableCallStacks, registerDiagnostics, watchWindow, type HangWords } from './diagnostics.js';
 import { registerTheoryBridge } from './theory.js';
 import { systemFonts } from './fonts.js';
 import { pyodidePlace, PYTHON_PRELUDE, runPyodide, runSystemPython, scriptExcerpt, setPyodideLauncher, stopPyodide } from './python.js';
@@ -83,6 +84,10 @@ interface CloseGuard {
   save: string;
   discard: string;
   cancel: string;
+  /** Words of the menu of the right button over text, in the language of the editor. */
+  textMenu?: { cut: string; copy: string; paste: string; selectAll: string };
+  /** What the window asks when its editor hangs. */
+  hang?: HangWords;
 }
 
 /**
@@ -186,6 +191,9 @@ function editorEntry(): { url?: string; file?: string } {
 }
 
 /** Opens an editor window; `blank` starts it with an empty calculation instead of the example. */
+// Call stacks of a hanging editor need this switch before the program is ready.
+enableCallStacks();
+
 function createWindow(options: { blank?: boolean } = {}): BrowserWindow {
   // A new window opens slightly below and right of the current one.
   const from = BrowserWindow.getFocusedWindow() ?? lastFocused;
@@ -214,6 +222,22 @@ function createWindow(options: { blank?: boolean } = {}): BrowserWindow {
   editors.set(contentsId, { window: win, guard, files: new Set(), granted: new Set() });
   lastFocused = win;
   win.on('focus', () => (lastFocused = win));
+  // A hanging editor: where it hangs goes to logs/hang.log, the user may wait or reload it (docs: diagnostics.ts).
+  watchWindow(win, () => guard.hang, !smokeTest);
+  // The right button over text (the question to the AI, a field of a dialog, a line being edited, text marked):
+  // cut, copy, paste, select all. Where the editor has a menu of its own, it keeps it (the page prevents this one).
+  win.webContents.on('context-menu', (_event, params) => {
+    if (!params.isEditable && !params.selectionText.trim()) return;
+    const words = guard.textMenu ?? { cut: 'Cu&t', copy: '&Copy', paste: '&Paste', selectAll: 'Select &all' };
+    const flags = params.editFlags;
+    Menu.buildFromTemplate([
+      ...(params.isEditable ? [{ label: words.cut, role: 'cut' as const, enabled: flags.canCut }] : []),
+      { label: words.copy, role: 'copy' as const, enabled: flags.canCopy },
+      ...(params.isEditable ? [{ label: words.paste, role: 'paste' as const, enabled: flags.canPaste }] : []),
+      { type: 'separator' as const },
+      { label: words.selectAll, role: 'selectAll' as const, enabled: flags.canSelectAll },
+    ]).popup({ window: win });
+  });
   win.on('closed', () => {
     editors.delete(contentsId);
     if (lastFocused === win) lastFocused = [...editors.values()].at(-1)?.window;
@@ -485,6 +509,11 @@ function registerBridge(): void {
     editor.guard.save = String(guard?.save ?? 'Save');
     editor.guard.discard = String(guard?.discard ?? "Don't save");
     editor.guard.cancel = String(guard?.cancel ?? 'Cancel');
+    const words = (o: unknown, keys: readonly string[]) => (o && typeof o === 'object' && keys.every((k) => typeof (o as Record<string, unknown>)[k] === 'string') ? o : undefined);
+    const menu = words(guard?.textMenu, ['cut', 'copy', 'paste', 'selectAll']);
+    if (menu) editor.guard.textMenu = menu as NonNullable<CloseGuard['textMenu']>;
+    const hang = words(guard?.hang, ['message', 'wait', 'reload']);
+    if (hang) editor.guard.hang = hang as HangWords;
   });
 
   // Each window tells which files it has open (after opening, saving as, closing).
@@ -528,6 +557,7 @@ function registerBridge(): void {
   });
 
   registerAiBridge(fromEditor);
+  registerDiagnostics(fromEditor);
   registerTheoryBridge(fromEditor, grantedTo);
   // A check of the calculation in Python: the built-in one (no files, no network) or, chosen in the settings and
   // confirmed in the editor before each run, Python of the computer. The editor puts result() before the script.
@@ -635,6 +665,7 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   void app.whenReady().then(() => {
+    allowCallStacks();
     startupMark('ready');
     Menu.setApplicationMenu(null); // the editor has its own menus, toolbars and shortcuts
     registerBridge();

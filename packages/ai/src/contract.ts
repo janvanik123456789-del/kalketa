@@ -35,6 +35,11 @@ export interface AiSheetContext {
   readonly libraries?: readonly { readonly key: string; readonly title: string; readonly source: string }[];
   /** Other sheets open in the program, for reference and inspiration only. */
   readonly others?: readonly { readonly title: string; readonly source: string }[];
+  /**
+   * The auxiliary calculations of this sheet (its layers of kind calc, e.g. "Pomocný výpočet"): text with what
+   * the program found in it. The printed sheet uses their values by name.
+   */
+  readonly auxiliary?: readonly { readonly name: string; readonly source: string; readonly findings?: readonly string[] }[];
   /** Changes the AI proposed for the sheet and what the user decided, oldest first (the journal, ch. 9.7). */
   readonly changes?: readonly AiChangeRecord[];
   /** How detailed a calculation the model writes should be (Calculation properties); asked when not set. */

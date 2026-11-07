@@ -3,7 +3,8 @@
  * process: the editor can set or forget a key and ask whether one is there,
  * but never reads it back. A remembered key is encrypted by the operating
  * system (Electron safeStorage); without that, it is kept until the program
- * closes and never written to disk. Local servers (LM Studio, Ollama) need no key.
+ * closes and never written to disk. Local servers (LM Studio, Ollama, another
+ * server) need no key unless they are set to ask for one; theirs is kept the same way.
  *
  * Company rules come from ai-policy.json next to the program; they are read, never
  * written. KALKETA_AI_POLICY may point elsewhere only from the source: in a packaged
@@ -12,10 +13,11 @@
 
 import { app, ipcMain, safeStorage, type IpcMainInvokeEvent } from 'electron';
 import { pyodideHasNumpy } from './python.js';
+import { appendLog, saveAnswerText } from './diagnostics.js';
 import { existsSync, readFileSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import { AI_EFFORTS, DEFAULT_THINKING_LIMIT, THINKING_LIMITS, allowedProviders, CITED_ID, FIGURE_CONTEXT_CHARS, figurePrompt, rereadPrompt, formulaPrompt, memoryInstruction, modelAllowed, prepareBriefing, NO_POLICY, parseAiPolicy, providerById, type AiPolicy, type AiSheetContext, type ChatTurn } from '@kalketa/ai';
+import { AI_EFFORTS, DEFAULT_THINKING_LIMIT, THINKING_LIMITS, allowedProviders, CITED_ID, FIGURE_CONTEXT_CHARS, figurePrompt, rereadPrompt, formulaPrompt, memoryInstruction, modelAllowed, prepareBriefing, withSheetState, DEFAULT_CONTEXT, estimateTokens, planJump, sentTokens, summaryInstruction, windowTurns, type ConversationWindow, NO_POLICY, parseAiPolicy, providerById, type AiPolicy, type AiSheetContext, type ChatTurn } from '@kalketa/ai';
 import { askAboutImage, chat, discoverLocal, testConnection, tryModel, type AnswerResult, type ChatResult, type ConnectionResult } from '@kalketa/ai/connect';
 
 export interface AiKeyState {
@@ -45,7 +47,21 @@ interface ChatAsk {
   readonly memory?: string;
   /** A new calculation from its intent: questions, outline, then the sheet (ch. 9.3). */
   readonly intent?: boolean;
+  /** The older turns of the conversation summed up so far (kept with the conversation in the sheet). */
+  readonly window?: ConversationWindow;
+  /** The context of the model in tokens, as the settings say; the default of the provider without it. */
+  readonly context?: number;
 }
+
+/** How full the conversation window is: what went to the model, of how much it takes in, and how much is summed up. */
+export interface WindowUsage {
+  readonly sent: number;
+  readonly context: number;
+  readonly summedUp: number;
+}
+
+/** The context of a model as its server said it, by provider, address and model; asked once a run of the program. */
+const serverContexts = new Map<string, number | undefined>();
 
 /** Answers being written, so the editor can stop one. */
 const running = new Map<string, AbortController>();
@@ -158,13 +174,16 @@ export function registerAiBridge(fromEditor: (event: IpcMainInvokeEvent) => unkn
   ipcMain.handle('kalketa:ai-discover', async (event) => {
     fromEditor(event);
     const permitted = new Set(allowedProviders(readPolicy()).map((p) => p.id));
-    return Object.fromEntries(Object.entries(await discoverLocal()).filter(([id]) => permitted.has(id)));
+    await loadKeys();
+    return Object.fromEntries(Object.entries(await discoverLocal({}, Object.fromEntries(keys))).filter(([id]) => permitted.has(id)));
   });
 
   // One short question to a model of a local server, so the user sees it answer.
-  ipcMain.handle('kalketa:ai-try', (event, provider: unknown, model: unknown, url: unknown): Promise<AnswerResult> => {
+  ipcMain.handle('kalketa:ai-try', async (event, provider: unknown, model: unknown, url: unknown): Promise<AnswerResult> => {
     fromEditor(event);
-    return tryModel(allowed(provider), typeof model === 'string' ? model : '', {}, typeof url === 'string' ? url : undefined);
+    const id = allowed(provider);
+    await loadKeys();
+    return tryModel(id, typeof model === 'string' ? model : '', {}, typeof url === 'string' ? url : undefined, keys.get(id));
   });
 
   // A conversation turn: pieces of the answer go to the window as they come.
@@ -173,7 +192,7 @@ export function registerAiBridge(fromEditor: (event: IpcMainInvokeEvent) => unkn
    * same briefing, the conversation, and the request to rewrite the memory,
    * thought through briefly. Pieces of a chat answer go to the window as they come.
    */
-  const run = async (event: IpcMainInvokeEvent, ask: ChatAsk, memory: boolean): Promise<ChatResult & { theory?: { sent: readonly string[]; total: number } }> => {
+  const run = async (event: IpcMainInvokeEvent, ask: ChatAsk, memory: boolean): Promise<ChatResult & { theory?: { sent: readonly string[]; total: number }; window?: ConversationWindow; usage?: WindowUsage; asked?: string; reasoning?: string }> => {
     fromEditor(event);
     const id = allowed(ask.provider);
     const policy = readPolicy();
@@ -181,7 +200,8 @@ export function registerAiBridge(fromEditor: (event: IpcMainInvokeEvent) => unkn
     await loadKeys();
     const controller = new AbortController();
     running.set(ask.id, controller);
-    const send = (piece: { text?: string; thinking?: string; cut?: boolean }) => {
+    // Pieces of the answer, and what the program does before it comes (so a long wait shows what it waits for).
+    const send = (piece: { text?: string; thinking?: string; cut?: boolean; phase?: 'context' | 'summing' | 'reading'; tokens?: number }) => {
       if (!memory && !event.sender.isDestroyed()) event.sender.send('kalketa:ai-chat-event', { id: ask.id, ...piece });
     };
     // The theory for the question: the last two questions of the user, and what was cited so far.
@@ -198,8 +218,59 @@ export function registerAiBridge(fromEditor: (event: IpcMainInvokeEvent) => unkn
       cited,
       ...(ask.intent === true ? { intent: true } : {}),
     });
-    const turns = ask.turns.map((t) => ({ role: t.role, text: t.text }));
+    const turns: ChatTurn[] = ask.turns.map((t) => ({ role: t.role, text: t.text, ...(typeof t.sent === 'string' && t.role === 'user' ? { sent: t.sent } : {}), ...(typeof t.reasoning === 'string' && t.role === 'assistant' ? { reasoning: t.reasoning } : {}) }));
     const effort = memory ? 'low' : AI_EFFORTS.find((e) => e === ask.effort);
+    // The conversation window: under a share of the context of the model; past it, the older turns summed up once.
+    const provider = providerById(id)!;
+    // The context of the model: as the settings say, else as its server says (Strata 256 K), else the default.
+    let told: number | undefined;
+    if (!(typeof ask.context === 'number' && ask.context >= 2048) && provider.api === 'openai-compatible') {
+      const at = `${id}|${ask.url ?? ''}|${ask.model}`;
+      if (!serverContexts.has(at)) {
+        send({ phase: 'context' });
+        const listed = await testConnection(id, keys.get(id), {}, typeof ask.url === 'string' ? ask.url : undefined).catch(() => undefined);
+        serverContexts.set(at, listed?.ok ? listed.models.find((m) => m.id === ask.model)?.context : undefined);
+      }
+      told = serverContexts.get(at);
+    }
+    const context = typeof ask.context === 'number' && Number.isInteger(ask.context) && ask.context >= 2048 ? ask.context : (told ?? (provider.local ? DEFAULT_CONTEXT.local : DEFAULT_CONTEXT.remote));
+    const given = ask.window && Number.isInteger(ask.window.upTo) && ask.window.upTo > 0 && ask.window.upTo < turns.length && typeof ask.window.summary === 'string' ? ask.window : undefined;
+    const fixed = estimateTokens(prepared.text) + estimateTokens(prepared.state);
+    let window = given;
+    let jumped: ConversationWindow | undefined;
+    const upTo = planJump(turns, window, fixed, context);
+    if (upTo !== undefined) {
+      send({ phase: 'summing' });
+      // One answer more, only at a jump: the older part summed up by the model itself, from what it was given then.
+      const summed = await chat({
+        provider: id,
+        model: ask.model,
+        ...(typeof ask.url === 'string' ? { url: ask.url } : {}),
+        ...(provider.local ? { effort: 'none' as const } : { effort: 'low' as const }),
+        ...(keys.has(id) ? { apiKey: keys.get(id)! } : {}),
+        system: prepared.text,
+        turns: [...windowTurns(turns.slice(0, upTo), window), { role: 'user' as const, text: summaryInstruction() }],
+        onText: () => undefined,
+        thinkingLimit: 0,
+      });
+      appendLog('ai.log', { event: 'summed-up', id: ask.id, upTo, ok: summed.ok, ...(summed.ok ? { chars: summed.text.length } : { problem: summed.problem }) });
+      if (summed.ok && summed.text.trim()) {
+        jumped = { upTo, summary: summed.text.trim(), time: new Date().toISOString() };
+        window = jumped;
+      }
+    }
+    const usage: WindowUsage = { sent: sentTokens(turns, window, fixed), context, summedUp: window?.upTo ?? 0 };
+    const sending = withSheetState(windowTurns(memory ? [...turns, { role: 'user' as const, text: memoryInstruction(ask.memory ?? '') }] : turns, window), prepared.state);
+    // The question exactly as it went, kept with it in the conversation; and what the model thought, kept with the answer.
+    const sentQuestion = sending.filter((t) => t.role === 'user').at(-1)?.text;
+    let thought = '';
+    // What went to the model and how it ended, for finding faults (logs/ai.log); sizes only, no text, no key.
+    const started = Date.now();
+    let pieces = 0;
+    const logged = { request: memory ? 'memory' : 'chat', id: ask.id, provider: id, model: ask.model, ...(typeof ask.url === 'string' ? { url: ask.url } : {}), keyGiven: keys.has(id), effort: effort ?? null, briefingChars: prepared.text.length, stateChars: prepared.state.length, turns: turns.length, turnsChars: turns.reduce((n, t) => n + t.text.length, 0), context, sentTokens: usage.sent, summedUp: usage.summedUp };
+    appendLog('ai.log', { event: 'asked', ...logged });
+    // Until the first piece comes, the model reads what was sent: on a local model that takes long when much is new.
+    send({ phase: 'reading', tokens: usage.sent });
     try {
       const result = await chat({
         provider: id,
@@ -207,16 +278,25 @@ export function registerAiBridge(fromEditor: (event: IpcMainInvokeEvent) => unkn
         ...(typeof ask.url === 'string' ? { url: ask.url } : {}),
         ...(effort ? { effort } : {}),
         ...(keys.has(id) ? { apiKey: keys.get(id)! } : {}),
+        // The steady briefing first, the sheet as it is now with the latest question: the server reads only what is new.
         system: prepared.text,
-        turns: memory ? [...turns, { role: 'user' as const, text: memoryInstruction(ask.memory ?? '') }] : turns,
-        onText: (text) => send({ text }),
-        onThinking: (delta) => send({ thinking: delta }),
+        turns: sending,
+        onText: (text) => (pieces++, send({ text })),
+        onThinking: (delta) => ((thought += delta), pieces++, send({ thinking: delta })),
         // Thinking past the limit of the settings: asked again without it, the user told so.
         ...(typeof ask.thinkingLimit === 'number' && THINKING_LIMITS.includes(ask.thinkingLimit) ? { thinkingLimit: ask.thinkingLimit } : { thinkingLimit: DEFAULT_THINKING_LIMIT }),
-        onThinkingCut: () => send({ cut: true }),
+        // Asked again without thinking: what it thought the first time is not part of the answer.
+        onThinkingCut: () => ((thought = ''), send({ cut: true })),
         signal: controller.signal,
       });
-      return prepared.theory && result.ok && !memory ? { ...result, theory: { sent: prepared.theory.sent, total: prepared.theory.total } } : result;
+      // The answer itself is kept apart (logs/ai-answers), written before the editor reads it.
+      const file = result.ok ? saveAnswerText(ask.id, result.text, { request: logged.request, model: result.model, ms: Date.now() - started }) : undefined;
+      appendLog('ai.log', { event: 'answered', id: ask.id, ms: Date.now() - started, pieces, ok: result.ok, ...(result.ok ? { chars: result.text.length, truncated: !!result.truncated, thinkingCut: !!result.thinkingCut, file } : { problem: result.problem, detail: result.detail ?? null }) });
+      const extra = { usage, ...(jumped ? { window: jumped } : {}), ...(sentQuestion !== undefined && !memory ? { asked: sentQuestion } : {}), ...(thought.trim() && !memory ? { reasoning: thought } : {}) };
+      return prepared.theory && result.ok && !memory ? { ...result, ...extra, theory: { sent: prepared.theory.sent, total: prepared.theory.total } } : { ...result, ...extra };
+    } catch (error) {
+      appendLog('ai.log', { event: 'failed', id: ask.id, ms: Date.now() - started, pieces, error: error instanceof Error ? error.message : String(error) });
+      throw error;
     } finally {
       running.delete(ask.id);
     }

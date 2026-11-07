@@ -1,0 +1,68 @@
+{
+  "id": "stredni-logaritmicky-rozdil",
+  "field": "03",
+  "group": {
+    "cs": "Tepelné výpočty",
+    "en": "Heat"
+  },
+  "title": {
+    "cs": "Střední logaritmický rozdíl teplot",
+    "en": "Log mean temperature difference"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R2",
+      "en": "Kalketa, sample R2"
+    },
+    "sample": "R2"
+  },
+  "status": "verified",
+  "formula": "ΔT_ln == (ΔT_A - ΔT_B)/ln(ΔT_A/ΔT_B)",
+  "quantities": {
+    "ΔT_ln": {
+      "name": {
+        "cs": "střední logaritmický rozdíl",
+        "en": "log mean difference"
+      },
+      "unit": "K",
+      "example": "43.2 K"
+    },
+    "ΔT_A": {
+      "name": {
+        "cs": "rozdíl teplot na jednom konci",
+        "en": "temperature difference at one end"
+      },
+      "unit": "K",
+      "example": "80 K"
+    },
+    "ΔT_B": {
+      "name": {
+        "cs": "rozdíl teplot na druhém konci",
+        "en": "temperature difference at the other end"
+      },
+      "unit": "K",
+      "example": "20 K"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "ΔT_A": "80 K",
+        "ΔT_B": "20 K"
+      },
+      "expect": {
+        "ΔT_ln": "43.2809 K"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "výměník",
+      "LMTD"
+    ],
+    "en": [
+      "exchanger",
+      "LMTD"
+    ]
+  }
+}

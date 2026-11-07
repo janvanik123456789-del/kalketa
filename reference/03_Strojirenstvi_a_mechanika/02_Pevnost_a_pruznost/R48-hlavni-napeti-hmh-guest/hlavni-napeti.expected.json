@@ -1,0 +1,77 @@
+{
+  "sheet": "hlavni-napeti.cc",
+  "verifiedBy": "Zdroj (VŠB-TU Ostrava, Pružnost a pevnost, příklad 9.1) uvádí hlavní napětí −15, 100 a 0 MPa, σ_RED HMH = 108,28 MPa a σ_RED Guest = 115 MPa. Samostatně v Pythonu (Podklady): hlavní napětí z kubické rovnice charakteristického polynomu tenzoru (trigonometrické řešení), z nich HMH a Guest, HMH také přímo ze složek a mezní smyková napětí uzavřenými vzorci; všechno se shoduje se zdrojem.",
+  "relativeTolerance": 1e-09,
+  "values": {
+    "σ_1": {
+      "value": -15.0,
+      "unit": "MPa"
+    },
+    "σ_2": {
+      "value": 0.0,
+      "unit": "MPa"
+    },
+    "σ_3": {
+      "value": 100.0,
+      "unit": "MPa"
+    },
+    "τ_12": {
+      "value": 7.5,
+      "unit": "MPa"
+    },
+    "τ_23": {
+      "value": 50.0,
+      "unit": "MPa"
+    },
+    "τ_31": {
+      "value": 57.5,
+      "unit": "MPa"
+    },
+    "τ_max": {
+      "value": 57.5,
+      "unit": "MPa"
+    },
+    "σ_RED_HMH": {
+      "value": 108.28203913853858,
+      "unit": "MPa"
+    },
+    "σ_RED_GUEST": {
+      "value": 115.0,
+      "unit": "MPa"
+    },
+    "σ_RED_HMH2": {
+      "value": 108.28203913853858,
+      "unit": "MPa"
+    },
+    "v_HMH": {
+      "value": 96.68039208798088,
+      "unit": "%"
+    },
+    "v_GUEST": {
+      "value": 102.67857142857142,
+      "unit": "%"
+    },
+    "τ_dov_HMH": {
+      "value": 43.278170016764804,
+      "unit": "MPa"
+    },
+    "τ_dov_GUEST": {
+      "value": 36.180105030251084,
+      "unit": "MPa"
+    }
+  },
+  "checks": [
+    {
+      "label": "Redukované napětí HMH (v kontrole stejné přímo ze složek)",
+      "passed": true
+    },
+    {
+      "label": "Redukované napětí podle Guesta",
+      "passed": false
+    },
+    {
+      "label": "Zadané smykové napětí je pod mezí HMH, ale nad mezí Guesta",
+      "passed": true
+    }
+  ]
+}

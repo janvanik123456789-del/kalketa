@@ -1,0 +1,68 @@
+{
+  "id": "induktivni-reaktance",
+  "field": "05",
+  "group": {
+    "cs": "Střídavé obvody",
+    "en": "AC circuits"
+  },
+  "title": {
+    "cs": "Induktivní reaktance",
+    "en": "Inductive reactance"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R37",
+      "en": "Kalketa, sample R37"
+    },
+    "sample": "R37"
+  },
+  "status": "verified",
+  "formula": "X_L == ω·L",
+  "quantities": {
+    "X_L": {
+      "name": {
+        "cs": "reaktance cívky",
+        "en": "reactance of the coil"
+      },
+      "unit": "Ω",
+      "example": "31.42 Ω"
+    },
+    "ω": {
+      "name": {
+        "cs": "úhlová frekvence",
+        "en": "angular frequency"
+      },
+      "unit": "rad/s",
+      "example": "314.16 rad/s"
+    },
+    "L": {
+      "name": {
+        "cs": "indukčnost",
+        "en": "inductance"
+      },
+      "unit": "mH",
+      "example": "100 mH"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "ω": "314.16 rad/s",
+        "L": "100 mH"
+      },
+      "expect": {
+        "X_L": "31.416 Ω"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "cívka",
+      "indukčnost"
+    ],
+    "en": [
+      "coil",
+      "inductance"
+    ]
+  }
+}

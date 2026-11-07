@@ -1,0 +1,79 @@
+{
+  "id": "proud-trojfazovy",
+  "field": "05",
+  "group": {
+    "cs": "Střídavé obvody",
+    "en": "AC circuits"
+  },
+  "title": {
+    "cs": "Proud trojfázového odběru",
+    "en": "Current of a three-phase load"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R4",
+      "en": "Kalketa, sample R4"
+    },
+    "sample": "R4"
+  },
+  "status": "verified",
+  "formula": "I == P/(sqrt(3)·U·cos_φ)",
+  "quantities": {
+    "I": {
+      "name": {
+        "cs": "proud",
+        "en": "current"
+      },
+      "unit": "A",
+      "example": "68 A"
+    },
+    "P": {
+      "name": {
+        "cs": "činný výkon",
+        "en": "active power"
+      },
+      "unit": "kW",
+      "example": "40 kW"
+    },
+    "U": {
+      "name": {
+        "cs": "sdružené napětí",
+        "en": "line voltage"
+      },
+      "unit": "V",
+      "example": "400 V"
+    },
+    "cos_φ": {
+      "name": {
+        "cs": "účiník",
+        "en": "power factor"
+      },
+      "unit": "",
+      "example": "0.85"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "P": "40 kW",
+        "U": "400 V",
+        "cos_φ": "0.85"
+      },
+      "expect": {
+        "I": "67.9236 A"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "kabel",
+      "jištění",
+      "třífázový"
+    ],
+    "en": [
+      "cable",
+      "fuse",
+      "three-phase"
+    ]
+  }
+}

@@ -122,6 +122,8 @@ export function parse(source: string, options: ParseOptions): ParseResult {
       statement = { kind: 'invalid', span: spanOf(tokens[0]!, tokens[tokens.length - 1]!), ...(name ? { name } : {}) };
       if (name) defined.add(name);
     }
+    // An example value of the formula library ({example}) is reported until the user writes their own.
+    if (format?.example) diagnostics.push(diagnostic('W-EXAMPLE-VALUE', statement.span, { name: statement.kind === 'definition' ? statement.name : '' }));
     statements.push(withFormat(withComment(statement, comment), format));
   }
   tablesBefore(Infinity);
@@ -246,7 +248,7 @@ function lineFormat(tokens: readonly Token[], diagnostics: Diagnostic[], at: Spa
       if ((key === 'decimals' || key === 'digits') && Number.isInteger(n) && n >= (key === 'digits' ? 1 : 0) && n <= 15) format[key] = n;
       else if (key === 'size' && Number.isFinite(n) && n >= 6 && n <= 48) format.size = n;
       else if (key === 'font' && value !== undefined && /^[\p{L}\p{N}_\-]+$/u.test(value)) format.font = value;
-      else if ((key === 'italic' || key === 'bold' || key === 'rounded' || key === 'exact' || key === 'box' || key === 'polar' || key === 'noeq' || key === 'beside') && value === undefined) format[key] = true;
+      else if ((key === 'italic' || key === 'bold' || key === 'rounded' || key === 'exact' || key === 'box' || key === 'polar' || key === 'noeq' || key === 'beside' || key === 'example') && value === undefined) format[key] = true;
       // A name for references (eq=hooke), or the number a book gave the formula (eq=32, eq=12a).
       else if (key === 'eq' && (value === undefined || /^[\p{L}\p{N}_]+$/u.test(value))) format.eq = value ?? true;
       // A position: numbered on (pos), or as the calculation numbers it (pos=3, pos=12a).
@@ -387,6 +389,8 @@ class LineParser {
     }
     const cites = first.type === 'string' ? citationsOf(this.tokens.slice(1)) : undefined;
     if (cites) return { kind: 'text', text: first.text, cites, span: lineSpan };
+    // "…" [Ohybové napětí]: a source named by its title is no citation; said so, not as an operator missing in a formula.
+    if (first.type === 'string' && this.tokens[1]?.type === '[') fail('E-CITATION', spanOf(this.tokens[1], this.tokens[this.tokens.length - 1]!), {});
     if (first.type === 'ident' && first.text === 'check' && this.peek(1).type !== ':=') {
       return this.parseCheck(lineSpan);
     }

@@ -36,9 +36,11 @@ describe('finding the theory for a question', () => {
   it('gives the model the contents and the chosen sections, and says which went', () => {
     const prepared = prepareBriefing({ language: 'cs', sheet: { title: 'N1', source: 'L := 5 m', theory }, query: 'klopení' });
     expect(prepared.theory).toEqual({ sent: ['T21'], total: 23, whole: false });
-    expect(prepared.text).toContain('[T22] Průhyb\n');
-    expect(prepared.text).toContain('[T21] Klopení\nKlopení je ztráta stability');
-    expect(prepared.text).not.toContain('Průhyb nosníků se omezuje');
+    // The theory belongs to the state of the sheet, which goes with the question.
+    expect(prepared.state).toContain('[T22] Průhyb\n');
+    expect(prepared.state).toContain('[T21] Klopení\nKlopení je ztráta stability');
+    expect(prepared.state).not.toContain('Průhyb nosníků se omezuje');
+    expect(prepared.text).not.toContain('Klopení je ztráta stability');
   });
 });
 

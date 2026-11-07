@@ -1,0 +1,86 @@
+{
+  "id": "pruhyb-prosteho-nosniku",
+  "field": "04",
+  "group": {
+    "cs": "Nosníky",
+    "en": "Beams"
+  },
+  "title": {
+    "cs": "Průhyb prostého nosníku, rovnoměrné zatížení",
+    "en": "Deflection of a simple beam, uniform load"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R1",
+      "en": "Kalketa, sample R1"
+    },
+    "sample": "R1"
+  },
+  "status": "verified",
+  "formula": "w == 5·q·L^4/(384·E·I)",
+  "quantities": {
+    "w": {
+      "name": {
+        "cs": "průhyb uprostřed rozpětí",
+        "en": "deflection at midspan"
+      },
+      "unit": "mm",
+      "example": "18.8 mm"
+    },
+    "q": {
+      "name": {
+        "cs": "spojité zatížení",
+        "en": "uniform load"
+      },
+      "unit": "kN/m",
+      "example": "12 kN/m"
+    },
+    "L": {
+      "name": {
+        "cs": "rozpětí",
+        "en": "span"
+      },
+      "unit": "m",
+      "example": "6 m"
+    },
+    "E": {
+      "name": {
+        "cs": "modul pružnosti",
+        "en": "modulus of elasticity"
+      },
+      "unit": "GPa",
+      "example": "210 GPa"
+    },
+    "I": {
+      "name": {
+        "cs": "moment setrvačnosti",
+        "en": "second moment of area"
+      },
+      "unit": "cm^4",
+      "example": "5790 cm^4"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "q": "12 kN/m",
+        "L": "6 m",
+        "E": "210 GPa",
+        "I": "5790 cm^4"
+      },
+      "expect": {
+        "w": "16.6543 mm"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "průhyb",
+      "deformace"
+    ],
+    "en": [
+      "deflection",
+      "sag"
+    ]
+  }
+}

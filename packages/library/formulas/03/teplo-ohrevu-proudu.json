@@ -1,0 +1,86 @@
+{
+  "id": "teplo-ohrevu-proudu",
+  "field": "03",
+  "group": {
+    "cs": "Tepelné výpočty",
+    "en": "Heat"
+  },
+  "title": {
+    "cs": "Tepelný tok k ohřevu proudu",
+    "en": "Heat flow heating a stream"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R2",
+      "en": "Kalketa, sample R2"
+    },
+    "sample": "R2"
+  },
+  "status": "verified",
+  "formula": "Q == m·c·(t_2 - t_1)",
+  "quantities": {
+    "Q": {
+      "name": {
+        "cs": "tepelný tok",
+        "en": "heat flow"
+      },
+      "unit": "kW",
+      "example": "301.6 kW"
+    },
+    "m": {
+      "name": {
+        "cs": "hmotnostní průtok",
+        "en": "mass flow rate"
+      },
+      "unit": "kg/s",
+      "example": "1.2 kg/s"
+    },
+    "c": {
+      "name": {
+        "cs": "měrná tepelná kapacita",
+        "en": "specific heat capacity"
+      },
+      "unit": "J/(kg·K)",
+      "example": "4189 J/(kg·K)"
+    },
+    "t_1": {
+      "name": {
+        "cs": "teplota na vstupu",
+        "en": "inlet temperature"
+      },
+      "unit": "°C",
+      "example": "20 °C"
+    },
+    "t_2": {
+      "name": {
+        "cs": "teplota na výstupu",
+        "en": "outlet temperature"
+      },
+      "unit": "°C",
+      "example": "80 °C"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "m": "1.2 kg/s",
+        "c": "4189 J/(kg·K)",
+        "t_1": "20 °C",
+        "t_2": "80 °C"
+      },
+      "expect": {
+        "Q": "301.608 kW"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "ohřev",
+      "výměník"
+    ],
+    "en": [
+      "heating",
+      "exchanger"
+    ]
+  }
+}

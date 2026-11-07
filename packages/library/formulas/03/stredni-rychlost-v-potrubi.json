@@ -1,0 +1,68 @@
+{
+  "id": "stredni-rychlost-v-potrubi",
+  "field": "03",
+  "group": {
+    "cs": "Tekutiny",
+    "en": "Fluids"
+  },
+  "title": {
+    "cs": "Střední rychlost v potrubí",
+    "en": "Mean velocity in a pipe"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R21",
+      "en": "Kalketa, sample R21"
+    },
+    "sample": "R21"
+  },
+  "status": "verified",
+  "formula": "w == Q/(π·D^2/4)",
+  "quantities": {
+    "w": {
+      "name": {
+        "cs": "střední rychlost",
+        "en": "mean velocity"
+      },
+      "unit": "m/s",
+      "example": "1.7 m/s"
+    },
+    "Q": {
+      "name": {
+        "cs": "průtok",
+        "en": "flow rate"
+      },
+      "unit": "l/s",
+      "example": "1.2 l/s"
+    },
+    "D": {
+      "name": {
+        "cs": "světlost potrubí",
+        "en": "inner diameter of the pipe"
+      },
+      "unit": "mm",
+      "example": "30 mm"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "Q": "1.2 l/s",
+        "D": "30 mm"
+      },
+      "expect": {
+        "w": "1.69765 m/s"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "průtok",
+      "trubka"
+    ],
+    "en": [
+      "flow",
+      "tube"
+    ]
+  }
+}

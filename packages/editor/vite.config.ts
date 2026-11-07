@@ -16,6 +16,8 @@ export default defineConfig(({ command }) => ({
       { find: /^@kalketa\/i18n$/, replacement: src('i18n') },
       { find: /^@kalketa\/sheet$/, replacement: src('sheet') },
       { find: /^@kalketa\/import$/, replacement: src('import') },
+      { find: /^@kalketa\/library$/, replacement: src('library') },
+      { find: /^@kalketa\/library$/, replacement: src('library') },
       { find: /^@kalketa\/render$/, replacement: src('render') },
       { find: /^@kalketa\/canvas$/, replacement: src('canvas') },
       { find: /^@kalketa\/chart$/, replacement: src('chart') },
@@ -27,6 +29,9 @@ export default defineConfig(({ command }) => ({
     ],
   },
   server: { port: 5173, strictPort: true, fs: { allow: ['../..'] } },
+  // Maps of the built code stay beside the build, not in the program (desktop/package.json leaves them out):
+  // a call stack of a hanging window (logs/hang.log) is read back to the sources with them.
+  build: { sourcemap: 'hidden' },
 }));
 
 /** The built editor may load only its own files; images come as data: URIs; no plugins, forms or changed base. */

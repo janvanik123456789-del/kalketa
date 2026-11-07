@@ -1,0 +1,68 @@
+{
+  "id": "tah-rakety",
+  "field": "03",
+  "group": {
+    "cs": "Kinematika a dynamika",
+    "en": "Kinematics and dynamics"
+  },
+  "title": {
+    "cs": "Tah raketového motoru",
+    "en": "Thrust of a rocket engine"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R16",
+      "en": "Kalketa, sample R16"
+    },
+    "sample": "R16"
+  },
+  "status": "verified",
+  "formula": "F == q·v_R",
+  "quantities": {
+    "F": {
+      "name": {
+        "cs": "tah motoru",
+        "en": "thrust"
+      },
+      "unit": "kN",
+      "example": "60 kN"
+    },
+    "q": {
+      "name": {
+        "cs": "hmotnostní průtok spalin",
+        "en": "mass flow of the gases"
+      },
+      "unit": "kg/s",
+      "example": "30 kg/s"
+    },
+    "v_R": {
+      "name": {
+        "cs": "výtoková rychlost spalin",
+        "en": "exhaust velocity"
+      },
+      "unit": "m/s",
+      "example": "2000 m/s"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "q": "30 kg/s",
+        "v_R": "2000 m/s"
+      },
+      "expect": {
+        "F": "60 kN"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "raketa",
+      "reaktivní síla"
+    ],
+    "en": [
+      "rocket",
+      "reaction force"
+    ]
+  }
+}

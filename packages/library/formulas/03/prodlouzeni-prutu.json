@@ -1,0 +1,77 @@
+{
+  "id": "prodlouzeni-prutu",
+  "field": "03",
+  "group": {
+    "cs": "Pružnost a pevnost",
+    "en": "Strength of materials"
+  },
+  "title": {
+    "cs": "Prodloužení prutu stálým napětím",
+    "en": "Elongation of a bar under constant stress"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R12",
+      "en": "Kalketa, sample R12"
+    },
+    "sample": "R12"
+  },
+  "status": "verified",
+  "formula": "Δl == σ·l/E",
+  "quantities": {
+    "Δl": {
+      "name": {
+        "cs": "prodloužení",
+        "en": "elongation"
+      },
+      "unit": "mm",
+      "example": "78 mm"
+    },
+    "σ": {
+      "name": {
+        "cs": "napětí v prutu",
+        "en": "stress in the bar"
+      },
+      "unit": "MPa",
+      "example": "15.3 MPa"
+    },
+    "l": {
+      "name": {
+        "cs": "délka prutu",
+        "en": "length of the bar"
+      },
+      "unit": "m",
+      "example": "200 m"
+    },
+    "E": {
+      "name": {
+        "cs": "modul pružnosti v tahu",
+        "en": "modulus of elasticity"
+      },
+      "unit": "GPa",
+      "example": "200 GPa"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "σ": "15.3 MPa",
+        "l": "200 m",
+        "E": "200 GPa"
+      },
+      "expect": {
+        "Δl": "15.3 mm"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "Hooke",
+      "protažení"
+    ],
+    "en": [
+      "Hooke",
+      "extension"
+    ]
+  }
+}

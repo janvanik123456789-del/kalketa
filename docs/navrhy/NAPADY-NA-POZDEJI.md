@@ -23,6 +23,10 @@ Ověřeno na sbírce uživatele (sken s OCR), strany 41–48. Obrázky i číslo
 
 ## Uživatelské rozhraní
 
+### Otevření souboru přetažením do okna (2026-11-07, čeká)
+
+Soubor `.kalk` (a `.cc`) chycený myší v Průzkumníku a puštěný na plochu Kalkety se otevře v nové záložce, jako přes Soubor → Otevřít. Uživatel to chce, ale zatím neprovádět. Pozor: puštěný obrázek se dnes vkládá do listu, takže rozhodovat podle přípony (výpočet se otevře, obrázek vloží). Několik souborů najednou: každý do své záložky. Soubor už otevřený jinde: jako u Otevřít (`docs.openElsewhere`). Ověřit skutečným tažením ve smoke testu.
+
 ### ~~Postranní panel jako záložky~~ (2026-10-04, hotovo týž den)
 
 *Hotovo:* nahoře v bočním panelu jsou záložky Podrobnosti, Tabulky, Vrstvy, AI a ✕ pro skrytí. Původní zápis:

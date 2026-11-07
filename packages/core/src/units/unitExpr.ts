@@ -19,6 +19,11 @@ export interface ResolvedUnit {
   readonly dim: Dimension;
   /** rpm or Hz shown of a value held in radians (ω := 3000 rpm | rpm), see eval/rotation.ts. */
   readonly angular?: boolean;
+  /**
+   * Hz or kHz a product or quotient chose to show itself in (Ω/mH, m/s over mm), not a unit written: it says
+   * nothing of turns, so no 2π comes of it (eval/rotation.ts).
+   */
+  readonly chosen?: boolean;
   /** Set only for a lone absolute temperature unit (°C, °F). */
   readonly offset?: number;
   /** Difference unit matching an absolute one (°C -> Δ°C). */

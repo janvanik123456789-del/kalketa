@@ -1,0 +1,88 @@
+{
+  "id": "reynoldsovo-cislo",
+  "field": "03",
+  "group": {
+    "cs": "Tekutiny",
+    "en": "Fluids"
+  },
+  "title": {
+    "cs": "Reynoldsovo číslo v potrubí",
+    "en": "Reynolds number in a pipe"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R21",
+      "en": "Kalketa, sample R21"
+    },
+    "sample": "R21"
+  },
+  "status": "verified",
+  "formula": "Re == ρ·w·D/η",
+  "quantities": {
+    "Re": {
+      "name": {
+        "cs": "Reynoldsovo číslo",
+        "en": "Reynolds number"
+      },
+      "unit": "",
+      "example": "50000"
+    },
+    "ρ": {
+      "name": {
+        "cs": "hustota kapaliny",
+        "en": "density of the liquid"
+      },
+      "unit": "kg/m^3",
+      "example": "1000 kg/m^3"
+    },
+    "w": {
+      "name": {
+        "cs": "střední rychlost",
+        "en": "mean velocity"
+      },
+      "unit": "m/s",
+      "example": "1.7 m/s"
+    },
+    "D": {
+      "name": {
+        "cs": "světlost potrubí",
+        "en": "inner diameter of the pipe"
+      },
+      "unit": "mm",
+      "example": "30 mm"
+    },
+    "η": {
+      "name": {
+        "cs": "dynamická viskozita",
+        "en": "dynamic viscosity"
+      },
+      "unit": "Pa·s",
+      "example": "0.001 Pa·s"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "ρ": "1000 kg/m^3",
+        "w": "1.7 m/s",
+        "D": "30 mm",
+        "η": "0.001 Pa·s"
+      },
+      "expect": {
+        "Re": "51000"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "proudění",
+      "turbulentní",
+      "laminární"
+    ],
+    "en": [
+      "flow",
+      "turbulent",
+      "laminar"
+    ]
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "id": "rychlost-vytoku",
+  "field": "03",
+  "group": {
+    "cs": "Tekutiny",
+    "en": "Fluids"
+  },
+  "title": {
+    "cs": "Rychlost výtoku otvorem (Torricelli)",
+    "en": "Outflow velocity through an orifice (Torricelli)"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R15",
+      "en": "Kalketa, sample R15"
+    },
+    "sample": "R15"
+  },
+  "status": "verified",
+  "formula": "v == sqrt(2·g·h)",
+  "quantities": {
+    "v": {
+      "name": {
+        "cs": "rychlost výtoku",
+        "en": "outflow velocity"
+      },
+      "unit": "m/s",
+      "example": "13.29 m/s"
+    },
+    "g": {
+      "name": {
+        "cs": "tíhové zrychlení",
+        "en": "gravitational acceleration"
+      },
+      "unit": "m/s^2",
+      "example": "9.81 m/s^2"
+    },
+    "h": {
+      "name": {
+        "cs": "výška hladiny nad otvorem",
+        "en": "height of the level above the orifice"
+      },
+      "unit": "m",
+      "example": "9 m"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "g": "9.81 m/s^2",
+        "h": "9 m"
+      },
+      "expect": {
+        "v": "13.2883 m/s"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "nádrž",
+      "výtok"
+    ],
+    "en": [
+      "tank",
+      "outflow"
+    ]
+  }
+}

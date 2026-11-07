@@ -39,7 +39,11 @@
     "extraResources": [
       {
         "from": "../editor/dist",
-        "to": "editor"
+        "to": "editor",
+        "filter": [
+          "**/*",
+          "!**/*.map"
+        ]
       },
       {
         "from": "pyodide-packages",

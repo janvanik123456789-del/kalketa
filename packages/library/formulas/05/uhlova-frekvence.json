@@ -1,0 +1,58 @@
+{
+  "id": "uhlova-frekvence",
+  "field": "05",
+  "group": {
+    "cs": "Střídavé obvody",
+    "en": "AC circuits"
+  },
+  "title": {
+    "cs": "Úhlová frekvence",
+    "en": "Angular frequency"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R37",
+      "en": "Kalketa, sample R37"
+    },
+    "sample": "R37"
+  },
+  "status": "verified",
+  "formula": "ω == 2·π·f",
+  "quantities": {
+    "ω": {
+      "name": {
+        "cs": "úhlová frekvence",
+        "en": "angular frequency"
+      },
+      "unit": "rad/s",
+      "example": "314.16 rad/s"
+    },
+    "f": {
+      "name": {
+        "cs": "frekvence",
+        "en": "frequency"
+      },
+      "unit": "Hz",
+      "example": "50 Hz"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "f": "50 Hz"
+      },
+      "expect": {
+        "ω": "314.159 rad/s"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "kmitočet",
+      "omega"
+    ],
+    "en": [
+      "omega"
+    ]
+  }
+}

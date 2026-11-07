@@ -1,0 +1,66 @@
+{
+  "id": "tazmost",
+  "field": "08",
+  "group": {
+    "cs": "Zkouška tahem",
+    "en": "Tensile test"
+  },
+  "title": {
+    "cs": "Tažnost",
+    "en": "Elongation after fracture"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R27",
+      "en": "Kalketa, sample R27"
+    },
+    "sample": "R27"
+  },
+  "status": "verified",
+  "formula": "A == (L_u - L_0)/L_0",
+  "quantities": {
+    "A": {
+      "name": {
+        "cs": "tažnost",
+        "en": "elongation after fracture"
+      },
+      "unit": "%",
+      "example": "25 %"
+    },
+    "L_u": {
+      "name": {
+        "cs": "délka po přetržení",
+        "en": "length after fracture"
+      },
+      "unit": "mm",
+      "example": "62.5 mm"
+    },
+    "L_0": {
+      "name": {
+        "cs": "počáteční měřená délka",
+        "en": "original gauge length"
+      },
+      "unit": "mm",
+      "example": "50 mm"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "L_u": "62.5 mm",
+        "L_0": "50 mm"
+      },
+      "expect": {
+        "A": "25 %"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "prodloužení"
+    ],
+    "en": [
+      "ductility"
+    ]
+  }
+}

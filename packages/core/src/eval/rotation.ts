@@ -18,7 +18,7 @@ const ANGLE = /^(?:rad|°|deg|rev)\/(?:s|min|h)$/;
 export function rotationKind(unit: ResolvedUnit | undefined): RotationKind | undefined {
   if (!unit || !sameDim(unit.dim, PER_SECOND)) return undefined;
   if (unit.angular || ANGLE.test(unit.symbol)) return 'angle';
-  return TURNS.test(unit.symbol) ? 'turns' : undefined;
+  return !unit.chosen && TURNS.test(unit.symbol) ? 'turns' : undefined;
 }
 
 /** What one unit of `from` is in `to`: 2π from turns to radians, 1/2π back, else 1. */

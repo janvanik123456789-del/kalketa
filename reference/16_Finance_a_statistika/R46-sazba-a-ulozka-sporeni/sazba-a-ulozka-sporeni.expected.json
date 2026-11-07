@@ -1,0 +1,16 @@
+{
+  "sheet": "sazba-a-ulozka-sporeni.cc",
+  "verifiedBy": "Zdroj (VŠE, 1BP310 Spoření, př. 6) ukazuje řešení jen jako obrázky vzorců. Samostatně v Pythonu (kontrola.md): uzavřený tvar (1 + j)^20 = (S10 − S5)/(S5 − V) a simulace účtu měsíc po měsíci (úrok jednoduchý v rámci čtvrtletí, připsaný koncem čtvrtletí), která dá 500 000,00 Kč po 5 letech a 1 100 000,00 Kč po 10 letech. Úložka vychází téměř přesně 7 000 Kč, což odpovídá tomu, že zadání vzniklo z této úložky.",
+  "relativeTolerance": 1e-06,
+  "values": {
+    "i": { "value": 6.95661040685982, "unit": "%" },
+    "j": { "value": 1.739152601714955, "unit": "%" },
+    "a": { "value": 6998.853615834294, "unit": "Kč" },
+    "S_kontrola": { "value": 1100000.0, "unit": "Kč" }
+  },
+  "checks": [
+    { "label": "Po 5 letech naspořeno 500 000 Kč", "passed": true },
+    { "label": "Po 10 letech naspořeno 1 100 000 Kč", "passed": true },
+    { "label": "Úložka vychází na celé tisíce (zadání vzniklo z 7 000 Kč)", "passed": true }
+  ]
+}

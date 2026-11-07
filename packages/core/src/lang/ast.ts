@@ -127,6 +127,8 @@ export interface LineFormat {
   readonly pos?: true | string;
   /** A cell beside the line above it, on one row of the page: "Zatěžující síla" | F = 1600 N. */
   readonly beside?: boolean;
+  /** An example value inserted from the formula library ({example}): warned about until the user writes their own. */
+  readonly example?: boolean;
   /** {slider=-5..5} or {slider=-5..5..0.5} on an input (a := -2): a slider in the editor from, to, by. */
   readonly slider?: { readonly low: number; readonly high: number; readonly step?: number };
   /** Of a table in the sheet (table Pavlik: {across}): set across, a column of the data on each row, the values side by side. */

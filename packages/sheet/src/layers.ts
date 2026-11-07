@@ -8,12 +8,14 @@
  *   ai       notes and suggestions of an LLM; never change the calculation.
  *            Every sheet has exactly one; people read it, only the AI writes it.
  *   sources  theory, requirements, reasons: text, cropped figures, citations, links
+ *   python   checks in Python: scripts that reach results of the sheet another way, run again with ▶; nothing
+ *            of them flows into the sheet (an auxiliary calculation does that), and they are no theory either
  */
 
 import type { BlockSource, Diagnostic, ImportedValue, SheetResult, Table, UnitRegistry } from '@kalketa/core';
 import { SheetSession } from '@kalketa/core';
 
-export type LayerKind = 'sheet' | 'calc' | 'data' | 'ai' | 'sources';
+export type LayerKind = 'sheet' | 'calc' | 'data' | 'ai' | 'sources' | 'python';
 
 export interface Layer {
   readonly id: string;
@@ -230,7 +232,7 @@ export function appendixLayers(layers: readonly Layer[], evaluation: LayerEvalua
       const result = evaluation.aux.get(layer.id);
       return result ? [{ kind: 'calc', layer: layer.id, name, result }] : [];
     }
-    if ((layer.kind === 'sources' || layer.kind === 'ai') && layer.appendix) {
+    if ((layer.kind === 'sources' || layer.kind === 'ai' || layer.kind === 'python') && layer.appendix) {
       return [{ kind: 'notes', layer: layer.id, name, text: layer.text ?? '' }];
     }
     return [];

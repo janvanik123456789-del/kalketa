@@ -1,0 +1,77 @@
+{
+  "id": "reditelni-roztoku",
+  "field": "07",
+  "group": {
+    "cs": "Roztoky",
+    "en": "Solutions"
+  },
+  "title": {
+    "cs": "Ředění roztoku",
+    "en": "Dilution of a solution"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R3",
+      "en": "Kalketa, sample R3"
+    },
+    "sample": "R3"
+  },
+  "status": "verified",
+  "formula": "c_1·V_1 == c_2·V_2",
+  "quantities": {
+    "V_2": {
+      "name": {
+        "cs": "objem po zředění",
+        "en": "volume after dilution"
+      },
+      "unit": "mL",
+      "example": "500 mL"
+    },
+    "c_1": {
+      "name": {
+        "cs": "koncentrace před zředěním",
+        "en": "concentration before dilution"
+      },
+      "unit": "mol/L",
+      "example": "0.1 mol/L"
+    },
+    "V_1": {
+      "name": {
+        "cs": "objem před zředěním",
+        "en": "volume before dilution"
+      },
+      "unit": "mL",
+      "example": "50 mL"
+    },
+    "c_2": {
+      "name": {
+        "cs": "koncentrace po zředění",
+        "en": "concentration after dilution"
+      },
+      "unit": "mol/L",
+      "example": "0.01 mol/L"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "c_1": "0.1 mol/L",
+        "V_1": "50 mL",
+        "c_2": "0.01 mol/L"
+      },
+      "expect": {
+        "V_2": "500 mL"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "zředění",
+      "koncentrace"
+    ],
+    "en": [
+      "dilution",
+      "concentration"
+    ]
+  }
+}

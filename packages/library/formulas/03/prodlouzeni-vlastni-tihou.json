@@ -1,0 +1,88 @@
+{
+  "id": "prodlouzeni-vlastni-tihou",
+  "field": "03",
+  "group": {
+    "cs": "Pružnost a pevnost",
+    "en": "Strength of materials"
+  },
+  "title": {
+    "cs": "Prodloužení zavěšeného drátu vlastní tíhou",
+    "en": "Elongation of a hanging wire by its own weight"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R12",
+      "en": "Kalketa, sample R12"
+    },
+    "sample": "R12"
+  },
+  "status": "verified",
+  "formula": "Δl == ρ·g·l^2/(2·E)",
+  "quantities": {
+    "Δl": {
+      "name": {
+        "cs": "prodloužení",
+        "en": "elongation"
+      },
+      "unit": "mm",
+      "example": "7.6 mm"
+    },
+    "ρ": {
+      "name": {
+        "cs": "hustota materiálu",
+        "en": "density of the material"
+      },
+      "unit": "kg/m^3",
+      "example": "7800 kg/m^3"
+    },
+    "g": {
+      "name": {
+        "cs": "tíhové zrychlení",
+        "en": "gravitational acceleration"
+      },
+      "unit": "m/s^2",
+      "example": "9.81 m/s^2"
+    },
+    "l": {
+      "name": {
+        "cs": "délka drátu",
+        "en": "length of the wire"
+      },
+      "unit": "m",
+      "example": "200 m"
+    },
+    "E": {
+      "name": {
+        "cs": "modul pružnosti v tahu",
+        "en": "modulus of elasticity"
+      },
+      "unit": "GPa",
+      "example": "200 GPa"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "ρ": "7800 kg/m^3",
+        "g": "9.81 m/s^2",
+        "l": "200 m",
+        "E": "200 GPa"
+      },
+      "expect": {
+        "Δl": "7.6518 mm"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "drát",
+      "lano",
+      "vlastní tíha"
+    ],
+    "en": [
+      "wire",
+      "rope",
+      "self-weight"
+    ]
+  }
+}

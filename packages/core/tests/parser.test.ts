@@ -155,8 +155,8 @@ describe('parser: statements', () => {
 
   it('takes the sources after a text line, and nothing else there', () => {
     expect(statements('"Mez kluzu je polovina meze pevnosti." [ST:T1][T2]')[0]).toMatchObject({ kind: 'text', cites: ['ST:T1', 'T2'] });
-    expect(parseCodes('"Text" [T1')).toEqual(['E-SYNTAX']);
-    expect(parseCodes('"Text" [ST:]')).toEqual(['E-SYNTAX']);
+    expect(parseCodes('"Text" [T1')).toEqual(['E-CITATION']);
+    expect(parseCodes('"Text" [ST:]')).toEqual(['E-CITATION']);
     expect(parseCodes('"Text" 5')).toEqual(['E-MISSING-OPERATOR']);
   });
 

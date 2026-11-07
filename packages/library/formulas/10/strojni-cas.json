@@ -1,0 +1,77 @@
+{
+  "id": "strojni-cas",
+  "field": "10",
+  "group": {
+    "cs": "Obrábění",
+    "en": "Machining"
+  },
+  "title": {
+    "cs": "Strojní čas soustružení",
+    "en": "Machining time of turning"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R29",
+      "en": "Kalketa, sample R29"
+    },
+    "sample": "R29"
+  },
+  "status": "verified",
+  "formula": "t_m == L/(n·f)",
+  "quantities": {
+    "t_m": {
+      "name": {
+        "cs": "strojní čas",
+        "en": "machining time"
+      },
+      "unit": "min",
+      "example": "1.05 min"
+    },
+    "L": {
+      "name": {
+        "cs": "dráha nástroje",
+        "en": "length of the tool path"
+      },
+      "unit": "mm",
+      "example": "200 mm"
+    },
+    "n": {
+      "name": {
+        "cs": "otáčky vřetena",
+        "en": "spindle speed"
+      },
+      "unit": "min^-1",
+      "example": "955 min^-1"
+    },
+    "f": {
+      "name": {
+        "cs": "posuv na otáčku",
+        "en": "feed per revolution"
+      },
+      "unit": "mm",
+      "example": "0.2 mm"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "L": "200 mm",
+        "n": "955 min^-1",
+        "f": "0.2 mm"
+      },
+      "expect": {
+        "t_m": "1.04712 min"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "soustružení",
+      "posuv"
+    ],
+    "en": [
+      "turning",
+      "feed"
+    ]
+  }
+}

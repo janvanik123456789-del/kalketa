@@ -1,0 +1,68 @@
+{
+  "id": "clearance",
+  "field": "15",
+  "group": {
+    "cs": "Farmakokinetika",
+    "en": "Pharmacokinetics"
+  },
+  "title": {
+    "cs": "Clearance",
+    "en": "Clearance"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R33",
+      "en": "Kalketa, sample R33"
+    },
+    "sample": "R33"
+  },
+  "status": "verified",
+  "formula": "CL == k_e·V_d",
+  "quantities": {
+    "CL": {
+      "name": {
+        "cs": "clearance",
+        "en": "clearance"
+      },
+      "unit": "L/h",
+      "example": "4.6 L/h"
+    },
+    "k_e": {
+      "name": {
+        "cs": "rychlostní konstanta eliminace",
+        "en": "elimination rate constant"
+      },
+      "unit": "h^-1",
+      "example": "0.1155 h^-1"
+    },
+    "V_d": {
+      "name": {
+        "cs": "distribuční objem",
+        "en": "volume of distribution"
+      },
+      "unit": "L",
+      "example": "40 L"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "k_e": "0.1155 h^-1",
+        "V_d": "40 L"
+      },
+      "expect": {
+        "CL": "4.62 L/h"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "eliminace",
+      "distribuční objem"
+    ],
+    "en": [
+      "elimination",
+      "volume of distribution"
+    ]
+  }
+}

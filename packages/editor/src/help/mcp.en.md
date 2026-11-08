@@ -38,9 +38,9 @@ Claude Desktop (and some other applications) cannot take a local server by its a
 
 Put the copied `mcpServers` block into `%APPDATA%\Claude\claude_desktop_config.json` (with other servers there, add only the `kalketa` entry). Then close Claude Desktop and start it again.
 
-### Cursor, VS Code, Windsurf, Cline and others: an mcpServers block with the address
+### Cursor, VS Code, Strata, Windsurf, Cline and others: an mcpServers block with the address
 
-Applications that take a server over HTTP get the block with the address and the token header. Put it where the application keeps its MCP servers (e.g. `.cursor/mcp.json`). If the application cannot do HTTP, use the block for Claude Desktop.
+Applications that take a server over HTTP get the block with the address and the token header. Put it where the application keeps its MCP servers (e.g. `.cursor/mcp.json`; for Strata at the top level of its model settings file, then start Strata again). If the application cannot do HTTP, use the block for Claude Desktop.
 
 ChatGPT takes only servers on the internet over HTTPS for now, not local ones, so it cannot be connected to Kalketa yet.
 
@@ -56,7 +56,11 @@ ChatGPT takes only servers on the internet over HTTPS for now, not local ones, s
 | `catalog`, `formula_get`, `sample_get` | the formula library and the worked samples |
 | `propose_change` | a proposed change of the sheet, checked at once; a correction goes with `replaces` |
 | `proposal_status` | what became of the proposals |
+| `withdraw_proposals` | withdraws its own tries |
 | `propose_new_sheet` | a proposed whole new sheet |
+| `python_check` | a check in Python: Kalketa runs the script in its built-in Python and puts the results beside the values of the sheet |
+
+With the first reading of the sheet the AI also gets short rules of working with Kalketa (write with all the letters of the language, a proposal is not in the sheet until you accept it, Python only through `python_check`): some applications do not pass the server's instructions on to their model.
 
 What was proposed over MCP Kalketa keeps in the sheet as a conversation in the AI notes layer. The conversation with the AI itself stays in your application.
 

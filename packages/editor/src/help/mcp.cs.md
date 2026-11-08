@@ -38,9 +38,9 @@ Claude Desktop (a některé další aplikace) neumí místní server přes adres
 
 Do souboru `%APPDATA%\Claude\claude_desktop_config.json` vložte zkopírovaný blok `mcpServers` (máte-li tam už jiné servery, přidejte jen položku `kalketa`). Claude Desktop pak zavřete a spusťte znovu.
 
-### Cursor, VS Code, Windsurf, Cline a další: blok mcpServers s adresou
+### Cursor, VS Code, Strata, Windsurf, Cline a další: blok mcpServers s adresou
 
-Aplikace, které umí server přes HTTP, dostanou blok s adresou a hlavičkou s tokenem. Vložte ho tam, kam daná aplikace servery MCP zapisuje (např. `.cursor/mcp.json`). Neumí-li aplikace HTTP, použijte blok pro Claude Desktop.
+Aplikace, které umí server přes HTTP, dostanou blok s adresou a hlavičkou s tokenem. Vložte ho tam, kam daná aplikace servery MCP zapisuje (např. `.cursor/mcp.json`; u Straty na nejvyšší úroveň jejího souboru nastavení modelu, pak Stratu spustit znovu). Neumí-li aplikace HTTP, použijte blok pro Claude Desktop.
 
 ChatGPT umí zatím jen servery na internetu přes HTTPS, ne místní; s Kalketou ho proto zatím nepropojíte.
 
@@ -56,7 +56,11 @@ ChatGPT umí zatím jen servery na internetu přes HTTPS, ne místní; s Kalketo
 | `catalog`, `formula_get`, `sample_get` | knihovna vzorců a vzorové výpočty |
 | `propose_change` | návrh změny listu, rovnou zkontrolovaný; opravu pošle s `replaces` |
 | `proposal_status` | co se s návrhy stalo |
+| `withdraw_proposals` | stáhne vlastní zkušební návrhy |
 | `propose_new_sheet` | návrh celého nového listu |
+| `python_check` | kontrola v Pythonu: Kalketa skript spustí ve vestavěném Pythonu a výsledky postaví vedle hodnot listu |
+
+S prvním čtením listu dostane AI i krátká pravidla práce s Kalketou (piš s diakritikou, návrh není v listu, dokud ho nepřijmete, Python jen přes `python_check`): některé aplikace úvodní pokyny serveru modelu nepředají.
 
 Co se přes MCP navrhlo, Kalketa uloží do listu jako rozhovor ve vrstvě Poznámky AI. Samotný rozhovor s AI zůstává ve vaší aplikaci.
 

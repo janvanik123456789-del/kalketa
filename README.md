@@ -21,8 +21,10 @@
 - **Exact results on request.** `{exact}` shows 49/9 s⁻² ≐ 5.444 s⁻² where the calculation stays a fraction or a root.
 - **Theory beside the calculation.** A notes layer holds the theory with formulas the core verifies, and another one an independent check of the whole sheet in Python (built-in, sandboxed), compared value by value. Two pages side by side show the calculation and its theory together.
 - **Import from SMath Studio.** A worksheet becomes a Kalketa sheet, and the results stored in the file are compared with Kalketa's. What cannot be converted stays as visible text with its reason.
-- **AI optional.** An assistant can explain, review and propose changes, which you accept or reject line by line. It never changes the calculation by itself. Works with Claude or a local model, or not at all.
-- **44 sample calculations** in all fields from structural design to pharmacokinetics, each in Czech and in English; 28 of them are worked examples from published sources (textbooks, university exercises, journals), linked to their source and verified independently.
+- **Formula library.** Insert → Formula from the library: 100 formulas from the samples, rearranged for the quantity you click, inserted with example values and their source.
+- **AI optional.** An assistant can explain, review and propose changes, which you accept or reject line by line, and check results in Python another way. It never changes the calculation by itself. Works with Claude or a local model, or not at all.
+- **AI from outside (MCP).** Your own AI application (Claude Code, Claude Desktop, a local model's app) can connect to Kalketa, read the open sheet and propose changes, on your own subscription, with no API key. Off until you switch it on, local only, with a token.
+- **54 sample calculations** in all fields from structural design to pharmacokinetics, each in Czech and in English; 32 of them are worked examples from published sources (textbooks, university exercises, journals), linked to their source and verified independently.
 
 ![A printed calculation: section of a beam, pick from a table, checks](docs/images/print-beam.png)
 

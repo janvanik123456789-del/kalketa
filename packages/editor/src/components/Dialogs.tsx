@@ -5,7 +5,7 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Controls } from '../logic/controls.js';
-import { builtinFunctions, evaluateSheet, FUNCTION_MODULES, signature, type FunctionDef } from '@kalketa/core';
+import { builtinFunctions, CORE_VERSION, evaluateSheet, FUNCTION_MODULES, signature, type FunctionDef } from '@kalketa/core';
 import { CATALOGS, formatValue, t, type Catalog } from '@kalketa/i18n';
 import { FUNCTION_EXAMPLES, helpOf, STATEMENT_EXAMPLES, STATEMENTS, type StatementKeyword } from '../logic/functionHelp.js';
 import type { SheetDocument } from '@kalketa/sheet';
@@ -743,7 +743,7 @@ export function AboutDialog({ catalog, onClose }: { catalog: Catalog; onClose():
       <div className="about">
         <img src="./icon.svg" alt="" width="64" height="64" />
         <div>
-          <strong>Kalketa 0.1</strong>
+          <strong>Kalketa {CORE_VERSION}</strong>
           <p>{t(catalog, 'about.text')}</p>
           <p className="hint">{t(catalog, 'about.thirdPartyHint')}</p>
           {/* Loaded when asked for: the notices are long and not needed otherwise. */}

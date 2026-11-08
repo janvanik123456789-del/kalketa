@@ -5,8 +5,9 @@
  * appears as it is written; Stop ends it.
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { AI_OFF, checkCitations, checksNeedAnswer, CITED_ID, parseChoices, parseNotes, parsePythonChecks, providerById, pythonReport, sheetNeedsAnswer, sheetReport, withoutAnswerBlocks, withoutProposals, type AiSettings, type ChatTurn, type CheckReport, type SheetCheck, type ChoiceBlock, type CitableSection, type NoteBlock } from '@kalketa/ai';
+import { AI_OFF, checkCitations, checksNeedAnswer, CITED_ID, parseChoices, parseNotes, parsePythonChecks, providerById, pythonReport, sheetNeedsAnswer, sheetReport, withoutAnswerBlocks, withoutProposals, type AiSettings, type ChatTurn, type CheckReport, type SheetCheck, type ChoiceBlock, type CitableSection, type NoteBlock, MAX_LOOKUPS, parseLookups, withoutLookups, type LookupRequest } from '@kalketa/ai';
 import { formatNumber, t, type Catalog, type UiKey } from '@kalketa/i18n';
+import { sheetCheckWords } from '../logic/sheetCheckWords.js';
 import { notesHtml } from '@kalketa/render';
 import { desktop } from '../document.js';
 import type { AiSheetContext } from '../logic/aiContext.js';
@@ -50,7 +51,9 @@ export interface ChatPaneProps {
   readonly theory: readonly CitableSection[];
   onTurns(turns: readonly ChatTurn[]): void;
   /** What the model sees, taken when a question is sent. */
-  context(): { readonly sheet: AiSheetContext; readonly languageGuide: string; readonly memory?: string };
+  context(): { readonly sheet: AiSheetContext; readonly languageGuide: string; readonly memory?: string; readonly catalog?: string };
+  /** The answer to what the model asked to look up (formulas, samples); without it, the model is offered no catalog. */
+  lookup?(asked: readonly LookupRequest[]): { text: string; found: number };
   onOpenSettings(): void;
   /** "New chat": the next question starts another conversation (the others stay in the AI notes). */
   onNew?(): void;
@@ -95,6 +98,8 @@ export interface ChatPaneProps {
   /** Puts a note the model proposed into its layer; whether it is there already. */
   onKeepNote?(note: NoteBlock): void;
   noteKept?(note: NoteBlock): boolean;
+  /** The conversation is held by an AI from outside (MCP), named so: shown with its proposals, written to there, not here. */
+  readonly external?: string;
   /** The conversation makes a new calculation from its intent (questions, outline, then the sheet). */
   readonly intent?: boolean;
 }
@@ -111,7 +116,7 @@ export interface AnswerProposals {
   readonly effect?: ProposalEffect;
 }
 
-export function ChatPane({ catalog, settings, aiOn, onAiOn, intent, turns, theory, onTurns, context, onOpenSettings, onNew, libraries = [], onLibraries, onToggleLibrary, proposals, onDecide, onMoveProposal, contextWindow, onWindow, onReview, answerProposals, onAcceptAll, onNewSheet, newSheets, onOpenSheet, runCheck, checkSheet, onCheckToSources, onChoice, onKeepNote, noteKept }: ChatPaneProps) {
+export function ChatPane({ catalog, settings, aiOn, onAiOn, intent, turns, theory, onTurns, context, onOpenSettings, onNew, libraries = [], onLibraries, onToggleLibrary, proposals, onDecide, onMoveProposal, lookup, contextWindow, onWindow, onReview, answerProposals, onAcceptAll, onNewSheet, newSheets, onOpenSheet, runCheck, checkSheet, onCheckToSources, onChoice, onKeepNote, noteKept, external }: ChatPaneProps) {
   const [libraryMenu, setLibraryMenu] = useState(false);
   // The menu of libraries closes like any menu: a click anywhere else, or Esc.
   useEffect(() => {
@@ -169,7 +174,8 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, intent, turns, theor
     // A proposed change is shown as a card under the answer, not as its block of lines.
     const text = withoutAnswerBlocks(
       withoutProposals(
-        full,
+        // What the model asks to look up shows as the folded message of the program under the answer.
+        withoutLookups(full),
         (n) => `*(${t(catalog, 'proposal.below', { n: String(n) })})*`,
         () => `*(${t(catalog, 'newSheet.below')})*`,
       ),
@@ -211,7 +217,7 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, intent, turns, theor
     );
   }
 
-  if (!aiOn) {
+  if (!aiOn && !external) {
     return (
       <div className="chat-pane">
         <p className="hint chat-off">{t(catalog, 'chat.offForRun', { name: provider.urlEditable ? t(catalog, 'ai.otherServer') : provider.name, model: settings.model || t(catalog, 'ai.firstModel') })}</p>
@@ -241,6 +247,16 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, intent, turns, theor
     const last = answered[answered.length - 1];
     if (last?.role !== 'assistant') return;
     // The sheet with the changes first: what they break goes back to the model with the checks in Python.
+    // What the model asked to look up goes back first; it then goes on with what it read.
+    const asked = lookup ? parseLookups(last.text).slice(0, MAX_LOOKUPS) : [];
+    if (asked.length > 0) {
+      const looked = lookup!(asked);
+      const answer: ChatTurn = { role: 'user', text: looked.text, time: new Date().toISOString(), lookup: true };
+      const next = [...answered, answer];
+      onTurns(next);
+      if (round < MAX_CHECK_ROUNDS + 1) await askModel(next, round + 1);
+      return;
+    }
     const sheet = checkSheet?.(last.text);
     const sheetWrong = sheetNeedsAnswer(sheet);
     const codes = runCheck ? parsePythonChecks(last.text) : [];
@@ -267,23 +283,7 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, intent, turns, theor
       capped: t(catalog, 'check.capped'),
       postponed: t(catalog, 'check.postponed'),
     };
-    const sheetWords = {
-      title: t(catalog, 'sheetCheck.title'),
-      problems: t(catalog, 'sheetCheck.problems'),
-      numbers: t(catalog, 'sheetCheck.numbers'),
-      ask: t(catalog, 'sheetCheck.ask'),
-      python: t(catalog, 'sheetCheck.python'),
-      failed: t(catalog, 'sheetCheck.failed'),
-      hints: {
-        'E-DERIVE-STEP': t(catalog, 'sheetCheck.hint.derive'),
-        'E-DERIVE-UNITS': t(catalog, 'sheetCheck.hint.derive'),
-        'W-BARE-UNIT': t(catalog, 'sheetCheck.hint.bareUnit'),
-        'E-UNIT-MISMATCH': t(catalog, 'sheetCheck.hint.units'),
-        'E-REDEFINED': t(catalog, 'sheetCheck.hint.redefined'),
-        'E-UNKNOWN-UNIT': t(catalog, 'sheetCheck.hint.unit'),
-        'E-TABLE-CELL': t(catalog, 'sheetCheck.hint.table'),
-      },
-    };
+    const sheetWords = sheetCheckWords(catalog);
     const text = [sheetWrong ? sheetReport(sheet!, sheetWords) : '', codes.length > 0 ? pythonReport(reports, words, (n) => formatNumber(n, catalog, { digits: 2 })) : ''].filter(Boolean).join('\n\n');
     // Which checks agreed with the sheet: only those are offered to be kept (a wrong check kept is worse than none).
     const agreed = reports.map((r) => r.ok && !r.declined && !r.postponed && r.rows.length > 0 && r.rows.every((row) => row.state === 'agree'));
@@ -336,7 +336,7 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, intent, turns, theor
       if (timer !== undefined) clearTimeout(timer);
     };
     try {
-      const { sheet, languageGuide, memory } = context();
+      const { sheet, languageGuide, memory, catalog: lookupCatalog } = context();
       desktop?.diagStep?.(`chat: asking, ${asked.length} turns, round ${round}`);
       const result = await desktop!.aiChat({
         id,
@@ -350,6 +350,7 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, intent, turns, theor
         language: catalog.locale,
         sheet,
         languageGuide,
+        ...(lookupCatalog && lookup ? { catalog: lookupCatalog } : {}),
         turns: asked,
         ...(memory ? { memory } : {}),
         ...(runCheck ? { python: true } : {}),
@@ -502,6 +503,12 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, intent, turns, theor
                   );
                 })()}
               </div>
+            ) : turn.lookup ? (
+              // What the program sent the model to read: one line, the contents on a click.
+              <details key={i} className="chat-turn check lookup">
+                <summary dangerouslySetInnerHTML={{ __html: notesHtml(turn.text.split('\n\n')[0] ?? '') }} />
+                <div dangerouslySetInnerHTML={{ __html: notesHtml(turn.text.split('\n\n').slice(1).join('\n\n')) }} />
+              </details>
             ) : turn.check ? (
               // The program's report of the checks in Python: a table, as the model got it.
               <div key={i} className="chat-turn check" dangerouslySetInnerHTML={{ __html: notesHtml(turn.text) }} />
@@ -519,8 +526,8 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, intent, turns, theor
       <div className="chat-head">
         {/* The run indicator in the head: seen also when the conversation is scrolled away from the answer. */}
         {(answer || checking) && <span className={`chat-run${answer && (answer.text || answer.thinking) && Date.now() - (answer.last ?? answer.started) >= SILENT_SECONDS * 1000 ? ' quiet' : ''}`} title={t(catalog, 'chat.running')} />}
-        <span className="chat-model" title={settings.model}>
-          {provider.urlEditable ? t(catalog, 'ai.otherServer') : provider.name} · {settings.model || t(catalog, 'ai.firstModel')}
+        <span className="chat-model" title={external ?? settings.model}>
+          {external ? `${external} · MCP` : `${provider.urlEditable ? t(catalog, 'ai.otherServer') : provider.name} · ${settings.model || t(catalog, 'ai.firstModel')}`}
         </span>
         {usage && (
           <span
@@ -588,6 +595,9 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, intent, turns, theor
         {answer && <AnswerStatus answer={answer} catalog={catalog} />}
         {error && <div className="chat-error">{error}</div>}
       </div>
+      {external ? (
+        <p className="hint chat-external">{t(catalog, 'chat.external', { client: external })}</p>
+      ) : (
       <div className="chat-input-row">
         <textarea
           className="chat-input"
@@ -613,6 +623,7 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, intent, turns, theor
           </button>
         )}
       </div>
+      )}
       <p className="hint chat-note">{t(catalog, 'chat.note')}</p>
     </div>
   );

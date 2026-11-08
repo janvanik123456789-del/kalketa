@@ -708,7 +708,7 @@ button.icon:hover { color: var(--accent); }
 .proposal-actions { display: flex; gap: 6px; align-items: center; font-size: 12px; }
 
 /* Lines the AI made, until a person reviews them (ch. 9.7); on screen only. */
-.row.ai-made > .content { box-shadow: -3px 0 0 #9b7fd8; }
+.row.ai-row > .content { box-shadow: -3px 0 0 #9b7fd8; }
 .ai-mark { position: absolute; left: -22px; top: 4px; padding: 0 3px; border: 1px solid #9b7fd8; border-radius: 3px; background: #f3effc; color: #5a3fa6; font: 600 9px/13px system-ui, sans-serif; cursor: pointer; }
 .ai-mark:hover { background: #e6ddfa; }
 .proposal-review { margin-left: 4px; }
@@ -995,3 +995,32 @@ button.icon:hover { color: var(--accent); }
 @keyframes chat-status-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
 .chat-run { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #3b8f5a; margin: 0 4px; vertical-align: middle; animation: chat-status-pulse 1.2s ease-in-out infinite; }
 .chat-run.quiet { background: #c58a00; animation: none; }
+
+.proposal.replaced { opacity: 0.6; }
+.proposal.replaced .proposal-diff { text-decoration: line-through; }
+.proposal-replacing { font-size: 12px; color: #a06f00; margin: 4px 0; }
+
+.chat-turn.lookup > summary { cursor: pointer; list-style: revert; }
+.chat-turn.lookup > summary p { display: inline; margin: 0; }
+
+.mcp-dialog { display: flex; flex-direction: column; gap: 8px; min-width: 520px; }
+.mcp-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.mcp-row > span:first-child { min-width: 60px; }
+.mcp-row code { background: var(--panel, #f3f4f6); padding: 2px 6px; border-radius: 3px; }
+.mcp-status { font-size: 12px; color: var(--muted, #667); }
+.mcp-status.connected, .mcp-status.waiting { color: #3b8f5a; }
+.mcp-status.busy-port, .mcp-status.error, .mcp-status.forbidden { color: #b3261e; }
+.mcp-client-head { display: flex; align-items: center; gap: 8px; }
+.mcp-line { white-space: pre-wrap; word-break: break-all; font-size: 12px; background: var(--panel, #f3f4f6); padding: 6px; margin: 4px 0; }
+.status-mcp { border: none; background: none; padding: 0 4px; font: inherit; cursor: pointer; color: inherit; }
+.status-mcp.connected { color: #3b8f5a; }
+.status-mcp.busy-port, .status-mcp.error { color: #b3261e; }
+.status-mcp.paused { color: #a06f00; }
+
+.notice.mcp-pending { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; background: #f3effc; border-color: #9b7fd8; color: #3d2a7a; }
+.notice.mcp-pending button { font-size: 12px; }
+
+.mcp-help { max-height: 70vh; overflow: auto; font-size: 14px; }
+.mcp-help table { border-collapse: collapse; }
+.mcp-help td, .mcp-help th { border: 1px solid var(--border, #d0d4da); padding: 2px 6px; }
+.mcp-help-open.link { border: none; background: none; padding: 0; color: #2a5db0; text-decoration: underline; cursor: pointer; font: inherit; }

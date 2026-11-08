@@ -51,6 +51,13 @@ export function reportedNames(code: string): string[] {
   return [...new Set([...code.matchAll(/\bresult\(\s*(["'])([^"'\n]+)\1/g)].map((m) => m[2]!))];
 }
 
+/** The title of a check: its first comment line, when the script starts with one ("# Part 2: turns by simulation"). */
+export function checkTitle(code: string): string | undefined {
+  const first = code.split(/\r?\n/).find((l) => l.trim() !== '' && !/^#!|^#.*coding[:=]/.test(l.trim()));
+  const m = first && /^\s*#+\s*(.+?)\s*$/.exec(first);
+  return m ? m[1]!.slice(0, 120) : undefined;
+}
+
 /** Whether a check needs the model again: it failed, a result disagrees, or it reported nothing. */
 export function checksNeedAnswer(reports: readonly CheckReport[]): boolean {
   return reports.some((r) => !r.declined && (!r.ok || r.rows.length === 0 || r.rows.some((row) => row.state !== 'agree')));
@@ -121,7 +128,7 @@ export function pythonReport(reports: readonly CheckReport[], words: CheckWords,
 export function pythonRule(numpy: boolean): string {
   const fence = '`'.repeat(3);
   return `- Order, always: the calculation goes into the sheet first, in the calculation language, in a change block. Python is only a check of it afterwards: never first, never instead of the sheet, and never the only place a result is computed. So the check comes in the same answer right after the change block (it is compared with the sheet as the change makes it), or the sheet has those results already. Do not put it off to a later answer, unless the user says so in words ("the check later"): when the level of detail or the user asks for a check, it belongs to the same answer.
-- You can check a calculation independently in Python. The check is worth something only when it reaches the result another way than the sheet: a step-by-step simulation of the differential equation instead of its integral, energy instead of forces, a library routine instead of the formula, a limiting case. Never write the sheet's formula again in Python: two copies of one formula always agree and prove nothing. Report each result under the name it has in the sheet:
+- You can check a calculation independently in Python. Begin each script with one comment line saying what it checks and how (# Part 2: turns of both windings, by simulation): it becomes the title of the check when the user keeps it. The check is worth something only when it reaches the result another way than the sheet: a step-by-step simulation of the differential equation instead of its integral, energy instead of forces, a library routine instead of the formula, a limiting case. Never write the sheet's formula again in Python: two copies of one formula always agree and prove nothing. Report each result under the name it has in the sheet:
   ${fence}python
   from math import sqrt
   # free fall from h: step by step, not v = sqrt(2 g h)

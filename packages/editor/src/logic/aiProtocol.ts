@@ -45,8 +45,9 @@ export function aiProtocol(catalog: Catalog, input: AiProtocolInput): string {
   if (input.entries.length === 0) out.push(t(catalog, 'protocol.noChanges'), '');
   for (const e of input.entries) {
     const where = e.insert ? t(catalog, 'proposal.insert', { line: String(e.from) }) : e.from === e.to ? t(catalog, 'proposal.line', { line: String(e.from) }) : t(catalog, 'proposal.lines', { from: String(e.from), to: String(e.to) });
-    const decision =
-      e.state === 'open'
+    const decision = e.replacedBy
+      ? t(catalog, e.state === 'accepted' ? 'proposal.replacedOut' : 'proposal.replaced', { when: when(e.replacedBy) })
+      : e.state === 'open'
         ? t(catalog, 'protocol.open')
         : e.state === 'rejected'
           ? t(catalog, 'proposal.rejected', { when: when(e.decided) })

@@ -5,7 +5,7 @@
   "description": "Kalketa as a standalone desktop application (Electron).",
   "author": "Jan Vaník",
   "type": "module",
-  "main": "dist/main.js",
+  "main": "dist/entry.js",
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "start": "electron .",
@@ -113,6 +113,7 @@
   },
   "dependencies": {
     "@kalketa/ai": "*",
+    "@modelcontextprotocol/sdk": "1.32.2",
     "pdfjs-dist": "^6.4.299",
     "pyodide": "314.0.7"
   },

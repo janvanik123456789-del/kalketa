@@ -91,6 +91,10 @@ export interface CommandContext {
     settings(): void;
     toggleAi(): void;
     study(): void;
+    /** Tools → AI from outside (MCP). */
+    mcp(): void;
+    /** Help → AI from outside (MCP). */
+    mcpHelp(): void;
     /** A new calculation from its intent, with the AI (ch. 9.3). */
     intent(): void;
     shortcuts(): void;
@@ -178,11 +182,13 @@ export function buildCommands(ctx: CommandContext): Map<string, Command> {
   add('tools.ai', 'tools', a.toggleAi, { checked: ctx.aiOn });
   add('tools.intent', 'tools', a.intent, { enabled: ctx.desktop });
   add('tools.study', 'tools', a.study, { enabled: ctx.desktop });
+  add('tools.mcp', 'tools', a.mcp, { enabled: ctx.desktop });
   add('window.new', 'window', a.newWindow, { shortcut: 'Ctrl+Shift+N', enabled: ctx.desktop });
   add('window.next', 'window', () => a.cycleDocument(1), { shortcut: 'Ctrl+Tab', enabled: ctx.documents > 1 });
   add('window.previous', 'window', () => a.cycleDocument(-1), { shortcut: 'Ctrl+Shift+Tab', enabled: ctx.documents > 1 });
   add('window.closeAll', 'window', a.closeAllDocuments);
   add('help.functions', 'help', a.functions, { shortcut: 'F1' });
+  add('help.mcp', 'help', a.mcpHelp);
   add('help.shortcuts', 'help', a.shortcuts);
   add('help.about', 'help', a.about);
 

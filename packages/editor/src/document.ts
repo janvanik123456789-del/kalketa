@@ -88,6 +88,12 @@ export interface DesktopBridge {
   exportPdf(request: { html: string; suggestedName: string }): Promise<string | undefined>;
   /** Opens another editor window with an empty calculation. */
   newWindow(): Promise<void>;
+  /** Kalketa as an MCP server (docs/navrhy/MCP-SERVER.md): its state and settings; the tools the AI calls run here. */
+  mcpState?(): Promise<McpState>;
+  mcpSet?(change: { readonly on?: boolean; readonly readOnly?: boolean; readonly paused?: boolean; readonly newToken?: boolean; readonly port?: number }): Promise<McpState>;
+  onMcpState?(listener: (state: McpState) => void): void;
+  onMcpCall?(listener: (call: { readonly id: string; readonly tool: string; readonly args: Readonly<Record<string, unknown>> }) => void): void;
+  mcpResult?(answer: { readonly id: string; readonly ok: boolean; readonly text: string }): void;
   /** A step the editor takes now; the last ones are written down if the window hangs. */
   diagStep?(step: string): void;
   setCloseGuard(guard: { dirty: boolean; message: string; save?: string; discard: string; cancel: string; textMenu?: { cut: string; copy: string; paste: string; selectAll: string }; hang?: { message: string; wait: string; reload: string } }): void;
@@ -151,6 +157,20 @@ export interface DesktopBridge {
 export type TheoryFolder = 'project' | 'company' | 'user';
 
 /** What a request did to the conversation window: a new summary (at a jump), and how full it is. */
+/** The MCP server as the main process reports it. */
+export interface McpState {
+  readonly on: boolean;
+  readonly port: number;
+  readonly token: string;
+  readonly readOnly: boolean;
+  readonly paused: boolean;
+  readonly status: 'off' | 'waiting' | 'connected' | 'busy-port' | 'error' | 'forbidden';
+  readonly client?: string;
+  readonly address: string;
+  /** How an application that starts a server as a program starts Kalketa's bridge. */
+  readonly stdio?: { readonly command: string; readonly args: readonly string[] };
+}
+
 export interface WindowNews {
   /** The latest question exactly as it went to the model (with the state of the sheet), kept with it. */
   readonly asked?: string;
@@ -179,6 +199,10 @@ export interface AiChatAsk {
     readonly libraries?: readonly { readonly key: string; readonly title: string; readonly source: string }[];
   };
   readonly languageGuide?: string;
+  /** The catalog of the formula library and the samples the model may ask for. */
+  readonly catalog?: string;
+  /** The editor runs checks in Python of the answers: the model is told how to write them. */
+  readonly python?: boolean;
   readonly turns: readonly { readonly role: 'user' | 'assistant'; readonly text: string; readonly sent?: string; readonly reasoning?: string; readonly theory?: { readonly sent: readonly string[]; readonly total: number } }[];
   /** The sheet's memory from earlier conversations. */
   readonly memory?: string;

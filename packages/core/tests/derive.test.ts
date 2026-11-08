@@ -172,4 +172,12 @@ describe('a zero written without a unit, and a member written wrong', () => {
     // The step after it is still checked.
     expect(evaluateSheet(sheet.replace('(h_1 + h_2)', '(h_1 + 2·h_2)')).diagnostics.map((d) => [d.code, d.params['step']])).toEqual([['E-DERIVE-STEP', 2]]);
   });
+
+  it('use a relation written above its own definition (relation S == U·I, S := U·I): it holds, nothing to solve for', () => {
+    // As on paper: each relation with its definition below it; the step of I_1 goes through S and I_2 (LED supply).
+    const sheet = 'U_2 := 18.8 V\nk_I := 1.8\nI_z := 1.6 A\nU_1 := 230 V\nrelation I_2 == k_I·I_z {eq=A}\nI_2 := k_I·I_z | A\nrelation S == U_2·I_2 {eq=B}\nS := U_2·I_2 | VA\nrelation I_1 == S/U_1 {eq=C}\n';
+    expect(codes(`${sheet}derive I_1 == U_2·k_I·I_z/U_1 {eq}`)).toEqual([]);
+    // A wrong step below the same relations is still found.
+    expect(codes(`${sheet}derive I_1 == U_2·k_I·I_z/(2·U_1) {eq}`)).toEqual(['E-DERIVE-STEP']);
+  });
 });

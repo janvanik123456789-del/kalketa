@@ -7,14 +7,14 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
-import { defaultRegistry, formatPicture, parsePicture, rowLabel, TEXT_COLORS, toDecimalComma, type Diagnostic, type Expr, type Statement } from '@kalketa/core';
+import { defaultRegistry, traceName, formatPicture, parsePicture, rowLabel, TEXT_COLORS, toDecimalComma, type Diagnostic, type Expr, type Statement } from '@kalketa/core';
 import { catalogFor, CATALOGS, formatDate, formatDiagnostic, formatNumber, t, unitGap, type Catalog, type UiKey } from '@kalketa/i18n';
 import { buildPrintDocument, canvasValues, printHtml, renderBlockHtml, revisionFooter, type PrintAppendix, type PrintBlock } from '@kalketa/render';
 import { beamSketch, drivenScene, emptyScene, readScene, sectionSketch, writeScene, type CanvasScene } from '@kalketa/canvas';
 import { CanvasEditor } from '@kalketa/canvas/editor';
 import { withAiLayer, copyWithoutAiRecords, hasAiRecords, compareWithSheet, sheetHas, readOutput, addLayer, allDiagnostics, appendixLayers, blockAppendices, documentBlocks, isRemovable, LayerSessions, MAIN_LAYER, removeLayer, freezeRevision, removeRevision, revisionDocument, revisionState, shortHash, tablesByLayer, theorySections, updateLayer, withTheoryIds, conversationsOf, hasConversations, withConversation, withoutConversation, aiMemoryOf, withAiMemory, linkedLibraries, librarySections, entriesOf, newSheetsOf, withEntries, studyAdvice, studyNotes, LARGE_STUDY_PAGES, type StudySettings, aiMadeLines, type SheetEntry, evaluateDocument, type ChangeEntry, type Conversation, type AddableLayerKind, type Layer, type RevisionState, type SheetDocument } from '@kalketa/sheet';
 import { buildCommands, shortcutOf, type Command } from './commands.js';
-import { applyProposal, latexLine, latexPaste, applyProposals, cleanFigureDescription, cleanFormula, cleanReread, cleanMemory, parseNewSheets, DEFAULT_AI_SETTINGS, parseAiSettings, parseProposals, providerById, replacedLines, type ChangeProposal, type AiSettings, type ChatTurn, type CheckReport, type ChoiceBlock, type NoteBlock, DETAIL_LEVELS, isRoundResult, loneNumbers, noteText, proseOf, pythonLines, reportedNames, type SheetCheck } from '@kalketa/ai';
+import { applyProposal, catalogText, prepareBriefing, selectTheory, theoryText, writingRules, latexLine, latexPaste, applyProposals, cleanFigureDescription, cleanFormula, cleanReread, cleanMemory, parseNewSheets, DEFAULT_AI_SETTINGS, parseAiSettings, parseProposals, providerById, replacedLines, type ChangeProposal, type AiSettings, type ChatTurn, type CheckReport, type ChoiceBlock, type NoteBlock, DETAIL_LEVELS, isRoundResult, loneNumbers, noteText, proseOf, pythonLines, reportedNames, checkTitle, sheetNeedsAnswer, sheetReport, type SheetCheck } from '@kalketa/ai';
 import { ChatPane } from './components/ChatPane.js';
 import { TheoryLibraryDialog } from './components/TheoryLibraryDialog.js';
 import { sourceText, useTheoryLibraries, withoutDuplicates, type FoundLibrary } from './theoryLibraries.js';
@@ -27,18 +27,24 @@ import { RereadDialog } from './components/RereadDialog.js';
 import { cutOut, loadPdf, pageContent } from './logic/pdfDocs.js';
 import { pageLayout } from './logic/pdfLayout.js';
 import { matchRun, sourcePageLabels, textRuns, type RereadChange, type TextRun } from './logic/pdfReread.js';
+import { replacedIds, withoutReplaced } from './logic/proposalReplace.js';
+import { shiftedEntries } from './logic/proposalShift.js';
 import { proposalEffect, type ProposalEffect } from './logic/proposalEffect.js';
 import type { NewSheetView, ProposalView } from './components/ProposalCard.js';
 import type { AnswerProposals } from './components/ChatPane.js';
 import { languageGuide, sheetContext } from './logic/aiContext.js';
-import { exampleDocument, SAMPLE_FIELDS, samplePicture, samples, savedSampleTitle, subfieldName, type Sample } from './samples.js';
+import { exampleDocument, SAMPLE_FIELDS, samplePicture, samples, sampleSource, savedSampleTitle, subfieldName, type Sample } from './samples.js';
+import { catalogItems, formulaText, lookupAnswer, sampleText } from './logic/aiCatalog.js';
+import { runMcpTool, type McpEnvironment } from './logic/mcpTools.js';
+import { sheetCheckWords } from './logic/sheetCheckWords.js';
+import { McpDialog, McpHelpDialog, mcpStatusText } from './components/McpDialog.js';
 import { StartScreen } from './components/StartScreen.js';
 import { Ribbon } from './components/Ribbon.js';
 import { CONTROLS_KEY, readControls } from './logic/controls.js';
 import { NavigatorPane, type CheckItem, type OutlineItem, type ProblemItem } from './components/NavigatorPane.js';
 import type { InsertChoice } from './components/InsertMenu.js';
 import { importedSmath } from './logic/importedSmath.js';
-import { chooseFile, desktop, emptyDocument, fileName, fileUri, largestParts, openBytes, pickAndOpen, saveDocument, tableCache, type FileRef, type OpenedFile } from './document.js';
+import { chooseFile, desktop, emptyDocument, fileName, fileUri, largestParts, openBytes, pickAndOpen, saveDocument, tableCache, type FileRef, type OpenedFile, type McpState } from './document.js';
 import { record, redo, undo, type History } from './logic/history.js';
 import { closeTab, cycleTab, fileNameOf, isDirty, isPristine, newTab, openTab, unsavedDraft, type DocTab, type Tabs } from './logic/documents.js';
 import { pageGeometry } from './logic/pages.js';
@@ -92,7 +98,7 @@ type Tab = DocTab<SheetDocument, FileRef>;
 /** Rows copied by Ctrl+C with what they use (pictures, tables), for Ctrl+V in any calculation of the window. */
 let rowClipboard: { readonly text: string; readonly files: ReadonlyMap<string, Uint8Array>; readonly tables: SheetDocument['tables'] } | undefined;
 
-type DialogKind = 'settings' | 'properties' | 'revisions' | 'customize' | 'shortcuts' | 'functions' | 'insertFunction' | 'insertFormula' | 'about' | 'study' | 'fit' | 'chart';
+type DialogKind = 'mcp' | 'mcpHelp' | 'settings' | 'properties' | 'revisions' | 'customize' | 'shortcuts' | 'functions' | 'insertFunction' | 'insertFormula' | 'about' | 'study' | 'fit' | 'chart';
 
 const MM_TO_PX = 96 / 25.4;
 const PAGE_GAP_PX = 24;
@@ -204,6 +210,11 @@ function equationNumbers(layout: SheetDocument['layout']): SheetDocument['layout
   return layout.equations ?? (layout.style === 'book' ? 'formulas' : undefined);
 }
 
+/** The conversation in the sheet that keeps what an AI from outside (MCP) proposed, one for each client. */
+function mcpConversationId(client: string): string {
+  return `mcp-${client.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'client'}`;
+}
+
 export function App() {
   // Open calculations, one tab each. Everything below that belongs to one
   // document (history, file, open layers) is read from the active tab.
@@ -260,6 +271,31 @@ export function App() {
   const [selectAll, setSelectAll] = useState(0);
   const [notice, setNotice] = useState<string | undefined>();
   const [dialog, setDialog] = useState<DialogKind | undefined>();
+  // Kalketa as an MCP server: its state from the main process, for the status bar and the dialog.
+  const [mcp, setMcp] = useState<McpState>();
+  // What the tools of the MCP server read, as the editor is now (set on every render, read when a tool is called).
+  const mcpEnv = useRef<McpEnvironment | undefined>(undefined);
+  // The turn a proposal from outside gets in its conversation: counted here too, as two calls may come before a redraw.
+  const mcpTurns = useRef(new Map<string, number>());
+  const mcpTurn = (conversation: string, inSheet: number) => {
+    const k = Math.max(inSheet, (mcpTurns.current.get(conversation) ?? -1) + 1);
+    mcpTurns.current.set(conversation, k);
+    return k;
+  };
+  useEffect(() => {
+    if (!desktop?.mcpState) return;
+    void desktop.mcpState().then(setMcp);
+    desktop.onMcpState?.(setMcp);
+    desktop.onMcpCall?.((call) => {
+      let answer: { ok: boolean; text: string };
+      try {
+        answer = mcpEnv.current ? runMcpTool(call.tool, call.args, mcpEnv.current) : { ok: false, text: 'Kalketa is not ready yet.' };
+      } catch (error) {
+        answer = { ok: false, text: `Kalketa: ${error instanceof Error ? error.message : String(error)}` };
+      }
+      desktop!.mcpResult?.({ id: call.id, ...answer });
+    });
+  }, []);
   const [importReport, setImportReport] = useState<SmathReport | undefined>();
   const [zoomChoice, setZoomChoice] = useState(() => (stored('kalketa.zoom') === 'fit3' ? 'fit2' : (stored('kalketa.zoom') ?? 'fit2')));
   // The layer tabs do what the Layers panel did, so the panel no longer opens by itself at start.
@@ -1199,6 +1235,12 @@ export function App() {
   // The id a new conversation got with its question, by tab: the answer, written later, goes into the same one.
   const startedChat = useRef<Record<string, string | undefined>>({});
   const conversations = conversationsOf(doc);
+  /** The catalog of the formula library and the samples the model may ask for, in the language of the program. */
+  const catalogOf = useRef<{ locale: string; text: string } | undefined>(undefined);
+  const lookupCatalog = () => {
+    if (catalogOf.current?.locale !== ui.locale) catalogOf.current = { locale: ui.locale, text: catalogText(catalogItems(FORMULA_LIBRARY, samples(ui.locale), ui)) };
+    return catalogOf.current.text;
+  };
   /** What the model sees of the sheet: for the chat, and for the memory update when a conversation ends. */
   const chatContext = () => {
     // Headings still without an id get one before the model sees them, so its citations stay valid.
@@ -1224,6 +1266,7 @@ export function App() {
       // A section both in the sources and in a library goes once, from the library.
       sheet: { ...sheetContext(doc.manifest.title, evaluation.main), ...((pickedDetail.current ?? doc.layout.detail) ? { detail: pickedDetail.current ?? doc.layout.detail } : {}), theory: withoutDuplicates(theorySections(layers), fromLibraries.sections), libraries: fromLibraries.libraries, ...(changes.length > 0 ? { changes } : {}), ...(others.length > 0 ? { others } : {}), ...(auxiliary.length > 0 ? { auxiliary } : {}) },
       languageGuide: languageGuide(),
+      catalog: lookupCatalog(),
       ...(memory.trim() ? { memory } : {}),
     };
   };
@@ -1231,48 +1274,69 @@ export function App() {
   const effects = useRef(new Map<string, ProposalEffect>());
   /** A journal entry as the change it proposes. */
   const asProposal = (e: ChangeEntry): ChangeProposal => ({ from: e.from, to: e.to, ...(e.insert ? { insert: true } : {}), lines: e.after });
+  /** Whether a proposal still finds its lines as they were when it was proposed. */
+  const fitsIn = (source: string, e: ChangeEntry) => {
+    const now = replacedLines(source, asProposal(e));
+    return !!e.before && !!now && now.length === e.before.length && now.every((l, i) => l === e.before![i]);
+  };
+  /**
+   * The sheet proposals go into: a correction of an accepted proposal goes into the sheet without that one's lines
+   * (they are taken out when it is accepted), when it fits there; else into the sheet as it is.
+   */
+  const baseOf = (present: SheetDocument, entries: readonly ChangeEntry[]): { source: string; reverted: string[] } => {
+    const replaces = [...new Set(entries.flatMap((e) => e.replaces ?? []))];
+    if (replaces.length === 0 || entries.length === 0) return { source: present.source, reverted: [] };
+    const without = withoutReplaced(present.source, { ...entries[0]!, replaces }, entriesOf(present));
+    return without.reverted.length > 0 && entries.every((e) => fitsIn(without.source, e)) ? without : { source: present.source, reverted: [] };
+  };
+  /** The accepted entries a correction took out of the sheet, marked so. */
+  const replacedEntries = (present: SheetDocument, ids: readonly string[], when: string): ChangeEntry[] =>
+    entriesOf(present)
+      .filter((e) => ids.includes(e.id))
+      .map((e) => ({ ...e, replacedBy: when }));
   const proposalViews = (entries: readonly ChangeEntry[]): ProposalView[] =>
     entries.map((entry) => {
-      const now = replacedLines(doc.source, asProposal(entry));
+      const base = entry.state === 'open' && !entry.replacedBy ? baseOf(doc, [entry]) : { source: doc.source, reverted: [] };
+      const now = replacedLines(base.source, asProposal(entry));
       const fits = !entry.before || !now ? 'missing' : now.length === entry.before.length && now.every((l, i) => l === entry.before![i]) ? 'yes' : 'stale';
-      if (entry.state !== 'open' || fits !== 'yes') return { entry, fits };
+      if (entry.state !== 'open' || entry.replacedBy || fits !== 'yes') return { entry, fits };
       const key = `${entry.id}\u0000${doc.source}`;
       let effect = effects.current.get(key);
       if (!effect) {
-        const changed = evaluateDocument({ ...doc, source: applyProposal(doc.source, asProposal(entry)) }, defaultRegistry).result;
+        const changed = evaluateDocument({ ...doc, source: applyProposal(base.source, asProposal(entry)) }, defaultRegistry).result;
         effect = proposalEffect(evaluation.main, changed);
         effects.current.set(key, effect);
       }
-      return { entry, fits, effect };
+      return { entry, fits, effect, ...(base.reverted.length > 0 ? { replacing: base.reverted.length } : {}) };
     });
   /** Accepts a proposal (the calculation changes, as one step to undo) or rejects it; both go into the journal. */
   const decideProposal = (entryId: string, accept: boolean) =>
     changeWith((present) => {
       const entry = entriesOf(present).find((e) => e.id === entryId);
-      if (!entry || entry.state !== 'open') return present;
+      if (!entry || entry.state !== 'open' || entry.replacedBy) return present;
       const decided = new Date().toISOString();
       if (!accept) return withEntries(present, [{ ...entry, state: 'rejected', decided }]);
-      const now = replacedLines(present.source, asProposal(entry));
+      // A correction: the lines of the accepted proposal it corrects go out first.
+      const base = baseOf(present, [entry]);
       // The lines changed since it was proposed: it no longer fits, nothing is changed.
-      if (!entry.before || !now || now.length !== entry.before.length || now.some((l, i) => l !== entry.before![i])) return present;
-      return withEntries({ ...present, source: applyProposal(present.source, asProposal(entry)) }, [{ ...entry, state: 'accepted', decided }]);
+      if (!fitsIn(base.source, entry)) return present;
+      const source = applyProposal(base.source, asProposal(entry));
+      // The other open proposals follow their lines: they were made against the sheet before this one went in.
+      const others = shiftedEntries(present.source, source, entriesOf(present).filter((e) => e.id !== entry.id && !base.reverted.includes(e.id)));
+      return withEntries({ ...present, source }, [...others, { ...entry, state: 'accepted', decided }, ...replacedEntries(present, base.reverted, decided)]);
     });
   /** Lines an open proposal only puts in, put after another line of the sheet (0: at the top) before it is decided. */
   const moveProposal = (entryId: string, after: number) =>
     changeWith((present) => {
       const entry = entriesOf(present).find((e) => e.id === entryId);
       const last = present.source.split('\n').length;
-      if (!entry || entry.state !== 'open' || !entry.insert) return present;
+      if (!entry || entry.state !== 'open' || entry.replacedBy || !entry.insert) return present;
       const line = Math.max(0, Math.min(after, last));
       return line === entry.from ? present : withEntries(present, [{ ...entry, from: line, to: line, before: [] }]);
     });
   /** Open proposals that still fit the sheet, by id. */
   const fittingOpen = (present: SheetDocument, ids: readonly string[]) =>
-    entriesOf(present).filter((e) => {
-      if (!ids.includes(e.id) || e.state !== 'open' || !e.before) return false;
-      const now = replacedLines(present.source, asProposal(e));
-      return !!now && now.length === e.before.length && now.every((l, i) => l === e.before![i]);
-    });
+    entriesOf(present).filter((e) => ids.includes(e.id) && e.state === 'open' && !e.replacedBy && fitsIn(baseOf(present, [e]).source, e));
   /** The open proposals of the answer at a turn of the chat: whether they go together, and what they do together. */
   const answerProposals = (turn: number): AnswerProposals | undefined => {
     if (!chat) return undefined;
@@ -1283,7 +1347,7 @@ export function App() {
         .map((e) => e.id),
     );
     if (open.length === 0) return undefined;
-    const together = applyProposals(doc.source, open.map(asProposal));
+    const together = applyProposals(baseOf(doc, open).source, open.map(asProposal));
     if (together === undefined || open.length < 2) return { ids: open.map((e) => e.id), together: together !== undefined };
     const key = `${open.map((e) => e.id).join('|')}\u0000${doc.source}`;
     let effect = effects.current.get(key);
@@ -1297,10 +1361,12 @@ export function App() {
   const acceptAll = (ids: readonly string[]) =>
     changeWith((present) => {
       const open = fittingOpen(present, ids);
-      const source = open.length === ids.length ? applyProposals(present.source, open.map(asProposal)) : undefined;
+      const base = baseOf(present, open);
+      const source = open.length === ids.length ? applyProposals(base.source, open.map(asProposal)) : undefined;
       if (source === undefined) return present;
       const decided = new Date().toISOString();
-      return withEntries({ ...present, source }, open.map((e) => ({ ...e, state: 'accepted' as const, decided })));
+      const others = shiftedEntries(present.source, source, entriesOf(present).filter((e) => !open.includes(e) && !base.reverted.includes(e.id)));
+      return withEntries({ ...present, source }, [...others, ...open.map((e) => ({ ...e, state: 'accepted' as const, decided })), ...replacedEntries(present, base.reverted, decided)]);
     });
   /**
    * The calculation copied into a new tab with the proposals applied there; this
@@ -1310,7 +1376,7 @@ export function App() {
    */
   const toNewSheet = (ids: readonly string[]) => {
     const open = fittingOpen(doc, ids);
-    const source = open.length === ids.length ? applyProposals(doc.source, open.map(asProposal)) : undefined;
+    const source = open.length === ids.length ? applyProposals(baseOf(doc, open).source, open.map(asProposal)) : undefined;
     if (source === undefined) return;
     const decided = new Date().toISOString();
     const title = t(ui, 'proposal.copyTitle', { title: doc.manifest.title });
@@ -1386,16 +1452,22 @@ export function App() {
    * background; the result lands in the tab where the conversation was held.
    */
   const rememberConversation = (conversation: Conversation | undefined) => {
-    if (!desktop || !aiOn || !conversation || remembering.current[tab.id]) return;
+    // A conversation of an AI from outside (MCP) is not the chat's: its model keeps its own memory.
+    if (!desktop || !aiOn || !conversation || conversation.provider === 'mcp' || remembering.current[tab.id]) return;
     if ((conversation.remembered ?? 0) >= conversation.turns.length || !conversation.turns.some((t) => t.role === 'assistant')) return;
     const provider = providerById(aiSettings.provider);
     if (!provider) return;
     const tabId = tab.id;
     const turns = conversation.turns;
     remembering.current[tabId] = true;
-    const { sheet, languageGuide: guide, memory } = chatContext();
+    const { sheet, languageGuide: guide, memory, catalog } = chatContext();
     void desktop
       .aiMemory({
+        // The same briefing as the chat: a server keeps one conversation read, and a request that starts otherwise
+        // makes it read the whole conversation again at the next question (minutes on a local model).
+        catalog,
+        python: true,
+        ...(conversation.intent ? { intent: true } : {}),
         id: `memory-${conversation.id}-${turns.length}`,
         provider: provider.id,
         model: aiSettings.model,
@@ -1766,7 +1838,16 @@ export function App() {
       const id = own?.id ?? added!.id;
       const before = (layers.find((l) => l.id === id)?.text ?? '').trimEnd();
       const fence = '`'.repeat(3);
-      return { ...present, layers: updateLayer(layers, id, { text: `${before ? `${before}\n\n` : ''}## ${t(ui, 'check.heading')}\n\n${fence}python\n${code}\n${fence}\n` }) };
+      // The same script kept twice (two clicks, or the model sent it again unchanged) is kept once.
+      if (before.includes(`${fence}python\n${code}\n${fence}`)) return present;
+      // Numbered and named by what it checks (its first comment, else the quantities it reports): among dozens of
+      // checks, the one wanted is found by its heading (also in the Navigation).
+      const n = (before.match(/^## /gm) ?? []).length + 1;
+      const names = reportedNames(code);
+      const title = checkTitle(code) ?? (names.length > 0 ? names.join(', ') : t(ui, 'check.heading'));
+      const when = new Intl.DateTimeFormat(ui.locale, { dateStyle: 'short' }).format(new Date());
+      const about = names.length > 0 ? `${t(ui, 'check.verifies', { names: names.join(', '), when })}\n\n` : '';
+      return { ...present, layers: updateLayer(layers, id, { text: `${before ? `${before}\n\n` : ''}## ${n}. ${title}\n\n${about}${fence}python\n${code}\n${fence}\n` }) };
     });
     setNotice(t(ui, 'check.kept'));
   };
@@ -2138,6 +2219,8 @@ export function App() {
       addLayer: (kind) => void newLayer(kind),
       insertBlock: () => void insertBlock(),
       settings: () => setDialog('settings'),
+      mcp: () => setDialog('mcp'),
+      mcpHelp: () => setDialog('mcpHelp'),
       intent: () => startIntent(),
       study: () => {
         void libraries.refresh();
@@ -2496,7 +2579,7 @@ export function App() {
         ];
       })(),
     },
-    { label: t(ui, 'menu.tools'), items: [cmd('tools.ai'), cmd('tools.intent'), cmd('tools.study'), cmd('tools.settings')] },
+    { label: t(ui, 'menu.tools'), items: [cmd('tools.ai'), cmd('tools.mcp'), cmd('tools.intent'), cmd('tools.study'), cmd('tools.settings')] },
     {
       label: t(ui, 'menu.window'),
       items: [
@@ -2514,7 +2597,7 @@ export function App() {
         })),
       ],
     },
-    { label: t(ui, 'menu.help'), items: [cmd('help.functions'), cmd('help.shortcuts'), sep, cmd('help.about')] },
+    { label: t(ui, 'menu.help'), items: [cmd('help.functions'), cmd('help.shortcuts'), cmd('help.mcp'), sep, cmd('help.about')] },
   ];
 
   const layerContent = (l: Layer, active: boolean) => {
@@ -2679,7 +2762,113 @@ export function App() {
 
   // The status bar counts all calculation layers: an error in an auxiliary layer matters too.
   const diagnostics = allDiagnostics(evaluation);
+  mcpEnv.current = {
+    tabs: docs.tabs.map((d) => ({ title: docLabel(d), saved: !isDirty(d), active: d.id === tab.id })),
+    sheet: () => prepareBriefing({ language: ui.locale, sheet: chatContext().sheet }).state,
+    trace: (name) => traceName(evaluation.main, name),
+    theory: (query) => {
+      const sections = chatContext().sheet.theory ?? [];
+      if (sections.length === 0) return 'The sheet has no theory: no sources layer and no theory library.';
+      const chosen = selectTheory(sections, query);
+      return `${chosen.whole ? '' : `${chosen.sections.length} of ${chosen.total} sections match; the others by title:\n${sections.filter((x) => x.id && !chosen.sections.includes(x)).map((x) => `[${x.id}] ${x.title}`).join('\n')}\n\n`}${theoryText(chosen.sections)}`;
+    },
+    guide: () => `${languageGuide()}\n\n${writingRules(pickedDetail.current ?? doc.layout.detail)}`,
+    catalog: () => catalogText(catalogItems(FORMULA_LIBRARY, samples(ui.locale), ui), 'tools'),
+    formula: (id) => {
+      const entry = FORMULA_LIBRARY.find((e) => e.id === id);
+      return entry && formulaText(entry, ui);
+    },
+    sample: (id) => {
+      const found = samples(ui.locale).find((x) => x.id === id);
+      const source = found && sampleSource(id, ui.locale);
+      return found && source ? sampleText(id, found.title, source, ui) : undefined;
+    },
+    propose: (blocks, note, replaces, client) => {
+      const answer = `${note ? `${note}\n\n` : ''}${blocks}`;
+      const parsed = parseProposals(answer);
+      if (parsed.length === 0) return { ok: false, text: 'No change could be read from the proposal.' };
+      const conversationId = mcpConversationId(client);
+      const conversation = conversationsOf(doc).find((c) => c.id === conversationId);
+      const k = mcpTurn(conversationId, conversation?.turns.length ?? 0);
+      const time = new Date().toISOString();
+      const all = entriesOf(doc);
+      // Corrections close what they correct (and what that corrected): a correction of an accepted one takes its lines out when accepted.
+      const known = replaces.filter((id) => all.some((e) => e.id === id) || id.startsWith(`${conversationId}:`));
+      const ids = parsed.map((_, n) => `${conversationId}:${k}:${n + 1}`);
+      changeWith((present) => {
+        const now = conversationsOf(present).find((c) => c.id === conversationId);
+        const turns = [...(now?.turns ?? []), { role: 'assistant' as const, text: answer, time, model: client }];
+        let next = withConversation(present, { id: conversationId, started: now?.started ?? time, provider: 'mcp', model: client, turns });
+        // Read again from the sheet as it is now: a proposal made a moment ago may not be drawn yet.
+        const allNow = entriesOf(present);
+        const closing = [...new Set(replaces.filter((id) => allNow.some((e) => e.id === id)).flatMap((id) => [id, ...(allNow.find((e) => e.id === id)?.replaces ?? [])]))];
+        const proposed = parsed.map((p, n): ChangeEntry => {
+          const before = replacedLines(present.source, p);
+          return { id: ids[n]!, kind: 'change', time, model: client, conversation: conversationId, from: p.from, to: p.to, ...(p.insert ? { insert: true } : {}), ...(before ? { before } : {}), after: p.lines, state: 'open', ...(closing.length > 0 ? { replaces: closing } : {}) };
+        });
+        const closed = entriesOf(present)
+          .filter((e) => closing.includes(e.id) && e.state === 'open' && !e.replacedBy)
+          .map((e) => ({ ...e, replacedBy: time }));
+        next = withEntries(next, [...proposed, ...closed]);
+        return next;
+      }, 'ai-mcp');
+      // Shown in the side pane at once, as an answer of the chat is, unless a conversation of the chat is open there.
+      if (!chat || chat.provider === 'mcp' || pane !== 'chat') showMcpConversation(conversationId);
+      // The sheet with the changes computed at once: what it breaks goes back to the AI, as in the chat.
+      const check = checkProposedSheet(answer);
+      const words = sheetCheckWords(ui, 'Correct the proposal: call propose_change again with all its changes corrected and these ids in "replaces".');
+      const report = check && sheetNeedsAnswer(check) ? sheetReport(check, words) : 'Kalketa computed the sheet with the changes: no errors, no failed checks, no numbers in text it does not compute.';
+      const unknown = replaces.filter((id) => !known.includes(id));
+      return {
+        ok: true,
+        text: `Proposed as ${ids.join(', ')}: the person sees ${ids.length > 1 ? 'cards' : 'a card'} with Accept and Reject in Kalketa; nothing changes until then.${unknown.length > 0 ? ` Not found, so not replaced: ${unknown.join(', ')}.` : ''}\n\n${report}`,
+      };
+    },
+    status: (ids, client) => {
+      const conversationId = mcpConversationId(client);
+      const mine = entriesOf(doc).filter((e) => (ids.length > 0 ? ids.includes(e.id) : e.conversation === conversationId));
+      if (mine.length === 0) return { ok: true, text: ids.length > 0 ? `No proposal ${ids.join(', ')} in this sheet.` : 'You have proposed nothing in this sheet yet.' };
+      const views = proposalViews(mine);
+      return {
+        ok: true,
+        text: views
+          .map(({ entry: e, fits }) => {
+            const state = e.replacedBy ? (e.state === 'accepted' ? 'accepted, then replaced by a correction (its lines taken out)' : 'replaced by a correction') : e.state === 'open' ? (fits === 'yes' ? 'open (waiting for the person)' : 'open, but the sheet changed since: it no longer fits; propose it again') : e.state === 'accepted' ? `accepted${e.reviewed ? ' and reviewed' : ''}` : 'rejected';
+            return `${e.id}: ${state}${e.insert ? ` (after line ${e.from})` : ` (lines ${e.from}-${e.to})`}`;
+          })
+          .join('\n'),
+      };
+    },
+    proposeSheet: (title, lines, client) => {
+      const conversationId = mcpConversationId(client);
+      const conversation = conversationsOf(doc).find((c) => c.id === conversationId);
+      const k = mcpTurn(conversationId, conversation?.turns.length ?? 0);
+      const time = new Date().toISOString();
+      const id = `${conversationId}:${k}:s1`;
+      const fence = '`'.repeat(3);
+      changeWith((present) => {
+        const now = conversationsOf(present).find((c) => c.id === conversationId);
+        const turns = [...(now?.turns ?? []), { role: 'assistant' as const, text: `${fence}sheet ${title}\n${lines.join('\n')}\n${fence}`, time, model: client }];
+        const next = withConversation(present, { id: conversationId, started: now?.started ?? time, provider: 'mcp', model: client, turns });
+        return withEntries(next, [{ id, kind: 'sheet', time, model: client, conversation: conversationId, title, lines, state: 'open' } satisfies SheetEntry]);
+      }, 'ai-mcp');
+      return { ok: true, text: `Proposed as ${id}: the person opens it in Kalketa as a new sheet with a click.` };
+    },
+  };
   const checks = [evaluation.main, ...evaluation.aux.values()].flatMap((r) => r.checks);
+  /** The conversation of an AI from outside in the side pane, with its proposals to accept there. */
+  const showMcpConversation = (id: string) => {
+    startedChat.current[tab.id] = id;
+    setActiveChat((all) => ({ ...all, [tab.id]: id }));
+    choosePane('chat');
+  };
+  // Proposals of an AI from outside (MCP) waiting for the person: a bar over the sheet leads to them.
+  const mcpPending = (() => {
+    const changes = entriesOf(doc).filter((e) => e.conversation?.startsWith('mcp-') && e.state === 'open' && !e.replacedBy);
+    const sheets = newSheetsOf(doc).filter((e) => e.conversation?.startsWith('mcp-') && e.state === 'open');
+    const client = [...changes, ...sheets].at(-1)?.model ?? 'AI';
+    return { changes, sheets, client };
+  })();
   const errors = diagnostics.filter((d) => d.severity === 'error').length + tableDiagnostics.filter((d) => d.severity === 'error').length;
   const warnings = diagnostics.filter((d) => d.severity === 'warning').length;
   const failedChecks = checks.filter((c) => !c.passed).length;
@@ -2769,7 +2958,14 @@ export function App() {
                                 };
                               })
                               .filter((e) => !known.has(e.id));
-                            next = withEntries(next, proposed);
+                            // An answer to the program's check of a proposal sends it again, corrected: it replaces
+                            // that proposal (and what that one replaced), so nothing goes into the sheet twice.
+                            const k = turns.length - 1;
+                            const replaces = proposed.length > 0 && turns[k - 1]?.check === true && turns[k - 2]?.role === 'assistant' ? replacedIds(entriesOf(next), `${id}:${k - 2}:`) : [];
+                            const closed = entriesOf(next)
+                              .filter((e) => replaces.includes(e.id) && e.state === 'open' && !e.replacedBy)
+                              .map((e) => ({ ...e, replacedBy: last.time ?? new Date().toISOString() }));
+                            next = withEntries(next, [...(replaces.length > 0 ? proposed.map((e) => ({ ...e, replaces })) : proposed), ...closed]);
                           // Whole new calculations the answer wrote, to open as new sheets.
                           const knownSheets = new Set(newSheetsOf(next).map((e) => e.id));
                           const sheets = parseNewSheets(last.text)
@@ -2792,6 +2988,21 @@ export function App() {
                         proposals={(turn) => (chat ? proposalViews(entriesOf(doc).filter((e) => e.id.startsWith(`${chat.id}:${turn}:`))) : [])}
                         onDecide={decideProposal}
                         onMoveProposal={moveProposal}
+                        {...(chat?.provider === 'mcp' ? { external: chat.model ?? 'MCP' } : {})}
+                        lookup={(asked) =>
+                          lookupAnswer(
+                            asked,
+                            {
+                              formula: (id) => FORMULA_LIBRARY.find((e) => e.id === id),
+                              sample: (id) => {
+                                const s = samples(ui.locale).find((x) => x.id === id);
+                                const source = s && sampleSource(id, ui.locale);
+                                return s && source ? { title: s.title, source } : undefined;
+                              },
+                            },
+                            ui,
+                          )
+                        }
                         {...(chat?.window ? { contextWindow: chat.window } : {})}
                         onWindow={(window) => {
                           const id = chat?.id ?? startedChat.current[tab.id];
@@ -2889,6 +3100,21 @@ export function App() {
           {notice && (
             <div className="notice" role="status" onClick={() => setNotice(undefined)}>
               {notice}
+            </div>
+          )}
+          {mcpPending.changes.length + mcpPending.sheets.length > 0 && (
+            <div className="notice mcp-pending" role="status">
+              {t(ui, 'mcp.pending', { client: mcpPending.client, count: String(mcpPending.changes.length) })}
+              {mcpPending.changes.length > 0 && (
+                <button type="button" className="mcp-pending-show" onClick={() => showMcpConversation(mcpPending.changes[0]!.conversation!)}>
+                  {t(ui, 'mcp.pendingShow')}
+                </button>
+              )}
+              {mcpPending.sheets.map((e) => (
+                <button key={e.id} type="button" className="mcp-pending-sheet" onClick={() => openNewSheet(e.id)}>
+                  {t(ui, 'mcp.pendingSheet', { title: e.title })}
+                </button>
+              ))}
             </div>
           )}
           {tableEditor ? (
@@ -3008,6 +3234,11 @@ export function App() {
           </button>
         )}
         <span className="grow" />
+        {mcp?.on && (
+          <button type="button" className={`status-mcp ${mcp.paused ? 'paused' : mcp.status}`} onClick={() => setDialog('mcp')}>
+            MCP: {mcpStatusText(mcp, ui)}
+          </button>
+        )}
         <span>{Math.round(zoom * 100)} %</span>
         <span>{dirty ? t(ui, 'editor.unsaved') : t(ui, 'editor.saved')}</span>
       </footer>
@@ -3194,6 +3425,8 @@ export function App() {
         />
       )}
       {dialog === 'about' && <AboutDialog catalog={ui} onClose={() => setDialog(undefined)} />}
+      {dialog === 'mcp' && desktop && mcp && <McpDialog catalog={ui} desktop={desktop} state={mcp} onState={setMcp} onClose={() => setDialog(undefined)} onHelp={() => setDialog('mcpHelp')} />}
+      {dialog === 'mcpHelp' && <McpHelpDialog catalog={ui} onClose={() => setDialog(undefined)} />}
       {importReport && <ImportReportDialog catalog={ui} report={importReport} onClose={() => setImportReport(undefined)} />}
       {cropping && (
         <PdfCropDialog

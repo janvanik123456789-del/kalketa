@@ -18,6 +18,16 @@ contextBridge.exposeInMainWorld('kalketaDesktop', {
   print: (html: string): Promise<boolean> => ipcRenderer.invoke('kalketa:print', html),
   exportPdf: (request: { html: string; suggestedName: string }): Promise<string | undefined> => ipcRenderer.invoke('kalketa:export-pdf', request),
   newWindow: (): Promise<void> => ipcRenderer.invoke('kalketa:new-window'),
+  /** Kalketa as an MCP server: its state and settings, and the tools the AI calls (run by the editor). */
+  mcpState: (): Promise<{ on: boolean; port: number; token: string; readOnly: boolean; paused: boolean; status: 'off' | 'waiting' | 'connected' | 'busy-port' | 'error' | 'forbidden'; client?: string; address: string; stdio: { command: string; args: string[] } }> => ipcRenderer.invoke('kalketa:mcp-state'),
+  mcpSet: (change: { on?: boolean; readOnly?: boolean; paused?: boolean; newToken?: boolean; port?: number }): Promise<{ on: boolean; port: number; token: string; readOnly: boolean; paused: boolean; status: 'off' | 'waiting' | 'connected' | 'busy-port' | 'error' | 'forbidden'; client?: string; address: string; stdio: { command: string; args: string[] } }> => ipcRenderer.invoke('kalketa:mcp-set', change),
+  onMcpState: (listener: (state: { on: boolean; port: number; token: string; readOnly: boolean; paused: boolean; status: 'off' | 'waiting' | 'connected' | 'busy-port' | 'error' | 'forbidden'; client?: string; address: string; stdio: { command: string; args: string[] } }) => void): void => {
+    ipcRenderer.on('kalketa:mcp-state', (_event, state: { on: boolean; port: number; token: string; readOnly: boolean; paused: boolean; status: 'off' | 'waiting' | 'connected' | 'busy-port' | 'error' | 'forbidden'; client?: string; address: string; stdio: { command: string; args: string[] } }) => listener(state));
+  },
+  onMcpCall: (listener: (call: { id: string; tool: string; args: Record<string, unknown> }) => void): void => {
+    ipcRenderer.on('kalketa:mcp-call', (_event, call: { id: string; tool: string; args: Record<string, unknown> }) => listener(call));
+  },
+  mcpResult: (answer: { id: string; ok: boolean; text: string }): void => ipcRenderer.send('kalketa:mcp-result', answer),
   /** A step the editor takes now (reading an answer, the checks of it): the last ones go to logs/hang.log when it hangs. */
   diagStep: (step: string): void => ipcRenderer.send('kalketa:diag-step', step),
   setCloseGuard: (guard: { dirty: boolean; message: string; save?: string; discard: string; cancel: string; textMenu?: { cut: string; copy: string; paste: string; selectAll: string }; hang?: { message: string; wait: string; reload: string } }): void => ipcRenderer.send('kalketa:close-guard', guard),

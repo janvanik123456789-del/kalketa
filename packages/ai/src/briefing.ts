@@ -31,6 +31,8 @@ export interface ChatTurn {
   readonly theory?: { readonly sent: readonly string[]; readonly total: number };
   /** A turn the program wrote, not the user: the result of the checks in Python of the answer before it. */
   readonly check?: true;
+  /** The program's answer to what the model asked to look up (formulas, samples): shown folded. */
+  readonly lookup?: true;
   /**
    * Of such a turn: for each python block of the answer before it, whether it ran and every result it reported
    * agreed with the sheet. Only a check that agreed is offered to be kept in the layer Check in Python.
@@ -56,6 +58,8 @@ export interface BriefingInput {
   readonly memory?: string;
   /** The conversation starts a new calculation from its intent (ch. 9.3): questions, outline, then the sheet. */
   readonly intent?: boolean;
+  /** The catalog of what the model may look up (formula library, samples), with the rule of asking: lookups.ts. */
+  readonly catalog?: string;
 }
 
 /**
@@ -142,7 +146,22 @@ export function questionWithState(question: string, state: string): string {
 export function withSheetState(turns: readonly ChatTurn[], state: string): ChatTurn[] {
   const last = turns.map((t) => t.role).lastIndexOf('user');
   if (last < 0) return [...turns, { role: 'user', text: state }];
-  return turns.map((t, i) => (i === last ? { ...t, text: questionWithState(t.text, state) } : t.role === 'user' && t.sent ? { ...t, text: t.sent } : t));
+  // The sheet as the model read it last: unchanged since, it is not sent again (on a local model it is some 10 000
+  // tokens a question, and the conversation would grow by them each time).
+  const previous = turns.slice(0, last).reverse().find((t) => t.role === 'user' && t.sent?.startsWith(STATE_MARK))?.sent;
+  const unchanged = previous !== undefined && stateOf(previous) === state;
+  return turns.map((t, i) =>
+    i === last ? { ...t, text: unchanged ? `${UNCHANGED_MARK}\n\n${QUESTION_MARK}\n${t.text}` : questionWithState(t.text, state) } : t.role === 'user' && t.sent ? { ...t, text: t.sent } : t,
+  );
+}
+
+const STATE_MARK = '=== The sheet as it is now ===\n';
+const UNCHANGED_MARK = '=== The sheet is unchanged since it was last given above ===';
+
+/** The state of the sheet in a question as it went (questionWithState). */
+function stateOf(sent: string): string | undefined {
+  const end = sent.lastIndexOf(`\n\n${QUESTION_MARK}\n`);
+  return sent.startsWith(STATE_MARK) && end > 0 ? sent.slice(STATE_MARK.length, end) : undefined;
 }
 
 export function prepareBriefing(input: BriefingInput): PreparedBriefing {
@@ -179,6 +198,7 @@ ${sheet.theory!.filter((s) => s.id).map((s) => `[${s.id}] ${s.title}`).join('\n'
     input.intent ? INTENT_RULES : '',
     writingRules(sheet.detail),
     input.languageGuide ? `Calculation language:\n${input.languageGuide}` : '',
+    input.catalog ?? '',
     `The sheet as it is now (its numbered lines, findings, theory, layers, your earlier proposals, memory) comes in the user's latest message, before the question. Earlier messages were written against earlier states of the sheet: line numbers in them may be out of date; the latest state is right.`,
     input.companyInstructions ? `Company rules (they take precedence):\n${input.companyInstructions}` : '',
   ];

@@ -190,6 +190,11 @@ export function checkDerivation(
       return true;
     };
     const chosen: [Holding, string][] = [];
+    const holds = ([h]: [Holding, string]) => {
+      const [l, r] = [tryValue(() => evaluate(h.left, at)), tryValue(() => evaluate(h.right, at))];
+      if (l?.type !== 'quantity' || r?.type !== 'quantity' || !sameDim(l.dim, r.dim)) return false;
+      return Math.abs(l.si - r.si) <= RELATED * 1e-3 * Math.max(Math.abs(l.si), Math.abs(r.si), scales.get(h) ?? 0);
+    };
     // Symbols of theory first (those of the step before the others), values of the sheet (g, h_1) last;
     // of these, the name in the fewest relations: solving m·dv/dt == −m·g − v_R·dm/dt for dt, which dv/dt == n·g
     // and dm/dt == −q share, makes the rounds below swing apart instead of settling.
@@ -201,6 +206,12 @@ export function checkDerivation(
     for (const h of [...under].sort((a, b) => symbolsOf(a) - symbolsOf(b))) {
       const taken = new Set(chosen.map(([, n]) => n));
       const candidates = [...h.names].filter((n) => !taken.has(n) && !formula(n)).sort((a, b) => rank(a) - rank(b));
+      // A relation whose names the sheet all calculates (relation S == U·I above S := U·I) has nothing to solve for:
+      // it holds by the definitions themselves, or it says nothing here.
+      if (candidates.length === 0) {
+        if (holds([h, ''])) continue;
+        return rewritten.map(() => undefined);
+      }
       // A factor of both sides (ρ in ρ·g·h == ρ·v²/2) solved to zero makes the relation hold for nothing it says:
       // another name is solved for first; zero is taken only when it is the one answer (v_1 == 0 m/s).
       const done = candidates.find((name) => solveFor(h, name, true)) ?? candidates.find((name) => solveFor(h, name));
@@ -209,11 +220,6 @@ export function checkDerivation(
     }
     // A later relation may move a name an earlier one was solved with (ε_yy = ε_xx after dV − dV₀ = (ε_xx + ε_yy + ε_zz)·dV₀):
     // solved again in turn until they all hold together.
-    const holds = ([h]: [Holding, string]) => {
-      const [l, r] = [tryValue(() => evaluate(h.left, at)), tryValue(() => evaluate(h.right, at))];
-      if (l?.type !== 'quantity' || r?.type !== 'quantity' || !sameDim(l.dim, r.dim)) return false;
-      return Math.abs(l.si - r.si) <= RELATED * 1e-3 * Math.max(Math.abs(l.si), Math.abs(r.si), scales.get(h) ?? 0);
-    };
     for (let round = 0; round < 30 && !chosen.every(holds); round++) {
       for (const [h, name] of chosen) if (!solveFor(h, name)) return rewritten.map(() => undefined);
     }

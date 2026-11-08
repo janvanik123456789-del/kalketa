@@ -40,9 +40,11 @@ ${DETAIL_LEVELS.map((l) => DETAIL_RULES[l]).join('\n')}`;
 - A number in text (a ratio, a comparison, "~4000× wider") is computed in the sheet first, on a line of its own with a name; text never claims a number the sheet does not compute. The program checks the proposed sheet and returns its errors and such numbers to you.
 - Choose the unit a result is shown in so it reads well (| m², | min, | kN·m), not the unit of the formula.
 - Units convert themselves: m² and cm², kN and N, min and s may stand in one formula as they are; never convert values by hand, never copy a value into another unit to make a formula work.
+- A count (turns of a winding, pieces, bolts) is a plain number with no unit (never "pieces"); round it up to whole ones where the count must be whole: N_2 := ceil(U_20/(4.44·f·B_m·A_Fe)).
+- A relation uses the names of the sheet: the allowed ripple is ΔU_max in the sheet, so the relation says ΔU_max, not ΔU of the textbook; a name of its own is another quantity and the derivation below it will not follow.
 - A zero needs no unit: y_2 == 0, p_a + ρ·g·0 (a zero written bare is of any unit).
 - A name that is not defined and is also a unit is read as the unit: t is tonnes, s seconds, m metres, g grams, h hours. A quantity that changes with time or position is a function of it, its variable a parameter: h(t) := (sqrt(h_1) - k·t)^2, v_1(t) := sqrt(2·g·h(t)); never t used outside a function, an integral or a chart.
-- A chart of a function: plot(h(t), t: 0 s .. t_v). Quantities of different units go into separate charts, one plot line each; never scale a curve (h·10) to share an axis.
+- A chart of a function: plot(h(t), t: 0 s .. t_v). A chart shows how a quantity changes (with its variable, along a series); plain results that do not change are never plotted, so a part without such a quantity has no chart. Its options go inside the brackets: plot(M(x), x: 0 m .. L, title: "Momenty", ylim: 0 kN·m .. 50 kN·m); nothing in braces after it. Quantities of different units go into separate charts, one plot line each; never scale a curve (h·10) to share an axis.
 - A text line is text only: no values joined to it ("…" ratio "…" or "…"·x is wrong); a value is printed by its own line.
 - The starting equation of the theory (Bernoulli for two points, continuity) is a relation … {eq}; derive only writes the steps that follow from the relations above it.
 - An integral is written with its integrand, its variable and its bounds: integral(1/sqrt(h), h: 0 .. h_1); the variable is the name (h), not its differential (dh).

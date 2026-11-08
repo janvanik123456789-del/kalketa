@@ -1179,7 +1179,7 @@ export function SheetView(props: Props) {
       <div
         key={`${seg.start}:${isEditing ? 'e' : block?.kind === 'chart' ? `chart:${plotOption(seg.text, 'place') ?? ''}` : seg.text}`}
         data-item={measured ? '' : undefined}
-        className={`row${isEditing ? ' editing' : ''}${selected ? ' selected' : ''}${marked.has(seg.start) ? ' marked' : ''}${statement?.status === 'error' ? ' has-error' : ''}${placed ? ` wrap-${placed.wrap}` : ''}${clear ? ' clear-row' : ''}${aiMark ? ' ai-made' : ''}`}
+        className={`row${isEditing ? ' editing' : ''}${selected ? ' selected' : ''}${marked.has(seg.start) ? ' marked' : ''}${statement?.status === 'error' ? ' has-error' : ''}${placed ? ` wrap-${placed.wrap}` : ''}${clear ? ' clear-row' : ''}${aiMark ? ' ai-row' : ''}`}
         style={
           placed
             ? { width: `${placed.width ?? 40}%`, ...(placed.dx ? { [placed.wrap === 'right' ? 'marginRight' : 'marginLeft']: `${placed.dx}%` } : {}), ...(placed.dy ? { clear: placed.wrap } : {}) }

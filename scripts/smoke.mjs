@@ -96,7 +96,9 @@ const fakeApi = createServer((request, response) => {
       // The steady briefing is the system message; the sheet as it is now comes in the latest message before the question.
       const latest = String(body.messages.at(-1)?.content ?? '');
       const mark = '=== The question ===\n';
-      const system = `${body.messages[0]?.content ?? ''}\n\n${latest.includes(mark) ? latest.slice(0, latest.indexOf(mark)) : ''}`;
+      // A sheet unchanged since an earlier question is not sent again: read as a model reads it, from that question.
+      const withSheet = [...body.messages].reverse().map((m) => String(m.content ?? '')).find((c) => c.startsWith('=== The sheet as it is now ===')) ?? latest;
+      const system = `${body.messages[0]?.content ?? ''}\n\n${withSheet.includes(mark) ? withSheet.slice(0, withSheet.indexOf(mark)) : ''}`;
       const question = latest.includes(mark) ? latest.slice(latest.indexOf(mark) + mark.length) : latest;
       const title = /The sheet "([^"]+)"/.exec(system)?.[1] ?? '?';
       // Cites the first theory section with words from it, and a section the sheet does not have.
@@ -134,6 +136,17 @@ const fakeApi = createServer((request, response) => {
       }
       // A new calculation from its intent: questions first, then an outline, then the whole sheet replacing the empty one,
       // by the number of the user's turns; only when the briefing says so.
+      // "Najdi vzor…": a model that asks to look up a formula and a sample; given them, it says what it read.
+      if (question.startsWith('Najdi vzor') || question.includes('Kalketa poslala modelu')) {
+        const lf = String.fromCharCode(10);
+        const fence = '`'.repeat(3);
+        const text = question.includes('Kalketa poslala modelu')
+          ? `přečteno: ${question.includes('σ ==') ? 'vzorec' : '-'} ${question.includes('# ') ? 'vzor' : '-'}`
+          : `katalog: ${system.includes('normalove-napeti') && system.includes('R1-nosnik') ? 'ano' : 'ne'}${lf}${lf}${fence}lookup${lf}formula normalove-napeti${lf}sample R1-nosnik${lf}${fence}${lf}`;
+        response.write(event({ model: 'local-smoke-7b', choices: [{ delta: { content: text } }] }));
+        response.end(event('[DONE]'));
+        return;
+      }
       if (system.includes('starts a new calculation from its intent')) {
         const lf = String.fromCharCode(10);
         const fence = '`'.repeat(3);
@@ -257,6 +270,8 @@ const env = {
   KALKETA_SMOKE_AI: aiFile,
   KALKETA_SMOKE_BLOCKS: blocksFile,
   ANTHROPIC_BASE_URL: `http://127.0.0.1:${fakeApi.address().port}`,
+  // Kalketa's MCP server in the test on a port of its own, not the one of a Kalketa the user has running.
+  KALKETA_MCP_PORT: '3897',
   // Never the user's own local servers: LM Studio and the other server are the fake one, Ollama does not run.
   KALKETA_AI_URL_LMSTUDIO: `http://127.0.0.1:${fakeApi.address().port}/local`,
   KALKETA_AI_URL_OLLAMA: 'http://127.0.0.1:9',

@@ -17,6 +17,7 @@ import { basename, dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { stat } from 'node:fs/promises';
 import { registerAiBridge } from './ai.js';
+import { registerMcpBridge } from './mcp.js';
 import { allowCallStacks, enableCallStacks, registerDiagnostics, watchWindow, type HangWords } from './diagnostics.js';
 import { registerTheoryBridge } from './theory.js';
 import { systemFonts } from './fonts.js';
@@ -557,6 +558,7 @@ function registerBridge(): void {
   });
 
   registerAiBridge(fromEditor);
+  registerMcpBridge(fromEditor);
   registerDiagnostics(fromEditor);
   registerTheoryBridge(fromEditor, grantedTo);
   // A check of the calculation in Python: the built-in one (no files, no network) or, chosen in the settings and

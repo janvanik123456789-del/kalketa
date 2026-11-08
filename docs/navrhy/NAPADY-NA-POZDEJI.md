@@ -27,6 +27,14 @@ Ověřeno na sbírce uživatele (sken s OCR), strany 41–48. Obrázky i číslo
 
 Soubor `.kalk` (a `.cc`) chycený myší v Průzkumníku a puštěný na plochu Kalkety se otevře v nové záložce, jako přes Soubor → Otevřít. Uživatel to chce, ale zatím neprovádět. Pozor: puštěný obrázek se dnes vkládá do listu, takže rozhodovat podle přípony (výpočet se otevře, obrázek vloží). Několik souborů najednou: každý do své záložky. Soubor už otevřený jinde: jako u Otevřít (`docs.openElsewhere`). Ověřit skutečným tažením ve smoke testu.
 
+### PDF se jménem souboru výpočtu (2026-11-08, čeká)
+
+Export do PDF má nabídnout stejné jméno, jako má uložený soubor výpočtu: `Ohrev_vody_v_zasobniku.kalk` → `Ohrev_vody_v_zasobniku.pdf`. Dnes nabídne jméno podle nadpisu listu („Doba ohřevu a chladnutí vody v zásobníku.pdf“) a soubory k sobě nejde dohledat. Neuložený list: jméno podle nadpisu jako dnes. Nabízené jméno jde v dialogu přepsat. Platí i pro uložení kopie bez rozhovorů a pro tisk do PDF z příkazové řádky (`kalketa print`), kde je výchozím jménem jméno vstupního souboru.
+
+### Nastavení AI na jednom místě (2026-11-08, čeká)
+
+Všechno nastavení AI v jednom oddílu Nastavení, ne roztroušené (dnes: Nastavení → AI, Nástroje → Zapnout AI, Nástroje → AI zvenku (MCP)…). Pořadí podle důležitosti: nahoře klasické nastavení (zapnout AI, poskytovatel, model, klíč, kontext, přemýšlení), až na konci „AI zvenku (MCP)“ jako obezlička „pro šetřílky a koumáky“ (sbalený oddíl). Nabídka Nástroje pak jen odkáže do Nastavení. Souvisí s tím lepší připojení klientů MCP: Kalketa by sama zapsala nastavení do Straty, Claude Desktop a dalších aplikací jedním tlačítkem, bez ručního kopírování bloků (uživatel 2026-11-08 vložil blok do PowerShellu a token se špičatými závorkami do souboru Straty).
+
 ### ~~Postranní panel jako záložky~~ (2026-10-04, hotovo týž den)
 
 *Hotovo:* nahoře v bočním panelu jsou záložky Podrobnosti, Tabulky, Vrstvy, AI a ✕ pro skrytí. Původní zápis:

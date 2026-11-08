@@ -40,6 +40,8 @@ interface ChatAsk {
   readonly language: string;
   readonly sheet: AiSheetContext;
   readonly languageGuide?: string;
+  /** The catalog of the formula library and the samples the model may ask for (written by the editor). */
+  readonly catalog?: string;
   /** The editor runs checks in Python of the answers: the model is told how to write them. */
   readonly python?: boolean;
   readonly turns: readonly ChatTurn[];
@@ -211,6 +213,7 @@ export function registerAiBridge(fromEditor: (event: IpcMainInvokeEvent) => unkn
       language: ask.language,
       sheet: ask.sheet,
       ...(ask.languageGuide ? { languageGuide: ask.languageGuide } : {}),
+      ...(typeof ask.catalog === 'string' && ask.catalog.length < 40_000 ? { catalog: ask.catalog } : {}),
       ...(policy.instructions ? { companyInstructions: policy.instructions } : {}),
       ...(typeof ask.memory === 'string' && ask.memory.trim() ? { memory: ask.memory } : {}),
       ...(ask.python === true ? { python: { numpy: pyodideHasNumpy(app.isPackaged ? process.resourcesPath : undefined) } } : {}),
@@ -233,7 +236,10 @@ export function registerAiBridge(fromEditor: (event: IpcMainInvokeEvent) => unkn
       }
       told = serverContexts.get(at);
     }
-    const context = typeof ask.context === 'number' && Number.isInteger(ask.context) && ask.context >= 2048 ? ask.context : (told ?? (provider.local ? DEFAULT_CONTEXT.local : DEFAULT_CONTEXT.remote));
+    const fromSettings = typeof ask.context === 'number' && Number.isInteger(ask.context) && ask.context >= 2048;
+    const context = fromSettings ? (ask.context as number) : (told ?? (provider.local ? DEFAULT_CONTEXT.local : DEFAULT_CONTEXT.remote));
+    // Where the context came from, for the log: a default too small for the model makes the window jump at every question.
+    const contextFrom = fromSettings ? 'settings' : told !== undefined ? 'server' : 'default';
     const given = ask.window && Number.isInteger(ask.window.upTo) && ask.window.upTo > 0 && ask.window.upTo < turns.length && typeof ask.window.summary === 'string' ? ask.window : undefined;
     const fixed = estimateTokens(prepared.text) + estimateTokens(prepared.state);
     let window = given;
@@ -267,7 +273,7 @@ export function registerAiBridge(fromEditor: (event: IpcMainInvokeEvent) => unkn
     // What went to the model and how it ended, for finding faults (logs/ai.log); sizes only, no text, no key.
     const started = Date.now();
     let pieces = 0;
-    const logged = { request: memory ? 'memory' : 'chat', id: ask.id, provider: id, model: ask.model, ...(typeof ask.url === 'string' ? { url: ask.url } : {}), keyGiven: keys.has(id), effort: effort ?? null, briefingChars: prepared.text.length, stateChars: prepared.state.length, turns: turns.length, turnsChars: turns.reduce((n, t) => n + t.text.length, 0), context, sentTokens: usage.sent, summedUp: usage.summedUp };
+    const logged = { request: memory ? 'memory' : 'chat', id: ask.id, provider: id, model: ask.model, ...(typeof ask.url === 'string' ? { url: ask.url } : {}), keyGiven: keys.has(id), effort: effort ?? null, briefingChars: prepared.text.length, stateChars: prepared.state.length, turns: turns.length, turnsChars: turns.reduce((n, t) => n + t.text.length, 0), context, contextFrom, sentTokens: usage.sent, summedUp: usage.summedUp };
     appendLog('ai.log', { event: 'asked', ...logged });
     // Until the first piece comes, the model reads what was sent: on a local model that takes long when much is new.
     send({ phase: 'reading', tokens: usage.sent });

@@ -39,6 +39,8 @@ export interface ConversationTurn {
   readonly citations?: readonly { readonly id: string; readonly status: 'ok' | 'unknown' | 'misquoted'; readonly quote?: string }[];
   /** A turn the program wrote: the result of the checks in Python of the answer before it. */
   readonly check?: true;
+  /** The program's answer to what the model asked to look up (formulas, samples): shown folded. */
+  readonly lookup?: true;
   /**
    * Of such a turn: for each python block of the answer before it, whether it ran and every result it reported
    * agreed with the sheet. Only a check that agreed is offered to be kept in the layer Check in Python.
@@ -105,6 +107,13 @@ export interface ChangeEntry {
   readonly reviewed?: string;
   /** Accepted into a copy of the sheet with this title (a new tab); this sheet stayed as it was. */
   readonly copiedTo?: string;
+  /**
+   * The entries this one corrects (the model sent the change again after the program checked it): accepting it
+   * takes their lines out of the sheet first, so nothing is put in twice.
+   */
+  readonly replaces?: readonly string[];
+  /** ISO time a corrected entry replaced this one: an open one can no longer be accepted, an accepted one was taken out. */
+  readonly replacedBy?: string;
 }
 
 /** A whole new calculation the model wrote, and whether it was opened as a new sheet. */
@@ -169,7 +178,7 @@ export function aiMadeLines(source: string, entries: readonly ChangeEntry[]): Ma
   const lines = source.split(/\r?\n/);
   const made = new Map<number, ChangeEntry>();
   for (const entry of entries) {
-    if (entry.state !== 'accepted' || entry.reviewed || entry.copiedTo || entry.after.length === 0) continue;
+    if (entry.state !== 'accepted' || entry.reviewed || entry.copiedTo || entry.replacedBy || entry.after.length === 0) continue;
     const anchor = entry.insert ? entry.from + 1 : entry.from;
     let best: number | undefined;
     for (let at = 1; at + entry.after.length - 1 <= lines.length; at++) {

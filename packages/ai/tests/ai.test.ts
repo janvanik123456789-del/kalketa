@@ -229,6 +229,19 @@ describe('briefing', () => {
     expect(next[2]!.text).toContain('q := 12 kN/m');
     expect(next[0]!.text).not.toContain('q := 12 kN/m');
   });
+
+  it('does not send the sheet again while it is as the model read it last', () => {
+    const first = prepareBriefing({ language: 'cs', sheet: { ...sheet, findings: [] } });
+    const went = withSheetState([{ role: 'user' as const, text: 'Spočítej část 1.' }], first.state)[0]!.text;
+    const turns = [{ role: 'user' as const, text: 'Spočítej část 1.', sent: went }, { role: 'assistant' as const, text: 'Hotovo.' }, { role: 'user' as const, text: 'Proč 1,8?' }];
+    const next = withSheetState(turns, first.state);
+    expect(next[2]!.text).toBe(`=== The sheet is unchanged since it was last given above ===\n\n${QUESTION_MARK}\nProč 1,8?`);
+    // A question after that one still finds the sheet in the first question; once the sheet changes, it goes whole.
+    const third = [...turns.slice(0, 2), { ...turns[2]!, sent: next[2]!.text }, { role: 'assistant' as const, text: 'Ze zadání.' }, { role: 'user' as const, text: 'Dál.' }];
+    expect(withSheetState(third, first.state)[4]!.text.startsWith('=== The sheet is unchanged')).toBe(true);
+    const changed = prepareBriefing({ language: 'cs', sheet: { ...sheet, source: `${sheet.source}\nq := 12 kN/m`, findings: [] } });
+    expect(withSheetState(third, changed.state)[4]!.text).toContain('q := 12 kN/m');
+  });
 });
 
 describe('chat with a local server', () => {

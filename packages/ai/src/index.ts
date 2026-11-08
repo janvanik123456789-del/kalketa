@@ -18,4 +18,5 @@ export * from './answerBlocks.js';
 export * from './writingRules.js';
 export * from './sheetChecks.js';
 export * from './contextWindow.js';
+export * from './lookups.js';
 export { latexLine } from './latex.js';

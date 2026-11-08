@@ -13,6 +13,8 @@ export interface ProposalView {
   /** 'stale': the lines are no longer as they were; 'missing': they never were there. */
   readonly fits: 'yes' | 'stale' | 'missing';
   readonly effect?: ProposalEffect;
+  /** A correction: how many accepted proposals it takes out of the sheet when accepted. */
+  readonly replacing?: number;
 }
 
 function percent(u: number | undefined, catalog: Catalog): string {
@@ -72,10 +74,10 @@ export function EffectLines({ effect, catalog, title }: { effect: ProposalEffect
 }
 
 export function ProposalCard({ view, n, catalog, onDecide, onReview, onMove }: { view: ProposalView; n: number; catalog: Catalog; onDecide(id: string, accept: boolean): void; onReview?(id: string): void; onMove?(id: string, after: number): void }) {
-  const { entry, fits, effect } = view;
+  const { entry, fits, effect, replacing } = view;
   // Lines only put in: the person may put them after another line before accepting (the model counted wrong, or
   // the solution belongs under the picture). Lines that replace others stay where they are.
-  const movable = !!onMove && !!entry.insert && entry.state === 'open';
+  const movable = !!onMove && !!entry.insert && entry.state === 'open' && !entry.replacedBy;
   const where = movable
     ? (
         <label className="proposal-where" title={t(catalog, 'proposal.moveTip')}>
@@ -102,7 +104,7 @@ export function ProposalCard({ view, n, catalog, onDecide, onReview, onMove }: {
       : t(catalog, 'proposal.lines', { from: String(entry.from), to: String(entry.to) });
   const when = (iso?: string) => (iso ? new Intl.DateTimeFormat(catalog.locale, { dateStyle: 'short', timeStyle: 'short' }).format(new Date(iso)) : '');
   return (
-    <div className={`proposal ${entry.state}${fits === 'yes' ? '' : ' stale'}`} data-proposal={entry.id}>
+    <div className={`proposal ${entry.replacedBy ? 'replaced' : entry.state}${fits === 'yes' ? '' : ' stale'}`} data-proposal={entry.id}>
       <div className="proposal-head">
         {t(catalog, 'proposal.title', { n: String(n) })} · {where}
       </div>
@@ -120,8 +122,11 @@ export function ProposalCard({ view, n, catalog, onDecide, onReview, onMove }: {
         {entry.after.length === 0 && <div className="add muted">{t(catalog, 'proposal.deletes')}</div>}
       </pre>
       {effect && entry.state === 'open' && fits === 'yes' && <EffectLines effect={effect} catalog={catalog} />}
+      {replacing && entry.state === 'open' && fits === 'yes' ? <div className="proposal-replacing">{t(catalog, 'proposal.replacing', { count: String(replacing) })}</div> : null}
       <div className="proposal-actions">
-        {entry.state === 'open' ? (
+        {entry.replacedBy ? (
+          <span className="proposal-state">{t(catalog, entry.state === 'accepted' ? 'proposal.replacedOut' : 'proposal.replaced', { when: when(entry.replacedBy) })}</span>
+        ) : entry.state === 'open' ? (
           fits === 'yes' ? (
             <>
               <button type="button" className="proposal-accept default" onClick={() => onDecide(entry.id, true)}>

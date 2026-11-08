@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { briefing, checksNeedAnswer, isRoundResult, parsePythonChecks, pythonReport, reportedNames, type CheckReport, type CheckWords } from '../src/index.js';
+import { briefing, checksNeedAnswer, checkTitle, isRoundResult, parsePythonChecks, pythonReport, reportedNames, type CheckReport, type CheckWords } from '../src/index.js';
 
 const FENCE = '`'.repeat(3);
 const WORDS: CheckWords = {
@@ -66,5 +66,13 @@ describe('checks in Python written by the model', () => {
     expect(told).toContain('check a calculation independently in Python');
     expect(told).toContain('and NumPy');
     expect(briefing({ language: 'cs', sheet, python: { numpy: false } })).not.toContain('NumPy');
+  });
+});
+
+describe('the title of a kept check', () => {
+  it('is the first comment line of the script, past blank lines and a coding line', () => {
+    expect(checkTitle('\n# -*- coding: utf-8 -*-\n# Část 2: počet závitů simulací\nN = 1\n')).toBe('Část 2: počet závitů simulací');
+    expect(checkTitle('## Bilance výkonu  \nx = 1')).toBe('Bilance výkonu');
+    expect(checkTitle('from math import sqrt\n# later comment')).toBeUndefined();
   });
 });

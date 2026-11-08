@@ -5,13 +5,15 @@
  */
 
 import { app, BrowserWindow, clipboard, ClipboardItem, nativeImage } from 'electron';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync } from 'node:fs';
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { canSealKeys } from './ai.js';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 
 /** What the test needs of the main process: its first window, the hooks its handlers read, and a few of its functions. */
 export interface SmokeContext {
@@ -85,7 +87,7 @@ export async function runSmokeTest(pdfPath: string, context: SmokeContext): Prom
     await writeFile(pdfPath, pdf);
     ok =
       state.mathFont && state.bridge && state.sideBySide && state.menus === 8 && state.toolbars > 0 && state.rows > 10 && state.summary > 0 && state.math > 0 && reshapedColumns === 3 && pdf.length > 1000 &&
-      layers.deflection && layers.pickTaken.column.startsWith('→') && /mm|cm/.test(layers.pickTaken.text) && layers.newKeepsExample && layers.samplesOk && layers.derivations && layers.summaryOk && layers.definitionAtCursor && layers.sheetGridOk && layers.tableEnter && layers.solvedByFormula && layers.rootsAndExtremes && layers.userChart.ok && layers.relations.ok && layers.chartEdit && layers.quadraticSample.ok && layers.saveOnClose.ok && layers.wordPrinted && layers.wordColored && layers.paletteColored && layers.wordText.focused && layers.wordText.pane && layers.wordText.bold === 'dynamiky' && !layers.wordText.shown.includes('"') && layers.wordText.align === 'center' && layers.cellMarked === 'Síla na konci' && layers.systemFont !== '' && layers.cellFont.replace(/"/g, '').startsWith(layers.systemFont) && layers.cellDeleted && layers.paperRoots && layers.tableRowAdded && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.notesPicture === 'FIGURE+img BLOCKQUOTE' && layers.notesPlaced === 'narrower centred' && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.charts && layers.functionBar && layers.revisions && layers.roots && layers.toolIcons && layers.aiSettings && layers.aiChat && layers.pdfCleanup && layers.theoryLibrary && layers.study && layers.sheetPicture.offered && layers.sheetPicture.described && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 4 && layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
+      layers.deflection && layers.pickTaken.column.startsWith('→') && /mm|cm/.test(layers.pickTaken.text) && layers.newKeepsExample && layers.samplesOk && layers.derivations && layers.summaryOk && layers.definitionAtCursor && layers.sheetGridOk && layers.tableEnter && layers.solvedByFormula && layers.rootsAndExtremes && layers.userChart.ok && layers.relations.ok && layers.chartEdit && layers.quadraticSample.ok && layers.saveOnClose.ok && layers.wordPrinted && layers.wordColored && layers.paletteColored && layers.wordText.focused && layers.wordText.pane && layers.wordText.bold === 'dynamiky' && !layers.wordText.shown.includes('"') && layers.wordText.align === 'center' && layers.cellMarked === 'Síla na konci' && layers.systemFont !== '' && layers.cellFont.replace(/"/g, '').startsWith(layers.systemFont) && layers.cellDeleted && layers.paperRoots && layers.tableRowAdded && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.notesPicture === 'FIGURE+img BLOCKQUOTE' && layers.notesPlaced === 'narrower centred' && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.charts && layers.functionBar && layers.revisions && layers.roots && layers.toolIcons && layers.aiSettings && layers.aiChat && layers.mcp && layers.pdfCleanup && layers.theoryLibrary && layers.study && layers.sheetPicture.offered && layers.sheetPicture.described && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 4 && layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
     ok = ok && insertMenu.ok && formulaLibrary.ok && rowTools.ok && controls.ok && typing.ok && imported.ok && start.shown && start.cards >= 20 && start.lead === 'R24-pruvodce-police' && start.pictures >= 12 && start.closed && start.tab === 'Vzor – Posouzení nosníku N1';
     console.log(JSON.stringify({ ok, start, insertMenu, formulaLibrary, rowTools, controls, typing, imported, ...state, reshapedColumns, layers, pdfBytes: pdf.length }));
   } catch (err) {
@@ -2362,6 +2364,8 @@ async function layersWithRealInput(picture: string) {
 
   // The AI chat in the side pane, with the other server (the fake one) picked in Settings.
   const aiChat = await aiChatWithRealInput(contents, picture);
+  // Kalketa as an MCP server: switched on in its dialog by real clicks, an MCP client reads the sheet through it.
+  const mcp = await mcpWithRealInput(contents, picture);
   // Text copied out of a PDF, pasted into the sources and tidied after a look at the preview.
   const pdfCleanup = await pdfCleanupWithRealInput(contents, picture);
   // Those sources saved as a theory library, attached in the chat and cited by its key.
@@ -3336,7 +3340,7 @@ async function layersWithRealInput(picture: string) {
   // The folder of the file saved last is where the open and save dialogs start next time.
   const folderKept = lastFolder() === dirname(resolve(tabFile));
   const saveOnClose = { closeButtons, keptOnCancel, savedOnClose, windowSaved, folderKept, ok: closeButtons.join('|') === 'Uložit|Neukládat|Zrušit' && keptOnCancel && savedOnClose && windowSaved && folderKept };
-  return { ...state, pickTaken, deflection, derivations, summaryOk, summaryOpens, summaryAtEnd, bookStyle, verdictFuture, verdictBack, pageHead, definitionAtCursor, solveFormatted, sheetGridOk, sheetGrid, tableEnter, tableEnterAt, lastRowEnter, draggedRows, selectedAll, bothFormatted, roundedOn, equationNumber, solvedByFormula, rootsAndExtremes, wordText, wordColored, paletteColored, wordPrinted, cellMarked, cellFont, systemFont, cellDeleted, paperRoots, tableRowAdded, chartSteps, samplesOk, sampleTab, newKeepsExample, citations, notesPicture, notesPlaced, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, rootSteps, toolIcons, aiSettings, aiChat, pdfCleanup, theoryLibrary, study, sheetPicture, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, placedFree, strictPlaced, canvasOk, besideText, pictures, blocksOk, userChart, quadraticSample, saveOnClose, relations: relationsOk, chartEdit: chartEdit.ok, chartEditSteps: chartEdit };
+  return { ...state, pickTaken, deflection, derivations, summaryOk, summaryOpens, summaryAtEnd, bookStyle, verdictFuture, verdictBack, pageHead, definitionAtCursor, solveFormatted, sheetGridOk, sheetGrid, tableEnter, tableEnterAt, lastRowEnter, draggedRows, selectedAll, bothFormatted, roundedOn, equationNumber, solvedByFormula, rootsAndExtremes, wordText, wordColored, paletteColored, wordPrinted, cellMarked, cellFont, systemFont, cellDeleted, paperRoots, tableRowAdded, chartSteps, samplesOk, sampleTab, newKeepsExample, citations, notesPicture, notesPlaced, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, rootSteps, toolIcons, aiSettings, aiChat, mcp, pdfCleanup, theoryLibrary, study, sheetPicture, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, placedFree, strictPlaced, canvasOk, besideText, pictures, blocksOk, userChart, quadraticSample, saveOnClose, relations: relationsOk, chartEdit: chartEdit.ok, chartEditSteps: chartEdit };
 }
 
 /** The tidied sources saved as a library (.kalkt) and attached in the chat: the model cites it by its key. */
@@ -3965,6 +3969,10 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
   let newSheet = { head: '', others: '', opened: { tab: '', rows: 0, marked: 0, errors: '' }, state: '' };
   let pythonChat = { checks: 0, first: '', last: '', answers: 0, told: '', keep: 0, notKept: 0, tables: 0, kept: false, askedFirst: false, declined: false, copyWithoutAi: false };
   let sheetCheck = { checks: 0, report: '', answers: '' };
+  // The corrected proposal replaces the first one: that one can no longer be accepted, the correction goes in once.
+  let replacedProposal = { first: '', firstAccept: true, fixed: '', rows: -1, undone: false };
+  // The model looks up a formula and a sample from the catalog: the program sends them, folded in the chat.
+  let lookedUp = { catalog: '', summary: '', folded: false, opened: '', read: '' };
   let answerBlocks = { choiceButtons: '', levelAnswer: '', noteButton: '', noteAfter: '' };
   let intentFlow = { placeholder: '', answers: [] as string[], sheet: '', ok: false };
   let thinkingCut = '';
@@ -4007,7 +4015,7 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
     const accepted = (await contents.executeJavaScript(inSheet)) as boolean;
     const state = (await contents.executeJavaScript(`document.querySelector('.chat-pane .proposal-state')?.textContent ?? ''`)) as string;
     // The accepted line carries the AI mark until it is reviewed.
-    const markedRow = `[...document.querySelectorAll('.layer-view.active .row.ai-made')].map((r) => r.getAttribute('data-line') + ':' + (r.querySelector('.ai-mark')?.getAttribute('title') ?? '')).join('|')`;
+    const markedRow = `[...document.querySelectorAll('.layer-view.active .row.ai-row')].map((r) => r.getAttribute('data-line') + ':' + (r.querySelector('.ai-mark')?.getAttribute('title') ?? '')).join('|')`;
     const marked = (await contents.executeJavaScript(markedRow)) as string;
     await takePicture(picture.replace(/[.]png$/, '-ai-marked.png'));
     // Printing asks first while such lines are there; Esc prints nothing.
@@ -4024,11 +4032,11 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
     await clickOn('.layer-tab[data-layer="main"]');
     await pause(200);
     // Reviewed from the mark's menu: the mark goes; Undo brings it back.
-    await clickOn('.layer-view.active .row.ai-made .ai-mark');
+    await clickOn('.layer-view.active .row.ai-row .ai-mark');
     await pause(200);
     await clickMenu('Označit jako prověřené');
     await pause(300);
-    const reviewed = (await contents.executeJavaScript(`document.querySelectorAll('.layer-view.active .row.ai-made').length === 0`)) as boolean;
+    const reviewed = (await contents.executeJavaScript(`document.querySelectorAll('.layer-view.active .row.ai-row').length === 0`)) as boolean;
     await clickOn('.menubar-item:nth-child(2) > button');
     await clickMenu('Zpět');
     await pause(400);
@@ -4065,7 +4073,7 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
     const copy = (await contents.executeJavaScript(`({
       tab: document.querySelector('.doc-tab.active')?.textContent ?? '',
       rows: ${smokeRows},
-      marked: document.querySelectorAll('.layer-view.active .row.ai-made').length,
+      marked: document.querySelectorAll('.layer-view.active .row.ai-row').length,
       badges: document.querySelectorAll('.layer-view.active .ai-mark').length,
     })`)) as { tab: string; rows: number; marked: number; badges: number };
     await takePicture(picture.replace(/[.]png$/, '-ai-copy.png'));
@@ -4088,7 +4096,7 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
     const opened = (await contents.executeJavaScript(`({
       tab: document.querySelector('.doc-tab.active')?.textContent ?? '',
       rows: document.querySelectorAll('.layer-view.active .row[data-line]').length,
-      marked: document.querySelectorAll('.layer-view.active .row.ai-made').length,
+      marked: document.querySelectorAll('.layer-view.active .row.ai-row').length,
       errors: document.querySelector('.statusbar')?.textContent ?? '',
     })`)) as { tab: string; rows: number; marked: number; errors: string };
     await clickOn(`.doc-tab:nth-child(${sheetTab + 1}) .doc-tab-title`);
@@ -4119,6 +4127,14 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
         `document.body.textContent.includes('Ověření je uložené ve vrstvě Ověření v Pythonu.') && [...document.querySelectorAll('.layer-tab')].some((t) => t.textContent.includes('Ověření v Pythonu'))`,
       )) as boolean,
     };
+    // The kept check is numbered and named by what it checks, with the quantities it checked.
+    await contents.executeJavaScript(`[...document.querySelectorAll('.layer-tab')].find((t) => t.textContent.includes('Ověření v Pythonu'))?.setAttribute('data-smoke-pylayer', '')`);
+    await clickOn('[data-smoke-pylayer]');
+    await pause(400);
+    const pyLayer = (await contents.executeJavaScript(`document.querySelector('.layer-view.active')?.textContent ?? ''`)) as string;
+    pythonChat = { ...pythonChat, kept: pythonChat.kept && /1\. /.test(pyLayer) && pyLayer.includes('Ověřuje ') };
+    await clickOn('.layer-tab[data-layer="main"]');
+    await pause(300);
     // Taken back, so the sources stay as the later steps expect them.
     await clickOn('.menubar-item:nth-child(2) > button');
     await clickMenu('Zpět');
@@ -4173,6 +4189,33 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
       const checks = [...${checkTurns}].slice(${checksBefore}).map((t) => t.textContent);
       return { checks: checks.length, report: checks[0] ?? '', answers: ${doubled}.map((t) => t.textContent.match(/zdvojeno: \\S+/)?.[0] ?? '').join('|') };
     })()`)) as typeof sheetCheck;
+    const cardOf = (text: string) => `[...document.querySelectorAll('.chat-pane .proposal')].find((p) => p.textContent.includes(${JSON.stringify(text)}))`;
+    const firstCard = (await contents.executeJavaScript(`(() => { const c = ${cardOf('smoke_d := 3 m')}; return c ? { cls: c.className, text: c.textContent, accept: !!c.querySelector('.proposal-accept') } : { cls: '', text: '', accept: true }; })()`)) as { cls: string; text: string; accept: boolean };
+    await contents.executeJavaScript(`${cardOf('smoke_d2')}?.querySelector('.proposal-accept')?.setAttribute('data-smoke-fix', '1')`);
+    await clickOn('.chat-pane .proposal-accept[data-smoke-fix]');
+    await pause(400);
+    const doubledRows = `[...document.querySelectorAll('.layer-view.active .row[data-line]')].filter((r) => r.textContent.includes('Druhá délka')).length`;
+    const rows = (await contents.executeJavaScript(doubledRows)) as number;
+    const fixed = (await contents.executeJavaScript(`${cardOf('smoke_d2')}?.querySelector('.proposal-state')?.textContent ?? ''`)) as string;
+    // Undo: the sheet as it was for the steps that follow.
+    await clickOn('.menubar-item:nth-child(2) > button');
+    await clickMenu('Zpět');
+    await pause(400);
+    {
+      await clickOn('.chat-input');
+      await typeText('Najdi vzor pro napětí.');
+      await pressKey('Enter');
+      const read = `[...document.querySelectorAll('.chat-pane .chat-turn.assistant:not(.writing)')].map((t) => t.textContent).find((t) => t.includes('přečteno:')) ?? ''`;
+      for (let i = 0; i < 100 && !(await contents.executeJavaScript(read)); i++) await pause(150);
+      const catalogSeen = (await contents.executeJavaScript(`[...document.querySelectorAll('.chat-pane .chat-turn.assistant')].map((t) => t.textContent).find((t) => t.includes('katalog:')) ?? ''`)) as string;
+      const summary = (await contents.executeJavaScript(`document.querySelector('.chat-pane .chat-turn.lookup summary')?.textContent ?? ''`)) as string;
+      const folded = (await contents.executeJavaScript(`!document.querySelector('.chat-pane .chat-turn.lookup')?.open`)) as boolean;
+      await clickOn('.chat-pane .chat-turn.lookup summary');
+      await pause(200);
+      const opened = (await contents.executeJavaScript(`document.querySelector('.chat-pane .chat-turn.lookup')?.open ? document.querySelector('.chat-pane .chat-turn.lookup > div')?.textContent ?? '' : ''`)) as string;
+      lookedUp = { catalog: catalogSeen, summary, folded, opened: opened.slice(0, 200), read: (await contents.executeJavaScript(read)) as string };
+    }
+    replacedProposal = { first: `${firstCard.cls}|${firstCard.text}`, firstAccept: firstCard.accept, fixed, rows, undone: (await contents.executeJavaScript(doubledRows)) === 0 };
     // How detailed the calculation should be: the model asks by a choice, the user clicks an answer; the model then
     // writes in that level (it gets it in its briefing) and proposes a note, put into the AI notes by a click.
     await clickOn('.chat-input');
@@ -4230,7 +4273,7 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
   await clickMenu('Boční panel');
   await clickMenu(back);
   await pause(300);
-  await writeFile(picture.replace(/[.]png$/, '-ai-chat.json'), JSON.stringify({ running, pasted, unpasted, typed, theory, offered, quietWhileOff, head, shown, cutOff, cleared, aiTab, layerShown, kept, resumed, proposal, together, newSheet, pythonChat, sheetCheck, answerBlocks, paneTabs, thoughtFolded, thought, intentFlow }, null, 2));
+  await writeFile(picture.replace(/[.]png$/, '-ai-chat.json'), JSON.stringify({ running, replacedProposal, lookedUp, pasted, unpasted, typed, theory, offered, quietWhileOff, head, shown, cutOff, cleared, aiTab, layerShown, kept, resumed, proposal, together, newSheet, pythonChat, sheetCheck, answerBlocks, paneTabs, thoughtFolded, thought, intentFlow }, null, 2));
   return (
     pasted === 'Klopení je ztráta stability ohýbaného nosníku. Vloženo ze schránky.' && unpasted === 'Klopení je ztráta stability ohýbaného nosníku.' &&
     typed === 'H2:Klopení|P:Klopení je ztráta stability ohýbaného nosníku.' && theory.heading === 'Klopení' && /^T\d+$/.test(theory.badge) &&
@@ -4261,7 +4304,185 @@ async function aiChatWithRealInput(contents: Electron.WebContents, picture: stri
     together.allButton === 'Přijmout vše (2)' && together.acceptedAll === 2 && together.undoneAll === 0 &&
     together.copy.tab.includes('(upravená kopie)') && together.copy.rows === 2 && together.copy.marked === 2 && together.copy.badges === 2 && together.original.rows === 0 && together.original.state === 2 &&
     paneTabs === 'Podrobnosti Navigace *Tabulky Vrstvy AI|tables' && thoughtFolded && thought === 'Nejdřív zkontroluji průhyb na řádku 12.' &&
+    lookedUp.catalog.includes('katalog: ano') && !lookedUp.catalog.includes('formula normalove-napeti') && lookedUp.summary === 'Kalketa poslala modelu k přečtení: vzorec normalove-napeti, vzor R1-nosnik' && lookedUp.folded && lookedUp.opened.includes('Normálové napětí') && lookedUp.read.includes('přečteno: vzorec vzor') &&
+    replacedProposal.first.includes('replaced') && replacedProposal.first.includes('Nahrazeno opraveným návrhem') && !replacedProposal.firstAccept && replacedProposal.fixed.startsWith('Přijato') && replacedProposal.rows === 1 && replacedProposal.undone &&
     running.phase === 'thinking' && running.text.startsWith('přemýšlí') && running.dot && !(await contents.executeJavaScript(`!!document.querySelector('.chat-status, .chat-run')`))
+  );
+}
+
+/**
+ * Tools → AI from outside (MCP): switched on by real clicks, the address and token read from the dialog, then a real
+ * MCP client (the SDK's) lists the tools and reads the sheet, its trace, the guide and the catalog. Without the token
+ * or from a web page the server refuses; paused, a tool says so; switched off, nothing listens.
+ */
+async function mcpWithRealInput(contents: Electron.WebContents, picture: string): Promise<boolean> {
+  const read = (js: string) => contents.executeJavaScript(js) as Promise<unknown>;
+  await clickOn('.menubar-item:nth-child(6) > button');
+  await clickMenu('AI zvenku (MCP)');
+  for (let i = 0; i < 20 && !(await read(`!!document.querySelector('.mcp-on')`)); i++) await pause(100);
+  await clickOn('.mcp-on');
+  for (let i = 0; i < 30 && !String(await read(`document.querySelector('.mcp-status')?.textContent ?? ''`)).includes('čeká'); i++) await pause(100);
+  const waiting = String(await read(`document.querySelector('.mcp-status')?.textContent ?? ''`));
+  await clickOn('.mcp-show');
+  await pause(150);
+  const address = String(await read(`document.querySelector('.mcp-address')?.textContent ?? ''`));
+  const token = String(await read(`document.querySelector('.mcp-token')?.textContent ?? ''`));
+  const shownLine = String(await read(`document.querySelector('.mcp-line')?.textContent ?? ''`));
+  await takePicture(picture.replace(/[.]png$/, '-mcp.png'));
+  const status = async (url: string, headers: Record<string, string>) => {
+    try {
+      return (await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream', ...headers }, body: '{}' })).status;
+    } catch {
+      return -1;
+    }
+  };
+  const noToken = await status(address, {});
+  const fromPage = await status(address, { Authorization: `Bearer ${token}`, Origin: 'https://example.com' });
+  const client = new Client({ name: 'kalketa-smoke', version: '1.0.0' });
+  let tools: string[] = [];
+  let sheet = '';
+  let trace = '';
+  let guide = '';
+  let catalog = '';
+  let pausedText = '';
+  let statusBar = '';
+  let phase2 = { wrong: '', fixed: '', bar: '', cards: { wrong: '', fixedAccept: false, external: '', input: true }, statusText: '', inSheet: -1, barGone: false, readOnly: '', stdioShown: '', bridge: '', help: '', shifted: '' };
+  try {
+    await client.connect(new StreamableHTTPClientTransport(new URL(address), { requestInit: { headers: { Authorization: `Bearer ${token}` } } }));
+    tools = (await client.listTools()).tools.map((t) => t.name);
+    const textOf = (r: unknown) => ((r as { content?: { type: string; text?: string }[] }).content ?? []).map((c) => c.text ?? '').join('');
+    sheet = textOf(await client.callTool({ name: 'sheet_get', arguments: {} }));
+    const name = /^\s*\d+ \| ([A-Za-z_][A-Za-z0-9_]*) :=/m.exec(sheet)?.[1] ?? '';
+    trace = textOf(await client.callTool({ name: 'sheet_trace', arguments: { name } }));
+    guide = textOf(await client.callTool({ name: 'language_guide', arguments: {} }));
+    catalog = textOf(await client.callTool({ name: 'catalog', arguments: {} }));
+    for (let i = 0; i < 20 && !String(await read(`document.querySelector('.status-mcp')?.textContent ?? ''`)).includes('kalketa-smoke'); i++) await pause(100);
+    statusBar = String(await read(`document.querySelector('.status-mcp')?.textContent ?? ''`));
+    await clickOn('.mcp-paused');
+    await pause(300);
+    pausedText = textOf(await client.callTool({ name: 'sheet_get', arguments: {} }));
+    await clickOn('.mcp-paused');
+    await pause(200);
+    // Phase 2: a proposal with a name defined twice comes back with the check; its correction replaces it. The bar
+    // over the sheet leads to the card, which is accepted with a real click: the line is in the sheet once.
+    await pressKey('Escape');
+    await pause(200);
+    const last = Math.max(...[...sheet.matchAll(/^\s*(\d+) \| /gm)].map((m) => Number(m[1])));
+    const wrong = textOf(await client.callTool({ name: 'propose_change', arguments: { changes: [{ after: last, lines: ['smoke_mcp := 3 m', 'smoke_mcp := 4 m'] }], note: 'Délka z MCP.' } }));
+    const wrongId = /Proposed as ([^\s,:]+:\d+:\d+)/.exec(wrong)?.[1] ?? '';
+    const fixed = textOf(await client.callTool({ name: 'propose_change', arguments: { changes: [{ after: last, lines: ['smoke_mcp := 3 m'] }], note: 'Opraveno.', replaces: [wrongId] } }));
+    const fixedId = /Proposed as ([^\s,:]+:\d+:\d+)/.exec(fixed)?.[1] ?? '';
+    for (let i = 0; i < 20 && !(await read(`!!document.querySelector('.mcp-pending-show')`)); i++) await pause(100);
+    const bar = String(await read(`document.querySelector('.mcp-pending')?.textContent ?? ''`));
+    await clickOn('.mcp-pending-show');
+    await pause(500);
+    // In the side pane, as an answer of the chat: the conversation of the client, its cards, no input of its own.
+    const cards = (await read(`({ wrong: document.querySelector('.chat-pane [data-proposal="${wrongId}"]')?.className ?? '', fixedAccept: !!document.querySelector('.chat-pane [data-proposal="${fixedId}"] .proposal-accept'), external: document.querySelector('.chat-pane .chat-external')?.textContent ?? '', input: !!document.querySelector('.chat-pane .chat-input') })`)) as { wrong: string; fixedAccept: boolean; external: string; input: boolean };
+    await takePicture(picture.replace(/[.]png$/, '-mcp-proposal.png'));
+    await clickOn(`[data-proposal="${fixedId}"] .proposal-accept`);
+    await pause(400);
+    const statusText = textOf(await client.callTool({ name: 'proposal_status', arguments: {} }));
+    // Back to a chat of its own for the steps that follow.
+    await clickOn('.chat-new');
+    await pause(300);
+    await clickOn('.layer-tab[data-layer="main"]');
+    await pause(400);
+    const inSheet = (await read(`[...document.querySelectorAll('.layer-view.active .row[data-line]')].filter((r) => /smoke_?mcp/.test(r.textContent)).length`)) as number;
+    const barGone = !(await read(`!!document.querySelector('.mcp-pending')`));
+    // Undo: the sheet as the later steps expect it.
+    await clickOn('.menubar-item:nth-child(2) > button');
+    await clickMenu('Zpět');
+    await pause(400);
+    phase2 = { wrong: wrong.slice(0, 400), fixed: fixed.slice(0, 300), bar, cards, statusText, inSheet, barGone, readOnly: "", stdioShown: "", bridge: "", help: "", shifted: "" };
+    // Read only: proposing is refused.
+    await clickOn('.menubar-item:nth-child(6) > button');
+    await clickMenu('AI zvenku (MCP)');
+    for (let i = 0; i < 20 && !(await read(`!!document.querySelector('.mcp-readonly')`)); i++) await pause(100);
+    await clickOn('.mcp-readonly');
+    await pause(300);
+    phase2 = { ...phase2, readOnly: textOf(await client.callTool({ name: 'propose_change', arguments: { changes: [{ after: 1, lines: ['x_ro := 1'] }] } })) };
+    await clickOn('.mcp-readonly');
+    await pause(200);
+    // The way for applications that start a program: the dialog shows it, and Kalketa started with --mcp-stdio (a
+    // second process, no window) passes real standard input and output on to this one's server.
+    const stdioShown = String(await read(`document.querySelector('.mcp-stdio')?.textContent ?? ''`));
+    const bridge = await new Promise<string[]>((resolve) => {
+      const child = spawn(process.execPath, [app.getAppPath(), '--mcp-stdio'], { env: { ...process.env, KALKETA_USER_DATA: app.getPath('userData') }, stdio: ['pipe', 'pipe', 'ignore'] });
+      const lines: string[] = [];
+      let buffer = '';
+      const finish = () => {
+        child.kill();
+        resolve(lines);
+      };
+      const timer = setTimeout(finish, 20_000);
+      child.stdout.on('data', (chunk: Buffer) => {
+        buffer += chunk.toString('utf8');
+        const parts = buffer.split('\n');
+        buffer = parts.pop() ?? '';
+        lines.push(...parts.filter((l) => l.trim()));
+        if (lines.length >= 2) {
+          clearTimeout(timer);
+          finish();
+        }
+      });
+      child.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'kalketa-smoke-stdio', version: '1' } } })}\n`);
+      child.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' })}\n`);
+      child.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'tabs_list', arguments: {} } })}\n`);
+    });
+    // The help, from the dialog: the steps and why it is done so.
+    await clickOn('.mcp-help-open');
+    for (let i = 0; i < 20 && !(await read(`!!document.querySelector('.mcp-help')`)); i++) await pause(100);
+    const help = String(await read(`document.querySelector('.mcp-help')?.textContent ?? ''`));
+    await pressKey('Escape');
+    await pause(200);
+    // Two proposals of one call accepted one at a time: the lower one still goes after the line it named.
+    const pair = textOf(await client.callTool({ name: 'propose_change', arguments: { changes: [{ after: 1, lines: ['smoke_up := 1 m'] }, { after: last, lines: ['smoke_down := 2 m'] }] } }));
+    const [upId, downId] = [...pair.matchAll(/([^\s,:]+:\d+:\d+)/g)].map((m) => m[1]!);
+    for (let i = 0; i < 20 && !(await read(`!!document.querySelector('.chat-pane [data-proposal="${downId}"] .proposal-accept')`)); i++) await pause(100);
+    await clickOn(`.chat-pane [data-proposal="${upId}"] .proposal-accept`);
+    await pause(400);
+    await clickOn(`.chat-pane [data-proposal="${downId}"] .proposal-accept`);
+    await pause(400);
+    const rows = (await read(`[...document.querySelectorAll('.layer-view.active .row[data-line]')].map((r) => r.getAttribute('data-line') + ':' + r.textContent)`)) as string[];
+    const down = rows.find((r) => /smoke_?down/.test(r))?.split(':')[0];
+    const up = rows.find((r) => /smoke_?up/.test(r))?.split(':')[0];
+    for (let i = 0; i < 2; i++) {
+      await clickOn('.menubar-item:nth-child(2) > button');
+      await clickMenu('Zpět');
+      await pause(300);
+    }
+    await clickOn('.chat-new');
+    await pause(200);
+    phase2 = { ...phase2, stdioShown, bridge: bridge.map((line) => line.slice(0, 300)).join('\n'), help: help.slice(0, 3000), shifted: `${up}|${down}|${last}` };
+    await client.close();
+  } catch (error) {
+    sheet = `failed: ${error instanceof Error ? error.message : String(error)}`;
+  }
+  // The dialog again (the help took its place), to switch the server off.
+  if (!(await read(`!!document.querySelector('.mcp-on')`))) {
+    await clickOn('.menubar-item:nth-child(6) > button');
+    await clickMenu('AI zvenku (MCP)');
+    for (let i = 0; i < 20 && !(await read(`!!document.querySelector('.mcp-on')`)); i++) await pause(100);
+  }
+  await clickOn('.mcp-on');
+  await pause(400);
+  const afterOff = await status(address, { Authorization: `Bearer ${token}` });
+  const statusGone = !(await read(`!!document.querySelector('.status-mcp')`));
+  await pressKey('Escape');
+  await pause(200);
+  const result = { waiting, address, tokenLength: token.length, tokenInLine: shownLine.includes(token), noToken, fromPage, tools, sheet: sheet.slice(0, 300), trace: trace.slice(0, 200), guide: guide.length, catalog: catalog.slice(0, 120), statusBar, pausedText, afterOff, statusGone, phase2 };
+  await writeFile(picture.replace(/[.]png$/, '-mcp.json'), JSON.stringify(result, null, 2));
+  return (
+    waiting.includes('čeká na připojení') && address === 'http://127.0.0.1:3897/mcp' && token.length === 64 && result.tokenInLine &&
+    noToken === 401 && fromPage === 403 &&
+    ['tabs_list', 'sheet_get', 'sheet_trace', 'theory_get', 'language_guide', 'catalog', 'formula_get', 'sample_get', 'propose_change', 'proposal_status', 'propose_new_sheet'].every((t) => tools.includes(t)) &&
+    sheet.includes('The sheet "') && trace.includes(' = ') && guide.length > 2000 && catalog.includes('normalove-napeti') && catalog.includes('formula_get') &&
+    statusBar === 'MCP: připojeno (kalketa-smoke)' && pausedText.includes('paused') && afterOff === -1 && statusGone &&
+    phase2.wrong.includes('už je definováno') && phase2.fixed.includes('no errors') && phase2.bar.includes('kalketa-smoke navrhuje změny listu (1)') &&
+    phase2.cards.wrong.includes('replaced') && phase2.cards.fixedAccept && phase2.cards.external.includes('kalketa-smoke přes MCP') && !phase2.cards.input && /:\d+:1: accepted/.test(phase2.statusText) && phase2.statusText.includes('replaced by a correction') &&
+    phase2.inSheet === 1 && phase2.barGone && phase2.readOnly.includes('read-only') &&
+    phase2.stdioShown.includes('--mcp-stdio') && phase2.bridge.includes('"serverInfo"') && phase2.bridge.includes('Nový výpočet') &&
+    phase2.help.includes('Proč je to udělané takhle') && phase2.shifted.split('|')[0] === '2' && Number(phase2.shifted.split('|')[1]) === Number(phase2.shifted.split('|')[2]) + 2
   );
 }
 

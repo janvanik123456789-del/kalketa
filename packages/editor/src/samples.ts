@@ -70,6 +70,11 @@ function sheetOf(id: string, language: string): readonly [string, string] | unde
   return own.find(([path]) => languageOf(/([^/]+)\.cc$/.exec(path)![1]!) === language) ?? own.find(([path]) => languageOf(/([^/]+)\.cc$/.exec(path)![1]!) === 'cs') ?? own[0];
 }
 
+/** The sheet of a sample as written, in a language (Czech while it has none in that one): for the model to read. */
+export function sampleSource(id: string, language = 'cs'): string | undefined {
+  return sheetOf(id, language)?.[1];
+}
+
 /** What stands beside a sheet, in the language of the sheet: podklady.en.md beside podklady.md. */
 function besideSheet(files: Readonly<Record<string, string>>, id: string, name: string, language: string): string | undefined {
   const file = language === 'cs' ? `/${name}.md` : `/${name}.${language}.md`;

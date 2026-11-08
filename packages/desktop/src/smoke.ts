@@ -1384,7 +1384,8 @@ async function layersWithRealInput(picture: string) {
     return !!p && p.textContent.trim() === 'Koeficient dynamiky namáhání' && /Cambria/.test(p.getAttribute('style') ?? '') && /center/.test(p.getAttribute('style') ?? '') && !/color/.test(p.getAttribute('style') ?? '') && [...p.querySelectorAll('span[style*="color"]')].map((e) => e.textContent).join(' ') === 'Koeficient namáhání' && /#7030a0/.test(p.innerHTML) && (p.querySelector('b, strong')?.textContent ?? '') === 'dynamiky' && !p.closest('.row').classList.contains('has-error');
   })()`)) as boolean;
   // Roots and extremes: r_s = [2; 3], x_m = 2; the bound of an inequality.
-  const rootsAndExtremes = (await contents.executeJavaScript(`(() => {
+  // Looked at again for a while: on a slower system (Linux in CI) the sheet may not be drawn whole at the first look.
+  const rootsCheck = () => contents.executeJavaScript(`(() => {
     const rows = [...document.querySelectorAll('.layer-view.active .page .row')].map((r) => r.textContent.replace(/\\s+/g, ''));
     // An inequality: S ≤ π·d²/4 ⇒ d ≥ √(4·S/π) = 5,474 mm (from S = 23,53 mm²).
     const inequality = rows.some((r) => r.includes('⇒') && r.includes('≥') && r.endsWith('=5,474mm'));
@@ -1408,8 +1409,17 @@ async function layersWithRealInput(picture: string) {
       const m = letter.getBoundingClientRect();
       return Math.abs(t.bottom - m.bottom) < Math.max(3, t.height * 0.3);
     })();
-    return level && cells && recap && recurrence && rounded && measured && inequality && rows.some((r) => r.includes('roots') && r.endsWith('=[2;3]')) && rows.some((r) => r.includes('argmax') && r.endsWith('=2'));
-  })()`)) as boolean;
+    const parts = { level, cells, recap, recurrence, rounded, measured, inequality, roots: rows.some((r) => r.includes('roots') && r.endsWith('=[2;3]')), argmax: rows.some((r) => r.includes('argmax') && r.endsWith('=2')) };
+    window.__smokeRoots = { parts, rows: rows.filter((r) => /⇒|roots|argmax|≐|Celkem|y3|R2|Síla/.test(r)).slice(0, 20) };
+    return Object.values(parts).every(Boolean);
+  })()`) as Promise<boolean>;
+  let rootsAndExtremes = await rootsCheck();
+  for (let i = 0; i < 20 && !rootsAndExtremes; i++) {
+    await pause(250);
+    rootsAndExtremes = await rootsCheck();
+  }
+  // Which part failed, and the rows it looked at: kept for a failure on another system.
+  await writeFile(picture.replace(/[.]png$/, '-roots.json'), JSON.stringify(await contents.executeJavaScript('window.__smokeRoots'), null, 1));
   // A click on the table in the sheet opens it as a grid; Enter in its last row adds one; Esc closes it.
   await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .page .row')].find((r) => r.querySelector('table.data-table')).id = 'smoke-table-row'`);
   await clickOn('#smoke-table-row');

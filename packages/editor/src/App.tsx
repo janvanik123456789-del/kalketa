@@ -14,7 +14,7 @@ import { beamSketch, drivenScene, emptyScene, readScene, sectionSketch, writeSce
 import { CanvasEditor } from '@kalketa/canvas/editor';
 import { withAiLayer, copyWithoutAiRecords, hasAiRecords, compareWithSheet, sheetHas, readOutput, addLayer, allDiagnostics, appendixLayers, blockAppendices, documentBlocks, isRemovable, LayerSessions, MAIN_LAYER, removeLayer, freezeRevision, removeRevision, revisionDocument, revisionState, shortHash, tablesByLayer, theorySections, updateLayer, withTheoryIds, conversationsOf, hasConversations, withConversation, withoutConversation, aiMemoryOf, withAiMemory, linkedLibraries, librarySections, entriesOf, newSheetsOf, withEntries, studyAdvice, studyNotes, LARGE_STUDY_PAGES, type StudySettings, aiMadeLines, type SheetEntry, evaluateDocument, type ChangeEntry, type Conversation, type AddableLayerKind, type Layer, type RevisionState, type SheetDocument } from '@kalketa/sheet';
 import { buildCommands, shortcutOf, type Command } from './commands.js';
-import { applyProposal, catalogText, prepareBriefing, selectTheory, theoryText, writingRules, latexLine, latexPaste, applyProposals, cleanFigureDescription, cleanFormula, cleanReread, cleanMemory, parseNewSheets, DEFAULT_AI_SETTINGS, parseAiSettings, parseProposals, providerById, replacedLines, type ChangeProposal, type AiSettings, type ChatTurn, type CheckReport, type ChoiceBlock, type NoteBlock, DETAIL_LEVELS, isRoundResult, loneNumbers, noteText, proseOf, pythonLines, reportedNames, checkTitle, sheetNeedsAnswer, sheetReport, type SheetCheck } from '@kalketa/ai';
+import { applyProposal, catalogText, prepareBriefing, selectTheory, theoryText, writingRules, latexLine, latexPaste, applyProposals, cleanFigureDescription, cleanFormula, cleanReread, cleanMemory, parseNewSheets, DEFAULT_AI_SETTINGS, parseAiSettings, parseProposals, providerById, replacedLines, type ChangeProposal, type AiSettings, type ChatTurn, type CheckReport, type ChoiceBlock, type NoteBlock, DETAIL_LEVELS, isRoundResult, loneNumbers, noteText, proseOf, pythonLines, reportedNames, checkTitle, sheetNeedsAnswer, sheetReport, pythonReport, type SheetCheck } from '@kalketa/ai';
 import { ChatPane } from './components/ChatPane.js';
 import { TheoryLibraryDialog } from './components/TheoryLibraryDialog.js';
 import { sourceText, useTheoryLibraries, withoutDuplicates, type FoundLibrary } from './theoryLibraries.js';
@@ -37,6 +37,7 @@ import { exampleDocument, SAMPLE_FIELDS, samplePicture, samples, sampleSource, s
 import { catalogItems, formulaText, lookupAnswer, sampleText } from './logic/aiCatalog.js';
 import { runMcpTool, type McpEnvironment } from './logic/mcpTools.js';
 import { sheetCheckWords } from './logic/sheetCheckWords.js';
+import { pythonCheckWords } from './logic/pythonCheckWords.js';
 import { McpDialog, McpHelpDialog, mcpStatusText } from './components/McpDialog.js';
 import { StartScreen } from './components/StartScreen.js';
 import { Ribbon } from './components/Ribbon.js';
@@ -287,13 +288,15 @@ export function App() {
     void desktop.mcpState().then(setMcp);
     desktop.onMcpState?.(setMcp);
     desktop.onMcpCall?.((call) => {
-      let answer: { ok: boolean; text: string };
-      try {
-        answer = mcpEnv.current ? runMcpTool(call.tool, call.args, mcpEnv.current) : { ok: false, text: 'Kalketa is not ready yet.' };
-      } catch (error) {
-        answer = { ok: false, text: `Kalketa: ${error instanceof Error ? error.message : String(error)}` };
-      }
-      desktop!.mcpResult?.({ id: call.id, ...answer });
+      void (async () => {
+        let answer: { ok: boolean; text: string };
+        try {
+          answer = mcpEnv.current ? await runMcpTool(call.tool, call.args, mcpEnv.current) : { ok: false, text: 'Kalketa is not ready yet.' };
+        } catch (error) {
+          answer = { ok: false, text: `Kalketa: ${error instanceof Error ? error.message : String(error)}` };
+        }
+        desktop!.mcpResult?.({ id: call.id, ...answer });
+      })();
     });
   }, []);
   const [importReport, setImportReport] = useState<SmathReport | undefined>();
@@ -2176,7 +2179,8 @@ export function App() {
       print: printout,
       exportPdf: () =>
         void confirmAiPrint().then((yes) => {
-          if (yes) void desktop?.exportPdf({ html: printoutHtml(), suggestedName: fileName(doc) });
+          // Named as the saved calculation (Ohrev.kalk → Ohrev.pdf), so the two are found together; by its title until saved.
+          if (yes) void desktop?.exportPdf({ html: printoutHtml(), suggestedName: tab.path ? (tab.path.split(/[\\/]/).pop() ?? '').replace(/\.(kalk|cc)$/i, '') || fileName(doc) : fileName(doc) });
         }),
       example: () => openDocument(exampleDocument(undefined, t(ui, 'samples.prefix'), language), undefined),
       start: () => setStartOpen(true),
@@ -2280,6 +2284,9 @@ export function App() {
   };
   const layerOfRef = useRef(layerOfElement);
   layerOfRef.current = layerOfElement;
+  // A calculation dropped on the window opens in a tab of its own, as File > Open does (from its place on the disk).
+  const openDroppedRef = useRef((path: string) => void desktop?.openPath(path).then((file) => (file ? openBytes(file.name, file.bytes, { kind: 'path', path: file.path }).then(show) : undefined)));
+  openDroppedRef.current = (path: string) => void desktop?.openPath(path).then((file) => (file ? openBytes(file.name, file.bytes, { kind: 'path', path: file.path }).then(show) : undefined));
   useEffect(() => {
     const hasFiles = (e: DragEvent) => [...(e.dataTransfer?.types ?? [])].includes('Files');
     const over = (e: DragEvent) => {
@@ -2292,7 +2299,15 @@ export function App() {
       // The word-processor editor of the sources places pictures itself.
       if (!hasFiles(e) || (e.target as HTMLElement | null)?.closest?.('.notes-word')) return;
       e.preventDefault();
-      const files = [...(e.dataTransfer?.files ?? [])];
+      const all = [...(e.dataTransfer?.files ?? [])];
+      // Calculations open (each in its tab); pictures go into the sheet where they were dropped.
+      const sheets = all.filter((f) => /\.(kalk|cc|calc)$/i.test(f.name));
+      for (const f of sheets) {
+        const path = desktop?.pathOfFile?.(f) ?? '';
+        if (path) openDroppedRef.current(path);
+      }
+      const files = all.filter((f) => !sheets.includes(f));
+      if (files.length === 0) return;
       const target = layerOfRef.current(e.target);
       const line = target ? lineAtRef.current(target.id, e.clientX, e.clientY) : undefined;
       void Promise.all(files.map(fromFile)).then((pictures) => {
@@ -2819,9 +2834,12 @@ export function App() {
       const words = sheetCheckWords(ui, 'Correct the proposal: call propose_change again with all its changes corrected and these ids in "replaces".');
       const report = check && sheetNeedsAnswer(check) ? sheetReport(check, words) : 'Kalketa computed the sheet with the changes: no errors, no failed checks, no numbers in text it does not compute.';
       const unknown = replaces.filter((id) => !known.includes(id));
+      // Other proposals still waiting: their lines are not in the sheet, so they must not be counted in.
+      const waiting = all.filter((e) => e.conversation === conversationId && e.state === 'open' && !e.replacedBy && !replaces.includes(e.id)).map((e) => e.id);
+      const others = waiting.length > 0 ? `\n\nStill waiting for the person, so NOT in the sheet: ${waiting.join(', ')}. Line numbers of a new proposal refer to the sheet without them; correct one with replaces, or withdraw tries with withdraw_proposals.` : '';
       return {
         ok: true,
-        text: `Proposed as ${ids.join(', ')}: the person sees ${ids.length > 1 ? 'cards' : 'a card'} with Accept and Reject in Kalketa; nothing changes until then.${unknown.length > 0 ? ` Not found, so not replaced: ${unknown.join(', ')}.` : ''}\n\n${report}`,
+        text: `Proposed as ${ids.join(', ')}: the person sees ${ids.length > 1 ? 'cards' : 'a card'} with Accept and Reject in Kalketa; nothing changes until then.${unknown.length > 0 ? ` Not found, so not replaced: ${unknown.join(', ')}.` : ''}${others}\n\n${report}`,
       };
     },
     status: (ids, client) => {
@@ -2838,6 +2856,32 @@ export function App() {
           })
           .join('\n'),
       };
+    },
+    pythonCheck: async (code, note, client) => {
+      const report = await runAnswerCheck(code, '');
+      const words = pythonCheckWords(ui, 'When a result differs, find out which side is wrong before you propose anything: check the script against the theory step by step, do not move numbers until it fits.');
+      const text = pythonReport([report], words, (n) => formatNumber(n, ui, { digits: 2 }));
+      const conversationId = mcpConversationId(client);
+      const time = new Date().toISOString();
+      const fence = '`'.repeat(3);
+      const agreed = report.ok && !report.declined && !report.postponed && report.rows.length > 0 && report.rows.every((row) => row.state === 'agree');
+      // Kept in the conversation of the client: the side pane shows the script, its table, and Keep when it agreed.
+      changeWith((present) => {
+        const now = conversationsOf(present).find((c) => c.id === conversationId);
+        const turns = [...(now?.turns ?? []), { role: 'assistant' as const, text: `${note ? `${note}\n\n` : ''}${fence}python\n${code}\n${fence}`, time, model: client }, { role: 'user' as const, text, time, check: true as const, agreed: [agreed] }];
+        mcpTurn(conversationId, turns.length - 1);
+        return withConversation(present, { id: conversationId, started: now?.started ?? time, provider: 'mcp', model: client, turns });
+      }, 'ai-mcp');
+      if (!chat || chat.provider === 'mcp' || pane !== 'chat') showMcpConversation(conversationId);
+      return { ok: report.ok || !!report.declined || !!report.postponed, text: `${text}${agreed ? '\n\nThe person can keep this check in the layer Check in Python (a button under it in Kalketa).' : ''}` };
+    },
+    withdraw: (ids, client) => {
+      const conversationId = mcpConversationId(client);
+      const mine = entriesOf(doc).filter((e) => e.conversation === conversationId && e.state === 'open' && !e.replacedBy && (ids.length === 0 || ids.includes(e.id)));
+      if (mine.length === 0) return { ok: true, text: 'Nothing to withdraw: you have no open proposal in this sheet.' };
+      const decided = new Date().toISOString();
+      changeWith((present) => withEntries(present, entriesOf(present).filter((e) => mine.some((m) => m.id === e.id) && e.state === 'open').map((e) => ({ ...e, state: 'rejected' as const, decided }))), 'ai-mcp');
+      return { ok: true, text: `Withdrawn: ${mine.map((e) => e.id).join(', ')}.` };
     },
     proposeSheet: (title, lines, client) => {
       const conversationId = mcpConversationId(client);
@@ -3108,6 +3152,18 @@ export function App() {
               {mcpPending.changes.length > 0 && (
                 <button type="button" className="mcp-pending-show" onClick={() => showMcpConversation(mcpPending.changes[0]!.conversation!)}>
                   {t(ui, 'mcp.pendingShow')}
+                </button>
+              )}
+              {mcpPending.changes.length > 1 && (
+                <button
+                  type="button"
+                  className="mcp-pending-reject"
+                  onClick={() => {
+                    const decided = new Date().toISOString();
+                    changeWith((present) => withEntries(present, entriesOf(present).filter((e) => mcpPending.changes.some((p) => p.id === e.id) && e.state === 'open').map((e) => ({ ...e, state: 'rejected' as const, decided }))));
+                  }}
+                >
+                  {t(ui, 'mcp.pendingRejectAll')}
                 </button>
               )}
               {mcpPending.sheets.map((e) => (

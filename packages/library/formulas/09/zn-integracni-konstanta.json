@@ -1,0 +1,77 @@
+{
+  "id": "zn-integracni-konstanta",
+  "field": "09",
+  "group": {
+    "cs": "Nastavení regulátorů",
+    "en": "Controller tuning"
+  },
+  "title": {
+    "cs": "Integrační konstanta (Ziegler–Nichols)",
+    "en": "Integral gain (Ziegler–Nichols)"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R28",
+      "en": "Kalketa, sample R28"
+    },
+    "sample": "R28"
+  },
+  "status": "verified",
+  "formula": "K_i == a_i·K_c/T_c",
+  "quantities": {
+    "K_i": {
+      "name": {
+        "cs": "integrační konstanta",
+        "en": "integral gain"
+      },
+      "unit": "s^-1",
+      "example": "0.0966 s^-1"
+    },
+    "a_i": {
+      "name": {
+        "cs": "koeficient pravidla",
+        "en": "rule coefficient"
+      },
+      "unit": "",
+      "example": "1.18"
+    },
+    "K_c": {
+      "name": {
+        "cs": "kritické zesílení",
+        "en": "ultimate gain"
+      },
+      "unit": "",
+      "example": "0.43"
+    },
+    "T_c": {
+      "name": {
+        "cs": "perioda kritických kmitů",
+        "en": "ultimate period"
+      },
+      "unit": "s",
+      "example": "5.25 s"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "a_i": "1.18",
+        "K_c": "0.43",
+        "T_c": "5.25 s"
+      },
+      "expect": {
+        "K_i": "0.0966476 s^-1"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "PID",
+      "regulátor"
+    ],
+    "en": [
+      "PID",
+      "controller"
+    ]
+  }
+}

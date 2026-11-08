@@ -1,0 +1,70 @@
+{
+  "id": "pomerne-prodlouzeni",
+  "field": "03",
+  "group": {
+    "cs": "Pružnost a pevnost",
+    "en": "Strength of materials"
+  },
+  "title": {
+    "cs": "Poměrné prodloužení (Hookův zákon)",
+    "en": "Strain (Hooke's law)"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R12",
+      "en": "Kalketa, sample R12"
+    },
+    "sample": "R12"
+  },
+  "status": "verified",
+  "formula": "ε == σ/E",
+  "quantities": {
+    "ε": {
+      "name": {
+        "cs": "poměrné prodloužení",
+        "en": "strain"
+      },
+      "unit": "%",
+      "example": "0.0076 %"
+    },
+    "σ": {
+      "name": {
+        "cs": "normálové napětí",
+        "en": "normal stress"
+      },
+      "unit": "MPa",
+      "example": "15.3 MPa"
+    },
+    "E": {
+      "name": {
+        "cs": "modul pružnosti v tahu",
+        "en": "tensile modulus of elasticity"
+      },
+      "unit": "GPa",
+      "example": "200 GPa"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "σ": "15.3 MPa",
+        "E": "200 GPa"
+      },
+      "expect": {
+        "ε": "0.00765 %"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "Hooke",
+      "deformace",
+      "přetvoření"
+    ],
+    "en": [
+      "Hooke",
+      "deformation",
+      "elongation"
+    ]
+  }
+}

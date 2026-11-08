@@ -1,0 +1,70 @@
+{
+  "id": "kineticka-energie-rotace",
+  "field": "03",
+  "group": {
+    "cs": "Dynamika strojů",
+    "en": "Machine dynamics"
+  },
+  "title": {
+    "cs": "Kinetická energie rotujícího tělesa",
+    "en": "Kinetic energy of a rotating body"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R9",
+      "en": "Kalketa, sample R9"
+    },
+    "sample": "R9"
+  },
+  "status": "verified",
+  "formula": "E_k == J_s·ω_s^2/2",
+  "quantities": {
+    "E_k": {
+      "name": {
+        "cs": "kinetická energie",
+        "en": "kinetic energy"
+      },
+      "unit": "kJ",
+      "example": "32 kJ"
+    },
+    "J_s": {
+      "name": {
+        "cs": "moment setrvačnosti",
+        "en": "moment of inertia"
+      },
+      "unit": "kg·m^2",
+      "example": "2.5 kg·m^2"
+    },
+    "ω_s": {
+      "name": {
+        "cs": "úhlová rychlost",
+        "en": "angular velocity"
+      },
+      "unit": "rad/s",
+      "example": "160 rad/s"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "J_s": "2.5 kg·m^2",
+        "ω_s": "160 rad/s"
+      },
+      "expect": {
+        "E_k": "32.0 kJ"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "rotace",
+      "energie",
+      "setrvačník"
+    ],
+    "en": [
+      "rotation",
+      "energy",
+      "flywheel"
+    ]
+  }
+}

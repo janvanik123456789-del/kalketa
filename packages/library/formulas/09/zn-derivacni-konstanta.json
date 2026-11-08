@@ -1,0 +1,77 @@
+{
+  "id": "zn-derivacni-konstanta",
+  "field": "09",
+  "group": {
+    "cs": "Nastavení regulátorů",
+    "en": "Controller tuning"
+  },
+  "title": {
+    "cs": "Derivační konstanta (Ziegler–Nichols)",
+    "en": "Derivative gain (Ziegler–Nichols)"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R28",
+      "en": "Kalketa, sample R28"
+    },
+    "sample": "R28"
+  },
+  "status": "verified",
+  "formula": "K_d == a_d·K_c·T_c",
+  "quantities": {
+    "K_d": {
+      "name": {
+        "cs": "derivační konstanta",
+        "en": "derivative gain"
+      },
+      "unit": "s",
+      "example": "0.1693 s"
+    },
+    "a_d": {
+      "name": {
+        "cs": "koeficient pravidla",
+        "en": "rule coefficient"
+      },
+      "unit": "",
+      "example": "0.075"
+    },
+    "K_c": {
+      "name": {
+        "cs": "kritické zesílení",
+        "en": "ultimate gain"
+      },
+      "unit": "",
+      "example": "0.43"
+    },
+    "T_c": {
+      "name": {
+        "cs": "perioda kritických kmitů",
+        "en": "ultimate period"
+      },
+      "unit": "s",
+      "example": "5.25 s"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "a_d": "0.075",
+        "K_c": "0.43",
+        "T_c": "5.25 s"
+      },
+      "expect": {
+        "K_d": "0.169313 s"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "PID",
+      "regulátor"
+    ],
+    "en": [
+      "PID",
+      "controller"
+    ]
+  }
+}

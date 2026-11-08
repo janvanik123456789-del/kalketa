@@ -3,7 +3,7 @@
  * editor may do outside its window is listed here; nothing else is exposed.
  */
 
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, webUtils } from 'electron';
 
 interface OpenedFile {
   readonly path: string;
@@ -18,6 +18,8 @@ contextBridge.exposeInMainWorld('kalketaDesktop', {
   print: (html: string): Promise<boolean> => ipcRenderer.invoke('kalketa:print', html),
   exportPdf: (request: { html: string; suggestedName: string }): Promise<string | undefined> => ipcRenderer.invoke('kalketa:export-pdf', request),
   newWindow: (): Promise<void> => ipcRenderer.invoke('kalketa:new-window'),
+  /** Where a file dropped on the window lies on the disk (a calculation dropped is opened from there). */
+  pathOfFile: (file: File): string => webUtils.getPathForFile(file),
   /** Kalketa as an MCP server: its state and settings, and the tools the AI calls (run by the editor). */
   mcpState: (): Promise<{ on: boolean; port: number; token: string; readOnly: boolean; paused: boolean; status: 'off' | 'waiting' | 'connected' | 'busy-port' | 'error' | 'forbidden'; client?: string; address: string; stdio: { command: string; args: string[] } }> => ipcRenderer.invoke('kalketa:mcp-state'),
   mcpSet: (change: { on?: boolean; readOnly?: boolean; paused?: boolean; newToken?: boolean; port?: number }): Promise<{ on: boolean; port: number; token: string; readOnly: boolean; paused: boolean; status: 'off' | 'waiting' | 'connected' | 'busy-port' | 'error' | 'forbidden'; client?: string; address: string; stdio: { command: string; args: string[] } }> => ipcRenderer.invoke('kalketa:mcp-set', change),

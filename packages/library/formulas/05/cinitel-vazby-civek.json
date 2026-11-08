@@ -1,0 +1,77 @@
+{
+  "id": "cinitel-vazby-civek",
+  "field": "05",
+  "group": {
+    "cs": "Vázané cívky",
+    "en": "Coupled coils"
+  },
+  "title": {
+    "cs": "Činitel vazby dvou cívek",
+    "en": "Coupling coefficient of two coils"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R43",
+      "en": "Kalketa, sample R43"
+    },
+    "sample": "R43"
+  },
+  "status": "verified",
+  "formula": "k == M/sqrt(L_1·L_2)",
+  "quantities": {
+    "k": {
+      "name": {
+        "cs": "činitel vazby",
+        "en": "coupling coefficient"
+      },
+      "unit": "",
+      "example": "0.75"
+    },
+    "M": {
+      "name": {
+        "cs": "vzájemná indukčnost",
+        "en": "mutual inductance"
+      },
+      "unit": "mH",
+      "example": "15 mH"
+    },
+    "L_1": {
+      "name": {
+        "cs": "indukčnost primární cívky",
+        "en": "inductance of the primary coil"
+      },
+      "unit": "mH",
+      "example": "40 mH"
+    },
+    "L_2": {
+      "name": {
+        "cs": "indukčnost sekundární cívky",
+        "en": "inductance of the secondary coil"
+      },
+      "unit": "mH",
+      "example": "10 mH"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "M": "15 mH",
+        "L_1": "40 mH",
+        "L_2": "10 mH"
+      },
+      "expect": {
+        "k": "0.75"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "transformátor",
+      "vzájemná indukčnost"
+    ],
+    "en": [
+      "transformer",
+      "mutual inductance"
+    ]
+  }
+}

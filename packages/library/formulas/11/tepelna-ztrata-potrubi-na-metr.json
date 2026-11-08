@@ -1,0 +1,79 @@
+{
+  "id": "tepelna-ztrata-potrubi-na-metr",
+  "field": "11",
+  "group": {
+    "cs": "Potrubí",
+    "en": "Pipes"
+  },
+  "title": {
+    "cs": "Tepelná ztráta izolovaného potrubí na metr délky",
+    "en": "Heat loss of an insulated pipe per metre"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R26",
+      "en": "Kalketa, sample R26"
+    },
+    "sample": "R26"
+  },
+  "status": "verified",
+  "formula": "q == U_o·(t_m - t_o)",
+  "quantities": {
+    "q": {
+      "name": {
+        "cs": "tepelná ztráta na metr",
+        "en": "heat loss per metre"
+      },
+      "unit": "W/m",
+      "example": "7.7 W/m"
+    },
+    "U_o": {
+      "name": {
+        "cs": "součinitel prostupu tepla na metr délky",
+        "en": "linear heat transfer coefficient"
+      },
+      "unit": "W/(m·K)",
+      "example": "0.203519 W/(m·K)"
+    },
+    "t_m": {
+      "name": {
+        "cs": "střední teplota vody",
+        "en": "mean water temperature"
+      },
+      "unit": "°C",
+      "example": "47.83 °C"
+    },
+    "t_o": {
+      "name": {
+        "cs": "teplota okolí",
+        "en": "ambient temperature"
+      },
+      "unit": "°C",
+      "example": "10 °C"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "U_o": "0.203519 W/(m·K)",
+        "t_m": "47.83 °C",
+        "t_o": "10 °C"
+      },
+      "expect": {
+        "q": "7.69912 W/m"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "izolace",
+      "potrubí",
+      "ztráta"
+    ],
+    "en": [
+      "insulation",
+      "pipe",
+      "loss"
+    ]
+  }
+}

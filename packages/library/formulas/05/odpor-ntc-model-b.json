@@ -1,0 +1,88 @@
+{
+  "id": "odpor-ntc-model-b",
+  "field": "05",
+  "group": {
+    "cs": "Termistory",
+    "en": "Thermistors"
+  },
+  "title": {
+    "cs": "Odpor termistoru NTC podle modelu B",
+    "en": "Resistance of an NTC thermistor by the B model"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R18",
+      "en": "Kalketa, sample R18"
+    },
+    "sample": "R18"
+  },
+  "status": "verified",
+  "formula": "R == R_25·exp(B·(1/T - 1/T_25))",
+  "quantities": {
+    "R": {
+      "name": {
+        "cs": "odpor při teplotě T",
+        "en": "resistance at temperature T"
+      },
+      "unit": "kΩ",
+      "example": "6.5 kΩ"
+    },
+    "R_25": {
+      "name": {
+        "cs": "odpor při 25 °C",
+        "en": "resistance at 25 °C"
+      },
+      "unit": "kΩ",
+      "example": "10 kΩ"
+    },
+    "B": {
+      "name": {
+        "cs": "konstanta B",
+        "en": "constant B"
+      },
+      "unit": "K",
+      "example": "3950 K"
+    },
+    "T": {
+      "name": {
+        "cs": "termodynamická teplota",
+        "en": "thermodynamic temperature"
+      },
+      "unit": "K",
+      "example": "310.15 K"
+    },
+    "T_25": {
+      "name": {
+        "cs": "teplota 25 °C v kelvinech",
+        "en": "25 °C in kelvins"
+      },
+      "unit": "K",
+      "example": "298.15 K"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "R_25": "10 kΩ",
+        "B": "3950 K",
+        "T": "310.15 K",
+        "T_25": "298.15 K"
+      },
+      "expect": {
+        "R": "5.98941 kΩ"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "NTC",
+      "teplotní senzor",
+      "exponenciální"
+    ],
+    "en": [
+      "NTC",
+      "temperature sensor",
+      "exponential"
+    ]
+  }
+}

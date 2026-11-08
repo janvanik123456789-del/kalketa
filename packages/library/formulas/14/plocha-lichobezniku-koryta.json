@@ -1,0 +1,79 @@
+{
+  "id": "plocha-lichobezniku-koryta",
+  "field": "14",
+  "group": {
+    "cs": "Otevřená koryta",
+    "en": "Open channels"
+  },
+  "title": {
+    "cs": "Průtočná plocha lichoběžníkového koryta",
+    "en": "Flow area of a trapezoidal channel"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R32",
+      "en": "Kalketa, sample R32"
+    },
+    "sample": "R32"
+  },
+  "status": "verified",
+  "formula": "S == (b + m_s·y)·y",
+  "quantities": {
+    "S": {
+      "name": {
+        "cs": "průtočná plocha",
+        "en": "flow area"
+      },
+      "unit": "m^2",
+      "example": "22 m^2"
+    },
+    "b": {
+      "name": {
+        "cs": "šířka dna",
+        "en": "bottom width"
+      },
+      "unit": "m",
+      "example": "8 m"
+    },
+    "m_s": {
+      "name": {
+        "cs": "sklon svahů 1 : m_s",
+        "en": "side slope 1 : m_s"
+      },
+      "unit": "",
+      "example": "1.5"
+    },
+    "y": {
+      "name": {
+        "cs": "hloubka vody",
+        "en": "water depth"
+      },
+      "unit": "m",
+      "example": "2 m"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "b": "8 m",
+        "m_s": "1.5",
+        "y": "2 m"
+      },
+      "expect": {
+        "S": "22 m^2"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "koryto",
+      "průřez",
+      "lichoběžník"
+    ],
+    "en": [
+      "channel",
+      "cross-section",
+      "trapezoid"
+    ]
+  }
+}

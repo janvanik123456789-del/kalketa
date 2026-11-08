@@ -1,0 +1,79 @@
+{
+  "id": "posun-lodky",
+  "field": "02",
+  "group": {
+    "cs": "Těžiště soustavy",
+    "en": "Centre of mass"
+  },
+  "title": {
+    "cs": "Posun loďky, když člověk přejde po její délce",
+    "en": "Shift of a boat when a person walks along it"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R23",
+      "en": "Kalketa, sample R23"
+    },
+    "sample": "R23"
+  },
+  "status": "verified",
+  "formula": "x == m_p·L/(m_b + m_p)",
+  "quantities": {
+    "x": {
+      "name": {
+        "cs": "posun loďky",
+        "en": "shift of the boat"
+      },
+      "unit": "m",
+      "example": "1.029 m"
+    },
+    "m_p": {
+      "name": {
+        "cs": "hmotnost člověka",
+        "en": "mass of the person"
+      },
+      "unit": "kg",
+      "example": "70 kg"
+    },
+    "L": {
+      "name": {
+        "cs": "délka loďky",
+        "en": "length of the boat"
+      },
+      "unit": "m",
+      "example": "2.5 m"
+    },
+    "m_b": {
+      "name": {
+        "cs": "hmotnost loďky",
+        "en": "mass of the boat"
+      },
+      "unit": "kg",
+      "example": "100 kg"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "m_p": "70 kg",
+        "L": "2.5 m",
+        "m_b": "100 kg"
+      },
+      "expect": {
+        "x": "1.02941 m"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "těžiště",
+      "loďka",
+      "zákon zachování hybnosti"
+    ],
+    "en": [
+      "centre of mass",
+      "boat",
+      "momentum"
+    ]
+  }
+}

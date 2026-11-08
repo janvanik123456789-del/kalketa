@@ -27,6 +27,6 @@ C_min := 1.5·L_z + 5 s | s
 g_e := Faze.y/Y·(C_n - L_z) | s
 X := Y·C_n/(C_n - L_z)
 check "Zelené a mezičasy vyplní cyklus": abs(sum(g_e) + L_z - C_n) ≤ 0.01 s
-"Stupeň saturace 0,87 nechává rezervu 13 %. Při Y blízko 1 by cyklus rostl nade všechny meze:"
+"Stupeň saturace 0,79 nechává rezervu 21 %. Při Y blízko 1 by cyklus rostl nade všechny meze:"
 C_Y(x) := (1.5·L_z + 5 s)/(1 - x)
 plot(C_Y(x), x: 0 .. 0.85, title: "Optimální délka cyklu podle součtu kritických poměrů Y") | s

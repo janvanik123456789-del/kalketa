@@ -1,0 +1,86 @@
+{
+  "id": "eliminacni-konstanta-ze-dvou-mereni",
+  "field": "15",
+  "group": {
+    "cs": "Farmakokinetika",
+    "en": "Pharmacokinetics"
+  },
+  "title": {
+    "cs": "Eliminační konstanta ze dvou měření",
+    "en": "Elimination rate constant from two samples"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R33",
+      "en": "Kalketa, sample R33"
+    },
+    "sample": "R33"
+  },
+  "status": "verified",
+  "formula": "k_e == ln(c_1/c_2)/(t_2 - t_1)",
+  "quantities": {
+    "k_e": {
+      "name": {
+        "cs": "rychlostní konstanta eliminace",
+        "en": "elimination rate constant"
+      },
+      "unit": "h^-1",
+      "example": "0.12603 h^-1"
+    },
+    "c_1": {
+      "name": {
+        "cs": "koncentrace v čase t_1",
+        "en": "concentration at t_1"
+      },
+      "unit": "mg/L",
+      "example": "30.72 mg/L"
+    },
+    "c_2": {
+      "name": {
+        "cs": "koncentrace v čase t_2",
+        "en": "concentration at t_2"
+      },
+      "unit": "mg/L",
+      "example": "1.92 mg/L"
+    },
+    "t_1": {
+      "name": {
+        "cs": "první čas",
+        "en": "first time"
+      },
+      "unit": "h",
+      "example": "2 h"
+    },
+    "t_2": {
+      "name": {
+        "cs": "druhý čas",
+        "en": "second time"
+      },
+      "unit": "h",
+      "example": "24 h"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "c_1": "30.72 mg/L",
+        "c_2": "1.92 mg/L",
+        "t_1": "2 h",
+        "t_2": "24 h"
+      },
+      "expect": {
+        "k_e": "0.126027 h^-1"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "eliminace",
+      "koncentrace"
+    ],
+    "en": [
+      "elimination",
+      "concentration"
+    ]
+  }
+}

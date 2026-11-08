@@ -4346,7 +4346,7 @@ async function mcpWithRealInput(contents: Electron.WebContents, picture: string)
   let catalog = '';
   let pausedText = '';
   let statusBar = '';
-  let phase2 = { wrong: '', fixed: '', bar: '', cards: { wrong: '', fixedAccept: false, external: '', input: true }, statusText: '', inSheet: -1, barGone: false, readOnly: '', stdioShown: '', bridge: '', help: '', shifted: '' };
+  let phase2 = { wrong: '', fixed: '', bar: '', cards: { wrong: '', fixedAccept: false, external: '', input: true }, statusText: '', inSheet: -1, barGone: false, readOnly: '', stdioShown: '', bridge: '', help: '', shifted: '', checked: '', keepOffered: 0, withdrawn: '', waitingSaid: false, allRejected: false };
   try {
     await client.connect(new StreamableHTTPClientTransport(new URL(address), { requestInit: { headers: { Authorization: `Bearer ${token}` } } }));
     tools = (await client.listTools()).tools.map((t) => t.name);
@@ -4393,7 +4393,7 @@ async function mcpWithRealInput(contents: Electron.WebContents, picture: string)
     await clickOn('.menubar-item:nth-child(2) > button');
     await clickMenu('Zpět');
     await pause(400);
-    phase2 = { wrong: wrong.slice(0, 400), fixed: fixed.slice(0, 300), bar, cards, statusText, inSheet, barGone, readOnly: "", stdioShown: "", bridge: "", help: "", shifted: "" };
+    phase2 = { wrong: wrong.slice(0, 400), fixed: fixed.slice(0, 300), bar, cards, statusText, inSheet, barGone, readOnly: "", stdioShown: "", bridge: "", help: "", shifted: "", checked: "", keepOffered: 0, withdrawn: "", waitingSaid: false, allRejected: false };
     // Read only: proposing is refused.
     await clickOn('.menubar-item:nth-child(6) > button');
     await clickMenu('AI zvenku (MCP)');
@@ -4454,6 +4454,33 @@ async function mcpWithRealInput(contents: Electron.WebContents, picture: string)
     await clickOn('.chat-new');
     await pause(200);
     phase2 = { ...phase2, stdioShown, bridge: bridge.map((line) => line.slice(0, 300)).join('\n'), help: help.slice(0, 3000), shifted: `${up}|${down}|${last}` };
+    // A check in Python through Kalketa: run in its Python, compared with the sheet, kept from the side pane.
+    const checking = client.callTool({ name: 'python_check', arguments: { code: '# Délka L jinou cestou\nresult("L", 2.5 * 2, "m")', note: 'Ověření L.' } }, undefined, { timeout: 120_000 });
+    // Asked first when the settings say so: allowed by a click.
+    for (let i = 0; i < 20; i++) {
+      if (await read(`!!document.querySelector('.ask-dialog .dialog-buttons button.default, .dialog-backdrop .dialog-buttons button.default')`)) {
+        await clickOn('.dialog-backdrop .dialog-buttons button.default');
+        break;
+      }
+      if (await read(`!!document.querySelector('.chat-pane .chat-check-keep')`)) break;
+      await pause(150);
+    }
+    const checked = textOf(await checking);
+    for (let i = 0; i < 20 && !(await read(`!!document.querySelector('.chat-pane .chat-check-keep')`)); i++) await pause(150);
+    const keepOffered = (await read(`[...document.querySelectorAll('.chat-pane .chat-check-keep')].length`)) as number;
+    // A try withdrawn by the AI, and two left open rejected at once from the bar.
+    const tryText = textOf(await client.callTool({ name: 'propose_change', arguments: { changes: [{ after: 1, lines: ['"zkouška"'] }], note: 'test' } }));
+    const tryId = /Proposed as ([^\s,:]+:\d+:\d+)/.exec(tryText)?.[1] ?? '';
+    const withdrawn = textOf(await client.callTool({ name: 'withdraw_proposals', arguments: { ids: [tryId] } }));
+    await client.callTool({ name: 'propose_change', arguments: { changes: [{ after: 1, lines: ['"první"'] }] } });
+    const second = textOf(await client.callTool({ name: 'propose_change', arguments: { changes: [{ after: 2, lines: ['"druhý"'] }] } }));
+    for (let i = 0; i < 20 && !(await read(`!!document.querySelector('.mcp-pending-reject')`)); i++) await pause(100);
+    await clickOn('.mcp-pending-reject');
+    await pause(400);
+    const allRejected = !(await read(`!!document.querySelector('.mcp-pending')`));
+    await clickOn('.chat-new');
+    await pause(200);
+    phase2 = { ...phase2, checked: checked.slice(0, 600), keepOffered, withdrawn, waitingSaid: second.includes('Still waiting for the person'), allRejected };
     await client.close();
   } catch (error) {
     sheet = `failed: ${error instanceof Error ? error.message : String(error)}`;
@@ -4482,7 +4509,7 @@ async function mcpWithRealInput(contents: Electron.WebContents, picture: string)
     phase2.cards.wrong.includes('replaced') && phase2.cards.fixedAccept && phase2.cards.external.includes('kalketa-smoke přes MCP') && !phase2.cards.input && /:\d+:1: accepted/.test(phase2.statusText) && phase2.statusText.includes('replaced by a correction') &&
     phase2.inSheet === 1 && phase2.barGone && phase2.readOnly.includes('read-only') &&
     phase2.stdioShown.includes('--mcp-stdio') && phase2.bridge.includes('"serverInfo"') && phase2.bridge.includes('Nový výpočet') &&
-    phase2.help.includes('Proč je to udělané takhle') && phase2.shifted.split('|')[0] === '2' && Number(phase2.shifted.split('|')[1]) === Number(phase2.shifted.split('|')[2]) + 2
+    phase2.help.includes('Proč je to udělané takhle') && phase2.checked.includes('| L |') && phase2.checked.includes('✓') && phase2.keepOffered >= 1 && phase2.withdrawn.startsWith('Withdrawn:') && phase2.waitingSaid && phase2.allRejected && phase2.shifted.split('|')[0] === '2' && Number(phase2.shifted.split('|')[1]) === Number(phase2.shifted.split('|')[2]) + 2
   );
 }
 

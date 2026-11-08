@@ -1,0 +1,79 @@
+{
+  "id": "ucinna-vyska-desky",
+  "field": "04",
+  "group": {
+    "cs": "Železobeton",
+    "en": "Reinforced concrete"
+  },
+  "title": {
+    "cs": "Účinná výška železobetonové desky",
+    "en": "Effective depth of a reinforced concrete slab"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R20",
+      "en": "Kalketa, sample R20"
+    },
+    "sample": "R20"
+  },
+  "status": "verified",
+  "formula": "d == h - c - Ø/2",
+  "quantities": {
+    "d": {
+      "name": {
+        "cs": "účinná výška",
+        "en": "effective depth"
+      },
+      "unit": "mm",
+      "example": "169 mm"
+    },
+    "h": {
+      "name": {
+        "cs": "tloušťka desky",
+        "en": "slab thickness"
+      },
+      "unit": "mm",
+      "example": "200 mm"
+    },
+    "c": {
+      "name": {
+        "cs": "krycí vrstva",
+        "en": "concrete cover"
+      },
+      "unit": "mm",
+      "example": "25 mm"
+    },
+    "Ø": {
+      "name": {
+        "cs": "průměr nosné výztuže",
+        "en": "bar diameter"
+      },
+      "unit": "mm",
+      "example": "12 mm"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "h": "200 mm",
+        "c": "25 mm",
+        "Ø": "12 mm"
+      },
+      "expect": {
+        "d": "169 mm"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "deska",
+      "krytí",
+      "výztuž"
+    ],
+    "en": [
+      "slab",
+      "cover",
+      "reinforcement"
+    ]
+  }
+}

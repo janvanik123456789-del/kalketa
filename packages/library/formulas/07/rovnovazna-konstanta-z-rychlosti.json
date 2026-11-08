@@ -1,0 +1,68 @@
+{
+  "id": "rovnovazna-konstanta-z-rychlosti",
+  "field": "07",
+  "group": {
+    "cs": "Reakční kinetika",
+    "en": "Reaction kinetics"
+  },
+  "title": {
+    "cs": "Rovnovážná konstanta z rychlostních konstant",
+    "en": "Equilibrium constant from rate constants"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R42",
+      "en": "Kalketa, sample R42"
+    },
+    "sample": "R42"
+  },
+  "status": "verified",
+  "formula": "K == k_1/k_2",
+  "quantities": {
+    "K": {
+      "name": {
+        "cs": "rovnovážná konstanta",
+        "en": "equilibrium constant"
+      },
+      "unit": "",
+      "example": "2"
+    },
+    "k_1": {
+      "name": {
+        "cs": "rychlostní konstanta přímé reakce",
+        "en": "forward rate constant"
+      },
+      "unit": "s^-1",
+      "example": "0.002 s^-1"
+    },
+    "k_2": {
+      "name": {
+        "cs": "rychlostní konstanta zpětné reakce",
+        "en": "reverse rate constant"
+      },
+      "unit": "s^-1",
+      "example": "0.001 s^-1"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "k_1": "0.002 s^-1",
+        "k_2": "0.001 s^-1"
+      },
+      "expect": {
+        "K": "2"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "rovnováha",
+      "reakce"
+    ],
+    "en": [
+      "equilibrium",
+      "reaction"
+    ]
+  }
+}

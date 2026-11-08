@@ -1,0 +1,68 @@
+{
+  "id": "distribucni-objem",
+  "field": "15",
+  "group": {
+    "cs": "Farmakokinetika",
+    "en": "Pharmacokinetics"
+  },
+  "title": {
+    "cs": "Distribuční objem",
+    "en": "Volume of distribution"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R33",
+      "en": "Kalketa, sample R33"
+    },
+    "sample": "R33"
+  },
+  "status": "verified",
+  "formula": "V_d == D/c_0",
+  "quantities": {
+    "V_d": {
+      "name": {
+        "cs": "distribuční objem",
+        "en": "volume of distribution"
+      },
+      "unit": "L",
+      "example": "7.5949 L"
+    },
+    "D": {
+      "name": {
+        "cs": "dávka",
+        "en": "dose"
+      },
+      "unit": "mg",
+      "example": "300 mg"
+    },
+    "c_0": {
+      "name": {
+        "cs": "počáteční koncentrace",
+        "en": "initial concentration"
+      },
+      "unit": "mg/L",
+      "example": "39.5 mg/L"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "D": "300 mg",
+        "c_0": "39.5 mg/L"
+      },
+      "expect": {
+        "V_d": "7.59494 L"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "dávka",
+      "lék"
+    ],
+    "en": [
+      "dose",
+      "drug"
+    ]
+  }
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defaultRegistry, parse, type Expr, type Statement } from '../src/index.js';
+import { defaultRegistry, evaluateSheet, parse, type Expr, type Statement } from '../src/index.js';
 
 const isUnit = (name: string) => defaultRegistry.isUnit(name);
 
@@ -213,5 +213,14 @@ describe('parser: statements', () => {
 
   it('rejects keywords as names', () => {
     expect(parseCodes('and := 1')).toEqual(['E-RESERVED']);
+  });
+});
+
+describe('a word in two alphabets', () => {
+  it('is reported in text, headings, captions and comments, not in names written in Greek', () => {
+    const codes = (source: string) => evaluateSheet(source).diagnostics.filter((d) => d.code === 'W-MIXED-SCRIPT').map((d) => d.params['word']);
+    expect(codes('"Diody ubерou dva úbytky."')).toEqual(['ubерou']);
+    expect(codes('## Řеšení\nx := 1 m   \' délkа')).toEqual(['Řеšení', 'délkа']);
+    expect(codes('"Úbytek ΔU a Δl je malý."\nΔU := 1 V')).toEqual([]);
   });
 });

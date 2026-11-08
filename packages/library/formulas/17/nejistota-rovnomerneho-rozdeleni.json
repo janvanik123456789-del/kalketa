@@ -1,0 +1,59 @@
+{
+  "id": "nejistota-rovnomerneho-rozdeleni",
+  "field": "17",
+  "group": {
+    "cs": "Nejistota měření",
+    "en": "Measurement uncertainty"
+  },
+  "title": {
+    "cs": "Standardní nejistota typu B (rovnoměrné rozdělení)",
+    "en": "Standard uncertainty type B (uniform distribution)"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R34",
+      "en": "Kalketa, sample R34"
+    },
+    "sample": "R34"
+  },
+  "status": "verified",
+  "formula": "u_d == Δ_d/sqrt(3)",
+  "quantities": {
+    "u_d": {
+      "name": {
+        "cs": "standardní nejistota rovnoměrného rozdělení",
+        "en": "standard uncertainty of a uniform distribution"
+      },
+      "unit": "mm",
+      "example": "0.0057735 mm"
+    },
+    "Δ_d": {
+      "name": {
+        "cs": "pološířka rozdělení (dílek)",
+        "en": "half-width of the distribution (scale step)"
+      },
+      "unit": "mm",
+      "example": "0.01 mm"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "Δ_d": "0.01 mm"
+      },
+      "expect": {
+        "u_d": "0.0057735 mm"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "nejistota",
+      "dílek"
+    ],
+    "en": [
+      "uncertainty",
+      "scale step"
+    ]
+  }
+}

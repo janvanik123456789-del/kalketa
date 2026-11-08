@@ -1,0 +1,88 @@
+{
+  "id": "moment-vody-na-hraz",
+  "field": "03",
+  "group": {
+    "cs": "Technické tekutiny",
+    "en": "Technical fluids"
+  },
+  "title": {
+    "cs": "Moment síly vody k patě hráze",
+    "en": "Moment of water force about the dam toe"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R14",
+      "en": "Kalketa, sample R14"
+    },
+    "sample": "R14"
+  },
+  "status": "verified",
+  "formula": "M == ρ·g·l·h^3/6",
+  "quantities": {
+    "M": {
+      "name": {
+        "cs": "moment vodního tlaku",
+        "en": "moment of water pressure"
+      },
+      "unit": "MN·m",
+      "example": "4414.5 MN·m"
+    },
+    "ρ": {
+      "name": {
+        "cs": "hustota vody",
+        "en": "water density"
+      },
+      "unit": "kg/m^3",
+      "example": "1000 kg/m^3"
+    },
+    "g": {
+      "name": {
+        "cs": "tíhové zrychlení",
+        "en": "gravitational acceleration"
+      },
+      "unit": "m/s^2",
+      "example": "9.81 m/s^2"
+    },
+    "l": {
+      "name": {
+        "cs": "délka hráze",
+        "en": "dam length"
+      },
+      "unit": "m",
+      "example": "100 m"
+    },
+    "h": {
+      "name": {
+        "cs": "výška vody",
+        "en": "water height"
+      },
+      "unit": "m",
+      "example": "30 m"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "ρ": "1000 kg/m^3",
+        "g": "9.81 m/s^2",
+        "l": "100 m",
+        "h": "30 m"
+      },
+      "expect": {
+        "M": "4414.5 MN·m"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "hráz",
+      "tlak",
+      "moment"
+    ],
+    "en": [
+      "dam",
+      "pressure",
+      "moment"
+    ]
+  }
+}

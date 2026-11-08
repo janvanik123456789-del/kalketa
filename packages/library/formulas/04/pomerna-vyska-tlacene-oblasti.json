@@ -1,0 +1,70 @@
+{
+  "id": "pomerna-vyska-tlacene-oblasti",
+  "field": "04",
+  "group": {
+    "cs": "Železobeton",
+    "en": "Reinforced concrete"
+  },
+  "title": {
+    "cs": "Poměrná výška tlačené oblasti při dosažení meze kluzu výztuže",
+    "en": "Relative depth of the compression zone when the steel yields"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R20",
+      "en": "Kalketa, sample R20"
+    },
+    "sample": "R20"
+  },
+  "status": "verified",
+  "formula": "ξ_bal == ε_cu/(ε_cu + ε_yd)",
+  "quantities": {
+    "ξ_bal": {
+      "name": {
+        "cs": "poměrná výška tlačené oblasti",
+        "en": "relative depth of the compression zone"
+      },
+      "unit": "",
+      "example": "0.6169"
+    },
+    "ε_cu": {
+      "name": {
+        "cs": "mezní přetvoření betonu v tlaku",
+        "en": "ultimate compressive strain of concrete"
+      },
+      "unit": "",
+      "example": "0.0035"
+    },
+    "ε_yd": {
+      "name": {
+        "cs": "přetvoření výztuže na mezi kluzu",
+        "en": "yield strain of the steel"
+      },
+      "unit": "",
+      "example": "0.0021739"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "ε_cu": "0.0035",
+        "ε_yd": "0.0021739"
+      },
+      "expect": {
+        "ξ_bal": "0.61686"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "tlačená oblast",
+      "přetvoření",
+      "ohyb"
+    ],
+    "en": [
+      "compression zone",
+      "strain",
+      "bending"
+    ]
+  }
+}

@@ -8,6 +8,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { AI_OFF, checkCitations, checksNeedAnswer, CITED_ID, parseChoices, parseNotes, parsePythonChecks, providerById, pythonReport, sheetNeedsAnswer, sheetReport, withoutAnswerBlocks, withoutProposals, type AiSettings, type ChatTurn, type CheckReport, type SheetCheck, type ChoiceBlock, type CitableSection, type NoteBlock, MAX_LOOKUPS, parseLookups, withoutLookups, type LookupRequest } from '@kalketa/ai';
 import { formatNumber, t, type Catalog, type UiKey } from '@kalketa/i18n';
 import { sheetCheckWords } from '../logic/sheetCheckWords.js';
+import { pythonCheckWords } from '../logic/pythonCheckWords.js';
 import { notesHtml } from '@kalketa/render';
 import { desktop } from '../document.js';
 import type { AiSheetContext } from '../logic/aiContext.js';
@@ -268,21 +269,7 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, intent, turns, theor
     } finally {
       setChecking(false);
     }
-    const words = {
-      title: t(catalog, 'check.title'),
-      quantity: t(catalog, 'python.name'),
-      difference: t(catalog, 'python.difference'),
-      states: { agree: t(catalog, 'python.state.agree'), differ: t(catalog, 'python.state.differ'), missing: t(catalog, 'python.state.missing'), units: t(catalog, 'python.state.units'), unit: t(catalog, 'python.state.unit') },
-      failed: t(catalog, 'python.failed'),
-      declined: t(catalog, 'check.declined'),
-      none: t(catalog, 'python.noResults'),
-      output: t(catalog, 'check.output'),
-      ask: t(catalog, 'check.ask'),
-      timeout: t(catalog, 'check.timeout'),
-      missing: t(catalog, 'check.missing'),
-      capped: t(catalog, 'check.capped'),
-      postponed: t(catalog, 'check.postponed'),
-    };
+    const words = pythonCheckWords(catalog);
     const sheetWords = sheetCheckWords(catalog);
     const text = [sheetWrong ? sheetReport(sheet!, sheetWords) : '', codes.length > 0 ? pythonReport(reports, words, (n) => formatNumber(n, catalog, { digits: 2 })) : ''].filter(Boolean).join('\n\n');
     // Which checks agreed with the sheet: only those are offered to be kept (a wrong check kept is worse than none).
@@ -409,6 +396,11 @@ export function ChatPane({ catalog, settings, aiOn, onAiOn, intent, turns, theor
   const choose = async (choice: ChoiceBlock, option: ChoiceBlock['options'][number]) => {
     if (answer || checking) return;
     onChoice?.(choice, option.value);
+    // A conversation held from outside (MCP): its model is in the other application, the answer is written there.
+    if (external) {
+      setError(t(catalog, 'chat.externalChoice', { client: external, option: option.label }));
+      return;
+    }
     const asked = [...turns, { role: 'user' as const, text: `${choice.question ? `${choice.question} ` : ''}→ ${option.label}`, time: new Date().toISOString() }];
     onTurns(asked);
     setError(undefined);

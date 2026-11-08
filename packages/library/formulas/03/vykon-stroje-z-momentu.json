@@ -1,0 +1,79 @@
+{
+  "id": "vykon-stroje-z-momentu",
+  "field": "03",
+  "group": {
+    "cs": "Dynamika strojů",
+    "en": "Machine dynamics"
+  },
+  "title": {
+    "cs": "Výkon stroje z momentu a úhlové rychlosti",
+    "en": "Machine power from torque and angular velocity"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R9",
+      "en": "Kalketa, sample R9"
+    },
+    "sample": "R9"
+  },
+  "status": "verified",
+  "formula": "P_m == η_m·M_i·ω_s",
+  "quantities": {
+    "P_m": {
+      "name": {
+        "cs": "výkon na hřídeli",
+        "en": "shaft power"
+      },
+      "unit": "kW",
+      "example": "14.4 kW"
+    },
+    "η_m": {
+      "name": {
+        "cs": "mechanická účinnost",
+        "en": "mechanical efficiency"
+      },
+      "unit": "",
+      "example": "0.9"
+    },
+    "M_i": {
+      "name": {
+        "cs": "střední vnitřní moment",
+        "en": "mean indicated torque"
+      },
+      "unit": "N·m",
+      "example": "100 N·m"
+    },
+    "ω_s": {
+      "name": {
+        "cs": "úhlová rychlost",
+        "en": "angular velocity"
+      },
+      "unit": "rad/s",
+      "example": "160 rad/s"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "η_m": "0.9",
+        "M_i": "100 N·m",
+        "ω_s": "160 rad/s"
+      },
+      "expect": {
+        "P_m": "14.4 kW"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "výkon",
+      "moment",
+      "hřídel"
+    ],
+    "en": [
+      "power",
+      "torque",
+      "shaft"
+    ]
+  }
+}

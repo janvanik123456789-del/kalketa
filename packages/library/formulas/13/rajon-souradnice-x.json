@@ -1,0 +1,80 @@
+{
+  "id": "rajon-souradnice-x",
+  "field": "13",
+  "group": {
+    "cs": "Polohové výpočty",
+    "en": "Positional calculations"
+  },
+  "title": {
+    "cs": "Rajón: souřadnice X nového bodu",
+    "en": "Polar survey: X coordinate of a new point"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R31",
+      "en": "Kalketa, sample R31"
+    },
+    "sample": "R31"
+  },
+  "status": "verified",
+  "formula": "X_2 == X_1 + d·cos(α)",
+  "quantities": {
+    "X_2": {
+      "name": {
+        "cs": "souřadnice X nového bodu",
+        "en": "X coordinate of the new point"
+      },
+      "unit": "m",
+      "example": "1118895.51 m"
+    },
+    "X_1": {
+      "name": {
+        "cs": "souřadnice X stanoviska",
+        "en": "X coordinate of the station"
+      },
+      "unit": "m",
+      "example": "1119008.31 m"
+    },
+    "d": {
+      "name": {
+        "cs": "vodorovná délka k novému bodu",
+        "en": "horizontal distance to the new point"
+      },
+      "unit": "m",
+      "example": "286.45 m"
+    },
+    "α": {
+      "name": {
+        "cs": "směrník k novému bodu",
+        "en": "bearing to the new point"
+      },
+      "unit": "gon",
+      "example": "125.766 gon"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "X_1": "1119008.31 m",
+        "d": "286.45 m",
+        "α": "125.766 gon"
+      },
+      "expect": {
+        "X_2": "1.1189e+06 m"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "rajón",
+      "souřadnice",
+      "S-JTSK",
+      "směrník"
+    ],
+    "en": [
+      "polar method",
+      "coordinates",
+      "bearing"
+    ]
+  }
+}

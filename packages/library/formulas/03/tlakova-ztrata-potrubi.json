@@ -1,0 +1,97 @@
+{
+  "id": "tlakova-ztrata-potrubi",
+  "field": "03",
+  "group": {
+    "cs": "Technické tekutiny",
+    "en": "Technical fluids"
+  },
+  "title": {
+    "cs": "Tlaková ztráta v přímém potrubí",
+    "en": "Pressure drop in a straight pipe"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R21",
+      "en": "Kalketa, sample R21"
+    },
+    "sample": "R21"
+  },
+  "status": "verified",
+  "formula": "Δp == λ·L/D·ρ·w^2/2",
+  "quantities": {
+    "Δp": {
+      "name": {
+        "cs": "tlaková ztráta",
+        "en": "pressure drop"
+      },
+      "unit": "kPa",
+      "example": "1057 kPa"
+    },
+    "λ": {
+      "name": {
+        "cs": "součinitel tření",
+        "en": "friction factor"
+      },
+      "unit": "",
+      "example": "0.0198"
+    },
+    "L": {
+      "name": {
+        "cs": "délka potrubí",
+        "en": "pipe length"
+      },
+      "unit": "m",
+      "example": "1000 m"
+    },
+    "D": {
+      "name": {
+        "cs": "světlost potrubí",
+        "en": "pipe diameter"
+      },
+      "unit": "mm",
+      "example": "300 mm"
+    },
+    "ρ": {
+      "name": {
+        "cs": "hustota",
+        "en": "density"
+      },
+      "unit": "kg/m^3",
+      "example": "1000 kg/m^3"
+    },
+    "w": {
+      "name": {
+        "cs": "střední rychlost",
+        "en": "mean velocity"
+      },
+      "unit": "m/s",
+      "example": "5.66 m/s"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "λ": "0.0198",
+        "L": "1000 m",
+        "D": "300 mm",
+        "ρ": "1000 kg/m^3",
+        "w": "5.66 m/s"
+      },
+      "expect": {
+        "Δp": "1057.17 kPa"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "ztráta",
+      "potrubí",
+      "tření"
+    ],
+    "en": [
+      "loss",
+      "pipe",
+      "friction"
+    ]
+  }
+}

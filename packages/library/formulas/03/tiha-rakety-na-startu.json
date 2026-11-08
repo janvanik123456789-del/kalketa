@@ -1,0 +1,79 @@
+{
+  "id": "tiha-rakety-na-startu",
+  "field": "03",
+  "group": {
+    "cs": "Dynamika rakety",
+    "en": "Rocket dynamics"
+  },
+  "title": {
+    "cs": "Tíha plně naložené rakety",
+    "en": "Weight of the fully loaded rocket"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R16",
+      "en": "Kalketa, sample R16"
+    },
+    "sample": "R16"
+  },
+  "status": "verified",
+  "formula": "G_0 == (M_r + M_p)·g",
+  "quantities": {
+    "G_0": {
+      "name": {
+        "cs": "tíha rakety",
+        "en": "rocket weight"
+      },
+      "unit": "kN",
+      "example": "137 kN"
+    },
+    "M_r": {
+      "name": {
+        "cs": "hmotnost rakety bez paliva",
+        "en": "dry mass of the rocket"
+      },
+      "unit": "t",
+      "example": "2 t"
+    },
+    "M_p": {
+      "name": {
+        "cs": "hmotnost paliva",
+        "en": "propellant mass"
+      },
+      "unit": "t",
+      "example": "12 t"
+    },
+    "g": {
+      "name": {
+        "cs": "tíhové zrychlení",
+        "en": "gravitational acceleration"
+      },
+      "unit": "m/s^2",
+      "example": "9.81 m/s^2"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "M_r": "2 t",
+        "M_p": "12 t",
+        "g": "9.81 m/s^2"
+      },
+      "expect": {
+        "G_0": "137.34 kN"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "raketa",
+      "tíha",
+      "start"
+    ],
+    "en": [
+      "rocket",
+      "weight",
+      "launch"
+    ]
+  }
+}

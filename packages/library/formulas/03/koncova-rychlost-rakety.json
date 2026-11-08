@@ -1,0 +1,97 @@
+{
+  "id": "koncova-rychlost-rakety",
+  "field": "03",
+  "group": {
+    "cs": "Dynamika rakety",
+    "en": "Rocket dynamics"
+  },
+  "title": {
+    "cs": "Koncová rychlost rakety s vlivem tíže",
+    "en": "Burnout velocity of a rocket with gravity"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R16",
+      "en": "Kalketa, sample R16"
+    },
+    "sample": "R16"
+  },
+  "status": "verified",
+  "formula": "v_max == v_R·ln((M_r + M_p)/M_r) - g·τ",
+  "quantities": {
+    "v_max": {
+      "name": {
+        "cs": "koncová rychlost",
+        "en": "burnout velocity"
+      },
+      "unit": "m/s",
+      "example": "1663 m/s"
+    },
+    "v_R": {
+      "name": {
+        "cs": "výtoková rychlost spalin",
+        "en": "exhaust velocity"
+      },
+      "unit": "m/s",
+      "example": "1389 m/s"
+    },
+    "M_r": {
+      "name": {
+        "cs": "hmotnost rakety bez paliva",
+        "en": "dry mass of the rocket"
+      },
+      "unit": "t",
+      "example": "2 t"
+    },
+    "M_p": {
+      "name": {
+        "cs": "hmotnost paliva",
+        "en": "propellant mass"
+      },
+      "unit": "t",
+      "example": "12 t"
+    },
+    "g": {
+      "name": {
+        "cs": "tíhové zrychlení",
+        "en": "gravitational acceleration"
+      },
+      "unit": "m/s^2",
+      "example": "9.81 m/s^2"
+    },
+    "τ": {
+      "name": {
+        "cs": "doba hoření",
+        "en": "burn time"
+      },
+      "unit": "s",
+      "example": "106 s"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "v_R": "1389 m/s",
+        "M_r": "2 t",
+        "M_p": "12 t",
+        "g": "9.81 m/s^2",
+        "τ": "106 s"
+      },
+      "expect": {
+        "v_max": "1663.01 m/s"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "Ciolkovskij",
+      "raketa",
+      "rychlost"
+    ],
+    "en": [
+      "Tsiolkovsky",
+      "rocket",
+      "velocity"
+    ]
+  }
+}

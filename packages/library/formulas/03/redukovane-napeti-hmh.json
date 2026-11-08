@@ -1,0 +1,79 @@
+{
+  "id": "redukovane-napeti-hmh",
+  "field": "03",
+  "group": {
+    "cs": "Pružnost a pevnost",
+    "en": "Strength of materials"
+  },
+  "title": {
+    "cs": "Redukované napětí podle HMH z hlavních napětí",
+    "en": "Von Mises stress from principal stresses"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R48",
+      "en": "Kalketa, sample R48"
+    },
+    "sample": "R48"
+  },
+  "status": "verified",
+  "formula": "σ_RED_HMH == sqrt(σ_1^2 + σ_2^2 + σ_3^2 - σ_1·σ_2 - σ_2·σ_3 - σ_3·σ_1)",
+  "quantities": {
+    "σ_RED_HMH": {
+      "name": {
+        "cs": "redukované napětí HMH",
+        "en": "von Mises equivalent stress"
+      },
+      "unit": "MPa",
+      "example": "102.1 MPa"
+    },
+    "σ_1": {
+      "name": {
+        "cs": "první hlavní napětí",
+        "en": "first principal stress"
+      },
+      "unit": "MPa",
+      "example": "-15 MPa"
+    },
+    "σ_2": {
+      "name": {
+        "cs": "druhé hlavní napětí",
+        "en": "second principal stress"
+      },
+      "unit": "MPa",
+      "example": "20 MPa"
+    },
+    "σ_3": {
+      "name": {
+        "cs": "třetí hlavní napětí",
+        "en": "third principal stress"
+      },
+      "unit": "MPa",
+      "example": "100 MPa"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "σ_1": "-15 MPa",
+        "σ_2": "20 MPa",
+        "σ_3": "100 MPa"
+      },
+      "expect": {
+        "σ_RED_HMH": "102.103 MPa"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "von Mises",
+      "HMH",
+      "redukované napětí"
+    ],
+    "en": [
+      "von Mises",
+      "HMH",
+      "equivalent stress"
+    ]
+  }
+}

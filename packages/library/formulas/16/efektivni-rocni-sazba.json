@@ -1,0 +1,59 @@
+{
+  "id": "efektivni-rocni-sazba",
+  "field": "16",
+  "group": {
+    "cs": "Úvěry a spoření",
+    "en": "Loans and savings"
+  },
+  "title": {
+    "cs": "Efektivní roční sazba z měsíční",
+    "en": "Effective annual rate from the monthly rate"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R41",
+      "en": "Kalketa, sample R41"
+    },
+    "sample": "R41"
+  },
+  "status": "verified",
+  "formula": "i_ef == (1 + r)^12 - 1",
+  "quantities": {
+    "i_ef": {
+      "name": {
+        "cs": "efektivní roční sazba",
+        "en": "effective annual rate"
+      },
+      "unit": "%",
+      "example": "6.1678 %"
+    },
+    "r": {
+      "name": {
+        "cs": "měsíční úroková sazba",
+        "en": "monthly interest rate"
+      },
+      "unit": "",
+      "example": "0.005"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "r": "0.005"
+      },
+      "expect": {
+        "i_ef": "6.16778 %"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "úrok",
+      "složené úročení"
+    ],
+    "en": [
+      "interest",
+      "compounding"
+    ]
+  }
+}

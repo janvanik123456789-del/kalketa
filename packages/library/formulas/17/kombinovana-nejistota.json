@@ -1,0 +1,68 @@
+{
+  "id": "kombinovana-nejistota",
+  "field": "17",
+  "group": {
+    "cs": "Nejistota měření",
+    "en": "Measurement uncertainty"
+  },
+  "title": {
+    "cs": "Kombinovaná nejistota typu A a B",
+    "en": "Combined uncertainty of types A and B"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R34",
+      "en": "Kalketa, sample R34"
+    },
+    "sample": "R34"
+  },
+  "status": "verified",
+  "formula": "u_c == sqrt(u_A^2 + u_B^2)",
+  "quantities": {
+    "u_c": {
+      "name": {
+        "cs": "kombinovaná nejistota",
+        "en": "combined uncertainty"
+      },
+      "unit": "s",
+      "example": "0.0238933 s"
+    },
+    "u_A": {
+      "name": {
+        "cs": "nejistota typu A",
+        "en": "type A uncertainty"
+      },
+      "unit": "s",
+      "example": "0.01 s"
+    },
+    "u_B": {
+      "name": {
+        "cs": "nejistota typu B",
+        "en": "type B uncertainty"
+      },
+      "unit": "s",
+      "example": "0.0217 s"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "u_A": "0.01 s",
+        "u_B": "0.0217 s"
+      },
+      "expect": {
+        "u_c": "0.0238933 s"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "nejistota",
+      "GUM"
+    ],
+    "en": [
+      "uncertainty",
+      "GUM"
+    ]
+  }
+}

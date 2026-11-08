@@ -1,0 +1,79 @@
+{
+  "id": "hmotnost-useku-pruta",
+  "field": "03",
+  "group": {
+    "cs": "Pružnost a pevnost",
+    "en": "Strength of materials"
+  },
+  "title": {
+    "cs": "Hmotnost úseku prutu",
+    "en": "Mass of a bar segment"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R12",
+      "en": "Kalketa, sample R12"
+    },
+    "sample": "R12"
+  },
+  "status": "verified",
+  "formula": "m_x == ρ·S·x",
+  "quantities": {
+    "m_x": {
+      "name": {
+        "cs": "hmotnost úseku",
+        "en": "segment mass"
+      },
+      "unit": "kg",
+      "example": "156 kg"
+    },
+    "ρ": {
+      "name": {
+        "cs": "hustota",
+        "en": "density"
+      },
+      "unit": "kg/m^3",
+      "example": "7800 kg/m^3"
+    },
+    "S": {
+      "name": {
+        "cs": "plocha průřezu",
+        "en": "cross-section area"
+      },
+      "unit": "cm^2",
+      "example": "1 cm^2"
+    },
+    "x": {
+      "name": {
+        "cs": "délka úseku",
+        "en": "segment length"
+      },
+      "unit": "m",
+      "example": "200 m"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "ρ": "7800 kg/m^3",
+        "S": "1 cm^2",
+        "x": "200 m"
+      },
+      "expect": {
+        "m_x": "156.0 kg"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "hmotnost",
+      "drát",
+      "tyč"
+    ],
+    "en": [
+      "mass",
+      "wire",
+      "bar"
+    ]
+  }
+}

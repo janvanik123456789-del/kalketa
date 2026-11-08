@@ -1,0 +1,68 @@
+{
+  "id": "miry-zpevneni",
+  "field": "08",
+  "group": {
+    "cs": "Zkouška tahem",
+    "en": "Tensile test"
+  },
+  "title": {
+    "cs": "Míra deformačního zpevnění",
+    "en": "Strain-hardening ratio"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R27",
+      "en": "Kalketa, sample R27"
+    },
+    "sample": "R27"
+  },
+  "status": "verified",
+  "formula": "n_z == R_m/R_p02",
+  "quantities": {
+    "n_z": {
+      "name": {
+        "cs": "míra zpevnění",
+        "en": "strain-hardening ratio"
+      },
+      "unit": "",
+      "example": "1.4966"
+    },
+    "R_m": {
+      "name": {
+        "cs": "mez pevnosti",
+        "en": "tensile strength"
+      },
+      "unit": "MPa",
+      "example": "331.2 MPa"
+    },
+    "R_p02": {
+      "name": {
+        "cs": "smluvní mez kluzu",
+        "en": "0.2 % proof strength"
+      },
+      "unit": "MPa",
+      "example": "221.3 MPa"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "R_m": "331.2 MPa",
+        "R_p02": "221.3 MPa"
+      },
+      "expect": {
+        "n_z": "1.49661"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "zpevnění",
+      "mez kluzu"
+    ],
+    "en": [
+      "hardening",
+      "yield"
+    ]
+  }
+}

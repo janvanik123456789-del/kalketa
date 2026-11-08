@@ -1,0 +1,125 @@
+{
+  "sheet": "nosnik-s-previslym-koncem.cc",
+  "verifiedBy": "Vlastní úloha Kalkety. Nezávisle v čistém Pythonu (kontrola.md): reakce půlením tak, aby moment na volném konci vyšel nulový při součtu posouvající síly po krocích, průřezový modul součtem proužků průřezu; reakce a momenty navíc funkcí beam v listu. Ruční hodnoty: R_B = 247/5 = 49,4 kN, R_A = 14,6 kN, M_B = −27 kN·m, W = 2 100 cm³.",
+  "relativeTolerance": 1e-06,
+  "values": {
+    "R_A": {
+      "value": 14.600000000000001,
+      "unit": "kN"
+    },
+    "R_B": {
+      "value": 49.4,
+      "unit": "kN"
+    },
+    "x_0": {
+      "value": 1.8250000000000002,
+      "unit": "m"
+    },
+    "M_max": {
+      "value": 13.322500000000003,
+      "unit": "kN·m"
+    },
+    "M_B": {
+      "value": -27.0,
+      "unit": "kN·m"
+    },
+    "V_B_vlevo": {
+      "value": -25.4,
+      "unit": "kN"
+    },
+    "V_B_vpravo": {
+      "value": 24.0,
+      "unit": "kN"
+    },
+    "V_max": {
+      "value": 25.4,
+      "unit": "kN"
+    },
+    "x_n": {
+      "value": 3.6500000000000004,
+      "unit": "m"
+    },
+    "pomer_momentu": {
+      "value": 2.0266466504034524,
+      "unit": ""
+    },
+    "W": {
+      "value": 2100.0,
+      "unit": "cm³"
+    },
+    "M_rozh": {
+      "value": 27.0,
+      "unit": "kN·m"
+    },
+    "σ_max": {
+      "value": 12.85714285714286,
+      "unit": "MPa"
+    },
+    "σ_pole": {
+      "value": 6.344047619047621,
+      "unit": "MPa"
+    },
+    "vyuziti": {
+      "value": 0.9183673469387756,
+      "unit": ""
+    },
+    "W_pot": {
+      "value": 1928.5714285714287,
+      "unit": "cm³"
+    }
+  },
+  "checks": [
+    {
+      "label": "Rovnováha momentů k podpoře B",
+      "passed": true
+    },
+    {
+      "label": "R_A > 0",
+      "passed": true
+    },
+    {
+      "label": "R_B > 0",
+      "passed": true
+    },
+    {
+      "label": "Skok posouvající síly v B je R_B",
+      "passed": true
+    },
+    {
+      "label": "V = 0 v místě extrému",
+      "passed": true
+    },
+    {
+      "label": "x_0 = R_A/q",
+      "passed": true
+    },
+    {
+      "label": "M = 0 v druhém nulovém bodě",
+      "passed": true
+    },
+    {
+      "label": "M_B ze vztahu pro převis",
+      "passed": true
+    },
+    {
+      "label": "Moment je v B spojitý",
+      "passed": true
+    },
+    {
+      "label": "Moment na volném konci je nulový",
+      "passed": true
+    },
+    {
+      "label": "Reakce funkcí beam",
+      "passed": true
+    },
+    {
+      "label": "Momenty funkcí beam",
+      "passed": true
+    },
+    {
+      "label": "Ohyb",
+      "passed": true
+    }
+  ]
+}

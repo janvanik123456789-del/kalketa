@@ -1,0 +1,70 @@
+{
+  "id": "delka-trubky-vymeniku",
+  "field": "03",
+  "group": {
+    "cs": "Tepelné výpočty",
+    "en": "Thermal calculations"
+  },
+  "title": {
+    "cs": "Délka trubky výměníku z plochy",
+    "en": "Exchanger tube length from area"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R2",
+      "en": "Kalketa, sample R2"
+    },
+    "sample": "R2"
+  },
+  "status": "verified",
+  "formula": "L == A/(π·D)",
+  "quantities": {
+    "L": {
+      "name": {
+        "cs": "délka trubky",
+        "en": "tube length"
+      },
+      "unit": "m",
+      "example": "231 m"
+    },
+    "A": {
+      "name": {
+        "cs": "teplosměnná plocha",
+        "en": "heat transfer area"
+      },
+      "unit": "m^2",
+      "example": "10.9 m^2"
+    },
+    "D": {
+      "name": {
+        "cs": "průměr trubky",
+        "en": "tube diameter"
+      },
+      "unit": "cm",
+      "example": "1.5 cm"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "A": "10.9 m^2",
+        "D": "1.5 cm"
+      },
+      "expect": {
+        "L": "231.305 m"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "trubka",
+      "výměník",
+      "délka"
+    ],
+    "en": [
+      "tube",
+      "exchanger",
+      "length"
+    ]
+  }
+}

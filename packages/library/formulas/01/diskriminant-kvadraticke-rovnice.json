@@ -1,0 +1,77 @@
+{
+  "id": "diskriminant-kvadraticke-rovnice",
+  "field": "01",
+  "group": {
+    "cs": "Algebra",
+    "en": "Algebra"
+  },
+  "title": {
+    "cs": "Diskriminant kvadratické rovnice",
+    "en": "Discriminant of a quadratic equation"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R7",
+      "en": "Kalketa, sample R7"
+    },
+    "sample": "R7"
+  },
+  "status": "verified",
+  "formula": "D == b^2 - 4·a·c",
+  "quantities": {
+    "D": {
+      "name": {
+        "cs": "diskriminant",
+        "en": "discriminant"
+      },
+      "unit": "",
+      "example": "84"
+    },
+    "a": {
+      "name": {
+        "cs": "koeficient u x²",
+        "en": "coefficient of x²"
+      },
+      "unit": "",
+      "example": "-2"
+    },
+    "b": {
+      "name": {
+        "cs": "koeficient u x",
+        "en": "coefficient of x"
+      },
+      "unit": "",
+      "example": "2"
+    },
+    "c": {
+      "name": {
+        "cs": "absolutní člen",
+        "en": "constant term"
+      },
+      "unit": "",
+      "example": "10"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "a": "-2",
+        "b": "2",
+        "c": "10"
+      },
+      "expect": {
+        "D": "84"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "kořeny",
+      "parabola"
+    ],
+    "en": [
+      "roots",
+      "parabola"
+    ]
+  }
+}

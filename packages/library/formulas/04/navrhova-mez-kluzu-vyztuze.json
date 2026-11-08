@@ -1,0 +1,70 @@
+{
+  "id": "navrhova-mez-kluzu-vyztuze",
+  "field": "04",
+  "group": {
+    "cs": "Železobeton",
+    "en": "Reinforced concrete"
+  },
+  "title": {
+    "cs": "Návrhová mez kluzu betonářské výztuže",
+    "en": "Design yield strength of reinforcing steel"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R20",
+      "en": "Kalketa, sample R20"
+    },
+    "sample": "R20"
+  },
+  "status": "verified",
+  "formula": "f_yd == f_yk/γ_S",
+  "quantities": {
+    "f_yd": {
+      "name": {
+        "cs": "návrhová mez kluzu",
+        "en": "design yield strength"
+      },
+      "unit": "MPa",
+      "example": "434.8 MPa"
+    },
+    "f_yk": {
+      "name": {
+        "cs": "charakteristická mez kluzu",
+        "en": "characteristic yield strength"
+      },
+      "unit": "MPa",
+      "example": "500 MPa"
+    },
+    "γ_S": {
+      "name": {
+        "cs": "dílčí součinitel oceli",
+        "en": "partial factor of steel"
+      },
+      "unit": "",
+      "example": "1.15"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "f_yk": "500 MPa",
+        "γ_S": "1.15"
+      },
+      "expect": {
+        "f_yd": "434.783 MPa"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "ocel B500B",
+      "dílčí součinitel",
+      "Eurokód 2"
+    ],
+    "en": [
+      "steel B500B",
+      "partial factor",
+      "Eurocode 2"
+    ]
+  }
+}

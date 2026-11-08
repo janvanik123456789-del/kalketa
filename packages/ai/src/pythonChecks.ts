@@ -53,7 +53,8 @@ export function reportedNames(code: string): string[] {
 
 /** The title of a check: its first comment line, when the script starts with one ("# Part 2: turns by simulation"). */
 export function checkTitle(code: string): string | undefined {
-  const first = code.split(/\r?\n/).find((l) => l.trim() !== '' && !/^#!|^#.*coding[:=]/.test(l.trim()));
+  // The first comment line (the rules ask for one at the top; a script without one is named by its first comment).
+  const first = code.split(/\r?\n/).find((l) => /^\s*#/.test(l) && !/^#!|^#.*coding[:=]/.test(l.trim()));
   const m = first && /^\s*#+\s*(.+?)\s*$/.exec(first);
   return m ? m[1]!.slice(0, 120) : undefined;
 }

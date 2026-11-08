@@ -1,0 +1,70 @@
+{
+  "id": "vyuziti-pevnosti",
+  "field": "03",
+  "group": {
+    "cs": "Pružnost a pevnost",
+    "en": "Strength of materials"
+  },
+  "title": {
+    "cs": "Využití dovoleného napětí",
+    "en": "Utilisation of the allowable stress"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R48",
+      "en": "Kalketa, sample R48"
+    },
+    "sample": "R48"
+  },
+  "status": "verified",
+  "formula": "v_HMH == σ_RED_HMH/σ_DOV",
+  "quantities": {
+    "v_HMH": {
+      "name": {
+        "cs": "využití",
+        "en": "utilisation"
+      },
+      "unit": "%",
+      "example": "89.3 %"
+    },
+    "σ_RED_HMH": {
+      "name": {
+        "cs": "redukované napětí",
+        "en": "equivalent stress"
+      },
+      "unit": "MPa",
+      "example": "100 MPa"
+    },
+    "σ_DOV": {
+      "name": {
+        "cs": "dovolené napětí",
+        "en": "allowable stress"
+      },
+      "unit": "MPa",
+      "example": "112 MPa"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "σ_RED_HMH": "100 MPa",
+        "σ_DOV": "112 MPa"
+      },
+      "expect": {
+        "v_HMH": "89.2857 %"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "využití",
+      "dovolené napětí",
+      "pevnost"
+    ],
+    "en": [
+      "utilisation",
+      "allowable stress",
+      "strength"
+    ]
+  }
+}

@@ -1,0 +1,79 @@
+{
+  "id": "ubytek-napeti-dc-kabelu",
+  "field": "06",
+  "group": {
+    "cs": "Fotovoltaika",
+    "en": "Photovoltaics"
+  },
+  "title": {
+    "cs": "Úbytek napětí na stejnosměrném kabelu řetězce",
+    "en": "Voltage drop on the DC cable of a string"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R6",
+      "en": "Kalketa, sample R6"
+    },
+    "sample": "R6"
+  },
+  "status": "verified",
+  "formula": "ΔU == 2·R_k·L·I",
+  "quantities": {
+    "ΔU": {
+      "name": {
+        "cs": "úbytek napětí",
+        "en": "voltage drop"
+      },
+      "unit": "V",
+      "example": "3.564 V"
+    },
+    "R_k": {
+      "name": {
+        "cs": "odpor kabelu na délku",
+        "en": "cable resistance per length"
+      },
+      "unit": "Ω/km",
+      "example": "4.95 Ω/km"
+    },
+    "L": {
+      "name": {
+        "cs": "délka kabelu jedním směrem",
+        "en": "one-way cable length"
+      },
+      "unit": "m",
+      "example": "30 m"
+    },
+    "I": {
+      "name": {
+        "cs": "proud řetězce",
+        "en": "string current"
+      },
+      "unit": "A",
+      "example": "12 A"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "R_k": "4.95 Ω/km",
+        "L": "30 m",
+        "I": "12 A"
+      },
+      "expect": {
+        "ΔU": "3.564 V"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "FVE",
+      "řetězec",
+      "kabel"
+    ],
+    "en": [
+      "PV",
+      "string",
+      "cable"
+    ]
+  }
+}

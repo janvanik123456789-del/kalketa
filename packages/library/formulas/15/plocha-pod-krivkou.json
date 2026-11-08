@@ -1,0 +1,68 @@
+{
+  "id": "plocha-pod-krivkou",
+  "field": "15",
+  "group": {
+    "cs": "Farmakokinetika",
+    "en": "Pharmacokinetics"
+  },
+  "title": {
+    "cs": "Plocha pod křivkou koncentrace (AUC)",
+    "en": "Area under the concentration curve (AUC)"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R33",
+      "en": "Kalketa, sample R33"
+    },
+    "sample": "R33"
+  },
+  "status": "verified",
+  "formula": "AUC == D/CL",
+  "quantities": {
+    "AUC": {
+      "name": {
+        "cs": "plocha pod křivkou koncentrace",
+        "en": "area under the concentration curve"
+      },
+      "unit": "mg·h/L",
+      "example": "312.5 mg·h/L"
+    },
+    "D": {
+      "name": {
+        "cs": "dávka",
+        "en": "dose"
+      },
+      "unit": "mg",
+      "example": "300 mg"
+    },
+    "CL": {
+      "name": {
+        "cs": "clearance",
+        "en": "clearance"
+      },
+      "unit": "L/h",
+      "example": "0.96 L/h"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "D": "300 mg",
+        "CL": "0.96 L/h"
+      },
+      "expect": {
+        "AUC": "312.5 mg·h/L"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "AUC",
+      "dávka"
+    ],
+    "en": [
+      "AUC",
+      "dose"
+    ]
+  }
+}

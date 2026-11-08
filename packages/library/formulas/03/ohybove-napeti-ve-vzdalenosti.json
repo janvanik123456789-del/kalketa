@@ -1,0 +1,79 @@
+{
+  "id": "ohybove-napeti-ve-vzdalenosti",
+  "field": "03",
+  "group": {
+    "cs": "Pružnost a pevnost",
+    "en": "Strength of materials"
+  },
+  "title": {
+    "cs": "Ohybové napětí ve vzdálenosti od osy",
+    "en": "Bending stress at a distance from the axis"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R11",
+      "en": "Kalketa, sample R11"
+    },
+    "sample": "R11"
+  },
+  "status": "verified",
+  "formula": "σ == M·y/I",
+  "quantities": {
+    "σ": {
+      "name": {
+        "cs": "normálové napětí",
+        "en": "normal stress"
+      },
+      "unit": "MPa",
+      "example": "100 MPa"
+    },
+    "M": {
+      "name": {
+        "cs": "ohybový moment",
+        "en": "bending moment"
+      },
+      "unit": "kN·m",
+      "example": "8.33 kN·m"
+    },
+    "y": {
+      "name": {
+        "cs": "vzdálenost od neutrální osy",
+        "en": "distance from the neutral axis"
+      },
+      "unit": "mm",
+      "example": "50 mm"
+    },
+    "I": {
+      "name": {
+        "cs": "kvadratický moment průřezu",
+        "en": "second moment of area"
+      },
+      "unit": "cm^4",
+      "example": "416.7 cm^4"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "M": "8.33 kN·m",
+        "y": "50 mm",
+        "I": "416.7 cm^4"
+      },
+      "expect": {
+        "σ": "99.952 MPa"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "ohyb",
+      "napětí",
+      "vlákno"
+    ],
+    "en": [
+      "bending",
+      "stress",
+      "fibre"
+    ]
+  }
+}

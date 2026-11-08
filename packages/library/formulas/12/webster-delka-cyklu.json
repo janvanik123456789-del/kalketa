@@ -1,0 +1,70 @@
+{
+  "id": "webster-delka-cyklu",
+  "field": "12",
+  "group": {
+    "cs": "Světelná signalizace",
+    "en": "Traffic signals"
+  },
+  "title": {
+    "cs": "Optimální délka cyklu podle Webstera",
+    "en": "Optimal cycle length by Webster"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R30",
+      "en": "Kalketa, sample R30"
+    },
+    "sample": "R30"
+  },
+  "status": "verified",
+  "formula": "C_o == (1.5·L_z + 5 s)/(1 - Y)",
+  "quantities": {
+    "C_o": {
+      "name": {
+        "cs": "optimální délka cyklu",
+        "en": "optimal cycle length"
+      },
+      "unit": "s",
+      "example": "80.05 s"
+    },
+    "L_z": {
+      "name": {
+        "cs": "ztracený čas cyklu",
+        "en": "lost time of the cycle"
+      },
+      "unit": "s",
+      "example": "17 s"
+    },
+    "Y": {
+      "name": {
+        "cs": "součet kritických poměrů",
+        "en": "sum of critical flow ratios"
+      },
+      "unit": "",
+      "example": "0.619"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "L_z": "17 s",
+        "Y": "0.619"
+      },
+      "expect": {
+        "C_o": "80.0525 s"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "křižovatka",
+      "semafor",
+      "cyklus"
+    ],
+    "en": [
+      "intersection",
+      "signal",
+      "cycle"
+    ]
+  }
+}

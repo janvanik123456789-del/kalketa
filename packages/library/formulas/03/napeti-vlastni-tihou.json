@@ -1,0 +1,81 @@
+{
+  "id": "napeti-vlastni-tihou",
+  "field": "03",
+  "group": {
+    "cs": "Pružnost a pevnost",
+    "en": "Strength of materials"
+  },
+  "title": {
+    "cs": "Napětí od vlastní tíhy ve visícím prutu",
+    "en": "Stress from own weight in a hanging bar"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R12",
+      "en": "Kalketa, sample R12"
+    },
+    "sample": "R12"
+  },
+  "status": "verified",
+  "formula": "σ == ρ·x·g",
+  "quantities": {
+    "σ": {
+      "name": {
+        "cs": "normálové napětí",
+        "en": "normal stress"
+      },
+      "unit": "MPa",
+      "example": "15.3 MPa"
+    },
+    "ρ": {
+      "name": {
+        "cs": "hustota",
+        "en": "density"
+      },
+      "unit": "kg/m^3",
+      "example": "7800 kg/m^3"
+    },
+    "x": {
+      "name": {
+        "cs": "vzdálenost od volného konce",
+        "en": "distance from the free end"
+      },
+      "unit": "m",
+      "example": "200 m"
+    },
+    "g": {
+      "name": {
+        "cs": "tíhové zrychlení",
+        "en": "gravitational acceleration"
+      },
+      "unit": "m/s^2",
+      "example": "9.81 m/s^2"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "ρ": "7800 kg/m^3",
+        "x": "200 m",
+        "g": "9.81 m/s^2"
+      },
+      "expect": {
+        "σ": "15.3036 MPa"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "tíha",
+      "drát",
+      "napětí",
+      "visící"
+    ],
+    "en": [
+      "weight",
+      "wire",
+      "stress",
+      "hanging"
+    ]
+  }
+}

@@ -1,0 +1,79 @@
+{
+  "id": "stupen-saturace-krizovatky",
+  "field": "12",
+  "group": {
+    "cs": "Světelná signalizace",
+    "en": "Traffic signals"
+  },
+  "title": {
+    "cs": "Stupeň saturace křižovatky při dělení zelené úměrně",
+    "en": "Degree of saturation of an intersection with proportional green split"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R30",
+      "en": "Kalketa, sample R30"
+    },
+    "sample": "R30"
+  },
+  "status": "verified",
+  "formula": "X == Y·C_n/(C_n - L_z)",
+  "quantities": {
+    "X": {
+      "name": {
+        "cs": "stupeň saturace",
+        "en": "degree of saturation"
+      },
+      "unit": "",
+      "example": "0.786"
+    },
+    "Y": {
+      "name": {
+        "cs": "součet kritických poměrů",
+        "en": "sum of critical flow ratios"
+      },
+      "unit": "",
+      "example": "0.619"
+    },
+    "C_n": {
+      "name": {
+        "cs": "zvolená délka cyklu",
+        "en": "chosen cycle length"
+      },
+      "unit": "s",
+      "example": "80 s"
+    },
+    "L_z": {
+      "name": {
+        "cs": "ztracený čas cyklu",
+        "en": "lost time of the cycle"
+      },
+      "unit": "s",
+      "example": "17 s"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "Y": "0.619",
+        "C_n": "80 s",
+        "L_z": "17 s"
+      },
+      "expect": {
+        "X": "0.786032"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "křižovatka",
+      "kapacita",
+      "saturace"
+    ],
+    "en": [
+      "intersection",
+      "capacity",
+      "saturation"
+    ]
+  }
+}

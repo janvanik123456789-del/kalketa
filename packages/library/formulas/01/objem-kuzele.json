@@ -1,0 +1,68 @@
+{
+  "id": "objem-kuzele",
+  "field": "01",
+  "group": {
+    "cs": "Geometrie",
+    "en": "Geometry"
+  },
+  "title": {
+    "cs": "Objem kužele",
+    "en": "Volume of a cone"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R19",
+      "en": "Kalketa, sample R19"
+    },
+    "sample": "R19"
+  },
+  "status": "verified",
+  "formula": "V == π·R^2·H/3",
+  "quantities": {
+    "V": {
+      "name": {
+        "cs": "objem kužele",
+        "en": "volume of a cone"
+      },
+      "unit": "m^3",
+      "example": "1.25664 m^3"
+    },
+    "R": {
+      "name": {
+        "cs": "poloměr podstavy",
+        "en": "base radius"
+      },
+      "unit": "m",
+      "example": "1 m"
+    },
+    "H": {
+      "name": {
+        "cs": "výška",
+        "en": "height"
+      },
+      "unit": "m",
+      "example": "1.2 m"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "R": "1 m",
+        "H": "1.2 m"
+      },
+      "expect": {
+        "V": "1.25664 m^3"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "kužel",
+      "těleso"
+    ],
+    "en": [
+      "cone",
+      "solid"
+    ]
+  }
+}

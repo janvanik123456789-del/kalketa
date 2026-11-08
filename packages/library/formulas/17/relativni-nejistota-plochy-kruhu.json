@@ -1,0 +1,70 @@
+{
+  "id": "relativni-nejistota-plochy-kruhu",
+  "field": "17",
+  "group": {
+    "cs": "Nejistota měření",
+    "en": "Measurement uncertainty"
+  },
+  "title": {
+    "cs": "Relativní nejistota plochy kruhu z průměru",
+    "en": "Relative uncertainty of a circle area from its diameter"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R34",
+      "en": "Kalketa, sample R34"
+    },
+    "sample": "R34"
+  },
+  "status": "verified",
+  "formula": "u_rS == 2·u_d/d",
+  "quantities": {
+    "u_rS": {
+      "name": {
+        "cs": "relativní nejistota plochy",
+        "en": "relative uncertainty of the area"
+      },
+      "unit": "%",
+      "example": "1.4259 %"
+    },
+    "u_d": {
+      "name": {
+        "cs": "standardní nejistota průměru",
+        "en": "standard uncertainty of the diameter"
+      },
+      "unit": "mm",
+      "example": "0.0057735 mm"
+    },
+    "d": {
+      "name": {
+        "cs": "průměr",
+        "en": "diameter"
+      },
+      "unit": "mm",
+      "example": "0.81 mm"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "u_d": "0.0057735 mm",
+        "d": "0.81 mm"
+      },
+      "expect": {
+        "u_rS": "1.42556 %"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "nejistota",
+      "průměr",
+      "plocha"
+    ],
+    "en": [
+      "uncertainty",
+      "diameter",
+      "area"
+    ]
+  }
+}

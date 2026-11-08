@@ -1,0 +1,77 @@
+{
+  "id": "tahova-housevnatost",
+  "field": "08",
+  "group": {
+    "cs": "Zkouška tahem",
+    "en": "Tensile test"
+  },
+  "title": {
+    "cs": "Tahová houževnatost (přibližně)",
+    "en": "Tensile toughness (approximate)"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R27",
+      "en": "Kalketa, sample R27"
+    },
+    "sample": "R27"
+  },
+  "status": "verified",
+  "formula": "U_t == (R_p02 + R_m)/2·A",
+  "quantities": {
+    "U_t": {
+      "name": {
+        "cs": "tahová houževnatost",
+        "en": "tensile toughness"
+      },
+      "unit": "MJ/m^3",
+      "example": "102.2 MJ/m^3"
+    },
+    "R_p02": {
+      "name": {
+        "cs": "smluvní mez kluzu",
+        "en": "0.2 % proof strength"
+      },
+      "unit": "MPa",
+      "example": "221.3 MPa"
+    },
+    "R_m": {
+      "name": {
+        "cs": "mez pevnosti",
+        "en": "tensile strength"
+      },
+      "unit": "MPa",
+      "example": "331.2 MPa"
+    },
+    "A": {
+      "name": {
+        "cs": "tažnost",
+        "en": "elongation"
+      },
+      "unit": "%",
+      "example": "37 %"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "R_p02": "221.3 MPa",
+        "R_m": "331.2 MPa",
+        "A": "37 %"
+      },
+      "expect": {
+        "U_t": "102.213 MJ/m^3"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "energie",
+      "tažnost"
+    ],
+    "en": [
+      "energy",
+      "elongation"
+    ]
+  }
+}

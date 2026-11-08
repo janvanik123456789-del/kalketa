@@ -1,0 +1,68 @@
+{
+  "id": "rozsirena-nejistota",
+  "field": "17",
+  "group": {
+    "cs": "Nejistota měření",
+    "en": "Measurement uncertainty"
+  },
+  "title": {
+    "cs": "Rozšířená nejistota",
+    "en": "Expanded uncertainty"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R39",
+      "en": "Kalketa, sample R39"
+    },
+    "sample": "R39"
+  },
+  "status": "verified",
+  "formula": "U == k·u",
+  "quantities": {
+    "U": {
+      "name": {
+        "cs": "rozšířená nejistota",
+        "en": "expanded uncertainty"
+      },
+      "unit": "K",
+      "example": "1.8627 K"
+    },
+    "k": {
+      "name": {
+        "cs": "koeficient pokrytí",
+        "en": "coverage factor"
+      },
+      "unit": "",
+      "example": "2.0796"
+    },
+    "u": {
+      "name": {
+        "cs": "standardní nejistota",
+        "en": "standard uncertainty"
+      },
+      "unit": "K",
+      "example": "0.8956 K"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "k": "2.0796",
+        "u": "0.8956 K"
+      },
+      "expect": {
+        "U": "1.86249 K"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "interval pokrytí",
+      "nejistota"
+    ],
+    "en": [
+      "coverage interval",
+      "uncertainty"
+    ]
+  }
+}

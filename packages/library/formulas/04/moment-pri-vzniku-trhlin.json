@@ -1,0 +1,70 @@
+{
+  "id": "moment-pri-vzniku-trhlin",
+  "field": "04",
+  "group": {
+    "cs": "Železobeton",
+    "en": "Reinforced concrete"
+  },
+  "title": {
+    "cs": "Moment na mezi vzniku trhlin pruhu desky",
+    "en": "Cracking moment of a slab strip"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R20",
+      "en": "Kalketa, sample R20"
+    },
+    "sample": "R20"
+  },
+  "status": "verified",
+  "formula": "m_cr == h^2·f_ctm/6",
+  "quantities": {
+    "m_cr": {
+      "name": {
+        "cs": "moment při vzniku trhlin na metr šířky",
+        "en": "cracking moment per metre of width"
+      },
+      "unit": "kN·m/m",
+      "example": "19.33 kN·m/m"
+    },
+    "h": {
+      "name": {
+        "cs": "tloušťka desky",
+        "en": "slab thickness"
+      },
+      "unit": "mm",
+      "example": "200 mm"
+    },
+    "f_ctm": {
+      "name": {
+        "cs": "střední pevnost betonu v tahu",
+        "en": "mean tensile strength of concrete"
+      },
+      "unit": "MPa",
+      "example": "2.9 MPa"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "h": "200 mm",
+        "f_ctm": "2.9 MPa"
+      },
+      "expect": {
+        "m_cr": "19.3333 kN·m/m"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "minimální výztuž",
+      "trhliny",
+      "beton"
+    ],
+    "en": [
+      "minimum reinforcement",
+      "cracking",
+      "concrete"
+    ]
+  }
+}

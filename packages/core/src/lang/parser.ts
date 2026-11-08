@@ -122,6 +122,9 @@ export function parse(source: string, options: ParseOptions): ParseResult {
       statement = { kind: 'invalid', span: spanOf(tokens[0]!, tokens[tokens.length - 1]!), ...(name ? { name } : {}) };
       if (name) defined.add(name);
     }
+    // A word written in two alphabets ("ubерou": е and р Cyrillic) looks right and reads wrong: a slip of a model.
+    for (const word of mixedScriptWords([statement.kind === 'text' || statement.kind === 'heading' ? statement.text : '', statement.kind === 'picture' ? statement.caption : '', comment ?? ''].join(' ')))
+      diagnostics.push(diagnostic('W-MIXED-SCRIPT', statement.span, { word }));
     // An example value of the formula library ({example}) is reported until the user writes their own.
     if (format?.example) diagnostics.push(diagnostic('W-EXAMPLE-VALUE', statement.span, { name: statement.kind === 'definition' ? statement.name : '' }));
     statements.push(withFormat(withComment(statement, comment), format));
@@ -129,6 +132,12 @@ export function parse(source: string, options: ParseOptions): ParseResult {
   tablesBefore(Infinity);
 
   return { sheet: { statements }, diagnostics, unitReadings: readings };
+}
+
+/** Words of a text with both Latin and Cyrillic letters in them, each once. */
+export function mixedScriptWords(text: string): string[] {
+  const words = text.match(/[\p{L}\p{M}]+/gu) ?? [];
+  return [...new Set(words.filter((w) => /\p{Script=Latin}/u.test(w) && /\p{Script=Cyrillic}/u.test(w)))];
 }
 
 const TABLE_HEAD = /^table[ \t]+([\p{L}_][\p{L}\p{N}_]*)[ \t]*:[ \t]*(?:\{([^{}]*)\})?[ \t]*$/u;

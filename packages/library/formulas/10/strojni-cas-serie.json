@@ -1,0 +1,68 @@
+{
+  "id": "strojni-cas-serie",
+  "field": "10",
+  "group": {
+    "cs": "Obrábění",
+    "en": "Machining"
+  },
+  "title": {
+    "cs": "Strojní čas série",
+    "en": "Machining time of a batch"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R29",
+      "en": "Kalketa, sample R29"
+    },
+    "sample": "R29"
+  },
+  "status": "verified",
+  "formula": "t_s == n_s·t_m",
+  "quantities": {
+    "t_s": {
+      "name": {
+        "cs": "strojní čas série",
+        "en": "machining time of the batch"
+      },
+      "unit": "h",
+      "example": "7 h"
+    },
+    "n_s": {
+      "name": {
+        "cs": "počet součástí v sérii",
+        "en": "parts in the batch"
+      },
+      "unit": "",
+      "example": "350"
+    },
+    "t_m": {
+      "name": {
+        "cs": "strojní čas jedné součásti",
+        "en": "machining time per part"
+      },
+      "unit": "min",
+      "example": "1.2 min"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "n_s": "350",
+        "t_m": "1.2 min"
+      },
+      "expect": {
+        "t_s": "7 h"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "série",
+      "soustružení"
+    ],
+    "en": [
+      "batch",
+      "turning"
+    ]
+  }
+}

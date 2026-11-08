@@ -1,0 +1,79 @@
+{
+  "id": "moment-setrvacnosti-setrvacniku",
+  "field": "03",
+  "group": {
+    "cs": "Dynamika strojů",
+    "en": "Machine dynamics"
+  },
+  "title": {
+    "cs": "Moment setrvačnosti setrvačníku z nerovnoměrnosti chodu",
+    "en": "Flywheel inertia from speed fluctuation"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R9",
+      "en": "Kalketa, sample R9"
+    },
+    "sample": "R9"
+  },
+  "status": "verified",
+  "formula": "J_s == ΔA/(N·ω_s^2)",
+  "quantities": {
+    "J_s": {
+      "name": {
+        "cs": "moment setrvačnosti",
+        "en": "moment of inertia"
+      },
+      "unit": "kg·m^2",
+      "example": "0.2346 kg·m^2"
+    },
+    "ΔA": {
+      "name": {
+        "cs": "přebytek práce",
+        "en": "excess work"
+      },
+      "unit": "J",
+      "example": "20 J"
+    },
+    "N": {
+      "name": {
+        "cs": "nerovnoměrnost chodu",
+        "en": "speed irregularity"
+      },
+      "unit": "",
+      "example": "0.00333"
+    },
+    "ω_s": {
+      "name": {
+        "cs": "úhlová rychlost",
+        "en": "angular velocity"
+      },
+      "unit": "rad/s",
+      "example": "160 rad/s"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "ΔA": "20 J",
+        "N": "0.00333",
+        "ω_s": "160 rad/s"
+      },
+      "expect": {
+        "J_s": "0.23461 kg·m^2"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "setrvačník",
+      "nerovnoměrnost",
+      "chod"
+    ],
+    "en": [
+      "flywheel",
+      "irregularity",
+      "speed"
+    ]
+  }
+}

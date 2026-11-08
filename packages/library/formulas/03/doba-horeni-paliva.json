@@ -1,0 +1,70 @@
+{
+  "id": "doba-horeni-paliva",
+  "field": "03",
+  "group": {
+    "cs": "Dynamika rakety",
+    "en": "Rocket dynamics"
+  },
+  "title": {
+    "cs": "Doba hoření paliva",
+    "en": "Burn time of the propellant"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R16",
+      "en": "Kalketa, sample R16"
+    },
+    "sample": "R16"
+  },
+  "status": "verified",
+  "formula": "τ == M_p/q",
+  "quantities": {
+    "τ": {
+      "name": {
+        "cs": "doba hoření",
+        "en": "burn time"
+      },
+      "unit": "s",
+      "example": "106 s"
+    },
+    "M_p": {
+      "name": {
+        "cs": "hmotnost paliva",
+        "en": "propellant mass"
+      },
+      "unit": "t",
+      "example": "12 t"
+    },
+    "q": {
+      "name": {
+        "cs": "hmotnostní tok paliva",
+        "en": "propellant mass flow"
+      },
+      "unit": "kg/s",
+      "example": "113 kg/s"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "M_p": "12 t",
+        "q": "113 kg/s"
+      },
+      "expect": {
+        "τ": "106.195 s"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "raketa",
+      "palivo",
+      "hoření"
+    ],
+    "en": [
+      "rocket",
+      "fuel",
+      "burn"
+    ]
+  }
+}

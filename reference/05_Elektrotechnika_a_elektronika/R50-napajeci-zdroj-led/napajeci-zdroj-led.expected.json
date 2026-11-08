@@ -1,0 +1,193 @@
+{
+  "sheet": "napajeci-zdroj-led.cc",
+  "verifiedBy": "Vlastní úloha, bez vnějšího zdroje. Nezávisle v čistém Pythonu (kontrola.md): řetězce sečtené LED po LED, špička sekundáru nalezená půlením intervalu z numericky integrovaného pilovitého průběhu, počty závitů hledané cyklem, zvlnění z náboje sečteného po úsecích, nejvyšší odpor chladiče půlením z teplot v řetězci. Časová simulace s vedením diod dala zvlnění o 9 % menší než vzorec, který je tedy na bezpečné straně.",
+  "relativeTolerance": 1e-08,
+  "values": {
+    "U_s": {
+      "value": 21.0,
+      "unit": "V"
+    },
+    "I": {
+      "value": 1.6,
+      "unit": "A"
+    },
+    "R_s": {
+      "value": 15.0,
+      "unit": "Ω"
+    },
+    "P_R": {
+      "value": 0.6000000000000001,
+      "unit": "W"
+    },
+    "P_LED": {
+      "value": 33.60000000000001,
+      "unit": "W"
+    },
+    "P_out": {
+      "value": 38.400000000000006,
+      "unit": "W"
+    },
+    "P_Rs": {
+      "value": 4.800000000000001,
+      "unit": "W"
+    },
+    "η_out": {
+      "value": 0.8750000000000001,
+      "unit": ""
+    },
+    "U_2m": {
+      "value": 26.55000000000001,
+      "unit": "V"
+    },
+    "U_2": {
+      "value": 18.773685040502844,
+      "unit": "V"
+    },
+    "U_20": {
+      "value": 19.97200536223707,
+      "unit": "V"
+    },
+    "n": {
+      "value": 11.51611947966339,
+      "unit": ""
+    },
+    "I_2": {
+      "value": 2.8800000000000003,
+      "unit": "A"
+    },
+    "S": {
+      "value": 54.0682129166482,
+      "unit": "VA"
+    },
+    "I_1": {
+      "value": 0.2350791865941226,
+      "unit": "A"
+    },
+    "N_2": {
+      "value": 84,
+      "unit": ""
+    },
+    "N_1": {
+      "value": 960,
+      "unit": ""
+    },
+    "B_2": {
+      "value": 1.1899998428331346,
+      "unit": "T"
+    },
+    "B_1": {
+      "value": 1.1991157824491157,
+      "unit": "T"
+    },
+    "U_m": {
+      "value": 24.75000000000001,
+      "unit": "V"
+    },
+    "C_min": {
+      "value": 10666.666666667927,
+      "unit": "μF"
+    },
+    "ΔU_v": {
+      "value": 1.0666666666667928,
+      "unit": "V"
+    },
+    "U_min": {
+      "value": 23.683333333333216,
+      "unit": "V"
+    },
+    "U_str": {
+      "value": 24.216666666666615,
+      "unit": "V"
+    },
+    "Δ_min": {
+      "value": -0.31666666666678367,
+      "unit": "V"
+    },
+    "I_D": {
+      "value": 0.8,
+      "unit": "A"
+    },
+    "U_RRM": {
+      "value": 49.50000000000002,
+      "unit": "V"
+    },
+    "U_C": {
+      "value": 30.937500000000014,
+      "unit": "V"
+    },
+    "P_D": {
+      "value": 2.8800000000000003,
+      "unit": "W"
+    },
+    "P_in": {
+      "value": 45.98000000000001,
+      "unit": "W"
+    },
+    "η": {
+      "value": 0.7307525010874293,
+      "unit": ""
+    },
+    "R_sa_max": {
+      "value": 13.861111111111107,
+      "unit": "K/W"
+    },
+    "T_c": {
+      "value": 86.0,
+      "unit": "°C"
+    },
+    "T_j": {
+      "value": 94.64,
+      "unit": "°C"
+    }
+  },
+  "checks": [
+    {
+      "label": "Zdroj stačí na celý řetězec (na odporu zbývá kladné napětí)",
+      "passed": true
+    },
+    {
+      "label": "Bilance výkonu",
+      "passed": true
+    },
+    {
+      "label": "Výkon jedné LED krát jejich počet dá výkon všech LED",
+      "passed": true
+    },
+    {
+      "label": "Indukce v jádru podle sekundáru nepřekročí B_m",
+      "passed": true
+    },
+    {
+      "label": "Indukce v jádru podle primáru nepřekročí B_m",
+      "passed": true
+    },
+    {
+      "label": "Převod odpovídá počtům závitů (odchylka nejvýš o jeden závit sekundáru)",
+      "passed": true
+    },
+    {
+      "label": "Střední napětí na kondenzátoru je aspoň U_z",
+      "passed": true
+    },
+    {
+      "label": "Zvolený kondenzátor není menší než nejmenší kapacita",
+      "passed": true
+    },
+    {
+      "label": "Zvlnění se zvoleným kondenzátorem nepřekročí ΔU_max",
+      "passed": true
+    },
+    {
+      "label": "Bilance výkonů celého zdroje",
+      "passed": true
+    },
+    {
+      "label": "Chladič stačí",
+      "passed": true
+    },
+    {
+      "label": "Teplota čipu",
+      "passed": true
+    }
+  ]
+}

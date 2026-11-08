@@ -1,0 +1,70 @@
+{
+  "id": "plocha-vyztuze-prutu-na-metr",
+  "field": "04",
+  "group": {
+    "cs": "Železobeton",
+    "en": "Reinforced concrete"
+  },
+  "title": {
+    "cs": "Plocha výztuže z prutů po zvolené rozteči na metr šířky",
+    "en": "Reinforcement area from bars at a chosen spacing per metre of width"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R20",
+      "en": "Kalketa, sample R20"
+    },
+    "sample": "R20"
+  },
+  "status": "verified",
+  "formula": "a_s_prov == π·Ø^2/4/s",
+  "quantities": {
+    "a_s_prov": {
+      "name": {
+        "cs": "plocha navržené výztuže na metr šířky",
+        "en": "provided reinforcement area per metre of width"
+      },
+      "unit": "mm^2/m",
+      "example": "754 mm^2/m"
+    },
+    "Ø": {
+      "name": {
+        "cs": "průměr prutů",
+        "en": "bar diameter"
+      },
+      "unit": "mm",
+      "example": "12 mm"
+    },
+    "s": {
+      "name": {
+        "cs": "rozteč prutů",
+        "en": "bar spacing"
+      },
+      "unit": "mm",
+      "example": "150 mm"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "Ø": "12 mm",
+        "s": "150 mm"
+      },
+      "expect": {
+        "a_s_prov": "753.982 mm^2/m"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "pruty",
+      "rozteč",
+      "deska"
+    ],
+    "en": [
+      "bars",
+      "spacing",
+      "slab"
+    ]
+  }
+}

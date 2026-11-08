@@ -1,0 +1,77 @@
+{
+  "id": "omoceny-obvod-koryta",
+  "field": "14",
+  "group": {
+    "cs": "Otevřená koryta",
+    "en": "Open channels"
+  },
+  "title": {
+    "cs": "Omočený obvod lichoběžníkového koryta",
+    "en": "Wetted perimeter of a trapezoidal channel"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R32",
+      "en": "Kalketa, sample R32"
+    },
+    "sample": "R32"
+  },
+  "status": "verified",
+  "formula": "O == b + 2·y·sqrt(1 + m_s^2)",
+  "quantities": {
+    "O": {
+      "name": {
+        "cs": "omočený obvod",
+        "en": "wetted perimeter"
+      },
+      "unit": "m",
+      "example": "15.21 m"
+    },
+    "b": {
+      "name": {
+        "cs": "šířka dna",
+        "en": "bottom width"
+      },
+      "unit": "m",
+      "example": "8 m"
+    },
+    "y": {
+      "name": {
+        "cs": "hloubka vody",
+        "en": "water depth"
+      },
+      "unit": "m",
+      "example": "2 m"
+    },
+    "m_s": {
+      "name": {
+        "cs": "sklon svahů 1 : m_s",
+        "en": "side slope 1 : m_s"
+      },
+      "unit": "",
+      "example": "1.5"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "b": "8 m",
+        "y": "2 m",
+        "m_s": "1.5"
+      },
+      "expect": {
+        "O": "15.2111 m"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "koryto",
+      "omočený obvod"
+    ],
+    "en": [
+      "channel",
+      "wetted perimeter"
+    ]
+  }
+}

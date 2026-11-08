@@ -1,0 +1,59 @@
+{
+  "id": "objem-polokoule",
+  "field": "01",
+  "group": {
+    "cs": "Geometrie",
+    "en": "Geometry"
+  },
+  "title": {
+    "cs": "Objem polokoule",
+    "en": "Volume of a hemisphere"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R19",
+      "en": "Kalketa, sample R19"
+    },
+    "sample": "R19"
+  },
+  "status": "verified",
+  "formula": "V == 2/3·π·R^3",
+  "quantities": {
+    "V": {
+      "name": {
+        "cs": "objem polokoule",
+        "en": "volume of a hemisphere"
+      },
+      "unit": "m^3",
+      "example": "2.0944 m^3"
+    },
+    "R": {
+      "name": {
+        "cs": "poloměr",
+        "en": "radius"
+      },
+      "unit": "m",
+      "example": "1 m"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "R": "1 m"
+      },
+      "expect": {
+        "V": "2.0944 m^3"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "koule",
+      "těleso"
+    ],
+    "en": [
+      "sphere",
+      "solid"
+    ]
+  }
+}

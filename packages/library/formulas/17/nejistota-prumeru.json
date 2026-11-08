@@ -1,0 +1,68 @@
+{
+  "id": "nejistota-prumeru",
+  "field": "17",
+  "group": {
+    "cs": "Nejistota měření",
+    "en": "Measurement uncertainty"
+  },
+  "title": {
+    "cs": "Standardní nejistota průměru",
+    "en": "Standard uncertainty of the mean"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R39",
+      "en": "Kalketa, sample R39"
+    },
+    "sample": "R39"
+  },
+  "status": "verified",
+  "formula": "u == s/sqrt(m)",
+  "quantities": {
+    "u": {
+      "name": {
+        "cs": "standardní nejistota průměru",
+        "en": "standard uncertainty of the mean"
+      },
+      "unit": "K",
+      "example": "0.8956 K"
+    },
+    "s": {
+      "name": {
+        "cs": "směrodatná odchylka",
+        "en": "standard deviation"
+      },
+      "unit": "K",
+      "example": "4.2 K"
+    },
+    "m": {
+      "name": {
+        "cs": "počet měření",
+        "en": "number of measurements"
+      },
+      "unit": "",
+      "example": "22"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "s": "4.2 K",
+        "m": "22"
+      },
+      "expect": {
+        "u": "0.895443 K"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "průměr",
+      "nejistota typu A"
+    ],
+    "en": [
+      "mean",
+      "type A uncertainty"
+    ]
+  }
+}

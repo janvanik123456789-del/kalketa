@@ -1,0 +1,86 @@
+{
+  "id": "stredni-teplota-vody-ekvitermni",
+  "field": "11",
+  "group": {
+    "cs": "Potrubí",
+    "en": "Pipes"
+  },
+  "title": {
+    "cs": "Střední teplota topné vody při ekvitermní regulaci",
+    "en": "Mean heating water temperature under weather compensation"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R26",
+      "en": "Kalketa, sample R26"
+    },
+    "sample": "R26"
+  },
+  "status": "verified",
+  "formula": "t_m == (t_w - t_i)·(t_v - t_e)/(t_i - t_e) + t_i",
+  "quantities": {
+    "t_m": {
+      "name": {
+        "cs": "střední teplota vody",
+        "en": "mean water temperature"
+      },
+      "unit": "°C",
+      "example": "47.83 °C"
+    },
+    "t_w": {
+      "name": {
+        "cs": "maximální teplota vody",
+        "en": "maximum water temperature"
+      },
+      "unit": "°C",
+      "example": "75 °C"
+    },
+    "t_i": {
+      "name": {
+        "cs": "vnitřní teplota",
+        "en": "indoor temperature"
+      },
+      "unit": "°C",
+      "example": "20 °C"
+    },
+    "t_v": {
+      "name": {
+        "cs": "průměrná venkovní teplota v topném období",
+        "en": "mean outdoor temperature in the heating season"
+      },
+      "unit": "°C",
+      "example": "3.7 °C"
+    },
+    "t_e": {
+      "name": {
+        "cs": "venkovní výpočtová teplota",
+        "en": "outdoor design temperature"
+      },
+      "unit": "°C",
+      "example": "-13 °C"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "t_w": "75 °C",
+        "t_i": "20 °C",
+        "t_v": "3.7 °C",
+        "t_e": "-13 °C"
+      },
+      "expect": {
+        "t_m": "47.8333 °C"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "topná voda",
+      "ekvitermní regulace"
+    ],
+    "en": [
+      "heating water",
+      "weather compensation"
+    ]
+  }
+}

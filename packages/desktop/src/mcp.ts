@@ -24,6 +24,8 @@ const MAX_BODY = 1_000_000;
 const PER_MINUTE = 120;
 /** How long the editor may take for a tool. */
 const TOOL_TIMEOUT_MS = 30_000;
+/** A check in Python may wait for the person to allow it and then run for 30 s. */
+const PYTHON_TIMEOUT_MS = 150_000;
 
 interface McpSettings {
   readonly on: boolean;
@@ -110,6 +112,22 @@ const TOOLS: readonly { name: string; description: string; input: z.ZodRawShape;
     },
     writes: true,
   },
+  {
+    name: 'python_check',
+    description: `Check results of the active sheet independently in Python. Kalketa runs the script in its built-in sandboxed Python 3.14 (standard library and NumPy; no files, no network, no input; at most 30 s) and answers with a table of each reported result beside the value the sheet computed, and whether they agree. Rules:
+- The calculation goes into the sheet first (propose_change, accepted by the person); Python only checks it afterwards. Never put Python into the sheet.
+- Reach the result another way than the sheet does (a step-by-step simulation instead of the closed formula, energy instead of forces, a limiting case); the same formula written twice proves nothing.
+- Report each result under the name it has in the sheet: result("tau", value, "s", rel=1e-3) — the unit as Kalketa writes it ("mA", "V", "m^2", "" for a plain number), rel the relative difference still taken as agreement.
+- Begin the script with one comment line saying what it checks and how (# Part b: current at t_1 by Euler integration): it becomes its title when the person keeps it in the layer Check in Python.
+- You cannot run code yourself: never write what a script gives (in prose or in comments) before this tool answers.`,
+    input: { code: z.string().max(100_000).describe('The Python script, with result(name, value, unit, rel=…) calls'), note: z.string().max(2000).optional().describe('What it checks, for the person') },
+  },
+  {
+    name: 'withdraw_proposals',
+    description: 'Withdraw your own open proposals (tries, wrong ones) so they do not wait for the person; all your open ones in the sheet when no ids are given.',
+    input: { ids: z.array(z.string()).optional() },
+    writes: true,
+  },
   { name: 'proposal_status', description: 'What became of your proposals: open, accepted, rejected, replaced, or no longer fitting the sheet (it changed since).', input: { ids: z.array(z.string()).optional().describe('Ids; all your proposals in this sheet when left out') } },
   {
     name: 'propose_new_sheet',
@@ -123,7 +141,10 @@ const TOOLS: readonly { name: string; description: string; input: z.ZodRawShape;
 const INSTRUCTIONS = `Kalketa is a program for engineering calculations written as on paper: a sheet of definitions with units, relations, derivations and checks, computed by the program and printed. You work with the sheet open in Kalketa.
 - Read sheet_get first, and language_guide before you write any line of the calculation language.
 - You never change the sheet yourself: propose changes with propose_change and the person accepts or rejects them in Kalketa. Read what the check of a proposal says, and correct it with replaces until it computes without errors; then tell the person to look at the card in Kalketa.
-- The program computes: do not recalculate results by hand. Cite the theory by its ids ([T3]) from theory_get.`;
+- The program computes: do not recalculate results by hand. Cite the theory by its ids ([T3]) from theory_get.
+- Write in the language of the sheet with all its letters (Czech with háčky and čárky): nothing gets damaged on the way.
+- A proposal is not in the sheet until the person accepts it: line numbers always refer to the sheet as sheet_get gives it now.
+- Check results in Python only with python_check, never by putting Python into the sheet.`;
 
 export function registerMcpBridge(fromEditor: (event: IpcMainInvokeEvent) => unknown): void {
   let settings = readSettings();
@@ -152,7 +173,7 @@ export function registerMcpBridge(fromEditor: (event: IpcMainInvokeEvent) => unk
   };
 
   /** A tool run in the editor of the window used last. */
-  const askEditor = (tool: string, args: Record<string, unknown>): Promise<{ ok: boolean; text: string }> => {
+  const askEditor = (tool: string, args: Record<string, unknown>, timeout = TOOL_TIMEOUT_MS): Promise<{ ok: boolean; text: string }> => {
     const window = lastWindow && !lastWindow.isDestroyed() ? lastWindow : BrowserWindow.getAllWindows().find((w) => !w.isDestroyed());
     if (!window) return Promise.resolve({ ok: false, text: 'Kalketa has no window open.' });
     const id = randomBytes(8).toString('hex');
@@ -160,7 +181,7 @@ export function registerMcpBridge(fromEditor: (event: IpcMainInvokeEvent) => unk
       const timer = setTimeout(() => {
         waiting.delete(id);
         resolve({ ok: false, text: 'Kalketa did not answer in time.' });
-      }, TOOL_TIMEOUT_MS);
+      }, timeout);
       waiting.set(id, (answer) => {
         clearTimeout(timer);
         waiting.delete(id);
@@ -177,7 +198,7 @@ export function registerMcpBridge(fromEditor: (event: IpcMainInvokeEvent) => unk
         if (paused) return { content: [{ type: 'text' as const, text: 'Kalketa: the connection is paused by the user. Ask them to resume it (Tools → AI from outside).' }], isError: true };
         if (tool.writes && settings.readOnly) return { content: [{ type: 'text' as const, text: 'Kalketa: the connection is read-only (set by the user): you can read and explain, not propose.' }], isError: true };
         // The client's name goes with the call: proposals are kept under it.
-        const answer = await askEditor(tool.name, { ...(args ?? {}), _client: client ?? 'MCP' });
+        const answer = await askEditor(tool.name, { ...(args ?? {}), _client: client ?? 'MCP' }, tool.name === 'python_check' ? PYTHON_TIMEOUT_MS : TOOL_TIMEOUT_MS);
         appendLog('mcp.log', { event: 'tool', tool: tool.name, ok: answer.ok, chars: answer.text.length, client: client ?? null });
         return { content: [{ type: 'text' as const, text: answer.text }], ...(answer.ok ? {} : { isError: true }) };
       });

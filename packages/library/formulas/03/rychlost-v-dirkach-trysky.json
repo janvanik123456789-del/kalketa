@@ -1,0 +1,79 @@
+{
+  "id": "rychlost-v-dirkach-trysky",
+  "field": "03",
+  "group": {
+    "cs": "Technické tekutiny",
+    "en": "Technical fluids"
+  },
+  "title": {
+    "cs": "Rychlost v otvorech trysky",
+    "en": "Velocity in nozzle holes"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R21",
+      "en": "Kalketa, sample R21"
+    },
+    "sample": "R21"
+  },
+  "status": "verified",
+  "formula": "w_t == Q/(n_d·π·d_d^2/4)",
+  "quantities": {
+    "w_t": {
+      "name": {
+        "cs": "rychlost v otvoru",
+        "en": "velocity in a hole"
+      },
+      "unit": "m/s",
+      "example": "20.4 m/s"
+    },
+    "Q": {
+      "name": {
+        "cs": "průtok",
+        "en": "flow rate"
+      },
+      "unit": "l/s",
+      "example": "1.2 l/s"
+    },
+    "n_d": {
+      "name": {
+        "cs": "počet otvorů",
+        "en": "number of holes"
+      },
+      "unit": "",
+      "example": "12"
+    },
+    "d_d": {
+      "name": {
+        "cs": "průměr otvoru",
+        "en": "hole diameter"
+      },
+      "unit": "mm",
+      "example": "2.5 mm"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "Q": "1.2 l/s",
+        "n_d": "12",
+        "d_d": "2.5 mm"
+      },
+      "expect": {
+        "w_t": "20.3718 m/s"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "tryska",
+      "otvory",
+      "rychlost"
+    ],
+    "en": [
+      "nozzle",
+      "holes",
+      "velocity"
+    ]
+  }
+}

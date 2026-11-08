@@ -1,0 +1,79 @@
+{
+  "id": "plocha-vyztuze-odhad",
+  "field": "04",
+  "group": {
+    "cs": "Železobeton",
+    "en": "Reinforced concrete"
+  },
+  "title": {
+    "cs": "Potřebná plocha ohybové výztuže, rameno 0,9·d",
+    "en": "Required bending reinforcement area, lever arm 0.9·d"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R20",
+      "en": "Kalketa, sample R20"
+    },
+    "sample": "R20"
+  },
+  "status": "verified",
+  "formula": "a_s_req == m_Ed/(0.9·d·f_yd)",
+  "quantities": {
+    "a_s_req": {
+      "name": {
+        "cs": "potřebná plocha výztuže na metr šířky",
+        "en": "required reinforcement area per metre of width"
+      },
+      "unit": "mm^2/m",
+      "example": "604.9 mm^2/m"
+    },
+    "m_Ed": {
+      "name": {
+        "cs": "návrhový moment na metr šířky",
+        "en": "design moment per metre of width"
+      },
+      "unit": "kN·m/m",
+      "example": "40 kN·m/m"
+    },
+    "d": {
+      "name": {
+        "cs": "účinná výška",
+        "en": "effective depth"
+      },
+      "unit": "mm",
+      "example": "169 mm"
+    },
+    "f_yd": {
+      "name": {
+        "cs": "návrhová mez kluzu",
+        "en": "design yield strength"
+      },
+      "unit": "MPa",
+      "example": "434.8 MPa"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "m_Ed": "40 kN·m/m",
+        "d": "169 mm",
+        "f_yd": "434.78 MPa"
+      },
+      "expect": {
+        "a_s_req": "604.869 mm^2/m"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "ohyb",
+      "návrh výztuže",
+      "deska"
+    ],
+    "en": [
+      "bending",
+      "reinforcement design",
+      "slab"
+    ]
+  }
+}

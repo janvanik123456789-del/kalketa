@@ -1,0 +1,59 @@
+{
+  "id": "ph-z-koncentrace",
+  "field": "07",
+  "group": {
+    "cs": "Kyseliny a zásady",
+    "en": "Acids and bases"
+  },
+  "title": {
+    "cs": "pH z koncentrace oxoniových iontů",
+    "en": "pH from hydronium concentration"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R3",
+      "en": "Kalketa, sample R3"
+    },
+    "sample": "R3"
+  },
+  "status": "verified",
+  "formula": "pH == -log10(x/(1 mol/L))",
+  "quantities": {
+    "pH": {
+      "name": {
+        "cs": "pH",
+        "en": "pH"
+      },
+      "unit": "",
+      "example": "2.88606"
+    },
+    "x": {
+      "name": {
+        "cs": "koncentrace oxoniových iontů",
+        "en": "hydronium concentration"
+      },
+      "unit": "mol/L",
+      "example": "0.0013 mol/L"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "x": "0.0013 mol/L"
+      },
+      "expect": {
+        "pH": "2.88606"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "kyselina",
+      "oxonium"
+    ],
+    "en": [
+      "acid",
+      "hydronium"
+    ]
+  }
+}

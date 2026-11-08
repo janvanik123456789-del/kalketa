@@ -1,0 +1,105 @@
+{
+  "sheet": "nabijeni-kondenzatoru-rc.cc",
+  "verifiedBy": "Vlastní zadání. Nezávisle v Pythonu (kontrola.md a samostatný výpočet): Eulerova integrace rovnice C·du_C/dt = (U − u_C)/R s krokem 1 µs (u_C(t_1) = 7,43788 V, i(t_1) = 0,97066 mA, t_90 = 2,38087 s, čas, kdy napětí dosáhne 1 − 1/e, 1,0340 s) a energie jako součet R·i²·Δt (15,8408 mJ proti 15,84 mJ ze vzorce C·U²/2). Na listu je energie ověřena také integrálem ztrátového výkonu a Kirchhoffovým zákonem.",
+  "relativeTolerance": 1e-06,
+  "values": {
+    "τ": {
+      "value": 1.034,
+      "unit": "s"
+    },
+    "q_1": {
+      "value": 63.212055882855765,
+      "unit": "%"
+    },
+    "q_5": {
+      "value": 0.6737946999085467,
+      "unit": "%"
+    },
+    "I_0": {
+      "value": 2.553191489361702,
+      "unit": "mA"
+    },
+    "k_1": {
+      "value": 0.38017713566226324,
+      "unit": ""
+    },
+    "i_t1": {
+      "value": 0.9706650272227998,
+      "unit": "mA"
+    },
+    "u_C_t1": {
+      "value": 7.437874372052842,
+      "unit": "V"
+    },
+    "u_R_t1": {
+      "value": 4.562125627947158,
+      "unit": "V"
+    },
+    "podil_t1": {
+      "value": 61.98228643377368,
+      "unit": "%"
+    },
+    "k_90": {
+      "value": 0.9,
+      "unit": ""
+    },
+    "t_90": {
+      "value": 2.380872986155843,
+      "unit": "s"
+    },
+    "n_90": {
+      "value": 2.3025850929940455,
+      "unit": ""
+    },
+    "W": {
+      "value": 15.84,
+      "unit": "mJ"
+    },
+    "Q_R": {
+      "value": 15.84,
+      "unit": "mJ"
+    },
+    "W_zdroj": {
+      "value": 31.68,
+      "unit": "mJ"
+    }
+  },
+  "checks": [
+    {
+      "label": "V čase t_1 je čas ještě před jednou časovou konstantou",
+      "passed": true
+    },
+    {
+      "label": "Proud na začátku je největší",
+      "passed": true
+    },
+    {
+      "label": "Napětí na kondenzátoru je pod napětím zdroje",
+      "passed": true
+    },
+    {
+      "label": "Napětí na kondenzátoru v čase t_1 je pod hodnotou po jedné časové konstantě",
+      "passed": true
+    },
+    {
+      "label": "Druhý Kirchhoffův zákon v čase t_1",
+      "passed": true
+    },
+    {
+      "label": "Do pěti časových konstant",
+      "passed": true
+    },
+    {
+      "label": "Zpětné dosazení: v čase t_90 je napětí devět desetin napětí zdroje",
+      "passed": true
+    },
+    {
+      "label": "Teplo v rezistoru se rovná energii kondenzátoru",
+      "passed": true
+    },
+    {
+      "label": "Zdroj dodal energii kondenzátoru a rezistoru",
+      "passed": true
+    }
+  ]
+}

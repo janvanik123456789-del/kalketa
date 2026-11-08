@@ -73,6 +73,8 @@ describe('the title of a kept check', () => {
   it('is the first comment line of the script, past blank lines and a coding line', () => {
     expect(checkTitle('\n# -*- coding: utf-8 -*-\n# Část 2: počet závitů simulací\nN = 1\n')).toBe('Část 2: počet závitů simulací');
     expect(checkTitle('## Bilance výkonu  \nx = 1')).toBe('Bilance výkonu');
-    expect(checkTitle('from math import sqrt\n# later comment')).toBeUndefined();
+    // Without one at the top, the first comment anywhere names it; without any comment, nothing does.
+    expect(checkTitle('from math import sqrt\n# later comment')).toBe('later comment');
+    expect(checkTitle('x = 1')).toBeUndefined();
   });
 });

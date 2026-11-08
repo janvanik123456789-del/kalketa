@@ -1,0 +1,70 @@
+{
+  "id": "ucinnost-prenosu-vykonu",
+  "field": "05",
+  "group": {
+    "cs": "Vázané cívky",
+    "en": "Coupled coils"
+  },
+  "title": {
+    "cs": "Účinnost přenosu výkonu do zátěže",
+    "en": "Efficiency of power transfer to the load"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R43",
+      "en": "Kalketa, sample R43"
+    },
+    "sample": "R43"
+  },
+  "status": "verified",
+  "formula": "η == P_z/P",
+  "quantities": {
+    "η": {
+      "name": {
+        "cs": "účinnost",
+        "en": "efficiency"
+      },
+      "unit": "%",
+      "example": "48.8 %"
+    },
+    "P_z": {
+      "name": {
+        "cs": "výkon v zátěži",
+        "en": "power in the load"
+      },
+      "unit": "W",
+      "example": "793 W"
+    },
+    "P": {
+      "name": {
+        "cs": "činný výkon zdroje",
+        "en": "active power of the source"
+      },
+      "unit": "W",
+      "example": "1625 W"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "P_z": "793 W",
+        "P": "1625 W"
+      },
+      "expect": {
+        "η": "48.8 %"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "účinnost",
+      "výkon",
+      "zátěž"
+    ],
+    "en": [
+      "efficiency",
+      "power",
+      "load"
+    ]
+  }
+}

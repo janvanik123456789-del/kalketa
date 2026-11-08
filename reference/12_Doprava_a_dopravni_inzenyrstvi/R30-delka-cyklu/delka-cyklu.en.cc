@@ -27,6 +27,6 @@ C_min := 1.5·L_z + 5 s | s
 g_e := Faze.y/Y·(C_n - L_z) | s
 X := Y·C_n/(C_n - L_z)
 check "Greens and intergreens fill the cycle": abs(sum(g_e) + L_z - C_n) ≤ 0.01 s
-"A degree of saturation of 0.87 leaves a reserve of 13 %. With Y close to 1 the cycle would grow without limit:"
+"A degree of saturation of 0.79 leaves a reserve of 21 %. With Y close to 1 the cycle would grow without limit:"
 C_Y(x) := (1.5·L_z + 5 s)/(1 - x)
 plot(C_Y(x), x: 0 .. 0.85, title: "Optimal cycle length against the sum of critical ratios Y") | s

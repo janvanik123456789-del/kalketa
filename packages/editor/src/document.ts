@@ -88,6 +88,8 @@ export interface DesktopBridge {
   exportPdf(request: { html: string; suggestedName: string }): Promise<string | undefined>;
   /** Opens another editor window with an empty calculation. */
   newWindow(): Promise<void>;
+  /** Where a dropped file lies on the disk ('' when it has no path). */
+  pathOfFile?(file: File): string;
   /** Kalketa as an MCP server (docs/navrhy/MCP-SERVER.md): its state and settings; the tools the AI calls run here. */
   mcpState?(): Promise<McpState>;
   mcpSet?(change: { readonly on?: boolean; readonly readOnly?: boolean; readonly paused?: boolean; readonly newToken?: boolean; readonly port?: number }): Promise<McpState>;

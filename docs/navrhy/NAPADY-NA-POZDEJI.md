@@ -23,11 +23,17 @@ Ověřeno na sbírce uživatele (sken s OCR), strany 41–48. Obrázky i číslo
 
 ## Uživatelské rozhraní
 
-### Otevření souboru přetažením do okna (2026-11-07, čeká)
+### ~~Otevření souboru přetažením do okna~~ (2026-11-07, hotovo 2026-11-08)
+
+*Hotovo:* `.kalk`, `.cc` i `.calc` puštěné na okno se otevřou každý ve své záložce (cesta z `webUtils.getPathForFile`, otevírá se jako Soubor → Otevřít); obrázky se dál vkládají do listu. Uživatel ověřil ručně, testem to poslat nejde. Původní zápis:
+
 
 Soubor `.kalk` (a `.cc`) chycený myší v Průzkumníku a puštěný na plochu Kalkety se otevře v nové záložce, jako přes Soubor → Otevřít. Uživatel to chce, ale zatím neprovádět. Pozor: puštěný obrázek se dnes vkládá do listu, takže rozhodovat podle přípony (výpočet se otevře, obrázek vloží). Několik souborů najednou: každý do své záložky. Soubor už otevřený jinde: jako u Otevřít (`docs.openElsewhere`). Ověřit skutečným tažením ve smoke testu.
 
-### PDF se jménem souboru výpočtu (2026-11-08, čeká)
+### ~~PDF se jménem souboru výpočtu~~ (2026-11-08, hotovo týž den)
+
+*Hotovo* pro export do PDF: uložený výpočet nabídne své jméno, neuložený nadpis. Kopie bez rozhovorů a `kalketa print` zůstaly beze změny (příkazová řádka chce cestu výslovně). Původní zápis:
+
 
 Export do PDF má nabídnout stejné jméno, jako má uložený soubor výpočtu: `Ohrev_vody_v_zasobniku.kalk` → `Ohrev_vody_v_zasobniku.pdf`. Dnes nabídne jméno podle nadpisu listu („Doba ohřevu a chladnutí vody v zásobníku.pdf“) a soubory k sobě nejde dohledat. Neuložený list: jméno podle nadpisu jako dnes. Nabízené jméno jde v dialogu přepsat. Platí i pro uložení kopie bez rozhovorů a pro tisk do PDF z příkazové řádky (`kalketa print`), kde je výchozím jménem jméno vstupního souboru.
 

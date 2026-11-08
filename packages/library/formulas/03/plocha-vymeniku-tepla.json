@@ -1,0 +1,79 @@
+{
+  "id": "plocha-vymeniku-tepla",
+  "field": "03",
+  "group": {
+    "cs": "Tepelné výpočty",
+    "en": "Thermal calculations"
+  },
+  "title": {
+    "cs": "Teplosměnná plocha výměníku",
+    "en": "Heat transfer area of an exchanger"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R2",
+      "en": "Kalketa, sample R2"
+    },
+    "sample": "R2"
+  },
+  "status": "verified",
+  "formula": "A == Q/(k·ΔT_ln)",
+  "quantities": {
+    "A": {
+      "name": {
+        "cs": "teplosměnná plocha",
+        "en": "heat transfer area"
+      },
+      "unit": "m^2",
+      "example": "10.9 m^2"
+    },
+    "Q": {
+      "name": {
+        "cs": "tepelný výkon",
+        "en": "heat duty"
+      },
+      "unit": "kW",
+      "example": "301.6 kW"
+    },
+    "k": {
+      "name": {
+        "cs": "součinitel prostupu tepla",
+        "en": "overall heat transfer coefficient"
+      },
+      "unit": "W/(m^2·K)",
+      "example": "640 W/(m^2·K)"
+    },
+    "ΔT_ln": {
+      "name": {
+        "cs": "střední logaritmický rozdíl",
+        "en": "log mean temperature difference"
+      },
+      "unit": "K",
+      "example": "43.2 K"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "Q": "301.6 kW",
+        "k": "640 W/(m^2·K)",
+        "ΔT_ln": "43.2 K"
+      },
+      "expect": {
+        "A": "10.9086 m^2"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "výměník",
+      "plocha",
+      "prostup"
+    ],
+    "en": [
+      "exchanger",
+      "area",
+      "transfer"
+    ]
+  }
+}

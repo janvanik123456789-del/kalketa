@@ -1,0 +1,68 @@
+{
+  "id": "vykon-na-rezistoru",
+  "field": "17",
+  "group": {
+    "cs": "Nejistota měření",
+    "en": "Measurement uncertainty"
+  },
+  "title": {
+    "cs": "Výkon na rezistoru z napětí a odporu",
+    "en": "Power in a resistor from voltage and resistance"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R45",
+      "en": "Kalketa, sample R45"
+    },
+    "sample": "R45"
+  },
+  "status": "verified",
+  "formula": "P == U^2/R",
+  "quantities": {
+    "P": {
+      "name": {
+        "cs": "výkon",
+        "en": "power"
+      },
+      "unit": "W",
+      "example": "1017.31 W"
+    },
+    "U": {
+      "name": {
+        "cs": "napětí",
+        "en": "voltage"
+      },
+      "unit": "V",
+      "example": "230 V"
+    },
+    "R": {
+      "name": {
+        "cs": "odpor",
+        "en": "resistance"
+      },
+      "unit": "Ω",
+      "example": "52 Ω"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "U": "230 V",
+        "R": "52 Ω"
+      },
+      "expect": {
+        "P": "1017.31 W"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "výkon",
+      "rezistor"
+    ],
+    "en": [
+      "power",
+      "resistor"
+    ]
+  }
+}

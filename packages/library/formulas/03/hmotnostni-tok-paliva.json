@@ -1,0 +1,88 @@
+{
+  "id": "hmotnostni-tok-paliva",
+  "field": "03",
+  "group": {
+    "cs": "Dynamika rakety",
+    "en": "Rocket dynamics"
+  },
+  "title": {
+    "cs": "Hmotnostní tok paliva pro dané zrychlení",
+    "en": "Propellant flow for a given acceleration"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R16",
+      "en": "Kalketa, sample R16"
+    },
+    "sample": "R16"
+  },
+  "status": "verified",
+  "formula": "q_max == (n + 1)·g·M_r/v_R",
+  "quantities": {
+    "q_max": {
+      "name": {
+        "cs": "hmotnostní tok paliva",
+        "en": "propellant mass flow"
+      },
+      "unit": "kg/s",
+      "example": "113 kg/s"
+    },
+    "n": {
+      "name": {
+        "cs": "zrychlení jako násobek g",
+        "en": "acceleration as a multiple of g"
+      },
+      "unit": "",
+      "example": "7"
+    },
+    "g": {
+      "name": {
+        "cs": "tíhové zrychlení",
+        "en": "gravitational acceleration"
+      },
+      "unit": "m/s^2",
+      "example": "9.81 m/s^2"
+    },
+    "M_r": {
+      "name": {
+        "cs": "hmotnost rakety bez paliva",
+        "en": "dry mass of the rocket"
+      },
+      "unit": "t",
+      "example": "2 t"
+    },
+    "v_R": {
+      "name": {
+        "cs": "výtoková rychlost spalin",
+        "en": "exhaust velocity"
+      },
+      "unit": "km/h",
+      "example": "5000 km/h"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "n": "7",
+        "g": "9.81 m/s^2",
+        "M_r": "2 t",
+        "v_R": "5000 km/h"
+      },
+      "expect": {
+        "q_max": "113.011 kg/s"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "raketa",
+      "palivo",
+      "tok"
+    ],
+    "en": [
+      "rocket",
+      "fuel",
+      "flow"
+    ]
+  }
+}

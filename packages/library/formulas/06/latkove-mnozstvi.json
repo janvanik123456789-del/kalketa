@@ -1,0 +1,68 @@
+{
+  "id": "latkove-mnozstvi",
+  "field": "06",
+  "group": {
+    "cs": "Termodynamika",
+    "en": "Thermodynamics"
+  },
+  "title": {
+    "cs": "Látkové množství z hmotnosti a molární hmotnosti",
+    "en": "Amount of substance from mass and molar mass"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R47",
+      "en": "Kalketa, sample R47"
+    },
+    "sample": "R47"
+  },
+  "status": "verified",
+  "formula": "n == m/M",
+  "quantities": {
+    "n": {
+      "name": {
+        "cs": "látkové množství",
+        "en": "amount of substance"
+      },
+      "unit": "mol",
+      "example": "5738 mol"
+    },
+    "m": {
+      "name": {
+        "cs": "hmotnost",
+        "en": "mass"
+      },
+      "unit": "kg",
+      "example": "1 kg"
+    },
+    "M": {
+      "name": {
+        "cs": "molární hmotnost",
+        "en": "molar mass"
+      },
+      "unit": "g/mol",
+      "example": "174.26 g/mol"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "m": "1 kg",
+        "M": "174.26 g/mol"
+      },
+      "expect": {
+        "n": "5.73855 mol"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "mol",
+      "molární hmotnost"
+    ],
+    "en": [
+      "mole",
+      "molar mass"
+    ]
+  }
+}

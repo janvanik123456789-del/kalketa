@@ -1,0 +1,201 @@
+{
+  "sheet": "jerab-v-hale.cc",
+  "verifiedBy": "Vlastní zadání. Nezávisle v Pythonu (kontrola.md): síly a momenty z rovnováhy a nejhorší poloha kočky i vozíku hledaná po jemné síti poloh, moment setrvačnosti ze Steinerovy věty ze tří obdélníků, vzpěr z přesného řešení rovnice tan(kL) = kL pro vetknutí a kloub (liší se od μ = 0,7 o 0,3 %). Čtyři části navazují, výsledek předchozí je vstupem další.",
+  "relativeTolerance": 1e-06,
+  "values": {
+    "Q": {
+      "value": 100.5525,
+      "unit": "kN"
+    },
+    "S": {
+      "value": 26.461184210526316,
+      "unit": "kN"
+    },
+    "σ_dov": {
+      "value": 321.8181818181818,
+      "unit": "MPa"
+    },
+    "A": {
+      "value": 82.22401873327387,
+      "unit": "mm²"
+    },
+    "d": {
+      "value": 14.47002917607626,
+      "unit": "mm"
+    },
+    "σ_l": {
+      "value": 321.8181818181818,
+      "unit": "MPa"
+    },
+    "P": {
+      "value": 38.01375,
+      "unit": "kN"
+    },
+    "x_k": {
+      "value": 8.6,
+      "unit": "m"
+    },
+    "M_P": {
+      "value": 312.38855,
+      "unit": "kN·m"
+    },
+    "M_q": {
+      "value": 81.0,
+      "unit": "kN·m"
+    },
+    "M": {
+      "value": 393.38855,
+      "unit": "kN·m"
+    },
+    "M_ex": {
+      "value": 393.259179337162,
+      "unit": "kN·m"
+    },
+    "R_max": {
+      "value": 85.58,
+      "unit": "kN"
+    },
+    "R_B": {
+      "value": 26.4475,
+      "unit": "kN"
+    },
+    "I_y": {
+      "value": 67376.53133333342,
+      "unit": "cm⁴"
+    },
+    "W_y": {
+      "value": 2450.055684848488,
+      "unit": "cm³"
+    },
+    "f_d": {
+      "value": 213.63636363636363,
+      "unit": "MPa"
+    },
+    "σ": {
+      "value": 160.56310574195265,
+      "unit": "MPa"
+    },
+    "F_k": {
+      "value": 85.58,
+      "unit": "kN"
+    },
+    "M_d": {
+      "value": 239.10092999999998,
+      "unit": "kN·m"
+    },
+    "M_dex": {
+      "value": 238.78922273228034,
+      "unit": "kN·m"
+    },
+    "σ_d": {
+      "value": 159.40061999999998,
+      "unit": "MPa"
+    },
+    "R_d": {
+      "value": 150.52439999999999,
+      "unit": "kN"
+    },
+    "R_dB": {
+      "value": 34.1356,
+      "unit": "kN"
+    },
+    "N": {
+      "value": 217.27439999999999,
+      "unit": "kN"
+    },
+    "A_s": {
+      "value": 45.75,
+      "unit": "cm²"
+    },
+    "I_z": {
+      "value": 972.34328125,
+      "unit": "cm⁴"
+    },
+    "i_z": {
+      "value": 46.10141543883963,
+      "unit": "mm"
+    },
+    "L_cr": {
+      "value": 5.6,
+      "unit": "m"
+    },
+    "λ": {
+      "value": 121.47132461538476,
+      "unit": ""
+    },
+    "λ_p": {
+      "value": 93.9129729381402,
+      "unit": ""
+    },
+    "N_cr": {
+      "value": 642.6323791067857,
+      "unit": "kN"
+    },
+    "n_s": {
+      "value": 2.957699476361623,
+      "unit": ""
+    },
+    "σ_c": {
+      "value": 47.49167213114754,
+      "unit": "MPa"
+    },
+    "σ_cr": {
+      "value": 140.46609379383295,
+      "unit": "MPa"
+    }
+  },
+  "checks": [
+    {
+      "label": "Průměr lana je kladný",
+      "passed": true
+    },
+    {
+      "label": "Lano s tímto průměrem nese sílu S s požadovanou bezpečností",
+      "passed": true
+    },
+    {
+      "label": "Přesný největší moment není větší než součet největších hodnot",
+      "passed": true
+    },
+    {
+      "label": "Součet největších hodnot se od přesného liší nejvýš o 1 kN·m",
+      "passed": true
+    },
+    {
+      "label": "Přesná poloha prvního kola se od x_k liší o méně než půl metru",
+      "passed": true
+    },
+    {
+      "label": "Rovnováha svislých sil na nosníku",
+      "passed": true
+    },
+    {
+      "label": "Ohybové napětí v hlavním nosníku",
+      "passed": true
+    },
+    {
+      "label": "Přesný největší moment dráhy není větší než součet největších hodnot",
+      "passed": true
+    },
+    {
+      "label": "Ohybové napětí v dráhovém nosníku",
+      "passed": true
+    },
+    {
+      "label": "Rovnováha svislých sil na dráhovém nosníku",
+      "passed": true
+    },
+    {
+      "label": "Eulerův vzorec platí, sloup je štíhlejší než mezní štíhlost",
+      "passed": true
+    },
+    {
+      "label": "Jistota proti vzpěru",
+      "passed": true
+    },
+    {
+      "label": "Stlačení průřezu",
+      "passed": true
+    }
+  ]
+}

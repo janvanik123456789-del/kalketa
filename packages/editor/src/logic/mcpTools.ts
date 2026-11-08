@@ -23,7 +23,23 @@ export interface McpEnvironment {
   status(ids: readonly string[], client: string): McpAnswer;
   /** Records a new sheet the person may open. */
   proposeSheet(title: string, lines: readonly string[], client: string): McpAnswer;
+  /** Runs a check in Python against the sheet and keeps it in the conversation, to be kept in the layer. */
+  pythonCheck(code: string, note: string, client: string): Promise<McpAnswer>;
+  /** Withdraws the client's open proposals (those named, or all). */
+  withdraw(ids: readonly string[], client: string): McpAnswer;
 }
+
+/**
+ * What an AI from outside is told with the sheet: its client may not pass on the server's instructions, and the
+ * chat of Kalketa gets these rules with every question (a model in Strata wrote without háčky "so they would not
+ * get damaged", put Python into the sheet and made up its results).
+ */
+export const MCP_RULES = `How to work with this sheet (Kalketa):
+- Explain, check and propose; the person decides. A change goes as propose_change and waits on a card until the person accepts it: until then it is NOT in the sheet, and line numbers always refer to the sheet as given below.
+- Write in the language of the sheet with all its letters (Czech with háčky and čárky); nothing gets damaged on the way. Never mix alphabets in a word.
+- Write the calculation in the calculation language (language_guide has it and the rules of writing); a number in text is computed by a line of the sheet, never written by hand.
+- Check results in Python only with python_check (Kalketa runs it and compares); never put Python into the sheet and never write what a script gives before it ran.
+- Withdraw your own tries with withdraw_proposals instead of leaving them open.`;
 
 /** One change as the AI sends it. */
 export interface McpChange {
@@ -75,14 +91,23 @@ export function traceText(node: TraceNode): string {
 }
 
 /** One call of a tool. */
-export function runMcpTool(tool: string, args: Readonly<Record<string, unknown>>, env: McpEnvironment): McpAnswer {
+export function runMcpTool(tool: string, args: Readonly<Record<string, unknown>>, env: McpEnvironment): McpAnswer | Promise<McpAnswer> {
   switch (tool) {
     case 'tabs_list':
       return env.tabs.length === 0
         ? { ok: true, text: 'No sheet is open.' }
         : { ok: true, text: env.tabs.map((t, i) => `${i + 1}. ${t.title}${t.active ? ' (active)' : ''}${t.saved ? '' : ' – unsaved changes'}`).join('\n') };
     case 'sheet_get':
-      return { ok: true, text: env.sheet() };
+      return { ok: true, text: `${MCP_RULES}\n\n${env.sheet()}` };
+    case 'python_check': {
+      const code = typeof args['code'] === 'string' ? args['code'] : '';
+      if (!code.trim()) return { ok: false, text: 'python_check needs the script in "code".' };
+      return env.pythonCheck(code, text(args['note']), text(args['_client']) || 'MCP');
+    }
+    case 'withdraw_proposals': {
+      const ids = Array.isArray(args['ids']) ? (args['ids'] as unknown[]).filter((x): x is string => typeof x === 'string') : [];
+      return env.withdraw(ids, text(args['_client']) || 'MCP');
+    }
     case 'sheet_trace': {
       const name = text(args['name']);
       const node = name ? env.trace(name) : undefined;

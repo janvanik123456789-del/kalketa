@@ -1,0 +1,70 @@
+{
+  "id": "prikon-cerpadla",
+  "field": "03",
+  "group": {
+    "cs": "Technické tekutiny",
+    "en": "Technical fluids"
+  },
+  "title": {
+    "cs": "Příkon čerpadla z užitečného výkonu",
+    "en": "Pump input power from useful power"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R21",
+      "en": "Kalketa, sample R21"
+    },
+    "sample": "R21"
+  },
+  "status": "verified",
+  "formula": "P_p == P/η_č",
+  "quantities": {
+    "P_p": {
+      "name": {
+        "cs": "příkon čerpadla",
+        "en": "pump input power"
+      },
+      "unit": "W",
+      "example": "200 W"
+    },
+    "P": {
+      "name": {
+        "cs": "užitečný výkon",
+        "en": "useful power"
+      },
+      "unit": "W",
+      "example": "98 W"
+    },
+    "η_č": {
+      "name": {
+        "cs": "účinnost čerpadla",
+        "en": "pump efficiency"
+      },
+      "unit": "",
+      "example": "0.49"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "P": "98 W",
+        "η_č": "0.49"
+      },
+      "expect": {
+        "P_p": "200.0 W"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "čerpadlo",
+      "účinnost",
+      "příkon"
+    ],
+    "en": [
+      "pump",
+      "efficiency",
+      "input power"
+    ]
+  }
+}

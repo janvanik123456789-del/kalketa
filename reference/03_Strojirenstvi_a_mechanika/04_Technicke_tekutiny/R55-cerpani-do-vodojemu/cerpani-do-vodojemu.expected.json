@@ -1,0 +1,213 @@
+{
+  "sheet": "cerpani-do-vodojemu.cc",
+  "verifiedBy": "Nezávislý výpočet v Pythonu bez kódu Kalkety: součinitel tření Swameeho–Jainovým vztahem i iterací Colebrookovy rovnice, pracovní bod půlením intervalu, energie z práce proti tíži místo z výkonu, hladina ve vodojemu časovou simulací po jedné sekundě. Úloha je vlastní, bez zdroje s výsledky.",
+  "relativeTolerance": 1e-06,
+  "values": {
+    "S": {
+      "value": 50.26548245743669,
+      "unit": "cm²"
+    },
+    "v": {
+      "value": 1.989436788648692,
+      "unit": "m/s"
+    },
+    "Re": {
+      "value": 144686.31190172303,
+      "unit": ""
+    },
+    "λ": {
+      "value": 0.022548556808098585,
+      "unit": ""
+    },
+    "λ_C": {
+      "value": 0.022368629216314672,
+      "unit": ""
+    },
+    "λ_Bl": {
+      "value": 0.016222941914100016,
+      "unit": ""
+    },
+    "L": {
+      "value": 101.0,
+      "unit": "m"
+    },
+    "h_f": {
+      "value": 5.742637778622124,
+      "unit": "m"
+    },
+    "Σζ": {
+      "value": 9.799999999999999,
+      "unit": ""
+    },
+    "h_l": {
+      "value": 1.9769121107585337,
+      "unit": "m"
+    },
+    "h_z": {
+      "value": 7.719549889380658,
+      "unit": "m"
+    },
+    "K_z": {
+      "value": 77195.49889380658,
+      "unit": "s²/m⁵"
+    },
+    "H_g": {
+      "value": 29.0,
+      "unit": "m"
+    },
+    "a": {
+      "value": 69444.44444444444,
+      "unit": "s²/m⁵"
+    },
+    "Q_b": {
+      "value": 10.767089389298066,
+      "unit": "L/s"
+    },
+    "H_b": {
+      "value": 37.94929070019896,
+      "unit": "m"
+    },
+    "v_b": {
+      "value": 2.142044373773855,
+      "unit": "m/s"
+    },
+    "Re_b": {
+      "value": 155785.04536537125,
+      "unit": ""
+    },
+    "λ_b": {
+      "value": 0.022442691932905743,
+      "unit": ""
+    },
+    "h_zb": {
+      "value": 8.91803413869318,
+      "unit": "m"
+    },
+    "K_b": {
+      "value": 76925.88357567979,
+      "unit": "s²/m⁵"
+    },
+    "P_hyd": {
+      "value": 4.008399405301395,
+      "unit": "kW"
+    },
+    "P_h": {
+      "value": 5.726284864716279,
+      "unit": "kW"
+    },
+    "P_el": {
+      "value": 6.362538738573642,
+      "unit": "kW"
+    },
+    "η": {
+      "value": 0.63,
+      "unit": ""
+    },
+    "t_c": {
+      "value": 2.5798780685695304,
+      "unit": "h"
+    },
+    "E_d": {
+      "value": 16.414574152070184,
+      "unit": "kWh"
+    },
+    "N_d": {
+      "value": 90.28015783638601,
+      "unit": "CZK"
+    },
+    "E_2": {
+      "value": 16.414574152070184,
+      "unit": "kWh"
+    },
+    "e_m": {
+      "value": 0.16414574152070183,
+      "unit": "kWh/m³"
+    },
+    "S_n": {
+      "value": 28.274333882308138,
+      "unit": "m²"
+    },
+    "V_u": {
+      "value": 84.82300164692441,
+      "unit": "m³"
+    },
+    "t_n": {
+      "value": 2.4628122455168513,
+      "unit": "h"
+    },
+    "t_v": {
+      "value": 5.890486225476403,
+      "unit": "h"
+    },
+    "w_h": {
+      "value": 0.5092958178940651,
+      "unit": "m/h"
+    },
+    "n_p": {
+      "value": 1.17892550438441,
+      "unit": ""
+    },
+    "n_pl": {
+      "value": 2.0,
+      "unit": ""
+    }
+  },
+  "checks": [
+    {
+      "label": "Turbulentní proudění",
+      "passed": true
+    },
+    {
+      "label": "Swamee–Jain se od Colebrooka liší o méně než 1 %",
+      "passed": true
+    },
+    {
+      "label": "Drsné potrubí má větší λ než hladké",
+      "passed": true
+    },
+    {
+      "label": "Při dlouhém potrubí převládá ztráta třením nad místními",
+      "passed": true
+    },
+    {
+      "label": "Charakteristika čerpadla prochází druhým katalogovým bodem",
+      "passed": true
+    },
+    {
+      "label": "Obě charakteristiky se v pracovním bodě protínají",
+      "passed": true
+    },
+    {
+      "label": "Průtok větší než minimum",
+      "passed": true
+    },
+    {
+      "label": "Pracovní bod leží uvnitř katalogového rozsahu (Q_b ≤ Q_1)",
+      "passed": true
+    },
+    {
+      "label": "Součinitel K se mezi Q_n a Q_b změnil o méně než 1 %",
+      "passed": true
+    },
+    {
+      "label": "Celková účinnost souhlasí s poměrem výkonů",
+      "passed": true
+    },
+    {
+      "label": "Energie z výkonu a z práce souhlasí",
+      "passed": true
+    },
+    {
+      "label": "Při plnění hladina stoupá (Q_b > q_p)",
+      "passed": true
+    },
+    {
+      "label": "Rychlost poklesu a doba vyprázdnění si odpovídají (w_h·t_v = h_max − h_min)",
+      "passed": true
+    },
+    {
+      "label": "Nádrž nestačí na denní spotřebu jedním naplněním",
+      "passed": true
+    }
+  ]
+}

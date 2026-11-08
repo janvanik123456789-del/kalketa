@@ -1,0 +1,105 @@
+{
+  "sheet": "ohrev-vody-v-zasobniku.cc",
+  "verifiedBy": "Vlastní úloha. Nezávisle v čistém Pythonu (kontrola.md): ohřev i chladnutí krokovou energetickou bilancí (Euler, Runge–Kutta 4. řádu), tok izolací z tepelného odporu vrstvy; časovou konstantu, teplo a dobu chladnutí uzavřenými vzorci. Teplo odevzdané izolací při chladnutí a úbytek tepla vody jsou v listu posudkem.",
+  "relativeTolerance": 1e-08,
+  "values": {
+    "m": {
+      "value": 120.0,
+      "unit": "kg"
+    },
+    "Q": {
+      "value": 24.11136,
+      "unit": "MJ"
+    },
+    "τ_o": {
+      "value": 211.50315789473686,
+      "unit": "min"
+    },
+    "U_i": {
+      "value": 0.5,
+      "unit": "W/(m²·K)"
+    },
+    "G": {
+      "value": 1.2,
+      "unit": "W/K"
+    },
+    "Φ_2": {
+      "value": 48.0,
+      "unit": "W"
+    },
+    "ratio_ztraty": {
+      "value": 2.4,
+      "unit": "%"
+    },
+    "T": {
+      "value": 116.27777777777777,
+      "unit": "h"
+    },
+    "τ_c": {
+      "value": 33.45103209119874,
+      "unit": "h"
+    },
+    "poměr_ch": {
+      "value": 9.48951280656916,
+      "unit": ""
+    },
+    "poměr_T": {
+      "value": 0.28768207245178085,
+      "unit": ""
+    },
+    "Δt_rov": {
+      "value": 1583.3333333333335,
+      "unit": "K"
+    },
+    "τ_oz": {
+      "value": 213.6789733337044,
+      "unit": "min"
+    },
+    "prodlouzeni": {
+      "value": 1.0287389846209323,
+      "unit": "%"
+    },
+    "Q_chl": {
+      "value": 5.0232,
+      "unit": "MJ"
+    },
+    "Q_uby": {
+      "value": 5.0232,
+      "unit": "MJ"
+    }
+  },
+  "checks": [
+    {
+      "label": "Mezní teplota leží mezi teplotou okolí a teplotou po ohřevu",
+      "passed": true
+    },
+    {
+      "label": "Teplo z topného tělesa za dobu ohřevu se rovná teplu na ohřev",
+      "passed": true
+    },
+    {
+      "label": "Při ohřevu dosáhne teplota hodnoty t_2",
+      "passed": true
+    },
+    {
+      "label": "Ztráty izolací jsou proti příkonu malé (do 5 %)",
+      "passed": true
+    },
+    {
+      "label": "Ohřev se ztrátami je delší jen o málo (do 2 %)",
+      "passed": true
+    },
+    {
+      "label": "Podle exponenciály voda v čase τ_c dosáhne teploty t_c",
+      "passed": true
+    },
+    {
+      "label": "Teplo odevzdané izolací při chladnutí se rovná úbytku tepla vody",
+      "passed": true
+    },
+    {
+      "label": "Ohřev se ztrátami dosáhne teploty t_2 v čase τ_oz",
+      "passed": true
+    }
+  ]
+}

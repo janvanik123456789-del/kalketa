@@ -1,0 +1,79 @@
+{
+  "id": "anuitni-splatka",
+  "field": "16",
+  "group": {
+    "cs": "Úvěry a spoření",
+    "en": "Loans and savings"
+  },
+  "title": {
+    "cs": "Anuitní splátka úvěru",
+    "en": "Annuity payment of a loan"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R41",
+      "en": "Kalketa, sample R41"
+    },
+    "sample": "R41"
+  },
+  "status": "verified",
+  "formula": "pay == P·r/(1 - (1 + r)^(-n))",
+  "quantities": {
+    "pay": {
+      "name": {
+        "cs": "splátka",
+        "en": "payment"
+      },
+      "unit": "Kč",
+      "example": "9126.58 Kč"
+    },
+    "P": {
+      "name": {
+        "cs": "výše úvěru",
+        "en": "loan amount"
+      },
+      "unit": "Kč",
+      "example": "300000 Kč"
+    },
+    "r": {
+      "name": {
+        "cs": "úroková sazba za období",
+        "en": "interest rate per period"
+      },
+      "unit": "",
+      "example": "0.005"
+    },
+    "n": {
+      "name": {
+        "cs": "počet splátek",
+        "en": "number of payments"
+      },
+      "unit": "",
+      "example": "36"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "P": "300000 Kč",
+        "r": "0.005",
+        "n": "36"
+      },
+      "expect": {
+        "pay": "9126.58 Kč"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "úvěr",
+      "anuita",
+      "splátka"
+    ],
+    "en": [
+      "loan",
+      "annuity",
+      "payment"
+    ]
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "id": "casova-konstanta-vratne-reakce",
+  "field": "07",
+  "group": {
+    "cs": "Reakční kinetika",
+    "en": "Reaction kinetics"
+  },
+  "title": {
+    "cs": "Časová konstanta vratné reakce",
+    "en": "Time constant of a reversible reaction"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R42",
+      "en": "Kalketa, sample R42"
+    },
+    "sample": "R42"
+  },
+  "status": "verified",
+  "formula": "τ == 1/(k_1 + k_2)",
+  "quantities": {
+    "τ": {
+      "name": {
+        "cs": "časová konstanta",
+        "en": "time constant"
+      },
+      "unit": "s",
+      "example": "333.333 s"
+    },
+    "k_1": {
+      "name": {
+        "cs": "rychlostní konstanta A → B",
+        "en": "rate constant A → B"
+      },
+      "unit": "s^-1",
+      "example": "0.002 s^-1"
+    },
+    "k_2": {
+      "name": {
+        "cs": "rychlostní konstanta B → A",
+        "en": "rate constant B → A"
+      },
+      "unit": "s^-1",
+      "example": "0.001 s^-1"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "k_1": "0.002 s^-1",
+        "k_2": "0.001 s^-1"
+      },
+      "expect": {
+        "τ": "333.333 s"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "rovnováha",
+      "reakce prvního řádu"
+    ],
+    "en": [
+      "equilibrium",
+      "first-order reaction"
+    ]
+  }
+}

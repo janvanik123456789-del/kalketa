@@ -1,0 +1,88 @@
+{
+  "id": "tepelna-ztrata-vetranim",
+  "field": "11",
+  "group": {
+    "cs": "Větrání",
+    "en": "Ventilation"
+  },
+  "title": {
+    "cs": "Tepelná ztráta ohřevem větracího vzduchu",
+    "en": "Heat loss of heating the ventilation air"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R25",
+      "en": "Kalketa, sample R25"
+    },
+    "sample": "R25"
+  },
+  "status": "verified",
+  "formula": "Q == V·ρc·(t_i - t_e)",
+  "quantities": {
+    "Q": {
+      "name": {
+        "cs": "tepelná ztráta",
+        "en": "heat loss"
+      },
+      "unit": "W",
+      "example": "1588 W"
+    },
+    "V": {
+      "name": {
+        "cs": "objemový průtok vzduchu",
+        "en": "air volume flow"
+      },
+      "unit": "m^3/h",
+      "example": "135 m^3/h"
+    },
+    "ρc": {
+      "name": {
+        "cs": "objemová tepelná kapacita vzduchu",
+        "en": "volumetric heat capacity of air"
+      },
+      "unit": "W·h/(m^3·K)",
+      "example": "0.336 W·h/(m^3·K)"
+    },
+    "t_i": {
+      "name": {
+        "cs": "vnitřní teplota",
+        "en": "indoor temperature"
+      },
+      "unit": "°C",
+      "example": "20 °C"
+    },
+    "t_e": {
+      "name": {
+        "cs": "venkovní teplota",
+        "en": "outdoor temperature"
+      },
+      "unit": "°C",
+      "example": "-15 °C"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "V": "135 m^3/h",
+        "ρc": "0.336 W·h/(m^3·K)",
+        "t_i": "20 °C",
+        "t_e": "-15 °C"
+      },
+      "expect": {
+        "Q": "1587.6 W"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "větrání",
+      "ztráta",
+      "vzduch"
+    ],
+    "en": [
+      "ventilation",
+      "loss",
+      "air"
+    ]
+  }
+}

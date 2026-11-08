@@ -1,0 +1,70 @@
+{
+  "id": "stredni-termodynamicka-teplota",
+  "field": "06",
+  "group": {
+    "cs": "Termodynamika",
+    "en": "Thermodynamics"
+  },
+  "title": {
+    "cs": "Střední termodynamická teplota ohřevu",
+    "en": "Mean thermodynamic temperature of heating"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R47",
+      "en": "Kalketa, sample R47"
+    },
+    "sample": "R47"
+  },
+  "status": "verified",
+  "formula": "T_s == Q/ΔS",
+  "quantities": {
+    "T_s": {
+      "name": {
+        "cs": "střední termodynamická teplota",
+        "en": "mean thermodynamic temperature"
+      },
+      "unit": "K",
+      "example": "491 K"
+    },
+    "Q": {
+      "name": {
+        "cs": "dodané teplo",
+        "en": "heat supplied"
+      },
+      "unit": "kJ",
+      "example": "392.439 kJ"
+    },
+    "ΔS": {
+      "name": {
+        "cs": "změna entropie",
+        "en": "entropy change"
+      },
+      "unit": "J/K",
+      "example": "819.605 J/K"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "Q": "392.439 kJ",
+        "ΔS": "819.605 J/K"
+      },
+      "expect": {
+        "T_s": "478.815 K"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "entropie",
+      "ohřev",
+      "2. věta termodynamiky"
+    ],
+    "en": [
+      "entropy",
+      "heating",
+      "second law"
+    ]
+  }
+}

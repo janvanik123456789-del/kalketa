@@ -28,6 +28,7 @@ Sestavení pro Windows (instalátor nebo přenosný `.exe`) a Linux (`.AppImage`
 - **Knihovna vzorců:** Vložit → Vzorec z knihovny: 100 vzorců ze vzorových výpočtů, přeskládaných na veličinu, na kterou kliknete, s příkladnými hodnotami a zdrojem.
 - **AI volitelně:** vysvětlí, zkontroluje a navrhne změny, které člověk přijme nebo odmítne, a ověří výsledky v Pythonu jinou cestou. Sama výpočet nemění. Claude nebo lokální model, nebo vůbec.
 - **AI zvenku (MCP):** vaše vlastní AI aplikace (Claude Code, Claude Desktop, aplikace místního modelu) se připojí ke Kalketě, čte otevřený list a navrhuje změny, na vaše předplatné, bez API klíče. Vypnuté, dokud ho nezapnete, jen na tomto počítači a s tokenem.
+- **AI z obyčejného chatu:** do ChatGPT, Claude.ai nebo Gemini přiložte [`llms.txt`](https://raw.githubusercontent.com/janvanik123456789-del/kalketa/main/llms.txt) (návod jazyka Kalkety pro AI) a napište, co chcete spočítat. Výpočet z odpovědi vložte do Kalkety přes Ctrl+V, tabulku do datové vrstvy, skript do Ověření v Pythonu.
 - **54 vzorových výpočtů** ve všech oborech, každý česky i anglicky; 32 z nich jsou řešené příklady z veřejných zdrojů (skripta, sbírky, články), s odkazem na zdroj a nezávisle ověřené.
 
 ## Dokumentace
@@ -45,6 +46,7 @@ npm test          # všechny testy (jednotkové, architektura, referenční výp
 npm run typecheck # kontrola typů
 npm run desktop   # sestaví a spustí program
 npm run smoke     # program ovládaný skutečnou myší a klávesnicí
+npm run llms      # znovu vytvoří llms.txt z návodu programu (test hlídá, že odpovídá)
 npm run smoke:linux  # totéž v Linuxu (WSL)
 ```
 

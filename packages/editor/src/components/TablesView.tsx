@@ -3,14 +3,15 @@
  * images per row, import from CSV and Excel.
  */
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ColumnSchema, ColumnType, Diagnostic } from '@kalketa/core';
 import { formatDiagnostic, t, type Catalog } from '@kalketa/i18n';
 import { toIdentifier, type SheetDocument, type StoredTable } from '@kalketa/sheet';
 import { chooseFile } from '../document.js';
-import { ask } from './Ask.js';
+import { ask, askConfirm } from './Ask.js';
+import { ContextMenu } from './MenuBar.js';
 import { commandIcon } from '../icons.js';
-import { addColumn, addRow, deleteColumn, deleteRow, fromEditable, setCell, toEditable, type EditableTable } from '../logic/tableEdit.js';
+import { addColumn, addRow, deleteColumn, deleteRow, fromEditable, deleteTable, pasteGrid, renameTable, setCell, usedTables, toEditable, unitWithPowers, type EditableTable } from '../logic/tableEdit.js';
 import { createTable, importTableFile, withTable, type TableChange } from '../tableActions.js';
 
 interface Props {
@@ -32,8 +33,35 @@ const IMAGE_COLUMN = 'obrazek';
 export function TablesView({ doc, catalog, diagnostics, resolveFile, onChange, compact, names: only, assign }: Props) {
   const names = only ? only.filter((n) => doc.tables.has(n)) : [...doc.tables.keys()];
   const [active, setActive] = useState<string | undefined>(names[0]);
+  // A table that comes into the layer from outside (Ctrl+V of a table, the Insert menu) is shown at once.
+  const known = useRef(new Set(names));
+  const added = names.find((n) => !known.current.has(n));
+  useEffect(() => {
+    if (added) setActive(added);
+    known.current = new Set(names);
+  });
   const [messages, setMessages] = useState<string[]>([]);
+  const [menu, setMenu] = useState<{ name: string; at: { x: number; y: number } } | undefined>();
+  const rename = (name: string) =>
+    void ask(t(catalog, 'editor.tableRename'), name).then((answer) => {
+      const to = toIdentifier(answer ?? '');
+      if (!answer || to === name) return;
+      const renamed = renameTable(doc, name, to);
+      if (!renamed) return setMessages([t(catalog, 'editor.tableRenameFailed', { name: to })]);
+      setMessages([]);
+      setActive(to);
+      onChange(renamed);
+    });
+  // Undo brings a deleted table back; a table the sheet reads is said so before.
+  const remove = (name: string) =>
+    void askConfirm(t(catalog, used.has(name) ? 'editor.tableDeleteUsed' : 'editor.tableDeleteAsk', { name })).then((yes) => {
+      if (!yes) return;
+      setActive(undefined);
+      onChange(deleteTable(doc, name));
+    });
   const current = active && names.includes(active) ? active : names[0];
+  // A table no calculation reads is red: the one edited may not be the one the sheet takes its values from.
+  const used = usedTables(doc);
 
   const putTable = (name: string, stored: StoredTable, files?: ReadonlyMap<string, Uint8Array>) => onChange(withTable(doc, name, stored, files));
 
@@ -52,7 +80,18 @@ export function TablesView({ doc, catalog, diagnostics, resolveFile, onChange, c
     <div className={`tables-view${compact ? ' compact' : ''}`}>
       <nav className="table-list">
         {names.map((name) => (
-          <button key={name} type="button" className={name === current ? 'active' : ''} onClick={() => setActive(name)}>
+          <button
+            key={name}
+            type="button"
+            className={`${name === current ? 'active' : ''}${used.has(name) ? '' : ' unused'}`.trim()}
+            title={used.has(name) ? t(catalog, 'editor.tableRenameHint') : `${t(catalog, 'editor.tableUnused')} ${t(catalog, 'editor.tableRenameHint')}`}
+            onClick={() => setActive(name)}
+            onContextMenu={(e) => {
+              // The right button: rename the table (in the sheet too) or delete it.
+              e.preventDefault();
+              setMenu({ name, at: { x: e.clientX, y: e.clientY } });
+            }}
+          >
             {name}
           </button>
         ))}
@@ -63,6 +102,17 @@ export function TablesView({ doc, catalog, diagnostics, resolveFile, onChange, c
           {commandIcon('insert.importTable') ?? '⇩'}
         </button>
       </nav>
+      {menu && (
+        <ContextMenu
+          at={menu.at}
+          commands={new Map()}
+          onClose={() => setMenu(undefined)}
+          items={[
+            { kind: 'action', label: t(catalog, 'editor.tableRenameItem'), run: () => rename(menu.name) },
+            { kind: 'action', label: t(catalog, 'editor.tableDelete'), run: () => remove(menu.name) },
+          ]}
+        />
+      )}
       <section className="table-panel">
         {messages.length > 0 && (
           <ul className="messages">
@@ -175,7 +225,12 @@ function TableGrid({ table, catalog, resolveFile, onChange, onImage }: GridProps
                       className="unit"
                       defaultValue={c.unit ?? ''}
                       placeholder={t(catalog, 'editor.columnUnit')}
-                      onBlur={(e) => e.target.value !== (c.unit ?? '') && updateColumn(i, { unit: e.target.value.trim() })}
+                      onBlur={(e) => {
+                        // Written as it reads: kg/m3 and kg/m^3 become kg/m³ (no ³ on the keyboard, ^ a dead key).
+                        const unit = unitWithPowers(e.target.value.trim());
+                        e.target.value = unit;
+                        if (unit !== (c.unit ?? '')) updateColumn(i, { unit });
+                      }}
                     />
                   )}
                   {i > 0 && (
@@ -209,6 +264,15 @@ function TableGrid({ table, catalog, resolveFile, onChange, onImage }: GridProps
                     defaultValue={cell}
                     data-cell={`${r}:${c}`}
                     onFocus={(e) => delete e.currentTarget.dataset['written']}
+                    onPaste={(e) => {
+                      // A table pasted into a cell (from Excel, a model's answer) fills the cells from here, as a spreadsheet does.
+                      const pasted = pasteGrid(table, r, c, e.clipboardData.getData('text/plain'));
+                      if (!pasted) return;
+                      e.preventDefault();
+                      e.stopPropagation();
+                      e.currentTarget.dataset['written'] = '1';
+                      onChange(pasted);
+                    }}
                     onBlur={(e) => !e.target.dataset['written'] && e.target.value !== cell && onChange(setCell(table, r, c, e.target.value))}
                     onKeyDown={(e) => {
                       // Enter writes the cell and goes one down, as in a spreadsheet (Shift+Enter up); Tab goes right by itself.

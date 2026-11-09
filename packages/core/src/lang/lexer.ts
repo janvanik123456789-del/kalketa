@@ -244,7 +244,9 @@ export function tokenize(source: string, options: LexOptions = {}): LexResult {
     }
 
     pos++;
-    diagnostics.push(diagnostic('E-UNEXPECTED-CHAR', spanFrom(start), { char: ch }));
+    // An invisible character (a zero-width space pasted from the web) is named by its code: "​" says nothing.
+    const shown = /[\p{Cf}\p{Cc}\p{Zs}\p{Zl}\p{Zp}]/u.test(ch) ? `U+${ch.codePointAt(0)!.toString(16).toUpperCase().padStart(4, '0')}` : ch;
+    diagnostics.push(diagnostic('E-UNEXPECTED-CHAR', spanFrom(start), { char: shown }));
   }
 
   push('eof', pos, '');

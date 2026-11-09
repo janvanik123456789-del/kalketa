@@ -57,7 +57,8 @@ import { FORMULA_LIBRARY } from './formulaLibrary.js';
 import { FAVOURITES_KEY, readFavourites, toggleFavourite } from './logic/formulaFavourites.js';
 import { insertion, sheetNames, text as libraryText, type Entry } from '@kalketa/library';
 import { FUNCTION_TEMPLATES, parseLayout, setVisible, templateParts, type ToolbarLayout } from './logic/toolbars.js';
-import { createTable, importTableFile, type TableChange } from './tableActions.js';
+import { createTable, importTableFile, pasteTable, type TableChange } from './tableActions.js';
+import { aiExportText } from './logic/aiExport.js';
 import { captionOf, fromFile, pictureLine, picturePath, pixelWidth, widthFor, type IncomingPicture } from './logic/pictures.js';
 import { importBlockFile } from './blockActions.js';
 import type { SmathReport } from '@kalketa/import';
@@ -1981,13 +1982,79 @@ export function App() {
     return text;
   };
   /**
+   * Ctrl+V into a layer that holds no lines of calculation, by what the layer holds (a table or a script from a
+   * model's answer, say): a data layer takes a table, the checks in Python a script, the sources text at their end.
+   * `inWord`: pasted inside the text of a layer, where only a script of Python is taken apart from what the text
+   * editor does. True when the paste was taken here.
+   */
+  /** The calculation for an AI in a chat: the printed sheet with its assignment, tables, messages and the language. */
+  const forAi = (): string =>
+    aiExportText({ title: aiTitle(), source: doc.source, result: evaluation.main, tables: [...evaluation.main.tables.values()], catalog: ui });
+  /** The title of the calculation by its first heading (# Činka), else as the file is named. */
+  const aiTitle = (): string => /^#\s+(.+)$/m.exec(doc.source)?.[1]?.replace(/\s*\{[^{}]*\}\s*$/, '').trim() || fileName(doc);
+
+  const pasteIntoLayer = (text: string, inWord: boolean): boolean => {
+    if (layer.kind === 'sheet' || layer.kind === 'calc') return false;
+    const fence = '`'.repeat(3);
+    if (layer.kind === 'python') {
+      const blocks = [...text.matchAll(new RegExp(`${fence}[^\\n]*\\n([\\s\\S]*?)${fence}`, 'g'))].map((m) => m[1]!.replace(/\n+$/, ''));
+      const looksLikeCode = /^\s*(import |from \S+ import |def |for |while |if |print\(|result\()|^\s*[\p{L}_][\p{L}\p{N}_]*\s*=\s*\S/mu.test(text);
+      if (inWord && blocks.length === 0 && !looksLikeCode) return false;
+      if (layer.locked) {
+        setNotice(t(ui, 'layers.lockedNotice'));
+        return true;
+      }
+      for (const code of blocks.length > 0 ? blocks : [text]) if (code.trim()) keepCheck(code);
+      return true;
+    }
+    if (inWord) return false;
+    if (layer.locked) {
+      setNotice(t(ui, 'layers.lockedNotice'));
+      return true;
+    }
+    if (layer.kind === 'data') {
+      void pasteTable(doc, text, ui).then((made) => (made ? applyTable(made) : setNotice(t(ui, 'paste.noTable'))));
+      return true;
+    }
+    if (layer.kind === 'sources') {
+      const id = layer.id;
+      changeWith((present) => {
+        const before = (present.layers.find((l) => l.id === id)?.text ?? '').trimEnd();
+        return { ...present, layers: updateLayer(present.layers, id, { text: before ? `${before}\n\n${text}\n` : `${text}\n` }) };
+      });
+      return true;
+    }
+    return false;
+  };
+
+  /**
    * Ctrl+V outside a line: the text of the clipboard as rows after the current one, with what copied rows use and
    * this calculation lacks. `inEmpty`: pasted into an empty line being edited, which the rows take the place of.
    */
   const pasteRows = (pasted: string, inEmpty = false) => {
     const text = pasted.replace(/\r\n?/g, '\n').replace(/\n+$/, '');
     if (!text.trim()) return;
+    if (pasteIntoLayer(text, false)) return;
     const into = layer.kind === 'sheet' || layer.kind === 'calc' ? layer : doc.layers[0]!;
+    // The whole calculation again, as an AI in a chat returns it (its title the title of this sheet): replace it all,
+    // or put it in as rows, as the user says.
+    const firstOf = (lines: string) => lines.split('\n').find((l) => l.trim() !== '')?.trim() ?? '';
+    const ownText = textOf(into);
+    if (/^#\s/.test(firstOf(text)) && firstOf(text) === firstOf(ownText) && ownText.split('\n').filter((l) => l.trim() !== '').length > 1) {
+      void askChoice(t(ui, 'paste.replaceAsk', { title: firstOf(text).replace(/^#\s+/, '') }), [t(ui, 'paste.replace'), t(ui, 'paste.insert')]).then((choice) => {
+        if (choice === 0) {
+          setLayerText(into, `${text}\n`, `${into.id}:paste`);
+          setEditing(undefined);
+          reveal.current = { layer: into.id, line: 1 };
+        } else if (choice === 1) putRows(text, into, inEmpty);
+      });
+      return;
+    }
+    putRows(text, into, inEmpty);
+  };
+
+  /** Rows of the clipboard after the current one (in place of an empty line being edited). */
+  const putRows = (text: string, into: Layer, inEmpty: boolean) => {
     const range = into.id === layer.id ? currentRange() : undefined;
     const replace = inEmpty && range ? range : undefined;
     const at = replace ? replace.start - 1 : (range?.end ?? lastRowInView(into.id) ?? textOf(into).split('\n').length);
@@ -2001,7 +2068,12 @@ export function App() {
         next = assignTable({ ...next, tables: new Map(next.tables).set(name, table) }, name);
       }
       const own = into.kind === 'sheet' ? next.source : (next.layers.find((l) => l.id === into.id)?.text ?? '');
-      const changed = replace ? replaceLines(own, replace.start, replace.end, text) : insertLineAfter(own, at, text);
+      // A whole calculation with its own title (from a chat) pasted into a new sheet that holds only its title:
+      // it takes the place of that title, not a second one under it.
+      const ownLines = own.split('\n').filter((l) => l.trim() !== '');
+      const titleOnly = ownLines.length === 1 && /^#\s/.test(ownLines[0]!);
+      const titled = /^#\s/.test(text.split('\n').find((l) => l.trim() !== '') ?? '');
+      const changed = titleOnly && titled ? `${text}\n` : replace ? replaceLines(own, replace.start, replace.end, text) : insertLineAfter(own, at, text);
       return into.kind === 'sheet' ? { ...next, source: changed } : { ...next, layers: updateLayer(next.layers, into.id, { text: changed }) };
     });
     setEditing(undefined);
@@ -2184,6 +2256,20 @@ export function App() {
           // Named as the saved calculation (Ohrev.kalk → Ohrev.pdf), so the two are found together; by its title until saved.
           if (yes) void desktop?.exportPdf({ html: printoutHtml(), suggestedName: tab.path ? (tab.path.split(/[\\/]/).pop() ?? '').replace(/\.(kalk|cc)$/i, '') || fileName(doc) : fileName(doc) });
         }),
+      aiExport: () => {
+        const text = forAi();
+        if (desktop) {
+          void desktop.aiExport({ name: `${aiTitle()} – AI`, text, labels: { title: t(ui, 'aiExport.dragTitle'), hint: t(ui, 'aiExport.dragHint'), folder: t(ui, 'aiExport.folder') } });
+          return;
+        }
+        // In the browser: the file is downloaded, to be dragged from the downloads into the chat.
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(new Blob([text], { type: 'text/markdown' }));
+        link.download = `${aiTitle()} – AI.md`;
+        link.click();
+        URL.revokeObjectURL(link.href);
+      },
+      copyForAi: () => void navigator.clipboard.writeText(forAi()).then(() => setNotice(t(ui, 'aiExport.copied'))),
       example: () => openDocument(exampleDocument(undefined, t(ui, 'samples.prefix'), language), undefined),
       start: () => setStartOpen(true),
       exit: () => window.close(),
@@ -2278,6 +2364,8 @@ export function App() {
   picturesRef.current = insertPictures;
   const pasteRowsRef = useRef(pasteRows);
   pasteRowsRef.current = pasteRows;
+  const pasteIntoLayerRef = useRef(pasteIntoLayer);
+  pasteIntoLayerRef.current = pasteIntoLayer;
   const pasteLatexRef = useRef(pasteLatex);
   pasteLatexRef.current = pasteLatex;
   const layerOfElement = (element: EventTarget | null): Layer | undefined => {
@@ -2318,7 +2406,14 @@ export function App() {
       });
     };
     const paste = (e: ClipboardEvent) => {
-      if (dialogOpen.current || (e.target as HTMLElement | null)?.closest?.('.notes-word')) return;
+      if (dialogOpen.current) return;
+      const inWord = (e.target as HTMLElement | null)?.closest?.('.notes-word');
+      // A script of Python pasted into the text of the checks (not into a block of code there): a script of its own.
+      if (inWord && !(e.target as HTMLElement).closest('pre') && pasteIntoLayerRef.current((e.clipboardData?.getData('text/plain') ?? '').replace(/\r\n?/g, '\n'), true)) {
+        e.preventDefault();
+        return;
+      }
+      if (inWord) return;
       const data = e.clipboardData;
       // Rows pasted into an empty line being edited (a new calculation opens with one): they become rows, not one line.
       const row = (e.target as HTMLElement | null)?.closest?.('textarea.row-editor');
@@ -2452,6 +2547,7 @@ export function App() {
         sep,
         cmd('file.print'),
         ...(desktop ? [cmd('file.pdf')] : []),
+        cmd('file.aiExport'),
         sep,
         {
           // Sample calculations shipped with the program, each opened as a new unsaved document.
@@ -2480,7 +2576,7 @@ export function App() {
     },
     {
       label: t(ui, 'menu.edit'),
-      items: [cmd('edit.undo'), cmd('edit.redo'), sep, cmd('edit.cut'), cmd('edit.copy'), cmd('edit.paste'), sep, cmd('edit.duplicateLine'), cmd('edit.deleteLine'), sep, cmd('edit.selectAll')],
+      items: [cmd('edit.undo'), cmd('edit.redo'), sep, cmd('edit.cut'), cmd('edit.copy'), cmd('edit.paste'), cmd('edit.copyForAi'), sep, cmd('edit.duplicateLine'), cmd('edit.deleteLine'), sep, cmd('edit.selectAll')],
     },
     {
       label: t(ui, 'menu.view'),

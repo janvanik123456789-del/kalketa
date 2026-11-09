@@ -83,7 +83,7 @@ function tablesSeen(result: SheetResult): string[] {
   return tables.length > 0 ? ['Tables of the sheet (a row is named by its key, never by a line number):', ...tables, ...[...new Set(reads)]] : [];
 }
 
-function tableText(table: Table, used: ReadonlySet<number>): string[] {
+export function tableText(table: Table, used: ReadonlySet<number>): string[] {
   const columns = table.columns.map((c) => (c.unit ? `${c.name} [${c.unit}]` : c.name));
   const source = table.source ? `; source: ${table.source.title}${table.source.note ? ` (${table.source.note})` : ''}` : '';
   const head = `Table ${table.name}, ${table.rows.length} rows, key ${table.key}${source}`;

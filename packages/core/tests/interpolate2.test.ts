@@ -70,7 +70,8 @@ describe('2D interpolation over a grid of rows', () => {
     expect(read.weight).toBeCloseTo(0.5, 12);
   });
 
-  it('keeps 1D interpolation as it was', () => {
-    expect(k('k := interpolate(Korekce, θ: 27.5 °C).k').codes).toEqual([]);
+  it('refuses 1D interpolation over a grid: θ = 25 °C is in three rows (n = 1, 2, 4), which one would be a guess', () => {
+    // It used to blend a row of n = 4 with one of n = 1 without a word (2026-11-09).
+    expect(k('k := interpolate(Korekce, θ: 27.5 °C).k').codes).toEqual(['E-TABLE-INTERPOLATE']);
   });
 });

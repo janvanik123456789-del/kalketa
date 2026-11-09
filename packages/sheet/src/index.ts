@@ -14,7 +14,7 @@ import { inferTable } from './infer.js';
 import { linkedLibraries } from './theoryLibrary.js';
 import type { WorkbookImage } from './excel.js';
 
-export { parseCsv, writeCsv, detectDelimiter } from './csv.js';
+export { parseCsv, pastedTable, writeCsv, detectDelimiter } from './csv.js';
 export { inferTable, splitHeader, toIdentifier, type InferResult } from './infer.js';
 export { readWorkbook, type WorkbookImage, type WorkbookSheet } from './excel.js';
 export * from './container.js';

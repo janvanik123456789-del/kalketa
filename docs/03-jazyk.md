@@ -547,7 +547,7 @@ Tabulky žijí v datové vrstvě listu (`tables/<Název>/schema.json` + `data.cs
 | `pick(T, "IPE 200")` | řádek podle klíčového sloupce. V editoru rozbalovací seznam s obrázkem. | F2 ✓ |
 | `pick(T, G: 22.4 kg/m)` | řádek s přesnou hodnotou v libovolném sloupci | F2 ✓ |
 | `profil.W_y` | hodnota sloupce, veličina s jednotkou ze schématu | F2 ✓ |
-| `interpolate(T, λ: λ_rel)` | řádek **lineárně interpolovaný** podle sloupce λ (interpolují se všechny číselné sloupce); mimo rozsah extrapolace a varování | F2 ✓ |
+| `interpolate(T, λ: λ_rel)` | řádek **lineárně interpolovaný** podle sloupce λ (interpolují se všechny číselné sloupce); mimo rozsah extrapolace a varování. Stejná hodnota λ ve více řádcích (mřížka θ × n) je chyba, pro mřížku slouží `interpolate(T, θ: …, n: …)`; sloupec, který střídavě roste a klesá, zatímco tabulka je seřazená podle jiného, varuje W-TABLE-NOT-MONOTONIC (2026-11-09) | F2 ✓ |
 | `interpolate(T, θ: 35 °C, n: 3)` | 2D (bilineární) interpolace v mřížce: tabulka má jeden řádek na bod (θ, n, k); chybí-li bod mřížky v okolí hodnoty, je to chyba | F9 ✓ |
 | `find_min(T, by: G, where: …)` | řádek s nejmenším `G`, který splní podmínku | F2 ✓ |
 | `find_max(T, by: …, where: …)` | obdobně | F2 ✓ |

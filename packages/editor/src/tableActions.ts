@@ -4,7 +4,7 @@
 
 import { defaultRegistry } from '@kalketa/core';
 import { formatDiagnostic, t, type Catalog } from '@kalketa/i18n';
-import { importTable, parseCsv, readWorkbook, toIdentifier, type SheetDocument, type StoredTable } from '@kalketa/sheet';
+import { importTable, parseCsv, pastedTable, readWorkbook, toIdentifier, type SheetDocument, type StoredTable } from '@kalketa/sheet';
 import { chooseFile } from './document.js';
 import { ask } from './components/Ask.js';
 import { fromEditable, newTable } from './logic/tableEdit.js';
@@ -23,9 +23,32 @@ export function withTable(doc: SheetDocument, name: string, stored: StoredTable,
   return { ...doc, tables, files: allFiles };
 }
 
+/**
+ * A table from the clipboard (cells of Excel, CSV, a Markdown table of a model's answer): asks for its name and
+ * adds it as an imported one would be. Undefined when the text is no table or no name is given.
+ */
+export async function pasteTable(doc: SheetDocument, text: string, catalog: Catalog): Promise<TableChange | undefined> {
+  const grid = pastedTable(text);
+  if (!grid) return undefined;
+  let suggested = 'Tabulka';
+  for (let n = 2; doc.tables.has(suggested); n++) suggested = `Tabulka${n}`;
+  const name = toIdentifier((await ask(t(catalog, 'editor.tableName'), suggested)) ?? '');
+  if (!name || doc.tables.has(name)) return undefined;
+  const source = { title: t(catalog, 'table.pasted'), retrieved: new Date().toISOString().slice(0, 10) };
+  const imported = importTable(grid, { name, registry: defaultRegistry, source });
+  return {
+    doc: withTable(doc, name, { schemaJson: imported.files.schemaJson, dataCsv: imported.files.dataCsv }, imported.files.images),
+    name,
+    messages: imported.diagnostics.map((d) => formatDiagnostic(d, catalog)),
+  };
+}
+
 /** Asks for a name and adds an empty table. */
 export async function createTable(doc: SheetDocument, catalog: Catalog): Promise<TableChange | undefined> {
-  const name = toIdentifier((await ask(t(catalog, 'editor.tableName'), 'Tabulka')) ?? '');
+  // A free name offered (Tabulka2 when Tabulka is there): the one taken made no table and said nothing.
+  let suggested = 'Tabulka';
+  for (let n = 2; doc.tables.has(suggested); n++) suggested = `Tabulka${n}`;
+  const name = toIdentifier((await ask(t(catalog, 'editor.tableName'), suggested)) ?? '');
   if (!name || doc.tables.has(name)) return undefined;
   return { doc: withTable(doc, name, fromEditable(newTable(name))), name, messages: [] };
 }

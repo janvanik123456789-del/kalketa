@@ -17,6 +17,8 @@ contextBridge.exposeInMainWorld('kalketaDesktop', {
   save: (request: { path?: string; current?: string; suggestedName: string; bytes: Uint8Array; openElsewhere?: string }): Promise<string | undefined> => ipcRenderer.invoke('kalketa:save', request),
   print: (html: string): Promise<boolean> => ipcRenderer.invoke('kalketa:print', html),
   exportPdf: (request: { html: string; suggestedName: string }): Promise<string | undefined> => ipcRenderer.invoke('kalketa:export-pdf', request),
+  /** A calculation for an AI written to a file, shown in a small window to drag into a chat. */
+  aiExport: (request: { name: string; text: string; labels: { title: string; hint: string; folder: string } }): Promise<string> => ipcRenderer.invoke('kalketa:ai-export', request),
   newWindow: (): Promise<void> => ipcRenderer.invoke('kalketa:new-window'),
   /** Where a file dropped on the window lies on the disk (a calculation dropped is opened from there). */
   pathOfFile: (file: File): string => webUtils.getPathForFile(file),

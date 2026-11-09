@@ -320,6 +320,11 @@ export class UnitRegistry {
     return [...all.map((u) => u.symbol), ...all.filter((u) => u.prefixable).flatMap((u) => common.filter((p) => !u.prefixes || u.prefixes.includes(p)).map((p) => p + u.symbol))];
   }
 
+  /** Every unit by its own symbol, and whether it takes prefixes (m: km, mm …): for a list of the units. */
+  unitSymbols(): { readonly symbol: string; readonly prefixable: boolean }[] {
+    return [...this.units.values()].map((u) => ({ symbol: u.symbol, prefixable: !!u.prefixable }));
+  }
+
   /** Whether the exact symbol is a unit (no prefixes, no spellings). */
   has(symbol: string): boolean {
     return this.units.has(symbol);

@@ -179,6 +179,8 @@ export function TextRowEditor({ text, onChange, onEnter, onTab, onDeleteEmpty, o
   // Bold of the whole line (its mark) goes as a whole; otherwise the marked words, as a word processor does.
   const toggle = (kind: 'bold' | 'italic') => {
     focusBack();
+    // A heading is bold by its style; bold taken from its words would come back at the next drawing.
+    if (kind === 'bold' && latest.current.level > 0 && !latest.current.attributes.has('bold')) return;
     if (latest.current.attributes.has(kind)) setMark(kind, undefined);
     else document.execCommand(kind);
   };

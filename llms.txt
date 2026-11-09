@@ -1,0 +1,207 @@
+# Kalketa
+
+> Kalketa is an engineering calculation sheet (like Mathcad): lines of definitions with units, checks, tables, charts and differential equations, printed as a report. This file teaches a model in a chat window to write a calculation the user pastes into Kalketa.
+
+## Checklist before every answer
+
+1. The whole calculation in ONE code block, starting with one title line "# …" (no second title).
+2. Multiply with · and write π and Greek letters (σ, ρ, τ): never *, pi or spelled-out names like sigma.
+3. Each value defined once with := and its unit; a definition already prints its value, so no extra line "name =" after it.
+4. Text lines are whole lines in double quotes and hold no formula; a law of the theory is a line "relation … {eq}".
+5. Every assumption (which diameter, which material, what is neglected) is a text line of its own.
+6. Data of more rows (materials, profiles) as a separate Markdown table block for the data layer, read by pick(Table, "key").column; not typed into the calculation.
+7. Where the task has a limit, end with check "…": value ≤ limit; finish with one text line saying what was found.
+
+## How to help in a chat
+
+- Return the calculation as plain text in ONE code block (```), every line of it, nothing else inside the block. Explain outside the block, briefly, in the user's language.
+- The user pastes the block into Kalketa (Ctrl+V) and the program calculates it at once. Its messages come back to you as "line N: CODE message"; correct those lines and return the whole calculation again in one block.
+- A table of data (profiles, materials, measurements) may come as its own block in Markdown (| Profil | A [cm²] |, a line |---| under the head); the user pastes it into a data layer and the calculation reads it by its name. A check in Python may come as a block of python with result("name", value, "unit") for each value it checks.
+- Write in the notation of the file: a decimal point (2.5) and a comma between arguments (max(a, b)). Kalketa shows Czech users a decimal comma and ";" itself.
+- Never invent data: values of materials, profiles and loads come from a table or a source the user can check; say what is missing.
+
+## The language
+
+Definition: name := expression, with units (L := 6 m, q := 10 kN/m); a name must be defined above its use and only once.
+"a =" shows a result. "expr | kN·m" sets the unit it is shown in. "x² + 2·x == 8" is an equation for the solver.
+solve L: M_Ed == q·L²/8 expresses one unknown by a formula where it can (L = √(8·M_Ed/q), with its unit) and else solves numerically ("in a .. b" interval or "guess"); of more roots the interval picks. An inequality works too: solve d: S_min ≤ π·d²/4 gives d ≥ √(4·S_min/π) (d takes the bound).
+Conditions of a solution, as on paper: solve x ∈ ℝ, x > 0: a·x² + b·x + c == 0 (∈ ℂ for complex roots too, ∈ ℕ / ℕ₀ / ℤ for whole ones only, e.g. a count of pieces; R, C, N, N0, Z also). It prints the discriminant and x₁,₂ = (−b ± √D)/(2·a) with the numbers put in, every root, the ones failing a condition set aside; x holds the root kept (a vector [x₁; x₂] when both are); the roots as printed are also the names x_1, x_2 (an area between them: abs(integral(y(x), x: x_2 .. x_1))). Prefer this to roots() for a quadratic; a general one may be a function of the sheet, y(x) := a·x² + b·x + c, solved as solve x ∈ ℝ: y(x) == 0 (written out in print) and drawn by plot(y(x), x: -3 .. 2); ylim: -20 .. 20 sets the y axis (what lies beyond is cut off). roots: true marks where the curves meet the x axis. points: [x_v, y_v] marks a point of the sheet (rows [x₁, y₁ | x₂, y₂] for more). An input a := -2 {slider=-5..5} gets a slider in the editor. symmetry: true draws the axis of symmetry of a symmetric curve (x = −b/(2·a) of a parabola); center: true moves the range of x, as wide as written, so that axis is in its middle (also when it lies outside the range). extremes: true marks the peaks and dips with [x; y]. inflections: true marks where y″ changes sign; area: x_2 .. x_1 hatches the area under the first curve with S = |∫ y dx|, area: P links it to an integral P := … of the sheet, area: Integral1 to a formula named {eq=Integral1} (above or below the chart; its bounds, name and value); tangent: 3 draws the tangent with k = y′ and its angle α (the person drags its point); labels: "…" holds labels moved by hand (leave it to the program). style: "…" is the look the user chose for the chart (colours, lines, grid; leave it to the program). A surface z(x, y) over a rectangle is one expression over two ranges: plot(w(x, y), x: 0 m .. a, y: 0 m .. b) | mm draws a colour map with contour lines and a colour bar (levels: [10, 20] mm or levels: 8 sets the lines, extremes: true marks the highest and lowest point, samples: 50 the cells of the grid). kind: "surface" shows the same surface in 3D (the user turns it by dragging; view: "az=35 el=30" is written by the program); the map reads better in print. cut: y == 1 m draws the section along y = 1 m and its curve below the chart; points: [x_v, y_v] marks points of the sheet on the surface with z there. The vertex by calculation: solve x_v: y′(x_v) == 0 (the derivative of a sheet function is written out: 2·a·x_v + b = 0), then y_v := y(x_v). a ± b gives both values a + b and a − b.
+check "Bending": σ ≤ f_y  source "EN 1993-1-1, 6.2.5"  is a check (label and source optional); utilization = left / right. A definition may name its source too: M_Ed := 1.35·G_k + 1.5·Q_k | kN·m  source "EN 1990, 6.10" (after its unit, at the end of the line).
+A derivation as in a textbook: y := M/(E·I) == F·l^3/(3·E·I) (the last member gives y), or "derive a == b == c" on its own; the program checks every step in general, so write each step as an equal form. "derive M_mp := l^3·F/3" introduces a symbol of theory without values. sum(ΔS·y^2), sum(F_i·a_i, i) and integral(y^2, dS) without bounds are notations of theory (Σ, ∫) with no value.
+An equation that holds by the theory or the task (not an identity, not a definition) is a relation: "relation x^2 + y^2 == r^2 {eq=Kruh}" or "relation dV - dV_0 == (2·ε_xx + ε_zz)·dV_0". A derive step below it may follow from it. "plot(Kruh, x: -6 .. 6, y: -6 .. 6)" draws it as a curve, "solve y ∈ ℝ, y > 0: Kruh" solves it by its name.
+A table in the sheet (measured data): a line "table Name:" and indented rows "| col [unit] | … |", the first row the header; Name.col is a series. fit(Name.y, x: Name.t, kind: "linear"|"poly2"|"poly3"|"exp"|"power"|"log") gives a fitted function f(t) (least squares; steps: true writes out the method for a line: the sums, slope and intercept with numbers); plot(Name.y, f(x), x: Name.t) shows points and the curve.
+Text: a printed paragraph is a whole line in straight double quotes ("Volíme průměr nýtu 6 mm."); no quote mark inside, no formula after it, only its sources may follow: "…" [T1] or [ST:T1]. Names with an index or a power inside text (σ_Kt, S_min, mm^2) print as in formulas. A vector has the arrow U+20D7 right after its letter: p⃗_1, v⃗ (an arrow over p with its index, as in physics books). A note beside a formula is a comment after ' on the same line. #, ##, ### are headings.
+How a result is shown: {decimals=2} or {digits=3} at the end of its line (before a comment); the calculation stays exact, unless the line adds rounded ({decimals=2 rounded}): the rows below then use the value as shown. {exact} (or @exact … @noexact for several rows) also shows a result as a fraction or root where it is one: 49/9 s⁻² ≐ 5,444 s⁻². {eq=name} numbers an equation at the right and text refers to it as (#name). A text line or heading may end with its style: {size=12 italic bold font=serif align=center color=blue}; inside text *italic* and **bold** words. "expr | kN·m" sets its unit.
+Lines side by side: a line ending in {beside} stands beside the line above it, as a cell of one row ("Zatěžující síla" then F := 1600 N {beside}); use it for a short label beside its value instead of a line of text above it.
+Names as in the source: Greek letters and indexes (σ_k, τ_dov, R_m), never spelled out (sigma_k); multiply with · (not *).
+A differential equation with its boundary conditions gives a function: solve w(x): E·I·w″ == −M(x) in 0 m .. L, then on indented lines w(0 m) == 0 m and w(L) == 0 m (as many conditions as its order; w′(0 m) == 0 for a fixed end). Derivatives are written with the primes ′ ″ ‴ ⁗, never with an apostrophe. Then w(L/2) | mm, w′(0 m) and plot(w(x), x: 0 m .. L) | mm.
+Variants of a calculation: a table in the sheet with {variants=B} after its head names the variants in its first column; its other columns are inputs of the sheet (b [mm], h [mm]) holding the values of the variant chosen (=B, or the first), so they are not defined again by :=. compare(Varianty, W, σ) on a line of its own calculates the sheet for each variant and gives a table of those values with the largest utilization η_max and ✓/✗ for the checks. Use it when the task compares alternatives (sections, materials, spans).
+Positions (a structural calculation split by members: Pos. 1 slab, Pos. 2 beam): a heading ending in {pos} starts one, numbered 1, 2, 3 ({pos=7} or {pos=3a} as the project numbers it). The names defined in a position hold until the next one starts, so each position may use A, L, M_Ed again; a later position reads them as Pos1.A (a reaction of Pos. 1 as a load of Pos. 2). Names above the first position (materials, factors) hold everywhere. Use positions when the task has several members; do not repeat names across positions by suffixes (A_1, A_2) then.
+A table row: row := pick(Table, "key") (or pick(Table, column: value)); a value of it: row.column, or at once pick(Table, "key").column. A row is no number: pick(…) | mm is wrong, pick(…).d | mm is right.
+Built-in functions: abs(x), argmax(v), argmin(v), cbrt(x), ceil(x, n), exp(x), factorial(n), floor(x, n), gcd(a, b, …), hypot(a, b, …), lcm(a, b, …), ln(x), log(x, b), log10(x), log2(x), max(a, b, …), min(a, b, …), mod(a, b), parallel(a, b, …), root(x, n), round(x, n), sign(x), sqrt(x), trunc(x), acos(x), acosh(x), acot(x), acsc(x), asec(x), asin(x), asinh(x), atan(x), atan2(y, x), atanh(x), cos(x), cosh(x), cot(x), cotg(x), coth(x), csc(x), csch(x), sec(x), sech(x), sin(x), sinh(x), tan(x), tanh(x), tg(x), beam(L: …, EI: …, pins: […], fixed: […], hinges: […], q: …, at: […], F: […], moments_at: […], M: […]), beam_M(N, x), beam_slope(N, x), beam_V(N, x), beam_w(N, x), derivative(f(x), x: a, order: 1), first(condition, n: from .. to), fit(y, x: series, kind: "linear"), fit_r2(F), fit_s(F), fit_se(F), frame(nodes: T, members: T), i_section(h, b, t_w, t_f, r), integral(f(x), x: a .. b), max_of(f(x), x: a .. b), maximize(f(x), x: a .. b), min_of(f(x), x: a .. b), minimize(f(x), x: a .. b), polyfit(x, y, n, steps: false), polyval(p, x), roots(p(x), x), augment(A, B), col(A, j), cols(A), cond(A), cross(a, b), det(A), diag(v), dot(a, b), eigenvals(K, M), eigenvecs(K, M), hprod(A, B), identity(n), inverse(A), kprod(A, B), lsolve(A, b), matrix(f(i, j), i: 1 .. n, j: 1 .. m), norm(v), nullspace(A), rank(A), row(A, i), rows(A), scatter(K_e, dofs, n), singvals(A), stack(A, B), submatrix(A, r1, r2, c1, c2), trace(A), transpose(A), vector(f(i), i: 1 .. n), arg(z), conj(z), im(z), polar(r, φ), re(z), cumprod(v), cumsum(v), cumtrapz(x, y), diff(v), each(f, v), interp1(x, y, xi, "linear" | "nearest" | "spline" | "pchip", "extrap"), last(v), len(v), linspace(from, to, n), pchip(x, y, xi), prod(v), range(from, to, step), ranks(v), rat(x), reverse(v), sort(v), spline(x, y, xi), srss(a, b, …), sum(v), sumsq(a, b, …), trapz(x, y), unwrap(v), whole(v), besselj(n, x), beta(a, b), binocdf(k, n, p), binopdf(k, n, p), box_values(v), corr(x, y), cov(x, y), erf(x), erfc(x), expcdf(x, mean), exppdf(x, mean), fcdf(x, ν₁, ν₂), finv(p, ν₁, ν₂), gamcdf(x, shape, scale), gamma(x), gampdf(x, shape, scale), hist_centers(v, n), hist_counts(v, n), hygecdf(x, M, K, n), hygepdf(x, M, K, n), chi2cdf(x, ν), chi2inv(p, ν), lgamma(x), logncdf(x, μ, σ), lognpdf(x, μ, σ), mean(v), median(v), molar_mass("formula"), nchoosek(n, k), normcdf(x, μ, σ), norminv(p, μ, σ), normpdf(x, μ, σ), poisscdf(k, λ), poisspdf(k, λ), quantile(v, p), rnd(n, seed, a, b), rndn(n, seed, μ, σ), stdev(v), stdevp(v), tcdf(t, ν), tinv(p, ν), var(v), varp(v), wblcdf(x, scale, shape), wblpdf(x, scale, shape), irr(CF), npv(rate, CF), payback(CF), pmt(rate, n, amount), date(year, month, day), day(date), days360(start, end, basis), month(date), year(date), if(condition, then, else), compare(Variants, name, …), filter(T, where: condition), find_max(T, by: column, where: condition), find_min(T, by: column, where: condition), interpolate(T, column: x), pick(T, "key"), prev(column, start), plot(f(x), x: a .. b, kind: "line", title: "…").
+
+## Samples (write in this form)
+
+as on paper: the law of the theory as a relation, the derivation from it, then the definition with the numbers:
+```
+g := 9.81 m/s^2
+h := 9 m            ' výška pádu
+"Při pádu se potenciální energie tělesa mění na kinetickou (zákon zachování energie)." [T2]
+relation m·g·h_0 == m·v^2/2 {eq}
+"Odtud rychlost po pádu z výšky h_0:"
+derive v == sqrt(2·g·h_0) {eq}
+v_1 := sqrt(2·g·h) | m/s
+```
+
+headings, text and comments:
+```
+# Výpočet průměru nýtu
+## Zadání
+"Nýt je namáhán smykem v jednom střihu."
+F := 1600 N            ' zatěžující síla
+n := 1.5
+"Mez kluzu v tahu je přibližně polovina meze pevnosti." [T1]
+R_m := 340 MPa
+σ_k := R_m/2
+```
+
+a value read from a table:
+```
+table Nyty:
+    | oznaceni | d [mm] |
+    | N6 | 6 |
+    | N8 | 8 |
+nyt := pick(Nyty, "N8")
+d_vol := nyt.d | mm
+d_6 := pick(Nyty, "N6").d
+```
+
+definitions, a result shown, the unit of a result:
+```
+L := 6 m
+q := 10 kN/m
+M_Ed := q·L²/8 | kN·m
+M_Ed =
+```
+
+an inequality solved for the unknown, then the chosen value:
+```
+F := 1600 N
+τ_dov := 68 MPa
+S_min := F/τ_dov | mm²
+"Průřez nýtu je kruh, odkud pro průměr platí:"
+solve d: S_min ≤ π·d²/4
+"Volíme průměr nýtu 6 mm."
+d_n := 6 mm
+```
+
+positions: each member its own names, a reaction passed on as a load:
+```
+γ_G := 1.35
+## Stropní deska {pos}
+g := 5 kN/m
+L := 4 m
+A := γ_G·g·L/2
+## Průvlak {pos}
+F := Pos1.A            ' reakce stropní desky
+L := 6 m
+M_Ed := F·L/4
+A := F/2
+```
+
+an equation solved in an interval:
+```
+solve x: x² + 2·x == 8 in 0 .. 10
+```
+
+a check with its source:
+```
+σ := 150 MPa
+f_y := 235 MPa
+check "Ohyb": σ ≤ f_y  source "EN 1993-1-1, 6.2.5"
+```
+
+a derivation checked step by step:
+```
+F := 2 kN
+l := 1.5 m
+E := 210 GPa
+I := 800 cm⁴
+M := F·l
+φ := M·l/(2·E·I) == F·l²/(2·E·I)
+```
+
+measured points, a fitted curve and its chart:
+```
+table Mereni:
+    | t [s] | T [°C] |
+    | 0 | 20.1 |
+    | 10 | 25.3 |
+    | 20 | 29.8 |
+    | 30 | 33.9 |
+T_fit := fit(Mereni.T, x: Mereni.t, kind: "linear")
+plot(Mereni.T, T_fit(x), x: Mereni.t)
+```
+
+
+## Writing a calculation
+
+- A picture line ![caption](path){… alt="…"} is a picture of the sheet; alt="…" says what it shows (where the points and dimensions are): read the picture from it, and keep it when the line is kept.
+- Given values one per line with their unit and a comment: L := 6 m            ' span. A value given in another unit is not copied into a new name; the unit it is shown in is set with | (A := π·d²/4 | mm²).
+- Names as in the theory and the task (σ_k, h_1, v_A), each defined once, above its use. A definition prints its value; no extra line "name =" after it. The same quantity computed a second way (an integral and its closed form) gets a name of its own and the two are compared: t_v2 := … then check "Uzavřený tvar": t_v2 == t_v.
+- A number in text (a ratio, a comparison, "~4000× wider") is computed in the sheet first, on a line of its own with a name; text never claims a number the sheet does not compute. The program checks the proposed sheet and returns its errors and such numbers to you.
+- Choose the unit a result is shown in so it reads well (| m², | min, | kN·m), not the unit of the formula.
+- Units convert themselves: m² and cm², kN and N, min and s may stand in one formula as they are; never convert values by hand, never copy a value into another unit to make a formula work.
+- A count (turns of a winding, pieces, bolts) is a plain number with no unit (never "pieces"); round it up to whole ones where the count must be whole: N_2 := ceil(U_20/(4.44·f·B_m·A_Fe)).
+- A relation uses the names of the sheet: the allowed ripple is ΔU_max in the sheet, so the relation says ΔU_max, not ΔU of the textbook; a name of its own is another quantity and the derivation below it will not follow.
+- A zero needs no unit: y_2 == 0, p_a + ρ·g·0 (a zero written bare is of any unit).
+- A name that is not defined and is also a unit is read as the unit: t is tonnes, s seconds, m metres, g grams, h hours. A quantity that changes with time or position is a function of it, its variable a parameter: h(t) := (sqrt(h_1) - k·t)^2, v_1(t) := sqrt(2·g·h(t)); never t used outside a function, an integral or a chart.
+- A chart of a function: plot(h(t), t: 0 s .. t_v). A chart shows how a quantity changes (with its variable, along a series); plain results that do not change are never plotted, so a part without such a quantity has no chart. Its options go inside the brackets: plot(M(x), x: 0 m .. L, title: "Momenty", ylim: 0 kN·m .. 50 kN·m); nothing in braces after it. Quantities of different units go into separate charts, one plot line each; never scale a curve (h·10) to share an axis.
+- A text line is text only: no values joined to it ("…" ratio "…" or "…"·x is wrong); a value is printed by its own line.
+- The starting equation of the theory (Bernoulli for two points, continuity) is a relation … {eq}; derive only writes the steps that follow from the relations above it.
+- An integral is written with its integrand, its variable and its bounds: integral(1/sqrt(h), h: 0 .. h_1); the variable is the name (h), not its differential (dh).
+- State every assumption as a text line with the section of the theory it comes from (the one that says it), e.g. "Vlastní tíhu nosníku zanedbáváme." [T2].
+- Where the task has a limit or a requirement, end with a check: check "…": value ≤ limit.
+- Finish with a short text line saying what was found; the values are printed by their own lines above, do not copy numbers into text.
+
+Levels of detail (the user says which; "brief" when not said):
+- Level "brief": each result is one definition, name := formula | unit; the print shows the formula, the numbers put in and the result. Text only where a choice or an assumption needs it.
+- Level "paper" (as a hand calculation in a textbook): for each result
+  1. a text line saying what is done and from which section of the theory, with its citation;
+  2. the relations of the theory it comes from, each on a line of its own: relation … {eq} (the general law, then the conditions of the task, one per line: relation p_1 == p_a {eq});
+  3. the derivation down to the formula: derive a == b (a step per line; the program checks each step follows from the relations above);
+  4. the definition with the formula: name := formula | unit (the print puts the numbers in).
+  A formula taken from the theory is still derived from its relations, not copied. Number the equations ({eq}) and refer to them in text as (#name) where it helps.
+- Level "teaching": as "paper", and in addition a text line before each step explaining in plain words why it holds (the physics, not the algebra), a sketch or picture of the sheet referred to where it helps, and every result checked independently in Python when the program can run checks: in the same answer, the change block with the calculation first, the python block with its check right after it.
+
+## Messages of the program
+
+The ones a model meets most; {…} stand for names and values. Every message has a code, so search this file or the guide above for what it needs.
+- E-SYNTAX: Expected {expected}, found {found}.
+- E-MISSING-OPERATOR: Missing operator before “{found}”. Did you mean “·”?
+- E-ASSIGN-WITH-EQUALS: Use “:=” to define “{name}”; “=” only shows a result.
+- E-UNEXPECTED-CHAR: Unexpected character “{char}”.
+- E-UNDEFINED: “{name}” is not defined.
+- E-DEFINED-LATER: “{name}” is defined further down. Move its definition above this line.
+- E-REDEFINED: “{name}” is already defined above. Each name can be defined only once.
+- E-FUNC-UNKNOWN: Unknown function “{function}”.
+- E-FUNC-ARITY: “{function}” takes {expected} argument(s), got {found}.
+- E-FUNCTION-UNCALLED: “{name}” is a function; call it with brackets and an argument, e.g. {name}(x).
+- E-CALCULUS-FORM: {function} is written with a variable: {form}.
+- E-UNKNOWN-UNIT: Unknown unit “{unit}”.
+- E-UNIT-MISMATCH: Incompatible units for “{operator}”: {left} and {right}.
+- W-BARE-UNIT: “{name}” is not a variable here, it is read as the unit {name}. If it is a variable (time t, distance s), define it or write a function, e.g. h(t) := …; write a unit after a number (1 {name}).
+- W-NAME-AS-UNIT: “{name}” is read here as a unit, not as the variable {name}, because after a number a unit holds. For the variable put the number with its unit in brackets: (200 mm)/{name}. For the unit write [{name}].
+- E-ABS-TEMP: Absolute values (temperatures, dates) cannot be combined this way. Use a difference (Δ°C, K, days).
+- E-TABLE-KEY: Table “{table}” has no row with {column} = “{key}”.
+- E-TABLE-COLUMN: Table “{table}” has no column “{column}”.
+- E-SOLVE-NO-ROOT: The equation has no solution in the given interval (its two sides never meet there).
+- E-SOLVE-NO-CONVERGENCE: No solution found; try another first guess (guess).
+- E-ODE-CONDITIONS: An equation of order {order} for {name} needs {order} independent boundary conditions; it has {found} (or they do not complete each other).
+- E-DERIVE-UNITS: Derivation: the sides of step {step} have different units ({left} and {right}).
+
+## Units
+
+Written after a number (6 m, 10 kN/m, 235 MPa, 20 °C), combined with · and / and powers (kN·m, W/(m²·K), m^3 or m³). A difference of temperatures is Δ°C or K.
+- With prefixes (k, M, G, m, μ, n; u for μ): m, g, s, A, K, mol, L, l, t, Da, N, Nm, Pa, bar, J, Wh, cal, eV, W, Hz, C, Ah, V, VA, Wp, var, Ω, S, F, Wb, T, H, lm, lx, Bq, Gy, Sv, kat, M, CZK, EUR, USD, GBP, CHF, PLN, HUF, JPY, VAh, Ci, rad.
+- Without prefixes: cd, °C, °F, Δ°C, Δ°F, °R, in, Å, ft, ha, lb, dkg, lbm, oz, yd, mi, gal, min, h, hr, d, wk, yr, mo, lbf, atm, psi, psia, psig, torr, cP, cSt, ksi, kip, inHg, mmHg, Btu, hp, rpm, Kč, €, $, £, zł, Ft, ¥, kgf, kp, Mp, gf, tf, dyn, dyne, pdl, ozf, tonf, Torr, at, psf, ksf, kpsi, erg, BTU, therm, hp_M, poise, St, stokes, slug, klb, gr, st, tonne, ton_US, ton_UK, gram, ounce, pound, mile, nmi, micron, Angstrom, fur, furlong, ftm, rod, AU, au, ly, pc, acre, ac, barn, gal_US, gal_UK, qt_US, qt_UK, pt_US, pt_UK, fl_oz_US, fl_oz_UK, day, week, month, sec, mph, kmh, kph, knot, volt, watt, joule, farad, henry, tesla, gauss, Mx, katal, Rd, lbmol, rev, grad, deg, arcmin, arcsec, sr, ppb, °, gon, %, ‰, ppm.

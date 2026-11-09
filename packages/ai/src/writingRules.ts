@@ -20,21 +20,11 @@ export const DETAIL_RULES: Readonly<Record<DetailLevel, string>> = {
   teaching: `Level "teaching": as "paper", and in addition a text line before each step explaining in plain words why it holds (the physics, not the algebra), a sketch or picture of the sheet referred to where it helps, and every result checked independently in Python when the program can run checks: in the same answer, the change block with the calculation first, the python block with its check right after it.`,
 };
 
-/** The rules for writing a calculation into the sheet; with the level the user chose, or the request to ask for one. */
-export function writingRules(detail: DetailLevel | undefined): string {
-  const level = detail
-    ? `The user chose the level of detail "${detail}" for this sheet; write in it unless the user asks otherwise in the conversation.\n${DETAIL_RULES[detail]}`
-    : `The user has not chosen how detailed the calculation should be. Before you write a calculation (not for a question or a small change), ask with a choice block and wait for the answer:
-  ${FENCE}choice detail How detailed should the calculation in the sheet be?
-  brief: Briefly – formula, numbers and result
-  paper: As on paper – relations of the theory, derivation step by step
-  teaching: For teaching – also each step explained and checked in Python
-  ${FENCE}
-  Write the question and the answers in the user's language; keep the key "detail" and the values ${DETAIL_LEVELS.join(', ')}. The program shows the answers as buttons and keeps the choice in the calculation.
-${DETAIL_LEVELS.map((l) => DETAIL_RULES[l]).join('\n')}`;
-  return `How to write a calculation into the sheet:
-- Keep the assignment as it is (its text, given values, picture) and write the solution below it, under headings, one part of the task per heading, as ONE block that inserts it after the last line of the assignment: ${FENCE}change after <that line number>. A ${FENCE}sheet block opens a new file; use it only when the user asks for a new calculation, never for the solution of this one.
-- A picture line ![caption](path){… alt="…"} is a picture of the sheet; alt="…" says what it shows (where the points and dimensions are): read the picture from it, and keep it when the line is kept.
+/**
+ * The rules of writing a calculation that hold wherever it is written: in the built-in chat and in any other
+ * (llms.txt). The blocks of the built-in chat (change, choice, note) are not among them.
+ */
+export const SHEET_RULES = `- A picture line ![caption](path){… alt="…"} is a picture of the sheet; alt="…" says what it shows (where the points and dimensions are): read the picture from it, and keep it when the line is kept.
 - Given values one per line with their unit and a comment: L := 6 m            ' span. A value given in another unit is not copied into a new name; the unit it is shown in is set with | (A := π·d²/4 | mm²).
 - Names as in the theory and the task (σ_k, h_1, v_A), each defined once, above its use. A definition prints its value; no extra line "name =" after it. The same quantity computed a second way (an integral and its closed form) gets a name of its own and the two are compared: t_v2 := … then check "Uzavřený tvar": t_v2 == t_v.
 - A number in text (a ratio, a comparison, "~4000× wider") is computed in the sheet first, on a line of its own with a name; text never claims a number the sheet does not compute. The program checks the proposed sheet and returns its errors and such numbers to you.
@@ -50,7 +40,23 @@ ${DETAIL_LEVELS.map((l) => DETAIL_RULES[l]).join('\n')}`;
 - An integral is written with its integrand, its variable and its bounds: integral(1/sqrt(h), h: 0 .. h_1); the variable is the name (h), not its differential (dh).
 - State every assumption as a text line with the section of the theory it comes from (the one that says it), e.g. "Vlastní tíhu nosníku zanedbáváme." [T2].
 - Where the task has a limit or a requirement, end with a check: check "…": value ≤ limit.
-- Finish with a short text line saying what was found; the values are printed by their own lines above, do not copy numbers into text.
+- Finish with a short text line saying what was found; the values are printed by their own lines above, do not copy numbers into text.`;
+
+/** The rules for writing a calculation into the sheet; with the level the user chose, or the request to ask for one. */
+export function writingRules(detail: DetailLevel | undefined): string {
+  const level = detail
+    ? `The user chose the level of detail "${detail}" for this sheet; write in it unless the user asks otherwise in the conversation.\n${DETAIL_RULES[detail]}`
+    : `The user has not chosen how detailed the calculation should be. Before you write a calculation (not for a question or a small change), ask with a choice block and wait for the answer:
+  ${FENCE}choice detail How detailed should the calculation in the sheet be?
+  brief: Briefly – formula, numbers and result
+  paper: As on paper – relations of the theory, derivation step by step
+  teaching: For teaching – also each step explained and checked in Python
+  ${FENCE}
+  Write the question and the answers in the user's language; keep the key "detail" and the values ${DETAIL_LEVELS.join(', ')}. The program shows the answers as buttons and keeps the choice in the calculation.
+${DETAIL_LEVELS.map((l) => DETAIL_RULES[l]).join('\n')}`;
+  return `How to write a calculation into the sheet:
+- Keep the assignment as it is (its text, given values, picture) and write the solution below it, under headings, one part of the task per heading, as ONE block that inserts it after the last line of the assignment: ${FENCE}change after <that line number>. A ${FENCE}sheet block opens a new file; use it only when the user asks for a new calculation, never for the solution of this one.
+${SHEET_RULES}
 ${level}
 - A question with answers the user picks from (not only the level of detail) may be asked the same way, without a key: ${FENCE}choice Which profile? then one answer per line, value: description.
 - You cannot write into the layers yourself. To keep text in the sources or in the AI notes (a check, a summary, a note for later), propose it as a block the user puts in with one click:

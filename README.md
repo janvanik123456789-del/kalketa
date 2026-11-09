@@ -24,6 +24,7 @@
 - **Formula library.** Insert → Formula from the library: 100 formulas from the samples, rearranged for the quantity you click, inserted with example values and their source.
 - **AI optional.** An assistant can explain, review and propose changes, which you accept or reject line by line, and check results in Python another way. It never changes the calculation by itself. Works with Claude or a local model, or not at all.
 - **AI from outside (MCP).** Your own AI application (Claude Code, Claude Desktop, a local model's app) can connect to Kalketa, read the open sheet and propose changes, on your own subscription, with no API key. Off until you switch it on, local only, with a token.
+- **AI from a plain chat.** Attach [`llms.txt`](https://raw.githubusercontent.com/janvanik123456789-del/kalketa/main/llms.txt) (the language of Kalketa for a model) to ChatGPT, Claude.ai or Gemini and say what to calculate. Paste the calculation of the answer into Kalketa with Ctrl+V, a table into a data layer, a script into the checks in Python.
 - **54 sample calculations** in all fields from structural design to pharmacokinetics, each in Czech and in English; 32 of them are worked examples from published sources (textbooks, university exercises, journals), linked to their source and verified independently.
 
 ![A printed calculation: section of a beam, pick from a table, checks](docs/images/print-beam.png)
@@ -43,6 +44,7 @@ npm install
 npm test             # all tests: unit, architecture rules, reference calculations
 npm run desktop      # build and start the desktop program
 npm run smoke        # the desktop program driven by real mouse and keyboard input
+npm run llms         # writes llms.txt again from the guide of the program (a test checks it matches)
 ```
 
 The packaged builds: `npm run dist --workspace @kalketa/desktop` (Windows), `npm run dist:linux --workspace @kalketa/desktop` (Linux).

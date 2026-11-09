@@ -297,12 +297,11 @@ export async function readSheetEntries(entries: Readonly<Record<string, Uint8Arr
     });
   }
 
-  layers = withoutEmptyAiLayer(
-    layers.map((l) => (layerTextPath(l) ? { ...l, text: layerTexts.get(l.id) ?? '' } : l)),
-    (id) => hasConversations(files, id),
-  );
+  const asSaved = layers.map((l) => (layerTextPath(l) ? { ...l, text: layerTexts.get(l.id) ?? '' } : l));
+  layers = withoutEmptyAiLayer(asSaved, (id) => hasConversations(files, id));
   const document: SheetDocument = { manifest, source: strFromU8(sheetBytes), layout, tables, files, layers, blocks, revisions };
-  if (manifest.contentHash && manifest.contentHash !== (await hashEntries(sheetEntries(document)))) {
+  // The hash is of the file as it was saved: an empty AI layer it held and that is left out when read changes nothing.
+  if (manifest.contentHash && manifest.contentHash !== (await hashEntries(sheetEntries({ ...document, layers: asSaved })))) {
     diagnostics.push(diagnostic('W-FILE-HASH', NO_SPAN));
   }
   return { document, diagnostics };

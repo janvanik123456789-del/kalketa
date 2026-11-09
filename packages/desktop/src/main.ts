@@ -20,6 +20,7 @@ import { registerAiBridge } from './ai.js';
 import { registerMcpBridge } from './mcp.js';
 import { allowCallStacks, enableCallStacks, registerDiagnostics, watchWindow, type HangWords } from './diagnostics.js';
 import { registerTheoryBridge } from './theory.js';
+import { registerAiExport } from './aiExport.js';
 import { systemFonts } from './fonts.js';
 import { pyodidePlace, PYTHON_PRELUDE, runPyodide, runSystemPython, scriptExcerpt, setPyodideLauncher, stopPyodide } from './python.js';
 
@@ -561,6 +562,7 @@ function registerBridge(): void {
   registerMcpBridge(fromEditor);
   registerDiagnostics(fromEditor);
   registerTheoryBridge(fromEditor, grantedTo);
+  registerAiExport(fromEditor);
   // A check of the calculation in Python: the built-in one (no files, no network) or, chosen in the settings and
   // confirmed in the editor before each run, Python of the computer. The editor puts result() before the script.
   ipcMain.handle('kalketa:python-run', async (event, request: { code: unknown; engine: unknown; ask?: { message?: unknown; run?: unknown; cancel?: unknown; more?: unknown } }) => {

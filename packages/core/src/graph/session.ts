@@ -473,6 +473,7 @@ export class SheetSession {
       results[later.at] = { statement: later.statement, ...result, diagnostics: [...later.parseDiagnostics, ...result.diagnostics] };
     }
 
+    markLookalikes(results);
     this.cache = nextCache;
     this.variantSessions = usedVariantSessions;
     const values = new Map<string, Value>();
@@ -1252,4 +1253,28 @@ function placesBeyondPrecision(display: DisplayValue, decimals: number): boolean
 /** How a line was read, without where it stands: a name or a unit, a call or a product. Part of its cache key. */
 function readingOf(statement: Statement): string {
   return JSON.stringify(statement, (key, value: unknown) => (key === 'span' || key.endsWith('Span') ? undefined : typeof value === 'bigint' ? value.toString() : value));
+}
+
+/**
+ * Letters of Cyrillic and Greek that look like Latin ones on the screen: а (Cyrillic) and a (Latin) are two names
+ * a reader cannot tell apart. Greek small letters that look their own (α, β, μ) are left out.
+ */
+const LOOKALIKES: Readonly<Record<string, string>> = {
+  а: 'a', е: 'e', о: 'o', р: 'p', с: 'c', у: 'y', х: 'x', і: 'i', ј: 'j', ѕ: 's', һ: 'h', ԁ: 'd',
+  А: 'A', В: 'B', Е: 'E', К: 'K', М: 'M', Н: 'H', О: 'O', Р: 'P', С: 'C', Т: 'T', Х: 'X', Ѕ: 'S', І: 'I', Ј: 'J',
+  Α: 'A', Β: 'B', Ε: 'E', Ζ: 'Z', Η: 'H', Ι: 'I', Κ: 'K', Μ: 'M', Ν: 'N', Ο: 'O', Ρ: 'P', Τ: 'T', Υ: 'Y', Χ: 'X', ο: 'o',
+};
+
+/** Two names defined in the sheet that look the same but are not (a and Cyrillic а): the later one is warned of. */
+function markLookalikes(results: StatementResult[]): void {
+  const seen = new Map<string, string>();
+  results.forEach((r, i) => {
+    const s = r.statement;
+    if (s.kind !== 'definition') return;
+    const looks = [...s.name].map((ch) => LOOKALIKES[ch] ?? ch).join('');
+    const other = seen.get(looks);
+    if (other !== undefined && other !== s.name) {
+      results[i] = { ...r, diagnostics: [...r.diagnostics, diagnostic('W-LOOKALIKE-NAME', s.nameSpan, { name: s.name, other })] };
+    } else if (other === undefined) seen.set(looks, s.name);
+  });
 }

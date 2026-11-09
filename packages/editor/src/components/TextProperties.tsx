@@ -65,8 +65,8 @@ export function TextProperties({ format, catalog, paletteRequest }: { format: Te
   }, [paletteRequest]);
   const value = (key: string) => format.attributes.get(key) ?? '';
   const keep = (e: { preventDefault(): void }) => e.preventDefault();
-  const button = (props: { id: string; title: string; on: boolean; run(): void; children: ReactNode }) => (
-    <button type="button" className={`text-prop-button${props.on ? ' on' : ''}`} data-text-prop={props.id} title={props.title} aria-pressed={props.on} onMouseDown={keep} onClick={props.run}>
+  const button = (props: { id: string; title: string; on: boolean; run(): void; children: ReactNode; disabled?: boolean }) => (
+    <button type="button" className={`text-prop-button${props.on ? ' on' : ''}`} data-text-prop={props.id} title={props.title} aria-pressed={props.on} disabled={props.disabled} onMouseDown={keep} onClick={props.run}>
       {props.children}
     </button>
   );
@@ -92,7 +92,8 @@ export function TextProperties({ format, catalog, paletteRequest }: { format: Te
       </label>
       {select('size', t(catalog, 'textStyle.size'), TEXT_SIZES.map((s) => [s, `${s} pt`]))}
       <div className="text-prop-row">
-        {button({ id: 'bold', title: `${t(catalog, 'textStyle.bold')} (Ctrl+B)`, on: format.bold, run: format.toggleBold, children: <b>B</b> })}
+        {/* A heading is bold by its style: its words cannot be made plain, only the line made normal text. */}
+        {button({ id: 'bold', title: format.level > 0 ? t(catalog, 'textStyle.headingBold') : `${t(catalog, 'textStyle.bold')} (Ctrl+B)`, on: format.level > 0 || format.bold, run: format.toggleBold, disabled: format.level > 0, children: <b>B</b> })}
         {button({ id: 'italic', title: `${t(catalog, 'textStyle.italic')} (Ctrl+I)`, on: format.italic, run: format.toggleItalic, children: <i>I</i> })}
       </div>
       {/* The colour of the marked words (of the line when none are marked). */}

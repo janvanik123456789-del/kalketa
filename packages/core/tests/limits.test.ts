@@ -312,3 +312,38 @@ describe('the nonlinear solver', () => {
     expect(solved('solve (x, y): x + y == 1, 2·x + 2·y == 2').codes).toEqual(['E-SOLVE-SINGULAR']);
   });
 });
+
+describe('tables', () => {
+  it('a key twice in the column is an error, not a value between two of its rows', () => {
+    const r = run('table D:\n    | x | y |\n    | 1 | 10 |\n    | 1 | 99 |\n    | 2 | 20 |\nv := interpolate(D, x: 1.5).y');
+    expect(errors(r)).toEqual(['E-TABLE-INTERPOLATE']);
+  });
+
+  it('read backwards along a column that goes up and down, it warns', () => {
+    const r = run('table Q:\n    | x | y |\n    | 1 | 10 |\n    | 2 | 30 |\n    | 3 | 20 |\nv := interpolate(Q, y: 25).x');
+    expect(r.diagnostics.map((d) => d.code)).toContain('W-TABLE-NOT-MONOTONIC');
+  });
+
+  it('an unsorted table is no warning', () => {
+    const r = run('table U:\n    | x | y |\n    | 3 | 30 |\n    | 1 | 10 |\n    | 2 | 20 |\nv := interpolate(U, x: 1.5).y');
+    expect(value(r, 'v')).toBe(15);
+    expect(r.diagnostics).toEqual([]);
+  });
+});
+
+describe('names that look alike', () => {
+  it('a Cyrillic а beside a Latin a is warned of', () => {
+    const r = run('a := 1\nа := 5');
+    expect(r.diagnostics.map((d) => [d.code, d.params['other']])).toEqual([['W-LOOKALIKE-NAME', 'a']]);
+  });
+
+  it('the micro sign of the keyboard is the Greek μ; NFD letters are NFC ones', () => {
+    expect(value(run('μ := 4\nr := µ + 1'), 'r')).toBe(5);
+    expect(value(run('délka := 3\nr := de\u0301lka + 1'), 'r')).toBe(4);
+  });
+
+  it('an invisible character is named by its code', () => {
+    const d = run('b := 2\nr := b\u200b + 1').diagnostics.find((x) => x.code === 'E-UNEXPECTED-CHAR')!;
+    expect(d.params['char']).toBe('U+200B');
+  });
+});

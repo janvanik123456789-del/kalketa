@@ -26,7 +26,9 @@ const GREEK: Readonly<Record<string, string>> = {
 
 const COMBINING_DOT_ABOVE = '̇';
 
-export function normalizeIdentifier(raw: string): string {
+export function normalizeIdentifier(given: string): string {
+  // The micro sign of the keyboard (µ, AltGr+M on a Czech one) is the Greek μ: μ := 4 then µ + 1 is the same name.
+  const raw = given.replace(/µ/g, 'μ');
   const alias = UNIT_ALIASES[raw];
   if (alias) return alias;
   // psi alone is the pressure unit of American handbooks (80 psi); ψ with an index stays spelled so (psi_1 → ψ_1).

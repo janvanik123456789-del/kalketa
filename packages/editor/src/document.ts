@@ -86,6 +86,7 @@ export interface DesktopBridge {
   save(request: { path?: string; current?: string; suggestedName: string; bytes: Uint8Array; openElsewhere?: string }): Promise<string | undefined>;
   print(html: string): Promise<boolean>;
   exportPdf(request: { html: string; suggestedName: string }): Promise<string | undefined>;
+  aiExport(request: { name: string; text: string; labels: { title: string; hint: string; folder: string } }): Promise<string>;
   /** Opens another editor window with an empty calculation. */
   newWindow(): Promise<void>;
   /** Where a dropped file lies on the disk ('' when it has no path). */

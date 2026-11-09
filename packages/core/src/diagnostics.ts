@@ -200,6 +200,8 @@ export const DIAGNOSTIC_SEVERITY = {
   'E-TABLE-NO-MATCH': 'error',
   'E-TABLE-INTERPOLATE': 'error',
   'W-EXTRAPOLATION': 'warning',
+  'W-LOOKALIKE-NAME': 'warning',
+  'W-TABLE-NOT-MONOTONIC': 'warning',
   'W-TABLE-ROWS-SKIPPED': 'warning',
   // Variants of a calculation (table Varianty: {variants=B}, compare(Varianty, M, σ))
   'E-VARIANT-UNKNOWN': 'error',

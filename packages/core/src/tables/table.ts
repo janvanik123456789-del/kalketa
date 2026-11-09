@@ -142,6 +142,15 @@ export function rowLabel(table: Table, row: number): string {
 }
 
 function parseUnit(text: string, registry: UnitRegistry): ResolvedUnit | undefined {
+  const unit = parseUnitAsWritten(text, registry);
+  if (unit) return unit;
+  // In the head of a column a digit right after a unit is its power, as typed on a keyboard without ³ and with ^ a dead
+  // key, and as Excel headers have it: kg/m3 is kg/m³, cm4 is cm⁴.
+  const powers = text.replace(/([\p{L}°Ω])([2-9])(?![\d.,])/gu, '$1^$2');
+  return powers !== text ? parseUnitAsWritten(powers, registry) : undefined;
+}
+
+function parseUnitAsWritten(text: string, registry: UnitRegistry): ResolvedUnit | undefined {
   const parsed = parse(`[${text}]`, { isUnit: (name) => registry.isUnit(name) });
   const statement = parsed.sheet.statements[0];
   if (parsed.diagnostics.length > 0 || statement?.kind !== 'display' || statement.expr.kind !== 'unit') return undefined;

@@ -359,9 +359,10 @@ export function SheetView(props: Props) {
       const b = segs.findIndex((s) => s.start === line);
       if (a >= 0 && b >= 0) setMarked(new Set(segs.slice(Math.min(a, b), Math.max(a, b) + 1).map((s) => s.start)));
     };
+    // Removed as they were added (pointer events): left on, every later move of the mouse marked rows again.
     const up = () => {
-      window.removeEventListener('mousemove', move);
-      window.removeEventListener('mouseup', up);
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
     };
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);

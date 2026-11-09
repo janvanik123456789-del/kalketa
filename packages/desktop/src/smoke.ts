@@ -12,6 +12,7 @@ import { tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { canSealKeys } from './ai.js';
+import { aiExportWindow } from './aiExport.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 
@@ -87,7 +88,7 @@ export async function runSmokeTest(pdfPath: string, context: SmokeContext): Prom
     await writeFile(pdfPath, pdf);
     ok =
       state.mathFont && state.bridge && state.sideBySide && state.menus === 8 && state.toolbars > 0 && state.rows > 10 && state.summary > 0 && state.math > 0 && reshapedColumns === 3 && pdf.length > 1000 &&
-      layers.deflection && layers.pickTaken.column.startsWith('→') && /mm|cm/.test(layers.pickTaken.text) && layers.newKeepsExample && layers.samplesOk && layers.derivations && layers.summaryOk && layers.definitionAtCursor && layers.sheetGridOk && layers.tableEnter && layers.solvedByFormula && layers.rootsAndExtremes && layers.userChart.ok && layers.relations.ok && layers.chartEdit && layers.quadraticSample.ok && layers.saveOnClose.ok && layers.wordPrinted && layers.wordColored && layers.paletteColored && layers.wordText.focused && layers.wordText.pane && layers.wordText.bold === 'dynamiky' && !layers.wordText.shown.includes('"') && layers.wordText.align === 'center' && layers.cellMarked === 'Síla na konci' && layers.systemFont !== '' && layers.cellFont.replace(/"/g, '').startsWith(layers.systemFont) && layers.cellDeleted && layers.paperRoots && layers.tableRowAdded && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.notesPicture === 'FIGURE+img BLOCKQUOTE' && layers.notesPlaced === 'narrower centred' && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.charts && layers.functionBar && layers.revisions && layers.roots && layers.toolIcons && layers.aiSettings && layers.aiChat && layers.mcp && layers.pdfCleanup && layers.theoryLibrary && layers.study && layers.sheetPicture.offered && layers.sheetPicture.described && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 4 && layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
+      layers.deflection && layers.pickTaken.column.startsWith('→') && /mm|cm/.test(layers.pickTaken.text) && layers.newKeepsExample && layers.samplesOk && layers.derivations && layers.summaryOk && layers.definitionAtCursor && layers.sheetGridOk && layers.tableEnter && layers.solvedByFormula && layers.rootsAndExtremes && layers.userChart.ok && layers.relations.ok && layers.chartEdit && layers.quadraticSample.ok && layers.saveOnClose.ok && layers.wordPrinted && layers.wordColored && layers.paletteColored && layers.wordText.focused && layers.wordText.pane && layers.wordText.bold === 'dynamiky' && !layers.wordText.shown.includes('"') && layers.wordText.align === 'center' && layers.cellMarked === 'Síla na konci' && layers.systemFont !== '' && layers.cellFont.replace(/"/g, '').startsWith(layers.systemFont) && layers.cellDeleted && layers.paperRoots && layers.tableRowAdded && layers.tabs === 4 && layers.used === 1 && layers.errors === 0 && layers.citations === 1 && layers.notesPicture === 'FIGURE+img BLOCKQUOTE' && layers.notesPlaced === 'narrower centred' && layers.aiReadOnly && layers.multi && layers.functions && layers.solved && layers.ownUnits && layers.complex && layers.finance && layers.money && layers.rod && layers.calculus && layers.matrices && layers.charts && layers.functionBar && layers.revisions && layers.roots && layers.toolIcons && layers.aiSettings && layers.aiChat && layers.mcp && layers.pdfCleanup && layers.theoryLibrary && layers.study && layers.sheetPicture.offered && layers.sheetPicture.described && layers.licences && layers.help && layers.pictures && layers.blocksOk !== false && layers.mainHidden && layers.twoLayers === 'layer3 layer4' && /^main:\d+ layer\d+\*:\d+$/.test(layers.split) && layers.addKinds === 4 && layers.aiDeletable && layers.aiMenu > 2 && layers.tableStrip && layers.pastedTable.added.length === 1 && layers.pastedTable.text.includes('IPE 220') && layers.cellPaste.heads.join() === 'Nazev,Rho' && layers.cellPaste.units.join() === 'kg/m³' && layers.cellPaste.cells.join() === 'ocel,7850,hlinik,2700' && layers.renamedTables.includes('Hustoty') && !layers.renamedTables.includes('Tabulka2') && layers.unusedTables.includes('Hustoty') && layers.unusedTables.includes('Tabulka') && !layers.tablesAfterDelete.includes('Hustoty') && layers.tablesAfterDelete.includes('Materialy') && !layers.aiTabWhileEmpty && !layers.aiTabAfterClose && layers.q.includes('16,73');
     ok = ok && insertMenu.ok && formulaLibrary.ok && rowTools.ok && controls.ok && typing.ok && imported.ok && start.shown && start.cards >= 20 && start.lead === 'R24-pruvodce-police' && start.pictures >= 12 && start.closed && start.tab === 'Vzor – Posouzení nosníku N1';
     console.log(JSON.stringify({ ok, start, insertMenu, formulaLibrary, rowTools, controls, typing, imported, ...state, reshapedColumns, layers, pdfBytes: pdf.length }));
   } catch (err) {
@@ -907,6 +908,54 @@ async function layersWithRealInput(picture: string) {
     `document.querySelectorAll('.layer-view.active .table-list .table-action').length === 2 && document.querySelector('.layer-view.active .table-list').getBoundingClientRect().height < 50`,
   )) as boolean;
   await takePicture(picture.replace(/[.]png$/, '-data.png'));
+  // A table of a model's answer (Markdown) pasted into the data layer by Ctrl+V: its name confirmed, a table of its own.
+  const tablesBefore = (await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .table-list button:not(.table-action)')].map((b) => b.textContent.trim())`)) as string[];
+  clipboard.writeText('Tabulka profilů:\n```\n| Profil | A [cm²] |\n|---|---:|\n| IPE 200 | 28.5 |\n| IPE 220 | 33.4 |\n```');
+  await clickOn('.layer-view.active .table-panel');
+  await pressKey('V', ['control']);
+  await pause(500);
+  await clickOn('.dialog-buttons button.default');
+  await pause(600);
+  const pastedTable = (await contents.executeJavaScript(`(() => {
+    const names = [...document.querySelectorAll('.layer-view.active .table-list button:not(.table-action)')].map((b) => b.textContent.trim());
+    return { names, added: names.filter((n) => !${JSON.stringify(tablesBefore)}.includes(n)), text: [...document.querySelectorAll('.layer-view.active .table-panel input')].map((i) => i.value).join(' ') };
+  })()`)) as { names: string[]; added: string[]; text: string };
+  // A table pasted into a cell of a new empty table, as into a spreadsheet: the table comes whole, its units with powers.
+  await clickOn('.layer-view.active .table-list .table-action');
+  await pause(400);
+  await clickOn('.dialog-buttons button.default');
+  await pause(600);
+  clipboard.writeText('| Nazev | Rho [kg/m3] |\n|---|---|\n| ocel | 7850 |\n| hlinik | 2700 |');
+  await clickOn('.layer-view.active .tables-view input[data-cell="0:0"]');
+  await pressKey('V', ['control']);
+  await pause(800);
+  const cellPaste = (await contents.executeJavaScript(`({
+    heads: [...document.querySelectorAll('.layer-view.active .tables-view thead .col-name')].map((h) => h.textContent),
+    units: [...document.querySelectorAll('.layer-view.active .tables-view input.unit')].map((u) => u.value),
+    cells: [...document.querySelectorAll('.layer-view.active .tables-view input[data-cell]')].map((i) => i.value),
+  })`)) as { heads: string[]; units: string[]; cells: string[] };
+  // The right button on the name of the table renames it.
+  await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .table-list button.active')].forEach((b) => b.setAttribute('data-smoke-rename', ''))`);
+  await clickOn('[data-smoke-rename]', [], 'right');
+  await pause(300);
+  await clickMenu('Přejmenovat');
+  await pause(400);
+  await pressKey('A', ['control']);
+  await typeText('Hustoty');
+  await clickOn('.dialog-buttons button.default');
+  await pause(600);
+  const renamedTables = (await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .table-list button:not(.table-action)')].map((b) => b.textContent.trim())`)) as string[];
+  // Tables no calculation reads are red in the strip (the sheet reads none of the two just made).
+  const unusedTables = (await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .table-list button.unused')].map((b) => b.textContent.trim())`)) as string[];
+  // The right button deletes a table too, after a question.
+  await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .table-list button')].find((b) => b.textContent.trim() === 'Hustoty')?.setAttribute('data-smoke-delete', '')`);
+  await clickOn('[data-smoke-delete]', [], 'right');
+  await pause(300);
+  await clickMenu('Smazat tabulku');
+  await pause(400);
+  await clickOn('.dialog-buttons button.default');
+  await pause(600);
+  const tablesAfterDelete = (await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .table-list button:not(.table-action)')].map((b) => b.textContent.trim())`)) as string[];
   await clickOn('.layer-tab[data-layer="main"]');
 
   // Side by side: Ctrl+click on the tab of the auxiliary calculation.
@@ -1202,6 +1251,12 @@ async function layersWithRealInput(picture: string) {
   await pause(200);
   const draggedRows = (await contents.executeJavaScript(`document.querySelectorAll('.layer-view.active .page .row.marked').length`)) as number;
   await pressKey('Escape');
+  // Once the button is up, moving the mouse over the line numbers marks nothing again (the drag is over).
+  for (let step = 0; step <= 4; step++) {
+    contents.sendInputEvent({ type: 'mouseMove', x: gutters[0]!.x, y: Math.round(gutters[1]!.y - ((gutters[1]!.y - gutters[0]!.y) * step) / 4) });
+    await pause(50);
+  }
+  const markedAfterDrag = (await contents.executeJavaScript(`document.querySelectorAll('.layer-view.active .page .row.marked').length`)) as number;
   // Ctrl+A outside a line marks every row of the sheet, never the text of the whole window.
   await pressKey('A', ['control']);
   await pause(300);
@@ -1218,7 +1273,7 @@ async function layersWithRealInput(picture: string) {
   await pause(400);
   const rowsAfterDelete = (await contents.executeJavaScript(rowsNow)) as number;
   const definitionAtCursor =
-    typedDefs.errors === 0 && typedDefs.rows[0]!.includes('≔2') && typedDefs.rows[1]!.includes('=3') && typedDefs.indexed && greekCapital && /=3,3[45]/.test(formatted) && bothFormatted[0]!.includes('2,3') && !bothFormatted[0]!.includes('2,34') && bothFormatted[1]!.includes('=3,3') && !bothFormatted[1]!.includes('3,34') && roundedOn.endsWith('=3,3') && equationNumber === '(1)' && positionShown === 'Pos. 1' && positionGone && italicText.includes('italic') && draggedRows === 3 && selectedAll.marked > 10 && selectedAll.windowText === 0 && markedRows === 3 && rowsAfterDelete === rowsBeforeDefs;
+    typedDefs.errors === 0 && typedDefs.rows[0]!.includes('≔2') && typedDefs.rows[1]!.includes('=3') && typedDefs.indexed && greekCapital && /=3,3[45]/.test(formatted) && bothFormatted[0]!.includes('2,3') && !bothFormatted[0]!.includes('2,34') && bothFormatted[1]!.includes('=3,3') && !bothFormatted[1]!.includes('3,34') && roundedOn.endsWith('=3,3') && equationNumber === '(1)' && positionShown === 'Pos. 1' && positionGone && italicText.includes('italic') && draggedRows === 3 && markedAfterDrag === 0 && selectedAll.marked > 10 && selectedAll.windowText === 0 && markedRows === 3 && rowsAfterDelete === rowsBeforeDefs;
 
   // solve without an interval: the unknown is expressed by a formula, its unit comes from it;
   // the right button puts the formula in as a definition.
@@ -2664,6 +2719,13 @@ async function layersWithRealInput(picture: string) {
     pythonCheck = (await contents.executeJavaScript(`({ summary: document.querySelector('.layer-view.active .python-summary')?.textContent ?? '', rows: document.querySelectorAll('.layer-view.active .python-compare tbody tr').length, agree: document.querySelectorAll('.layer-view.active .python-compare tr.agree').length })`)) as typeof pythonCheck;
   }
   await takePicture(picture.replace(/[.]png$/, '-python.png'));
+  // A script of a model's answer pasted into the checks by Ctrl+V: a script of its own, with its button to run it.
+  const scriptsBefore = (await contents.executeJavaScript(`document.querySelectorAll('.layer-view.active .python-run').length`)) as number;
+  clipboard.writeText('Ověření:\n```python\n# kontrola vložením\nresult("pi", 3.14159, "")\n```');
+  await clickOn('.layer-view.active h1, .layer-view.active h2, .layer-view.active p');
+  await pressKey('V', ['control']);
+  await pause(800);
+  const pastedScript = { before: scriptsBefore, after: (await contents.executeJavaScript(`document.querySelectorAll('.layer-view.active .python-run').length`)) as number };
   // Rows copied into another calculation by Ctrl+C and Ctrl+V: the given values of R15 and its picture, marked by
   // Ctrl+click and Shift+click; the new calculation gets the picture file too.
   await contents.executeJavaScript(`[...document.querySelectorAll('.layer-tab')].find((t) => t.textContent.includes('List'))?.setAttribute('data-smoke-sheet', '')`);
@@ -2700,6 +2762,48 @@ async function layersWithRealInput(picture: string) {
   }
   await takePicture(picture.replace(/[.]png$/, '-rows-pasted.png'));
   const rowsCopy = { marked: copyMarked, copied: copiedText.split('\n').length, newTab: tabsAfter - copyTabsBefore, ...pastedRows };
+  // A whole calculation of a chat with its own title, pasted into a new sheet: its title takes the place of the new one.
+  await pressKey('N', ['control']);
+  await pause(1200);
+  clipboard.writeText('# Činka z chatu\nm_c := 2 kg\n');
+  await pressKey('V', ['control']);
+  // A title (#) of the sheet is an h2 of the page: h1 is the title of a printout.
+  const readTitles = async () => (await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .page h2')].map((h) => h.textContent.trim())`)) as string[];
+  let chatTitle = await readTitles();
+  for (let i = 0; i < 30 && !(chatTitle.length === 1 && chatTitle[0] === 'Činka z chatu'); i++) {
+    await pause(250);
+    chatTitle = await readTitles();
+  }
+  // What the sheet holds, for a failure: the rows as shown.
+  const chatRows = (await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .row[data-line]')].map((r) => r.dataset.line + ':' + r.textContent.trim().slice(0, 40)).slice(0, 6)`)) as string[];
+  await takePicture(picture.replace(/[.]png$/, '-chat-title.png'));
+  // The same calculation whole again, as a chat returns it: Kalketa asks, and "Replace" puts it in place of all.
+  clipboard.writeText('# Činka z chatu\nm_c := 3 kg\nV_c := 2 l\n');
+  await clickOn('.layer-view.active .page');
+  await pressKey('V', ['control']);
+  await pause(600);
+  const replaceAsked = (await contents.executeJavaScript(`document.querySelector('.dialog')?.textContent ?? ''`)) as string;
+  await clickOn('.dialog-buttons button.default');
+  await pause(800);
+  const replaced = (await contents.executeJavaScript(`({
+    titles: [...document.querySelectorAll('.layer-view.active .page h2')].map((h) => h.textContent.trim()),
+    rows: [...document.querySelectorAll('.layer-view.active .row[data-line]')].map((r) => r.textContent.replace(/\\s+/g, '')).filter((t) => /mc|Vc/.test(t)),
+  })`)) as { titles: string[]; rows: string[] };
+  const chatReplace = { asked: replaceAsked.includes('Nahradit celý výpočet'), ...replaced };
+  // Export for AI from the File menu: the file written, a small window holding it to drag into a chat.
+  await clickOn('.menubar-item:nth-child(1) > button');
+  await clickMenu('Exportovat pro AI');
+  await pause(1500);
+  const exportWindow = aiExportWindow();
+  const exportFile = join(tmpdir(), 'Kalketa pro AI', 'Činka z chatu – AI.md');
+  const exportText = existsSync(exportFile) ? readFileSync(exportFile, 'utf8') : '';
+  const aiExport = {
+    window: !!exportWindow && exportWindow.isVisible(),
+    file: exportText.includes('m_c := 3 kg') && exportText.includes('## Checklist before every answer') && exportText.includes('Toto je výpočet v programu Kalketa'),
+    hint: exportWindow ? ((await exportWindow.webContents.executeJavaScript(`document.body.textContent`)) as string).includes('Přetáhněte soubor') : false,
+  };
+  if (exportWindow) await writeFile(picture.replace(/[.]png$/, '-ai-export.png'), (await exportWindow.webContents.capturePage()).toPNG());
+  exportWindow?.close();
   // A rocket: Meščerskij's equation as a relation, the fuel rate derived under it, its flight in charts.
   await clickOn('.menubar-item:nth-child(1) > button');
   await clickMenu('Vzorové příklady');
@@ -3245,7 +3349,7 @@ async function layersWithRealInput(picture: string) {
   const chartDialog = { offered: offeredLine, chosen: chosenLine, preview: dialogPreview, added: chartsAfter - chartsBefore };
   const quadraticSample = {
     crank,
-    theory: { theoryTab, tankErrors, theoryChecks, theoryWithoutPython, pythonCheck, rowsCopy, rocket, parabola, thermistor, vibration, exactRoots, boat, guide, heatLoss, variants, fieldSamples, meanAsOnPaper, sourceLink, surfacesSample, fitDialog, chartLook, surfaceMap, surface3d, surfaceCut, chartDialog },
+    theory: { theoryTab, tankErrors, theoryChecks, theoryWithoutPython, pythonCheck, pastedScript, rowsCopy, chatTitle, chatRows, chatReplace, aiExport, rocket, parabola, thermistor, vibration, exactRoots, boat, guide, heatLoss, variants, fieldSamples, meanAsOnPaper, sourceLink, surfacesSample, fitDialog, chartLook, surfaceMap, surface3d, surfaceCut, chartDialog },
     across,
     beam,
     slowTyping,
@@ -3257,7 +3361,7 @@ async function layersWithRealInput(picture: string) {
     outOfDomain,
     wholeSlider,
     english,
-    ok: !!thumb && wholeSlider.offered && /^a≔[−-]?\d+$/.test(wholeSlider.value) && wholeSlider.value !== 'a≔5' && sampleBefore.errors === 0 && sampleAfter.errors === 0 && sampleBefore.a !== '' && sampleAfter.a !== sampleBefore.a && sampleAfter.roots !== sampleBefore.roots && outOfDomain.drawn && !outOfDomain.area && outOfDomain.roots === 0 && !outOfDomain.error && outOfDomain.warned && english.head === 'Quadratic equation' && english.verdicts.length === 5 && english.verdicts.every((v) => v.endsWith('OK')) && english.errors === 0 && crank.pictures === 4 && crank.charts === 3 && crank.errors === 0 && crank.verdict.endsWith('VYHOVUJE') && slowTyping.waitingShown && slowTyping.settled && cube.pictures === 1 && cube.derived >= 5 && cube.errors === 0 && beam.pictures === 3 && beam.charts >= 4 && beam.errors === 0 && across.before && !across.after && theoryTab >= 1 && tankErrors === 0 && theoryChecks.blocks >= 4 && theoryChecks.bad === 0 && theoryWithoutPython && pythonCheck.rows === 4 && pythonCheck.agree === 4 && rowsCopy.marked === 6 && rowsCopy.rows === 3 && rowsCopy.picture === 1 && rowsCopy.status.startsWith('chyba: 0') && rocket.errors === 0 && rocket.charts >= 2 && parabola.errors === 0 && parabola.charts >= 2 && parabola.normal >= 2 && thermistor.errors === 0 && thermistor.charts >= 3 && heatLoss.errors === 0 && heatLoss.table && heatLoss.fits && heatLoss.total && heatLoss.outside && variants.before.errors === 0 && variants.before.picture && variants.before.chosen.join() === "50mm,50mm" && /50mm/.test(variants.before.note) && variants.before.total.includes("237,5") && variants.after.errors === 0 && variants.after.chosen.join() === "20mm,20mm" && /20mm/.test(variants.after.note) && variants.after.total.includes("282,3") && fieldSamples.length === 8 && fieldSamples.every((s) => s.errors === 0 && s.pictures >= 1 && s.blocks > 10) && meanAsOnPaper && sourceLink.opened === 'https://www.fs.cvut.cz/content/files/12102/2024nejistotypriklady.pdf' && sourceLink.lineClosed && guide.dragged && guide.navigation.ok && guide.before.errors === 0 && guide.before.pictures >= 1 && guide.before.charts >= 1 && guide.before.failing === 0 && guide.after.errors === 0 && guide.after.failing >= 1 && guide.after.span !== guide.before.span && boat.errors === 0 && /chyba: 0/.test(boat.status) && /varování: 0/.test(boat.status) && boat.shift && boat.charts >= 3 && vibration.errors === 0 && vibration.wide === 0 && vibration.roots && !vibration.plusMinus && exactRoots && latexPasted.line === "F_max := 2,5·4/sqrt(4)" && latexPasted.inside === "F_max := 2,5·4/sqrt(4) + π·r^2" && latexCopy.readable && latexCopy.framed === 1 && surfacesSample.errors === 0 && surfacesSample.maps >= 4 && surfacesSample.solids >= 6 && surfacesSample.verdicts >= 5 && fitDialog.ok && chartLook.ok && surfaceMap.ok && surface3d.shown && surface3d.turning && surface3d.kept && surface3d.errors === 0 && surfaceCut.line && surfaceCut.panel && surfaceCut.title && chartDialog.offered === 'plot(w(x, y), x: 0 m .. a, y: 0 m .. b)' && chartDialog.chosen === 'plot(w(x, y), x: 0 m .. a, y: 0 m .. b, kind: "surface")' && chartDialog.preview && chartDialog.added === 1,
+    ok: !!thumb && wholeSlider.offered && /^a≔[−-]?\d+$/.test(wholeSlider.value) && wholeSlider.value !== 'a≔5' && sampleBefore.errors === 0 && sampleAfter.errors === 0 && sampleBefore.a !== '' && sampleAfter.a !== sampleBefore.a && sampleAfter.roots !== sampleBefore.roots && outOfDomain.drawn && !outOfDomain.area && outOfDomain.roots === 0 && !outOfDomain.error && outOfDomain.warned && english.head === 'Quadratic equation' && english.verdicts.length === 5 && english.verdicts.every((v) => v.endsWith('OK')) && english.errors === 0 && crank.pictures === 4 && crank.charts === 3 && crank.errors === 0 && crank.verdict.endsWith('VYHOVUJE') && slowTyping.waitingShown && slowTyping.settled && cube.pictures === 1 && cube.derived >= 5 && cube.errors === 0 && beam.pictures === 3 && beam.charts >= 4 && beam.errors === 0 && across.before && !across.after && theoryTab >= 1 && tankErrors === 0 && theoryChecks.blocks >= 4 && theoryChecks.bad === 0 && theoryWithoutPython && pythonCheck.rows === 4 && pythonCheck.agree === 4 && pastedScript.after === pastedScript.before + 1 && rowsCopy.marked === 6 && rowsCopy.rows === 3 && rowsCopy.picture === 1 && rowsCopy.status.startsWith('chyba: 0') && chatTitle.length === 1 && chatTitle[0] === 'Činka z chatu' && chatReplace.asked && chatReplace.titles.length === 1 && chatReplace.rows.length === 2 && aiExport.window && aiExport.file && aiExport.hint && rocket.errors === 0 && rocket.charts >= 2 && parabola.errors === 0 && parabola.charts >= 2 && parabola.normal >= 2 && thermistor.errors === 0 && thermistor.charts >= 3 && heatLoss.errors === 0 && heatLoss.table && heatLoss.fits && heatLoss.total && heatLoss.outside && variants.before.errors === 0 && variants.before.picture && variants.before.chosen.join() === "50mm,50mm" && /50mm/.test(variants.before.note) && variants.before.total.includes("237,5") && variants.after.errors === 0 && variants.after.chosen.join() === "20mm,20mm" && /20mm/.test(variants.after.note) && variants.after.total.includes("282,3") && fieldSamples.length === 8 && fieldSamples.every((s) => s.errors === 0 && s.pictures >= 1 && s.blocks > 10) && meanAsOnPaper && sourceLink.opened === 'https://www.fs.cvut.cz/content/files/12102/2024nejistotypriklady.pdf' && sourceLink.lineClosed && guide.dragged && guide.navigation.ok && guide.before.errors === 0 && guide.before.pictures >= 1 && guide.before.charts >= 1 && guide.before.failing === 0 && guide.after.errors === 0 && guide.after.failing >= 1 && guide.after.span !== guide.before.span && boat.errors === 0 && /chyba: 0/.test(boat.status) && /varování: 0/.test(boat.status) && boat.shift && boat.charts >= 3 && vibration.errors === 0 && vibration.wide === 0 && vibration.roots && !vibration.plusMinus && exactRoots && latexPasted.line === "F_max := 2,5·4/sqrt(4)" && latexPasted.inside === "F_max := 2,5·4/sqrt(4) + π·r^2" && latexCopy.readable && latexCopy.framed === 1 && surfacesSample.errors === 0 && surfacesSample.maps >= 4 && surfacesSample.solids >= 6 && surfacesSample.verdicts >= 5 && fitDialog.ok && chartLook.ok && surfaceMap.ok && surface3d.shown && surface3d.turning && surface3d.kept && surface3d.errors === 0 && surfaceCut.line && surfaceCut.panel && surfaceCut.title && chartDialog.offered === 'plot(w(x, y), x: 0 m .. a, y: 0 m .. b)' && chartDialog.chosen === 'plot(w(x, y), x: 0 m .. a, y: 0 m .. b, kind: "surface")' && chartDialog.preview && chartDialog.added === 1,
   };
   const userChart = { namedArea, quadOk, quadTarget, quadEnd, quadEditing, ok: namedArea === 'Integral1=27' && quadOk && quadTarget > 0 && Math.abs(quadEnd - quadTarget) < 12 };
   // Relations: a circle solved by its name, a derivation following from a relation of theory, and the circle
@@ -3372,7 +3476,7 @@ async function layersWithRealInput(picture: string) {
   // The folder of the file saved last is where the open and save dialogs start next time.
   const folderKept = lastFolder() === dirname(resolve(tabFile));
   const saveOnClose = { closeButtons, keptOnCancel, savedOnClose, windowSaved, folderKept, ok: closeButtons.join('|') === 'Uložit|Neukládat|Zrušit' && keptOnCancel && savedOnClose && windowSaved && folderKept };
-  return { ...state, pickTaken, deflection, derivations, summaryOk, summaryOpens, summaryAtEnd, bookStyle, verdictFuture, verdictBack, pageHead, definitionAtCursor, solveFormatted, sheetGridOk, sheetGrid, tableEnter, tableEnterAt, lastRowEnter, draggedRows, selectedAll, bothFormatted, roundedOn, equationNumber, solvedByFormula, rootsAndExtremes, wordText, wordColored, paletteColored, wordPrinted, cellMarked, cellFont, systemFont, cellDeleted, paperRoots, tableRowAdded, chartSteps, samplesOk, sampleTab, newKeepsExample, citations, notesPicture, notesPlaced, split, mainHidden, twoLayers, addKinds, tableStrip, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, rootSteps, toolIcons, aiSettings, aiChat, mcp, pdfCleanup, theoryLibrary, study, sheetPicture, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, placedFree, strictPlaced, canvasOk, besideText, pictures, blocksOk, userChart, quadraticSample, saveOnClose, relations: relationsOk, chartEdit: chartEdit.ok, chartEditSteps: chartEdit };
+  return { ...state, pickTaken, deflection, derivations, summaryOk, summaryOpens, summaryAtEnd, bookStyle, verdictFuture, verdictBack, pageHead, definitionAtCursor, solveFormatted, sheetGridOk, sheetGrid, tableEnter, tableEnterAt, lastRowEnter, draggedRows, markedAfterDrag, selectedAll, bothFormatted, roundedOn, equationNumber, solvedByFormula, rootsAndExtremes, wordText, wordColored, paletteColored, wordPrinted, cellMarked, cellFont, systemFont, cellDeleted, paperRoots, tableRowAdded, chartSteps, samplesOk, sampleTab, newKeepsExample, citations, notesPicture, notesPlaced, split, mainHidden, twoLayers, addKinds, tableStrip, pastedTable, cellPaste, renamedTables, unusedTables, tablesAfterDelete, aiTabWhileEmpty, aiTabAfterClose, second, firstKept, documents, newWindow, oneCopy, multi, userFunction, functions, solved, ownUnits, complex, finance, money, rod, calculus, matrices, charts, chartTip, functionBar, templateLine, revisions, roots, rootSteps, toolIcons, aiSettings, aiChat, mcp, pdfCleanup, theoryLibrary, study, sheetPicture, cubeLine, rootLine, frozen, verifiedText, statusAfterFreeze, statusDraft, footerDraft, comparedText, licences, aiReadOnly, aiDeletable, aiMenu, help, pasted, resized, dropped, fileCopied, pastedIdle, shownAfterPaste, pictureMenu, sideGroup, widened, movedPicture, wrapped, cleared, unwrapped, placedFree, strictPlaced, canvasOk, besideText, pictures, blocksOk, userChart, quadraticSample, saveOnClose, relations: relationsOk, chartEdit: chartEdit.ok, chartEditSteps: chartEdit };
 }
 
 /** The tidied sources saved as a library (.kalkt) and attached in the chat: the model cites it by its key. */

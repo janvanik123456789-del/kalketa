@@ -57,6 +57,8 @@ export interface CommandContext {
     revisions(): void;
     print(): void;
     exportPdf(): void;
+    aiExport(): void;
+    copyForAi(): void;
     example(): void;
     /** The start screen: a new calculation, a file, a sample, a recent file. */
     start(): void;
@@ -127,6 +129,7 @@ export function buildCommands(ctx: CommandContext): Map<string, Command> {
   add('file.revisions', 'file', a.revisions);
   add('file.print', 'file', a.print, { shortcut: 'Ctrl+P' });
   add('file.pdf', 'file', a.exportPdf, { enabled: ctx.desktop });
+  add('file.aiExport', 'file', a.aiExport);
   add('file.example', 'file', a.example);
   add('file.start', 'file', a.start);
   add('file.importSmath', 'file', () => a.importSmathFile());
@@ -136,6 +139,7 @@ export function buildCommands(ctx: CommandContext): Map<string, Command> {
   add('edit.redo', 'edit', a.redo, { shortcut: 'Ctrl+Y', enabled: ctx.canRedo });
   add('edit.cut', 'edit', () => a.clipboard('cut'), { shortcut: 'Ctrl+X' });
   add('edit.copy', 'edit', () => a.clipboard('copy'), { shortcut: 'Ctrl+C' });
+  add('edit.copyForAi', 'edit', a.copyForAi);
   add('edit.paste', 'edit', () => a.clipboard('paste'), { shortcut: 'Ctrl+V' });
   add('edit.duplicateLine', 'edit', a.duplicateLine, { shortcut: 'Ctrl+D' });
   add('edit.deleteLine', 'edit', a.deleteLine, { shortcut: 'Ctrl+Shift+K' });

@@ -94,6 +94,15 @@ function columnOf(table: Table, name: string, span: Span): Value {
   return { type: 'vector', items };
 }
 
+/** A numeric column that only grows or only falls from row to row (empty cells skipped); at least three values. */
+function monotonicByRow(table: Table, index: number): boolean {
+  const values = table.rows.map((cells) => cells[index] ?? null).flatMap((cell) => (cell?.type === 'quantity' ? [cell.si] : []));
+  if (values.length < 3) return true;
+  const up = values.every((v, i) => i === 0 || v > values[i - 1]!);
+  const down = values.every((v, i) => i === 0 || v < values[i - 1]!);
+  return up || down;
+}
+
 function interpolate(call: CallExpr, table: Table, ctx: EvalContext, evaluate: Evaluate): Value {
   if (call.args.length === 1 && call.named.length === 2) return interpolate2(call, table, ctx, evaluate);
   if (call.args.length !== 1 || call.named.length !== 1) {
@@ -112,6 +121,15 @@ function interpolate(call: CallExpr, table: Table, ctx: EvalContext, evaluate: E
     .filter((p): p is { row: number; cell: Quantity } => p.cell?.type === 'quantity')
     .sort((a, b) => a.cell.si - b.cell.si);
   if (points.length < 2) fail('E-TABLE-INTERPOLATE', arg.nameSpan, { table: table.name, column: arg.name, problem: 'too-few-rows' });
+  // x = 1 twice (10 and 99): which row holds is not said, between any two (59,5 from one of them) means nothing.
+  if (points.some((p, i) => i > 0 && near(p.cell.si, points[i - 1]!.cell.si))) {
+    fail('E-TABLE-INTERPOLATE', arg.nameSpan, { table: table.name, column: arg.name, problem: 'duplicate-x' });
+  }
+  // Read backwards (the x of a y) in a table ordered by another column, where this one goes up and down: y = 20 lies
+  // between more pairs of rows than the one taken.
+  if (!monotonicByRow(table, index) && table.columns.some((c, other) => other !== index && c.type === 'quantity' && monotonicByRow(table, other))) {
+    ctx.warnings.push(diagnostic('W-TABLE-NOT-MONOTONIC', arg.nameSpan, { table: table.name, column: arg.name }));
+  }
   if (!sameDim(points[0]!.cell.dim, x.dim)) {
     fail('E-UNIT-MISMATCH', arg.value.span, { operator: 'interpolate', left: baseUnitSymbol(points[0]!.cell.dim), right: baseUnitSymbol(x.dim) });
   }

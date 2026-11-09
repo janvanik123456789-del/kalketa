@@ -28,7 +28,8 @@
     "test:chart": "vitest run packages/chart",
     "smoke:chart": "node scripts/smoke-chart.mjs",
     "smoke:linux": "wsl.exe -d Ubuntu -- bash scripts/smoke-linux.sh",
-    "notices": "node scripts/third-party-notices.mjs"
+    "notices": "node scripts/third-party-notices.mjs",
+    "llms": "node scripts/llms-txt.mjs"
   },
   "engines": {
     "node": ">=24"

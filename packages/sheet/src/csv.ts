@@ -76,3 +76,27 @@ export function writeCsv(rows: readonly (readonly string[])[], delimiter = ','):
   const quote = (cell: string) => (/[",;\t\r\n]/.test(cell) || cell !== cell.trim() ? `"${cell.replace(/"/g, '""')}"` : cell);
   return rows.map((row) => row.map(quote).join(delimiter)).join('\n') + '\n';
 }
+
+/**
+ * A table from text pasted from elsewhere: cells of Excel (tabs), CSV, or a table of a model's answer written in
+ * Markdown (| a | b | with a |---| line under its head), also inside a ``` block. Undefined when the text is no
+ * table of at least two columns and a row under its head, every row as wide as the head.
+ */
+export function pastedTable(text: string): string[][] | undefined {
+  const fenced = /```[^\n]*\n([\s\S]*?)```/.exec(text);
+  const body = (fenced ? fenced[1]! : text).replace(/\r\n?/g, '\n').trim();
+  if (!body.includes('\n')) return undefined;
+  const lines = body.split('\n').map((l) => l.trim()).filter((l) => l !== '');
+  let rows: string[][];
+  if (lines.every((l) => l.startsWith('|'))) {
+    // Markdown: the cells between the bars; the line of dashes under the head is no row.
+    rows = lines
+      .filter((l) => !/^\|[\s:|-]+\|?$/.test(l))
+      .map((l) => l.replace(/^\|/, '').replace(/\|$/, '').split('|').map((c) => c.trim()));
+  } else {
+    rows = parseCsv(lines.join('\n')).map((r) => r.map((c) => c.trim()));
+  }
+  const width = rows[0]?.length ?? 0;
+  if (rows.length < 2 || width < 2 || rows.some((r) => r.length !== width)) return undefined;
+  return rows;
+}

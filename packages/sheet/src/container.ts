@@ -331,12 +331,12 @@ export function sheetEntries(doc: SheetDocument): [string, Uint8Array][] {
   }
   // A picture of the sources no text refers to any more (a cut-out of a confirmed formula, a
   // picture deleted) is not saved: the file gets smaller as the sources are worked through.
-  const texts = [doc.source, ...doc.layers.map((l) => l.text ?? '')];
-  const sources = new Set(doc.layers.filter((l) => l.kind === 'sources').map((l) => l.id));
-  const unused = (path: string) => {
-    const own = /^layers\/([^/]+)\/images\//.exec(path);
-    return !!own && sources.has(own[1]!) && !texts.some((text) => text.includes(path));
-  };
+  // The same for pictures of the sheet and of other layers: a picture replaced or deleted stayed in
+  // the file (Cinka3.kalk of 2026-11-09 kept 3 unused pictures, 2.3 MB). Pictures of tables and
+  // canvases are not looked at: they are found by other means than their path in a text.
+  const texts = [doc.source, ...doc.layers.map((l) => l.text ?? ''), ...[...doc.blocks.values()].map((b) => b.source)];
+  const unused = (path: string) =>
+    (path.startsWith('images/sheet/') || /^layers\/[^/]+\/images\//.test(path)) && !texts.some((text) => text.includes(path));
   for (const path of [...doc.files.keys()].sort()) {
     if (!isSafePath(path)) throw new Error(`Unsafe path in sheet document: ${path}`);
     if (unused(path)) continue;

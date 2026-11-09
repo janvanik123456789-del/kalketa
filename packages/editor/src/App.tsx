@@ -2405,15 +2405,21 @@ export function App() {
         void picturesRef.current(found, target, line);
       });
     };
+    // A script of Python pasted into the text of the checks (not into a block of code there): a script of its own.
+    // Caught before the text editor gets it: on the way up it had already put the script in as text, with its
+    // # and ** escaped, above the kept script (Cinka3.kalk, 2026-11-09).
+    const pasteScript = (e: ClipboardEvent) => {
+      if (dialogOpen.current) return;
+      const target = e.target as HTMLElement | null;
+      if (!target?.closest?.('.notes-word') || target.closest('pre')) return;
+      if (pasteIntoLayerRef.current((e.clipboardData?.getData('text/plain') ?? '').replace(/\r\n?/g, '\n'), true)) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
     const paste = (e: ClipboardEvent) => {
       if (dialogOpen.current) return;
-      const inWord = (e.target as HTMLElement | null)?.closest?.('.notes-word');
-      // A script of Python pasted into the text of the checks (not into a block of code there): a script of its own.
-      if (inWord && !(e.target as HTMLElement).closest('pre') && pasteIntoLayerRef.current((e.clipboardData?.getData('text/plain') ?? '').replace(/\r\n?/g, '\n'), true)) {
-        e.preventDefault();
-        return;
-      }
-      if (inWord) return;
+      if ((e.target as HTMLElement | null)?.closest?.('.notes-word')) return;
       const data = e.clipboardData;
       // Rows pasted into an empty line being edited (a new calculation opens with one): they become rows, not one line.
       const row = (e.target as HTMLElement | null)?.closest?.('textarea.row-editor');
@@ -2459,10 +2465,12 @@ export function App() {
     window.addEventListener('dragover', over);
     window.addEventListener('drop', drop);
     window.addEventListener('paste', paste);
+    window.addEventListener('paste', pasteScript, true);
     return () => {
       window.removeEventListener('dragover', over);
       window.removeEventListener('drop', drop);
       window.removeEventListener('paste', paste);
+      window.removeEventListener('paste', pasteScript, true);
     };
   }, []);
 

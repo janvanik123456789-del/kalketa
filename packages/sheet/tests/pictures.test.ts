@@ -38,6 +38,6 @@ describe('pictures of the sources no text refers to', () => {
       ]),
     };
     const read = await readSheetFile(await writeSheetFile(doc));
-    expect([...read.document!.files.keys()].sort()).toEqual(['images/sheet/unused.png', 'layers/layer3/images/obrazek-s36.png']);
+    expect([...read.document!.files.keys()].sort()).toEqual(['layers/layer3/images/obrazek-s36.png']);
   });
 });

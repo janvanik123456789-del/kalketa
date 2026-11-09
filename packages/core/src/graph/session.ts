@@ -24,7 +24,7 @@ import { DIMENSIONLESS_NAME } from '../lang/parser.js';
 import { DIMENSIONLESS, dim, type Dimension } from '../units/dimension.js';
 import type { BlockCaller, BlockSource } from '../eval/blocks.js';
 import { TABLE_TOTAL, type BinaryOperator, type Expr, type Inequality, type LineFormat, type Sheet, type Statement } from '../lang/ast.js';
-import { parse } from '../lang/parser.js';
+import { MAX_EXPRESSION_DEPTH, parse } from '../lang/parser.js';
 import { buildTable, rowLabel, type ColumnSchema, type Table, type TableBuildResult, type TableRead } from '../tables/table.js';
 import { COMPARE_FUNCTION } from '../eval/tables.js';
 import { isDimensionless, sameDim } from '../units/dimension.js';
@@ -137,6 +137,11 @@ export interface UpdateOptions {
   readonly blockStack?: readonly string[];
   /** The variant to calculate, by the name of its table: a run of compare(Varianty, …), whose own lines are left out. */
   readonly variants?: ReadonlyMap<string, string>;
+  /**
+   * What text may cite: ids of the sources sections (T3) and keys of the theory libraries linked (PP:).
+   * Without it the citations of text are not checked (a sheet calculated on its own, without its layers).
+   */
+  readonly citable?: ReadonlySet<string>;
 }
 
 type EnvEntry = { readonly ok: true; readonly value: Value } | { readonly ok: false };
@@ -210,6 +215,8 @@ export class SheetSession {
     const usesRelations = (statement: Statement, text: string) =>
       relations.length > 0 &&
       ((statement.kind === 'derive' && !statement.relation) || (statement.kind === 'definition' && !!statement.derivation) || relationNames.some((name) => wordIn(text, name)));
+    // (#hooke) in text refers to {eq=hooke} of any line, above or below.
+    const equationNames = new Set(statements.flatMap((s) => (typeof s.format?.eq === 'string' ? [s.format.eq] : [])));
     const env = context.env;
     const results: StatementResult[] = [];
     const drawnLater: { at: number; statement: Extract<Statement, { kind: 'display' }>; parseDiagnostics: Diagnostic[] }[] = [];
@@ -307,7 +314,7 @@ export class SheetSession {
           if (table) return { type: 'table', table };
           const at = definedAt.get(name);
           if (at !== undefined && at > index) throw new CalcError(diagnostic('E-DEFINED-LATER', span, { name }));
-          throw new CalcError(diagnostic('E-UNDEFINED', span, { name }));
+          throw new CalcError(undefinedName(name, span));
         };
         const built = sheetTable(statement, context.registry, outer);
         env.set(statement.name, { ok: true, value: { type: 'table', table: built.table } });
@@ -343,7 +350,8 @@ export class SheetSession {
         return;
       }
       if (statement.kind !== 'definition' && statement.kind !== 'display' && statement.kind !== 'check' && statement.kind !== 'solve' && statement.kind !== 'derive') {
-        results.push({ statement, status: 'none', ...none, diagnostics: parseDiagnostics });
+        const textDiagnostics = statement.kind === 'text' || statement.kind === 'heading' ? textReferences(statement, source, equationNames, options.citable) : [];
+        results.push({ statement, status: 'none', ...none, diagnostics: [...parseDiagnostics, ...textDiagnostics] });
         return;
       }
 
@@ -384,6 +392,8 @@ export class SheetSession {
       // The format of the line ({decimals=2 rounded}) is not in its span, yet rounded changes its value.
       const key =
         source.slice(statement.span.offset, statement.span.offset + statement.span.length) +
+        // The same text may be read otherwise: q·L^2 has L a litre while no L is defined, a length once one is.
+        `\u0000${readingOf(statement)}` +
         (given ? `\u0000${fingerprint(given)}` : '') +
         (unitsKey ? `\u0000${unitsKey}` : '') +
         (statement.format?.rounded ? `\u0000${JSON.stringify(statement.format)}` : '') +
@@ -636,7 +646,20 @@ export class SheetSession {
     return { status: 'ok', dependencies: result.dependencies, diagnostics: [...result.diagnostics] };
   }
 
+  /**
+   * One line; a calculation nested deeper than the stack holds (a chain of 2000 functions each calling the one
+   * before) is an error of that line, not the end of the whole sheet.
+   */
   private evaluateStatement(statement: Evaluable, context: StatementContext, definedAt: ReadonlyMap<string, number>, index: number): PartialResult {
+    try {
+      return this.evaluateStatementOnce(statement, context, definedAt, index);
+    } catch (err) {
+      if (!(err instanceof RangeError)) throw err;
+      return { status: 'error', dependencies: [], tableReads: [], diagnostics: [diagnostic('E-EXPR-DEPTH', statement.span, { depth: MAX_EXPRESSION_DEPTH })] };
+    }
+  }
+
+  private evaluateStatementOnce(statement: Evaluable, context: StatementContext, definedAt: ReadonlyMap<string, number>, index: number): PartialResult {
     const { env, tables, imports } = context;
     const dependencies: string[] = [];
     const tableReads: TableRead[] = [];
@@ -657,7 +680,7 @@ export class SheetSession {
         if (table) return { type: 'table', table };
         const at = definedAt.get(name);
         if (at !== undefined && at > index) throw new CalcError(diagnostic('E-DEFINED-LATER', span, { name }));
-        throw new CalcError(diagnostic('E-UNDEFINED', span, { name }));
+        throw new CalcError(undefinedName(name, span));
       },
     };
 
@@ -834,7 +857,10 @@ export class SheetSession {
         dependencies,
         tableReads,
         // 2·π·n·M in any order: the warning of its n·M does not hold.
-        diagnostics: writesPi(statement.expr) ? ctx.warnings.filter((w) => w.code !== 'W-TURNS-IN-POWER') : ctx.warnings,
+        diagnostics: [
+          ...(writesPi(statement.expr) ? ctx.warnings.filter((w) => w.code !== 'W-TURNS-IN-POWER') : ctx.warnings),
+          ...(display && statement.format?.decimals !== undefined && placesBeyondPrecision(display, statement.format.decimals) ? [diagnostic('I-DECIMALS-PRECISION', statement.span, { decimals: statement.format.decimals })] : []),
+        ],
       };
     } catch (err) {
       if (err instanceof DependencyFailed) {
@@ -1180,4 +1206,50 @@ function wordIn(text: string, name: string): boolean {
     at = text.indexOf(name, at + 1);
   }
   return false;
+}
+
+/** A name without a value; a built-in function written without its brackets (c := sqrt) says so. */
+function undefinedName(name: string, span: Span): Diagnostic {
+  return isBuiltinFunction(name) ? diagnostic('E-FUNCTION-UNCALLED', span, { name }) : diagnostic('E-UNDEFINED', span, { name });
+}
+
+/**
+ * What a line of text refers to and the sheet does not have: (#name) of an equation no line names, a citation [T9] or
+ * [XX:T9] of a section or library the sheet has not got. Printed, either would stay as written, unnoticed.
+ */
+function textReferences(statement: Extract<Statement, { kind: 'text' | 'heading' }>, source: string, equations: ReadonlySet<string>, citable: ReadonlySet<string> | undefined): Diagnostic[] {
+  const found: Diagnostic[] = [];
+  const line = source.slice(statement.span.offset, statement.span.offset + statement.span.length);
+  const at = (index: number, length: number): Span => ({ offset: statement.span.offset + index, length, line: statement.span.line, column: statement.span.column + index });
+  for (const m of line.matchAll(/\(#([\p{L}_][\p{L}\p{N}_]*)\)/gu)) {
+    if (!equations.has(m[1]!)) found.push(diagnostic('W-EQ-REF-UNKNOWN', at(m.index, m[0].length), { name: m[1]! }));
+  }
+  if (citable && statement.kind === 'text') {
+    const close = Math.max(line.lastIndexOf('"'), line.lastIndexOf('“'), line.lastIndexOf('”'));
+    for (const id of statement.cites ?? []) {
+      const key = id.includes(':') ? `${id.slice(0, id.indexOf(':'))}:` : undefined;
+      if (citable.has(id) || (key && citable.has(key))) continue;
+      const index = line.indexOf(`[${id}]`, close >= 0 ? close : 0);
+      found.push(diagnostic('W-CITE-UNKNOWN', index >= 0 ? at(index, id.length + 2) : statement.span, { id }));
+    }
+  }
+  return found;
+}
+
+/**
+ * {decimals=4} on a value that would need more significant digits than a calculation holds (15): shown with an
+ * exponent instead, and said so. An exact whole number (20!) has all its digits and is written in full.
+ */
+function placesBeyondPrecision(display: DisplayValue, decimals: number): boolean {
+  if (display.im || display.whole !== undefined) return false;
+  const abs = Math.abs(display.value);
+  if (!Number.isFinite(abs) || abs < 1e-4) return false;
+  const shown = Math.floor(Math.log10(abs)) + 1 + decimals;
+  // Below 10⁹ up to 17 digits are written as asked (13 983 816,00000000); past them the places are cut to 15 digits.
+  return abs >= 1e9 ? shown > 15 : shown > 17;
+}
+
+/** How a line was read, without where it stands: a name or a unit, a call or a product. Part of its cache key. */
+function readingOf(statement: Statement): string {
+  return JSON.stringify(statement, (key, value: unknown) => (key === 'span' || key.endsWith('Span') ? undefined : typeof value === 'bigint' ? value.toString() : value));
 }

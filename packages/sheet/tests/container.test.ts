@@ -9,6 +9,7 @@ import {
   isSafePath,
   newDocument,
   readSheetFile,
+  UNPACK_LIMITS,
   writeSheetFile,
   type SheetDocument,
 } from '../src/index.js';
@@ -117,6 +118,8 @@ describe('.calc container', () => {
     expect(bomb.length).toBeLessThan(10_000);
     expect((await readSheetFile(bomb, { bytes: 1_000_000, entries: 100 })).diagnostics.map((d) => [d.code, d.params['problem']])).toEqual([['E-FILE-INVALID', 'too-large']]);
     expect((await readSheetFile(zipSync(Object.fromEntries(Array.from({ length: 30 }, (_, i) => [`f${i}`, strToU8('x')]))), { bytes: 1_000_000, entries: 20 })).diagnostics[0]?.params['problem']).toBe('too-large');
+    // By default 256 MB: 300 MB of zeros in 300 kB is refused before it is unpacked.
+    expect(UNPACK_LIMITS.bytes).toBe(256 * 1024 * 1024);
     expect(await codes(zipSync({ 'a.txt': strToU8('x') }))).toEqual([['E-FILE-INVALID', 'missing']]);
     expect(await codes(zipSync({ 'manifest.json': strToU8('{') }))).toEqual([['E-FILE-INVALID', 'json']]);
     expect(await codes(zipSync({ 'manifest.json': strToU8('{"format":"other"}') }))).toEqual([['E-FILE-INVALID', 'format']]);

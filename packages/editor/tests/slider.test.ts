@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { inputNumber, sliderStep, sliderValue, withInputNumber } from '../src/logic/slider.js';
+import { inputNumber, isWholeSlider, sliderStep, sliderValue, wholeSliderText, withInputNumber } from '../src/logic/slider.js';
 
 describe('the slider of an input', () => {
   it('finds the plain number of the line, with its unit and marks after it', () => {
@@ -18,5 +18,21 @@ describe('the slider of an input', () => {
     expect(sliderValue({ low: -5, high: 5 }, 0.637)).toBe(1.4);
     expect(sliderValue({ low: -5, high: 5, step: 0.5 }, 0.637)).toBe(1.5);
     expect(sliderValue({ low: -5, high: 5 }, 2)).toBe(5);
+  });
+
+  it('counts its steps from its start, never past its ends', () => {
+    // 1 .. 1000 by 10: 1, 11, 21 …; it gave 0 at its start before.
+    expect(sliderValue({ low: 1, high: 1000 }, 0)).toBe(1);
+    expect(sliderValue({ low: 1, high: 1000 }, 0.5)).toBe(501);
+    expect(sliderValue({ low: 1, high: 1000 }, 1)).toBe(1000);
+    expect(sliderValue({ low: 0.25, high: 1.25, step: 0.5 }, 0.6)).toBe(0.75);
+  });
+
+  it('takes whole numbers only when asked', () => {
+    expect(isWholeSlider({ low: 1, high: 1000, step: 1 })).toBe(true);
+    expect(isWholeSlider({ low: 1, high: 1000 })).toBe(false);
+    expect(wholeSliderText({ low: -2.5, high: 7.5 }, true)).toBe('-2..7..1');
+    expect(wholeSliderText({ low: 1, high: 1000, step: 1 }, false)).toBe('1..1000');
+    expect(sliderValue({ low: 1, high: 1000, step: 1 }, 0.3337)).toBe(334);
   });
 });

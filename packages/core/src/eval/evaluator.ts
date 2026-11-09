@@ -51,6 +51,8 @@ export interface EvalContext {
 
 /** Relative tolerance for comparisons, so 0.1 + 0.2 == 0.3 holds. */
 const COMPARE_EPSILON = 1e-12;
+/** A sum or difference this small against its operands is rounding only (8 units of the last digit of double precision). */
+const CANCELLATION = 8 * Number.EPSILON;
 
 /** While above 0, products and powers compose no unit to show (see withoutShownUnits). */
 let hintsOff = 0;
@@ -100,7 +102,8 @@ export function evaluate(expr: Expr, ctx: EvalContext): Value {
   const value = evaluateRaw(expr, ctx);
   if (value.type === 'quantity' && (!Number.isFinite(value.si) || !Number.isFinite(value.im ?? 0))) fail('E-NOT-FINITE', expr.span);
   if (expr.kind === 'binary') noteFractionBeforeUnit(expr, ctx);
-  if (expr.kind === 'call' && expr.name === 'exp' && value.type === 'quantity' && value.si === 0) warnUnderflow(expr.span, ctx);
+  // exp and erfc are never zero: a zero of theirs is a number below the range (erfc(30) is 2.6e-393).
+  if (expr.kind === 'call' && UNDERFLOWING.has(expr.name) && value.type === 'quantity' && value.si === 0) warnUnderflow(expr.span, ctx);
   if (expr.kind === 'call' && hintsOff === 0 && TANGENTS.has(expr.name) && value.type === 'quantity' && !value.im && Math.abs(value.si) > POLE_SIZE) warnOnce(diagnostic('W-POLE', expr.span, { function: expr.name }), ctx);
   return value;
 }
@@ -126,6 +129,12 @@ function noteFractionBeforeUnit(expr: Extract<Expr, { kind: 'binary' }>, ctx: Ev
   const unit = formatUnit(right.unit);
   warnOnce(diagnostic('W-FRACTION-BEFORE-UNIT', expr.span, { written: `${left.value}/${right.value} ${unit}`, left: left.value, right: right.value, unit }), ctx);
 }
+
+/** From this exponent on, a power of a base that is no whole number keeps fewer than 10 significant digits. */
+const POWER_WARNING_EXPONENT = 1e6;
+
+/** Functions without a zero: a result of 0 from them is one below the range of numbers. */
+const UNDERFLOWING: ReadonlySet<string> = new Set(['exp', 'erfc']);
 
 /** A result too small for a number, not a true zero: 44^(-1e5). The points of an integral stay silent. */
 function warnUnderflow(span: Span, ctx: EvalContext): void {
@@ -377,7 +386,7 @@ function matrixBinary(op: BinaryOperator, left: Value, right: Value, leftExpr: E
     if (left.type !== 'matrix') return fail('E-TYPE', rightExpr.span, { expected: 'number', found: 'matrix' });
     const n = asQuantity(right, rightExpr.span);
     if (!isDimensionless(n.dim) || !Number.isInteger(n.si) || n.si < -1) fail('E-DOMAIN', rightExpr.span, { function: '^' });
-    if (n.si === -1) return inverseOf(left, leftExpr.span, '^');
+    if (n.si === -1) return inverseOf(left, leftExpr.span, '^', (d) => ctx.warnings.push(d));
     if (left.rows !== left.cols) fail('E-MATRIX-SQUARE', leftExpr.span, { function: '^', rows: left.rows, cols: left.cols });
     if (n.si === 0) return matrix(left.rows, left.cols, left.items.map((_, k) => quantity(Math.floor(k / left.cols) === k % left.cols ? 1 : 0)));
     let power: MatrixValue = left;
@@ -515,7 +524,13 @@ function arithmetic(op: BinaryOperator, left: Value, right: Value, leftExpr: Exp
       const half = b.exact && b.exact.num === 1n && b.exact.den === 2n && b.exact.root === 1n;
       const exactly = a.exact && !a.absolute && b.exact ? (half ? X.squareRoot(a.exact) : b.exact.den === 1n && b.exact.root === 1n ? X.power(a.exact, Number(b.exact.num)) : undefined) : undefined;
       if (a.si !== 0 && a.si ** b.si === 0) warnUnderflow(span, ctx);
-      return quantity(a.si ** b.si, powerDim(a.dim, b.si), { ...(hintsOff ? {} : poweredHint(a, b.si)), ...(exactly ? { exact: exactly } : {}) });
+      const powered = a.si ** b.si;
+      // (1 + 1/n)^n for n = 1e15 is 3.035, not e: the rounding of the base in its last digit grows with the exponent,
+      // to |b|·ε of the result. A whole base is held exactly and loses nothing (2^1000000 overflows instead).
+      if (hintsOff === 0 && Math.abs(b.si) >= POWER_WARNING_EXPONENT && !Number.isInteger(a.si) && powered !== 0 && Number.isFinite(powered)) {
+        warnOnce(diagnostic('W-POWER-PRECISION', span, { exponent: b.si, digits: Math.max(0, Math.floor(-Math.log10(Number.EPSILON * Math.abs(b.si)))) }), ctx);
+      }
+      return quantity(powered, powerDim(a.dim, b.si), { ...(hintsOff ? {} : poweredHint(a, b.si)), ...(exactly ? { exact: exactly } : {}) });
     }
     default:
       return compare(op, a, b, span);
@@ -620,7 +635,10 @@ function addSubtract(op: '+' | '-', a: Quantity, b: Quantity, span: Span, ctx: E
   if (!sameDim(a.dim, b.dim)) {
     fail('E-UNIT-MISMATCH', span, { operator: op, left: writtenUnit(a), right: writtenUnit(b) });
   }
-  const si = op === '+' ? a.si + b.si : a.si - b.si;
+  const raw = op === '+' ? a.si + b.si : a.si - b.si;
+  // 30.000000000000029 kN − 30 kN: what is left of two nearly equal numbers below a few units of their last digit
+  // has no digit of its own; it is zero, not 2.9E-14 kN printed as a result.
+  const si = Math.abs(raw) <= CANCELLATION * Math.max(Math.abs(a.si), Math.abs(b.si)) ? 0 : raw;
   const sum = a.exact && b.exact ? (op === '+' ? X.add(a.exact, b.exact) : X.subtract(a.exact, b.exact)) : undefined;
   const exact = sum ? { exact: sum } : {};
 
@@ -653,7 +671,7 @@ function addSubtract(op: '+' | '-', a: Quantity, b: Quantity, span: Span, ctx: E
 }
 
 /** A whole power keeps the unit: (20 mm)² is 400 mm², (2 kN/m)² is 4 (kN/m)². */
-function poweredHint(a: Quantity, exponent: number): { hint?: ResolvedUnit } {
+export function poweredHint(a: Quantity, exponent: number): { hint?: ResolvedUnit } {
   // x^0.5 and x^(1/3) as √x and ∛x: (mm²)^0.5 = mm.
   const root = exponent > 0 && exponent < 1 && !a.absolute ? Math.round(1 / exponent) : 0;
   if (root > 1 && Math.abs(1 / exponent - root) < 1e-9) {

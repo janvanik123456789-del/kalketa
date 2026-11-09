@@ -463,6 +463,7 @@ export const UI_KEYS = [
   'chart.roots',
   'slider.set',
   'slider.ask',
+  'slider.whole',
   'slider.off',
   'chart.points',
   'chart.pointsAsk',

@@ -91,11 +91,38 @@ export function composedHint(op: '*' | '/', a: ResolvedUnit, b: ResolvedUnit, un
 
 const composed = new WeakMap<UnitNames, Map<string, { readonly unit: ResolvedUnit | undefined }>>();
 
+/** One name for K, °C and Δ°C in a composed unit: they are of one size there. */
+const KELVIN_LIKE = '\u0000K';
+
+/** The terms with K, °C and Δ°C taken together under one name, their powers added. */
+function kelvinLike(terms: Map<string, number>): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const [name, e] of terms) {
+    const key = name === 'K' || name === '°C' || name === 'Δ°C' ? KELVIN_LIKE : name;
+    out.set(key, (out.get(key) ?? 0) + e);
+  }
+  for (const [name, e] of out) if (e === 0) out.delete(name);
+  return out;
+}
+
 function composeUnit(op: '*' | '/', a: ResolvedUnit, b: ResolvedUnit, units: UnitNames, value?: number): { unit: ResolvedUnit | undefined; byValue: boolean } {
   const none = { unit: undefined, byValue: false };
-  const ta = unitTerms(a.symbol);
-  const tb = unitTerms(b.symbol);
+  const read = (symbol: string) => {
+    const terms = unitTerms(symbol);
+    return terms && kelvinLike(terms);
+  };
+  const ta = read(a.symbol);
+  const tb = read(b.symbol);
   if (!ta || !tb) return none;
+  // A degree Celsius inside a unit (W/(m·°C)) is a kelvin in size: W/(m·°C)·Δ°C/m is W/m², not kg/s³. Left over
+  // alone it is a difference written in degrees Celsius: 2 °C/m · 3 m = 6 Δ°C.
+  const celsius = [a.symbol, b.symbol].some((s) => s.includes('°C'));
+  for (const terms of [ta, tb]) {
+    const e = terms.get(KELVIN_LIKE);
+    if (e === undefined) continue;
+    terms.delete(KELVIN_LIKE);
+    terms.set(celsius ? 'Δ°C' : 'K', e);
+  }
   const terms = new Map(ta);
   for (const [name, e] of tb) terms.set(name, (terms.get(name) ?? 0) + (op === '*' ? e : -e));
   for (const [name, e] of terms) if (e === 0) terms.delete(name);

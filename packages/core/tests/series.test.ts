@@ -11,7 +11,7 @@ const list = (source: string) => {
 
 describe('series', () => {
   it('are written in brackets, with a unit after them', () => {
-    expect(list('[1, 2, 3] m =')).toEqual([
+    expect(list('[1, 2, 3] m =')).toMatchObject([
       { value: 1, unit: 'm' },
       { value: 2, unit: 'm' },
       { value: 3, unit: 'm' },
@@ -36,7 +36,7 @@ describe('series', () => {
   });
 
   it('are shown in one unit, also after "|"', () => {
-    expect(list('[1000, 2500] mm | m =')).toEqual([
+    expect(list('[1000, 2500] mm | m =')).toMatchObject([
       { value: 1, unit: 'm' },
       { value: 2.5, unit: 'm' },
     ]);

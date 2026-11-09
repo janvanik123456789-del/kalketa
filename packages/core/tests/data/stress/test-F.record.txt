@@ -1,0 +1,56 @@
+1 heading: none
+2 text: none
+4 heading: none
+5 definition f_a: 2
+6 definition f_b: 0.886227
+7 definition f_c: 1.5708
+8 definition f_d: 1
+9 definition f_e: 0.5
+10 definition f_f: 16.3097
+11 definition f_g: 1.64393
+12 definition f_h: 21.5
+14 heading: none
+15 definition f_i: [3]
+16 solve: ok
+17 definition f_k: 3
+18 definition f_l: 25 m²
+19 definition f_m: 2.19722 s
+21 heading: none
+22 definition f_n: 7
+23 definition f_o: [2]
+24 definition A_f: 2×2
+25 definition f_p: [2]
+26 definition K_f: 2×2
+27 definition M_f: 2×2
+28 definition f_q: [2]
+29 definition chem: 5×6
+30 definition f_r: [6]
+32 heading: none
+33 definition f_s: 5
+34 definition f_t: 2.13809
+35 definition f_u: 0.975002
+36 definition f_v: 2.09302
+37 definition f_w: 0.94999
+38 definition f_x: 0.765198
+39 definition f_y: 0.842701
+40 definition f_z: 24
+41 definition f_aa: 13983800
+42 definition f_ab: 0.649611
+43 definition f_ac: 0.224042
+44 definition rad: [20000]
+45 definition f_ae: -0.00727398
+47 heading: none
+48 table Mer: ok
+55 definition lin_f: ok
+56 definition f_af: 6.05
+57 definition f_ag: 3.375
+58 definition f_ah: ok
+59 definition f_ai: 3.375
+61 heading: none
+62 definition Z_f: 3 Ω
+63 definition f_aj: 5 Ω
+64 definition f_ak: 53.1301 °
+65 definition f_al: 27.6 A
+66 definition R_v: 66.6667 Ω
+67 definition f_am: 314.159 rad/s
+68 definition f_an: 3600000 J

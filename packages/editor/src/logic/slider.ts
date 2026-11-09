@@ -24,8 +24,29 @@ export function sliderStep(slider: { readonly low: number; readonly high: number
 export function sliderValue(slider: { readonly low: number; readonly high: number; readonly step?: number }, share: number): number {
   const step = sliderStep(slider);
   const v = slider.low + Math.min(1, Math.max(0, share)) * (slider.high - slider.low);
-  const decimals = Math.max(0, -Math.floor(Math.log10(step) + 1e-9));
-  return Number((Math.round(v / step) * step).toFixed(Math.min(12, decimals)));
+  const decimals = Math.max(0, -Math.floor(Math.log10(step) + 1e-9), placesOf(slider.low));
+  // Steps counted from the start of the slider: 1 .. 1000 by 10 is 1, 11, 21 …, never 0 below its start.
+  const onStep = slider.low + Math.round((v - slider.low) / step) * step;
+  return Number(Math.min(slider.high, Math.max(slider.low, onStep)).toFixed(Math.min(12, decimals)));
+}
+
+/** Places after the decimal point of a number as written: 2 of 0.25, 0 of 3. */
+function placesOf(x: number): number {
+  const text = String(x);
+  return text.includes('.') && !text.includes('e') ? text.length - text.indexOf('.') - 1 : 0;
+}
+
+/** Whole numbers only: a slider whose step is 1 from a whole start. */
+export function isWholeSlider(slider: { readonly low: number; readonly high: number; readonly step?: number }): boolean {
+  return slider.step === 1 && Number.isInteger(slider.low);
+}
+
+/** The slider attribute ("1..1000..1") for whole numbers, or without the step again; the bounds become whole. */
+export function wholeSliderText(slider: { readonly low: number; readonly high: number; readonly step?: number }, whole: boolean): string {
+  if (!whole) return `${slider.low}..${slider.high}`;
+  const low = Math.ceil(slider.low);
+  const high = Math.max(low + 1, Math.floor(slider.high));
+  return `${low}..${high}..1`;
 }
 
 /** The line with another number in place of its own. */

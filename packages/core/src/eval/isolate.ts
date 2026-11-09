@@ -155,6 +155,8 @@ function polynomial(expr: Expr, x: string, at: Span, max: number): (Expr | undef
         case '^': {
           // A whole power: a product of the base with itself.
           const n = expr.right.kind === 'number' && !expr.right.unit ? expr.right.value : undefined;
+          // x^0 is 1, as a polynomial written out term by term has it (… + 2·x^0).
+          if (a && n === 0) return [{ kind: 'number', value: 1, span: expr.span }];
           if (!a || n === undefined || !Number.isInteger(n) || n < 1 || (a.length - 1) * n > max) return undefined;
           let product: Expr = expr.left;
           for (let i = 1; i < n; i++) product = { kind: 'binary', operator: '*', left: product, right: expr.left, span: expr.span };

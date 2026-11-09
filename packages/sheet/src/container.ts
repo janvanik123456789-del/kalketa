@@ -162,7 +162,9 @@ export async function writeSheetFile(doc: SheetDocument): Promise<Uint8Array> {
 }
 
 /** How much a file may unpack to: a small archive of zeros (a ZIP bomb) does not fill the memory. */
-export const UNPACK_LIMITS = { bytes: 1024 * 1024 * 1024, entries: 20_000 };
+// 256 MB: a sheet with its pictures and sources is far below it, and a 300 kB archive of 300 MB of zeros (which
+// took about 940 MB of memory to open) is refused (decided 2026-11-09; it was 1 GB).
+export const UNPACK_LIMITS = { bytes: 256 * 1024 * 1024, entries: 20_000 };
 
 export async function readSheetFile(bytes: Uint8Array, limits = UNPACK_LIMITS): Promise<ReadResult> {
   let raw: Record<string, Uint8Array>;

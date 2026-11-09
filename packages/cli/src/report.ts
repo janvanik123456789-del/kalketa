@@ -14,7 +14,7 @@ import {
   type StatementResult,
   type TraceNode,
 } from '@kalketa/core';
-import { formatDiagnostic, formatNumber, formatValue as formatQuantityValue, t, type Catalog } from '@kalketa/i18n';
+import { formatDiagnostic, formatNumber, formatUtilization, formatValue as formatQuantityValue, t, type Catalog } from '@kalketa/i18n';
 
 export interface ReportOptions {
   readonly catalog: Catalog;
@@ -126,7 +126,7 @@ function formatCheckValues(check: CheckResult, options: ReportOptions): string {
   if (check.left && check.right && check.operator) {
     parts.push(`→ ${formatQuantity(check.left, options)} ${OPERATOR_SYMBOLS[check.operator]} ${formatQuantity(check.right, options)}`);
   }
-  if (check.utilization !== undefined) parts.push(formatPercent(check.utilization, options));
+  if (check.utilization !== undefined) parts.push(formatUtilization(check.utilization, check.passed, options.catalog));
   parts.push(t(options.catalog, check.passed ? 'checks.passed' : 'checks.failed'));
   if (check.source) parts.push(`[${check.source}]`);
   return parts.join('   ');
@@ -140,7 +140,7 @@ function formatCheckSummary(result: SheetResult, options: ReportOptions): string
     const evaluated = statement.check !== undefined;
     return [
       name,
-      c.utilization !== undefined ? formatPercent(c.utilization, options) : '',
+      c.utilization !== undefined ? formatUtilization(c.utilization, c.passed, catalog) : '',
       evaluated ? t(catalog, c.passed ? 'checks.passed' : 'checks.failed') : t(catalog, 'checks.notEvaluated'),
       c.source ?? '',
     ];
@@ -203,7 +203,8 @@ function formatValue(r: StatementResult, options: ReportOptions, source: string)
     const written = s.format?.decimals ?? (s.kind === 'definition' && !s.target && s.format?.digits === undefined ? writtenPlaces(source, s.expr) : undefined);
     // {digits=3} on the line: its own significant digits, an amount of money then without forced cents, as in the printout.
     const own: ReportOptions = s.format?.digits !== undefined ? { ...options, digits: s.format.digits, money: 'whole' } : options;
-    return formatDisplay(r.display.value, r.display.unit, written === undefined ? own : { ...own, decimals: written }, r.display.im);
+    const exactWhole = r.display.im ? undefined : r.display.whole;
+    return formatDisplay(r.display.value, r.display.unit, written === undefined ? own : { ...own, decimals: written }, r.display.im, exactWhole);
   }
   if (r.value?.type === 'boolean') return options.catalog.terms[String(r.value.value)] ?? String(r.value.value);
   if (r.value?.type === 'text') return JSON.stringify(r.value.value);
@@ -238,12 +239,9 @@ function formatQuantity(q: Quantity, options: ReportOptions): string {
   return formatDisplay(shown.value, shown.unit, options, shown.im);
 }
 
-function formatDisplay(value: number, unit: string, options: ReportOptions, im?: number): string {
+function formatDisplay(value: number, unit: string, options: ReportOptions, im?: number, exactWhole?: bigint): string {
   // An amount of money keeps its whole part: 643 212 USD.
   const whole = !!unit && !!defaultRegistry.resolve(unit)?.currency;
-  return formatQuantityValue(value, im, unit, options.catalog, { ...(options.decimals !== undefined ? { decimals: options.decimals } : options.digits !== undefined ? { digits: options.digits } : {}), ...(whole ? { whole, ...(options.money !== 'whole' ? { cents: true } : {}) } : {}) });
+  return formatQuantityValue(value, im, unit, options.catalog, { ...(options.decimals !== undefined ? { decimals: options.decimals, ...(exactWhole !== undefined ? { exactWhole } : {}) } : options.digits !== undefined ? { digits: options.digits } : {}), ...(whole ? { whole, ...(options.money !== 'whole' ? { cents: true } : {}) } : {}) });
 }
 
-function formatPercent(ratio: number, options: ReportOptions): string {
-  return `${formatNumber(ratio * 100, options.catalog, { digits: 4 })} %`;
-}

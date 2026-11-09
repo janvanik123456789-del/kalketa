@@ -5,7 +5,7 @@
  */
 
 import { rootHint } from '../units/compose.js';
-import { squareRoot, type Exact } from '../values/exact.js';
+import { exact, squareRoot, type Exact } from '../values/exact.js';
 import { fail } from '../diagnostics.js';
 import { dim, DIMENSIONLESS, isDimensionless, multiplyDims, powerDim, sameDim } from '../units/dimension.js';
 import type { ResolvedUnit } from '../units/unitExpr.js';
@@ -279,8 +279,14 @@ export const MATH: readonly FunctionDef[] = [
       const n = a.number(0);
       if (!Number.isInteger(n) || n < 0 || n > 170) a.domain(0);
       let result = 1;
-      for (let i = 2; i <= n; i++) result *= i;
-      return quantity(result);
+      let product = 1n;
+      for (let i = 2; i <= n; i++) {
+        result *= i;
+        product *= BigInt(i);
+      }
+      // Its exact form as far as one is kept (to 27!, below 10³⁰): {decimals=0} then writes every digit, {exact} too.
+      const form = exact(product);
+      return quantity(result, DIMENSIONLESS, form ? { exact: form } : {});
     },
   },
 ];

@@ -8,13 +8,14 @@
  * units at all; eigenvalues need one unit for the whole matrix.
  */
 
-import { diagnostic, fail, type Span } from '../diagnostics.js';
+import { diagnostic, fail, type Diagnostic, type Span } from '../diagnostics.js';
 import { DIMENSIONLESS, divideDims, isDimensionless, multiplyDims, powerDim, sameDim, type Dimension } from '../units/dimension.js';
 import { baseUnitSymbol } from '../units/display.js';
 import { quantity, type MatrixValue, type Quantity, type Value, type VectorValue } from '../values/value.js';
 import { exact, solveLinear, type Exact } from '../values/exact.js';
 import { complexDet, complexLu, complexSolve, eigenvalues, eigenvector, fractionOf, molarMass, singularValues, size, type C } from './general.js';
 import type { Args, FunctionDef } from './registry.js';
+import { poweredHint } from '../eval/evaluator.js';
 
 /** The largest system lsolve also solves in exact fractions. */
 const EXACT_SOLVE_SIZE = 12;
@@ -22,6 +23,8 @@ const EXACT_SOLVE_SIZE = 12;
 const LOST_DIGITS_CONDITION = 1e11;
 /** Above this the inverse that tells the condition number takes longer than the solution; a large mesh is seldom the case. */
 const MAX_CONDITION_SIZE = 300;
+/** About 1/ε of double precision: a condition number above it is no longer measured. */
+const BEYOND_DOUBLE_CONDITION = 1e15;
 
 // ---------------------------------------------------------------- building
 
@@ -177,6 +180,14 @@ function lu(a: number[][], smallest = 1e-14): { lu: number[][]; perm: number[]; 
     }
   }
   return { lu: m, perm, sign };
+}
+
+/**
+ * No LU: a pivot exactly zero (rows dependent) or one lost in rounding, which double precision cannot tell from zero
+ * (the Hilbert matrix of 14: rows nearly dependent, not dependent). Each is said as it is.
+ */
+function notInvertible(a: number[][], span: Span, name: string): never {
+  return fail(lu(a, 0) ? 'E-MATRIX-NEAR-SINGULAR' : 'E-MATRIX-SINGULAR', span, { function: name });
 }
 
 function luSolve(d: { lu: number[][]; perm: number[] }, b: readonly number[]): number[] {
@@ -445,23 +456,29 @@ export const LINEAR: readonly FunctionDef[] = [
       const n = square(m, a.expr(0).span, a.name);
       const { rows, cols } = structure(m, a.expr(0).span, a.name);
       const dim = rows.reduce((d, r, i) => multiplyDims(d, multiplyDims(r, cols[i]!)), DIMENSIONLESS);
+      // Every item in kN/m: the determinant in (kN/m)ⁿ, as on paper, not in kg²/s⁴.
+      const first = m.items[0]!;
+      const { hint } = first.hint && m.items.every((q) => q.hint?.symbol === first.hint!.symbol && sameDim(q.dim, first.dim)) ? poweredHint(first, n) : {};
+      const shown = hint ? { hint } : {};
       if (m.items.some((q) => q.im)) {
         const c = complexLu(pairs(m), 0);
-        if (!c) return quantity(0, dim);
+        if (!c) return quantity(0, dim, shown);
         const [re, im] = complexDet(c);
-        return quantity(re, dim, im ? { im } : {});
+        return quantity(re, dim, { ...shown, ...(im ? { im } : {}) });
       }
       // Written in decimals, the determinant is known exactly, however small: the Hilbert matrix of 12 has 2.6·10⁻⁷⁸.
       const whole = n <= EXACT_SOLVE_SIZE ? exactDeterminant(m) : undefined;
-      if (whole) return quantity(whole.value, dim, whole.form ? { exact: whole.form } : {});
+      if (whole) return quantity(whole.value, dim, { ...shown, ...(whole.form ? { exact: whole.form } : {}) });
       const a0 = numbers(m);
       // A pivot lost in rounding: no zero can be told from a very small number. Not rounded to 0, and said so.
       if (!lu(a0)) a.warn(diagnostic('W-ILL-CONDITIONED', a.call.span, { function: a.name }));
       const d = lu(a0, 0);
-      if (!d) return quantity(0, dim);
+      if (!d) return quantity(0, dim, shown);
       let det = d.sign;
       for (let i = 0; i < n; i++) det *= d.lu[i]![i]!;
-      return quantity(det, dim);
+      // The Hilbert matrix of 40: no pivot is zero, the product is below the least number of double precision.
+      if (det === 0 || !Number.isFinite(det)) a.warn(diagnostic('W-DET-OUT-OF-RANGE', a.call.span, { function: a.name }));
+      return quantity(det, dim, shown);
     },
   },
   {
@@ -469,7 +486,7 @@ export const LINEAR: readonly FunctionDef[] = [
     module: 'linear',
     params: 'A',
     arity: [1, 1],
-    call: (a) => inverseOf(asMatrix(a.value(0), a.expr(0).span), a.expr(0).span, a.name),
+    call: (a) => inverseOf(asMatrix(a.value(0), a.expr(0).span), a.expr(0).span, a.name, (d) => a.warn(d)),
   },
   {
     name: 'lsolve',
@@ -486,7 +503,7 @@ export const LINEAR: readonly FunctionDef[] = [
       if (m.items.some((q) => q.im) || b.items.some((q) => q.im)) return complexLsolve(a, m, b, rows);
       const scales = equilibrated(numbers(m));
       const d = lu(scales.scaled);
-      if (!d) return fail('E-MATRIX-SINGULAR', a.expr(0).span, { function: a.name });
+      if (!d) return notInvertible(scales.scaled, a.expr(0).span, a.name);
       if (n <= MAX_CONDITION_SIZE && conditionOf(scales.scaled, d) > LOST_DIGITS_CONDITION) a.warn(diagnostic('W-ILL-CONDITIONED', a.call.span, { function: a.name }));
       const items: Quantity[] = new Array<Quantity>(n * b.cols);
       for (let c = 0; c < b.cols; c++) {
@@ -657,10 +674,17 @@ export const LINEAR: readonly FunctionDef[] = [
       const m = asMatrix(a.value(0), a.expr(0).span);
       if (m.items.some((q) => q.im)) fail('E-COMPLEX-ARG', a.expr(0).span);
       square(m, a.expr(0).span, a.name);
-      const { values } = singularValues(numbers(m));
+      // A matrix in different units (kN/m beside kN·m) has a condition only of its numbers in SI, which another choice of
+      // units would change by orders: it is taken with its rows and columns scaled, as lsolve solves it. One unit for
+      // all items (or none) leaves it as it is.
+      const mixed = m.items.some((q) => !sameDim(q.dim, m.items[0]!.dim));
+      const { values } = singularValues(mixed ? equilibrated(numbers(m)).scaled : numbers(m));
       const least = values[values.length - 1]!;
       if (!(least > 1e-300)) return fail('E-MATRIX-SINGULAR', a.expr(0).span, { function: a.name });
-      return quantity(values[0]! / least);
+      const condition = values[0]! / least;
+      // Past 1/ε the least singular value is rounding, not the matrix: the number says only "at least this much".
+      if (condition > BEYOND_DOUBLE_CONDITION) a.warn(diagnostic('W-COND-BEYOND-DOUBLE', a.call.span, { function: a.name }));
+      return quantity(condition);
     },
   },
   {
@@ -933,7 +957,7 @@ function index(a: Args, k: number, size: number): number {
 }
 
 /** The inverse: item (j, i) has the unit 1 / (row(i) · col(j)). */
-export function inverseOf(m: MatrixValue, span: Span, name: string): MatrixValue {
+export function inverseOf(m: MatrixValue, span: Span, name: string, warn?: (d: Diagnostic) => void): MatrixValue {
   const n = square(m, span, name);
   const { rows, cols } = structure(m, span, name);
   if (m.items.some((q) => q.im)) {
@@ -947,8 +971,15 @@ export function inverseOf(m: MatrixValue, span: Span, name: string): MatrixValue
     }
     return matrix(n, n, inverse);
   }
-  const d = lu(numbers(m));
-  if (!d) return fail('E-MATRIX-SINGULAR', span, { function: name });
+  const a = numbers(m);
+  const d = lu(a);
+  if (!d) return notInvertible(a, span, name);
+  // How many digits are lost, of the matrix with its rows and columns scaled: kN/m beside kN·m is no bad condition.
+  if (warn && n <= MAX_CONDITION_SIZE) {
+    const scales = equilibrated(a);
+    const ds = lu(scales.scaled);
+    if (!ds || conditionOf(scales.scaled, ds) > LOST_DIGITS_CONDITION) warn(diagnostic('W-ILL-CONDITIONED', span, { function: name }));
+  }
   const items: Quantity[] = new Array<Quantity>(n * n);
   for (let c = 0; c < n; c++) {
     const x = luSolve(d, Array.from({ length: n }, (_, i) => (i === c ? 1 : 0)));

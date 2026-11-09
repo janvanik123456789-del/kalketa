@@ -57,7 +57,7 @@ export const CS_FUNCTION_DETAILS: Readonly<Record<string, string>> = {
   cbrt: 'Na rozdíl od x^(1/3) dá i ze záporného čísla reálný výsledek. Jednotka se odmocní, jde-li to (∛(m³) = m). Stejné jako znak ∛ z panelu operátorů.',
   ceil: 'Zaokrouhlí na nejbližší vyšší celé číslo, i u záporných (ceil(−2,3) = −2). Argument musí být bezrozměrný; počet kusů zaokrouhlený nahoru se počítá z poměru, např. ceil(L / l_kus).',
   exp: 'eˣ pro bezrozměrné x; e^x se dá napsat i jako mocnina čísla e. U komplexního x dá komplexní výsledek (Eulerův vzorec).',
-  factorial: 'n! = 1·2·…·n pro celé n od 0 do 170 (0! = 1); větší n přeteče rozsah čísel. Necelé nebo záporné n je chyba.',
+  factorial: 'n! = 1·2·…·n pro celé n od 0 do 170 (0! = 1); větší n přeteče rozsah čísel (asi 1,8·10³⁰⁸). Přesně na poslední číslici je jen do 22!; od 23! je zaokrouhlený na asi 16 platných číslic (170! má 307 číslic, Kalketa z nich drží 16). Necelé nebo záporné n je chyba.',
   floor: 'Zaokrouhlí na nejbližší nižší celé číslo, i u záporných (floor(−2,3) = −3). Argument musí být bezrozměrný.',
   hypot: '√(a² + b² + …) pro libovolný počet hodnot téže jednotky, bez přetečení u velkých čísel. Typicky přepona nebo velikost výslednice ze složek.',
   ln: 'Přirozený logaritmus bezrozměrného kladného čísla. Logaritmus veličiny s jednotkou nedává smysl: logaritmujte poměr, např. ln(p_1 / p_2).',

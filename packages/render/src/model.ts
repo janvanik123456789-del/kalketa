@@ -34,7 +34,7 @@ import {
   writtenPlaces,
 } from '@kalketa/core';
 import { chartLayout, chartSvg, cutChart, parseChartLook, titleOnTop, withLook, type ChartLayout, type ChartLook, type ChartSpec } from '@kalketa/chart';
-import { formatDate, formatDiagnostic, formatNumber, t, unitGap, type Catalog, type NumberFormatOptions } from '@kalketa/i18n';
+import { formatDate, formatDiagnostic, formatNumber, formatUtilization, t, unitGap, type Catalog, type NumberFormatOptions } from '@kalketa/i18n';
 import { formulaNode, hasSubstitutableParts, THIN_SPACE, type FormulaOptions, type Substituted } from './formula.js';
 import { boxed, frac, mi, mn, mo, mtext, mu, nameNode, paren, row, sqrt, sup, toText, type MathNode, table } from './math.js';
 
@@ -307,6 +307,8 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
     Object.assign((value: number, unit?: string) => formatNumber(value, catalog, money(unit) ? { ...spec, whole: true } : unit ? spec : { ...spec, unitless: true }), {
       // More significant digits are for a format that was not asked for places ({decimals=2} stands).
       ...(spec.decimals === undefined ? { withDigits: (digits: number) => numberFormat({ ...spec, digits }) } : {}),
+      // Places asked of a value known as an exact whole number: all its digits (20! = 2 432 902 008 176 640 000).
+      ...(spec.decimals !== undefined ? { withExact: (whole: bigint) => numberFormat({ ...spec, exactWhole: whole }) } : {}),
     });
   // How each name was shown on its own line ({decimals=2}): so it is shown in every substitution below.
   const formats = new Map<string, NumberFormatOptions>();
@@ -634,7 +636,7 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
           lines,
           passed: check?.passed ?? false,
           evaluated: check !== undefined,
-          ...(check?.utilization !== undefined ? { utilization: percent(check.utilization, catalog) } : {}),
+          ...(check?.utilization !== undefined ? { utilization: formatUtilization(check.utilization, check.passed, catalog) } : {}),
           ...(s.source !== undefined ? { source: s.source } : {}),
           verdict: verdictText(check !== undefined, check?.passed ?? false, catalog, options.verdict),
           messages,
@@ -905,7 +907,7 @@ export function buildPrintDocument(result: SheetResult, options: PrintOptions): 
     return {
       line: statement.statement.span.line,
       label: c.label ?? `${t(catalog, 'checks.check')} ${statement.statement.span.line}`,
-      ...(c.utilization !== undefined ? { utilization: percent(c.utilization, catalog) } : {}),
+      ...(c.utilization !== undefined ? { utilization: formatUtilization(c.utilization, c.passed, catalog) } : {}),
       passed: c.passed,
       evaluated: statement.check !== undefined,
       verdict: verdictText(statement.check !== undefined, c.passed, catalog, options.verdict),
@@ -1146,7 +1148,7 @@ function equationLines(
 }
 
 /** Formats a number, of a unit when it is given; withDigits: the same with more significant digits. */
-type NumberFormat = ((value: number, unit?: string) => string) & { readonly withDigits?: (digits: number) => NumberFormat };
+type NumberFormat = ((value: number, unit?: string) => string) & { readonly withDigits?: (digits: number) => NumberFormat; readonly withExact?: (whole: bigint) => NumberFormat };
 
 function resultNode(
   r: StatementResult,
@@ -1160,7 +1162,9 @@ function resultNode(
   if (r.status !== 'ok' || !r.value) return undefined;
   // A whole number calculated exactly has no digits to round away: 8⁹ − 8 is 134 217 720.
   const whole = r.value?.type === 'quantity' && r.value.exact?.den === 1n && r.value.exact.root === 1n && !r.display?.unit && Math.abs(r.value.si) < 1e15;
-  if (r.display) return valueNode(r.display.value, r.display.unit, whole && format.withDigits ? format.withDigits(15) : format, r.display.im, date, exact ? r.display.exact : undefined, polar);
+  const exactWhole = r.display?.im ? undefined : r.display?.whole;
+  const shown = exactWhole !== undefined && format.withExact ? format.withExact(exactWhole) : whole && format.withDigits ? format.withDigits(15) : format;
+  if (r.display) return valueNode(r.display.value, r.display.unit, shown, r.display.im, date, exact ? r.display.exact : undefined, polar);
   if (r.displayList) return seriesNode(r.displayList, format, separator, date);
   if (r.displayMatrix) return matrixNode(r.displayMatrix, format);
   if (r.value.type === 'boolean') return mtext(r.value.value ? booleans.true : booleans.false);
@@ -1449,12 +1453,6 @@ function otherValueNode(value: Value): MathNode | undefined {
   if (value.type === 'row') return mtext(value.label);
   if (value.type === 'record') return mtext(`${value.block.replaceAll('_', ' ')} ${value.version}`);
   return undefined;
-}
-
-function percent(ratio: number, catalog: Catalog): string {
-  // Next to nothing of a limit is said so: 7,034E-5 % would only stop the reader.
-  if (ratio !== 0 && Math.abs(ratio) < 1e-4) return `< ${formatNumber(0.01, catalog, { digits: 4 })} %`;
-  return `${formatNumber(ratio * 100, catalog, { digits: 4 })} %`;
 }
 
 function sourceText(result: SheetResult, span: { offset: number; length: number }): string {

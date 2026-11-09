@@ -17,7 +17,7 @@ import { defineShortcut } from '../logic/shortcuts.js';
 import { pickOf } from '../logic/pick.js';
 import { chartMenuItems, ChartView, seriesAt, startEdgeResize, startResize, useChartEditing, type ChartMenuHost } from '@kalketa/chart-editor';
 import { useSystemFonts } from '../logic/systemFonts.js';
-import { inputNumber, sliderStep, sliderValue, withInputNumber } from '../logic/slider.js';
+import { inputNumber, isWholeSlider, sliderStep, sliderValue, wholeSliderText, withInputNumber } from '../logic/slider.js';
 import { placeable, plotOption } from '../logic/placement.js';
 import { PickControl } from './PickControl.js';
 import { TextRowEditor, type TextFormat } from './TextRowEditor.js';
@@ -719,6 +719,8 @@ export function SheetView(props: Props) {
     if (!at) return [];
     const c = props.uiCatalog;
     const current = lineAttributesOf(seg.text).get('slider');
+    // The slider as the core read it (bounds and step), for the choice of whole numbers.
+    const slider = seg.statement !== undefined ? result.statements[seg.statement]?.statement.format?.slider : undefined;
     const shown = (text: string) => (props.decimalComma ? text.replace(/(\d)\.(\d)/g, '$1,$2') : text);
     const span = Math.max(Math.abs(at.value), 1) * 2;
     const suggested = current ? shown(current.replace(/\.\./g, ' .. ')) : shown(`${-span} .. ${span}`);
@@ -738,6 +740,21 @@ export function SheetView(props: Props) {
             props.onReplace(seg.start, seg.end, withLineAttribute(seg.text, 'slider', parts.join('..')));
           }),
       },
+      ...(slider
+        ? [
+            {
+              kind: 'action' as const,
+              label: t(c, 'slider.whole'),
+              checked: isWholeSlider(slider),
+              run: () => {
+                const whole = !isWholeSlider(slider);
+                const line = withLineAttribute(seg.text, 'slider', wholeSliderText(slider, whole));
+                // The number of the line goes on the slider too: 2,5 on whole numbers is 3.
+                props.onReplace(seg.start, seg.end, whole ? withInputNumber(line, Math.min(Math.floor(slider.high), Math.max(Math.ceil(slider.low), Math.round(at.value)))) : line);
+              },
+            },
+          ]
+        : []),
       ...(current !== undefined ? [{ kind: 'action' as const, label: t(c, 'slider.off'), run: () => props.onReplace(seg.start, seg.end, withLineAttribute(seg.text, 'slider', undefined)) }] : []),
     ];
   };

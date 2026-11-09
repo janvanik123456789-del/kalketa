@@ -42,10 +42,16 @@ export interface NumberFormatOptions {
   /** Significant digits (default 4). */
   readonly digits?: number;
   /**
-   * Places after the decimal sign instead, always shown (5,47; 23,53). A number too small
-   * or too large for them is written with an exponent and as many significant digits.
+   * Places after the decimal sign instead, always shown (5,47; 23,53; 1 234 567 890,50). A number too small for
+   * them, or one that would need more than the 15 significant digits a calculation holds, is written with an
+   * exponent and as many significant digits as it has (the core says so on the line, I-DECIMALS-PRECISION).
    */
   readonly decimals?: number;
+  /**
+   * The value as an exact whole number, where the calculation knows it (20! is 2432902008176640000): with decimals
+   * asked, every digit of it is written, however many, as none of them is invented.
+   */
+  readonly exactWhole?: bigint;
   /** Money: the whole part is never rounded (643 212 USD, not 643 200), however few significant digits are asked. */
   readonly whole?: boolean;
   /** Money to the cent (129 226,88 Kč), unless decimals are asked; with whole only. */
@@ -90,7 +96,30 @@ export function complexText(re: number, im: number, format: (x: number) => strin
   return `${format(re).replace('-', '−')} ${im < 0 ? '−' : '+'} ${imaginary}`;
 }
 
+/**
+ * The utilization of a check as a percentage that agrees with its verdict: a failed one over its limit by 0,04 % is
+ * "100,04 %", not "100 %" beside NEVYHOVUJE; over it by less than nine digits show, "> 100 %".
+ */
+export function formatUtilization(ratio: number, passed: boolean, catalog: Catalog, digits = 4): string {
+  // Next to nothing of a limit is said so: 7,034E-5 % would only stop the reader.
+  if (ratio !== 0 && Math.abs(ratio) < 1e-4) return `< ${formatNumber(0.01, catalog, { digits: 4 })} %`;
+  if (!passed && ratio > 1) {
+    for (let more = digits; more <= 9; more++) {
+      if (Number((ratio * 100).toPrecision(more)) > 100) return `${formatNumber(ratio * 100, catalog, { digits: more })} %`;
+    }
+    return `> ${formatNumber(100, catalog)} %`;
+  }
+  return `${formatNumber(ratio * 100, catalog, { digits })} %`;
+}
+
+/** Significant digits a calculation in double precision holds and a number is shown with at most. */
+export const SHOWN_DIGITS = 15;
+
 export function formatNumber(value: number, catalog: Catalog, options: NumberFormatOptions = {}): string {
+  if (options.decimals !== undefined && options.exactWhole !== undefined) {
+    const grouping = options.unitless ? { useGrouping: 'min2' as unknown as boolean } : {};
+    return new Intl.NumberFormat(catalog.locale, { minimumFractionDigits: options.decimals, maximumFractionDigits: options.decimals, ...grouping }).format(options.exactWhole);
+  }
   // −0 (as −b/(2·a) with b = 0 gives) and a negative number rounded to nothing are plain 0.
   // Read to 15 digits first: 1.025³·120 000 is 129 226,874999… in binary, 129 226,875 on paper, and rounds to ,88.
   const clean = Number.isFinite(value) ? Number(value.toPrecision(15)) : value;
@@ -103,13 +132,24 @@ function formatSigned(value: number, catalog: Catalog, options: NumberFormatOpti
   const places = abs >= 1 ? Math.floor(Math.log10(abs)) + 1 : 0;
   const digits = options.whole && abs < 1e15 ? Math.max(options.digits ?? 4, places) : (options.digits ?? 4);
   const scientific = abs !== 0 && ((abs >= 1e9 && !(options.whole && abs < 1e15)) || abs < 1e-4);
-  const decimals = options.decimals ?? (options.whole && options.cents ? 2 : undefined);
+  const asked = options.decimals ?? (options.whole && options.cents ? 2 : undefined);
+  // Places past the digits a calculation holds are invented: T := 17.0652165601579625588917206249 is 17,0652165601580,
+  // not 17,0652165601580000000000000000. Up to 17 significant digits are left as written (13 983 816,00000000).
+  const leading = abs >= 1e-4 && abs < 1e9 ? Math.floor(Math.log10(abs)) + 1 : 0;
+  const decimals = asked !== undefined && leading + asked > SHOWN_DIGITS + 2 ? Math.max(0, SHOWN_DIGITS - leading) : asked;
   // 'min2' groups only from five digits on (Intl's option; the lib types know only booleans and 'always' / 'auto').
   const grouping = options.unitless ? { useGrouping: 'min2' as unknown as boolean } : {};
-  if (decimals !== undefined && !scientific && (abs === 0 || abs >= 10 ** -decimals / 2)) {
-    return new Intl.NumberFormat(catalog.locale, { minimumFractionDigits: decimals, maximumFractionDigits: decimals, ...grouping }).format(value);
-  }
   if (decimals !== undefined) {
+    // Places as asked, a large number too (1 234 567 890,50), while they stay within the digits a calculation holds.
+    // (Below 10⁹ as always: 13 983 816,00000000 keeps its places.)
+    if (abs === 0 || (abs >= 1e-4 && abs >= 10 ** -decimals / 2 && (abs < 1e9 || places + decimals <= SHOWN_DIGITS))) {
+      return new Intl.NumberFormat(catalog.locale, { minimumFractionDigits: decimals, maximumFractionDigits: decimals, ...grouping }).format(value);
+    }
+    if (abs >= 1) {
+      // Past them, with an exponent and all the digits held: more were asked than there are (30! {decimals=0} is
+      // 2,65252859812191·10³², not 3·10³²).
+      return new Intl.NumberFormat(catalog.locale, { maximumSignificantDigits: SHOWN_DIGITS, notation: 'scientific' }).format(value);
+    }
     return new Intl.NumberFormat(catalog.locale, { maximumSignificantDigits: Math.max(1, decimals + 1), notation: 'scientific' }).format(value);
   }
   return new Intl.NumberFormat(catalog.locale, {

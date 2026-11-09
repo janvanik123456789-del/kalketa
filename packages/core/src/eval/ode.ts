@@ -27,6 +27,7 @@ import { quantity, type FunctionValue, type Quantity, type Value } from '../valu
 import { asQuantity } from './coerce.js';
 import type { EvalContext } from './evaluator.js';
 import { withBareZero } from './zero.js';
+import { eigenvalues, type C } from '../functions/general.js';
 
 type SolveStatement = Extract<Statement, { kind: 'solve' }>;
 type Evaluate = (expr: Expr, ctx: EvalContext) => Value;
@@ -34,6 +35,8 @@ type Evaluate = (expr: Expr, ctx: EvalContext) => Value;
 /** Steps of the first grid; doubled until the curve no longer changes (see the end of solveOde). */
 export const ODE_STEPS = 200;
 const MAX_ODE_STEPS = 3200;
+/** How far the classical Runge–Kutta method stays stable along the negative real axis: h·|λ| ≤ 2.785. */
+const RK4_STABILITY = 2.78;
 /** The change of a curve at which the doubling stops, and the largest one a result stands without a warning. */
 const ODE_TOLERANCE = 1e-6;
 const ODE_ACCEPTABLE = 1e-4;
@@ -189,19 +192,26 @@ export function solveOde(statement: SolveStatement, ctx: EvalContext, evaluate: 
     const shown = toDisplay(quantity(x, dimX, low.hint ? { hint: low.hint } : {}), ctx.registry);
     return `${variable} = ${Number(shown.value.toPrecision(4))}${shown.unit ? ` ${shown.unit}` : ''}`;
   };
+  /** Where the last integration found no value: the step it began at; and the grid it was on. */
+  let failedAt = origin;
+  let failedGrid: { xs: readonly number[]; ys: readonly (number[] | undefined)[] } | undefined;
   /** The state along a grid from the values at the origin; with each point its highest derivative. */
   const integrate = (steps: number, values: readonly number[]): Grid => {
     const left = before * (steps / ODE_STEPS);
     const xs = Array.from({ length: steps + 1 }, (_, i) => (i <= left ? (left === 0 ? a : a + ((origin - a) * i) / left) : origin + ((b - origin) * (i - left)) / (steps - left)));
     const ys = new Array<number[]>(steps + 1);
     const ds = new Array<number>(steps + 1);
+    failedGrid = { xs, ys };
     const f = (x: number, y: readonly number[]): number[] => [...y.slice(1), highest(x, y)];
     /** Runs f where the curve has reached: a point without a value says where, not only what. */
     const along = <T>(x: number, run: () => T): T => {
       try {
         return run();
       } catch (err) {
-        if (err instanceof CalcError && UNDEFINED_ON_THE_WAY.has(err.diagnostic.code)) fail('E-ODE-SINGULAR', equation.span, { name, at: where(x) });
+        if (err instanceof CalcError && UNDEFINED_ON_THE_WAY.has(err.diagnostic.code)) {
+          failedAt = x;
+          fail('E-ODE-SINGULAR', equation.span, { name, at: where(x) });
+        }
         throw err;
       }
     };
@@ -215,7 +225,10 @@ export function solveOde(statement: SolveStatement, ctx: EvalContext, evaluate: 
         const k4 = f(x + h, y.map((v, j) => v + h * k3[j]!));
         return y.map((v, j) => v + (h / 6) * (k1[j]! + 2 * k2[j]! + 2 * k3[j]! + k4[j]!));
       });
-      if (!next.every(Number.isFinite)) fail('E-ODE-SINGULAR', equation.span, { name, at: where(x) });
+      if (!next.every(Number.isFinite)) {
+        failedAt = x;
+        fail('E-ODE-SINGULAR', equation.span, { name, at: where(x) });
+      }
       ys[to] = next;
     };
     ys[left] = [...values];
@@ -316,19 +329,48 @@ export function solveOde(statement: SolveStatement, ctx: EvalContext, evaluate: 
   }
   const across = conditions.find((c) => c.order === 0 && Math.abs(c.at - origin) > 1e-12 * (b - a));
   if (n > 1 && across && !open.includes(0) && open.includes(1)) first[1] = (across.value - first[0]!) / (across.at - origin);
+  /**
+   * The first point of the last grid tried where the equation is stiff: a mode that dies away faster than the step
+   * can follow, h·|Re λ| past the stability of Runge–Kutta (2.78) for an eigenvalue λ < 0 of ∂f/∂y. A pole
+   * (y′ = y², λ = 2y > 0) is none: there the solution grows, it does not die away.
+   */
+  const stiffPoint = (): number | undefined => {
+    if (!failedGrid) return undefined;
+    reuse = false;
+    return firstStiffPoint(failedGrid, origin, (x, y) => [...y.slice(1), highest(x, y)]);
+  };
+  const solveFirst = (steps: number): Solved => {
+    for (const factor of [0, 1, -1, 0.1, -0.1, 10]) {
+      try {
+        return solveOn(steps, first.map((v, k) => (factor !== 0 && open.includes(k) ? v + factor : v)));
+      } catch (err) {
+        if (!(err instanceof CalcError) || err.diagnostic.code !== 'E-ODE-SINGULAR' || open.length === 0) throw err;
+      }
+    }
+    return solveOn(steps, first.map((v, k) => (open.includes(k) ? v - 10 : v)));
+  };
+  // A curve without a value on the way: on a finer grid too, or only on this one? Where the place moves away with
+  // smaller steps (Van der Pol with μ = 10), the steps were too long for the equation, which is stiff: the curve
+  // goes on, the method did not. Where it stays (y′ = y² at its pole), the solution itself ends there.
   let solved: Solved | undefined;
-  for (const factor of [0, 1, -1, 0.1, -0.1, 10, -10]) {
+  let steps = ODE_STEPS;
+  for (;;) {
     try {
-      solved = solveOn(ODE_STEPS, first.map((v, k) => (factor !== 0 && open.includes(k) ? v + factor : v)));
+      solved = solveFirst(steps);
       break;
     } catch (err) {
-      if (!(err instanceof CalcError) || err.diagnostic.code !== 'E-ODE-SINGULAR' || open.length === 0 || factor === -10) throw err;
+      if (!(err instanceof CalcError) || err.diagnostic.code !== 'E-ODE-SINGULAR') throw err;
+      if (steps * 2 > MAX_ODE_STEPS) {
+        const stiff = stiffPoint();
+        if (stiff !== undefined) fail('E-ODE-STIFF', equation.span, { name, at: where(stiff), steps });
+        throw err;
+      }
+      steps *= 2;
     }
   }
 
   // Twice as many steps until the curve no longer changes: a fast oscillation or a narrow load shows itself so.
-  let { grid, values: reached, sensitivity } = solved!;
-  let steps = ODE_STEPS;
+  let { grid, values: reached, sensitivity } = solved;
   let difference = Infinity;
   while (steps < MAX_ODE_STEPS && difference > ODE_TOLERANCE) {
     const finer = solveOn(steps * 2, reached, sensitivity);
@@ -363,6 +405,67 @@ export function solveOde(statement: SolveStatement, ctx: EvalContext, evaluate: 
     },
   };
   return { fn, info: { order: n, low, high, steps } };
+}
+
+/**
+ * The first point of a grid, from its origin outwards, where the equation is stiff: a mode that dies away faster than
+ * the step can follow, h·|Re λ| past the stability of Runge–Kutta (2.78) for an eigenvalue λ < 0 of ∂f/∂y. A pole
+ * (y′ = y², λ = 2y > 0) is none: there the solution grows, it does not die away. Points the integration has not
+ * reached are left out; one where the equation has no value tells nothing.
+ */
+export function firstStiffPoint(grid: { readonly xs: readonly number[]; readonly ys: readonly (readonly number[] | undefined)[] }, origin: number, f: (x: number, y: readonly number[]) => number[]): number | undefined {
+  const last = grid.xs.length - 1;
+  const h = Math.abs(grid.xs[last]! - grid.xs[0]!) / last;
+  /** The fastest mode that dies away at (x, y), as a rate; 0 where none does or the equation has no value there. */
+  const decay = (x: number, y: readonly number[]): number => {
+    try {
+      const f0 = f(x, y);
+      // A small part of a state beside a large one (B ≈ 1e-5 beside A ≈ 1 in Robertson's kinetics) moves by a share
+      // of the whole state, not of itself alone.
+      const size = Math.max(...y.map(Math.abs)) || 1;
+      const columns = y.map((_, j) => {
+        const dy = 1e-7 * Math.max(Math.abs(y[j]!), 1e-3 * size);
+        const moved = f(x, y.map((v, k) => (k === j ? v + dy : v)));
+        return moved.map((v, r) => (v - f0[r]!) / dy);
+      });
+      const values = eigenvalues(y.map((_, r) => y.map((__, j): C => [columns[j]![r]!, 0])));
+      return Math.max(0, ...(values ?? []).filter(([re]) => Number.isFinite(re)).map(([re]) => -re));
+    } catch {
+      return 0;
+    }
+  };
+  const reached = Array.from({ length: last + 1 }, (_, i) => i)
+    .filter((i) => grid.ys[i]?.every(Number.isFinite))
+    .sort((i, j) => Math.abs(grid.xs[i]! - origin) - Math.abs(grid.xs[j]! - origin));
+  for (const i of reached) if (h * decay(grid.xs[i]!, grid.ys[i]!) > RK4_STABILITY) return grid.xs[i]!;
+  // Stiff only within the step that failed (Robertson: B = 0 at the start, a rate of 2000/s after a millisecond): that
+  // step followed on the curve itself, in steps short enough for each rate met on the way.
+  // The points just before it may already be swinging (values of the method, not of the curve): the way is followed
+  // from a little further back, at most 50 steps, up to the end of the failed step.
+  const farthest = reached.at(-1);
+  if (farthest === undefined) return undefined;
+  const direction = grid.xs[farthest]! >= origin && farthest < last ? 1 : -1;
+  const back = reached[Math.max(0, reached.length - 51)]!;
+  let [x, y] = [grid.xs[back]!, [...grid.ys[back]!]];
+  const end = grid.xs[farthest]! + direction * h;
+  for (let n = 0; n < 20000 && direction * (end - x) > 1e-12 * h; n++) {
+    const rate = decay(x, y);
+    if (h * rate > RK4_STABILITY) return x;
+    const step = direction * Math.min(direction * (end - x), h / 16, rate > 0 ? 0.5 / rate : h);
+    try {
+      const k1 = f(x, y);
+      const k2 = f(x + step / 2, y.map((v, j) => v + (step / 2) * k1[j]!));
+      const k3 = f(x + step / 2, y.map((v, j) => v + (step / 2) * k2[j]!));
+      const k4 = f(x + step, y.map((v, j) => v + step * k3[j]!));
+      y = y.map((v, j) => v + (step / 6) * (k1[j]! + 2 * k2[j]! + 2 * k3[j]! + k4[j]!));
+    } catch {
+      return undefined;
+    }
+    // The curve itself ends here (a pole): no stiffness to speak of.
+    if (!y.every(Number.isFinite)) return undefined;
+    x += step;
+  }
+  return undefined;
 }
 
 /** J[i][j] = ∂r_i/∂p_j: how each condition answers to each value at the start. */

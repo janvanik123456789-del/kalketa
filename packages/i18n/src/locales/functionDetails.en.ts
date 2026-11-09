@@ -57,7 +57,7 @@ export const EN_FUNCTION_DETAILS: Readonly<Record<string, string>> = {
   cbrt: 'Unlike x^(1/3) it gives a real result of a negative number too. The unit is rooted where it can be (∛(m³) = m). The same as the ∛ sign of the Operators toolbar.',
   ceil: 'Rounds up to the next whole number, negative ones too (ceil(−2.3) = −2). The argument must be a plain number; a count of pieces rounded up comes from a ratio, e.g. ceil(L / l_piece).',
   exp: 'eˣ of a plain number x; it can also be written as a power of e. Of a complex x it gives a complex result (Euler\'s formula).',
-  factorial: 'n! = 1·2·…·n for a whole n from 0 to 170 (0! = 1); a larger n overflows. A negative or fractional n is an error.',
+  factorial: 'n! = 1·2·…·n for a whole n from 0 to 170 (0! = 1); a larger n overflows the range of numbers (about 1.8·10³⁰⁸). Exact to the last digit only up to 22!; from 23! on it is rounded to about 16 significant digits (170! has 307 digits, Kalketa keeps 16 of them). A negative or fractional n is an error.',
   floor: 'Rounds down to the next whole number, negative ones too (floor(−2.3) = −3). The argument must be a plain number.',
   hypot: '√(a² + b² + …) of any number of values of one unit, without overflow for large numbers. Typically a hypotenuse or the size of a resultant from its components.',
   ln: 'The natural logarithm of a plain positive number. A logarithm of a quantity with a unit makes no sense: take it of a ratio, e.g. ln(p_1 / p_2).',

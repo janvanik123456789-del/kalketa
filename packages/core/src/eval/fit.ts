@@ -34,6 +34,9 @@ type CallExpr = Extract<Expr, { kind: 'call' }>;
 export type FitKind = 'linear' | 'exp' | 'power' | 'log' | `poly${number}` | 'form';
 /** The most functions of a form of one's own. */
 const MAX_FORM = 10;
+/** A term of a fitted polynomial this small against the data is rounding (as a share of the largest |y|). */
+const NEGLIGIBLE_TERM = 1e-13;
+
 /** The highest degree of a polynomial fitted (higher ones swing between the points and lose digits). */
 export const MAX_DEGREE = 10;
 const KIND_LIST = `linear, poly2 … poly${MAX_DEGREE}, exp, power, log`;
@@ -265,7 +268,12 @@ function fitPoints(call: CallExpr, yExpr: Expr, xExpr: Expr, kind: FitKind, exac
     const half = (hi - lo) / 2 || 1;
     const scaled = xv.map((x) => Array.from({ length: degree + 1 }, (_, k) => ((x - mid) / half) ** k));
     const a = leastSquares(scaled, yv, call);
-    const powers = a.map((_, k) => a.reduce((sum, aj, j) => (j < k ? sum : sum + (aj * binomial(j, k) * (-mid) ** (j - k)) / half ** j), 0));
+    const turned = a.map((_, k) => a.reduce((sum, aj, j) => (j < k ? sum : sum + (aj * binomial(j, k) * (-mid) ** (j - k)) / half ** j), 0));
+    // x³ through cubic data is 1·x³, not 1·x³ − 1.3E-14·x² + …: a power whose whole part over the points is below
+    // 1e-13 of the largest y is rounding of the change of basis, and is zero.
+    const reach = Math.max(...xv.map(Math.abs));
+    const tallest = Math.max(...yv.map(Math.abs));
+    const powers = turned.map((v, k) => (Math.abs(v) * reach ** k <= NEGLIGIBLE_TERM * tallest ? 0 : v));
     // The covariance through the same change of basis: cₖ = Σ T[k][j]·aⱼ.
     const within = linearFit(scaled, yv, a);
     const change = a.map((_, k) => a.map((__, j) => (j < k ? 0 : (binomial(j, k) * (-mid) ** (j - k)) / half ** j)));

@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { defaultRegistry, traceName, formatPicture, parsePicture, rowLabel, TEXT_COLORS, toDecimalComma, type Diagnostic, type Expr, type Statement } from '@kalketa/core';
-import { catalogFor, CATALOGS, formatDate, formatDiagnostic, formatNumber, t, unitGap, type Catalog, type UiKey } from '@kalketa/i18n';
+import { catalogFor, CATALOGS, formatDate, formatDiagnostic, formatNumber, formatUtilization, t, unitGap, type Catalog, type UiKey } from '@kalketa/i18n';
 import { buildPrintDocument, canvasValues, printHtml, renderBlockHtml, revisionFooter, type PrintAppendix, type PrintBlock } from '@kalketa/render';
 import { beamSketch, drivenScene, emptyScene, readScene, sectionSketch, writeScene, type CanvasScene } from '@kalketa/canvas';
 import { CanvasEditor } from '@kalketa/canvas/editor';
@@ -350,13 +350,15 @@ export function App() {
     !(settledSource?.tab === tab.id && settledSource.source === doc.source) &&
     linesIn(lastCalculated) === linesIn(doc.source);
   const calcSource = waiting ? lastCalculated : doc.source;
+  // Keys of the theory libraries linked: text may cite them ([PP:T3]); the rest it cites is warned about.
+  const libraryKeys = useMemo(() => linkedLibraries(doc).map((link) => link.key).join(' '), [doc.files]);
   const evaluation = useMemo(() => {
     const start = performance.now();
-    const result = sessions.evaluate(calcSource, doc.layers, tables, blocks);
+    const result = sessions.evaluate(calcSource, doc.layers, tables, blocks, libraryKeys ? libraryKeys.split(' ') : []);
     engine.cost = performance.now() - start;
     engine.lastSource = calcSource;
     return result;
-  }, [sessions, calcSource, doc.layers, tables, blocks]);
+  }, [sessions, calcSource, doc.layers, tables, blocks, libraryKeys]);
   useEffect(() => {
     if (!waiting) return;
     const timer = setTimeout(() => setSettledSource({ tab: tab.id, source: doc.source }), SETTLE_MS);
@@ -1124,7 +1126,7 @@ export function App() {
         label: c.label ?? `${t(printCatalog, 'checks.check')} ${line}`,
         passed: c.passed,
         evaluated: result.statements[c.statement]!.check !== undefined,
-        ...(c.utilization !== undefined ? { utilization: `${formatNumber(c.utilization * 100, ui, { digits: 3 })} %` } : {}),
+        ...(c.utilization !== undefined ? { utilization: formatUtilization(c.utilization, c.passed, ui, 3) } : {}),
       };
     });
     const headings = (print?.blocks ?? []).flatMap((b) => (b.kind === 'heading' && b.level >= 2 ? [b] : []));

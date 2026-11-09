@@ -23,13 +23,15 @@ import { baseUnitSymbol } from '../units/display.js';
 import { quantity, type FunctionValue, type Quantity, type Value } from '../values/value.js';
 import { asQuantity } from './coerce.js';
 import type { EvalContext } from './evaluator.js';
-import { conditionOf, ODE_STEPS, orderIn, primeName, type OdeInfo } from './ode.js';
+import { conditionOf, firstStiffPoint, ODE_STEPS, orderIn, primeName, type OdeInfo } from './ode.js';
 import { withBareZero } from './zero.js';
 
 type SolveStatement = Extract<Statement, { kind: 'solve' }>;
 type Evaluate = (expr: Expr, ctx: EvalContext) => Value;
 
 const MAX_STEPS = 3200;
+/** Errors of a point the curves reach without a value: the solution ends there or the steps were too long. */
+const UNDEFINED_ON_THE_WAY: ReadonlySet<string> = new Set(['E-DIV-ZERO', 'E-DOMAIN', 'E-NOT-FINITE']);
 const TOLERANCE = 1e-6;
 const ACCEPTABLE = 1e-4;
 const MAX_NEWTON = 40;
@@ -144,21 +146,45 @@ export function solveOdeSystem(statement: SolveStatement, ctx: EvalContext, eval
       return r.map((v, i) => v - base[i]!);
     });
     const matrix = base.map((_, i) => columns.map((column) => column[i]!));
-    const solved = solveLinear(matrix, base.map((v) => -v));
-    if (!solved) fail('E-ODE-FORM', statement.span, { name: first });
-    return solved!;
+    // Values past the range of numbers on the way (a stiff system run with too long a step) are no fault of the form
+    // of the equations: the curves have no value there. Only at the very first point does no solution mean the form.
+    const finite = base.every(Number.isFinite) && columns.every((column) => column.every(Number.isFinite));
+    const solved = finite ? solveLinear(matrix, base.map((v) => -v)) : undefined;
+    if (!solved) {
+      if (!evaluated) fail('E-ODE-FORM', statement.span, { name: first });
+      failedAt = x;
+      fail('E-ODE-SINGULAR', statement.span, { name: first, at: where(x) });
+    }
+    evaluated = true;
+    return solved;
   };
+  /** Whether the equations were solved for their highest derivatives once; where the last integration found no value. */
+  let evaluated = false;
+  let failedAt = a;
+  let failedGrid: { xs: readonly number[]; ys: readonly (number[] | undefined)[] } | undefined;
+  const where = (x: number) => `${variable} = ${Number(x.toPrecision(4))}`;
 
   // All conditions at one point, one for each state, and nothing sought: the curves go out from there both ways.
   const direct = parameters.length === 0 && conditions.every((c) => c.order < c.curve.order && Math.abs(c.at - conditions[0]!.at) <= 1e-12 * (b - a));
   const origin = direct ? Math.min(b, Math.max(a, conditions[0]!.at)) : a;
   const before = origin <= a ? 0 : origin >= b ? ODE_STEPS : Math.min(ODE_STEPS - 1, Math.max(1, Math.round((ODE_STEPS * (origin - a)) / (b - a))));
 
+  /** The slopes of the whole state at x, as the integration takes them. */
+  const integrateSlope = (x: number, y: readonly number[], p: readonly number[]): number[] => {
+    const top = highest(x, y, p);
+    const slope = new Array<number>(size);
+    curves.forEach((curve, c) => {
+      for (let k = 0; k < curve.order - 1; k++) slope[curve.first + k] = y[curve.first + k + 1]!;
+      slope[curve.first + curve.order - 1] = top[c]!;
+    });
+    return slope;
+  };
   const integrate = (steps: number, start: readonly number[], p: readonly number[]): Grid => {
     const left = before * (steps / ODE_STEPS);
     const xs = Array.from({ length: steps + 1 }, (_, i) => (i <= left ? (left === 0 ? a : a + ((origin - a) * i) / left) : origin + ((b - origin) * (i - left)) / (steps - left)));
     const ys = new Array<number[]>(steps + 1);
     const ds = new Array<number[]>(steps + 1);
+    failedGrid = { xs, ys };
     const f = (x: number, y: readonly number[]): { slope: number[]; top: number[] } => {
       const top = highest(x, y, p);
       const slope = new Array<number>(size);
@@ -170,13 +196,27 @@ export function solveOdeSystem(statement: SolveStatement, ctx: EvalContext, eval
     };
     const go = (from: number, to: number) => {
       const [x, y, h] = [xs[from]!, ys[from]!, xs[to]! - xs[from]!];
-      const k1 = f(x, y);
-      ds[from] = k1.top;
-      const k2 = f(x + h / 2, y.map((v, j) => v + (h / 2) * k1.slope[j]!)).slope;
-      const k3 = f(x + h / 2, y.map((v, j) => v + (h / 2) * k2[j]!)).slope;
-      const k4 = f(x + h, y.map((v, j) => v + h * k3[j]!)).slope;
-      const next = y.map((v, j) => v + (h / 6) * (k1.slope[j]! + 2 * k2[j]! + 2 * k3[j]! + k4[j]!));
-      if (!next.every(Number.isFinite)) fail('E-ODE-SINGULAR', statement.span, { name: first, at: `${variable} = ${Number(x.toPrecision(4))}` });
+      let next: number[];
+      try {
+        const k1 = f(x, y);
+        ds[from] = k1.top;
+        const k2 = f(x + h / 2, y.map((v, j) => v + (h / 2) * k1.slope[j]!)).slope;
+        const k3 = f(x + h / 2, y.map((v, j) => v + (h / 2) * k2[j]!)).slope;
+        const k4 = f(x + h, y.map((v, j) => v + h * k3[j]!)).slope;
+        next = y.map((v, j) => v + (h / 6) * (k1.slope[j]! + 2 * k2[j]! + 2 * k3[j]! + k4[j]!));
+      } catch (err) {
+        // A point without a value on the way: where the curves reached, not only what.
+        if (evaluated && err instanceof CalcError && UNDEFINED_ON_THE_WAY.has(err.diagnostic.code)) {
+          failedAt = x;
+          fail('E-ODE-SINGULAR', statement.span, { name: first, at: where(x) });
+        }
+        if (err instanceof CalcError && err.diagnostic.code === 'E-ODE-SINGULAR') failedAt = x;
+        throw err;
+      }
+      if (!next.every(Number.isFinite)) {
+        failedAt = x;
+        fail('E-ODE-SINGULAR', statement.span, { name: first, at: where(x) });
+      }
       ys[to] = next;
     };
     ys[left] = [...start];
@@ -262,9 +302,27 @@ export function solveOdeSystem(statement: SolveStatement, ctx: EvalContext, eval
     return fail('E-SOLVE-NO-CONVERGENCE', statement.span, {});
   };
 
-  // Twice as many steps until the curves no longer change.
-  let solved = solveOn(ODE_STEPS, startValues);
+  // No value on the way: tried on finer grids, and on the finest one told apart as the single equation does (ode.ts):
+  // a stiff system (Robertson's kinetics) goes on where the method could not; at a pole the curves themselves end.
   let steps = ODE_STEPS;
+  let solved: { grid: Grid; values: number[] };
+  for (;;) {
+    try {
+      solved = solveOn(steps, startValues);
+      break;
+    } catch (err) {
+      if (!(err instanceof CalcError) || err.diagnostic.code !== 'E-ODE-SINGULAR') throw err;
+      if (steps * 2 > MAX_STEPS) {
+        const grid = failedGrid;
+        const parameterValues = startValues.slice(size);
+        const stiff = grid ? firstStiffPoint(grid, origin, (x, y) => integrateSlope(x, y, parameterValues)) : undefined;
+        if (stiff !== undefined) fail('E-ODE-STIFF', statement.span, { name: first, at: where(stiff), steps });
+        throw err;
+      }
+      steps *= 2;
+    }
+  }
+  // Twice as many steps until the curves no longer change.
   let difference = Infinity;
   while (steps < MAX_STEPS && difference > TOLERANCE) {
     const finer = solveOn(steps * 2, solved.values);

@@ -1,0 +1,38 @@
+1 heading: none
+2 text: none
+4 heading: none
+5 definition c1: error  E-UNIT-MISMATCH
+6 definition c2: error  E-DOMAIN
+7 definition c3: error  E-FUNC-ARG-DIM
+8 definition c4: error  E-UNIT-MISMATCH
+10 heading: none
+11 definition c5: error  E-UNDEFINED
+12 definition c6: 3 m
+13 definition c6: error  E-REDEFINED
+14 definition c7: error  E-DEFINED-LATER
+15 definition c8: blocked  I-DEPENDENCY-FAILED
+17 heading: none
+18 definition c9: error  E-ABS-TEMP
+19 definition c10: error  E-ABS-TEMP
+20 definition c11: 0.958333 d
+22 heading: none
+23 definition K_c: 2×2
+24 definition c12: error  E-MATRIX-SHAPE
+25 definition c13: error  E-MATRIX-SINGULAR
+26 definition c14: error  E-MATRIX-SQUARE
+28 heading: none
+29 definition c15: error  E-FUNC-ARITY
+30 definition c16: error  E-CALCULUS-FORM
+31 solve: error  E-SOLVE-NO-ROOT
+32 definition c18: error  E-RECURSION
+33 definition c19: error  E-FUNCTION-UNCALLED
+35 heading: none
+36 table T_c: ok
+40 definition c20: error  E-TABLE-EMPTY
+41 definition c21: error  E-TABLE-KEY
+43 heading: none
+44 definition c22: error  E-PLOT-PLACE
+45 display: error  E-UNIT-MISMATCH
+46 display: error  E-PLOT-KIND
+48 heading: none
+49 text: none  W-CITE-UNKNOWN

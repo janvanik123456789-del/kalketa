@@ -23,7 +23,7 @@ import { CalcError, diagnostic, type Diagnostic, type Span } from '../diagnostic
 import { withBareZero } from './zero.js';
 import type { Expr } from '../lang/ast.js';
 import { DIMENSIONLESS, sameDim, type Dimension } from '../units/dimension.js';
-import { baseUnitSymbol } from '../units/display.js';
+import { toDisplay } from '../units/display.js';
 import { quantity, type Quantity, type Value } from '../values/value.js';
 import type { EvalContext } from './evaluator.js';
 import { FUNCTION_NAMES } from './functions.js';
@@ -324,7 +324,7 @@ export function checkDerivation(
       compared++;
       if (!sameDim(a.dim, b.dim)) {
         problem = 'units';
-        diagnostics.push(diagnostic('E-DERIVE-UNITS', span, { step: i + 1, left: baseUnitSymbol(a.dim), right: baseUnitSymbol(b.dim) }));
+        diagnostics.push(diagnostic('E-DERIVE-UNITS', span, { step: i + 1, left: toDisplay(a, ctx.registry).unit, right: toDisplay(b, ctx.registry).unit }));
         break;
       }
       if (!equal(a, b, approx.includes(i) ? ROUNDED : TOLERANCE)) {

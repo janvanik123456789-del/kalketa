@@ -56,7 +56,7 @@ export const BINDING_FUNCTIONS: ReadonlySet<string> = new Set(['integral', 'deri
 export const BINDING_OPTIONS: ReadonlySet<string> = new Set(['order', 'kind', 'title', 'samples']);
 
 /** Deeper expressions fail on the line: everything that reads them is recursive, and a file may come from anyone. */
-const MAX_EXPRESSION_DEPTH = 1000;
+export const MAX_EXPRESSION_DEPTH = 1000;
 
 /** Whether a statement nests deeper than the limit. Goes by a list of its own, as the statement itself may not fit the stack. */
 function deeperThan(statement: Statement, limit: number): boolean {

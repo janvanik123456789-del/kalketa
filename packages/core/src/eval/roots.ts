@@ -19,6 +19,7 @@ import type { Expr } from '../lang/ast.js';
 import { DIMENSIONLESS, divideDims, multiplyDims, powerDim, sameDim, type Dimension } from '../units/dimension.js';
 import { baseUnitSymbol } from '../units/display.js';
 import { quantity, type Quantity, type Value, type VectorValue } from '../values/value.js';
+import { formError } from './calculus.js';
 import { asQuantity } from './coerce.js';
 import type { EvalContext } from './evaluator.js';
 import { polynomialCoefficients } from './isolate.js';
@@ -31,7 +32,7 @@ export const MAX_DEGREE = 20;
 
 export function rootsOf(call: CallExpr, ctx: EvalContext, evaluate: Evaluate): VectorValue {
   const variable = call.args[1];
-  if (call.args.length !== 2 || call.named.length > 0 || variable?.kind !== 'variable') return fail('E-CALCULUS-FORM', call.span, { function: call.name });
+  if (call.args.length !== 2 || call.named.length > 0 || variable?.kind !== 'variable') return formError(call, call.span);
   const expressions = polynomialCoefficients(call.args[0]!, variable.name, MAX_DEGREE);
   if (!expressions) return fail('E-ROOTS-POLYNOMIAL', call.args[0]!.span, { name: variable.name, max: MAX_DEGREE });
   const coefficients = expressions.map((c) => (c ? asQuantity(evaluate(c, ctx), c.span) : undefined));

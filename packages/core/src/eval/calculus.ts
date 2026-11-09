@@ -38,6 +38,27 @@ const JUMP_WIDTH = 1e-9;
 const MAX_EVALUATIONS = 200_000;
 const MAX_TERMS = 1_000_000;
 
+/** The form each function with its own variable is written in, as a term code the catalog translates. */
+const FORMS: Readonly<Record<string, string>> = {
+  integral: 'form.integral',
+  derivative: 'form.derivative',
+  sum: 'form.sum',
+  max_of: 'form.max_of',
+  min_of: 'form.min_of',
+  maximize: 'form.maximize',
+  minimize: 'form.minimize',
+  roots: 'form.roots',
+  solve: 'form.solve',
+  first: 'form.first',
+  matrix: 'form.matrix',
+  vector: 'form.vector',
+};
+
+/** E-CALCULUS-FORM with the form of this function, not of others. */
+export function formError(call: CallExpr, span: Span): never {
+  return fail('E-CALCULUS-FORM', span, { function: call.name, form: FORMS[call.name] ?? 'form.sum' });
+}
+
 /** The named argument that binds the variable (not an option such as order:). */
 function binding(call: CallExpr, options: readonly string[]): NamedArg | undefined {
   const binders = call.named.filter((n) => !options.includes(n.name));
@@ -138,7 +159,7 @@ function firstWhole(call: CallExpr, ctx: EvalContext, evaluate: Evaluate): Value
  * narrow valley (fitting by least squares) takes it time, not success.
  */
 function fromGuesses(call: CallExpr, ctx: EvalContext, evaluate: Evaluate): Value {
-  if (call.args.length !== 1) return fail('E-CALCULUS-FORM', call.span, { function: call.name });
+  if (call.args.length !== 1) return formError(call, call.span);
   const body = call.args[0]!;
   const sign = call.name === 'maximize' ? -1 : 1;
   const guesses = call.named.map((n) => ({ name: n.name, q: asQuantity(evaluate(n.value, ctx), n.value.span) }));
@@ -208,13 +229,13 @@ function fromGuesses(call: CallExpr, ctx: EvalContext, evaluate: Evaluate): Valu
 /** The one expression of the call and its variable. */
 function parts(call: CallExpr, options: readonly string[]): { body: Expr; variable: NamedArg } {
   const variable = binding(call, options);
-  if (!variable || call.args.length !== 1) return fail('E-CALCULUS-FORM', call.span, { function: call.name });
+  if (!variable || call.args.length !== 1) return formError(call, call.span);
   return { body: call.args[0]!, variable };
 }
 
 function range(variable: NamedArg, call: CallExpr, ctx: EvalContext, evaluate: Evaluate): [Quantity, Quantity] {
   const r = variable.value;
-  if (r.kind !== 'range') return fail('E-CALCULUS-FORM', r.span, { function: call.name });
+  if (r.kind !== 'range') return formError(call, r.span);
   // A bound written as a bare 0 is in the unit of the other one (h: 0 .. h_1).
   const [low, high] = withBareZero(asQuantity(evaluate(r.low, ctx), r.low.span), asQuantity(evaluate(r.high, ctx), r.high.span), r.low, r.high);
   if (!sameDim(low.dim, high.dim)) fail('E-UNIT-MISMATCH', r.span, { operator: '..', left: baseUnitSymbol(low.dim), right: baseUnitSymbol(high.dim) });
@@ -297,7 +318,7 @@ function infinityIn(e: Expr): number {
 function integralToInfinity(call: CallExpr, ctx: EvalContext, evaluate: Evaluate, body: Expr, variable: NamedArg, lowEnd: number, highEnd: number): Value {
   const r = variable.value as Extract<Expr, { kind: 'range' }>;
   const finite = lowEnd === 0 ? asQuantity(evaluate(r.low, ctx), r.low.span) : highEnd === 0 ? asQuantity(evaluate(r.high, ctx), r.high.span) : quantity(0);
-  if (lowEnd >= 0 && highEnd <= 0) fail('E-CALCULUS-FORM', r.span, { function: call.name });
+  if (lowEnd >= 0 && highEnd <= 0) formError(call, r.span);
   const f = asFunction(body, variable.name, finite, ctx, evaluate, call.span);
   const point = (t: number): { x: number; weight: number } => {
     if (lowEnd !== 0 && highEnd !== 0) return { x: t / (1 - t * t), weight: (1 + t * t) / (1 - t * t) ** 2 };
@@ -438,7 +459,7 @@ const MAX_ORDER = 10;
 
 function derivative(call: CallExpr, ctx: EvalContext, evaluate: Evaluate): Value {
   const { body, variable } = parts(call, ['order']);
-  if (variable.value.kind === 'range') fail('E-CALCULUS-FORM', variable.value.span, { function: call.name });
+  if (variable.value.kind === 'range') formError(call, variable.value.span);
   const at = asQuantity(evaluate(variable.value, ctx), variable.value.span);
   const orderArg = call.named.find((n) => n.name === 'order');
   const order = orderArg ? asQuantity(evaluate(orderArg.value, ctx), orderArg.value.span) : quantity(1);
@@ -564,7 +585,7 @@ function addedItems(total: MatrixValue | VectorValue, term: Value, span: Span): 
 /** matrix(f(i, j), i: 1 .. n, j: 1 .. m): a matrix from the indices of its items. */
 function matrixOfIndices(call: CallExpr, ctx: EvalContext, evaluate: Evaluate): Value {
   const [rowVar, colVar] = call.named;
-  if (call.args.length !== 1 || call.named.length !== 2) return fail('E-CALCULUS-FORM', call.span, { function: call.name });
+  if (call.args.length !== 1 || call.named.length !== 2) return formError(call, call.span);
   const body = call.args[0]!;
   const rows = wholeNumbers(rowVar!, call, ctx, evaluate);
   const cols = wholeNumbers(colVar!, call, ctx, evaluate);

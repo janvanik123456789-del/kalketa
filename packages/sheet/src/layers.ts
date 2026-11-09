@@ -14,6 +14,7 @@
 
 import type { BlockSource, Diagnostic, ImportedValue, SheetResult, Table, UnitRegistry } from '@kalketa/core';
 import { SheetSession } from '@kalketa/core';
+import { theorySections } from './theory.js';
 
 export type LayerKind = 'sheet' | 'calc' | 'data' | 'ai' | 'sources' | 'python';
 
@@ -156,7 +157,9 @@ export class LayerSessions {
 
   constructor(private readonly registry: UnitRegistry) {}
 
-  evaluate(source: string, layers: readonly Layer[], tables: readonly Table[], blocks: ReadonlyMap<string, BlockSource> = new Map()): LayerEvaluation {
+  /** `libraryKeys`: keys of the theory libraries the sheet links (PP), which text may cite as [PP:T3]. */
+  evaluate(source: string, layers: readonly Layer[], tables: readonly Table[], blocks: ReadonlyMap<string, BlockSource> = new Map(), libraryKeys: Iterable<string> = []): LayerEvaluation {
+    const citable = new Set([...theorySections(layers).flatMap((s) => (s.id ? [s.id] : [])), ...[...libraryKeys].map((key) => `${key}:`)]);
     const next = new Map<string, SheetSession>();
     const session = (id: string) => {
       const s = this.sessions.get(id) ?? new SheetSession({ registry: this.registry });
@@ -169,13 +172,13 @@ export class LayerSessions {
     const aux = new Map<string, SheetResult>();
     for (const layer of layers) {
       if (layer.kind !== 'calc') continue;
-      const result = session(layer.id).update(layer.text ?? '', { tables, imports: new Map(imports), blocks });
+      const result = session(layer.id).update(layer.text ?? '', { tables, imports: new Map(imports), blocks, citable });
       aux.set(layer.id, result);
       for (const [name, value] of result.values) {
         if (!imports.has(name)) imports.set(name, { value, layer: layer.id, layerName: layer.name ?? layer.id });
       }
     }
-    const main = session(MAIN_LAYER).update(source, { tables, imports, blocks });
+    const main = session(MAIN_LAYER).update(source, { tables, imports, blocks, citable });
     this.sessions = next;
     return { main, aux, used: usedLayers(main, aux) };
   }

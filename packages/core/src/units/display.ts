@@ -21,6 +21,8 @@ export interface DisplayValue {
   readonly im?: number;
   /** The value in `unit` exactly (49/9, 13·√2/2), where the calculation kept it and it says more than the number. */
   readonly exact?: Exact;
+  /** The value in `unit` as an exact whole number, where the calculation knows it (20! is 2432902008176640000). */
+  readonly whole?: bigint;
 }
 
 const BASE_SYMBOLS: Readonly<Record<string, string>> = {
@@ -47,15 +49,16 @@ function scaled(q: Quantity, factor: number, unit: string, exactFactor?: Exact, 
  * The exact form in the unit shown, where it is one and agrees with the number (a form carried along by mistake
  * through an operation that changed the number is never shown).
  */
-function exactIn(q: Quantity, value: number, factor: Exact | undefined, offset?: number): { exact?: Exact } {
+function exactIn(q: Quantity, value: number, factor: Exact | undefined, offset?: number): { exact?: Exact; whole?: bigint } {
   if (!q.exact || !factor || q.im) return {};
   const shifted = offset === undefined ? q.exact : (() => {
     const o = fromNumber(offset);
     return o ? subtract(q.exact!, o) : undefined;
   })();
   const exact = shifted && divide(shifted, factor);
-  if (!exact || !worthShowing(exact)) return {};
-  return Math.abs(toNumber(exact) - value) <= 1e-9 * Math.max(1, Math.abs(value)) ? { exact } : {};
+  if (!exact || Math.abs(toNumber(exact) - value) > 1e-9 * Math.max(1, Math.abs(value))) return {};
+  const whole = exact.den === 1n && exact.root === 1n ? { whole: exact.num } : {};
+  return worthShowing(exact) ? { exact, ...whole } : whole;
 }
 
 /** Converts to a unit; absolute temperatures honour the zero-point shift. */

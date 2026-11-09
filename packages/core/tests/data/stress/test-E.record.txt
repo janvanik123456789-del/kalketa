@@ -1,0 +1,49 @@
+1 heading: none
+2 text: none
+4 heading: none
+5 definition q_E: 12 kN/m
+6 definition L_E: 5 m
+7 definition E_E: 210 GPa
+8 text: none
+9 definition M_Ed: 37.5 kN·m
+10 derive: ok
+11 definition r_E: 5
+12 definition x_E: 3
+13 solve: ok
+14 definition γ_E: 0.02
+15 derive: ok
+17 heading: none
+18 definition spatne_1: 300 kN·m  E-DERIVE-UNITS
+19 derive: ok  E-DERIVE-STEP
+20 derive: ok  E-DERIVE-STEP
+22 heading: none
+23 definition presne: 5.44444 s⁻²
+24 definition odmocnina: 3.4641 m
+25 definition kol: 2.01 s
+26 definition bez_rounded: 2.01 s
+28 heading: none
+29 text: none
+30 directive hide: none
+31 definition skryty: 24 kN/m
+32 directive result: none
+33 definition jen_vystup: 4 m
+34 heading: none
+35 definition F_P: 10 kN
+36 definition A_P: 5 kN
+37 heading: none
+38 definition B_P: 2 kN
+39 definition C_P: 7 kN
+40 text: none
+42 heading: none
+43 definition a_s: 2
+44 definition b_s: 3
+45 definition y_s: ok
+46 definition x_v: -0.75
+47 definition x_v_ruka: -0.75
+48 check: true
+49 definition k_podm: 1
+50 display: ok
+52 heading: none
+53 text: none
+54 text: none
+55 text: none  W-CITE-UNKNOWN

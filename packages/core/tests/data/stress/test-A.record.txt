@@ -1,0 +1,55 @@
+1 heading: none
+2 text: none
+4 heading: none
+5 definition α: 0.000012 1/°C
+6 definition β: 3 1/(m·s)
+7 definition c_0: 0.5 mM
+9 heading: none
+10 definition L: 5 m
+11 definition A: 200 mm²
+12 definition V_1: 2 L  I-AMBIGUOUS-UNIT
+13 definition L_2: 100 kN/A  W-NAME-AS-UNIT
+14 definition x_1: 2 m
+16 heading: none
+17 definition a_1: 5 m
+18 definition a_2: 16 m
+19 invalid chyba_implicitni: error  E-MISSING-OPERATOR
+20 definition zlomek_palca: 14.7638 1/m  W-FRACTION-BEFORE-UNIT
+22 heading: none
+23 definition F: 800 N
+24 definition S_kruh: 1500 mm²
+25 definition d_kol: 43.7019 mm
+26 definition τ_smyk: 0.533333 MPa
+27 definition q: 12 kN/m
+28 definition M_bod: 37.5 kN·m
+29 definition p_vzduch: 19620 Pa
+30 definition w_kWh: 6 kW·h
+32 heading: none
+33 definition t_1: 20 °C
+34 definition t_2: 80 °C
+35 definition Δt: 60 Δ°C
+36 definition T_1K: 293.15 K
+37 definition T_2K: 353.15 K
+38 definition t_průměr_K: 323.15 K
+39 definition c_voda: 4180 J/(kg·K)
+40 definition m_voda: 2 kg
+41 definition Q_zbytecne: 2450730 J  W-ABS-TEMP-MUL
+42 definition ΔT: 50 Δ°C
+43 definition Q_radne: 418000 J
+44 definition T_K: 293.15 K
+45 definition T_na_C: 20 °C
+46 definition Δ_T: 10 K
+48 heading: none
+49 definition φ: 30 °
+50 definition sin_φ: 0.5
+51 definition sin_rad: -0.988032
+52 definition ω_otočky: 314.159 rad/s
+53 definition ω_rad: 314.159 rad/s
+54 definition f_Hz: 50 Hz
+55 definition ω_2pi: 314.159 rad/s
+56 definition M_to: 3141.59 W
+58 heading: none
+59 unit ks: ok
+60 definition kos: 12 ks
+61 definition dane: 1000 CZK
+62 definition chybne: error  E-UNIT-MISMATCH

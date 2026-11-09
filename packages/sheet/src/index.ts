@@ -11,6 +11,7 @@ import type { SheetDocument } from './container.js';
 import { LayerSessions, type LayerEvaluation } from './layers.js';
 import { parseCsv, writeCsv } from './csv.js';
 import { inferTable } from './infer.js';
+import { linkedLibraries } from './theoryLibrary.js';
 import type { WorkbookImage } from './excel.js';
 
 export { parseCsv, writeCsv, detectDelimiter } from './csv.js';
@@ -126,7 +127,7 @@ export function evaluateDocument(
   registry: UnitRegistry,
 ): { result: SheetResult; evaluation: LayerEvaluation; tableDiagnostics: Diagnostic[] } {
   const { tables, diagnostics } = documentTables(doc, registry);
-  const evaluation = new LayerSessions(registry).evaluate(doc.source, doc.layers, tables, documentBlocks(doc));
+  const evaluation = new LayerSessions(registry).evaluate(doc.source, doc.layers, tables, documentBlocks(doc), linkedLibraries(doc).map((link) => link.key));
   return { result: evaluation.main, evaluation, tableDiagnostics: diagnostics };
 }
 export * from './pythonCheck.js';

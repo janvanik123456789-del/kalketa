@@ -1,0 +1,58 @@
+1 heading: none
+2 text: none
+4 heading: none
+5 definition L_1: 6 m
+6 definition L_2: 4.5 m
+7 definition L_D: 10.5 m
+8 definition q_D: 12 kN/m
+9 definition F_D: 30 kN
+10 definition a_D: 3 m
+11 definition E_D: 210 GPa
+12 definition prurez: ok
+13 definition I_D: 8356.11 cm⁴
+14 definition W_D: 557.074 cm³
+15 definition nosnik: ok
+16 definition M_max: 67.4196 kN·m
+17 definition w_max: 11.2406 mm
+18 check: true
+19 display: ok
+21 heading: none
+22 definition konsole: ok
+23 definition w_k: 12.8 mm
+24 definition w_k_analy: 12.8 mm
+25 check: true
+27 heading: none
+28 table Prurezy: ok
+33 definition M_D: 120 kN·m
+34 definition W_m: 6666670 mm³
+35 definition σ_D: 18 MPa
+36 check: true
+37 definition srovnani: ok
+38 definition nejlepsi: ok
+40 heading: none
+41 table Korekce: ok
+47 definition k_2d: 0.82
+48 definition k_mimo: 0.76  W-EXTRAPOLATION
+49 table Kabely: ok
+55 definition I_B: 30 A
+56 definition vybrany: ok
+57 definition mimo_klice: error  E-TABLE-KEY
+59 heading: none
+60 definition CF_D: [4]
+61 definition NPV_D: 1762.94 CZK
+62 definition IRR_D: 8.89634 %
+63 definition splatka_D: 80242.6 CZK
+64 definition navrat: 2.6
+65 definition d_1: 20468 date
+66 definition d_2: 20765 date
+67 definition rozdil_dnu: 297 d
+68 definition za_rok: 21130.3 date
+69 definition roky: 0.813142 yr
+71 heading: none
+72 definition K_D: 2×2
+73 definition M_D2: 2×2
+74 definition ω_2: [2]
+75 definition det_D: 3 (kN/m)²
+76 definition x_D: [2]
+77 definition v_D: [5]
+78 definition m_D: 3×3

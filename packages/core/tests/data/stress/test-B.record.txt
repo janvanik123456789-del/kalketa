@@ -1,0 +1,51 @@
+1 heading: none
+2 text: none
+4 heading: none
+5 definition I_1: 2
+6 definition I_2: 0.886227
+7 definition D_5: 1
+8 definition S_100: 1.63498
+10 heading: none
+11 definition q_B2: 12 kN/m
+12 solve: ok
+13 solve: ok
+14 solve: ok
+15 solve: ok
+16 definition K_res: 2×2
+17 definition F_res: 2×1
+18 definition u_res: [2]
+20 heading: none
+21 definition q_B: 10 kN/m
+22 definition L_B: 6 m
+23 definition E_B: 210 GPa
+24 definition I_B: 8360 cm⁴
+25 definition M_B: ok
+26 solve: ok
+29 definition w_max: 9.6121 mm
+30 definition w_analy: 9.6121 mm
+31 check: true
+33 heading: none
+34 definition λ: ok
+35 definition λ_1e5: 0.0179926
+37 heading: none
+38 definition r_B: 0.05
+39 table Splatky: ok
+41 text: none
+42 table Body: ok
+48 definition a_prum: 2.96667 m/s²
+49 definition fity: ok
+51 heading: none
+52 definition y_B: ok
+53 display: ok
+54 display: ok
+55 display: ok  W-PLOT-YLIM-HIDES
+56 display: ok
+57 display: ok
+58 display: ok  W-PLOT-LOG-VALUES
+60 heading: none
+61 definition n_B: 20
+62 definition k_B: 2.09302
+63 definition sem: [1000]
+64 definition průměr_sem: 0.50927
+65 definition ρ_test: 0.975
+66 definition hodnota_test: error  E-DOMAIN

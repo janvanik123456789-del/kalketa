@@ -22,7 +22,7 @@
  * explanation, never a silent NaN.
  */
 
-import { CalcError, diagnostic, fail, type Span } from '../diagnostics.js';
+import { CalcError, diagnostic, fail, type Diagnostic, type Span } from '../diagnostics.js';
 import type { Expr, Inequality, SolveDomain, Statement } from '../lang/ast.js';
 import { isDimensionless, sameDim, type Dimension } from '../units/dimension.js';
 import { baseUnitSymbol } from '../units/display.js';
@@ -83,9 +83,29 @@ export function solveStatement(statement: SolveStatement, ctx: EvalContext, eval
     }
     throw err;
   }
+  if (!statement.ode && holdsOnlyByUnderflow(statement, solved.values, ctx, evaluate)) fail('E-SOLVE-UNDERFLOW', statement.span, {});
   const relation = statement.equations[0]?.relation;
   if (!relation) noteOtherRoots(statement, solved.values[0]!, ctx, evaluate);
   return relation ? { ...solved, relation: sideOf(statement, relation, solved.values[0]!, ctx, evaluate) } : solved;
+}
+
+/**
+ * exp(x) == 0 "holds" at x = −1000, where exp underflows to 0: no root, a number below the range. Said by the
+ * equations evaluated at the values found, where a result too small for a number is warned of.
+ */
+function holdsOnlyByUnderflow(statement: SolveStatement, values: readonly Quantity[], ctx: EvalContext, evaluate: Evaluate): boolean {
+  const warnings: Diagnostic[] = [];
+  const names = statement.unknowns.map((u) => u.name);
+  const at: EvalContext = { ...ctx, warnings, tableReads: [], lookup: (n, span) => (names.includes(n) ? values[names.indexOf(n)]! : ctx.lookup(n, span)) };
+  try {
+    for (const equation of statement.equations) {
+      evaluate(equation.left, at);
+      evaluate(equation.right, at);
+    }
+  } catch {
+    return false;
+  }
+  return warnings.some((w) => w.code === 'W-UNDERFLOW');
 }
 
 /**

@@ -520,13 +520,18 @@ async function lineReady(contents: Electron.WebContents, holds: string): Promise
 
 async function clickOn(selector: string, modifiers: Array<'control' | 'shift'> = [], button: 'left' | 'right' = 'left'): Promise<void> {
   const contents = smokeWindow!.webContents;
-  const point = (await contents.executeJavaScript(`(() => {
+  // What a click or a key just opened may take a moment to appear (more on Linux): looked for again for up to 3 s.
+  let point: { x: number; y: number } | undefined;
+  for (let tries = 0; tries < 20 && !point; tries++) {
+    if (tries > 0) await pause(150);
+    point = (await contents.executeJavaScript(`(() => {
     const element = document.querySelector(${JSON.stringify(selector)});
     if (!element) return undefined;
     element.scrollIntoView({ block: 'center' });
     const r = element.getBoundingClientRect();
     return { x: Math.round(r.left + Math.min(r.width / 2, 40)), y: Math.round(r.top + r.height / 2) };
   })()`)) as { x: number; y: number } | undefined;
+  }
   if (!point) throw new Error(`Not found: ${selector}`);
   contents.sendInputEvent({ type: 'mouseDown', ...point, button, clickCount: 1, modifiers });
   contents.sendInputEvent({ type: 'mouseUp', ...point, button, clickCount: 1, modifiers });
@@ -2724,8 +2729,13 @@ async function layersWithRealInput(picture: string) {
   clipboard.writeText('Ověření:\n```python\n# kontrola vložením\nresult("pi", 3.14159, "")\n```');
   await clickOn('.layer-view.active h1, .layer-view.active h2, .layer-view.active p');
   await pressKey('V', ['control']);
-  await pause(800);
-  const pastedScript = { before: scriptsBefore, after: (await contents.executeJavaScript(`document.querySelectorAll('.layer-view.active .python-run').length`)) as number, asText: (await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .notes-word p, .layer-view.active .notes-word h1, .layer-view.active .notes-word h2')].filter((e) => e.textContent.includes('result(') || e.textContent.trim().startsWith('Ověření:')).length`)) as number };
+  // The kept script may take a moment to show (more on Linux): counted again for up to 3 s.
+  let scriptsAfter = scriptsBefore;
+  for (let i = 0; i < 20 && scriptsAfter === scriptsBefore; i++) {
+    await pause(150);
+    scriptsAfter = (await contents.executeJavaScript(`document.querySelectorAll('.layer-view.active .python-run').length`)) as number;
+  }
+  const pastedScript = { before: scriptsBefore, after: scriptsAfter, asText: (await contents.executeJavaScript(`[...document.querySelectorAll('.layer-view.active .notes-word p, .layer-view.active .notes-word h1, .layer-view.active .notes-word h2')].filter((e) => e.textContent.includes('result(') || e.textContent.trim().startsWith('Ověření:')).length`)) as number };
   // Rows copied into another calculation by Ctrl+C and Ctrl+V: the given values of R15 and its picture, marked by
   // Ctrl+click and Shift+click; the new calculation gets the picture file too.
   await contents.executeJavaScript(`[...document.querySelectorAll('.layer-tab')].find((t) => t.textContent.includes('List'))?.setAttribute('data-smoke-sheet', '')`);
@@ -2781,8 +2791,12 @@ async function layersWithRealInput(picture: string) {
   clipboard.writeText('# Činka z chatu\nm_c := 3 kg\nV_c := 2 l\n');
   await clickOn('.layer-view.active .page');
   await pressKey('V', ['control']);
-  await pause(600);
-  const replaceAsked = (await contents.executeJavaScript(`document.querySelector('.dialog')?.textContent ?? ''`)) as string;
+  // The question may take a moment to appear (more on Linux): looked for again for up to 3 s.
+  let replaceAsked = '';
+  for (let i = 0; i < 20 && !replaceAsked; i++) {
+    await pause(150);
+    replaceAsked = (await contents.executeJavaScript(`document.querySelector('.dialog')?.textContent ?? ''`)) as string;
+  }
   await clickOn('.dialog-buttons button.default');
   await pause(800);
   const replaced = (await contents.executeJavaScript(`({

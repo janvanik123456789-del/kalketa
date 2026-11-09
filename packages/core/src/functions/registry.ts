@@ -155,7 +155,7 @@ export class FunctionRegistry {
 
   /** All functions, for help: by module, then by name. */
   all(): FunctionDef[] {
-    return [...this.defs.values()].sort((a, b) => FUNCTION_MODULES.indexOf(a.module) - FUNCTION_MODULES.indexOf(b.module) || a.name.localeCompare(b.name));
+    return [...this.defs.values()].sort((a, b) => FUNCTION_MODULES.indexOf(a.module) - FUNCTION_MODULES.indexOf(b.module) || a.name.localeCompare(b.name, 'en'));
   }
 
   /** Evaluates a call of a function that computes itself (not a table function). */

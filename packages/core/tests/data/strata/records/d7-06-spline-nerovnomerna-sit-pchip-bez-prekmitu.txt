@@ -1,0 +1,16 @@
+1 heading: none
+2 definition xn: [5]
+3 definition yn: [5]
+4 definition sn1: 6.76923
+5 definition sn2: 10.8654
+6 definition pn1: 6.66378
+7 definition pn2: 11.0406
+8 definition s2b: 0.5
+9 definition xp: [6]
+10 definition yp: [6]
+11 definition pp1: 4.1088
+12 definition pp2: 7.5
+13 definition pp3: 10.8912
+14 definition ss1: 4.3392
+15 definition ss2: 7.06667
+16 definition ss3: 10.1061

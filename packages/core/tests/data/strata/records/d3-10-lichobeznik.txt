@@ -1,0 +1,23 @@
+1 heading: none
+2 heading: none
+4 definition x: [5]
+5 definition f: [5]
+6 definition lich: 350
+7 definition presne: 333.333
+8 definition chyba: 16.6667
+10 definition g: [5]
+11 definition linear: 25
+12 definition linearni_integral: 20
+14 definition h: [5]
+15 definition konstanta: 10
+16 definition kumul: [5]
+17 definition dalsi_kumul: [3]
+19 definition soucet_identita: 375
+20 definition spolecne: 375
+22 definition s_jednotkami: 25 N·s
+24 check: true
+25 check: true
+26 check: true
+27 check: true
+28 check: true
+29 check: true

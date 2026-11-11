@@ -1,0 +1,11 @@
+# Sonda P4 — proč selhává first(): jednotky v mezních hodnotách, nebo chybějící řešení?
+f1 := first(x^2 > 5, x: 0 .. 3)
+f2 := first(x^2 > 5, x: 0 .. 2)
+f3 := first((x / 1 m)^2 > 5, x: 0.1 m .. 3 m)
+f4 := first(x / 1 m > 1.5 m, x: 0 m .. 3 m)
+f5 := first(x > 1.5, x: 0 m .. 3 m)
+f6 := first(sqrt(x) > 1.2, x: 0 .. 3)
+f7 := first(sin(x) > 0.9, x: 0 .. 3)
+f8 := first(x^2 > 5, x: -3 .. 3)
+f9 := first(x^3 - 2·x + 7 > 0, x: 0 .. 3)
+f10 := first(x^2 > 5, x: 2 .. 2.3)

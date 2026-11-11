@@ -1,0 +1,20 @@
+1 heading: none
+2 definition ctvrty: 20514.4 date
+3 definition dt1: 2 d
+4 definition dt2: 30.4375 d
+5 definition dt3: 30.4375 d
+6 definition dt4: 365.25 d
+7 definition dt5: 30.4375 d
+8 definition dt6: 30.4375 d
+9 definition dt7: 30.4375 d
+10 definition rovnost: 0 d
+11 table Splat: ok
+16 definition sest: ok
+17 definition sazba6: 0.065
+18 definition veterany: [3]
+19 definition daty: error  E-TABLE-INTERPOLATE
+20 table Uroky: ok  E-TABLE-COLUMN
+22 definition redek: error  W-TABLE-ROWS-SKIPPED E-TABLE-NO-MATCH
+23 definition klen: error  W-TABLE-ROWS-SKIPPED E-TABLE-NO-MATCH
+24 definition du: error  W-TABLE-ROWS-SKIPPED E-TABLE-NO-MATCH
+25 definition minimum: error  W-TABLE-ROWS-SKIPPED E-TABLE-NO-MATCH

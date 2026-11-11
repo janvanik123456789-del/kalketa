@@ -1,0 +1,29 @@
+1 heading: none
+2 heading: none
+3 heading: none
+5 table Profily: ok
+13 definition maly: [3]
+14 definition vybrany: ok
+15 definition nejvetsi: ok
+16 definition interpolace: ok
+17 definition interpolovane_I: 338.5 cm⁴
+18 definition mimo_tabulku: ok  W-EXTRAPOLATION
+19 definition podklad: 400 cm⁴
+20 definition chybejici: error  E-TABLE-KEY
+22 table Mereni: ok
+29 definition radek: error  E-TABLE-EMPTY
+30 definition prazdny_radek: error  E-TABLE-EMPTY
+31 definition filtr_s_prazdnym: [2]  W-TABLE-ROWS-SKIPPED
+32 definition nejmensi_s_prazdnym: 0 s  W-TABLE-ROWS-SKIPPED
+34 table Kurzy: ok
+40 definition dny: 305 d
+41 definition posledni: 25.88
+42 definition nejcerstvejsi: error  W-TABLE-ROWS-SKIPPED E-TABLE-NO-MATCH
+43 definition podle_data: error  E-TABLE-KEY
+45 check: true
+46 check: true
+47 check: true
+48 check: true
+49 check: true
+50 check: true
+51 check: true

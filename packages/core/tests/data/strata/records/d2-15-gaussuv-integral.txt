@@ -1,0 +1,8 @@
+1 heading: none
+3 text: none
+4 definition I: 0.886227
+5 definition I_ana: 0.886227
+6 check: true
+7 text: none
+8 definition I_konec: 0.886227
+9 check: true

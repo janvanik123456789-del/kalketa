@@ -1,0 +1,62 @@
+1 heading: none
+2 heading: none
+3 heading: none
+4 heading: none
+5 definition P: 250000 CZK
+6 definition sazby: [12]
+7 definition mesicni: [12]
+8 definition i0: 0.00416667
+9 definition anuita: 21401.9 CZK
+10 definition splatka: 21401.9 CZK
+11 table Kalendář: ok
+13 definition z6: 127459 CZK
+14 definition z11: 23027.5 CZK
+15 definition z12: 1763.74 CZK
+16 definition soucet_uroku: 8586.18 CZK
+17 definition soucet_jistin: 248236 CZK
+18 definition kontrolni_rovnice: 256822 CZK
+19 definition nejvyssi_urok: 1133.14 CZK
+20 definition mesic_nejvyssi: 3
+21 definition mesic_nejnizsi: 12
+22 definition nad_sto_tisic: [7]
+23 definition pocet_nad: 7
+24 definition doplatek: 23165.6 CZK
+25 definition naklady: 8586.18 CZK
+26 definition podil: 0.0343447
+27 definition A_k: [12]
+28 definition R_k: [12]
+29 definition Z_vzorec: [12]
+30 table Splatnost: ok
+44 definition datum_6: ok
+45 definition sazba_9: 0.072
+46 definition doba: 334 d
+47 definition d360: 330 d
+48 definition month_delka: 30.4375 d
+49 definition rok_delka: 365.25 d
+50 definition unor: 28 d
+51 check: true
+52 check: true
+53 check: true
+54 check: true
+55 check: true
+56 check: true
+57 check: true
+58 check: true
+59 check: true
+60 check: true
+61 check: true
+62 check: true
+63 check: true
+64 check: true
+65 check: true
+66 check: true
+67 check: true
+68 check: true
+69 check: true
+70 check: true
+71 check: true
+72 check: true
+73 check: true
+74 check: true
+75 check: true
+76 check: true

@@ -1,0 +1,16 @@
+1 heading: none
+2 definition T1: 90 °C
+3 definition T2: 20 °C
+4 definition prumer_prima: error  E-ABS-TEMP
+5 definition prumer_pres_rozdil: 55 Δ°C
+6 definition priteceni: 95 °C
+7 definition rozdil: 70 Δ°C
+8 definition prevod: 363.15  W-ABS-TEMP-MUL
+9 definition nasobek: 726.3 Δ°C  W-ABS-TEMP-MUL
+10 definition teplota_v_Kelvinech: 1.32464  W-ABS-TEMP-MUL W-ABS-TEMP-MUL
+11 definition datum1: 20454 date
+12 definition datum2: 20484 date
+13 definition prumerny_datum: error  E-ABS-TEMP
+14 definition rozdil_datemu: 30 d
+15 definition posun_datum: 20484 date
+16 definition smycka: 20499 date

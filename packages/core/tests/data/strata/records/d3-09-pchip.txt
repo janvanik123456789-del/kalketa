@@ -1,0 +1,29 @@
+1 heading: none
+2 heading: none
+3 heading: none
+5 definition x: [9]
+6 definition y: [9]
+7 definition lin_m: 3.5
+8 definition lin_extrapol: 9.5  W-INTERP-BEYOND
+10 definition sch: [9]
+11 definition rost: [9]
+12 definition p_05: 0.0277778
+13 definition p_15: 0.377395
+14 definition p_25: 1.83233
+15 definition p_35: 4.155
+16 definition p_45: 5.595
+17 definition p_55: 6.44135
+18 definition p_65: 7.53422
+19 definition p_75: 7.98693
+20 definition s_25: 1.83745
+21 definition s_55: 6.40245
+23 heading: none
+24 definition ok_mezi: ok
+25 definition ok_mezi2: ok
+27 definition pomer: [5]
+28 definition teplota: [5]
+29 definition p_teperatura: 22.0879 °C
+31 check: true
+32 check: true
+33 check: true
+34 check: true

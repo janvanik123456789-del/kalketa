@@ -1,0 +1,11 @@
+1 heading: none
+3 definition P: 15 kW
+4 definition n: 1500 rpm
+5 text: none
+6 definition f: 25 Hz
+7 definition ω: 157.08 rad/s
+8 definition M: 95.493 N·m
+9 text: none
+10 definition M_kontrola: 95.493 N·m
+11 check: true
+12 check: true

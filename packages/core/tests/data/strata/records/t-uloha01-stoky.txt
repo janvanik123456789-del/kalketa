@@ -1,0 +1,69 @@
+1 heading: none
+2 heading: none
+3 heading: none
+4 definition D: 0.5 m
+5 definition S: 0.005
+6 definition n: 0.013 s/m^(1/3)
+7 definition g: 9.80665 m/s²
+8 definition Q: 0.08 m³/s
+9 definition φ: ok
+10 definition obsah: ok
+11 definition obvod: ok
+12 definition sirka: ok
+13 definition Rv: ok
+14 definition prutok: ok
+15 definition rychlost: ok
+16 definition Fr: ok
+17 definition h_norm: 0.187649 m
+18 definition A_norm: 0.0673255 m²
+19 definition P_norm: 0.659365 m
+20 definition R_norm: 0.102106 m
+21 definition V_norm: 1.18826 m/s
+22 definition Fr_norm: 1.01759
+23 definition Q_zpet: 0.08 m³/s
+24 definition A_identita: 0.0673255 m²
+25 definition h_rovnice: 0.187649 m
+26 definition h_hledana: 19 cm
+27 definition h_max: 0.469091 m
+28 definition Q_max: 0.287214 m³/s
+29 definition Q_plny: 0.267 m³/s
+30 definition Q_polovina: 0.1335 m³/s
+31 definition h_krit: 0.189357 m
+32 definition h_mridzka: [9]
+33 definition Q_mridzka: [9]
+34 definition Q_110: 0.11 m³/s
+35 definition h_110: 0.223609 m
+36 definition h_110_interp: 22.3003 cm
+37 definition F_pow: ok
+38 definition b_exponent: 1.81497
+39 definition b_zaklad: 0.000348399 m³/s
+40 definition r_pow: 0.941624
+41 definition A_ref: 0.0673255 m²
+42 definition P_ref: 0.659365 m
+43 definition R_ref: 0.102106 m
+44 definition V_ref: 1.18826 m/s
+45 definition Fr_ref: 1.01759
+46 definition Qpol_ref: 0.1335 m³/s
+47 definition Qmax_ref: 0.287214 m³/s
+48 definition hmax_ref: 0.469091 m
+49 definition hkr_ref: 0.189357 m
+50 definition h110_ref: 0.223609 m
+51 definition h110i_ref: 0.223003 m
+52 definition bexp_ref: 1.81497
+53 check: true
+54 check: true
+55 check: true
+56 check: true
+57 check: true
+58 check: true
+59 check: true
+60 check: true
+61 check: true
+62 check: true
+63 check: true
+64 check: true
+65 check: true
+66 check: true
+67 check: true
+68 check: true
+69 check: true

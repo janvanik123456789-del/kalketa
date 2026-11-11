@@ -1,0 +1,15 @@
+1 heading: none
+3 text: none
+4 definition c: 299792000 m/s
+5 definition G: 6.6743e-11 m³/(kg·s²)
+6 definition h_P: 6.62607e-34 J·s
+7 definition ħ: 1.05457e-34 J·s
+8 definition l_P: 1.61626e-35 m
+9 text: none
+10 definition ly_m: 9460730000000000 m
+11 definition ly_km: 9460730000000 km
+12 text: none
+13 definition Pomer: 5.85349e+50
+14 definition radu: 50.7674
+15 check: true
+16 check: true

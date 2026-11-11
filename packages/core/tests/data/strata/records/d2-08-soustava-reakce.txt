@@ -1,0 +1,13 @@
+1 heading: none
+3 text: none
+4 definition L: 6 m
+5 definition F_1: 10 kN
+6 definition a_1: 2 m
+7 definition F_2: 5 kN
+8 definition a_2: 4 m
+9 text: none
+10 solve: ok
+15 text: none
+16 check: true
+17 check: true
+18 check: true

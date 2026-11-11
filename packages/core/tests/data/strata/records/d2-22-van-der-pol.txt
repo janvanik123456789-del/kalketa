@@ -1,0 +1,6 @@
+1 heading: none
+3 definition μ: 1000
+4 text: none
+5 solve: error  E-ODE-STIFF
+8 text: none
+9 check: blocked  I-DEPENDENCY-FAILED

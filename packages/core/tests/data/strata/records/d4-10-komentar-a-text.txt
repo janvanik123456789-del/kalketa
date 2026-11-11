@@ -1,0 +1,7 @@
+1 heading: none
+2 definition q: 10 kN/m
+3 definition L: 12 m
+4 definition M: 180 kN·m
+5 text: none
+6 check: true
+7 definition V: 1728 m³

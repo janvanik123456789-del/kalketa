@@ -1,0 +1,24 @@
+1 heading: none
+2 heading: none
+4 definition x: [9]
+5 definition y: [9]
+7 definition h_m100: 0.0384615
+8 definition h_m090: 0.0399818
+9 definition h_m060: 0.108499
+10 definition h_m030: 0.285746
+11 definition h_000: 1
+12 definition h_015: 0.695449
+13 definition h_040: 0.176493
+14 definition h_062: 0.102513
+15 definition h_100: 0.0384615
+16 definition h_m120: 0.0939045  W-INTERP-BEYOND
+17 definition h_130: 0.159703  W-INTERP-BEYOND
+19 definition spline_uzel: 0.137931
+20 definition presna_hodnota: 0.137931
+22 definition n: [6]
+23 definition g: [6]
+24 definition druhy_spline: 0.443638
+25 definition mimo_mrizky: 0.191448  W-INTERP-BEYOND
+27 check: true
+28 check: true
+29 check: true

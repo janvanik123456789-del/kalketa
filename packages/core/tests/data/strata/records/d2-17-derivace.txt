@@ -1,0 +1,12 @@
+1 heading: none
+3 definition f: ok
+4 text: none
+5 definition fp_ana: ok
+6 definition d_num: 3.06472
+7 definition d_ana: 3.06472
+8 check: true
+9 text: none
+10 definition d2_num: 7.44917
+11 definition fpp_ana: ok
+12 definition d2_ana: 7.44917
+13 check: true

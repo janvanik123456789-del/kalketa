@@ -1,0 +1,10 @@
+1 heading: none
+2 definition F: 12 kN
+3 definition A1: 400 mm²
+4 definition A2: 0.0008 m²
+5 definition L1: 1200 mm
+6 definition L2: 1.2 km
+7 definition E: 210 GPa
+8 solve: ok
+9 definition u1: 0.0571429 mm
+10 definition u2: 57.1429 mm

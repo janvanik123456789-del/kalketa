@@ -1,0 +1,34 @@
+1 heading: none
+2 heading: none
+3 heading: none
+5 definition g5: 24
+6 definition g_half: 1.77245
+7 definition g_wiel: 14034.4
+8 definition lg_120: 453.025
+9 definition g_pet: 3.17805
+10 definition g_zaporna: -3.54491
+11 definition g_pól: error  E-DOMAIN
+13 definition b_2_3: 0.0833333
+14 definition b_big: 3.96466e-31
+15 definition b_identity: 0.0833333
+16 definition b_sym: 0.0833333
+18 definition e1: 0.842701
+19 definition e0: 0
+20 definition e_half: 0.5205
+21 definition e_komplement: 1
+22 definition e_velky: 1
+24 definition j0: 0.765198
+25 definition j1: 0.440051
+26 definition j_nula: -3.85976e-17
+27 definition j_wiel: -0.073471
+29 definition x0: 1.3
+30 definition residual: 2.14684e-12
+31 definition hodnota_residual: 2.14684e-12
+33 check: true
+34 check: true
+35 check: true
+36 check: true
+37 check: true
+38 check: true
+39 check: true
+40 check: true

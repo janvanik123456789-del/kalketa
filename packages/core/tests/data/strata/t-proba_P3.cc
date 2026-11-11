@@ -1,0 +1,25 @@
+# Sonda P3 — syntaxe řešičů, integrál s jednotkami, rekurentní tabulka, jednotka mol
+prutok(x) := 4 · x
+male := minimize((x - 3)^2, x: 0 .. 10)
+velke := maximize(10 - (x - 2)^2, x: 0 .. 10)
+korenJ := roots(x^2 - 4, x)
+prvni := first(prutok(x) > 5, x: 0 .. 10)
+obsah := integral(x^2, x: 0 .. 3)
+obsahJD := integral(x^2, x: 0 m .. 3 m)
+molo := 1 mol
+konc := 1.5 mol / L
+plyn := 8.314 J / (mol K)
+energie := 75 kJ / mol
+teplota := 300 K
+bezrozm := energie / (plyn · teplota)
+k_r := 0.5 L / (mol s)
+dt_s := 2 s
+table Rk: {rows = 1 .. 5}
+| i | C = prev(C, konc) - k_r·prev(C, konc)^2·dt_s |
+treti := Rk.C[3]
+pocet := len(Rk.C)
+fit_x := [1, 2, 3, 4]
+fit_y := [2.5, 4.7, 7.3, 9.8]
+F_l := fit(fit_y, x: fit_x, kind: "linear")
+f1 := F_l[1]
+f2 := F_l[2]

@@ -1,0 +1,28 @@
+1 heading: none
+2 invalid mesic: error  E-UNKNOWN-UNIT
+3 definition mesic2: 20514.4 date
+4 definition den: 20514 date
+5 invalid rok: error  E-UNKNOWN-UNIT I-DID-YOU-MEAN
+6 definition rozdil: 28 d
+7 definition d360a: 28 d
+8 definition d360b: 180 d
+9 definition r1: 1234.57
+10 definition r2: 1235
+11 definition r3: 1236
+12 definition r4: -1235
+13 definition r5: 0.13
+14 definition radek: [4]
+15 definition kum: [4]
+16 definition posledni: 40
+17 definition delka: 4
+18 table Urok: ok  E-TABLE-SCHEMA E-TABLE-SCHEMA
+19 invalid: error  E-SYNTAX
+20 definition srovnani: error  E-TABLE-COLUMN
+21 table Data: ok  E-TABLE-SCHEMA E-TABLE-SCHEMA
+22 invalid: error  E-SYNTAX
+23 invalid: error  E-SYNTAX
+24 invalid: error  E-SYNTAX
+25 invalid: error  E-SYNTAX
+26 definition prvni_datum: error  E-TABLE-COLUMN
+27 definition vybrany: error  E-TABLE-COLUMN
+28 definition najity: error  E-TABLE-COLUMN

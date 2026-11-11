@@ -1,0 +1,56 @@
+1 heading: none
+2 heading: none
+3 heading: none
+4 heading: none
+5 heading: none
+6 definition Q1: 12.5 l/s
+7 definition c1: 340 mg/L
+8 definition Q2: 8.2 l/s
+9 definition c2: 95 mg/L
+10 definition Q: 20.7 l/s
+11 definition zatizeni: 0.005029 kg/s
+12 definition c_smes: 0.242947 kg/m³
+13 definition kg_den: 434.506 kg
+14 definition a: -0.00025 l²/mg²
+15 definition b: 0.0236 l/mg
+16 definition c: 0.31
+17 definition R: ok
+18 definition N: 35 mg/L
+19 definition R_poz: 0.855936
+20 definition d_hvezda: 47.2 mg/L
+21 definition R_max: 0.86696
+22 definition d_davka: 40.5594 mg/L
+23 definition R_overeni: 0.855936
+24 definition m_koag: 72.5397 kg
+25 definition cena: 304.667 CZK
+26 definition N2: 20 mg/L
+27 definition R_poz2: 0.917677
+28 definition k_r: 0.00000405093 Hz
+29 definition C0: 35 mg/L
+30 definition C_trsi: 12.2478 mg/L
+31 definition t_pol: 171108 s
+32 definition dt: 0.05 d
+33 table Euler60: ok
+35 definition e60: 12.1345 mg/L
+36 definition dt2: 0.025 d
+37 table Euler120: ok
+39 definition e120: 12.1914 mg/L
+40 definition pomer: 2.00714
+41 check: true
+42 check: true
+43 check: true
+44 check: true
+45 check: true
+46 check: true
+47 check: true
+48 check: true
+49 check: true
+50 check: true
+51 check: true
+52 check: true
+53 check: true
+54 check: true
+55 check: true
+56 check: true
+57 check: true
+58 check: true

@@ -1,0 +1,35 @@
+1 heading: none
+2 heading: none
+4 definition hilbert: 4×4
+5 definition pascal: 3×3
+6 definition kol: [5]
+8 definition rozmery: [2]
+9 definition prvni_radek: [4]
+10 definition druhy_sloupec: [4]
+11 definition prvek: 0.25
+12 definition vyrez: 3×3
+14 definition A: 2×2
+15 definition B: 2×2
+16 definition spojene: 2×4
+17 definition zasute: 4×2
+18 definition soucin_AB: 2×2
+19 definition trans: 2×2
+20 definition stopa: 7
+21 definition ident: 4×4
+22 definition diagonal: 2×2
+23 definition bodovy: 32
+24 definition vekctorovy: [3]
+25 definition delka_vektoru: 5
+26 definition po_elementech: [3]
+27 definition kronecker: [4]
+28 definition nejmensi: [2]
+30 check: true
+31 check: true
+32 check: true
+33 check: true
+34 check: true
+35 check: true
+36 check: true
+37 check: true
+38 check: true
+39 check: true

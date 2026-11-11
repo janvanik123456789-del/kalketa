@@ -1,0 +1,32 @@
+1 heading: none
+2 heading: none
+4 definition b_3_10: 0.117188
+5 definition b_10: 0.000976563
+6 definition b_kumul: 0.171875
+7 definition b_okrajek: 1
+8 definition b_nula: error  E-DOMAIN
+9 definition b_stred: 0.00289779
+10 definition b_mimo: 0
+12 definition p_2: 0.251021
+13 definition p_kumul: 0.808847
+14 definition p_velke: 4.67785e-57
+15 definition p_nula: 0.22313
+17 definition h_2: 0.047678
+18 definition h_kumul: 0.0521156
+19 definition h_okrajek: 0.0102167
+20 definition h_nemozne: 0
+22 definition k: 2598960
+23 definition k2: 1.00891e+29
+24 definition k0: 1
+25 definition k_mimo: error  E-DOMAIN
+26 definition f5: 120
+27 definition f20: 2432900000000000000
+28 definition f_nula: 1
+30 check: true
+31 check: true
+32 check: true
+33 check: true
+34 check: true
+35 check: true
+36 check: true
+37 check: true

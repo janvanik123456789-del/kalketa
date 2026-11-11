@@ -1,0 +1,11 @@
+1 heading: none
+2 definition f1: 3
+3 definition f2: error  E-FIRST-NONE
+4 definition f3: error  E-DOMAIN
+5 definition f4: error  E-UNIT-MISMATCH
+6 definition f5: error  E-UNIT-MISMATCH
+7 definition f6: 2
+8 definition f7: 2
+9 definition f8: -3
+10 definition f9: 0
+11 definition f10: error  E-FIRST-NONE

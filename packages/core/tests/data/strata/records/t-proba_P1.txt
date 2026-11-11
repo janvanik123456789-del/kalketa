@@ -1,0 +1,22 @@
+1 heading: none
+2 definition molo: 1 mol
+3 definition objem: 1 L
+4 definition konc: 1.5 mol/L
+5 invalid kr: error  E-MISSING-OPERATOR
+6 definition dt_s: 2 s
+7 definition teplota: 300 K
+8 invalid plyn: error  E-MISSING-OPERATOR
+9 definition energie: 75 kJ/mol
+10 definition bezrozm: blocked  I-DEPENDENCY-FAILED
+11 definition fit_x: [4]
+12 definition fit_y: [4]
+13 definition F_l: ok
+14 definition f1: 2.45
+15 definition f2: -0.05
+16 definition R2: 0.998835
+17 table Rk: ok  E-TABLE-SCHEMA W-FORMAT W-FORMAT W-FORMAT W-FORMAT W-FORMAT E-TABLE-SCHEMA
+18 invalid: error  E-SYNTAX
+19 definition treti: error  E-TABLE-COLUMN
+20 definition pocet: error  E-TABLE-COLUMN
+21 definition cas_int: error  E-UNIT-MISMATCH
+22 definition koren: [2]

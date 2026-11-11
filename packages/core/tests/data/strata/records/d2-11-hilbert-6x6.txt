@@ -1,0 +1,16 @@
+1 heading: none
+3 text: none
+4 definition H: 6×6
+5 definition Hi: 6×6
+6 text: none
+7 definition P: 6×6
+8 definition Rozdil: 6×6
+9 definition E_Frob: 9.76342e-11
+10 check: true
+11 text: none
+12 definition podm: 14951100
+13 text: none
+14 definition dH: 5.3673e-18
+15 check: true
+16 text: none
+17 definition r1: [6]

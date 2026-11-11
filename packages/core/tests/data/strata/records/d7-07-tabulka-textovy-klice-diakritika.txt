@@ -1,0 +1,8 @@
+1 heading: none
+2 table Materialy: ok
+7 definition E1: 193 GPa
+8 definition E2: 235 MPa
+9 definition E3: error  E-TABLE-KEY
+10 definition E4: error  E-TABLE-KEY
+11 definition E5: error  E-TABLE-KEY
+12 definition E6: 69 GPa

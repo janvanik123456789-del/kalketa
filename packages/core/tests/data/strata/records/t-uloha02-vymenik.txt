@@ -1,0 +1,48 @@
+1 heading: none
+2 heading: none
+3 heading: none
+4 definition mdot_h: 0.5 kg/s
+5 definition mdot_c: 0.8 kg/s
+6 definition cp: 4186 J/(kg·K)
+7 definition T_h: 90 °C
+8 definition T_c: 15 °C
+9 definition UA: 3500 W/K
+10 definition Ch: 2093 J/(K·s)
+11 definition Cc: 3348.8 J/(K·s)
+12 definition Cmin: 2093 J/(K·s)
+13 definition Cmax: 3348.8 J/(K·s)
+14 definition Cr: 0.625
+15 definition NTU: 1.67224
+16 definition eps: 0.699316
+17 definition vykon: 109775 W
+18 definition T_h_out: 37.5513 °C
+19 definition T_c_out: 47.7804 °C
+20 definition dT1: 42.2196 Δ°C
+21 definition dT2: 22.5513 Δ°C
+22 definition LMTD: 31.3643 Δ°C
+23 definition UA_zpet: 3500 W/Δ°C
+24 definition eps_Cr1: 0.625782
+25 definition eps_Bl: 0.625782
+26 definition ztratena_presnost: 6.25796e-7
+27 definition rozdil_T: 75 Δ°C
+28 definition m: 400 kg
+29 definition hA: 250 W/K
+30 definition T_okoli: 20 °C
+31 definition τ: 6697.6 s
+32 definition cas: 7358.07 s
+33 definition T_po_10h: 20.2778 °C
+34 check: true
+35 check: true
+36 check: true
+37 check: true
+38 check: true
+39 check: true
+40 check: true
+41 check: true
+42 check: true
+43 check: true
+44 check: true
+45 check: true
+46 check: true
+47 check: true
+48 check: true

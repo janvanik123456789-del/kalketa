@@ -1,0 +1,13 @@
+1 heading: none
+3 definition Re: 100000
+4 definition rel: 0.0001
+5 text: none
+6 solve: ok
+7 text: none
+8 definition leva: 7.34939
+9 definition prava: 7.34939
+10 check: true
+11 check: true
+12 text: none
+13 definition lam_sj: 0.0184524
+14 check: true

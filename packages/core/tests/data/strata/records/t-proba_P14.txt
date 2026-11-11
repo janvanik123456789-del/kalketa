@@ -1,0 +1,23 @@
+1 heading: none
+2 definition p1: 50 %
+3 definition p2: 0.5 %
+4 definition houba: 50 kg
+5 invalid houba2: error  E-UNKNOWN-UNIT
+6 definition konc: 250 mg/L
+7 definition konc_ppm: 250 ppm
+8 definition prevod: 250000000 mg/L
+9 definition tok: 0.003125 kg/s
+10 definition tok_kg: 270 kg
+11 definition davek: 60 mg/L
+12 definition davka_l: 60  W-BARE-UNIT
+13 definition prumer: 2.5
+14 definition stredni: 2
+15 definition smere: 2.58199
+16 definition rozptyl: 6.66667
+17 definition koef: ok
+18 definition k1: 0.95
+19 definition k2: 1.19
+20 definition k3: -0.1
+21 definition optimum: 3
+22 definition mimo: 10
+23 definition ulozene: 5.84804

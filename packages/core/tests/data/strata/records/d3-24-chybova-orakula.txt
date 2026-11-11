@@ -1,0 +1,31 @@
+1 heading: none
+2 heading: none
+3 heading: none
+5 definition spravne: 6
+6 definition chybna_funkce: error  E-FUNC-UNKNOWN
+7 definition spatny_pocet: error  E-FUNC-ARITY
+8 definition zaporny_log: error  E-DOMAIN
+9 definition nula_log: error  E-DOMAIN
+10 definition zaporny_sqrt: error  E-DOMAIN
+11 definition mocnina_nuly: 1
+12 definition deleni_nulou: error  E-DIV-ZERO
+13 definition nekonecno: error  E-NOT-FINITE
+14 definition moc_nekonecno: error  E-NOT-FINITE
+15 definition rozdil_jednotek: error  E-UNIT-MISMATCH
+16 definition prevod_casu: error  E-TARGET-UNIT
+17 definition mocnina_s_jednotkou: 15.5885 m^(5/2)
+18 definition sictani_textu: error  E-TYPE
+19 definition prazdna_rada: error  E-DOMAIN
+20 definition kvantil_mimo: error  E-DOMAIN
+21 definition mimo_obor: error  E-INDEX
+22 definition riadeni_mimo: error  E-INDEX
+23 definition zaporny_index: error  E-INDEX
+24 definition faktorial_zaporny: error  E-DOMAIN
+25 definition faktorial_netvary: error  E-DOMAIN
+26 definition kombinace_mimo: error  E-DOMAIN
+27 definition deleni_nulou_mod: error  E-DOMAIN
+28 definition nerovnake_rady: error  E-VECTOR-LENGTH
+29 definition matice_nesedi: error  E-MATRIX-SHAPE
+30 definition krateni_nuly: error  E-DIV-ZERO
+31 definition log_zerova_mocnina: 1
+32 check: true

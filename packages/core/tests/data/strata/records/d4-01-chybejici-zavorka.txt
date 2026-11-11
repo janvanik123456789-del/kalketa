@@ -1,0 +1,5 @@
+1 heading: none
+2 definition Q: 2.5 l/s
+3 definition d: 32 mm
+4 definition A: 804.248 mm²
+5 invalid v: error  E-SYNTAX

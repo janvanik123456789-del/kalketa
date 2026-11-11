@@ -1,0 +1,8 @@
+1 heading: none
+2 definition σ: 150 MPa
+3 definition f_y: 235 MPa
+4 check: error  E-DOMAIN
+5 definition τ: 40 MPa
+6 check: true
+7 definition d: 10 mm
+8 definition L: 12 m

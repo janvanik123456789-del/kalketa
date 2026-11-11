@@ -1,0 +1,32 @@
+1 heading: none
+2 heading: none
+3 heading: none
+5 definition xs: [6]
+6 definition ys: [6]
+7 definition F: ok
+8 definition sm: 2.12
+9 definition us: 0.446667
+10 definition r2: 0.996941
+11 definition s_bodu: 0.245628
+12 definition chyby: [2]
+14 definition n: 6
+15 definition sx: 21
+16 definition sy: 47.2
+17 definition sxx: 91
+18 definition sxy: 202.3
+19 definition ssyy: 450.2
+20 definition sm_sour: 2.12
+21 definition us_sour: 0.446667
+22 definition rez: [6]
+23 definition sse: 0.241333
+24 definition sst: 78.8933
+25 definition s2: 0.0603333
+26 definition s_sm: 0.0587164
+27 definition s_us: 0.228668
+28 definition r2_sour: 0.996941
+30 check: true
+31 check: true
+32 check: true
+33 check: true
+34 check: true
+35 check: true

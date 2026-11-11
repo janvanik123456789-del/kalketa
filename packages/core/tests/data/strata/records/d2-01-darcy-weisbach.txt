@@ -1,0 +1,18 @@
+1 heading: none
+3 text: none
+4 definition D: 25 mm
+5 definition L: 50 m
+6 definition Q: 60 l/min
+7 definition μ: 0.89 cP
+8 definition ρ: 997 kg/m³
+9 definition ε: 0.05 mm
+10 text: none
+11 definition v: 2.03718 m/s
+12 definition Re: 57052.6
+13 check: true
+14 definition rel: 0.002
+15 text: none
+16 definition λ: 0.0259752
+17 definition Δp: 107.477 kPa
+18 text: none
+19 check: true

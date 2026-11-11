@@ -1,0 +1,14 @@
+1 heading: none
+3 text: none
+4 table Body: ok
+16 definition f: ok
+17 text: none
+18 definition smernice: 2.5
+19 definition usek: 1
+20 check: true
+21 check: true
+22 text: none
+23 definition R2: 1
+24 definition s_bodu: 2.17558e-15
+25 check: true
+26 check: true

@@ -1,0 +1,17 @@
+1 heading: none
+2 definition B: 4×4
+3 definition hodB: 2
+4 definition N: 4×2
+5 definition pocetN: 2
+6 definition resN: 0
+7 definition s: [4]
+8 definition s1: 12.3613
+9 definition s2: 2.68308
+10 definition s3: 8.30312e-156
+11 definition C: 2×2
+12 definition hodC: 1
+13 definition sC: [2]
+14 definition sC1: 1
+15 definition sC2: 0
+16 definition nC: [2]
+17 definition resC: 0

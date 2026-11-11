@@ -1,0 +1,11 @@
+1 heading: none
+2 definition g1: 5.56209e+305
+3 definition g2: 7.25742e+306
+4 definition g3: error  E-NOT-FINITE
+5 definition g4: 1051290
+6 definition g5: 704.004
+7 definition g6: -3.54491
+8 definition g7: 2.36327
+9 definition g8: -0.945309
+10 definition g9: error  E-DOMAIN
+11 definition g10: error  E-DOMAIN

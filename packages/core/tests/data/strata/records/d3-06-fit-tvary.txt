@@ -1,0 +1,39 @@
+1 heading: none
+2 heading: none
+3 heading: none
+5 definition xs: [8]
+6 definition a_skut: 2.5
+7 definition b_skut: 0.35
+8 definition exp_y: [8]
+9 definition F_exp: ok
+10 definition e_a: 2.5
+11 definition e_b: 0.35
+13 definition k_skut: 3
+14 definition m_skut: 1.7
+15 definition moc_y: [8]
+16 definition F_moc: ok
+17 definition m_k: 3
+18 definition m_m: 1.7
+20 definition c_skut: 2
+21 definition d_skut: 0.5
+22 definition log_y: [8]
+23 definition F_log: ok
+24 definition l_c: 2
+25 definition l_d: 0.5
+27 definition poly_y: [8]
+28 definition F_poly: ok
+29 definition p3: -0.5
+30 definition p2: 2
+31 definition p1: -3
+32 definition p0: 4
+33 definition hodnota: -0.5
+34 definition polyn: ok
+35 definition pol_hodnota: -0.5
+37 check: true
+38 check: true
+39 check: true
+40 check: true
+41 check: true
+42 check: true
+43 check: true
+44 check: true

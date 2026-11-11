@@ -1,0 +1,11 @@
+1 heading: none
+3 text: none
+4 definition f20: 2432900000000000000
+5 definition f20_rucne: 2432900000000000000  I-DECIMALS-PRECISION
+6 check: true
+7 text: none
+8 definition f19: 121645000000000000
+9 check: true
+10 text: none
+11 definition f170: 7.25742e+306
+12 check: true

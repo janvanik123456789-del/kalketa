@@ -1,0 +1,12 @@
+1 heading: none
+2 definition b1: error  E-NOT-FINITE
+3 definition b2: error  E-NOT-FINITE
+4 definition b3: 0
+5 definition b4: 0
+6 definition b5: error  E-NOT-FINITE
+7 definition p1: 0.0178383
+8 definition p2: 0.0178383
+9 definition p3: 7.12458e-218
+10 definition p4: 4.22124e-284
+11 definition n1: 2.70288e+299
+12 definition n2: error  E-NOT-FINITE

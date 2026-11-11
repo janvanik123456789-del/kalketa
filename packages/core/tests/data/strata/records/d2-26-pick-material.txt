@@ -1,0 +1,16 @@
+1 heading: none
+3 table Materialy: ok
+8 text: none
+9 definition a: 400 mm
+10 definition b: 300 mm
+11 definition tl: 25 mm
+12 definition V: 0.003 m³
+13 definition radek: ok
+14 definition ρ: 7850 kg/m³
+15 definition m: 23.55 kg
+16 text: none
+17 check: true
+18 text: none
+19 definition h_al: 2700 kg/m³
+20 definition m_Al: 8.1 kg
+21 check: true

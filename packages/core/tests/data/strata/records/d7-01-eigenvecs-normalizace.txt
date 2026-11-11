@@ -1,0 +1,12 @@
+1 heading: none
+2 definition A: 3×3
+3 definition lam: [3]
+4 definition V: 3×3
+5 definition soucet_l: 13
+6 definition soucin_l: 75
+7 definition r1: 0
+8 definition r2: 0
+9 definition r3: 0
+10 definition I3: 3×3
+11 definition lam2: [3]
+12 definition V2: 3×3

@@ -1,0 +1,9 @@
+1 heading: none
+3 text: none
+4 definition S: 0.166667 m²
+5 text: none
+6 definition S_ana: 0.166667 m²
+7 check: true
+8 text: none
+9 definition S_bez: 0.166667
+10 check: true

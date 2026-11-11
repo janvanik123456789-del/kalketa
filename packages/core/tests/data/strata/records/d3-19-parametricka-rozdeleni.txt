@@ -1,0 +1,34 @@
+1 heading: none
+2 heading: none
+3 heading: none
+5 definition e_pdf: 0.303265
+6 definition e_cdf: 0.393469
+7 definition e_nula: 0.5
+8 definition e_prekvapeni: 0.22313
+9 definition e_zpet: 0.236183
+10 definition e_pdf_hodnota: 0.236183
+11 definition e_integral: 1
+13 definition w_pdf: 0.281982
+14 definition w_cdf: 0.813323
+15 definition w_characteristika: 0.750535
+16 definition w_slim: 0
+17 definition w_der: 0.281982
+19 definition l_pdf: 0.156874
+20 definition l_cdf: 0.755891
+21 definition l_median: 1
+22 definition l_stred: 1.64872
+23 definition l_zpet: 0.156874
+25 definition g_pdf: 0.270671
+26 definition g_cdf: 0.593994
+27 definition g_cdf1: 0.632121
+28 definition g_mean: 2
+29 definition g_der: 0.270671
+31 check: true
+32 check: true
+33 check: true
+34 check: true
+35 check: true
+36 check: true
+37 check: true
+38 check: true
+39 check: true

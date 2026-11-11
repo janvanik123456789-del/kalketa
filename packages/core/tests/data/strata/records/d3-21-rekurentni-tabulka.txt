@@ -1,0 +1,21 @@
+1 heading: none
+2 heading: none
+4 definition urok: 0.02
+5 definition P: 100000
+6 definition splatka: 3000
+7 definition pocet: 6
+9 table Spl: ok
+12 definition radek: [6]
+13 definition úroky: [6]
+14 definition soucet_uroku: 11691.9
+15 definition posledni_zustatek: 93691.9
+17 definition rust: 1.12616
+18 definition zustatek_vzorec: 93691.9
+19 definition uroky_vzorec: 11691.9
+21 definition s_meritkem: 1200 EUR
+22 definition s_typer: 0.03
+23 table Muc: ok
+26 check: true
+27 check: true
+28 check: true
+29 check: true

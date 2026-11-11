@@ -1,0 +1,7 @@
+1 heading: none
+2 table Posun: ok
+8 definition x1: 21 cm
+9 definition x2: 0.06 m
+10 definition x3: 54 cm  W-EXTRAPOLATION
+11 definition x4: -6 cm  W-EXTRAPOLATION
+12 definition F3: 8 kN

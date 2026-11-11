@@ -1,0 +1,14 @@
+1 heading: none
+2 definition t1: -318310000000
+3 definition t2: 318335000000
+4 definition t3: -707107
+5 definition t4: 0
+6 definition t5: 12.7062
+7 definition c1: 7.72192e-22
+8 definition c2: 2e-12
+9 definition c3: 55.264
+10 definition c4: 1.38629
+11 definition f1: 1e-12
+12 definition f2: 157740
+13 definition f3: 1
+14 definition f4: 39

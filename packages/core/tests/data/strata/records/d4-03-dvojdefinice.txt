@@ -1,0 +1,7 @@
+1 heading: none
+2 definition L: 6 m
+3 definition q: 10 kN/m
+4 definition M: 45 kN·m
+5 definition L: error  E-REDEFINED
+6 definition A: 31415.9 cm²
+7 definition F: 30 kN

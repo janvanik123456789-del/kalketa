@@ -1,0 +1,12 @@
+1 heading: none
+2 definition Fv: [3]
+3 definition dv: [3]
+4 definition h: [3]
+5 definition soucet_h: 165000 J
+6 definition k: [9]
+7 definition soucet_k: 390000 J
+8 definition tF: 1×3
+9 definition tM: 2×2
+10 definition M: 2×2
+11 definition w: [3]
+12 definition sp: error  E-MATRIX-SHAPE

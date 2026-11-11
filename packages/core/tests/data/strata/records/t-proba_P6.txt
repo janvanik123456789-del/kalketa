@@ -1,0 +1,14 @@
+1 heading: none
+2 heading: none
+3 definition D: 0.5 m
+4 definition φ: ok
+5 definition obsah: ok
+6 definition obvod: ok
+7 definition Rv: ok
+8 definition b1: error  E-DIV-ZERO
+9 definition b2: 9 cm
+10 definition b3: 18.2612 cm
+11 definition b4: 18.2612 cm
+12 definition b5: 40.6402 cm
+13 definition b6: error  E-DIV-ZERO
+14 definition b7: error  E-DIV-ZERO

@@ -1,0 +1,29 @@
+1 heading: none
+2 heading: none
+3 heading: none
+5 definition a1: [6]
+6 definition a2: [6]
+7 definition a3: [6]
+8 definition rozsah: [4]
+9 definition celocisla: [5]
+10 definition nula_polozek: error  E-DOMAIN
+11 definition obráceny: [3]
+13 definition n: 4000
+14 definition velky_vzor: [4000]
+15 definition prumer: 0.50176
+16 definition sd: 0.292498
+17 definition minimum: 0.0000755927
+18 definition maximum: 0.999456
+20 definition normalni: [4000]
+21 definition n_prumer: -0.0218415
+22 definition n_sd: 1.01366
+23 definition pocet_zapornych: 2021
+25 definition σ: 0.00456435
+26 check: true
+27 check: true
+28 check: true
+29 check: true
+30 check: true
+31 check: true
+32 check: true
+33 check: true

@@ -1,0 +1,22 @@
+1 heading: none
+2 heading: none
+3 heading: none
+5 definition malá: 2000
+6 definition s1: [2000]
+7 definition p1: 1000
+8 definition m1: 0.5
+9 definition med1: 0.5
+10 definition mx1: 1
+11 definition serazene: [2000]
+12 definition otocene: [2000]
+13 definition rozdil: [1999]
+14 definition kumulativ: [2000]
+15 definition histogram: [10]
+17 definition matice30: 4×4
+18 definition inverze: 4×4
+19 definition det: 1.65344e-7
+21 definition fit_data_x: [50]
+22 definition fit_data_y: [50]
+23 definition prolozeni: ok
+25 check: true
+26 check: true

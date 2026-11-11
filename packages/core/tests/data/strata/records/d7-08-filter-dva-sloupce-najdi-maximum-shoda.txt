@@ -1,0 +1,12 @@
+1 heading: none
+2 table Profily: ok
+9 definition vyber: ok
+10 definition hmotnosti: [2]
+11 definition soucet_h: 101.2 kg/m
+12 definition pocet: 2
+13 definition A_nej: 74.8 cm²
+14 definition jmeno: ok
+15 definition W_nej: 780.6 cm³
+16 table Dvojice: ok
+21 definition A_shoda: 12 cm²
+22 definition jmeno_shoda: ok

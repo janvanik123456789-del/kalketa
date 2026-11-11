@@ -1,0 +1,9 @@
+1 heading: none
+2 definition saz: [4]
+3 table K: ok
+5 definition z1: 910
+6 definition z2: 828.2
+7 definition z3: 753.046
+8 definition z4: 683.168
+9 definition prvkove: [3]
+10 definition skalarsoucin: [3]

@@ -1,0 +1,18 @@
+1 heading: none
+2 definition mesic1: 20514.4 date
+3 definition mesic2: 20515.4 date
+4 definition mesic3: 20544.9 date
+5 definition konec: 20849.3 date
+6 invalid mena: error  E-UNKNOWN-UNIT I-DID-YOU-MEAN
+7 definition mena2: 1000 CZK
+8 definition mena3: 1000 EUR
+9 table Urok: ok
+11 definition treti: 77155.1
+12 table Data: ok
+17 definition prvni: error  E-TABLE-INTERPOLATE
+18 definition sloupec: [3]
+19 definition vybrany: error  E-TABLE-KEY
+20 definition max_spl: ok
+21 definition filtr: [2]
+22 table Kal: ok
+24 definition posun: 20575.3 date

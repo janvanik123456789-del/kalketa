@@ -1,0 +1,23 @@
+# Sonda P2 — Manning: jednotky, arkus kosinus, mocnina 2/3, funkce, řešení rovnice
+D := 0.5 m
+S := 0.005
+n := 0.013 s / m^(1/3)
+g := 9.80665 m / s^2
+Q := 0.08 m^3 / s
+h := 0.187648857998637 m
+theta := 2 · acos(1 - 2·h / D)
+A := D^2 / 8 · (theta - sin(theta))
+Obvod := D · theta / 2
+Rv := A / Obvod
+R23 := Rv^(2/3)
+V := Q / A
+Fr := V / sqrt(g · A / (D · sin(theta / 2)))
+Q_zpet := 1 / n · A · R23 · sqrt(S)
+n_bez := 0.013
+Q_bez := 1 / n_bez · A · R23 · sqrt(S)
+Q_plny := 1 / n_bez · (pi·D^2/4) · ((pi·D^2/4) / (pi·D))^(2/3) · sqrt(S)
+prutok(x) := 1 / n_bez · (D^2/8·(2·acos(1 - 2·x/D) - sin(2·acos(1 - 2·x/D)))) · ((D^2/8·(2·acos(1 - 2·x/D) - sin(2·acos(1 - 2·x/D)))) / (D·acos(1 - 2·x/D)))^(2/3) · sqrt(S)
+Q_z_kontrakce := prutok(0.25 m)
+Q_max := maximize(x: 0.01 .. 0.49, prutok(x))
+koren := roots(prutok(x) - Q, x, 0.05 .. 0.49)
+druhy_koren := roots(prutok(x) - 0.26 m^3/s, x, 0.05 .. 0.49)

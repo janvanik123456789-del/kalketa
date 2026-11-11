@@ -1,0 +1,17 @@
+1 heading: none
+3 text: none
+4 table Sum: ok
+16 definition p: ok
+17 text: none
+18 definition a2: -0.00530303
+19 definition a1: 2.03924
+20 definition a0: 2.03455
+21 text: none
+22 definition rez: [10]
+23 check: true
+24 check: true
+25 check: true
+26 text: none
+27 definition p5: 12.0982
+28 definition R2: 0.999257
+29 check: true

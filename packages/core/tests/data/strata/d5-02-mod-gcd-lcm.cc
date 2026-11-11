@@ -1,0 +1,15 @@
+# Dávka 5 – list 02: mod se zápornými argumenty a neceločíselnými hodnotami, gcd a lcm s nulou
+m1 := mod(7, 3)
+m2 := mod(-7, 3)
+m3 := mod(7, -3)
+m4 := mod(-7, -3)
+m5 := mod(5.5, 2.25)
+m6 := mod(-5.5, 2.25)
+m7 := mod(1 m, 300 mm) | mm    ' mod s jednotkami
+g1 := gcd(0, 0)
+g2 := gcd(0, 5)
+g3 := gcd(12, 18)
+l1 := lcm(0, 5)
+l2 := lcm(0, 0)
+l3 := lcm(4, 6)
+l4 := lcm(12, 18)

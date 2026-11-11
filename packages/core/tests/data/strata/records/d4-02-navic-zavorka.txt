@@ -1,0 +1,8 @@
+1 heading: none
+2 definition hm: 12 kg
+3 definition g: 9.81 m/s²
+4 invalid F: error  E-SYNTAX
+5 definition A: 0.25 m²
+6 definition p: blocked  I-DEPENDENCY-FAILED
+7 definition τ: 40 MPa
+8 definition u: blocked  I-DEPENDENCY-FAILED

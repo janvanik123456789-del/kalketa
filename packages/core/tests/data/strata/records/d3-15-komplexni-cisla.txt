@@ -1,0 +1,35 @@
+1 heading: none
+2 heading: none
+4 definition z: 3
+5 definition w: -2
+6 definition abs_z: 5
+7 definition arg_z: -0.927295
+8 definition arg_w: 2.35619
+9 definition re_z: 3
+10 definition im_z: -4
+11 definition konj: 3
+12 definition soucin_zw: 2
+13 definition podil: -1.75
+15 definition zpet: 3
+16 definition arg_exp: 3
+17 definition euler: -1
+18 definition moi_abs: 16
+19 definition moi_re: 16
+21 definition sqrt_z: 2
+22 definition sqrt_w: 0.643594
+23 definition sqrt_ctverec: 3
+25 definition log_z: 1.60944
+26 definition j_na_j: 0.20788
+27 definition cislo_j: 2
+29 definition atan2_1: 0.785398
+30 definition atan2_2: -0.785398
+31 definition atan2_3: 2.35619
+32 definition atan2_4: -2.35619
+33 definition atan2_nula: 0
+35 check: true
+36 check: true
+37 check: true
+38 check: true
+39 check: true
+40 check: true
+41 check: true

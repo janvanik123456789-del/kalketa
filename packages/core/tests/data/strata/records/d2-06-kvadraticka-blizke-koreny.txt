@@ -1,0 +1,18 @@
+1 heading: none
+3 text: none
+4 definition a: 1
+5 definition b: -2.0001
+6 definition c: 1.0001
+7 definition D: 1e-8
+8 solve: ok
+9 text: none
+10 definition x_uc1: 1.0001
+11 definition x_uc2: 1
+12 text: none
+13 check: true
+14 check: true
+15 text: none
+16 definition d1: 0
+17 definition d2: 0
+18 check: true
+19 check: true

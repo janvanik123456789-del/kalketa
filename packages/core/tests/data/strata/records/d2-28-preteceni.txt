@@ -1,0 +1,5 @@
+1 heading: none
+3 text: none
+4 definition preteceni: error  E-NOT-FINITE
+5 text: none
+6 definition podteceni: 0  W-UNDERFLOW

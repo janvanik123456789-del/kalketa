@@ -1,0 +1,14 @@
+1 heading: none
+2 definition radek: [3]
+3 definition cp: [3]
+4 definition podil_radu: [3]
+5 definition reciproka: [3]
+6 definition zaokr: [4]
+7 definition sk: 32
+8 definition druhy: 20
+9 definition soucet_kumu: 10
+10 definition nejvyssi: 5
+11 definition porovnej: [3]
+12 definition kum_f: [3]
+13 definition mena_z: 315 CZK
+14 definition round_mena: 1234.57 CZK

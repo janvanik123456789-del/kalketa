@@ -1,0 +1,5 @@
+1 heading: none
+3 table Materialy: ok
+7 text: none
+8 definition m_good: 7850 kg/m³
+9 definition ρ_chyba: error  E-TABLE-KEY

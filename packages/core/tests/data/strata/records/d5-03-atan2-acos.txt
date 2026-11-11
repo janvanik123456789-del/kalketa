@@ -1,0 +1,14 @@
+1 heading: none
+2 definition q1: 0.785398
+3 definition q2: 2.35619
+4 definition q3: -2.35619
+5 definition q4: -0.785398
+6 definition q5: 0
+7 definition q6: 1.5708
+8 definition q7: -1.5708
+9 definition q8: 3.14159
+10 definition q9: 0
+11 definition q10: 0.643501
+12 definition h1: 0
+13 definition h2: 1.49012e-8
+14 definition h3: error  E-DOMAIN

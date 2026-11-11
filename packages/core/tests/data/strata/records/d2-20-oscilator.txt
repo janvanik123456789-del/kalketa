@@ -1,0 +1,17 @@
+1 heading: none
+3 definition ω: 2 rad/s
+4 definition T: 3.14159 s
+5 definition doba: 31.4159 s
+6 text: none
+7 solve: ok
+10 text: none
+11 definition E_0: 2 J/kg
+12 definition E_stred: 2 J/kg
+13 definition E_konec: 2 J/kg
+14 check: true
+15 check: true
+16 text: none
+17 definition x_konec: 1 m
+18 definition v_konec: 1.55628e-7 m/s
+19 check: true
+20 check: true

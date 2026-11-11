@@ -1,0 +1,25 @@
+1 heading: none
+3 definition R: 1 kΩ
+4 definition C: 1000 μF
+5 definition U_0: 5 V
+6 definition τ: 1 s
+7 text: none
+8 solve: ok
+10 text: none
+11 definition u_1: 1.8394 V
+12 definition u_1a: 1.8394 V
+13 definition u_2: 0.676676 V
+14 definition u_2a: 0.676676 V
+15 definition u_3: 0.248935 V
+16 definition u_3a: 0.248935 V
+17 definition u_4: 0.0915782 V
+18 definition u_4a: 0.0915782 V
+19 definition u_5: 0.0336897 V
+20 definition u_5a: 0.0336897 V
+21 check: true
+22 check: true
+23 check: true
+24 check: true
+25 check: true
+26 text: none
+27 check: true

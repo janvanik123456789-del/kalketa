@@ -1,0 +1,35 @@
+1 heading: none
+2 heading: none
+3 heading: none
+5 definition A: 3×3
+6 definition sigmy: [3]
+7 definition vlastni: [3]
+8 definition vektory: 3×3
+9 definition podminka: 3.73205
+10 definition det_A: 18
+11 definition det_soucin: 18
+12 definition stopa: 9
+13 definition stopa_soucet: 9
+15 definition v1: [3]
+16 definition rezidual: [3]
+17 definition velikost: 1.26795
+19 definition H5: 5×5
+20 definition sigmy_H: [5]
+21 definition podminka_H: 476607
+23 definition D: 3×3
+24 definition sigmy_D: [3]
+26 definition deficientni: 3×3
+27 definition hodnost: 1
+28 definition hodnost_A: 3
+29 definition jadro: 3×2
+31 definition R: 3×2
+32 definition hodnost_R: 1
+34 check: true
+35 check: true
+36 check: true
+37 check: true
+38 check: true
+39 check: true
+40 check: true
+41 check: true
+42 check: true

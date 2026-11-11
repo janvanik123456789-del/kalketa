@@ -1,0 +1,10 @@
+1 heading: none
+3 text: none
+4 definition I: 2
+5 definition I_ana: 2
+6 check: true
+7 text: none
+8 definition I_eps: 1.998
+9 check: true
+10 text: none
+11 definition I_nesmysl: 34.7577  W-CALCULUS-ACCURACY

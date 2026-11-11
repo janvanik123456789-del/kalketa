@@ -1,0 +1,7 @@
+1 heading: none
+2 definition CF: [3]
+3 definition r1: 0.1
+4 definition r2: -1.42109e-14
+5 definition r3: 1.42109e-14
+6 definition r4: -168
+7 definition r5: -2

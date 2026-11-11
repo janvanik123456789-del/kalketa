@@ -1,0 +1,25 @@
+1 heading: none
+2 heading: none
+4 definition x: [6]
+5 definition y: [6]
+7 definition uzel1: 40
+8 definition uzel2: 20
+9 definition prostred: 5
+10 definition drive: 43.3333
+11 definition tesne: 35
+13 definition razeno: 43.3333
+14 definition nejblizsi: 40
+15 definition nejblizsi2: 40
+16 definition mimorozsah: 0
+17 definition mimo: error  E-INTERP-RANGE
+18 definition duplicitni: error  E-INTERP-X
+19 definition jeden: error  E-INTERP-POINTS
+20 definition prazdne: error  E-INTERP-POINTS
+22 definition s_meritky: 30 °C
+23 definition s_zpet: 100 °C
+25 check: true
+26 check: true
+27 check: true
+28 check: true
+29 check: true
+30 check: true  W-BARE-UNIT W-ABS-TEMP-MUL

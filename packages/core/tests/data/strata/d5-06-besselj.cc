@@ -1,0 +1,12 @@
+# Dávka 5 – list 06: besselj pro n = 0, 1, 5 a x od 1e-8 do 50
+b1 := besselj(0, 1e-8)
+b2 := besselj(1, 1e-8)
+b3 := besselj(5, 1e-8)
+b4 := besselj(0, 1e-4)
+b5 := besselj(3, 1e-4)
+b6 := besselj(0, 50)
+b7 := besselj(1, 50)
+b8 := besselj(5, 50)
+b9 := besselj(0, 0)
+b10 := besselj(2, -3.5)        ' zaporny argument, J_n(-x) = (-1)^n J_n(x)
+b11 := besselj(1, -3.5)

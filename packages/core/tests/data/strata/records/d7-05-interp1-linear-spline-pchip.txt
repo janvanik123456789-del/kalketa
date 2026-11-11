@@ -1,0 +1,13 @@
+1 heading: none
+2 definition xs: [4]
+3 definition ys: [4]
+4 definition q1: 2.5
+5 definition q2: 2.25
+6 definition q3: 2.21875
+7 definition q4: 4
+8 definition q5: error  E-INTERP-RANGE
+9 definition q6: 14
+10 definition q7: -1
+11 definition q8: error  E-INTERP-RANGE
+12 definition q9: 16
+13 definition q10: 15.5

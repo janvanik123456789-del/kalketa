@@ -1,0 +1,7 @@
+1 heading: none
+2 definition obsah_p: ok
+3 definition d1: error  E-TYPE
+4 definition d2: error  E-TYPE
+5 definition d3: 12
+6 definition d4: error  E-TYPE
+7 definition d5: 1

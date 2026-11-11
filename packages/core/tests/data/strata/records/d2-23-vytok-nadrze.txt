@@ -1,0 +1,33 @@
+1 heading: none
+3 definition D_n: 1 m
+4 definition D_o: 20 mm
+5 definition g: 9.81 m/s²
+6 definition A_n: 0.785398 m²
+7 definition A_o: 0.000314159 m²
+8 definition h_0: 4 m
+9 text: none
+10 definition dh: ok
+11 text: none
+12 definition t_v: 2257.62 s
+13 text: none
+14 solve: ok
+16 text: none
+17 definition h_a: ok
+18 definition h_60: 3.79021 m
+19 definition h_60a: 3.79021 m
+20 definition h_300: 3.00756 m
+21 definition h_300a: 3.00756 m
+22 definition h_konec: 0.04 m
+23 definition h_koneca: 0.04 m
+24 check: true
+25 check: true
+26 check: true
+27 text: none
+28 check: true
+29 text: none
+30 definition t_v_ana: 2257.62 s
+31 check: true
+32 text: none
+33 solve: ok
+34 definition t_04_ana: 1543.7 s
+35 check: true

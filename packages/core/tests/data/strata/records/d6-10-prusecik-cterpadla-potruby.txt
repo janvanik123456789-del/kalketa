@@ -1,0 +1,6 @@
+1 heading: none
+2 definition H_c: ok
+3 definition H_p: ok
+4 solve: ok
+5 definition b1: 45.7143 m
+6 definition b2: 45.7143 m

@@ -1,0 +1,26 @@
+1 heading: none
+2 heading: none
+4 definition A: 3×3
+5 definition b: [3]
+6 definition x_lsolve: [3]
+7 definition x_inverze: [3]
+8 definition kontrola: [3]
+10 definition C: 2×2
+11 definition d: [2]
+12 definition singularni: error  E-MATRIX-SINGULAR
+13 definition inverze_singularni: error  E-MATRIX-SINGULAR
+15 definition E: 3×3
+16 definition jadro: [3]
+17 definition soucin_jadra: [3]
+18 definition norma_jadra: 1.22474
+20 definition F: 2×3
+21 definition g: [3]
+22 definition obdelnik: error  E-MATRIX-SQUARE
+24 definition s_jednotkami: [2]
+25 definition krize: [2]
+27 definition badar: error  E-MATRIX-SHAPE
+29 check: true
+30 check: true
+31 check: true
+32 check: true
+33 check: true

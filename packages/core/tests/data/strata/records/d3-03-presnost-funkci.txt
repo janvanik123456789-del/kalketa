@@ -1,0 +1,35 @@
+1 heading: none
+2 heading: none
+3 heading: none
+4 heading: none
+5 heading: none
+6 heading: none
+8 definition blizke1: 1.00009e-12
+9 definition blizke2: 1e-8
+10 definition blizke3: 0.000099995
+11 definition expmalo: 1e-8
+12 definition sqrt_dva: 2
+13 definition petina: 0.3
+15 definition velky1: -0.487506
+16 definition velky2: 0.791446
+17 definition velky3: -2.56378
+18 definition velky4: 0.779688
+19 definition stredni: -0.349994
+21 definition odmocnina: 1.41421
+22 definition log_tri: 3
+23 definition log_dva: 3
+24 definition desit_zaporna: 1e-300
+26 heading: none
+27 check: true
+28 check: true
+29 check: true
+30 check: true
+31 check: true
+32 check: true
+33 check: true
+34 check: true
+35 check: true
+36 check: true
+37 check: true
+38 check: true
+39 check: true

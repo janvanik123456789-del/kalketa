@@ -1,0 +1,30 @@
+1 heading: none
+2 heading: none
+4 definition n: [6]
+5 definition sct: [6]
+6 definition soucin: [6]
+7 definition rozdil: [5]
+8 definition prvni: [5]
+9 definition obrat: [4]
+11 definition rev: [6]
+12 definition posledni: 6
+13 definition delka: 6
+14 definition rozsah: [9]
+15 definition s_meritkem_r: [5]
+16 definition rovnomo: [5]
+18 definition druhe: ok
+19 definition kazdy: [6]
+20 definition ktam: 91
+21 definition odmocniny: 5
+22 definition ctverce: 91
+24 definition s_meritkem: [3]
+25 definition dif_meritko: [2]
+26 definition podil: [2]
+28 check: true
+29 check: true
+30 check: true
+31 check: true
+32 check: true
+33 check: true
+34 check: true
+35 check: true  W-BARE-UNIT W-BARE-UNIT

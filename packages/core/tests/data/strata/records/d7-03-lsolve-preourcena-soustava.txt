@@ -1,0 +1,9 @@
+1 heading: none
+2 definition A6: 6×3
+3 definition b6: 6×1
+4 definition x6: error  E-MATRIX-SQUARE
+5 definition A5: 3×3
+6 definition b5: 3×1
+7 definition x5: [3]
+8 definition x51: 1 kN
+9 definition x53: 3 kN

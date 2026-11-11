@@ -1,0 +1,7 @@
+1 heading: none
+2 invalid a: error  E-SYNTAX
+3 definition b: 2.5 m
+4 invalid c: error  E-UNEXPECTED-CHAR E-MISSING-OPERATOR
+5 invalid d: error  E-UNEXPECTED-CHAR E-UNEXPECTED-CHAR E-MISSING-OPERATOR
+6 definition e: blocked  I-DEPENDENCY-FAILED
+7 definition f: blocked  I-DEPENDENCY-FAILED

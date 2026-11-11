@@ -1,0 +1,22 @@
+1 heading: none
+2 heading: none
+3 heading: none
+5 definition velke: [4]
+6 definition v_var: 1.66667
+7 definition v_sd: 1.29099
+8 definition v_prumer: 1000000000
+10 definition male: [3]
+11 definition m_var: 4
+13 definition smes: [4]
+14 definition s_sum: 1
+16 definition skoro_stale2: [4]
+17 definition s_odchylka: 1.29125e-13
+18 definition korelace_male: 1
+20 definition meritka: [5]
+21 definition rozptyl_meritek: 19901000
+22 definition pomer_sd: 1
+24 check: true
+25 check: true
+26 check: false
+27 check: true
+28 check: true

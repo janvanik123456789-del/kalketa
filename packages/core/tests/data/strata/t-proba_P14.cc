@@ -1,0 +1,23 @@
+# Sonda P14 — procenta, ppm, mg/L, hmotnostní toky a minimize na omezeném oboru
+p1 := 50 %
+p2 := 0.5 %
+houba := p1 · 100 kg
+houba2 := 50 percent · 100 kg
+konc := 250 mg / L
+konc_ppm := 250 ppm
+prevod := konc / (ppm)
+tok := 12.5 l / s · konc
+tok_kg := 86400 s · tok
+davek := 60 mg / L
+davka_l := davek / (mg / l)
+prumer := mean([1, 2, 3, 4])
+stredni := median([1, 5, 2])
+smere := stdev([2, 4, 6, 8])
+rozptyl := var([2, 4, 6, 8])
+koef := fit([2.1, 5.9, 12.2, 19.8], x: [1, 2, 3, 4], kind: "poly2")
+k1 := koef[1]
+k2 := koef[2]
+k3 := koef[3]
+ optimum := minimize(x^2 - 6·x + 11, x: 0 .. 10)
+mimo := minimize((x - 20)^2, x: 0 .. 10)
+ulozene := minimize(100 / x + 0.25 · x^2, x: 1 .. 40)

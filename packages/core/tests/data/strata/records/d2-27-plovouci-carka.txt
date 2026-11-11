@@ -1,0 +1,18 @@
+1 heading: none
+3 text: none
+4 definition blizke: 0
+5 text: none
+6 definition ε: 2.22045e-16
+7 definition meze: 1.77636e-15
+8 check: true
+9 text: none
+10 definition blizke2: 9.99201e-14
+11 check: true
+12 text: none
+13 definition S: 1.64483
+14 definition S_konec: 1.64493
+15 check: true
+16 check: true
+17 text: none
+18 definition zbytek: 0.000099995
+19 check: true

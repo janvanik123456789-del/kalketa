@@ -1,0 +1,14 @@
+1 heading: none
+3 text: none
+4 definition A: 4×4
+5 definition d: -6 m⁴
+6 text: none
+7 definition B: 2×2
+8 definition C: 2×2
+9 definition dB: -2 m²
+10 definition dC: 3 m²
+11 check: true
+12 text: none
+13 definition d_rucne: -6 m⁴
+14 check: true
+15 check: true

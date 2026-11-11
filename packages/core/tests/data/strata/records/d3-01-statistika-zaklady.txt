@@ -1,0 +1,27 @@
+1 heading: none
+2 heading: none
+4 definition mereni: [9]
+5 definition prumer: 10.1 mm
+6 definition med: 10.1 mm
+7 definition vyp_var: 0.075 mm²
+8 definition pop_var: 6.66667e-8 m²
+9 definition vyp_sd: 0.273861 mm
+10 definition pop_sd: 0.258199 mm
+12 definition x: [5]
+13 definition y: [5]
+14 definition kov: 5.025
+15 definition ρ: 0.998383
+17 definition teploty: [3]
+18 definition prumer_teplot: 25 °C
+19 definition sd_teplot: 5 Δ°C
+20 definition rozdil_teplot: 10 Δ°C
+22 definition posun: [4]
+23 definition prumer_posun: 1003.75 g
+24 definition sd_posun: 2.75379 g
+26 check: true
+27 check: true
+28 check: true
+29 check: true
+30 check: true  W-ABS-TEMP-MUL
+31 check: true
+32 check: true

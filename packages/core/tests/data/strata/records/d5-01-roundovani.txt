@@ -1,0 +1,14 @@
+1 heading: none
+2 definition a1: 3
+3 definition a2: -3
+4 definition a3: -1
+5 definition a4: 2.68
+6 definition a5: 2.67
+7 definition b1: -0.5 m
+8 definition b2: -0.5 m
+9 definition b3: 0.5 m
+10 definition c1: -2
+11 definition c2: 0
+12 definition c3: -1
+13 definition c4: 0
+14 definition c5: 2

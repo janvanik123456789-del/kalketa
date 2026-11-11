@@ -1,0 +1,13 @@
+1 heading: none
+3 definition m: 250 kg
+4 definition c_v: 4186 J/(kg·K)
+5 definition T_1: 15 °C
+6 definition T_2: 60 °C
+7 text: none
+8 definition ΔT: 45 Δ°C
+9 definition ΔT_K: 45 K
+10 check: true
+11 definition Q: 47.0925 MJ
+12 definition Q_kWh: 13.0813 kWh
+13 text: none
+14 check: true

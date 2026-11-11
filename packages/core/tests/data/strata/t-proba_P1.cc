@@ -1,0 +1,22 @@
+# Sonda P1 — jednotky látkového množství, indexování lineárního fitu, rekurentní tabulka
+molo := 1 mol
+objem := 1 L
+konc := 1.5 mol / L
+kr := 0.5 L / (mol s)
+dt_s := 2 s
+teplota := 300 K
+plyn := 8.314 J / (mol K)
+energie := 75 kJ / mol
+bezrozm := energie / (plyn · teplota)
+fit_x := [1, 2, 3, 4]
+fit_y := [2.5, 4.7, 7.3, 9.8]
+F_l := fit(fit_y, x: fit_x, kind: "linear")
+f1 := F_l[1]
+f2 := F_l[2]
+R2 := fit_r2(F_l)
+table Rk: {rows = 1 .. 5}
+| i | C = prev(C, konc) - kr·prev(C, konc)^2·dt_s |
+treti := Rk.C[3]
+pocet := len(Rk.C)
+cas_int := integral(1 / (kr · C^2), C: 0.75 .. konc)
+koren := roots(C^2 - 4, C)

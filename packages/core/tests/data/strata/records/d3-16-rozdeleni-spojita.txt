@@ -1,0 +1,30 @@
+1 heading: none
+2 heading: none
+3 heading: none
+5 definition n0: 0.5
+6 definition n196: 0.975002
+7 definition nm3: 0.0013499
+8 definition n_posun: 0.97725
+9 definition n_zpet: 0.7
+10 definition n_hodnota: 1.95996
+11 definition n_hustota: 0.398942
+12 definition n_pdf_integral: 1
+14 definition t_2132: 0.975019
+15 definition t_zpet: 1.2
+16 definition t_kritic: 2.57058
+17 definition t_tezsi: 0.981125
+19 definition c_25: 0.985177
+20 definition c_maly: 0.0487706
+21 definition c_zpet: 7.3
+22 definition c_inv: 7.81473
+24 definition f_35: 0.956515
+25 definition f_zpet: 2.4
+26 definition f_inv: 3.83785
+27 definition f_velka: 0.998203
+29 check: true
+30 check: true
+31 check: true
+32 check: true
+33 check: true
+34 check: true
+35 check: true

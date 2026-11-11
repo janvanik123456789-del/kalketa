@@ -1,0 +1,19 @@
+1 heading: none
+3 text: none
+4 definition k: 1000 N/m
+5 definition m: 2 kg
+6 definition K: 5×5
+7 definition M: 5×5
+8 definition lam: [5]
+9 text: none
+10 definition lam_a: ok
+11 text: none
+12 definition a1: 133.975 1/s²
+13 definition a5: 1866.03 1/s²
+14 definition a1_a: 133.975 1/s²
+15 definition a5_a: 1866.03 1/s²
+16 check: true
+17 check: true
+18 text: none
+19 definition stopa: 5000 1/s²
+20 check: true

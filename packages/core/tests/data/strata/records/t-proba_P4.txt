@@ -1,7 +1,7 @@
 1 heading: none
 2 definition f1: 3
 3 definition f2: error  E-FIRST-NONE
-4 definition f3: error  E-DOMAIN
+4 definition f3: error  E-FIRST-WHOLE
 5 definition f4: error  E-UNIT-MISMATCH
 6 definition f5: error  E-UNIT-MISMATCH
 7 definition f6: 2

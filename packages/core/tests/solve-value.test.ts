@@ -145,7 +145,8 @@ describe('the least whole number', () => {
   it('says when there is none', () => {
     expect(codes('a := first(n > 5, n: 1 .. 5)')).toContain('E-FIRST-NONE');
     expect(codes('a := first(n + 1, n: 1 .. 5)')).toContain('E-TYPE');
-    expect(codes('a := first(n > 1, n: 0.5 .. 5)')).toContain('E-DOMAIN');
+    // A bound that is no whole number says so (E-DOMAIN before 2026-11-11, as if the condition had no value there).
+    expect(codes('a := first(n > 1, n: 0.5 .. 5)')).toContain('E-FIRST-WHOLE');
   });
 
   it('goes into a function', () => {

@@ -5,7 +5,7 @@
 5 definition obsah: ok
 6 definition obvod: ok
 7 definition Rv: ok
-8 definition b1: error  E-DIV-ZERO
+8 definition b1: 9 cm
 9 definition b2: 9 cm
 10 definition b3: 18.2612 cm
 11 definition b4: 18.2612 cm

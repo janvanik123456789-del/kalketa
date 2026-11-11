@@ -1,6 +1,6 @@
 1 heading: none
 2 definition a1: 3 m
-3 definition a2: error  E-DOMAIN
+3 definition a2: error  E-FIRST-WHOLE
 4 definition a3: 3
 5 definition a4: 3 m
 6 definition a5: 3 cm

@@ -2,7 +2,7 @@
 2 definition s1: error  E-DOMAIN
 3 definition s2: error  E-DOMAIN
 4 definition s3: -2
-5 definition s4: error  E-NOT-FINITE
+5 definition s4: error  E-DOMAIN
 6 definition l1: error  E-DOMAIN
 7 definition l2: error  E-DOMAIN
 8 definition z0: -4

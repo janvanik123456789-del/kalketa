@@ -23,6 +23,7 @@ import { formError } from './calculus.js';
 import { asQuantity } from './coerce.js';
 import type { EvalContext } from './evaluator.js';
 import { polynomialCoefficients } from './isolate.js';
+import { inlineCalls } from './solver.js';
 
 type Evaluate = (expr: Expr, ctx: EvalContext) => Value;
 type CallExpr = Extract<Expr, { kind: 'call' }>;
@@ -33,7 +34,8 @@ export const MAX_DEGREE = 20;
 export function rootsOf(call: CallExpr, ctx: EvalContext, evaluate: Evaluate): VectorValue {
   const variable = call.args[1];
   if (call.args.length !== 2 || call.named.length > 0 || variable?.kind !== 'variable') return formError(call, call.span);
-  const expressions = polynomialCoefficients(call.args[0]!, variable.name, MAX_DEGREE);
+  // A polynomial given by the name of its function (q(x) with q(x) := x^2 − 3·x + 2) is its formula: written out.
+  const expressions = polynomialCoefficients(call.args[0]!, variable.name, MAX_DEGREE) ?? polynomialCoefficients(inlineCalls(call.args[0]!, ctx), variable.name, MAX_DEGREE);
   if (!expressions) return fail('E-ROOTS-POLYNOMIAL', call.args[0]!.span, { name: variable.name, max: MAX_DEGREE });
   const coefficients = expressions.map((c) => (c ? asQuantity(evaluate(c, ctx), c.span) : undefined));
   const present = coefficients.flatMap((c, k) => (c && (c.si !== 0 || c.im) ? [k] : []));

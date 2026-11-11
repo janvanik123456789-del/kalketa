@@ -523,6 +523,9 @@ function arithmetic(op: BinaryOperator, left: Value, right: Value, leftExpr: Exp
       // A whole power, or ^0.5 as a square root, keeps the exact form.
       const half = b.exact && b.exact.num === 1n && b.exact.den === 2n && b.exact.root === 1n;
       const exactly = a.exact && !a.absolute && b.exact ? (half ? X.squareRoot(a.exact) : b.exact.den === 1n && b.exact.root === 1n ? X.power(a.exact, Number(b.exact.num)) : undefined) : undefined;
+      // A negative base under a fractional power has no real value: the domain, as sqrt(−4) says, not "no finite
+      // number" (Strata batch 5); cbrt and the complex numbers (j) are the ways on.
+      if (a.si < 0 && !Number.isInteger(b.si)) fail('E-DOMAIN', leftExpr.span, { function: '^' });
       if (a.si !== 0 && a.si ** b.si === 0) warnUnderflow(span, ctx);
       const powered = a.si ** b.si;
       // (1 + 1/n)^n for n = 1e15 is 3.035, not e: the rounding of the base in its last digit grows with the exponent,

@@ -143,14 +143,28 @@ function firstWhole(call: CallExpr, ctx: EvalContext, evaluate: Evaluate): Value
   const [low, high] = range(variable, call, ctx, evaluate);
   const step = low.hint?.factor ?? 1;
   const start = low.si / step;
-  if (Math.abs(start - Math.round(start)) > 1e-9 * Math.max(1, Math.abs(start))) fail('E-DOMAIN', variable.value.span, { function: call.name });
+  // A bound of 0.01 m tries no whole metre: said so, not "outside the domain" (Strata, task 01, 2026-11-10).
+  if (Math.abs(start - Math.round(start)) > 1e-9 * Math.max(1, Math.abs(start))) {
+    fail('E-FIRST-WHOLE', variable.value.span, { low: `${Number(start.toPrecision(12))}${low.hint && low.hint.symbol ? ` ${low.hint.symbol}` : ''}` });
+  }
+  let failed: CalcError | undefined;
   for (let k = Math.round(start); k * step <= high.si * (1 + Math.sign(high.si) * 1e-12); k++) {
     if (k - start > MAX_TERMS) fail('E-RANGE-SIZE', call.span);
     const here = quantity(k * step, low.dim, low.hint ? { hint: low.hint } : {});
-    const holds = evaluate(body, { ...ctx, lookup: (n, at) => (n === variable.name ? here : ctx.lookup(n, at)) });
+    let holds: Value;
+    try {
+      holds = evaluate(body, { ...ctx, lookup: (n, at) => (n === variable.name ? here : ctx.lookup(n, at)) });
+    } catch (err) {
+      // A point where the condition cannot be calculated (0/0 at the bound) is no point where it holds: the search
+      // goes on; it ended there before. The error is said when no point holds.
+      if (!(err instanceof CalcError)) throw err;
+      failed ??= err;
+      continue;
+    }
     if (holds.type !== 'boolean') return fail('E-TYPE', body.span, { expected: 'boolean', found: holds.type === 'quantity' ? 'number' : holds.type });
     if (holds.value) return here;
   }
+  if (failed) throw failed;
   return fail('E-FIRST-NONE', call.span);
 }
 

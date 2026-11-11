@@ -100,6 +100,7 @@ export const DIAGNOSTIC_SEVERITY = {
   'E-ODE-STIFF': 'error',
   'E-SOLVE-VALUE-FORM': 'error',
   'E-FIRST-NONE': 'error',
+  'E-FIRST-WHOLE': 'error',
   'E-PLOT-FORM': 'error',
   'E-PLOT-PLACE': 'error',
   'E-PLOT-UNITS': 'error',

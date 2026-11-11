@@ -128,10 +128,14 @@ describe('faults Strata found', () => {
   it('gives binopdf for a large n', () => near(value('p := binopdf(5000, 10000, 0.5)', 'p'), 0.0079786461393821537604, 1e-9));
 
   // Batch 5 N6: sqrt(-4) says the domain, the power said "not a finite number".
-  it.fails('says the domain for a negative base under a fractional power', () => expect(codes('w := (-4)^0.5')).toEqual(['E-DOMAIN']));
+  it('says the domain for a negative base under a fractional power', () => expect(codes('w := (-4)^0.5')).toEqual(['E-DOMAIN']));
 
-  // Batch 6 N1: roots of a polynomial given by the name of its function.
-  it.fails('takes roots of a polynomial given as a function', () => expect(codes('q(x) := x^2 - 3·x + 2\nr := roots(q(x), x)')).toEqual([]));
+  // Batch 6 N1: roots of a polynomial given by the name of its function (written out since 2026-11-11).
+  it('takes roots of a polynomial given as a function', () => {
+    expect(codes('q(x) := x^2 - 3·x + 2\nr := roots(q(x), x)')).toEqual([]);
+    const roots = run('q(x) := x^2 - 3·x + 2\nr := roots(q(x), x)').values.get('r');
+    expect(roots?.type === 'vector' ? roots.items.map((q) => Number(q.si.toFixed(12))) : roots).toEqual([1, 2]);
+  });
 
   // Batch 7 N1: names are read as Greek (lambda → λ), the header of the table is not.
   it('reads a table column written as a Greek name in Latin letters', () =>
@@ -141,9 +145,14 @@ describe('faults Strata found', () => {
   it('picks a row by a date', () =>
     near(value('table Kurzy:\n    | datum | EUR |\n    | 2026-03-01 | 25.40 |\n    | 2026-06-30 | 25.62 |\nd := pick(Kurzy, 2026-06-30).EUR', 'd'), 25.62));
 
-  // Task 01 N2: first() steps by whole units, so between 0.01 m and 0.49 m it has no point to try.
-  it.fails('finds the first point between bounds below one unit', () =>
-    expect(codes('g(x) := x^2 - 0.1 m^2\nf := first(g(x) > 0 m^2, x: 0.01 m .. 0.49 m)')).toEqual([]));
+  // Task 01 N2: first() tries whole numbers of the unit of its bound, as documented; between 0.01 m and 0.49 m it
+  // said "outside the domain", and a point it could not calculate (0/0 at the bound) ended the search. Since
+  // 2026-11-11 the bound is said for what it is, and such a point is passed over.
+  it('says why a bound below one unit tries nothing, and passes over a point it cannot calculate', () => {
+    expect(codes('g(x) := x^2 - 0.1 m^2\nf := first(g(x) > 0 m^2, x: 0.01 m .. 0.49 m)')).toEqual(['E-FIRST-WHOLE']);
+    expect(run('g(x) := x^2 - 0.1 m^2\nf := first(g(x) > 0 m^2, x: 1 cm .. 49 cm)').values.get('f')).toMatchObject({ si: 0.32 });
+    expect(codes('R(x) := x/(x - 0 cm)\nf := first(R(x) > 0.5, x: 0 cm .. 49 cm)')).toEqual([]);
+  });
 
   // Batch 3 N6 and batch 4 item 1: a missing right bracket takes the next lines with it.
   it('calculates the lines after a missing right bracket', () => expect(value('a := sqrt(4\nb := 5\nc := b + 1', 'c')).toBe(6));

@@ -118,6 +118,7 @@ export const en: Catalog = {
     'W-ODE-ACCURACY': 'The equation for {name}: the requested accuracy was not reached even with {steps} steps (a jump in the right side, or a point where the derivative does not exist?); the result is an estimate.',
     'E-SOLVE-VALUE-FORM': 'solve as a value has one equation and one unknown: solve(a == b, x: from .. to), solve(a == b, x: guess) or solve x: a == b in from .. to.',
     'E-FIRST-NONE': 'first: in the range given the condition holds for no whole number.',
+    'E-FIRST-WHOLE': 'first tries whole numbers (or whole multiples of the unit of the bound, such as 1 cm, 2 cm, …); the lower bound {low} is none. Write the bound in a smaller unit (1 cm), or search continuously with solve.',
     'E-ODE-SINGULAR': 'The equation for {name}: at {at} the highest derivative cannot be calculated (the solution ends there, or the equation divides by zero). Shorten the interval or change the conditions.',
     'E-ODE-STIFF': 'The equation for {name} is stiff: the fixed-step method is unstable at {at} even with {steps} steps. The solution itself does not end there; shorter steps get further. Shorten the interval; Kalketa has no solver for stiff equations yet.',
     'W-CALCULUS-ACCURACY': '{function}: the requested accuracy was not reached (a discontinuity or singularity?); the result is an estimate.',

@@ -1,5 +1,5 @@
 1 heading: none
 2 definition p: ok
-3 definition k1: error  E-ROOTS-POLYNOMIAL
+3 definition k1: [2]
 4 definition q: ok
-5 definition k2: error  E-ROOTS-POLYNOMIAL
+5 definition k2: [2]

@@ -118,6 +118,7 @@ export const cs: Catalog = {
     'W-ODE-ACCURACY': 'Rovnice pro {name}: požadované přesnosti se nepodařilo dosáhnout ani na {steps} krocích (skok v pravé straně nebo bod, kde derivace neexistuje?); výsledek je odhad.',
     'E-SOLVE-VALUE-FORM': 'solve jako hodnota má jednu rovnici a jednu neznámou: solve(a == b; x: od .. do), solve(a == b; x: odhad) nebo solve x: a == b in od .. do.',
     'E-FIRST-NONE': 'first: v zadaném rozsahu podmínka neplatí pro žádné celé číslo.',
+    'E-FIRST-WHOLE': 'first zkouší celá čísla (nebo celé násobky jednotky meze, např. 1 cm, 2 cm, …); dolní mez {low} takové číslo není. Mez napište v menší jednotce (1 cm), nebo hledejte spojitě přes solve.',
     'E-ODE-SINGULAR': 'Rovnice pro {name}: u {at} nejde nejvyšší derivaci spočítat (řešení tam přestává existovat nebo je v rovnici dělení nulou). Zkraťte interval nebo změňte podmínky.',
     'E-ODE-STIFF': 'Rovnice pro {name} je tuhá: metoda s pevným krokem je u {at} nestabilní ani na {steps} krocích. Samo řešení tam nekončí, s kratším krokem se dostane dál. Zkraťte interval; řešič tuhých rovnic Kalketa zatím nemá.',
     'W-CALCULUS-ACCURACY': '{function}: požadované přesnosti se nepodařilo dosáhnout (funkce má nespojitost nebo singularitu?); výsledek je odhad.',

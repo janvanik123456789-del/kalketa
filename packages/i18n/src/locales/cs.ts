@@ -128,6 +128,7 @@ export const cs: Catalog = {
     'E-MATRIX-SINGULAR': '{function}: matice je singulární (řádky nejsou nezávislé), řešení neexistuje nebo není jediné.',
     'E-MATRIX-NEAR-SINGULAR': '{function}: řádky matice jsou téměř závislé; v přesnosti výpočtu (asi 16 platných číslic) ji nejde odlišit od singulární, výsledek by neměl ani jednu platnou číslici.',
     'W-COND-BEYOND-DOUBLE': '{function}: kondiční číslo je za hranicí přesnosti výpočtu (nad 10¹⁵); skutečné může být ještě větší, číslo říká jen „aspoň tolik“.',
+    'E-DET-NO-DIGITS': '{function}: matice je tak špatně podmíněná (cond ≈ {condition}), že v desetinných číslech výpočtu determinant nemá ani jednu platnou číslici, ani znaménko. Zadejte prvky přesně (celá čísla, zlomky), pak se spočítá přesně; regularitu posuzujte přes cond nebo rank.',
     'W-DET-OUT-OF-RANGE': '{function}: determinant je mimo rozsah čísel výpočtu (pod 10⁻³⁰⁸ nebo nad 10³⁰⁸); ukázaná hodnota (0 nebo ∞) není skutečná.',
     'E-MATRIX-SYMMETRIC': '{function} potřebuje symetrickou matici.',
     'E-NAMED-ARG': 'Argument „{argument}“ funkce „{function}“: {problem}.',

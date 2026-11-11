@@ -128,6 +128,7 @@ export const en: Catalog = {
     'E-MATRIX-SINGULAR': '{function}: the matrix is singular (its rows are not independent); there is no single solution.',
     'E-MATRIX-NEAR-SINGULAR': '{function}: the rows of the matrix are nearly dependent; at the precision of the calculation (about 16 significant digits) it cannot be told from a singular one, a result would have no correct digit.',
     'W-COND-BEYOND-DOUBLE': '{function}: the condition number is past the precision of the calculation (above 10¹⁵); the true one may be larger still, the number only says “at least this much”.',
+    'E-DET-NO-DIGITS': '{function}: the matrix is so ill-conditioned (cond ≈ {condition}) that in the decimal numbers of the calculation the determinant has not one valid digit, nor its sign. Give the items exactly (whole numbers, fractions) and it is calculated exactly; judge regularity by cond or rank.',
     'W-DET-OUT-OF-RANGE': '{function}: the determinant is outside the range of numbers of the calculation (below 10⁻³⁰⁸ or above 10³⁰⁸); the value shown (0 or ∞) is not the true one.',
     'E-MATRIX-SYMMETRIC': '{function} needs a symmetric matrix.',
     'E-NAMED-ARG': 'Argument “{argument}” of “{function}”: {problem}.',

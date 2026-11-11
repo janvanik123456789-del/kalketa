@@ -154,6 +154,16 @@ describe('faults Strata found', () => {
     expect(codes('R(x) := x/(x - 0 cm)\nf := first(R(x) > 0.5, x: 0 cm .. 49 cm)')).toEqual([]);
   });
 
+  // Batch 3 N2: det of the Hilbert matrix of 20 was −1.57e-195 in doubles (no digit left, not even the sign). Since
+  // 2026-11-11 exact items are taken in fractions up to 40 rows: 4.2061789566247e-226, as Python's fractions give it
+  // (Strata's reference 2.84e-260 was wrong: its Cauchy product stopped one factor short). Inexact items past
+  // n·ε·cond ≥ 1 give no number but E-DET-NO-DIGITS.
+  it('gives the determinant of an ill-conditioned matrix exactly, or says it has no digit', () => {
+    near(value('H := matrix(1/(i + j - 1), i: 1 .. 20, j: 1 .. 20)\nd := det(H)', 'd'), 4.206178956624722e-226, 1e-12);
+    expect(codes('E := matrix(1/(i + j - 1) + 1e-17·sin(i), i: 1 .. 20, j: 1 .. 20)\nd := det(E)')).toContain('E-DET-NO-DIGITS');
+    expect(value('S := [1, 2 | 2, 4]\nd := det(S)', 'd')).toBe(0);
+  });
+
   // Batch 3 N6 and batch 4 item 1: a missing right bracket takes the next lines with it.
   it('calculates the lines after a missing right bracket', () => expect(value('a := sqrt(4\nb := 5\nc := b + 1', 'c')).toBe(6));
 });

@@ -89,6 +89,7 @@ export const DIAGNOSTIC_SEVERITY = {
   'E-MATRIX-NEAR-SINGULAR': 'error',
   'W-COND-BEYOND-DOUBLE': 'warning',
   'W-DET-OUT-OF-RANGE': 'warning',
+  'E-DET-NO-DIGITS': 'error',
   'E-MATRIX-SYMMETRIC': 'error',
   'E-RANGE-PLACE': 'error',
   'W-CALCULUS-ACCURACY': 'warning',

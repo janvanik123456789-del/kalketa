@@ -19,6 +19,8 @@ import { poweredHint } from '../eval/evaluator.js';
 
 /** The largest system lsolve also solves in exact fractions. */
 const EXACT_SOLVE_SIZE = 12;
+/** Determinants in fractions up to this size: the Hilbert matrix of 30 takes about a tenth of a second. */
+const EXACT_DET_SIZE = 40;
 /** A solution loses this much of its 16 digits, so at most 5 are left: worth a word. */
 const LOST_DIGITS_CONDITION = 1e11;
 /** Above this the inverse that tells the condition number takes longer than the solution; a large mesh is seldom the case. */
@@ -230,7 +232,7 @@ function conditionOf(a: readonly (readonly number[])[], d: { lu: number[][]; per
  * The determinant in fractions of its own size, or undefined when an item has no exact form or a square root.
  * The exact form of a value is limited, so the Hilbert matrix of 12 (2.6·10⁻⁷⁸) leaves it on the way.
  */
-function exactDeterminant(m: MatrixValue): { value: number; form?: Exact } | undefined {
+function exactDeterminant(m: MatrixValue): { value: number; form?: Exact; zero?: boolean } | undefined {
   const n = m.rows;
   const gcd = (x: bigint, y: bigint): bigint => {
     let [p, q] = [x < 0n ? -x : x, y < 0n ? -y : y];
@@ -255,7 +257,7 @@ function exactDeterminant(m: MatrixValue): { value: number; form?: Exact } | und
   let det: Fraction = [1n, 1n];
   for (let k = 0; k < n; k++) {
     const p = a.findIndex((row, i) => i >= k && row[k]![0] !== 0n);
-    if (p < 0) return { value: 0, form: exact(0n)! };
+    if (p < 0) return { value: 0, form: exact(0n)!, zero: true };
     if (p !== k) {
       [a[p], a[k]] = [a[k]!, a[p]!];
       det = [-det[0], det[1]];
@@ -467,13 +469,26 @@ export const LINEAR: readonly FunctionDef[] = [
         return quantity(re, dim, { ...shown, ...(im ? { im } : {}) });
       }
       // Written in decimals, the determinant is known exactly, however small: the Hilbert matrix of 12 has 2.6·10⁻⁷⁸.
-      const whole = n <= EXACT_SOLVE_SIZE ? exactDeterminant(m) : undefined;
-      if (whole) return quantity(whole.value, dim, { ...shown, ...(whole.form ? { exact: whole.form } : {}) });
+      // Up to 40 rows (12 before 2026-11-11): the Hilbert matrix of 20 is +2.84·10⁻²⁶⁰ in fractions, −1.57·10⁻¹⁹⁵ in
+      // doubles, which have no digit of it left (Strata batch 3; Mathematica too calculates exact input exactly).
+      const whole = n <= EXACT_DET_SIZE ? exactDeterminant(m) : undefined;
+      if (whole) {
+        if (whole.value === 0 && !whole.zero) a.warn(diagnostic('W-DET-OUT-OF-RANGE', a.call.span, { function: a.name }));
+        return quantity(whole.value, dim, { ...shown, ...(whole.form ? { exact: whole.form } : {}) });
+      }
       const a0 = numbers(m);
       // A pivot lost in rounding: no zero can be told from a very small number. Not rounded to 0, and said so.
       if (!lu(a0)) a.warn(diagnostic('W-ILL-CONDITIONED', a.call.span, { function: a.name }));
       const d = lu(a0, 0);
       if (!d) return quantity(0, dim, shown);
+      // The relative error of the determinant is up to about n·ε·cond (of the matrix with its rows and columns
+      // scaled, as units would): past 1 no digit is left, nor the sign, and no number is given.
+      const scaled = equilibrated(a0).scaled;
+      const ds = lu(scaled, 0);
+      const condition = ds ? conditionOf(scaled, ds) : Infinity;
+      if (!(n * Number.EPSILON * condition < 1)) {
+        return fail('E-DET-NO-DIGITS', a.call.span, { function: a.name, condition: Number.isFinite(condition) ? condition.toExponential(1) : '∞' });
+      }
       let det = d.sign;
       for (let i = 0; i < n; i++) det *= d.lu[i]![i]!;
       // The Hilbert matrix of 40: no pivot is zero, the product is below the least number of double precision.

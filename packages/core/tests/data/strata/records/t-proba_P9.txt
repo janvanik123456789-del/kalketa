@@ -9,9 +9,9 @@
 9 table Urok: ok
 11 definition treti: 77155.1
 12 table Data: ok
-17 definition prvni: error  E-TABLE-INTERPOLATE
+17 definition prvni: 20484 date
 18 definition sloupec: [3]
-19 definition vybrany: error  E-TABLE-KEY
+19 definition vybrany: 200
 20 definition max_spl: ok
 21 definition filtr: [2]
 22 table Kal: ok

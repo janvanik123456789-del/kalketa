@@ -590,7 +590,7 @@ table Mereni:
 ```
 
 - **Obecná tabulka přímo ve výpočtu** (naměřené body, vlastní data); katalogové tabulky (profily, materiály, průměry nýtů) zůstávají ve vrstvě Data. Řádek `table Jmeno:` a pod ním odsazené řádky `| … |` (v editoru Shift+Enter); první řádek je záhlaví: jméno sloupce, jednotka v `[ ]`, formát čísel v `{ }` (`{0.0}` jedno desetinné místo, `{0}` žádné).
-- **Ve výpočtu** je to tabulka jako z vrstvy Data: `Mereni.T` je řada v °C, `Mereni.t[3]` jedna hodnota, fungují `pick`, `find_min`, `interpolate`. Sloupec samých čísel je číselný, jiný textový; prázdné řádky se přeskočí.
+- **Ve výpočtu** je to tabulka jako z vrstvy Data: `Mereni.T` je řada v °C, `Mereni.t[3]` jedna hodnota, fungují `pick`, `find_min`, `interpolate`. Sloupec samých čísel je číselný, sloupec samých dat (`2026-06-30`, `30. 6. 2026`) je datumový, jiný textový; prázdné řádky se přeskočí. Podle data jde vybírat (`pick(Kurzy, 2026-06-30)`), hledat (`find_max(Kurzy, by: datum)`), filtrovat i interpolovat; `Kurzy.datum` je řada dat (2026-11-11, i u tabulek z CSV a Excelu).
 - **V tisku** tabulka se záhlavím a jednotkami, čísla podle formátu a vpravo.
 - **Tabulka na šířku (2026-10-15):** `table Pavlik: {across}` vytiskne každý sloupec jako řádek: jméno a jednotka vlevo, hodnoty vedle sebe, jako tabulky naměřených hodnot ve sbírkách. Víc než 12 hodnot se zalomí do dalšího pásu pod ním. Pro výpočet je to stejná tabulka. V editoru pravé tlačítko na tabulce → **Tabulka na šířku (hodnoty vedle sebe)**.
 - **Počítaný sloupec a součty (2026-10-10), např. rekapitulace zatížení:**

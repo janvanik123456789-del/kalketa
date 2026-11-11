@@ -27,7 +27,7 @@
 28 definition R_k: [12]
 29 definition Z_vzorec: [12]
 30 table Splatnost: ok
-44 definition datum_6: ok
+44 definition datum_6: 20634 date
 45 definition sazba_9: 0.072
 46 definition doba: 334 d
 47 definition d360: 330 d
@@ -53,7 +53,7 @@
 67 check: true
 68 check: true
 69 check: true
-70 check: true
+70 check: error  E-TYPE
 71 check: true
 72 check: true
 73 check: true

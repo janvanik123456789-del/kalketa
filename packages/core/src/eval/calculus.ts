@@ -18,6 +18,7 @@ import { divideDims, isDimensionless, multiplyDims, powerDim, sameDim } from '..
 import { baseUnitSymbol } from '../units/display.js';
 import type { ResolvedUnit } from '../units/unitExpr.js';
 import { quantity, type MatrixValue, type Quantity, type Value, type VectorValue } from '../values/value.js';
+import { accurateSum } from '../values/sum.js';
 import { exact } from '../values/exact.js';
 import { isPlainZero, matrix, normalized, withZerosOfUnit } from '../functions/linear.js';
 import { asComplex, asQuantity } from './coerce.js';
@@ -551,18 +552,21 @@ function sum(call: CallExpr, ctx: EvalContext, evaluate: Evaluate): Value {
     return { ...total, items: withZerosOfUnit(total.items) };
   }
   let total: Quantity | undefined;
+  // The parts summed with compensation (values/sum.ts): terms of very different size keep the small ones.
+  const re: number[] = [];
+  const ims: number[] = [];
   for (let k = low.si; k <= high.si; k++) {
     const term = asComplex(k === low.si && opening ? opening : termAt(k), body.span);
     if (total && !sameDim(total.dim, term.dim)) fail('E-UNIT-MISMATCH', call.span, { operator: '∫', left: baseUnitSymbol(total.dim), right: baseUnitSymbol(term.dim) });
     if (!total) total = term;
-    else {
-      const { exact: _exact, ...rest } = total;
-      const im = (total.im ?? 0) + (term.im ?? 0);
-      total = { ...rest, si: total.si + term.si, ...(im ? { im } : {}) };
-      if (!im && total.im) delete (total as { im?: number }).im;
-    }
+    re.push(term.si);
+    ims.push(term.im ?? 0);
   }
-  return total ?? quantity(0);
+  if (!total) return quantity(0);
+  if (re.length === 1) return total;
+  const { exact: _exact, im: _im, ...rest } = total;
+  const im = accurateSum(ims);
+  return { ...rest, si: accurateSum(re), ...(im ? { im } : {}) };
 }
 
 /** A term added to a matrix or series, item by item; a zero without a unit (outside a member) adds nothing. */

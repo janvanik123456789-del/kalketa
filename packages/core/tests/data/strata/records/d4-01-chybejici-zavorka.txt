@@ -3,3 +3,7 @@
 3 definition d: 32 mm
 4 definition A: 804.248 mm²
 5 invalid v: error  E-SYNTAX
+6 definition ρ: 1000 kg/m³
+7 definition Re: blocked  I-DEPENDENCY-FAILED
+8 definition F: 4.905 kN
+9 definition t: 30 s

@@ -25,6 +25,7 @@ import { DIMENSIONLESS, dim, type Dimension } from '../units/dimension.js';
 import type { BlockCaller, BlockSource } from '../eval/blocks.js';
 import { TABLE_TOTAL, type BinaryOperator, type Expr, type Inequality, type LineFormat, type Sheet, type Statement } from '../lang/ast.js';
 import { MAX_EXPRESSION_DEPTH, parse } from '../lang/parser.js';
+import { normalizeIdentifier } from '../lang/names.js';
 import { buildTable, rowLabel, type ColumnSchema, type Table, type TableBuildResult, type TableRead } from '../tables/table.js';
 import { COMPARE_FUNCTION } from '../eval/tables.js';
 import { isDimensionless, sameDim } from '../units/dimension.js';
@@ -33,6 +34,7 @@ import { baseUnitSymbol, toDisplay, type DisplayValue } from '../units/display.j
 import { defaultRegistry, type UnitRegistry } from '../units/registry.js';
 import { resolveUnit, type ResolvedUnit } from '../units/unitExpr.js';
 import { fingerprint, typeName, type Quantity, type Value } from '../values/value.js';
+import { parseDate } from '../values/date.js';
 
 export type StatementStatus = 'ok' | 'error' | 'blocked' | 'none';
 
@@ -964,7 +966,9 @@ function sheetTable(statement: Extract<Statement, { kind: 'table' }>, registry: 
   const dataRows = written.filter((r) => !isTotal(r));
   const columns: ColumnSchema[] = statement.columns.map((column, c) => {
     const cells = dataRows.map((r) => (r[c] ?? '').trim()).filter((t) => t !== '');
-    const type = column.formula || (cells.length > 0 && cells.every(numeric)) ? 'quantity' : column.unit ? 'quantity' : 'text';
+    // A column of calendar days (2026-06-30, 30. 6. 2026) holds dates: compared, sorted and picked as dates, not as text.
+    const dates = !column.formula && !column.unit && cells.length > 0 && cells.every((t) => parseDate(t) !== undefined);
+    const type = dates ? 'date' : column.formula || (cells.length > 0 && cells.every(numeric)) ? 'quantity' : column.unit ? 'quantity' : 'text';
     return { name: column.name, type, ...(column.unit ? { unit: column.unit } : {}) };
   });
   // Numbers are stored with a dot; a comma typed in a cell is a decimal comma.
@@ -984,7 +988,7 @@ function sheetTable(statement: Extract<Statement, { kind: 'table' }>, registry: 
         if (!column.formula || stopped.has(c) || row[c] !== null) continue;
         const unit = built.table.columns[c]?.resolvedUnit;
         const lookup = (name: string, span: Span): Value => {
-          const at = statement.columns.findIndex((col) => col.name === name);
+          const at = statement.columns.findIndex((col) => col.name === name || normalizeIdentifier(col.name) === name);
           if (at < 0) return outer(name, span);
           const cell = row[at];
           if (!cell) throw new CalcError(diagnostic('E-TABLE-EMPTY', statement.span, { table: statement.name, column: name, row: String(r + 1) }));
@@ -993,7 +997,7 @@ function sheetTable(statement: Extract<Statement, { kind: 'table' }>, registry: 
         const previous = (call: Extract<Expr, { kind: 'call' }>, ctx: EvalContext): Value => {
           const [target, start] = call.args;
           if (target?.kind !== 'variable' || call.args.length > 2 || call.named.length > 0) return fail('E-PREV-FORM', call.span);
-          const at = statement.columns.findIndex((col) => col.name === target.name);
+          const at = statement.columns.findIndex((col) => col.name === target.name || normalizeIdentifier(col.name) === target.name);
           if (at < 0) return fail('E-TABLE-COLUMN', target.span, { table: statement.name, column: target.name });
           if (r === 0) return start ? evaluate(start, ctx) : fail('E-PREV-START', call.span, { table: statement.name, column: target.name });
           const cell = rows[r - 1]![at];

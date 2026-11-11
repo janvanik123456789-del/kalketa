@@ -7,7 +7,7 @@
  * never guesses a unit silently.
  */
 
-import { diagnostic, NO_SPAN, type ColumnSchema, type Diagnostic, type TableSchema, type UnitRegistry } from '@kalketa/core';
+import { diagnostic, NO_SPAN, parseDate, type ColumnSchema, type Diagnostic, type TableSchema, type UnitRegistry } from '@kalketa/core';
 
 export interface InferResult {
   readonly schema: TableSchema;
@@ -31,6 +31,11 @@ export function inferTable(name: string, grid: readonly (readonly string[])[], r
     const isNumeric = cells.length > 0 && cells.every((t) => normalizeNumber(t) !== undefined);
     numeric.push(isNumeric);
 
+    // A column of calendar days holds dates (as a table written in the sheet does).
+    if (!isNumeric && cells.length > 0 && cells.every((t) => parseDate(t) !== undefined)) {
+      columns.push({ name: columnName, type: 'date' });
+      continue;
+    }
     if (!isNumeric) {
       columns.push({ name: columnName, type: 'text' });
       continue;

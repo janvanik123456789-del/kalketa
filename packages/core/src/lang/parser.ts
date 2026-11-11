@@ -299,7 +299,10 @@ function splitLines(tokens: readonly Token[]): Token[][] {
     if (token.type === '(' || token.type === '[') depth++;
     if ((token.type === ')' || token.type === ']') && depth > 0) depth--;
     if (token.type === 'newline') {
-      if (depth > 0) continue;
+      // A bracket left open does not take the next statement with it (a := sqrt(4 above b := 5 hid b and all after
+      // it, Strata 2026-11-10): the open line ends there and says its missing bracket; the rest is calculated.
+      if (depth > 0 && !startsStatement(tokens, i + 1)) continue;
+      depth = 0;
       const next = tokens[i + 1];
       const solving = current[0]?.type === 'ident' && current[0].text === 'solve';
       if (solving && next && next.type !== 'newline' && next.type !== 'eof' && next.span.column > 1) {
@@ -314,6 +317,22 @@ function splitLines(tokens: readonly Token[]): Token[][] {
   }
   lines.push(current);
   return lines;
+}
+
+const STATEMENT_WORDS = new Set(['check', 'solve', 'relation']);
+
+/**
+ * Whether the line from `from` on is a statement of its own, not the rest of an expression broken over lines: at
+ * the start of the line, a definition (with :=), a check, a heading, a picture or a printed text. An expression
+ * continued on the next line has none of them.
+ */
+function startsStatement(tokens: readonly Token[], from: number): boolean {
+  const first = tokens[from];
+  if (!first || first.type === 'newline' || first.type === 'eof' || first.span.column > 1) return false;
+  if (first.type === 'heading' || first.type === 'picture' || first.type === 'directive' || first.type === 'string') return true;
+  if (first.type === 'ident' && STATEMENT_WORDS.has(first.text)) return true;
+  for (let i = from; i < tokens.length && tokens[i]!.type !== 'newline' && tokens[i]!.type !== 'eof'; i++) if (tokens[i]!.type === ':=') return true;
+  return false;
 }
 
 export function spanOf(first: { span: Span }, last: { span: Span }): Span {

@@ -11,6 +11,7 @@ import type { UnitRegistry } from '../units/registry.js';
 import { resolveUnit, type ResolvedUnit } from '../units/unitExpr.js';
 import { quantity, type Value } from '../values/value.js';
 import { dateValue, parseDate } from '../values/date.js';
+import { normalizeIdentifier } from '../lang/names.js';
 
 export type ColumnType = 'quantity' | 'text' | 'boolean' | 'date';
 
@@ -130,7 +131,10 @@ export function buildTable(schema: TableSchema, data: readonly (readonly string[
 }
 
 export function columnIndex(table: Table, name: string): number {
-  return table.columns.findIndex((c) => c.name === name);
+  const exact = table.columns.findIndex((c) => c.name === name);
+  // A header written in Latin letters (lambda, rho, sigma_y) is the name the sheet reads as Greek (λ, ρ, σ_y): the
+  // column of "lambda" was out of reach of K.lambda, which reads K.λ (Strata, 2026-11-10).
+  return exact >= 0 ? exact : table.columns.findIndex((c) => normalizeIdentifier(c.name) === normalizeIdentifier(name));
 }
 
 /** Text shown for a row: its key cell, e.g. "IPE 200". */

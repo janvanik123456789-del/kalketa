@@ -17,6 +17,7 @@ import type { Expr, NamedArg } from '../lang/ast.js';
 import { columnIndex, rowLabel, type Cell, type Table } from '../tables/table.js';
 import { sameDim } from '../units/dimension.js';
 import { baseUnitSymbol } from '../units/display.js';
+import { civilFromDays, daysOf, isDate } from '../values/date.js';
 import type { Quantity, RowValue, Value } from '../values/value.js';
 import { asBoolean } from './coerce.js';
 import type { EvalContext } from './evaluator.js';
@@ -82,10 +83,16 @@ function pick(call: CallExpr, table: Table, ctx: EvalContext, evaluate: Evaluate
   return rowValue(table, row);
 }
 
+/** A column of numbers, or of dates (they are numbers of days): read whole, interpolated, compared. */
+function numericColumn(table: Table, index: number): boolean {
+  const type = table.columns[index]!.type;
+  return type === 'quantity' || type === 'date';
+}
+
 /** A numeric column of a table as a series: Vyroba.E. */
 function columnOf(table: Table, name: string, span: Span): Value {
   const index = requireColumn(table, name, span);
-  if (table.columns[index]!.type !== 'quantity') fail('E-TABLE-INTERPOLATE', span, { table: table.name, column: name, problem: 'not-numeric' });
+  if (!numericColumn(table, index)) fail('E-TABLE-INTERPOLATE', span, { table: table.name, column: name, problem: 'not-numeric' });
   const items = table.rows.map((cells, row) => {
     const cell = cells[index] ?? null;
     if (cell?.type !== 'quantity') return fail('E-TABLE-EMPTY', span, { table: table.name, column: name, row: rowLabel(table, row) });
@@ -111,7 +118,7 @@ function interpolate(call: CallExpr, table: Table, ctx: EvalContext, evaluate: E
   const arg = call.named[0]!;
   const index = requireColumn(table, arg.name, arg.nameSpan);
   const column = table.columns[index]!;
-  if (column.type !== 'quantity') fail('E-TABLE-INTERPOLATE', arg.nameSpan, { table: table.name, column: arg.name, problem: 'not-numeric' });
+  if (!numericColumn(table, index)) fail('E-TABLE-INTERPOLATE', arg.nameSpan, { table: table.name, column: arg.name, problem: 'not-numeric' });
 
   const x = evaluate(arg.value, ctx);
   if (x.type !== 'quantity') return fail('E-TYPE', arg.value.span, { expected: 'number', found: x.type });
@@ -166,7 +173,7 @@ function interpolate(call: CallExpr, table: Table, ctx: EvalContext, evaluate: E
 function interpolate2(call: CallExpr, table: Table, ctx: EvalContext, evaluate: Evaluate): Value {
   const axes = call.named.map((arg) => {
     const index = requireColumn(table, arg.name, arg.nameSpan);
-    if (table.columns[index]!.type !== 'quantity') fail('E-TABLE-INTERPOLATE', arg.nameSpan, { table: table.name, column: arg.name, problem: 'not-numeric' });
+    if (!numericColumn(table, index)) fail('E-TABLE-INTERPOLATE', arg.nameSpan, { table: table.name, column: arg.name, problem: 'not-numeric' });
     const x = evaluate(arg.value, ctx);
     if (x.type !== 'quantity') return fail('E-TYPE', arg.value.span, { expected: 'number', found: x.type });
     return { arg, index, x };
@@ -387,6 +394,11 @@ function describe(value: Value): string {
     case 'text':
       return value.value;
     case 'quantity':
+      // A date as a calendar day (2026-06-29), not as seconds since 1970.
+      if (isDate(value)) {
+        const { year, month, day } = civilFromDays(daysOf(value));
+        return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      }
       return String(value.si);
     case 'boolean':
       return String(value.value);

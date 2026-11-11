@@ -33,9 +33,10 @@ describe('segments', () => {
   it('keeps the edited line on its own while it is unfinished', () => {
     const source = 'a := 1\nb := (2 +\nc := 3\nd := 4';
     const plain = segments(source, statementsOf(source));
-    expect(plain.map((s) => [s.start, s.end])).toEqual([[1, 1], [2, 4]]);
+    // The open bracket no longer takes the definitions below it (2026-11-11): each line is a statement of its own.
+    expect(plain.map((s) => [s.start, s.end])).toEqual([[1, 1], [2, 2], [3, 3], [4, 4]]);
     const fixed = segments(source, statementsOf(source), { start: 2, end: 2 });
-    expect(fixed.map((s) => [s.start, s.end, s.statement])).toEqual([[1, 1, 0], [2, 2, 1], [3, 3, undefined], [4, 4, undefined]]);
+    expect(fixed.map((s) => [s.start, s.end, s.statement])).toEqual([[1, 1, 0], [2, 2, 1], [3, 3, 2], [4, 4, 3]]);
   });
 
   it('keeps an edited blank line as one segment', () => {

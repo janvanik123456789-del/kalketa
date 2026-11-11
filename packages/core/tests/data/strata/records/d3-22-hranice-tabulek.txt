@@ -18,8 +18,8 @@
 34 table Kurzy: ok
 40 definition dny: 305 d
 41 definition posledni: 25.88
-42 definition nejcerstvejsi: error  W-TABLE-ROWS-SKIPPED E-TABLE-NO-MATCH
-43 definition podle_data: error  E-TABLE-KEY
+42 definition nejcerstvejsi: 25.88
+43 definition podle_data: 25.62
 45 check: true
 46 check: true
 47 check: true

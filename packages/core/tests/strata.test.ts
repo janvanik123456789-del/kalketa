@@ -90,11 +90,16 @@ describe('faults Strata found', () => {
     expect(Math.abs(got! - expected) / Math.abs(expected)).toBeLessThanOrEqual(tolerance);
   };
 
-  // Batch 3 N1: summed from the left, 1 of the two ones is lost (math.fsum gives 2).
-  it.fails('sums numbers of very different size without losing a term', () => near(value('s := sum([1e16, 1, -1e16, 1])', 's'), 2));
-  // Batch 3 N1: one-pass variance; exact 1.2909944487358056284e-13.
-  it.fails('takes the deviation of nearly equal values without cancellation', () =>
-    near(value('s := stdev([1, 1 + 1e-13, 1 - 1e-13, 1 + 2e-13])', 's'), 1.2909944487358056284e-13, 1e-6));
+  // Batch 3 N1: summed from the left, 1 of the two ones was lost (math.fsum gives 2); compensated since 2026-11-11.
+  it('sums numbers of very different size without losing a term', () => {
+    near(value('s := sum([1e16, 1, -1e16, 1])', 's'), 2);
+    near(value('m := mean([1e16, 1, -1e16, 1])', 'm'), 0.5);
+    near(value('s := sum(x, x: 1 .. 2)', 's'), 3);
+  });
+  // Batch 3 N1 was no fault: the variance is two-pass. Its 2e-4 came from the inputs (1 + 1e-13 is no double); the
+  // deviation of the doubles really given is 1.2912526594371386e-13 (exact, fractions), Kalketa's within 3e-8.
+  it('takes the deviation of nearly equal values', () =>
+    near(value('s := stdev([1, 1 + 1e-13, 1 - 1e-13, 1 + 2e-13])', 's'), 1.2912526594371386e-13, 1e-7));
 
   // Batch 5 N1: the series at a small x (4.16e-17 and −8.8e-17 now).
   it.fails('gives besselj at a small x', () => {
@@ -121,11 +126,11 @@ describe('faults Strata found', () => {
   it.fails('takes roots of a polynomial given as a function', () => expect(codes('q(x) := x^2 - 3·x + 2\nr := roots(q(x), x)')).toEqual([]));
 
   // Batch 7 N1: names are read as Greek (lambda → λ), the header of the table is not.
-  it.fails('reads a table column written as a Greek name in Latin letters', () =>
+  it('reads a table column written as a Greek name in Latin letters', () =>
     near(value('table K:\n    | lambda | chi |\n    | 0.1 | 0.9 |\n    | 0.3 | 0.7 |\nc := interpolate(K, lambda: 0.2).chi', 'c'), 0.8));
 
   // Batch 3 N4 and the one-by-one task 03 N9: a date as the key of a row.
-  it.fails('picks a row by a date', () =>
+  it('picks a row by a date', () =>
     near(value('table Kurzy:\n    | datum | EUR |\n    | 2026-03-01 | 25.40 |\n    | 2026-06-30 | 25.62 |\nd := pick(Kurzy, 2026-06-30).EUR', 'd'), 25.62));
 
   // Task 01 N2: first() steps by whole units, so between 0.01 m and 0.49 m it has no point to try.
@@ -133,5 +138,5 @@ describe('faults Strata found', () => {
     expect(codes('g(x) := x^2 - 0.1 m^2\nf := first(g(x) > 0 m^2, x: 0.01 m .. 0.49 m)')).toEqual([]));
 
   // Batch 3 N6 and batch 4 item 1: a missing right bracket takes the next lines with it.
-  it.fails('calculates the lines after a missing right bracket', () => expect(value('a := sqrt(4\nb := 5\nc := b + 1', 'c')).toBe(6));
+  it('calculates the lines after a missing right bracket', () => expect(value('a := sqrt(4\nb := 5\nc := b + 1', 'c')).toBe(6));
 });

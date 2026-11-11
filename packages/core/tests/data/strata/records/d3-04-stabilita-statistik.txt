@@ -8,7 +8,7 @@
 10 definition male: [3]
 11 definition m_var: 4
 13 definition smes: [4]
-14 definition s_sum: 1
+14 definition s_sum: 2
 16 definition skoro_stale2: [4]
 17 definition s_odchylka: 1.29125e-13
 18 definition korelace_male: 1
@@ -17,6 +17,6 @@
 22 definition pomer_sd: 1
 24 check: true
 25 check: true
-26 check: false
+26 check: true
 27 check: true
 28 check: true

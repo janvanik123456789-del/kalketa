@@ -214,7 +214,8 @@ function formatValue(r: StatementResult, options: ReportOptions, source: string)
   if (r.displayList) {
     const sep = formatNumber(1.5, options.catalog).includes(',') ? '; ' : ', ';
     const unit = r.displayList[0]?.unit ?? '';
-    const shared = r.displayList.every((d) => d.unit === unit);
+    // Dates each as a day (1. 3. 2026), not as numbers of days with "date" after them (as in the print, render/model.ts).
+    const shared = unit !== 'date' && r.displayList.every((d) => d.unit === unit);
     // {decimals=6}, {digits=6} on the line hold for the items too; complex items keep their imaginary part.
     const format = r.statement.format;
     const own: ReportOptions = format?.decimals !== undefined ? { ...options, decimals: format.decimals } : format?.digits !== undefined ? { ...options, digits: format.digits } : options;

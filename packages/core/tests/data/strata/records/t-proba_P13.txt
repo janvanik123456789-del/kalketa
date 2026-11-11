@@ -3,7 +3,7 @@
 3 definition delka_textu: error  E-TYPE
 4 invalid srovnani: error  E-SYNTAX
 5 table Splat: ok
-9 definition nacte: ok
+9 definition nacte: 20634 date
 10 invalid druhy_text: error  E-SYNTAX
 11 check: blocked  I-DEPENDENCY-FAILED
 12 check: blocked  I-DEPENDENCY-FAILED

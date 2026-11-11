@@ -52,6 +52,14 @@ describe('inferTable', () => {
     expect(result.rows[1]).toEqual(['S355', '355.0', '']);
   });
 
+  it('takes a column of calendar days as dates', () => {
+    const result = inferTable('Kurzy', [['datum', 'EUR'], ['2026-03-01', '25,40'], ['30. 6. 2026', '25,62']], registry);
+    expect(result.schema.columns).toEqual([
+      { name: 'datum', type: 'date' },
+      { name: 'EUR', type: 'quantity' },
+    ]);
+  });
+
   it('reports unknown units instead of guessing', () => {
     const result = inferTable('T', [['x [smoot]'], ['1']], registry);
     expect(result.diagnostics.map((d) => d.code)).toEqual(['W-TABLE-UNIT']);

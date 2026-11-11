@@ -217,3 +217,33 @@ describe('filter: the rows that satisfy a condition, as a table', () => {
     expect(evaluateSheet('p := pick(filter(Profily, where: r.Wy > 1000 cm³), "P1")', { tables: [profiles] }).diagnostics[0]?.code).toBeDefined();
   });
 });
+
+describe('a column of dates in a table of the sheet', () => {
+  // Strata's batch 3 and task 03 (2026-11-10): the dates were text, so no row was found by a date and a whole
+  // column of them could not be read.
+  const sheet = (lines: string) =>
+    new SheetSession({ registry: defaultRegistry }).update(
+      ['table Kurzy:', '    | datum | EUR |', '    | 2026-03-01 | 25.40 |', '    | 30. 6. 2026 | 25.62 |', '    | 2026-12-31 | 25.88 |', lines].join('\n'),
+    );
+  const shown = (lines: string, name: string) => sheet(lines).statements.find((r) => 'name' in r.statement && r.statement.name === name);
+
+  it('picks a row by a date and finds the latest', () => {
+    const r = sheet('a := pick(Kurzy, 2026-06-30).EUR\nb := find_max(Kurzy, by: datum).EUR\nc := find_min(Kurzy, by: datum).datum + 30 d');
+    expect(r.diagnostics).toEqual([]);
+    expect(r.values.get('a')).toMatchObject({ si: 25.62 });
+    expect(r.values.get('b')).toMatchObject({ si: 25.88 });
+    expect(shown('c := find_min(Kurzy, by: datum).datum + 30 d', 'c')?.display?.unit).toBe('date');
+  });
+
+  it('reads the column whole, filters and interpolates by it', () => {
+    const r = sheet('d := Kurzy.datum\ne := filter(Kurzy, where: r.datum ≥ 2026-06-01).EUR\nf := interpolate(Kurzy, datum: 2026-04-15).EUR');
+    expect(r.diagnostics).toEqual([]);
+    expect(shown('d := Kurzy.datum', 'd')?.displayList?.map((d) => d.unit)).toEqual(['date', 'date', 'date']);
+    expect(r.values.get('f')).toMatchObject({ type: 'quantity' });
+  });
+
+  it('says a date that is not there as a day, not as seconds', () => {
+    const r = sheet('g := pick(Kurzy, 2026-06-29).EUR');
+    expect(r.diagnostics.map((d) => [d.code, d.params['key']])).toEqual([['E-TABLE-KEY', '2026-06-29']]);
+  });
+});

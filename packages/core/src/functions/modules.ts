@@ -12,6 +12,7 @@ import type { ResolvedUnit } from '../units/unitExpr.js';
 import { baseUnitSymbol } from '../units/display.js';
 import { civilFromDays, dateValue, daysFromCivil, daysOf, isDate, isValidDay } from '../values/date.js';
 import { quantity, type Quantity, type Value } from '../values/value.js';
+import { accurateRunningSums, accurateSum } from '../values/sum.js';
 import { asBoolean, asComplex, asQuantity } from '../eval/coerce.js';
 import { compare } from '../eval/evaluator.js';
 import { withBareZero } from '../eval/zero.js';
@@ -344,7 +345,7 @@ function columnsOf(a: Args): { columns: (readonly Quantity[])[]; matrix: boolean
 
 /** The sample covariance Σ(x − x̄)(y − ȳ)/(n − 1), as a plain number. */
 function covariance(x: readonly Quantity[], y: readonly Quantity[]): number {
-  const mean = (v: readonly Quantity[]) => v.reduce((s, q) => s + q.si, 0) / v.length;
+  const mean = (v: readonly Quantity[]) => accurateSum(v.map((q) => q.si)) / v.length;
   const [mx, my] = [mean(x), mean(y)];
   return x.reduce((s, q, i) => s + (q.si - mx) * (y[i]!.si - my), 0) / (x.length - 1);
 }
@@ -538,9 +539,9 @@ export const SERIES: readonly FunctionDef[] = [
     arity: [1, Infinity],
     call: (a) => {
       const items = a.items();
-      const im = items.reduce((s, q) => s + (q.im ?? 0), 0);
+      const im = accurateSum(items.map((q) => q.im ?? 0));
       return quantity(
-        items.reduce((s, q) => s + q.si, 0),
+        accurateSum(items.map((q) => q.si)),
         items[0]?.dim,
         { ...keepUnit(items[0]), ...(im ? { im } : {}) },
       );
@@ -553,8 +554,9 @@ export const SERIES: readonly FunctionDef[] = [
     params: 'v',
     arity: [1, 1],
     call: (a) => {
-      let running = 0;
-      return { type: 'vector', items: a.series(0).map((q) => ({ ...q, si: (running += q.si) })) };
+      const series = a.series(0);
+      const sums = accurateRunningSums(series.map((q) => q.si));
+      return { type: 'vector', items: series.map((q, i) => ({ ...q, si: sums[i]! })) };
     },
   },
   {
@@ -663,8 +665,8 @@ export const STATISTICS: readonly FunctionDef[] = [
     call: (a) => {
       const items = a.items();
       if (items.length === 0) a.domain();
-      const im = items.reduce((s, q) => s + (q.im ?? 0), 0) / items.length;
-      return quantity(items.reduce((s, q) => s + q.si, 0) / items.length, items[0]!.dim, { ...keepPlace(items), ...(im ? { im } : {}) });
+      const im = accurateSum(items.map((q) => q.im ?? 0)) / items.length;
+      return quantity(accurateSum(items.map((q) => q.si)) / items.length, items[0]!.dim, { ...keepPlace(items), ...(im ? { im } : {}) });
     },
   },
   {
@@ -690,7 +692,7 @@ export const STATISTICS: readonly FunctionDef[] = [
     call: (a) => {
       const items = a.series(0);
       if (items.length < 1) a.domain();
-      const mean = items.reduce((s, q) => s + q.si, 0) / items.length;
+      const mean = accurateSum(items.map((q) => q.si)) / items.length;
       return quantity(Math.sqrt(items.reduce((s, q) => s + (q.si - mean) ** 2, 0) / items.length), items[0]!.dim, differenceOf(items[0]));
     },
   },
@@ -702,7 +704,7 @@ export const STATISTICS: readonly FunctionDef[] = [
     call: (a) => {
       const items = a.series(0);
       if (items.length < 1) a.domain();
-      const mean = items.reduce((s, q) => s + q.si, 0) / items.length;
+      const mean = accurateSum(items.map((q) => q.si)) / items.length;
       return quantity(items.reduce((s, q) => s + (q.si - mean) ** 2, 0) / items.length, multiplyDims(items[0]!.dim, items[0]!.dim));
     },
   },
@@ -715,7 +717,7 @@ export const STATISTICS: readonly FunctionDef[] = [
       // Sample standard deviation (n − 1), as for measured data.
       const items = a.series(0);
       if (items.length < 2) a.domain();
-      const mean = items.reduce((s, q) => s + q.si, 0) / items.length;
+      const mean = accurateSum(items.map((q) => q.si)) / items.length;
       const variance = items.reduce((s, q) => s + (q.si - mean) ** 2, 0) / (items.length - 1);
       return quantity(Math.sqrt(variance), items[0]!.dim, differenceOf(items[0]));
     },

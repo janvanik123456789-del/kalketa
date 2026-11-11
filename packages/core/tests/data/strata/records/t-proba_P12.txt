@@ -9,10 +9,10 @@
 9 definition dt7: 30.4375 d
 10 definition rovnost: 0 d
 11 table Splat: ok
-16 definition sest: ok
+16 definition sest: 20634 date
 17 definition sazba6: 0.065
 18 definition veterany: [3]
-19 definition daty: error  E-TABLE-INTERPOLATE
+19 definition daty: [3]
 20 table Uroky: ok  E-TABLE-COLUMN
 22 definition redek: error  W-TABLE-ROWS-SKIPPED E-TABLE-NO-MATCH
 23 definition klen: error  W-TABLE-ROWS-SKIPPED E-TABLE-NO-MATCH

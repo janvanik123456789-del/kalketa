@@ -119,26 +119,37 @@ function quantile(p: number, cdf: (x: number) => number, density: (x: number) =>
     const step = f / density(x);
     let next = x - step;
     if (!(next > low && next < high) || !Number.isFinite(next)) next = (low + high) / 2;
-    if (Math.abs(next - x) <= 1e-15 * Math.max(1, Math.abs(x))) return next;
+    if (Math.abs(next - x) <= 1e-15 * Math.abs(x) || next === x) return next;
     x = next;
   }
   return x;
 }
 
-/** The p-quantile of the standard normal distribution (0 < p < 1). */
+/**
+ * The p-quantile of the standard normal distribution (0 < p < 1). Above 0.5 by symmetry from the left tail: 1 − p is
+ * exact there, cdf(x) − p near 1 is not (norminv(1 − 1e-12) was 1.1e-6 off, Strata batch 5).
+ */
 export function normalQuantile(p: number): number {
+  if (p > 0.5) return -normalQuantile(1 - p);
   return quantile(p, normalCdf, (x) => Math.exp(-x * x / 2) / Math.sqrt(2 * Math.PI));
 }
 
 /** The p-quantile of Student's t distribution with ν degrees of freedom. */
 export function studentQuantile(p: number, nu: number): number {
+  // Symmetric as the normal one: the right tail from the left (tinv(1 − 1e-12, 1) was 5.8e-5 off).
+  if (p > 0.5) return -studentQuantile(1 - p, nu);
   const logDensity = logGamma((nu + 1) / 2) - logGamma(nu / 2) - 0.5 * Math.log(nu * Math.PI);
   return quantile(p, (t) => studentCdf(t, nu), (t) => Math.exp(logDensity - ((nu + 1) / 2) * Math.log(1 + (t * t) / nu)));
 }
 
 /** The regularized lower incomplete gamma function P(a, x): a series below a + 1, a continued fraction above. */
 function incompleteGamma(a: number, x: number): number {
-  if (x <= 0) return 0;
+  return incompleteGammaBoth(a, x).p;
+}
+
+/** P(a, x) and Q(a, x) = 1 − P, each computed directly where it is the small one (no 1 − P near 1). */
+function incompleteGammaBoth(a: number, x: number): { p: number; q: number } {
+  if (x <= 0) return { p: 0, q: 1 };
   const front = Math.exp(-x + a * Math.log(x) - logGamma(a));
   if (x < a + 1) {
     let term = 1 / a;
@@ -148,7 +159,8 @@ function incompleteGamma(a: number, x: number): number {
       sum += term;
       if (Math.abs(term) < 1e-16 * Math.abs(sum)) break;
     }
-    return front * sum;
+    const lower = front * sum;
+    return { p: lower, q: 1 - lower };
   }
   // Q(a, x) by its continued fraction (modified Lentz), P = 1 − Q.
   const tiny = 1e-300;
@@ -168,7 +180,8 @@ function incompleteGamma(a: number, x: number): number {
     h *= delta;
     if (Math.abs(delta - 1) < 1e-16) break;
   }
-  return 1 - front * h;
+  const upper = front * h;
+  return { p: 1 - upper, q: upper };
 }
 
 /** P(X ≤ x) of the χ² distribution with ν degrees of freedom. */
@@ -176,27 +189,48 @@ export function chiSquareCdf(x: number, nu: number): number {
   return incompleteGamma(nu / 2, x / 2);
 }
 
+/** P(X > x) of the χ² distribution: the right tail itself, not 1 − cdf. */
+function chiSquareSurvival(x: number, nu: number): number {
+  return incompleteGammaBoth(nu / 2, x / 2).q;
+}
+
+/** P(X > x) of the F distribution: I with the parameters swapped, at the complement. */
+function fisherSurvival(x: number, nu1: number, nu2: number): number {
+  return x <= 0 ? 1 : incompleteBeta(nu2 / (nu1 * x + nu2), nu2 / 2, nu1 / 2);
+}
+
 /** P(X ≤ x) of the F distribution with ν₁ and ν₂ degrees of freedom. */
 export function fisherCdf(x: number, nu1: number, nu2: number): number {
   return x <= 0 ? 0 : incompleteBeta((nu1 * x) / (nu1 * x + nu2), nu1 / 2, nu2 / 2);
 }
 
-/** The x ≥ 0 with cdf(x) = p of a distribution on the positive numbers: bracketed, then halved and Newton-free (the density may be infinite at 0). */
-function positiveQuantile(p: number, cdf: (x: number) => number): number {
+/**
+ * The x ≥ 0 with cdf(x) = p of a distribution on the positive numbers: bracketed, then by regula falsi (the density
+ * may be infinite at 0). Above 0.5 the survival function is solved for 1 − p instead, both tails to their last digits.
+ * The ends are relative: an absolute 1e-15 stopped chi2inv(1e-12, 1) at once, 492 times off (Strata batch 5).
+ */
+function positiveQuantile(p: number, cdf: (x: number) => number, survival: (x: number) => number): number {
+  const right = p > 0.5;
+  const target = right ? 1 - p : p;
+  // g grows with x either way: cdf − p on the left, (1 − p) − survival on the right.
+  const g = right ? (x: number) => target - survival(x) : (x: number) => cdf(x) - target;
   let low = 0;
   let high = 1;
-  while (cdf(high) < p) {
+  while (g(high) < 0) {
     low = high;
     high *= 2;
   }
+  // A small p: the bracket narrowed by halving towards 0 first, so that the start is not 0 against 1.
+  while (!right && high > 1e-300 && g(high / 2) > 0) high /= 2;
+  if (!right && g(high / 2) <= 0 && high > 1e-300) low = Math.max(low, high / 2);
   // Regula falsi with the Illinois correction: fast, and it keeps the bracket.
-  let fLow = cdf(low) - p;
-  let fHigh = cdf(high) - p;
+  let fLow = g(low);
+  let fHigh = g(high);
   let side = 0;
   for (let i = 0; i < 300; i++) {
     const x = (low * fHigh - high * fLow) / (fHigh - fLow);
-    const f = cdf(x) - p;
-    if (Math.abs(f) < 1e-15 || high - low <= 1e-15 * Math.max(1, x)) return x;
+    const f = g(x);
+    if (Math.abs(f) <= 1e-15 * target || high - low <= 1e-15 * Math.max(Math.abs(x), 1e-300)) return x;
     if (f > 0) {
       high = x;
       fHigh = f;
@@ -214,10 +248,10 @@ function positiveQuantile(p: number, cdf: (x: number) => number): number {
 
 /** The p-quantile of the χ² distribution with ν degrees of freedom: chi2inv(0.95, 3) = 7.815. */
 export function chiSquareQuantile(p: number, nu: number): number {
-  return positiveQuantile(p, (x) => chiSquareCdf(x, nu));
+  return positiveQuantile(p, (x) => chiSquareCdf(x, nu), (x) => chiSquareSurvival(x, nu));
 }
 
 /** The p-quantile of the F distribution with ν₁ and ν₂ degrees of freedom: finv(0.95, 3, 24) = 3.009. */
 export function fisherQuantile(p: number, nu1: number, nu2: number): number {
-  return positiveQuantile(p, (x) => fisherCdf(x, nu1, nu2));
+  return positiveQuantile(p, (x) => fisherCdf(x, nu1, nu2), (x) => fisherSurvival(x, nu1, nu2));
 }

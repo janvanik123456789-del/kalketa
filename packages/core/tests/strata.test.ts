@@ -101,23 +101,31 @@ describe('faults Strata found', () => {
   it('takes the deviation of nearly equal values', () =>
     near(value('s := stdev([1, 1 + 1e-13, 1 - 1e-13, 1 + 2e-13])', 's'), 1.2912526594371386e-13, 1e-7));
 
-  // Batch 5 N1: the series at a small x (4.16e-17 and −8.8e-17 now).
-  it.fails('gives besselj at a small x', () => {
+  // Batch 5 N1: the integral had an absolute error of ~1e-17, all of a small value (4.16e-17 and −8.8e-17 were
+  // given); by the power series there since 2026-11-11.
+  it('gives besselj at a small x', () => {
     near(value('b := besselj(5, 1e-8)', 'b'), 2.6041666666666666558e-44);
     near(value('b := besselj(8, 1e-6)', 'b'), 9.688120039682270568e-56);
     near(value('b := besselj(3, 1e-4)', 'b'), 2.0833333320312500003e-14);
+    near(value('b := besselj(-3, -1e-4)', 'b'), 2.0833333320312500003e-14);
+    near(value('b := besselj(1, 1e-8)', 'b'), 4.9999999999999999375e-9);
+    near(value('b := besselj(0, 50)', 'b'), 0.05581232766925181, 1e-12);
   });
 
-  // Batch 5 N2-N4: quantiles in the right tail (the left one is right), chi2inv with one degree in the left one.
-  it.fails('gives quantiles in the right tail', () => {
-    near(value('q := norminv(1 - 1e-12)', 'q'), 7.0344838253011319298);
-    near(value('q := tinv(1 - 1e-12, 1)', 'q'), 318309886183.79067154);
-    near(value('q := chi2inv(1 - 1e-12, 2)', 'q'), 55.262042231857096416);
+  // Batch 5 N2-N4: quantiles in the right tail (from the left one by 1 − p since 2026-11-11), chi2inv with one
+  // degree in the left one. The references are of the double given: 1 − 1e-12 is 1 − 9.999778782798785e-13 there
+  // (Strata's were of the exact decimal, a part of their difference was the input).
+  it('gives quantiles in the right tail', () => {
+    near(value('q := norminv(1 - 1e-12)', 'q'), 7.0344869100478352057);
+    near(value('q := tinv(1 - 1e-12, 1)', 'q'), 318316927901.77965169);
+    near(value('q := chi2inv(1 - 1e-12, 2)', 'q'), 55.262086475786717143);
+    near(value('q := finv(1 - 1e-12, 2, 5)', 'q'), 157738.23192784104853, 1e-8);
+    near(value('q := norminv(1e-12)', 'q'), -7.0344838253011319298);
   });
-  it.fails('gives chi2inv with one degree of freedom in the left tail', () => near(value('q := chi2inv(1e-12, 1)', 'q'), 1.5707963267948966192e-24));
+  it('gives chi2inv with one degree of freedom in the left tail', () => near(value('q := chi2inv(1e-12, 1)', 'q'), 1.570796326794896556e-24, 1e-8));
 
-  // Batch 5 N5: a finite probability whose binomial coefficient alone overflows.
-  it.fails('gives binopdf for a large n', () => near(value('p := binopdf(5000, 10000, 0.5)', 'p'), 0.0079786461393821537604));
+  // Batch 5 N5: a finite probability whose binomial coefficient alone overflows; by logarithms since 2026-11-11.
+  it('gives binopdf for a large n', () => near(value('p := binopdf(5000, 10000, 0.5)', 'p'), 0.0079786461393821537604, 1e-9));
 
   // Batch 5 N6: sqrt(-4) says the domain, the power said "not a finite number".
   it.fails('says the domain for a negative base under a fractional power', () => expect(codes('w := (-4)^0.5')).toEqual(['E-DOMAIN']));

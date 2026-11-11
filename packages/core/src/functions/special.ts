@@ -70,8 +70,35 @@ function incompleteGamma(a: number, x: number): { p: number; q: number } {
 const erf = (x: number): number => (x === 0 ? 0 : Math.sign(x) * incompleteGamma(0.5, x * x).p);
 const erfc = (x: number): number => (x >= 0 ? incompleteGamma(0.5, x * x).q : 1 + incompleteGamma(0.5, x * x).p);
 
-/** J_n(x) from its integral over a period: the trapezoids converge faster than any power there. */
+/**
+ * J_n(x): by its power series where that has no cancellation (x²/4 not above n + 1, or |x| below 1), else from its
+ * integral over a period (the trapezoids converge faster than any power there). The integral alone has an error of
+ * about 1e-17 in absolute terms, all of a small value: besselj(5, 1e-8) was 4.2e-17, not 2.6e-44 (Strata, batch 5).
+ */
 function besselJ(n: number, x: number): number {
+  const order = Math.abs(n);
+  // J_{−n} = (−1)^n J_n, J_n(−x) = (−1)^n J_n(x).
+  const sign = (n < 0 && order % 2 === 1 ? -1 : 1) * (x < 0 && order % 2 === 1 ? -1 : 1);
+  const z = Math.abs(x);
+  if (z === 0) return order === 0 ? 1 : 0;
+  if ((z * z) / 4 <= order + 1 || z < 1) return sign * besselSeries(order, z);
+  return besselIntegral(n, x);
+}
+
+/** Σ (−1)^k (x/2)^(2k+n) / (k! (k+n)!), its first term in logarithms (no overflow for a large n). */
+function besselSeries(n: number, x: number): number {
+  const half = x / 2;
+  let term = Math.exp(n * Math.log(half) - logGamma(n + 1));
+  let sum = term;
+  for (let k = 1; k < 500; k++) {
+    term *= -(half * half) / (k * (k + n));
+    sum += term;
+    if (Math.abs(term) <= 1e-17 * Math.abs(sum)) break;
+  }
+  return sum;
+}
+
+function besselIntegral(n: number, x: number): number {
   const steps = Math.max(256, Math.ceil(4 * (Math.abs(x) + Math.abs(n))) + 64);
   let sum = 0;
   for (let k = 0; k < steps; k++) {

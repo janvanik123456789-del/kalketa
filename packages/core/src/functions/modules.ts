@@ -13,6 +13,7 @@ import { baseUnitSymbol } from '../units/display.js';
 import { civilFromDays, dateValue, daysFromCivil, daysOf, isDate, isValidDay } from '../values/date.js';
 import { quantity, type Quantity, type Value } from '../values/value.js';
 import { accurateRunningSums, accurateSum } from '../values/sum.js';
+import { logGamma } from './special.js';
 import { asBoolean, asComplex, asQuantity } from '../eval/coerce.js';
 import { compare } from '../eval/evaluator.js';
 import { withBareZero } from '../eval/zero.js';
@@ -909,7 +910,7 @@ export const STATISTICS: readonly FunctionDef[] = [
     arity: [3, 3],
     call: (a) => {
       const [k, n, p] = binomialArgs(a);
-      return quantity(k > n ? 0 : choose(n, k) * p ** k * (1 - p) ** (n - k));
+      return quantity(k > n ? 0 : binomialTerm(n, k, p));
     },
   },
   {
@@ -921,7 +922,7 @@ export const STATISTICS: readonly FunctionDef[] = [
     call: (a) => {
       const [k, n, p] = binomialArgs(a);
       let sum = 0;
-      for (let i = 0; i <= Math.min(k, n); i++) sum += choose(n, i) * p ** i * (1 - p) ** (n - i);
+      for (let i = 0; i <= Math.min(k, n); i++) sum += binomialTerm(n, i, p);
       return quantity(Math.min(1, sum));
     },
   },
@@ -963,6 +964,18 @@ function wholeNumber(a: Args, index: number): number {
 }
 
 /** n over k, exactly while it fits (products of small fractions, no factorials that overflow). */
+/**
+ * The probability of k successes of n: directly while its parts stay in range, else by logarithms. For n = 10 000
+ * the coefficient alone overflows (1.6e3008) though the probability is 0.008 (Strata, batch 5).
+ */
+function binomialTerm(n: number, k: number, p: number): number {
+  const direct = choose(n, k) * p ** k * (1 - p) ** (n - k);
+  if (Number.isFinite(direct) && direct > 1e-280) return direct;
+  if (p === 0) return k === 0 ? 1 : 0;
+  if (p === 1) return k === n ? 1 : 0;
+  return Math.exp(logGamma(n + 1) - logGamma(k + 1) - logGamma(n - k + 1) + k * Math.log(p) + (n - k) * Math.log1p(-p));
+}
+
 function choose(n: number, k: number): number {
   const m = Math.min(k, n - k);
   let result = 1;

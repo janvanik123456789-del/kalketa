@@ -1,0 +1,90 @@
+{
+  "id": "soucet-geometricke-rady",
+  "field": "01",
+  "group": {
+    "cs": "Algebra",
+    "en": "Algebra"
+  },
+  "title": {
+    "cs": "Součet geometrické řady",
+    "en": "Sum of a geometric series"
+  },
+  "source": {
+    "text": {
+      "cs": "Součet prvních n členů geometrické posloupnosti",
+      "en": "Sum of the first n terms of a geometric sequence"
+    }
+  },
+  "status": "verified",
+  "formula": "S == a_1·(1 - q^n)/(1 - q)",
+  "quantities": {
+    "S": {
+      "name": {
+        "cs": "součet",
+        "en": "sum"
+      },
+      "unit": "",
+      "example": "1.99805"
+    },
+    "a_1": {
+      "name": {
+        "cs": "první člen",
+        "en": "first term"
+      },
+      "unit": "",
+      "example": "1"
+    },
+    "q": {
+      "name": {
+        "cs": "kvocient",
+        "en": "ratio"
+      },
+      "unit": "",
+      "example": "0.5"
+    },
+    "n": {
+      "name": {
+        "cs": "počet členů",
+        "en": "number of terms"
+      },
+      "unit": "",
+      "example": "10"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "a_1": "1",
+        "q": "0.5",
+        "n": "10"
+      },
+      "expect": {
+        "S": "1.99805"
+      }
+    },
+    {
+      "given": {
+        "a_1": "3",
+        "q": "2",
+        "n": "5"
+      },
+      "expect": {
+        "S": "93"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "řada",
+      "geometrická",
+      "součet",
+      "kvocient"
+    ],
+    "en": [
+      "series",
+      "geometric",
+      "sum",
+      "ratio"
+    ]
+  }
+}

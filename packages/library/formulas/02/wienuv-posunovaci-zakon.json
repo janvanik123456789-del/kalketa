@@ -1,0 +1,80 @@
+{
+  "id": "wienuv-posunovaci-zakon",
+  "field": "02",
+  "group": {
+    "cs": "Vlnění",
+    "en": "Waves"
+  },
+  "title": {
+    "cs": "Vlnová délka maxima záření (Wienův zákon)",
+    "en": "Wavelength of the peak of radiation (Wien’s law)"
+  },
+  "source": {
+    "text": {
+      "cs": "Wienův posunovací zákon, b = 2,897771955·10⁻³ m·K (CODATA)",
+      "en": "Wien’s displacement law, b = 2.897771955·10⁻³ m·K (CODATA)"
+    }
+  },
+  "status": "verified",
+  "formula": "λ_max == b_W/T_t",
+  "quantities": {
+    "λ_max": {
+      "name": {
+        "cs": "vlnová délka maxima",
+        "en": "wavelength of the peak"
+      },
+      "unit": "m",
+      "example": "5.01518e-07 m"
+    },
+    "b_W": {
+      "name": {
+        "cs": "Wienova konstanta",
+        "en": "Wien’s constant"
+      },
+      "unit": "m·K",
+      "example": "2.897771955e-3 m·K"
+    },
+    "T_t": {
+      "name": {
+        "cs": "teplota tělesa",
+        "en": "temperature of the body"
+      },
+      "unit": "K",
+      "example": "5778 K"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "b_W": "2.897771955e-3 m·K",
+        "T_t": "5778 K"
+      },
+      "expect": {
+        "λ_max": "5.01518e-07 m"
+      }
+    },
+    {
+      "given": {
+        "b_W": "2.897771955e-3 m·K",
+        "T_t": "310 K"
+      },
+      "expect": {
+        "λ_max": "9.34765e-06 m"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "záření",
+      "Wien",
+      "černé těleso",
+      "vlnová délka"
+    ],
+    "en": [
+      "radiation",
+      "Wien",
+      "black body",
+      "wavelength"
+    ]
+  }
+}

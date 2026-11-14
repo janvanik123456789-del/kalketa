@@ -1,0 +1,78 @@
+{
+  "id": "perioda-matematickeho-kyvadla",
+  "field": "02",
+  "group": {
+    "cs": "Kmitání",
+    "en": "Vibration"
+  },
+  "title": {
+    "cs": "Perioda matematického kyvadla",
+    "en": "Period of a simple pendulum"
+  },
+  "source": {
+    "text": {
+      "cs": "Malé kmity matematického kyvadla",
+      "en": "Small swings of a simple pendulum"
+    }
+  },
+  "status": "verified",
+  "formula": "T_k == 2·π·sqrt(l/g)",
+  "quantities": {
+    "T_k": {
+      "name": {
+        "cs": "perioda",
+        "en": "period"
+      },
+      "unit": "s",
+      "example": "2.00607 s"
+    },
+    "l": {
+      "name": {
+        "cs": "délka závěsu",
+        "en": "length of the string"
+      },
+      "unit": "m",
+      "example": "1 m"
+    },
+    "g": {
+      "name": {
+        "cs": "tíhové zrychlení",
+        "en": "gravitational acceleration"
+      },
+      "unit": "m/s^2",
+      "example": "9.81 m/s^2"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "l": "1 m",
+        "g": "9.81 m/s^2"
+      },
+      "expect": {
+        "T_k": "2.00607 s"
+      }
+    },
+    {
+      "given": {
+        "l": "0.25 m",
+        "g": "9.80665 m/s^2"
+      },
+      "expect": {
+        "T_k": "1.0032 s"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "kyvadlo",
+      "perioda",
+      "kmitání"
+    ],
+    "en": [
+      "pendulum",
+      "period",
+      "vibration"
+    ]
+  }
+}

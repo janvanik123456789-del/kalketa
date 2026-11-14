@@ -1,0 +1,90 @@
+{
+  "id": "snelluv-zakon-lomu",
+  "field": "02",
+  "group": {
+    "cs": "Vlnění",
+    "en": "Waves"
+  },
+  "title": {
+    "cs": "Lom světla (Snellův zákon)",
+    "en": "Refraction of light (Snell’s law)"
+  },
+  "source": {
+    "text": {
+      "cs": "Snellův zákon lomu, z Fermatova principu",
+      "en": "Snell’s law of refraction, from Fermat’s principle"
+    }
+  },
+  "status": "verified",
+  "formula": "n_1·sin(α_1) == n_2·sin(α_2)",
+  "quantities": {
+    "n_1": {
+      "name": {
+        "cs": "index lomu 1. prostředí",
+        "en": "refractive index of medium 1"
+      },
+      "unit": "",
+      "example": "1"
+    },
+    "α_1": {
+      "name": {
+        "cs": "úhel dopadu",
+        "en": "angle of incidence"
+      },
+      "unit": "°",
+      "example": "30 °"
+    },
+    "n_2": {
+      "name": {
+        "cs": "index lomu 2. prostředí",
+        "en": "refractive index of medium 2"
+      },
+      "unit": "",
+      "example": "1.333"
+    },
+    "α_2": {
+      "name": {
+        "cs": "úhel lomu",
+        "en": "angle of refraction"
+      },
+      "unit": "°",
+      "example": "22.0301 °"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "n_1": "1",
+        "α_1": "30 °",
+        "n_2": "1.333"
+      },
+      "expect": {
+        "α_2": "22.0301 °"
+      }
+    },
+    {
+      "given": {
+        "n_1": "1.5",
+        "α_1": "20 °",
+        "n_2": "1"
+      },
+      "expect": {
+        "α_2": "30.8659 °"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "lom",
+      "Snell",
+      "index lomu",
+      "světlo"
+    ],
+    "en": [
+      "refraction",
+      "Snell",
+      "refractive index",
+      "light"
+    ]
+  }
+}

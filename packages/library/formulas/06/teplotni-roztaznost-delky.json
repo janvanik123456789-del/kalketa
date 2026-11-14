@@ -1,0 +1,89 @@
+{
+  "id": "teplotni-roztaznost-delky",
+  "field": "06",
+  "group": {
+    "cs": "Termodynamika",
+    "en": "Thermodynamics"
+  },
+  "title": {
+    "cs": "Teplotní roztažnost délky",
+    "en": "Thermal expansion of a length"
+  },
+  "source": {
+    "text": {
+      "cs": "Lineární teplotní roztažnost, α ocele 12·10⁻⁶ 1/K",
+      "en": "Linear thermal expansion, α of steel 12·10⁻⁶ 1/K"
+    }
+  },
+  "status": "verified",
+  "formula": "ΔL == α_t·L_0·ΔT",
+  "quantities": {
+    "ΔL": {
+      "name": {
+        "cs": "prodloužení",
+        "en": "elongation"
+      },
+      "unit": "mm",
+      "example": "4.8 mm"
+    },
+    "α_t": {
+      "name": {
+        "cs": "součinitel teplotní roztažnosti",
+        "en": "coefficient of thermal expansion"
+      },
+      "unit": "1/K",
+      "example": "12e-6 1/K"
+    },
+    "L_0": {
+      "name": {
+        "cs": "původní délka",
+        "en": "original length"
+      },
+      "unit": "m",
+      "example": "10 m"
+    },
+    "ΔT": {
+      "name": {
+        "cs": "změna teploty",
+        "en": "change of temperature"
+      },
+      "unit": "K",
+      "example": "40 K"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "α_t": "12e-6 1/K",
+        "L_0": "10 m",
+        "ΔT": "40 K"
+      },
+      "expect": {
+        "ΔL": "4.8 mm"
+      }
+    },
+    {
+      "given": {
+        "α_t": "23e-6 1/K",
+        "L_0": "2 m",
+        "ΔT": "50 K"
+      },
+      "expect": {
+        "ΔL": "2.3 mm"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "roztažnost",
+      "teplota",
+      "prodloužení",
+      "dilatace"
+    ],
+    "en": [
+      "expansion",
+      "temperature",
+      "elongation"
+    ]
+  }
+}

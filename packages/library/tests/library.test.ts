@@ -5,7 +5,7 @@
  */
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { evaluateSheet, type SheetResult } from '@kalketa/core';
+import { evaluateSheet, sameDim, type SheetResult } from '@kalketa/core';
 import { describe, expect, it } from 'vitest';
 import { EMPTY_SHEET, insertion, readEntries, renameIn, search, sheetNames, sides, unitDimension, type Entry } from '../src/index.js';
 
@@ -53,6 +53,28 @@ describe('formula library', () => {
         .map(([q]) => `${e.id}.${q}: ${e.quantities[q]!.unit}`),
     );
     expect(wrongUnits).toEqual([]);
+  });
+
+  it('writes every example and checked value in the dimension of its quantity', () => {
+    // "10.70507" for a volume in m^3 passed for a while and failed two steps on, as a unit of 1/m² (Strata, batch 4 of
+    // the library, 2026-11-12): the value of each quantity is in its own dimension, said where it is wrong.
+    const dimOf = (value: string) => {
+      const v = evaluateSheet(`x := ${value}`).values.get('x');
+      return v?.type === 'quantity' ? v.dim : undefined;
+    };
+    const wrong = entries.flatMap((e) => {
+      const values = [
+        ...Object.entries(e.quantities).map(([name, q]) => [name, q.example] as const),
+        ...e.checks.flatMap((c) => [...Object.entries(c.given), ...Object.entries(c.expect)]),
+      ];
+      return values.flatMap(([name, value]) => {
+        const unit = e.quantities[name]?.unit ?? '';
+        const own = unitDimension(unit === '' ? '1' : unit);
+        const given = dimOf(value);
+        return own && given && !sameDim(own, given) ? [`${e.id}.${name}: ${value} (${unit || 'no unit'})`] : [];
+      });
+    });
+    expect(wrong).toEqual([]);
   });
 
   for (const entry of entries) {

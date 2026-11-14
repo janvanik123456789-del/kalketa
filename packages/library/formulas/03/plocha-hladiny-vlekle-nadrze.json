@@ -1,0 +1,90 @@
+{
+  "id": "plocha-hladiny-vlekle-nadrze",
+  "field": "03",
+  "group": {
+    "cs": "Technické tekutiny",
+    "en": "Engineering fluids"
+  },
+  "title": {
+    "cs": "Plocha hladiny ve vodorovné válcové nádrži",
+    "en": "Free surface in a horizontal cylindrical tank"
+  },
+  "source": {
+    "text": {
+      "cs": "Tětiva kruhu v hladině krát délka nádrže",
+      "en": "Chord of the circle at the level times the length of the tank"
+    }
+  },
+  "status": "verified",
+  "formula": "A_h == 2·L·sqrt(2·R_n·h - h^2)",
+  "quantities": {
+    "A_h": {
+      "name": {
+        "cs": "plocha hladiny",
+        "en": "area of the free surface"
+      },
+      "unit": "m^2",
+      "example": "13.5765 m^2"
+    },
+    "L": {
+      "name": {
+        "cs": "délka nádrže",
+        "en": "length of the tank"
+      },
+      "unit": "m",
+      "example": "6 m"
+    },
+    "R_n": {
+      "name": {
+        "cs": "poloměr nádrže",
+        "en": "radius of the tank"
+      },
+      "unit": "m",
+      "example": "1.2 m"
+    },
+    "h": {
+      "name": {
+        "cs": "výška hladiny",
+        "en": "height of the level"
+      },
+      "unit": "m",
+      "example": "0.8 m"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "L": "6 m",
+        "R_n": "1.2 m",
+        "h": "0.8 m"
+      },
+      "expect": {
+        "A_h": "13.5765 m^2"
+      }
+    },
+    {
+      "given": {
+        "L": "4 m",
+        "R_n": "1 m",
+        "h": "1 m"
+      },
+      "expect": {
+        "A_h": "8 m^2"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "nádrž",
+      "hladina",
+      "válec",
+      "plocha"
+    ],
+    "en": [
+      "tank",
+      "free surface",
+      "cylinder",
+      "area"
+    ]
+  }
+}

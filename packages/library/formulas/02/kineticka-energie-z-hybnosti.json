@@ -1,0 +1,78 @@
+{
+  "id": "kineticka-energie-z-hybnosti",
+  "field": "02",
+  "group": {
+    "cs": "Pohyb a síly",
+    "en": "Motion and forces"
+  },
+  "title": {
+    "cs": "Kinetická energie z hybnosti",
+    "en": "Kinetic energy from momentum"
+  },
+  "source": {
+    "text": {
+      "cs": "E_k = M·v²/2 s v = p/M",
+      "en": "E_k = M·v²/2 with v = p/M"
+    }
+  },
+  "status": "verified",
+  "formula": "E_k == p^2/(2·M)",
+  "quantities": {
+    "E_k": {
+      "name": {
+        "cs": "kinetická energie",
+        "en": "kinetic energy"
+      },
+      "unit": "J",
+      "example": "45 J"
+    },
+    "p": {
+      "name": {
+        "cs": "hybnost",
+        "en": "momentum"
+      },
+      "unit": "kg·m/s",
+      "example": "30 kg·m/s"
+    },
+    "M": {
+      "name": {
+        "cs": "hmotnost",
+        "en": "mass"
+      },
+      "unit": "kg",
+      "example": "10 kg"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "p": "30 kg·m/s",
+        "M": "10 kg"
+      },
+      "expect": {
+        "E_k": "45 J"
+      }
+    },
+    {
+      "given": {
+        "p": "12 kg·m/s",
+        "M": "4 kg"
+      },
+      "expect": {
+        "E_k": "18 J"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "kinetická energie",
+      "hybnost",
+      "pohyb"
+    ],
+    "en": [
+      "kinetic energy",
+      "momentum",
+      "motion"
+    ]
+  }
+}

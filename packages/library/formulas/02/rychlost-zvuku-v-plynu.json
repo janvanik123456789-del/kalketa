@@ -1,0 +1,90 @@
+{
+  "id": "rychlost-zvuku-v-plynu",
+  "field": "02",
+  "group": {
+    "cs": "Vlnění",
+    "en": "Waves"
+  },
+  "title": {
+    "cs": "Rychlost zvuku v plynu",
+    "en": "Speed of sound in a gas"
+  },
+  "source": {
+    "text": {
+      "cs": "Ideální plyn, adiabatické stlačování (Laplace)",
+      "en": "Ideal gas, adiabatic compression (Laplace)"
+    }
+  },
+  "status": "verified",
+  "formula": "c_z == sqrt(κ·R_s·T_g)",
+  "quantities": {
+    "c_z": {
+      "name": {
+        "cs": "rychlost zvuku",
+        "en": "speed of sound"
+      },
+      "unit": "m/s",
+      "example": "343.232 m/s"
+    },
+    "κ": {
+      "name": {
+        "cs": "Poissonova konstanta",
+        "en": "ratio of specific heats"
+      },
+      "unit": "",
+      "example": "1.4"
+    },
+    "R_s": {
+      "name": {
+        "cs": "měrná plynová konstanta",
+        "en": "specific gas constant"
+      },
+      "unit": "J/(kg·K)",
+      "example": "287.05 J/(kg·K)"
+    },
+    "T_g": {
+      "name": {
+        "cs": "teplota plynu",
+        "en": "temperature of the gas"
+      },
+      "unit": "K",
+      "example": "293.15 K"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "κ": "1.4",
+        "R_s": "287.05 J/(kg·K)",
+        "T_g": "293.15 K"
+      },
+      "expect": {
+        "c_z": "343.232 m/s"
+      }
+    },
+    {
+      "given": {
+        "κ": "1.667",
+        "R_s": "2077 J/(kg·K)",
+        "T_g": "273.15 K"
+      },
+      "expect": {
+        "c_z": "972.493 m/s"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "zvuk",
+      "rychlost zvuku",
+      "plyn",
+      "adiabatický"
+    ],
+    "en": [
+      "sound",
+      "speed of sound",
+      "gas",
+      "adiabatic"
+    ]
+  }
+}

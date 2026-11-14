@@ -1,0 +1,90 @@
+{
+  "id": "soucet-aritmeticke-rady",
+  "field": "01",
+  "group": {
+    "cs": "Algebra",
+    "en": "Algebra"
+  },
+  "title": {
+    "cs": "Součet aritmetické posloupnosti",
+    "en": "Sum of an arithmetic sequence"
+  },
+  "source": {
+    "text": {
+      "cs": "Součet prvních n členů aritmetické posloupnosti (Gauss)",
+      "en": "Sum of the first n terms of an arithmetic sequence (Gauss)"
+    }
+  },
+  "status": "verified",
+  "formula": "S == n·(a_1 + a_n)/2",
+  "quantities": {
+    "S": {
+      "name": {
+        "cs": "součet",
+        "en": "sum"
+      },
+      "unit": "",
+      "example": "5050"
+    },
+    "n": {
+      "name": {
+        "cs": "počet členů",
+        "en": "number of terms"
+      },
+      "unit": "",
+      "example": "100"
+    },
+    "a_1": {
+      "name": {
+        "cs": "první člen",
+        "en": "first term"
+      },
+      "unit": "",
+      "example": "1"
+    },
+    "a_n": {
+      "name": {
+        "cs": "poslední člen",
+        "en": "last term"
+      },
+      "unit": "",
+      "example": "100"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "n": "100",
+        "a_1": "1",
+        "a_n": "100"
+      },
+      "expect": {
+        "S": "5050"
+      }
+    },
+    {
+      "given": {
+        "n": "10",
+        "a_1": "2",
+        "a_n": "20"
+      },
+      "expect": {
+        "S": "110"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "posloupnost",
+      "aritmetická",
+      "součet",
+      "Gauss"
+    ],
+    "en": [
+      "sequence",
+      "arithmetic",
+      "sum",
+      "Gauss"
+    ]
+  }
+}

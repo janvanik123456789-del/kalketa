@@ -1,0 +1,90 @@
+{
+  "id": "pomerny-utlum",
+  "field": "09",
+  "group": {
+    "cs": "Odezva soustavy",
+    "en": "System response"
+  },
+  "title": {
+    "cs": "Poměrný útlum",
+    "en": "Damping ratio"
+  },
+  "source": {
+    "text": {
+      "cs": "Kmitavá soustava M·x″ + c·x′ + k·x = 0, kritický útlum 2·√(k·M)",
+      "en": "Vibrating system M·x″ + c·x′ + k·x = 0, critical damping 2·√(k·M)"
+    }
+  },
+  "status": "verified",
+  "formula": "ζ == c_t/(2·sqrt(k·M))",
+  "quantities": {
+    "ζ": {
+      "name": {
+        "cs": "poměrný útlum",
+        "en": "damping ratio"
+      },
+      "unit": "",
+      "example": "0.1"
+    },
+    "c_t": {
+      "name": {
+        "cs": "součinitel tlumení",
+        "en": "damping coefficient"
+      },
+      "unit": "N·s/m",
+      "example": "40 N·s/m"
+    },
+    "k": {
+      "name": {
+        "cs": "tuhost",
+        "en": "stiffness"
+      },
+      "unit": "N/m",
+      "example": "10000 N/m"
+    },
+    "M": {
+      "name": {
+        "cs": "hmotnost",
+        "en": "mass"
+      },
+      "unit": "kg",
+      "example": "4 kg"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "c_t": "40 N·s/m",
+        "k": "10000 N/m",
+        "M": "4 kg"
+      },
+      "expect": {
+        "ζ": "0.1"
+      }
+    },
+    {
+      "given": {
+        "c_t": "100 N·s/m",
+        "k": "2500 N/m",
+        "M": "1 kg"
+      },
+      "expect": {
+        "ζ": "1"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "útlum",
+      "tlumení",
+      "kmitání",
+      "kritický"
+    ],
+    "en": [
+      "damping",
+      "ratio",
+      "vibration",
+      "critical"
+    ]
+  }
+}

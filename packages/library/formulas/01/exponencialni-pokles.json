@@ -1,0 +1,89 @@
+{
+  "id": "exponencialni-pokles",
+  "field": "01",
+  "group": {
+    "cs": "Algebra",
+    "en": "Algebra"
+  },
+  "title": {
+    "cs": "Exponenciální pokles",
+    "en": "Exponential decay"
+  },
+  "source": {
+    "text": {
+      "cs": "Řešení rovnice dN/dt = −λ·N",
+      "en": "Solution of dN/dt = −λ·N"
+    }
+  },
+  "status": "verified",
+  "formula": "N == N_0·exp(-λ·t)",
+  "quantities": {
+    "N": {
+      "name": {
+        "cs": "množství v čase t",
+        "en": "amount at time t"
+      },
+      "unit": "",
+      "example": "367.879"
+    },
+    "N_0": {
+      "name": {
+        "cs": "počáteční množství",
+        "en": "initial amount"
+      },
+      "unit": "",
+      "example": "1000"
+    },
+    "λ": {
+      "name": {
+        "cs": "rozpadová konstanta",
+        "en": "decay constant"
+      },
+      "unit": "1/s",
+      "example": "0.1 1/s"
+    },
+    "t": {
+      "name": {
+        "cs": "čas",
+        "en": "time"
+      },
+      "unit": "s",
+      "example": "10 s"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "N_0": "1000",
+        "λ": "0.1 1/s",
+        "t": "10 s"
+      },
+      "expect": {
+        "N": "367.879"
+      }
+    },
+    {
+      "given": {
+        "N_0": "500",
+        "λ": "0.02 1/s",
+        "t": "50 s"
+      },
+      "expect": {
+        "N": "183.94"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "pokles",
+      "rozpad",
+      "exponenciální",
+      "poločas"
+    ],
+    "en": [
+      "decay",
+      "exponential",
+      "half-life"
+    ]
+  }
+}

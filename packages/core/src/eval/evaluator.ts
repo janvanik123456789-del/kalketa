@@ -125,6 +125,12 @@ export function warnOnce(warning: Diagnostic, ctx: EvalContext): void {
 /** 3/8 in is 3/(8 in), by the rule that a number binds its unit first; rarely what its author meant (docs/03-jazyk.md). */
 function noteFractionBeforeUnit(expr: Extract<Expr, { kind: 'binary' }>, ctx: EvalContext): void {
   const { left, right, operator } = expr;
+  // x^1/3 is x¹/3, not the cube root x^(1/3): the power binds first, as on paper. No error, only another number
+  // (8^1/3 is 2.667, not 2), so it is said (2026-11-14; x^2/3 is a common x²/3 and stays silent).
+  if (operator === '/' && left.kind === 'binary' && left.operator === '^' && left.right.kind === 'number' && left.right.value === 1 && !left.right.unit && right.kind === 'number' && !right.unit) {
+    warnOnce(diagnostic('W-POWER-FRACTION', expr.span, { n: right.value }), ctx);
+    return;
+  }
   if (operator !== '/' || left.kind !== 'number' || left.unit || left.imaginary || right.kind !== 'number' || !right.unit) return;
   const unit = formatUnit(right.unit);
   warnOnce(diagnostic('W-FRACTION-BEFORE-UNIT', expr.span, { written: `${left.value}/${right.value} ${unit}`, left: left.value, right: right.value, unit }), ctx);
@@ -433,6 +439,9 @@ function product(a: MatrixValue, b: MatrixValue, leftExpr: Expr, rightExpr: Expr
 }
 
 const PER_SECOND = dim({ T: -1 });
+/** Rates per a unit of time (1/d, 1/h) keep it; 2/L of a length stays in 1/m (units.test.ts). */
+const TIME = dim({ T: 1 });
+const PER_TIME = dim({ T: -1 });
 const RADIANS_PER_SECOND: ResolvedUnit = { symbol: 'rad/s', factor: 1, dim: PER_SECOND };
 
 /** π written in a factor (2·π, π·n/30, 6.283): the product is an angle, or an angle per time. */
@@ -493,7 +502,14 @@ function arithmetic(op: BinaryOperator, left: Value, right: Value, leftExpr: Exp
       const composed = hintsOff || scaled || combined || !a.hint || !b.hint || (a.absolute && shiftedScale(a)) || (b.absolute && shiftedScale(b)) ? undefined : composedHint(op, a.hint, b.hint, ownNames(ctx.registry), op === '*' ? a.si * b.si : a.si / b.si);
       // A share divided by a plain number stays a share: i/4 of 6,96 % is 1,74 %, not 0,0174 (200 · 21 % is still 42).
       const share = op === '/' && scaled === a && !!a.hint && isDimensionless(a.dim) && !b.hint;
-      const shown = keptHint(scaled) || share ? scaled!.hint! : combined ?? composed;
+      // A plain number over a unit other than the SI one is per that unit: 0,35/d is 0,35 1/d, not 4,05·10⁻⁶ Hz, and
+      // ln(2)/k with k in 1/d is in days again (Strata, task 04). Over seconds it stays a frequency (1/T in Hz).
+      const per: ResolvedUnit | undefined = op === '/' && !hintsOff && !a.hint && isDimensionless(a.dim) && !!b.hint && !b.absolute && b.hint.factor !== 1 && !/[·()]/.test(b.hint.symbol) && (sameDim(b.dim, TIME) || sameDim(b.dim, PER_TIME))
+        ? b.hint.symbol.startsWith('1/') && !b.hint.symbol.slice(2).includes('/')
+          ? { symbol: b.hint.symbol.slice(2), factor: 1 / b.hint.factor, dim: divideDims(a.dim, b.dim) }
+          : b.hint.symbol.includes('/') ? undefined : { symbol: `1/${b.hint.symbol}`, factor: 1 / b.hint.factor, dim: divideDims(a.dim, b.dim) }
+        : undefined;
+      const shown = keptHint(scaled) || share ? scaled!.hint! : combined ?? composed ?? per;
       // Ω/mH shown in kHz: a frequency only by the look of it, its origin in turns is not known.
       const unsure = shown && !shown.chosen && rotationKind(shown) === 'turns' && rotationKind(a.hint) !== 'turns' && rotationKind(b.hint) !== 'turns';
       const hint = shown ? { hint: unsure ? { ...shown, chosen: true } : shown } : {};

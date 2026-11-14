@@ -39,7 +39,10 @@ export interface CatalogItem {
   readonly title: string;
   /** The field or part it belongs to ("Pružnost a pevnost"). */
   readonly group?: string;
-  /** A formula: the equation itself (σ == M/W), short enough to show what it is. */
+  /**
+   * A formula: the equation itself (σ == M/W). Not written into the catalog since 2026-11-14: with 154 formulas the
+   * catalog sent with every question passed 6000 tokens; the title says what a formula is, the lookup gives it whole.
+   */
   readonly formula?: string;
 }
 
@@ -50,7 +53,7 @@ export function catalogText(items: readonly CatalogItem[], via: 'block' | 'tools
   const list = (kind: CatalogItem['kind']) => {
     const groups = new Map<string, CatalogItem[]>();
     for (const item of items.filter((i) => i.kind === kind)) groups.set(item.group ?? '', [...(groups.get(item.group ?? '') ?? []), item]);
-    return [...groups].map(([group, its]) => `${group ? `${group}:\n` : ''}${its.map((i) => `- ${i.id}: ${i.title}${i.formula ? ` (${i.formula})` : ''}`).join('\n')}`).join('\n');
+    return [...groups].map(([group, its]) => `${group ? `${group}:\n` : ''}${its.map((i) => `- ${i.id}: ${i.title}`).join('\n')}`).join('\n');
   };
   const formulas = list('formula');
   const samples = list('sample');

@@ -1,0 +1,80 @@
+{
+  "id": "smaceny-obvod-kruhoveho-profilu",
+  "field": "14",
+  "group": {
+    "cs": "Koryta",
+    "en": "Channels"
+  },
+  "title": {
+    "cs": "Smáčený obvod kruhového profilu",
+    "en": "Wetted perimeter of a circular profile"
+  },
+  "source": {
+    "text": {
+      "cs": "délka oblouku ve styku s kapalinou; úloha TESTY/uloha01",
+      "en": "arc length in contact with the liquid; task TESTY/uloha01"
+    }
+  },
+  "status": "verified",
+  "formula": "P == D·φ/2",
+  "quantities": {
+    "P": {
+      "name": {
+        "cs": "smáčený obvod",
+        "en": "wetted perimeter"
+      },
+      "unit": "m",
+      "example": "0.65936549 m"
+    },
+    "D": {
+      "name": {
+        "cs": "světlý průměr profilu",
+        "en": "internal diameter of the profile"
+      },
+      "unit": "m",
+      "example": "0.5 m"
+    },
+    "φ": {
+      "name": {
+        "cs": "středový úhel výseče v radiánech",
+        "en": "central angle of the segment in radians"
+      },
+      "unit": "",
+      "example": "2.637462"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "D": "0.5 m",
+        "φ": "2.637462"
+      },
+      "expect": {
+        "P": "0.65936549 m"
+      }
+    },
+    {
+      "given": {
+        "D": "0.5 m",
+        "φ": "6.2831853"
+      },
+      "expect": {
+        "P": "1.5707963 m"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "smáčený",
+      "obvod",
+      "oblouk",
+      "profil"
+    ],
+    "en": [
+      "wetted",
+      "perimeter",
+      "arc",
+      "profile"
+    ]
+  }
+}

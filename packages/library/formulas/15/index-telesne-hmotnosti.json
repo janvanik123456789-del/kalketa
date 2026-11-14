@@ -1,0 +1,80 @@
+{
+  "id": "index-telesne-hmotnosti",
+  "field": "15",
+  "group": {
+    "cs": "Dávkování a posouzení",
+    "en": "Dosing and assessment"
+  },
+  "title": {
+    "cs": "Index tělesné hmotnosti",
+    "en": "Body mass index"
+  },
+  "source": {
+    "text": {
+      "cs": "antropometrické posouzení, KVHP",
+      "en": "anthropometric assessment, WHO"
+    }
+  },
+  "status": "verified",
+  "formula": "BMI == M/v^2",
+  "quantities": {
+    "BMI": {
+      "name": {
+        "cs": "index tělesné hmotnosti",
+        "en": "body mass index"
+      },
+      "unit": "kg/m^2",
+      "example": "25.8806 kg/m^2"
+    },
+    "M": {
+      "name": {
+        "cs": "hmotnost těla",
+        "en": "body mass"
+      },
+      "unit": "kg",
+      "example": "82 kg"
+    },
+    "v": {
+      "name": {
+        "cs": "výška těla",
+        "en": "body height"
+      },
+      "unit": "m",
+      "example": "1.78 m"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "M": "82 kg",
+        "v": "1.78 m"
+      },
+      "expect": {
+        "BMI": "25.8806 kg/m^2"
+      }
+    },
+    {
+      "given": {
+        "M": "60 kg",
+        "v": "1.65 m"
+      },
+      "expect": {
+        "BMI": "22.0386 kg/m^2"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "BMI",
+      "tělesná",
+      "hmotnost",
+      "výška"
+    ],
+    "en": [
+      "BMI",
+      "body",
+      "mass",
+      "height"
+    ]
+  }
+}

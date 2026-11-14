@@ -1,0 +1,80 @@
+{
+  "id": "druha-newtonova",
+  "field": "02",
+  "group": {
+    "cs": "Pohyb a síly",
+    "en": "Motion and forces"
+  },
+  "title": {
+    "cs": "Síla z hmotnosti a zrychlení",
+    "en": "Force from mass and acceleration"
+  },
+  "source": {
+    "text": {
+      "cs": "Newtonovy pohybové zákony, druhý zákon",
+      "en": "Newton’s laws of motion, second law"
+    }
+  },
+  "status": "verified",
+  "formula": "F == M·a",
+  "quantities": {
+    "F": {
+      "name": {
+        "cs": "síla",
+        "en": "force"
+      },
+      "unit": "N",
+      "example": "1440 N"
+    },
+    "M": {
+      "name": {
+        "cs": "hmotnost",
+        "en": "mass"
+      },
+      "unit": "kg",
+      "example": "1200 kg"
+    },
+    "a": {
+      "name": {
+        "cs": "zrychlení",
+        "en": "acceleration"
+      },
+      "unit": "m/s^2",
+      "example": "1.2 m/s^2"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "M": "1200 kg",
+        "a": "1.2 m/s^2"
+      },
+      "expect": {
+        "F": "1440 N"
+      }
+    },
+    {
+      "given": {
+        "F": "4500 N",
+        "M": "3 t"
+      },
+      "expect": {
+        "a": "1.5 m/s^2"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "síla",
+      "hmotnost",
+      "zrychlení",
+      "Newton"
+    ],
+    "en": [
+      "force",
+      "mass",
+      "acceleration",
+      "Newton"
+    ]
+  }
+}

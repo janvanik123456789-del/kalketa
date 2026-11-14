@@ -1,0 +1,79 @@
+{
+  "id": "nominalni-a-realna-sazba",
+  "field": "16",
+  "group": {
+    "cs": "Inflace",
+    "en": "Inflation"
+  },
+  "title": {
+    "cs": "Nominální a reálná úroková sazba",
+    "en": "Nominal and real interest rate"
+  },
+  "source": {
+    "text": {
+      "cs": "Fisherův vztah",
+      "en": "The Fisher equation"
+    }
+  },
+  "status": "verified",
+  "formula": "1 + i == (1 + i_r)·(1 + infl)",
+  "quantities": {
+    "i": {
+      "name": {
+        "cs": "nominální sazba",
+        "en": "nominal rate"
+      },
+      "unit": "%",
+      "example": "6.08 %"
+    },
+    "i_r": {
+      "name": {
+        "cs": "reálná sazba",
+        "en": "real rate"
+      },
+      "unit": "%",
+      "example": "4 %"
+    },
+    "infl": {
+      "name": {
+        "cs": "míra inflace",
+        "en": "rate of inflation"
+      },
+      "unit": "%",
+      "example": "2 %"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "i_r": "4 %",
+        "infl": "2 %"
+      },
+      "expect": {
+        "i": "6.08 %"
+      }
+    },
+    {
+      "given": {
+        "i": "8 %",
+        "infl": "2 %"
+      },
+      "expect": {
+        "i_r": "5.88235 %"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "inflace",
+      "reálný úrok",
+      "Fisher",
+      "hodnota peněz"
+    ],
+    "en": [
+      "inflation",
+      "real rate",
+      "fisher equation"
+    ]
+  }
+}

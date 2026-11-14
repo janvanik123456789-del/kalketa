@@ -1,0 +1,80 @@
+{
+  "id": "tihove-zrychleni-ve-vysce",
+  "field": "02",
+  "group": {
+    "cs": "Gravitace",
+    "en": "Gravitation"
+  },
+  "title": {
+    "cs": "Tíhové zrychlení v nadmořské výšce",
+    "en": "Gravitational acceleration at an altitude"
+  },
+  "source": {
+    "text": {
+      "cs": "Newtonův gravitační zákon, R_Z = 6 371 km",
+      "en": "Newton's law of gravitation, R_Z = 6371 km"
+    }
+  },
+  "status": "verified",
+  "formula": "g == g_0·R_Z^2/(R_Z + h)^2",
+  "quantities": {
+    "g": {
+      "name": {
+        "cs": "tíhové zrychlení ve výšce",
+        "en": "gravitational acceleration at the height"
+      },
+      "unit": "m/s^2",
+      "example": "8.68221 m/s^2"
+    },
+    "g_0": {
+      "name": {
+        "cs": "tíhové zrychlení u povrchu",
+        "en": "gravitational acceleration at the surface"
+      },
+      "unit": "m/s^2",
+      "example": "9.80665 m/s^2"
+    },
+    "R_Z": {
+      "name": {
+        "cs": "poloměr Země",
+        "en": "radius of the Earth"
+      },
+      "unit": "m",
+      "example": "6.371e6 m"
+    },
+    "h": {
+      "name": {
+        "cs": "výška nad povrchem",
+        "en": "height above the surface"
+      },
+      "unit": "km",
+      "example": "400 km"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "g_0": "9.80665 m/s^2",
+        "R_Z": "6.371e6 m",
+        "h": "400 km"
+      },
+      "expect": {
+        "g": "8.68221 m/s^2"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "gravitace",
+      "dráhová rychlost",
+      "družice",
+      "ISS"
+    ],
+    "en": [
+      "gravity",
+      "altitude",
+      "satellite",
+      "orbit"
+    ]
+  }
+}

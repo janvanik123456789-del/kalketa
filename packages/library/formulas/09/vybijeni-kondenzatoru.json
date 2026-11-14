@@ -1,0 +1,90 @@
+{
+  "id": "vybijeni-kondenzatoru",
+  "field": "09",
+  "group": {
+    "cs": "Soustavy 1. řádu",
+    "en": "First-order systems"
+  },
+  "title": {
+    "cs": "Vybíjení kondenzátoru v čase",
+    "en": "Capacitor discharge over time"
+  },
+  "source": {
+    "text": {
+      "cs": "vybíjení RC článku; zátěžový list DAVKA_2/19, pět bodů proti integraci",
+      "en": "RC discharge; stress sheet DAVKA_2/19, five points against integration"
+    }
+  },
+  "status": "verified",
+  "formula": "u == U_0·exp(-t/τ)",
+  "quantities": {
+    "u": {
+      "name": {
+        "cs": "napětí na kondenzátoru",
+        "en": "capacitor voltage"
+      },
+      "unit": "V",
+      "example": "1.8394 V"
+    },
+    "U_0": {
+      "name": {
+        "cs": "počáteční napětí",
+        "en": "initial voltage"
+      },
+      "unit": "V",
+      "example": "5 V"
+    },
+    "t": {
+      "name": {
+        "cs": "čas",
+        "en": "time"
+      },
+      "unit": "s",
+      "example": "1 s"
+    },
+    "τ": {
+      "name": {
+        "cs": "časová konstanta",
+        "en": "time constant"
+      },
+      "unit": "s",
+      "example": "1 s"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "U_0": "5 V",
+        "t": "1 s",
+        "τ": "1 s"
+      },
+      "expect": {
+        "u": "1.8394 V"
+      }
+    },
+    {
+      "given": {
+        "U_0": "5 V",
+        "t": "2 s",
+        "τ": "1 s"
+      },
+      "expect": {
+        "u": "0.676676 V"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "vybíjení",
+      "kondenzátor",
+      "časová",
+      "konstanta"
+    ],
+    "en": [
+      "capacitor",
+      "discharge",
+      "time",
+      "constant"
+    ]
+  }
+}

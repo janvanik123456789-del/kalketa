@@ -1,0 +1,99 @@
+{
+  "id": "stavova-rovnice-idealniho-plynu",
+  "field": "06",
+  "group": {
+    "cs": "Ideální plyn",
+    "en": "Ideal gas"
+  },
+  "title": {
+    "cs": "Stavová rovnice ideálního plynu",
+    "en": "Equation of state of an ideal gas"
+  },
+  "source": {
+    "text": {
+      "cs": "Clapeyronova rovnice, R = 8,3145 J/(mol·K)",
+      "en": "Clapeyron equation, R = 8.3145 J/(mol·K)"
+    }
+  },
+  "status": "verified",
+  "formula": "p·V == n·R_m·T",
+  "quantities": {
+    "p": {
+      "name": {
+        "cs": "tlak plynu",
+        "en": "gas pressure"
+      },
+      "unit": "Pa",
+      "example": "101325 Pa"
+    },
+    "V": {
+      "name": {
+        "cs": "objem plynu",
+        "en": "gas volume"
+      },
+      "unit": "m^3",
+      "example": "0.022414 m^3"
+    },
+    "n": {
+      "name": {
+        "cs": "látkové množství",
+        "en": "amount of substance"
+      },
+      "unit": "mol",
+      "example": "1 mol"
+    },
+    "R_m": {
+      "name": {
+        "cs": "molární plynová konstanta",
+        "en": "molar gas constant"
+      },
+      "unit": "J/(mol·K)",
+      "example": "8.314462618 J/(mol·K)"
+    },
+    "T": {
+      "name": {
+        "cs": "termodynamická teplota",
+        "en": "thermodynamic temperature"
+      },
+      "unit": "K",
+      "example": "273.15 K"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "p": "101325 Pa",
+        "n": "1 mol",
+        "R_m": "8.314462618 J/(mol·K)",
+        "T": "273.15 K"
+      },
+      "expect": {
+        "V": "0.022414 m^3"
+      }
+    },
+    {
+      "given": {
+        "V": "0.022414 m^3",
+        "n": "1 mol",
+        "R_m": "8.314462618 J/(mol·K)",
+        "T": "273.15 K"
+      },
+      "expect": {
+        "p": "101325 Pa"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "ideální plyn",
+      "normální stav",
+      "mol",
+      "nádrž plynu"
+    ],
+    "en": [
+      "ideal gas",
+      "molar volume",
+      "state equation"
+    ]
+  }
+}

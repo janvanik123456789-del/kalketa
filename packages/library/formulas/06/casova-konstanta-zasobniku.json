@@ -1,0 +1,89 @@
+{
+  "id": "casova-konstanta-zasobniku",
+  "field": "06",
+  "group": {
+    "cs": "Akumulace tepla",
+    "en": "Heat storage"
+  },
+  "title": {
+    "cs": "Časová konstanta chladnutí zásobníku vody",
+    "en": "Cooling time constant of a hot water tank"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R52 (ohřev vody v zásobníku)",
+      "en": "Kalketa, sample R52 (heating water in a tank)"
+    },
+    "sample": "R52"
+  },
+  "status": "verified",
+  "formula": "τ == M·c/(U·A)",
+  "quantities": {
+    "τ": {
+      "name": {
+        "cs": "časová konstanta chladnutí",
+        "en": "cooling time constant"
+      },
+      "unit": "h",
+      "example": "116.278 h"
+    },
+    "M": {
+      "name": {
+        "cs": "hmotnost vody",
+        "en": "mass of water"
+      },
+      "unit": "kg",
+      "example": "120 kg"
+    },
+    "c": {
+      "name": {
+        "cs": "měrná tepelná kapacita vody",
+        "en": "specific heat capacity of water"
+      },
+      "unit": "J/(kg·K)",
+      "example": "4186 J/(kg·K)"
+    },
+    "U": {
+      "name": {
+        "cs": "součinitel prostupu tepla izolací",
+        "en": "heat transfer coefficient of the insulation"
+      },
+      "unit": "W/(m^2·K)",
+      "example": "0.5 W/(m^2·K)"
+    },
+    "A": {
+      "name": {
+        "cs": "plocha pláště",
+        "en": "surface area of the shell"
+      },
+      "unit": "m^2",
+      "example": "2.4 m^2"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "M": "120 kg",
+        "c": "4186 J/(kg·K)",
+        "U": "0.5 W/(m^2·K)",
+        "A": "2.4 m^2"
+      },
+      "expect": {
+        "τ": "116.278 h"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "zásobník",
+      "tepelná ztráta",
+      "izolace",
+      "ochlazení"
+    ],
+    "en": [
+      "water tank",
+      "cooling",
+      "insulation"
+    ]
+  }
+}

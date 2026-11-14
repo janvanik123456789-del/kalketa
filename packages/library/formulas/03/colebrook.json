@@ -1,0 +1,80 @@
+{
+  "id": "colebrook",
+  "field": "03",
+  "group": {
+    "cs": "Tekutiny",
+    "en": "Fluids"
+  },
+  "title": {
+    "cs": "Colebrookova rovnice",
+    "en": "Colebrook equation"
+  },
+  "source": {
+    "text": {
+      "cs": "Colebrookův vztah pro meznou vrstvu; zátěžový list DAVKA_2/07",
+      "en": "Colebrook relation; stress sheet DAVKA_2/07"
+    }
+  },
+  "status": "verified",
+  "formula": "1/sqrt(λ) == -2·log10(ε_D/3.7 + 2.51/(Re·sqrt(λ)))",
+  "quantities": {
+    "λ": {
+      "name": {
+        "cs": "součinitel tření proudění",
+        "en": "friction factor"
+      },
+      "unit": "",
+      "example": "0.0185139"
+    },
+    "Re": {
+      "name": {
+        "cs": "Reynoldsovo číslo",
+        "en": "Reynolds number"
+      },
+      "unit": "",
+      "example": "1e5"
+    },
+    "ε_D": {
+      "name": {
+        "cs": "relativní drsnost potrubí",
+        "en": "relative roughness"
+      },
+      "unit": "",
+      "example": "1e-4"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "Re": "1e5",
+        "ε_D": "1e-4"
+      },
+      "expect": {
+        "λ": "0.0185139"
+      }
+    },
+    {
+      "given": {
+        "Re": "4e5",
+        "ε_D": "2e-5"
+      },
+      "expect": {
+        "λ": "0.0139545"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "colebrook",
+      "tření",
+      "drsnost",
+      "potrubí"
+    ],
+    "en": [
+      "colebrook",
+      "friction",
+      "roughness",
+      "pipe"
+    ]
+  }
+}

@@ -1,0 +1,80 @@
+{
+  "id": "brzdna-draha",
+  "field": "12",
+  "group": {
+    "cs": "Bezpečnost provozu",
+    "en": "Traffic safety"
+  },
+  "title": {
+    "cs": "Brzdná dráha",
+    "en": "Braking distance"
+  },
+  "source": {
+    "text": {
+      "cs": "brzdná dráha vozidla, rovnoměrně zpomalený pohyb",
+      "en": "vehicle braking, uniform deceleration"
+    }
+  },
+  "status": "verified",
+  "formula": "d == v_0^2/(2·a)",
+  "quantities": {
+    "d": {
+      "name": {
+        "cs": "brzdná dráha",
+        "en": "braking distance"
+      },
+      "unit": "m",
+      "example": "59.3542 m"
+    },
+    "v_0": {
+      "name": {
+        "cs": "počáteční rychlost",
+        "en": "initial speed"
+      },
+      "unit": "km/h",
+      "example": "100 km/h"
+    },
+    "a": {
+      "name": {
+        "cs": "zpomalení",
+        "en": "deceleration"
+      },
+      "unit": "m/s^2",
+      "example": "6.5 m/s^2"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "v_0": "100 km/h",
+        "a": "6.5 m/s^2"
+      },
+      "expect": {
+        "d": "59.3542 m"
+      }
+    },
+    {
+      "given": {
+        "v_0": "50 km/h",
+        "a": "6 m/s^2"
+      },
+      "expect": {
+        "d": "16.0751 m"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "brzdná",
+      "dráha",
+      "zpomalení",
+      "rychlost"
+    ],
+    "en": [
+      "braking",
+      "distance",
+      "deceleration",
+      "speed"
+    ]
+  }
+}

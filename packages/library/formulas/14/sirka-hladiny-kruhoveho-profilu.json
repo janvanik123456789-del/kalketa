@@ -1,0 +1,80 @@
+{
+  "id": "sirka-hladiny-kruhoveho-profilu",
+  "field": "14",
+  "group": {
+    "cs": "Koryta",
+    "en": "Channels"
+  },
+  "title": {
+    "cs": "Šířka hladiny kruhového profilu",
+    "en": "Surface width of a circular profile"
+  },
+  "source": {
+    "text": {
+      "cs": "tětina kružnice v hladině; úloha TESTY/uloha01",
+      "en": "chord of the circle at the surface; task TESTY/uloha01"
+    }
+  },
+  "status": "verified",
+  "formula": "B == D·sin(φ/2)",
+  "quantities": {
+    "B": {
+      "name": {
+        "cs": "šířka hladiny",
+        "en": "surface width"
+      },
+      "unit": "m",
+      "example": "0.48419969 m"
+    },
+    "D": {
+      "name": {
+        "cs": "světlý průměr profilu",
+        "en": "internal diameter of the profile"
+      },
+      "unit": "m",
+      "example": "0.5 m"
+    },
+    "φ": {
+      "name": {
+        "cs": "středový úhel výseče v radiánech",
+        "en": "central angle of the segment in radians"
+      },
+      "unit": "",
+      "example": "2.637462"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "D": "0.5 m",
+        "φ": "2.637462"
+      },
+      "expect": {
+        "B": "0.48419969 m"
+      }
+    },
+    {
+      "given": {
+        "D": "0.5 m",
+        "φ": "3.1415927"
+      },
+      "expect": {
+        "B": "0.5 m"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "šířka",
+      "hladiny",
+      "tětina",
+      "profil"
+    ],
+    "en": [
+      "surface",
+      "width",
+      "chord",
+      "profile"
+    ]
+  }
+}

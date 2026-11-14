@@ -1,0 +1,93 @@
+{
+  "id": "objem-vlekle-nadrze",
+  "field": "03",
+  "group": {
+    "cs": "Technické tekutiny",
+    "en": "Engineering fluids"
+  },
+  "title": {
+    "cs": "Objem vodorovné válcové nádrže",
+    "en": "Volume of a horizontal cylindrical tank"
+  },
+  "source": {
+    "text": {
+      "cs": "kalibrace vodorovného válce; úloha TESTY/uloha05, reference mpmath",
+      "en": "calibration of a horizontal cylinder; task TESTY/uloha05, mpmath reference"
+    }
+  },
+  "status": "verified",
+  "formula": "V == L·D^2/8·(φ - sin(φ))",
+  "quantities": {
+    "V": {
+      "name": {
+        "cs": "objem kapaliny",
+        "en": "volume of the liquid"
+      },
+      "unit": "m^3",
+      "example": "10.70507 m^3"
+    },
+    "L": {
+      "name": {
+        "cs": "délka nádrže",
+        "en": "tank length"
+      },
+      "unit": "m",
+      "example": "6 m"
+    },
+    "D": {
+      "name": {
+        "cs": "průměr nádrže",
+        "en": "tank diameter"
+      },
+      "unit": "m",
+      "example": "2.4 m"
+    },
+    "φ": {
+      "name": {
+        "cs": "středový úhel výseče v radiánech",
+        "en": "central angle of the segment in radians"
+      },
+      "unit": "",
+      "example": "2.8066965"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "L": "6 m",
+        "D": "2.4 m",
+        "φ": "2.8066965"
+      },
+      "expect": {
+        "V": "10.70507 m^3"
+      }
+    },
+    {
+      "given": {
+        "L": "6 m",
+        "D": "2.4 m",
+        "φ": "6.2831853"
+      },
+      "expect": {
+        "V": "27.143361 m^3"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "objem",
+      "nádrž",
+      "válec",
+      "kalibrace",
+      "hladina"
+    ],
+    "en": [
+      "tank",
+      "volume",
+      "cylinder",
+      "calibration",
+      "liquid",
+      "level"
+    ]
+  }
+}

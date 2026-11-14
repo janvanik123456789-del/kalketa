@@ -1,0 +1,79 @@
+{
+  "id": "carnotova-ucinnost",
+  "field": "06",
+  "group": {
+    "cs": "Termodynamické cykly",
+    "en": "Thermodynamic cycles"
+  },
+  "title": {
+    "cs": "Carnotova účinnost",
+    "en": "Carnot efficiency"
+  },
+  "source": {
+    "text": {
+      "cs": "Carnotův cyklus, mezní účinnost mezi nádržemi",
+      "en": "Carnot cycle, the limiting efficiency between two reservoirs"
+    }
+  },
+  "status": "verified",
+  "formula": "η == 1 - T_0/T_1",
+  "quantities": {
+    "η": {
+      "name": {
+        "cs": "Carnotova účinnost",
+        "en": "Carnot efficiency"
+      },
+      "unit": "",
+      "example": "0.5"
+    },
+    "T_0": {
+      "name": {
+        "cs": "teplota chladnější nádrže",
+        "en": "temperature of the cold reservoir"
+      },
+      "unit": "K",
+      "example": "300 K"
+    },
+    "T_1": {
+      "name": {
+        "cs": "teplota teplejší nádrže",
+        "en": "temperature of the hot reservoir"
+      },
+      "unit": "K",
+      "example": "600 K"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "T_0": "300 K",
+        "T_1": "600 K"
+      },
+      "expect": {
+        "η": "0.5"
+      }
+    },
+    {
+      "given": {
+        "T_0": "288 K",
+        "T_1": "800 K"
+      },
+      "expect": {
+        "η": "0.64"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "účinnost",
+      "tepelný stroj",
+      "mezní účinnost",
+      "elektrárna"
+    ],
+    "en": [
+      "efficiency",
+      "heat engine",
+      "power plant"
+    ]
+  }
+}

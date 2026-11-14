@@ -1,0 +1,98 @@
+{
+  "id": "vzdalenost-bodu-ze-souradnic",
+  "field": "13",
+  "group": {
+    "cs": "Měření v terénu",
+    "en": "Field measurement"
+  },
+  "title": {
+    "cs": "Vzdálenost dvou bodů ze souřadnic",
+    "en": "Distance of two points from coordinates"
+  },
+  "source": {
+    "text": {
+      "cs": "Pythagorova věta v souřadnicovém systému",
+      "en": "Pythagoras in a coordinate system"
+    }
+  },
+  "status": "verified",
+  "formula": "d == sqrt((x_2 - x_1)^2 + (y_2 - y_1)^2)",
+  "quantities": {
+    "d": {
+      "name": {
+        "cs": "vzdálenost",
+        "en": "distance"
+      },
+      "unit": "m",
+      "example": "50 m"
+    },
+    "x_1": {
+      "name": {
+        "cs": "souřadnice x prvního bodu",
+        "en": "x coordinate of the first point"
+      },
+      "unit": "m",
+      "example": "0 m"
+    },
+    "y_1": {
+      "name": {
+        "cs": "souřadnice y prvního bodu",
+        "en": "y coordinate of the first point"
+      },
+      "unit": "m",
+      "example": "0 m"
+    },
+    "x_2": {
+      "name": {
+        "cs": "souřadnice x druhého bodu",
+        "en": "x coordinate of the second point"
+      },
+      "unit": "m",
+      "example": "30 m"
+    },
+    "y_2": {
+      "name": {
+        "cs": "souřadnice y druhého bodu",
+        "en": "y coordinate of the second point"
+      },
+      "unit": "m",
+      "example": "40 m"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "x_1": "0 m",
+        "y_1": "0 m",
+        "x_2": "30 m",
+        "y_2": "40 m"
+      },
+      "expect": {
+        "d": "50 m"
+      }
+    },
+    {
+      "given": {
+        "x_1": "120.5 m",
+        "y_1": "340.25 m",
+        "x_2": "180.5 m",
+        "y_2": "420.25 m"
+      },
+      "expect": {
+        "d": "100 m"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "vzdálenost",
+      "body",
+      "souřadnice"
+    ],
+    "en": [
+      "distance",
+      "points",
+      "coordinates"
+    ]
+  }
+}

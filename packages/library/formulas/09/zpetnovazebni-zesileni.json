@@ -1,0 +1,79 @@
+{
+  "id": "zpetnovazebni-zesileni",
+  "field": "09",
+  "group": {
+    "cs": "Zpětná vazba",
+    "en": "Feedback"
+  },
+  "title": {
+    "cs": "Zesílení smyčky se zpětnou vazbou",
+    "en": "Gain of a feedback loop"
+  },
+  "source": {
+    "text": {
+      "cs": "Bodeho teorie zpětné vazby",
+      "en": "Bode's feedback theory"
+    }
+  },
+  "status": "verified",
+  "formula": "K_c == K/(1 + K·β)",
+  "quantities": {
+    "K_c": {
+      "name": {
+        "cs": "zesílení s uzavřenou smyčkou",
+        "en": "closed-loop gain"
+      },
+      "unit": "",
+      "example": "9.09091"
+    },
+    "K": {
+      "name": {
+        "cs": "zesílení obvodu bez zpětné vazby",
+        "en": "open-loop gain"
+      },
+      "unit": "",
+      "example": "100"
+    },
+    "β": {
+      "name": {
+        "cs": "přenos zpětné vazby",
+        "en": "feedback transfer"
+      },
+      "unit": "",
+      "example": "0.1"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "K": "100",
+        "β": "0.1"
+      },
+      "expect": {
+        "K_c": "9.09091"
+      }
+    },
+    {
+      "given": {
+        "K": "1000",
+        "β": "0.01"
+      },
+      "expect": {
+        "K_c": "90.9091"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "zpětná vazba",
+      "regulace",
+      "kmitání",
+      "stabilita"
+    ],
+    "en": [
+      "feedback",
+      "closed loop",
+      "control"
+    ]
+  }
+}

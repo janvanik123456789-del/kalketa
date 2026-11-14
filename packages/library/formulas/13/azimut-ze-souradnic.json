@@ -1,0 +1,98 @@
+{
+  "id": "azimut-ze-souradnic",
+  "field": "13",
+  "group": {
+    "cs": "Měření v terénu",
+    "en": "Field measurement"
+  },
+  "title": {
+    "cs": "Azimut ze souřadnic",
+    "en": "Azimuth from coordinates"
+  },
+  "source": {
+    "text": {
+      "cs": "geodetický azimut ze souřadnic",
+      "en": "geodetic azimuth from coordinates"
+    }
+  },
+  "status": "verified",
+  "formula": "sm == mod(atan2(y_2 - y_1, x_2 - x_1), 400 gon)",
+  "quantities": {
+    "sm": {
+      "name": {
+        "cs": "azimut",
+        "en": "azimuth"
+      },
+      "unit": "gon",
+      "example": "50 gon"
+    },
+    "x_1": {
+      "name": {
+        "cs": "souřadnice x prvního bodu",
+        "en": "x coordinate of the first point"
+      },
+      "unit": "m",
+      "example": "0 m"
+    },
+    "y_1": {
+      "name": {
+        "cs": "souřadnice y prvního bodu",
+        "en": "y coordinate of the first point"
+      },
+      "unit": "m",
+      "example": "0 m"
+    },
+    "x_2": {
+      "name": {
+        "cs": "souřadnice x druhého bodu",
+        "en": "x coordinate of the second point"
+      },
+      "unit": "m",
+      "example": "30 m"
+    },
+    "y_2": {
+      "name": {
+        "cs": "souřadnice y druhého bodu",
+        "en": "y coordinate of the second point"
+      },
+      "unit": "m",
+      "example": "30 m"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "x_1": "0 m",
+        "y_1": "0 m",
+        "x_2": "30 m",
+        "y_2": "30 m"
+      },
+      "expect": {
+        "sm": "50 gon"
+      }
+    },
+    {
+      "given": {
+        "x_1": "10 m",
+        "y_1": "10 m",
+        "x_2": "10 m",
+        "y_2": "-40 m"
+      },
+      "expect": {
+        "sm": "300 gon"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "azimut",
+      "azimut",
+      "souřadnice"
+    ],
+    "en": [
+      "azimuth",
+      "coordinates",
+      "bearing"
+    ]
+  }
+}

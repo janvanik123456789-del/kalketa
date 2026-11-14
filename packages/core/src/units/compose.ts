@@ -223,7 +223,9 @@ export function unitNames(resolve: (symbol: string) => { dim: Dimension; factor:
         const unit = resolve(p + base.symbol);
         return unit && sameDim(unit.dim, dim) ? [{ symbol: p + base.symbol, factor: unit.factor }] : [];
       });
-      const down = [...sizes].sort((a, b) => b.factor - a.factor);
+      // Seconds take no prefix above (4651 s, not 4,651 ks; Strata, task 05): times are read in s, min or h, which the
+      // sheet may ask for (| h). ms and µs stay.
+      const down = [...sizes].filter((s) => base.symbol !== 's' || s.factor <= 1).sort((a, b) => b.factor - a.factor);
       let fits = down.find((s) => s.factor <= factor * (1 + 1e-9)) ?? down.at(-1);
       // 0,193 GPa reads as 193 MPa.
       while (fits && value !== undefined && value !== 0 && Math.abs(value) / fits.factor < least) {

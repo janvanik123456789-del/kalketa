@@ -1,0 +1,80 @@
+{
+  "id": "swamee-jain",
+  "field": "03",
+  "group": {
+    "cs": "Tekutiny",
+    "en": "Fluids"
+  },
+  "title": {
+    "cs": "Součinitel tření (Swamee–Jain)",
+    "en": "Friction factor (Swamee–Jain)"
+  },
+  "source": {
+    "text": {
+      "cs": "explicitní tvar Colebrookovy rovnice; zátěžový list DAVKA_2/07",
+      "en": "explicit form of the Colebrook relation; stress sheet DAVKA_2/07"
+    }
+  },
+  "status": "verified",
+  "formula": "λ == 0.25/(log10(ε_D/3.7 + 5.74/Re^0.9))^2",
+  "quantities": {
+    "λ": {
+      "name": {
+        "cs": "součinitel tření proudění",
+        "en": "friction factor"
+      },
+      "unit": "",
+      "example": "0.0184524"
+    },
+    "Re": {
+      "name": {
+        "cs": "Reynoldsovo číslo",
+        "en": "Reynolds number"
+      },
+      "unit": "",
+      "example": "1e5"
+    },
+    "ε_D": {
+      "name": {
+        "cs": "relativní drsnost potrubí",
+        "en": "relative roughness"
+      },
+      "unit": "",
+      "example": "1e-4"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "Re": "1e5",
+        "ε_D": "1e-4"
+      },
+      "expect": {
+        "λ": "0.0184524"
+      }
+    },
+    {
+      "given": {
+        "Re": "4e5",
+        "ε_D": "2e-5"
+      },
+      "expect": {
+        "λ": "0.0139056"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "swamee",
+      "jain",
+      "tření",
+      "drsnost"
+    ],
+    "en": [
+      "swamee",
+      "jain",
+      "friction",
+      "roughness"
+    ]
+  }
+}

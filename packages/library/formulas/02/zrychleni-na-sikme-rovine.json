@@ -1,0 +1,90 @@
+{
+  "id": "zrychleni-na-sikme-rovine",
+  "field": "02",
+  "group": {
+    "cs": "Pohyb a síly",
+    "en": "Motion and forces"
+  },
+  "title": {
+    "cs": "Zrychlení na šikmé rovině s třením",
+    "en": "Acceleration on an inclined plane with friction"
+  },
+  "source": {
+    "text": {
+      "cs": "šikmá rovina s třením, rozklad tíhy",
+      "en": "inclined plane with friction, resolved weight"
+    }
+  },
+  "status": "verified",
+  "formula": "a == g·(sin(α) - μ·cos(α))",
+  "quantities": {
+    "a": {
+      "name": {
+        "cs": "zrychlení",
+        "en": "acceleration"
+      },
+      "unit": "m/s^2",
+      "example": "3.20586 m/s^2"
+    },
+    "g": {
+      "name": {
+        "cs": "tíhové zrychlení",
+        "en": "gravitational acceleration"
+      },
+      "unit": "m/s^2",
+      "example": "9.81 m/s^2"
+    },
+    "α": {
+      "name": {
+        "cs": "sklon roviny",
+        "en": "inclination of the plane"
+      },
+      "unit": "°",
+      "example": "30 °"
+    },
+    "μ": {
+      "name": {
+        "cs": "součinitel smykového tření",
+        "en": "coefficient of friction"
+      },
+      "unit": "",
+      "example": "0.2"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "g": "9.81 m/s^2",
+        "α": "30 °",
+        "μ": "0.2"
+      },
+      "expect": {
+        "a": "3.20586 m/s^2"
+      }
+    },
+    {
+      "given": {
+        "g": "9.81 m/s^2",
+        "α": "45 °",
+        "μ": "0.35"
+      },
+      "expect": {
+        "a": "4.50887 m/s^2"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "šikmá",
+      "rovina",
+      "tření",
+      "sklon"
+    ],
+    "en": [
+      "inclined",
+      "plane",
+      "friction",
+      "slope"
+    ]
+  }
+}

@@ -1,0 +1,88 @@
+{
+  "id": "prubeh-kmitani",
+  "field": "09",
+  "group": {
+    "cs": "Odezva soustavy",
+    "en": "System response"
+  },
+  "title": {
+    "cs": "Průběh netlumeného kmitání",
+    "en": "Undamped oscillation over time"
+  },
+  "source": {
+    "text": {
+      "cs": "netlumené kmitání; zátěžový list DAVKA_2/20, deset period proti integraci",
+      "en": "undamped oscillation; stress sheet DAVKA_2/20, ten periods against integration"
+    }
+  },
+  "status": "verified",
+  "formula": "x == x_0·cos(ω·t)",
+  "quantities": {
+    "x": {
+      "name": {
+        "cs": "výchylka",
+        "en": "displacement"
+      },
+      "unit": "m",
+      "example": "-0.416147 m"
+    },
+    "x_0": {
+      "name": {
+        "cs": "počáteční výchylka",
+        "en": "initial displacement"
+      },
+      "unit": "m",
+      "example": "1 m"
+    },
+    "ω": {
+      "name": {
+        "cs": "kružní frekvence",
+        "en": "circular frequency"
+      },
+      "unit": "rad/s",
+      "example": "2 rad/s"
+    },
+    "t": {
+      "name": {
+        "cs": "čas",
+        "en": "time"
+      },
+      "unit": "s",
+      "example": "1 s"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "x_0": "1 m",
+        "ω": "2 rad/s",
+        "t": "1 s"
+      },
+      "expect": {
+        "x": "-0.416147 m"
+      }
+    },
+    {
+      "given": {
+        "x_0": "1 m",
+        "ω": "2 rad/s",
+        "t": "0.75 s"
+      },
+      "expect": {
+        "x": "0.0707372 m"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "kmitání",
+      "výchylka",
+      "frekvence"
+    ],
+    "en": [
+      "oscillation",
+      "displacement",
+      "frequency"
+    ]
+  }
+}

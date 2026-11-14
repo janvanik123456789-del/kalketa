@@ -1,0 +1,68 @@
+{
+  "id": "preregulovani-z-tlumeni",
+  "field": "09",
+  "group": {
+    "cs": "Odezva soustavy",
+    "en": "System response"
+  },
+  "title": {
+    "cs": "Přeregulování z činitele tlumení",
+    "en": "Overshoot from the damping ratio"
+  },
+  "source": {
+    "text": {
+      "cs": "přeregulování soustavy druhého řádu",
+      "en": "second-order step response overshoot"
+    }
+  },
+  "status": "verified",
+  "formula": "M_p == exp(-π·ζ/sqrt(1 - ζ^2))",
+  "quantities": {
+    "M_p": {
+      "name": {
+        "cs": "přeregulování",
+        "en": "overshoot"
+      },
+      "unit": "",
+      "example": "0.163034"
+    },
+    "ζ": {
+      "name": {
+        "cs": "činitel tlumení",
+        "en": "damping ratio"
+      },
+      "unit": "",
+      "example": "0.5"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "ζ": "0.5"
+      },
+      "expect": {
+        "M_p": "0.163034"
+      }
+    },
+    {
+      "given": {
+        "ζ": "0.2"
+      },
+      "expect": {
+        "M_p": "0.526621"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "přeregulování",
+      "tlumení",
+      "odezva"
+    ],
+    "en": [
+      "overshoot",
+      "damping",
+      "response"
+    ]
+  }
+}

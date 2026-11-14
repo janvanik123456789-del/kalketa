@@ -18,13 +18,13 @@
 18 definition metamorfie: 27.1434 m³
 19 definition rad: [11]
 20 definition prirustek: 1.89321 m³
-21 definition A_numeric: 14.4 m³/m
+21 definition A_numeric: 14.4 m²
 22 definition A_analyticka: 14.4 m²
-23 definition sklon_A: 0 m²/m
+23 definition sklon_A: 0 m
 24 definition druha: 12
 25 definition h_12: 1.0907 m
 26 definition kontrola: 12 m³
-27 definition cas60: 4.65315 ks
+27 definition cas60: 4653.15 s
 28 definition cas60_h: 1.29254
 29 check: true
 30 check: true

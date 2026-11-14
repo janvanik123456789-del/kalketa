@@ -1,0 +1,80 @@
+{
+  "id": "tepelny-odpor-steny",
+  "field": "11",
+  "group": {
+    "cs": "Přestup tepla",
+    "en": "Heat transfer"
+  },
+  "title": {
+    "cs": "Tepelný odpor stěny",
+    "en": "Thermal resistance of a wall"
+  },
+  "source": {
+    "text": {
+      "cs": "odpor jednovrstvé stěny, definice tepelného odporu",
+      "en": "single-layer wall, definition of thermal resistance"
+    }
+  },
+  "status": "verified",
+  "formula": "R == d/λ",
+  "quantities": {
+    "R": {
+      "name": {
+        "cs": "tepelný odpor stěny",
+        "en": "thermal resistance"
+      },
+      "unit": "m^2·K/W",
+      "example": "0.342857 m^2·K/W"
+    },
+    "d": {
+      "name": {
+        "cs": "tloušťka stěny",
+        "en": "wall thickness"
+      },
+      "unit": "m",
+      "example": "0.24 m"
+    },
+    "λ": {
+      "name": {
+        "cs": "součinitel tepelné vodivosti",
+        "en": "thermal conductivity"
+      },
+      "unit": "W/(m·K)",
+      "example": "0.7 W/(m·K)"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "d": "0.24 m",
+        "λ": "0.7 W/(m·K)"
+      },
+      "expect": {
+        "R": "0.342857 m^2·K/W"
+      }
+    },
+    {
+      "given": {
+        "d": "0.08 m",
+        "λ": "0.038 W/(m·K)"
+      },
+      "expect": {
+        "R": "2.10526 m^2·K/W"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "tepelný",
+      "odpor",
+      "stěna",
+      "vodivost"
+    ],
+    "en": [
+      "thermal",
+      "resistance",
+      "wall",
+      "conductivity"
+    ]
+  }
+}

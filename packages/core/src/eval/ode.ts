@@ -437,7 +437,21 @@ export function firstStiffPoint(grid: { readonly xs: readonly number[]; readonly
   const reached = Array.from({ length: last + 1 }, (_, i) => i)
     .filter((i) => grid.ys[i]?.every(Number.isFinite))
     .sort((i, j) => Math.abs(grid.xs[i]! - origin) - Math.abs(grid.xs[j]! - origin));
-  for (const i of reached) if (h * decay(grid.xs[i]!, grid.ys[i]!) > RK4_STABILITY) return grid.xs[i]!;
+  // A fast rate is stiffness only where the equation holds beyond it: the level of an emptying tank (h′ = −k·√h) has a
+  // rate without bound as h → 0, and one step of the grid on takes h below 0, where √h has no value. There the
+  // solution ends (it stops being smooth), and that is said instead (Strata, batch 2). Stiff equations (Robertson,
+  // Van der Pol, Oregonator) have a value everywhere, however far a step throws the state.
+  const goesOn = (x0: number, y0: readonly number[]): boolean => {
+    try {
+      const slope = f(x0, y0);
+      const direction = x0 >= origin ? 1 : -1;
+      f(x0 + direction * h, y0.map((v, j) => v + direction * h * slope[j]!));
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  for (const i of reached) if (h * decay(grid.xs[i]!, grid.ys[i]!) > RK4_STABILITY) return goesOn(grid.xs[i]!, grid.ys[i]!) ? grid.xs[i]! : undefined;
   // Stiff only within the step that failed (Robertson: B = 0 at the start, a rate of 2000/s after a millisecond): that
   // step followed on the curve itself, in steps short enough for each rate met on the way.
   // The points just before it may already be swinging (values of the method, not of the curve): the way is followed
@@ -450,7 +464,7 @@ export function firstStiffPoint(grid: { readonly xs: readonly number[]; readonly
   const end = grid.xs[farthest]! + direction * h;
   for (let n = 0; n < 20000 && direction * (end - x) > 1e-12 * h; n++) {
     const rate = decay(x, y);
-    if (h * rate > RK4_STABILITY) return x;
+    if (h * rate > RK4_STABILITY) return goesOn(x, y) ? x : undefined;
     const step = direction * Math.min(direction * (end - x), h / 16, rate > 0 ? 0.5 / rate : h);
     try {
       const k1 = f(x, y);

@@ -23,6 +23,8 @@ export interface ReportOptions {
   readonly decimals?: number;
   /** Computed amounts of money to the cent (default) or in whole units (layout.json money). */
   readonly money?: 'cents' | 'whole';
+  /** The code of each message beside it ([E-ODE-STIFF]), for testers and AI models that compare them. */
+  readonly codes?: boolean;
 }
 
 const OPERATOR_SYMBOLS: Readonly<Record<string, string>> = { '<': '<', '<=': '≤', '>': '>', '>=': '≥' };
@@ -35,7 +37,7 @@ export function formatReport(result: SheetResult, options: ReportOptions): strin
     const text = formatStatement(r, result, options);
     if (text !== undefined) lines.push(`${String(r.statement.span.line).padStart(4)} │ ${text}`);
     for (const d of r.diagnostics) {
-      lines.push(`     │   ${catalog.severity[d.severity]} ${d.span.line}:${d.span.column}: ${formatDiagnostic(d, catalog)}`);
+      lines.push(`     │   ${catalog.severity[d.severity]} ${d.span.line}:${d.span.column}: ${options.codes ? `[${d.code}] ` : ''}${formatDiagnostic(d, catalog)}`);
     }
   }
 

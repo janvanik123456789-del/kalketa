@@ -1,0 +1,87 @@
+{
+  "id": "coulombuv-zakon",
+  "field": "02",
+  "group": {
+    "cs": "Elektrický náboj",
+    "en": "Electric charge"
+  },
+  "title": {
+    "cs": "Coulombova síla dvou nábojů",
+    "en": "Coulomb force of two charges"
+  },
+  "source": {
+    "text": {
+      "cs": "Coulombův zákon, k = 8,9875·10⁹ N·m²/C²",
+      "en": "Coulomb's law, k = 8.9875·10⁹ N·m²/C²"
+    }
+  },
+  "status": "verified",
+  "formula": "F == k_e·q_1·q_2/r^2",
+  "quantities": {
+    "F": {
+      "name": {
+        "cs": "síla mezi náboji",
+        "en": "force between the charges"
+      },
+      "unit": "N",
+      "example": "0.0359502 N"
+    },
+    "k_e": {
+      "name": {
+        "cs": "Coulombova konstanta",
+        "en": "Coulomb constant"
+      },
+      "unit": "N·m^2/C^2",
+      "example": "8.9875517923e9 N·m^2/C^2"
+    },
+    "q_1": {
+      "name": {
+        "cs": "první náboj",
+        "en": "first charge"
+      },
+      "unit": "C",
+      "example": "1e-6 C"
+    },
+    "q_2": {
+      "name": {
+        "cs": "druhý náboj",
+        "en": "second charge"
+      },
+      "unit": "C",
+      "example": "1e-6 C"
+    },
+    "r": {
+      "name": {
+        "cs": "vzdálenost nábojů",
+        "en": "distance of the charges"
+      },
+      "unit": "m",
+      "example": "0.5 m"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "k_e": "8.9875517923e9 N·m^2/C^2",
+        "q_1": "1e-6 C",
+        "q_2": "1e-6 C",
+        "r": "0.5 m"
+      },
+      "expect": {
+        "F": "0.0359502 N"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "elektrický náboj",
+      "elektrostatika",
+      "silové působení"
+    ],
+    "en": [
+      "charge",
+      "electrostatics",
+      "force"
+    ]
+  }
+}

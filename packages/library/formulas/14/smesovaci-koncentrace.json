@@ -1,0 +1,100 @@
+{
+  "id": "smesovaci-koncentrace",
+  "field": "14",
+  "group": {
+    "cs": "Čistění vod",
+    "en": "Water treatment"
+  },
+  "title": {
+    "cs": "Směšovací koncentrace dvou proudů",
+    "en": "Concentration of two mixed streams"
+  },
+  "source": {
+    "text": {
+      "cs": "bilance látky při směšování stok; zátěžový list TESTY/uloha04",
+      "en": "mass balance when mixing wastewaters; stress sheet TESTY/uloha04"
+    }
+  },
+  "status": "verified",
+  "formula": "c == (Q_1·c_1 + Q_2·c_2)/(Q_1 + Q_2)",
+  "quantities": {
+    "c": {
+      "name": {
+        "cs": "koncentrace ve směsi",
+        "en": "concentration in the mixture"
+      },
+      "unit": "mg/L",
+      "example": "242.947 mg/L"
+    },
+    "Q_1": {
+      "name": {
+        "cs": "průtok prvního proudu",
+        "en": "flow of the first stream"
+      },
+      "unit": "l/s",
+      "example": "12.5 l/s"
+    },
+    "c_1": {
+      "name": {
+        "cs": "koncentrace prvního proudu",
+        "en": "concentration of the first stream"
+      },
+      "unit": "mg/L",
+      "example": "340 mg/L"
+    },
+    "Q_2": {
+      "name": {
+        "cs": "průtok druhého proudu",
+        "en": "flow of the second stream"
+      },
+      "unit": "l/s",
+      "example": "8.2 l/s"
+    },
+    "c_2": {
+      "name": {
+        "cs": "koncentrace druhého proudu",
+        "en": "concentration of the second stream"
+      },
+      "unit": "mg/L",
+      "example": "95 mg/L"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "Q_1": "12.5 l/s",
+        "c_1": "340 mg/L",
+        "Q_2": "8.2 l/s",
+        "c_2": "95 mg/L"
+      },
+      "expect": {
+        "c": "242.947 mg/L"
+      }
+    },
+    {
+      "given": {
+        "Q_1": "50 l/s",
+        "c_1": "0 mg/L",
+        "Q_2": "50 l/s",
+        "c_2": "120 mg/L"
+      },
+      "expect": {
+        "c": "60 mg/L"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "směšování",
+      "koncentrace",
+      "bilance",
+      "látky"
+    ],
+    "en": [
+      "mixing",
+      "concentration",
+      "mass",
+      "balance"
+    ]
+  }
+}

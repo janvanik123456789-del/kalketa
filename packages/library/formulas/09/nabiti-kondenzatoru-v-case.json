@@ -1,0 +1,90 @@
+{
+  "id": "nabiti-kondenzatoru-v-case",
+  "field": "09",
+  "group": {
+    "cs": "Soustavy 1. řádu",
+    "en": "First-order systems"
+  },
+  "title": {
+    "cs": "Nabití kondenzátoru v čase",
+    "en": "Charging of a capacitor in time"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R51 (nabíjení kondenzátoru)",
+      "en": "Kalketa, sample R51 (charging a capacitor)"
+    },
+    "sample": "R51"
+  },
+  "status": "verified",
+  "formula": "u_C == U·(1 - exp(-t/τ))",
+  "quantities": {
+    "u_C": {
+      "name": {
+        "cs": "napětí na kondenzátoru",
+        "en": "voltage of the capacitor"
+      },
+      "unit": "V",
+      "example": "7.43787 V"
+    },
+    "U": {
+      "name": {
+        "cs": "napětí zdroje",
+        "en": "source voltage"
+      },
+      "unit": "V",
+      "example": "12 V"
+    },
+    "t": {
+      "name": {
+        "cs": "čas od sepnutí",
+        "en": "time since the switch"
+      },
+      "unit": "s",
+      "example": "1 s"
+    },
+    "τ": {
+      "name": {
+        "cs": "časová konstanta obvodu",
+        "en": "time constant of the circuit"
+      },
+      "unit": "s",
+      "example": "1.034 s"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "U": "12 V",
+        "t": "1 s",
+        "τ": "1.034 s"
+      },
+      "expect": {
+        "u_C": "7.43787 V"
+      }
+    },
+    {
+      "given": {
+        "U": "12 V",
+        "t": "2.38087 s",
+        "τ": "1.034 s"
+      },
+      "expect": {
+        "u_C": "10.8 V"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "kondenzátor",
+      "nabíjení",
+      "zpoždění",
+      "první řád"
+    ],
+    "en": [
+      "capacitor",
+      "charging",
+      "first order"
+    ]
+  }
+}

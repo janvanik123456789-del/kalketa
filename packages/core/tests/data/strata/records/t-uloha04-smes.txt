@@ -25,10 +25,10 @@
 25 definition cena: 304.667 CZK
 26 definition N2: 20 mg/L
 27 definition R_poz2: 0.917677
-28 definition k_r: 0.00000405093 Hz
+28 definition k_r: 0.35 1/d
 29 definition C0: 35 mg/L
 30 definition C_trsi: 12.2478 mg/L
-31 definition t_pol: 171108 s
+31 definition t_pol: 1.98042 d
 32 definition dt: 0.05 d
 33 table Euler60: ok
 35 definition e60: 12.1345 mg/L

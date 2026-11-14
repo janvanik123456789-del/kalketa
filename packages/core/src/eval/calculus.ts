@@ -659,8 +659,23 @@ function combinedHint(f: ResolvedUnit | undefined, x: ResolvedUnit | undefined, 
   if (op === '*') {
     if (f.symbol.endsWith(`/${x.symbol}`)) return { hint: { symbol: f.symbol.slice(0, -x.symbol.length - 1), factor: f.factor * x.factor, dim: multiplyDims(f.dim, x.dim) } };
     if (/\//.test(f.symbol) || /[·/]/.test(x.symbol)) return {};
-    return { hint: { symbol: `${f.symbol}·${x.symbol}`, factor: f.factor * x.factor, dim: multiplyDims(f.dim, x.dim) } };
+    // s · s is s², m² · m is m³ (integral(t, t: 0 s .. 2 s) was "2 s·s", Strata 2026-11-09).
+    // The exponent written after a symbol: '' is 1, '²' is 2 …; f = x^k gives x^(k+1).
+    const powers = ['', '²', '³', '⁴'];
+    const k = powers.findIndex((p) => f.symbol === `${x.symbol}${p}`) + 1;
+    const symbol = k >= 1 && k < powers.length ? `${x.symbol}${powers[k]}` : `${f.symbol}·${x.symbol}`;
+    return { hint: { symbol, factor: f.factor * x.factor, dim: multiplyDims(f.dim, x.dim) } };
   }
   if (/[·/]/.test(x.symbol) || /\//.test(f.symbol)) return {};
+  // m³ over m is m² (dV/dh, the area of the level; Strata task 05 had 14,4 m³/m), m² over m² is no unit.
+  const exponents = ['', '²', '³', '⁴'];
+  const k = exponents.findIndex((p) => f.symbol === `${x.symbol}${p}`) + 1;
+  if (k > power) {
+    const left = k - power;
+    return { hint: { symbol: `${x.symbol}${exponents[left - 1]}`, factor: f.factor / xFactor, dim: divideDims(f.dim, xDim) } };
+  }
+  if (k === power) return {};
+  // kN·m over m is kN.
+  if (power === 1 && f.symbol.endsWith(`·${x.symbol}`)) return { hint: { symbol: f.symbol.slice(0, -x.symbol.length - 1), factor: f.factor / xFactor, dim: divideDims(f.dim, xDim) } };
   return { hint: { symbol: `${f.symbol}/${xp}`, factor: f.factor / xFactor, dim: divideDims(f.dim, xDim) } };
 }

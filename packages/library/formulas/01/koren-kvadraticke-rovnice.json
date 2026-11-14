@@ -1,0 +1,88 @@
+{
+  "id": "koren-kvadraticke-rovnice",
+  "field": "01",
+  "group": {
+    "cs": "Algebra",
+    "en": "Algebra"
+  },
+  "title": {
+    "cs": "Kořen kvadratické rovnice",
+    "en": "Root of a quadratic equation"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R7 (kvadratická rovnice)",
+      "en": "Kalketa, sample R7 (quadratic equation)"
+    }
+  },
+  "status": "verified",
+  "formula": "x == (-b + sqrt(b^2 - 4·a·c))/(2·a)",
+  "quantities": {
+    "x": {
+      "name": {
+        "cs": "kořen rovnice",
+        "en": "root of the equation"
+      },
+      "unit": "",
+      "example": "3"
+    },
+    "a": {
+      "name": {
+        "cs": "koeficient u x²",
+        "en": "coefficient of x²"
+      },
+      "unit": "",
+      "example": "1"
+    },
+    "b": {
+      "name": {
+        "cs": "koeficient u x",
+        "en": "coefficient of x"
+      },
+      "unit": "",
+      "example": "-5"
+    },
+    "c": {
+      "name": {
+        "cs": "absolutní člen",
+        "en": "constant term"
+      },
+      "unit": "",
+      "example": "6"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "a": "1",
+        "b": "-5",
+        "c": "6"
+      },
+      "expect": {
+        "x": "3"
+      }
+    },
+    {
+      "given": {
+        "a": "2",
+        "b": "-4",
+        "c": "-6"
+      },
+      "expect": {
+        "x": "3"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "kvadratická rovnice",
+      "diskriminant",
+      "kořen"
+    ],
+    "en": [
+      "quadratic",
+      "root",
+      "discriminant"
+    ]
+  }
+}

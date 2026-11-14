@@ -1,0 +1,70 @@
+{
+  "id": "perioda-kmitani",
+  "field": "02",
+  "group": {
+    "cs": "Kmitání",
+    "en": "Vibration"
+  },
+  "title": {
+    "cs": "Perioda z úhlové frekvence",
+    "en": "Period from the angular frequency"
+  },
+  "source": {
+    "text": {
+      "cs": "harmonický oscilátor; zátěžový list DAVKA_2/20, perioda z integrace",
+      "en": "harmonic oscillator; stress sheet DAVKA_2/20, period from integration"
+    }
+  },
+  "status": "verified",
+  "formula": "T == 2·π/ω",
+  "quantities": {
+    "T": {
+      "name": {
+        "cs": "doba kmitu",
+        "en": "period"
+      },
+      "unit": "s",
+      "example": "3.14159 s"
+    },
+    "ω": {
+      "name": {
+        "cs": "úhlová frekvence",
+        "en": "angular frequency"
+      },
+      "unit": "rad/s",
+      "example": "2 rad/s"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "ω": "2 rad/s"
+      },
+      "expect": {
+        "T": "3.14159 s"
+      }
+    },
+    {
+      "given": {
+        "ω": "50 rad/s"
+      },
+      "expect": {
+        "T": "0.125664 s"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "perioda",
+      "kmitání",
+      "úhlová",
+      "frekvence"
+    ],
+    "en": [
+      "period",
+      "vibration",
+      "angular",
+      "frequency"
+    ]
+  }
+}

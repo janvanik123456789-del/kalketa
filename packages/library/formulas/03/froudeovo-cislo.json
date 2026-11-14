@@ -1,0 +1,92 @@
+{
+  "id": "froudeovo-cislo",
+  "field": "03",
+  "group": {
+    "cs": "Tekutiny",
+    "en": "Fluids"
+  },
+  "title": {
+    "cs": "Froudeovo číslo",
+    "en": "Froude number"
+  },
+  "source": {
+    "text": {
+      "cs": "poměr setrvačných a tíhových sil v otevřeném korytě; úloha TESTY/uloha01",
+      "en": "ratio of inertia to gravity in open-channel flow; task TESTY/uloha01"
+    }
+  },
+  "status": "verified",
+  "formula": "Fr == w/sqrt(g·h_s)",
+  "quantities": {
+    "Fr": {
+      "name": {
+        "cs": "Froudeovo číslo",
+        "en": "Froude number"
+      },
+      "unit": "",
+      "example": "1.0175896"
+    },
+    "w": {
+      "name": {
+        "cs": "průměrná rychlost proudění",
+        "en": "mean flow velocity"
+      },
+      "unit": "m/s",
+      "example": "1.1882573 m/s"
+    },
+    "g": {
+      "name": {
+        "cs": "tíhové zrychlení",
+        "en": "gravitational acceleration"
+      },
+      "unit": "m/s^2",
+      "example": "9.80665 m/s^2"
+    },
+    "h_s": {
+      "name": {
+        "cs": "proudová hloubka (průřez na šířku hladiny)",
+        "en": "hydraulic depth (area over surface width)"
+      },
+      "unit": "m",
+      "example": "0.13904487 m"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "w": "1.1882573 m/s",
+        "g": "9.80665 m/s^2",
+        "h_s": "0.13904487 m"
+      },
+      "expect": {
+        "Fr": "1.0175896"
+      }
+    },
+    {
+      "given": {
+        "w": "1.1738242 m/s",
+        "g": "9.80665 m/s^2",
+        "h_s": "0.14050296 m"
+      },
+      "expect": {
+        "Fr": "1"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "froudeovo",
+      "číslo",
+      "kritické",
+      "hloubka",
+      "proudění"
+    ],
+    "en": [
+      "froude",
+      "number",
+      "critical",
+      "depth",
+      "flow"
+    ]
+  }
+}

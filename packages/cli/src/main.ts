@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * kalketa run <sheet> [--lang cs] [--digits 4]
+ * kalketa run <sheet> [--lang cs] [--digits 4] [--codes]
  *   Evaluates a sheet and prints the results. <sheet> is a .kalk file or a
  *   .cc file with its tables next to it. Exit code 1 when the sheet has errors.
  *
@@ -36,7 +36,7 @@ import { canvasValues, printHtml, revisionFooter } from '@kalketa/render';
 
 const USAGE = [
   'Usage:',
-  '  kalketa run <sheet.kalk|sheet.cc> [--lang <language>] [--digits <n>]',
+  '  kalketa run <sheet.kalk|sheet.cc> [--lang <language>] [--digits <n>] [--codes]',
   '  kalketa trace <sheet.kalk|sheet.cc> <name> [--lang <language>]',
   '  kalketa print <sheet.kalk|sheet.cc> [--out <file.html>] [--pdf <file.pdf>] [--lang <language>]',
   '  kalketa import <worksheet.sm> [--out <file.kalk>]',
@@ -52,6 +52,7 @@ function parseOptions(argv: string[]) {
     options: {
       lang: { type: 'string', default: process.env['LANG'] ?? 'en' },
       digits: { type: 'string', default: '4' },
+      codes: { type: 'boolean', default: false },
       name: { type: 'string' },
       sheet: { type: 'string' },
       into: { type: 'string' },
@@ -98,7 +99,7 @@ async function main(argv: string[]): Promise<number> {
       console.log(formatTrace(node, { catalog, digits }));
       return 0;
     }
-    console.log(formatReport(result, { catalog, digits, ...(opened.document.layout.money ? { money: opened.document.layout.money } : {}) }));
+    console.log(formatReport(result, { catalog, digits, ...(values.codes ? { codes: true } : {}), ...(opened.document.layout.money ? { money: opened.document.layout.money } : {}) }));
     return [...opened.diagnostics, ...tableDiagnostics, ...result.diagnostics].some((d) => d.severity === 'error') ? 1 : 0;
   }
 

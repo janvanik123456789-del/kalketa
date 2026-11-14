@@ -7,7 +7,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { evaluateSheet, type SheetResult } from '@kalketa/core';
 import { describe, expect, it } from 'vitest';
-import { EMPTY_SHEET, insertion, readEntries, renameIn, search, sheetNames, sides, type Entry } from '../src/index.js';
+import { EMPTY_SHEET, insertion, readEntries, renameIn, search, sheetNames, sides, unitDimension, type Entry } from '../src/index.js';
 
 const DIR = join(import.meta.dirname, '../formulas');
 const files = Object.fromEntries(
@@ -38,6 +38,21 @@ describe('formula library', () => {
   it('reads every file', () => {
     expect(problems).toEqual([]);
     expect(entries.length).toBeGreaterThanOrEqual(30);
+  });
+
+  it('covers every field, checks every entry and writes every unit in a unit the core knows', () => {
+    // So that the library does not grow in one field again: 03 has tens, the rest must not stay below three.
+    const byField = new Map<string, number>();
+    for (const e of entries) byField.set(e.field, (byField.get(e.field) ?? 0) + 1);
+    expect([...byField].filter(([, n]) => n < 3).map(([f, n]) => `${f}: ${n}`)).toEqual([]);
+    // Every entry is to be findable by a word and carry a value somebody checked.
+    expect(entries.filter((e) => e.checks.length === 0 || !e.keywords).map((e) => e.id)).toEqual([]);
+    const wrongUnits = entries.flatMap((e) =>
+      Object.entries(e.quantities)
+        .filter(([, q]) => q.unit !== '' && unitDimension(q.unit) === undefined)
+        .map(([q]) => `${e.id}.${q}: ${e.quantities[q]!.unit}`),
+    );
+    expect(wrongUnits).toEqual([]);
   });
 
   for (const entry of entries) {

@@ -1,0 +1,92 @@
+{
+  "id": "srazkovy-odtok-racionalni",
+  "field": "14",
+  "group": {
+    "cs": "Povodí a odtok",
+    "en": "Catchment and runoff"
+  },
+  "title": {
+    "cs": "Srážkový odtok (racionální metoda)",
+    "en": "Storm runoff (rational method)"
+  },
+  "source": {
+    "text": {
+      "cs": "racionální metoda, dešťová kanalizace",
+      "en": "rational method, storm drainage"
+    }
+  },
+  "status": "verified",
+  "formula": "Q == C·i·A",
+  "quantities": {
+    "Q": {
+      "name": {
+        "cs": "špičkový průtok",
+        "en": "peak discharge"
+      },
+      "unit": "l/s",
+      "example": "1200 l/s"
+    },
+    "C": {
+      "name": {
+        "cs": "součinitel odtoku",
+        "en": "runoff coefficient"
+      },
+      "unit": "",
+      "example": "0.45"
+    },
+    "i": {
+      "name": {
+        "cs": "intenzita deště",
+        "en": "rainfall intensity"
+      },
+      "unit": "mm/h",
+      "example": "80 mm/h"
+    },
+    "A": {
+      "name": {
+        "cs": "povrch povodí",
+        "en": "catchment area"
+      },
+      "unit": "m^2",
+      "example": "120000 m^2"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "C": "0.45",
+        "i": "80 mm/h",
+        "A": "120000 m^2"
+      },
+      "expect": {
+        "Q": "1200 l/s"
+      }
+    },
+    {
+      "given": {
+        "C": "0.35",
+        "i": "60 mm/h",
+        "A": "8000 m^2"
+      },
+      "expect": {
+        "Q": "46.6667 l/s"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "srážkový",
+      "odtok",
+      "dešťová",
+      "kanalizace",
+      "intenzita"
+    ],
+    "en": [
+      "storm",
+      "runoff",
+      "rational",
+      "method",
+      "rainfall"
+    ]
+  }
+}

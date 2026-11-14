@@ -1,0 +1,89 @@
+{
+  "id": "soucasna-hodnota-budouci-castky",
+  "field": "16",
+  "group": {
+    "cs": "Úroky",
+    "en": "Interest"
+  },
+  "title": {
+    "cs": "Současná hodnota budoucí částky",
+    "en": "Present value of a future amount"
+  },
+  "source": {
+    "text": {
+      "cs": "Finanční matematika, diskontování",
+      "en": "Financial mathematics, discounting"
+    }
+  },
+  "status": "verified",
+  "formula": "S == F/(1 + r)^n",
+  "quantities": {
+    "S": {
+      "name": {
+        "cs": "současná hodnota",
+        "en": "present value"
+      },
+      "unit": "CZK",
+      "example": "118411 CZK"
+    },
+    "F": {
+      "name": {
+        "cs": "budoucí částka",
+        "en": "future amount"
+      },
+      "unit": "CZK",
+      "example": "150000 CZK"
+    },
+    "r": {
+      "name": {
+        "cs": "roční úroková sazba",
+        "en": "annual interest rate"
+      },
+      "unit": "%",
+      "example": "3 %"
+    },
+    "n": {
+      "name": {
+        "cs": "počet let",
+        "en": "number of years"
+      },
+      "unit": "",
+      "example": "8"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "F": "150000 CZK",
+        "r": "3 %",
+        "n": "8"
+      },
+      "expect": {
+        "S": "118411 CZK"
+      }
+    },
+    {
+      "given": {
+        "S": "100000 CZK",
+        "r": "4 %",
+        "n": "10"
+      },
+      "expect": {
+        "F": "148024 CZK"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "současná hodnota",
+      "diskont",
+      "investice",
+      "kalkulace návratnosti"
+    ],
+    "en": [
+      "present value",
+      "discount",
+      "investment"
+    ]
+  }
+}

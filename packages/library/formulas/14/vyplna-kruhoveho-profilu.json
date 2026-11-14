@@ -1,0 +1,82 @@
+{
+  "id": "vyplna-kruhoveho-profilu",
+  "field": "14",
+  "group": {
+    "cs": "Koryta",
+    "en": "Channels"
+  },
+  "title": {
+    "cs": "Výplň částečně naplněného kruhového profilu",
+    "en": "Flow area of a partially filled circular profile"
+  },
+  "source": {
+    "text": {
+      "cs": "kruhový výsečový průřez stoky; úloha TESTY/uloha01, reference mpmath",
+      "en": "circular segment profile of a sewer; task TESTY/uloha01, mpmath reference"
+    }
+  },
+  "status": "verified",
+  "formula": "A == D^2/8·(φ - sin(φ))",
+  "quantities": {
+    "A": {
+      "name": {
+        "cs": "průtočný průřez",
+        "en": "flow cross-section"
+      },
+      "unit": "m^2",
+      "example": "0.067325485 m^2"
+    },
+    "D": {
+      "name": {
+        "cs": "světlý průměr profilu",
+        "en": "internal diameter of the profile"
+      },
+      "unit": "m",
+      "example": "0.5 m"
+    },
+    "φ": {
+      "name": {
+        "cs": "středový úhel výseče v radiánech",
+        "en": "central angle of the segment in radians"
+      },
+      "unit": "",
+      "example": "2.637462"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "D": "0.5 m",
+        "φ": "2.637462"
+      },
+      "expect": {
+        "A": "0.067325485 m^2"
+      }
+    },
+    {
+      "given": {
+        "D": "0.5 m",
+        "φ": "6.2831853"
+      },
+      "expect": {
+        "A": "0.19634954 m^2"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "výplň",
+      "průřez",
+      "kruhový",
+      "profil",
+      "stoka"
+    ],
+    "en": [
+      "flow",
+      "area",
+      "circular",
+      "profile",
+      "sewer"
+    ]
+  }
+}

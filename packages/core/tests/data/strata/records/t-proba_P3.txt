@@ -5,7 +5,7 @@
 5 definition korenJ: [2]
 6 definition prvni: 2
 7 definition obsah: 9
-8 definition obsahJD: 9 m²·m
+8 definition obsahJD: 9 m³
 9 definition molo: 1 mol
 10 definition konc: 1.5 mol/L
 11 invalid plyn: error  E-MISSING-OPERATOR

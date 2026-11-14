@@ -1,0 +1,79 @@
+{
+  "id": "korekce-na-zakriveni-eme",
+  "field": "13",
+  "group": {
+    "cs": "Výšková měření",
+    "en": "Height measurements"
+  },
+  "title": {
+    "cs": "Korekce na zakřivení Země",
+    "en": "Correction for the curvature of the Earth"
+  },
+  "source": {
+    "text": {
+      "cs": "Geodézie, zakřivení Země, R = 6 371 km",
+      "en": "Geodesy, curvature of the Earth, R = 6371 km"
+    }
+  },
+  "status": "verified",
+  "formula": "Δh == d^2/(2·R)",
+  "quantities": {
+    "Δh": {
+      "name": {
+        "cs": "korekce výšky za zakřivení Země",
+        "en": "height correction for the curvature"
+      },
+      "unit": "m",
+      "example": "0.0784806 m"
+    },
+    "d": {
+      "name": {
+        "cs": "vodorovná vzdálenost",
+        "en": "horizontal distance"
+      },
+      "unit": "m",
+      "example": "1000 m"
+    },
+    "R": {
+      "name": {
+        "cs": "poloměr Země",
+        "en": "radius of the Earth"
+      },
+      "unit": "m",
+      "example": "6.371e6 m"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "d": "1000 m",
+        "R": "6.371e6 m"
+      },
+      "expect": {
+        "Δh": "0.0784806 m"
+      }
+    },
+    {
+      "given": {
+        "d": "300 m",
+        "R": "6.371e6 m"
+      },
+      "expect": {
+        "Δh": "0.00706326 m"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "zakřivení",
+      "geodetická výška",
+      "nivelizace",
+      "rovina"
+    ],
+    "en": [
+      "curvature",
+      "levelling",
+      "earth radius"
+    ]
+  }
+}

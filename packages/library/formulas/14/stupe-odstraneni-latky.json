@@ -1,0 +1,81 @@
+{
+  "id": "stupe-odstraneni-latky",
+  "field": "14",
+  "group": {
+    "cs": "Čistění vod",
+    "en": "Water treatment"
+  },
+  "title": {
+    "cs": "Stupeň odstranění látky",
+    "en": "Removal efficiency of a substance"
+  },
+  "source": {
+    "text": {
+      "cs": "bilance čistírny odpadních vod; úloha TESTY/uloha04",
+      "en": "wastewater treatment balance; task TESTY/uloha04"
+    }
+  },
+  "status": "verified",
+  "formula": "η_o == 1 - N/c",
+  "quantities": {
+    "η_o": {
+      "name": {
+        "cs": "stupeň odstranění",
+        "en": "removal efficiency"
+      },
+      "unit": "",
+      "example": "0.91767747"
+    },
+    "N": {
+      "name": {
+        "cs": "koncentrace za zařízením",
+        "en": "concentration behind the plant"
+      },
+      "unit": "mg/L",
+      "example": "20 mg/L"
+    },
+    "c": {
+      "name": {
+        "cs": "koncentrace před zařízením",
+        "en": "concentration in front of the plant"
+      },
+      "unit": "mg/L",
+      "example": "242.94686 mg/L"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "N": "20 mg/L",
+        "c": "242.94686 mg/L"
+      },
+      "expect": {
+        "η_o": "0.91767747"
+      }
+    },
+    {
+      "given": {
+        "N": "0 mg/L",
+        "c": "242.94686 mg/L"
+      },
+      "expect": {
+        "η_o": "1"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "stupeň",
+      "odstranění",
+      "čistírna",
+      "bilance"
+    ],
+    "en": [
+      "removal",
+      "efficiency",
+      "wastewater",
+      "treatment",
+      "plant"
+    ]
+  }
+}

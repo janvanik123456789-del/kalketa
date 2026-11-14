@@ -94,6 +94,7 @@ export const DIAGNOSTIC_SEVERITY = {
   'E-RANGE-PLACE': 'error',
   'W-CALCULUS-ACCURACY': 'warning',
   'W-FRACTION-BEFORE-UNIT': 'warning',
+  'W-POWER-FRACTION': 'warning',
   'W-UNDERFLOW': 'warning',
   'W-POWER-PRECISION': 'warning',
   'W-ODE-ACCURACY': 'warning',

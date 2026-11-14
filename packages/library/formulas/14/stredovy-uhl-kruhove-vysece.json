@@ -1,0 +1,82 @@
+{
+  "id": "stredovy-uhl-kruhove-vysece",
+  "field": "14",
+  "group": {
+    "cs": "Koryta",
+    "en": "Channels"
+  },
+  "title": {
+    "cs": "Středový úhel kruhové výseče",
+    "en": "Central angle of a circular segment"
+  },
+  "source": {
+    "text": {
+      "cs": "geometrie částečně naplněného kruhového profilu; úloha TESTY/uloha01",
+      "en": "geometry of a partially filled circular profile; task TESTY/uloha01"
+    }
+  },
+  "status": "verified",
+  "formula": "φ == 2·acos(1 - 2·h/D)",
+  "quantities": {
+    "φ": {
+      "name": {
+        "cs": "středový úhel výseče v radiánech",
+        "en": "central angle of the segment in radians"
+      },
+      "unit": "",
+      "example": "2.637462"
+    },
+    "h": {
+      "name": {
+        "cs": "výška hladiny",
+        "en": "depth of the liquid"
+      },
+      "unit": "m",
+      "example": "0.18764886 m"
+    },
+    "D": {
+      "name": {
+        "cs": "světlý průměr profilu",
+        "en": "internal diameter of the profile"
+      },
+      "unit": "m",
+      "example": "0.5 m"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "h": "0.18764886 m",
+        "D": "0.5 m"
+      },
+      "expect": {
+        "φ": "2.637462"
+      }
+    },
+    {
+      "given": {
+        "h": "0.25 m",
+        "D": "0.5 m"
+      },
+      "expect": {
+        "φ": "3.1415927"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "středový",
+      "úhel",
+      "kruhový",
+      "výseč",
+      "profil"
+    ],
+    "en": [
+      "central",
+      "angle",
+      "circular",
+      "segment",
+      "profile"
+    ]
+  }
+}

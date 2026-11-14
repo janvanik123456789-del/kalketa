@@ -26,6 +26,7 @@ import type { BlockCaller, BlockSource } from '../eval/blocks.js';
 import { TABLE_TOTAL, type BinaryOperator, type Expr, type Inequality, type LineFormat, type Sheet, type Statement } from '../lang/ast.js';
 import { MAX_EXPRESSION_DEPTH, parse } from '../lang/parser.js';
 import { normalizeIdentifier } from '../lang/names.js';
+import { withBareZero } from '../eval/zero.js';
 import { buildTable, rowLabel, type ColumnSchema, type Table, type TableBuildResult, type TableRead } from '../tables/table.js';
 import { COMPARE_FUNCTION } from '../eval/tables.js';
 import { isDimensionless, sameDim } from '../units/dimension.js';
@@ -1095,6 +1096,9 @@ function evaluateCheck(statement: Extract<Statement, { kind: 'check' }>, ctx: Ev
   if (expr.kind === 'binary' && CHECK_OPERATORS.has(expr.operator)) {
     let left = asComplex(evaluate(expr.left, ctx), expr.left.span);
     let right = asComplex(evaluate(expr.right, ctx), expr.right.span);
+    // A bare 0 on one side is a zero of the other's unit, as in any comparison (q := p > 0 held, check p > 0 said
+    // m³ against 1; Strata had to write 0 m^3, 2026-11-10).
+    [left, right] = withBareZero(left, right, expr.left, expr.right);
     // Both sides shown in one unit: a ratio against "2 %" as 0,43 %, not 0,0043.
     if (sameDim(left.dim, right.dim) && !left.absolute && !right.absolute) {
       if (!left.hint && right.hint) left = { ...left, hint: right.hint };

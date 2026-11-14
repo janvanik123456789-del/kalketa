@@ -1,0 +1,91 @@
+{
+  "id": "hodnota-pravidelnych-ulozek",
+  "field": "16",
+  "group": {
+    "cs": "Spoření",
+    "en": "Saving"
+  },
+  "title": {
+    "cs": "Budoucí hodnota pravidelných úložek",
+    "en": "Future value of regular deposits"
+  },
+  "source": {
+    "text": {
+      "cs": "Kalketa, vzor R46 (sazba a úložka spoření)",
+      "en": "Kalketa, sample R46 (interest rate and regular deposit)"
+    },
+    "sample": "R46"
+  },
+  "status": "verified",
+  "formula": "F == A·((1 + r)^n - 1)/r",
+  "quantities": {
+    "F": {
+      "name": {
+        "cs": "naspořená částka",
+        "en": "amount saved"
+      },
+      "unit": "CZK",
+      "example": "348850 CZK"
+    },
+    "A": {
+      "name": {
+        "cs": "úložka za období",
+        "en": "deposit per period"
+      },
+      "unit": "CZK",
+      "example": "5000 Kč"
+    },
+    "r": {
+      "name": {
+        "cs": "úroková sazba za období",
+        "en": "interest rate per period"
+      },
+      "unit": "%",
+      "example": "0.5 %"
+    },
+    "n": {
+      "name": {
+        "cs": "počet období",
+        "en": "number of periods"
+      },
+      "unit": "",
+      "example": "60"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "A": "5000 Kč",
+        "r": "0.5 %",
+        "n": "60"
+      },
+      "expect": {
+        "F": "348850 CZK"
+      }
+    },
+    {
+      "given": {
+        "F": "500000 Kč",
+        "r": "1.739152601714955 %",
+        "n": "20"
+      },
+      "expect": {
+        "A": "21118.3 Kč"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "spoření",
+      "anuita",
+      "úrok",
+      "banka"
+    ],
+    "en": [
+      "saving",
+      "annuity",
+      "deposit",
+      "compound interest"
+    ]
+  }
+}

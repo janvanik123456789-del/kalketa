@@ -1,0 +1,81 @@
+{
+  "id": "zakladni-vztah-dopravniho-proudu",
+  "field": "12",
+  "group": {
+    "cs": "Dopravní proud",
+    "en": "Traffic flow"
+  },
+  "title": {
+    "cs": "Intenzita z hustoty a rychlosti",
+    "en": "Flow from density and speed"
+  },
+  "source": {
+    "text": {
+      "cs": "Základní vztah dopravního proudu",
+      "en": "The fundamental diagram of traffic flow"
+    }
+  },
+  "status": "verified",
+  "formula": "Q == k·v",
+  "quantities": {
+    "Q": {
+      "name": {
+        "cs": "intenzita dopravy",
+        "en": "traffic flow"
+      },
+      "unit": "h^-1",
+      "example": "2600 h^-1"
+    },
+    "k": {
+      "name": {
+        "cs": "hustota dopravy",
+        "en": "traffic density"
+      },
+      "unit": "km^-1",
+      "example": "40 km^-1"
+    },
+    "v": {
+      "name": {
+        "cs": "rychlost vozidel",
+        "en": "speed of vehicles"
+      },
+      "unit": "km/h",
+      "example": "65 km/h"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "k": "40 km^-1",
+        "v": "65 km/h"
+      },
+      "expect": {
+        "Q": "2600 h^-1"
+      }
+    },
+    {
+      "given": {
+        "Q": "1800 h^-1",
+        "k": "60 km^-1"
+      },
+      "expect": {
+        "v": "30 km/h"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "intenzita",
+      "hustota",
+      "kapacita",
+      "dálnice",
+      "kongesce"
+    ],
+    "en": [
+      "traffic flow",
+      "density",
+      "capacity",
+      "congestion"
+    ]
+  }
+}

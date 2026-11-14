@@ -1,0 +1,97 @@
+{
+  "id": "linearni-interpolace",
+  "field": "01",
+  "group": {
+    "cs": "Interpolace",
+    "en": "Interpolation"
+  },
+  "title": {
+    "cs": "Lineární interpolace mezi dvěma body",
+    "en": "Linear interpolation between two points"
+  },
+  "source": {
+    "text": {
+      "cs": "Lineární interpolace v tabulce hodnot",
+      "en": "Linear interpolation in a table of values"
+    }
+  },
+  "status": "verified",
+  "formula": "y == y_1 + (x - x_1)·(y_2 - y_1)/(x_2 - x_1)",
+  "quantities": {
+    "y": {
+      "name": {
+        "cs": "hledaná hodnota",
+        "en": "value sought"
+      },
+      "unit": "kg/m^3",
+      "example": "997.6 kg/m^3"
+    },
+    "y_1": {
+      "name": {
+        "cs": "hodnota v prvním bodě",
+        "en": "value at the first point"
+      },
+      "unit": "kg/m^3",
+      "example": "998.2 kg/m^3"
+    },
+    "y_2": {
+      "name": {
+        "cs": "hodnota ve druhém bodě",
+        "en": "value at the second point"
+      },
+      "unit": "kg/m^3",
+      "example": "997 kg/m^3"
+    },
+    "x": {
+      "name": {
+        "cs": "hledaný argument",
+        "en": "argument sought"
+      },
+      "unit": "°C",
+      "example": "25 °C"
+    },
+    "x_1": {
+      "name": {
+        "cs": "první argument",
+        "en": "first argument"
+      },
+      "unit": "°C",
+      "example": "20 °C"
+    },
+    "x_2": {
+      "name": {
+        "cs": "druhý argument",
+        "en": "second argument"
+      },
+      "unit": "°C",
+      "example": "30 °C"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "y_1": "998.2 kg/m^3",
+        "y_2": "997 kg/m^3",
+        "x": "25 °C",
+        "x_1": "20 °C",
+        "x_2": "30 °C"
+      },
+      "expect": {
+        "y": "997.6 kg/m^3"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "interpolace",
+      "tabulka",
+      "odhad mezi body",
+      "hustota vody"
+    ],
+    "en": [
+      "interpolation",
+      "table",
+      "lookup"
+    ]
+  }
+}

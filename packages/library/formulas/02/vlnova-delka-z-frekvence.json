@@ -1,0 +1,80 @@
+{
+  "id": "vlnova-delka-z-frekvence",
+  "field": "02",
+  "group": {
+    "cs": "Vlnění",
+    "en": "Waves"
+  },
+  "title": {
+    "cs": "Vlnová délka z kmitočtu",
+    "en": "Wavelength from frequency"
+  },
+  "source": {
+    "text": {
+      "cs": "Vztah λ = v/f, světlo ve vakuu",
+      "en": "The relation λ = v/f, light in vacuum"
+    }
+  },
+  "status": "verified",
+  "formula": "λ == v/f",
+  "quantities": {
+    "λ": {
+      "name": {
+        "cs": "vlnová délka",
+        "en": "wavelength"
+      },
+      "unit": "m",
+      "example": "2.99792 m"
+    },
+    "v": {
+      "name": {
+        "cs": "rychlost vlnění",
+        "en": "wave speed"
+      },
+      "unit": "m/s",
+      "example": "299792458 m/s"
+    },
+    "f": {
+      "name": {
+        "cs": "kmitočet",
+        "en": "frequency"
+      },
+      "unit": "Hz",
+      "example": "100 MHz"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "v": "299792458 m/s",
+        "f": "100 MHz"
+      },
+      "expect": {
+        "λ": "2.99792 m"
+      }
+    },
+    {
+      "given": {
+        "v": "340 m/s",
+        "f": "500 Hz"
+      },
+      "expect": {
+        "λ": "0.68 m"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "vlnění",
+      "kmitočet",
+      "anténa",
+      "zvuk",
+      "světlo"
+    ],
+    "en": [
+      "wavelength",
+      "frequency",
+      "wave"
+    ]
+  }
+}

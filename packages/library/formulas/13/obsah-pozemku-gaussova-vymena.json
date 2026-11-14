@@ -1,0 +1,107 @@
+{
+  "id": "obsah-pozemku-gaussova-vymena",
+  "field": "13",
+  "group": {
+    "cs": "Pozemkové výpočty",
+    "en": "Land calculations"
+  },
+  "title": {
+    "cs": "Obsah trojúhelníka ze souřadnic",
+    "en": "Area of a triangle from coordinates"
+  },
+  "source": {
+    "text": {
+      "cs": "Gaussova výměna",
+      "en": "The shoelace formula"
+    }
+  },
+  "status": "verified",
+  "formula": "S == 1/2·(x_A·(y_B - y_C) + x_B·(y_C - y_A) + x_C·(y_A - y_B))",
+  "quantities": {
+    "S": {
+      "name": {
+        "cs": "obsah pozemku",
+        "en": "area of the plot"
+      },
+      "unit": "m^2",
+      "example": "12500 m^2"
+    },
+    "x_A": {
+      "name": {
+        "cs": "souřadnice X prvního bodu",
+        "en": "X coordinate of the first point"
+      },
+      "unit": "m",
+      "example": "500 m"
+    },
+    "y_A": {
+      "name": {
+        "cs": "souřadnice Y prvního bodu",
+        "en": "Y coordinate of the first point"
+      },
+      "unit": "m",
+      "example": "400 m"
+    },
+    "x_B": {
+      "name": {
+        "cs": "souřadnice X druhého bodu",
+        "en": "X coordinate of the second point"
+      },
+      "unit": "m",
+      "example": "750 m"
+    },
+    "y_B": {
+      "name": {
+        "cs": "souřadnice Y druhého bodu",
+        "en": "Y coordinate of the second point"
+      },
+      "unit": "m",
+      "example": "600 m"
+    },
+    "x_C": {
+      "name": {
+        "cs": "souřadnice X třetího bodu",
+        "en": "X coordinate of the third point"
+      },
+      "unit": "m",
+      "example": "1000 m"
+    },
+    "y_C": {
+      "name": {
+        "cs": "souřadnice Y třetího bodu",
+        "en": "Y coordinate of the third point"
+      },
+      "unit": "m",
+      "example": "900 m"
+    }
+  },
+  "checks": [
+    {
+      "given": {
+        "x_A": "500 m",
+        "y_A": "400 m",
+        "x_B": "750 m",
+        "y_B": "600 m",
+        "x_C": "1000 m",
+        "y_C": "900 m"
+      },
+      "expect": {
+        "S": "12500 m^2"
+      }
+    }
+  ],
+  "keywords": {
+    "cs": [
+      "obsah",
+      "pozemek",
+      "Gaussova výměna",
+      "parcela"
+    ],
+    "en": [
+      "area",
+      "plot",
+      "shoelace",
+      "cadastral"
+    ]
+  }
+}

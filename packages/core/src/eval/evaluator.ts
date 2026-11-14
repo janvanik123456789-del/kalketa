@@ -8,7 +8,7 @@
 import { diagnostic, fail, type Diagnostic, type Span } from '../diagnostics.js';
 import * as X from '../values/exact.js';
 import type { BinaryOperator, Expr } from '../lang/ast.js';
-import { dim, isDimensionless, multiplyDims, divideDims, powerDim, sameDim, superscript } from '../units/dimension.js';
+import { DIMENSIONLESS, dim, isDimensionless, multiplyDims, divideDims, powerDim, sameDim, superscript } from '../units/dimension.js';
 import { baseUnitSymbol } from '../units/display.js';
 import type { UnitRegistry } from '../units/registry.js';
 import { formatUnit, resolveUnit, type ResolvedUnit } from '../units/unitExpr.js';
@@ -29,7 +29,7 @@ import { asMatrix, at, inverseOf, matrix, normalized } from '../functions/linear
 import { callTableFunction, COMPARE_FUNCTION, memberOf, TABLE_FUNCTIONS } from './tables.js';
 import { applyFunction, applyToValues, lookupFunction } from './userFunctions.js';
 import { primeName } from './ode.js';
-import { inRotationOf, rotationKind } from './rotation.js';
+import { inRotationOf, rotationKind, TURN_COUNT } from './rotation.js';
 import { beamCall, frameCall } from './structures.js';
 import type { BlockCaller, BlockInput } from './blocks.js';
 
@@ -132,6 +132,12 @@ function noteFractionBeforeUnit(expr: Extract<Expr, { kind: 'binary' }>, ctx: Ev
     return;
   }
   if (operator !== '/' || left.kind !== 'number' || left.unit || left.imaginary || right.kind !== 'number' || !right.unit) return;
+  // Only as written: 3/8 in, the number, the slash and the number with its unit side by side. Not 0.35/(1 d) with its
+  // brackets, nor a division the solver made (solve u: 1/u == 0.25 m⁻¹ gave u = 1/(0.25 m⁻¹); 2026-11-14).
+  const between = right.span.offset - (left.span.offset + left.span.length);
+  // (1 d) keeps its brackets in its span (lang/parser.ts): it ends after the unit.
+  const bracketed = right.span.offset + right.span.length > right.unit.span.offset + right.unit.span.length;
+  if (right.span.line !== left.span.line || between < 1 || between > 3 || bracketed) return;
   const unit = formatUnit(right.unit);
   warnOnce(diagnostic('W-FRACTION-BEFORE-UNIT', expr.span, { written: `${left.value}/${right.value} ${unit}`, left: left.value, right: right.value, unit }), ctx);
 }
@@ -462,7 +468,10 @@ const ENERGY = dim({ M: 1, L: 2, T: -2 });
 function noteTurnsInPower(a: Quantity, b: Quantity, leftExpr: Expr, rightExpr: Expr, span: Span, ctx: EvalContext): void {
   if (writesPi(leftExpr) || writesPi(rightExpr)) return;
   const [turns, moment] = rotationKind(a.hint) === 'turns' ? [a, b] : [b, a];
-  if (rotationKind(turns.hint) !== 'turns' || !sameDim(moment.dim, ENERGY) || !moment.hint || /J$/.test(moment.hint.symbol)) return;
+  // n times a length is said nothing of: a feed n·f (mm per turn) and a wave λ·f need no 2π, v = 2·π·n·r does
+  // (tried as a warning 2026-11-14, it was wrong more often than right).
+  if (rotationKind(turns.hint) !== 'turns' || turns.hint?.turns) return;
+  if (!sameDim(moment.dim, ENERGY) || !moment.hint || /J$/.test(moment.hint.symbol)) return;
   warnOnce(diagnostic('W-TURNS-IN-POWER', span, { unit: turns.hint!.symbol }), ctx);
 }
 
@@ -496,6 +505,12 @@ function arithmetic(op: BinaryOperator, left: Value, right: Value, leftExpr: Exp
       warnOnAbsoluteTemperature(b, rightExpr.span, ctx);
       // Scaling by a plain number keeps the unit: 1.35 · g_k stays in kN/m.
       // Values no one sees (points of an integral) need no unit to show: composing it is most of the work.
+      // n·t with n in rpm or Hz and t a time: a number of turns, shown as rev (eval/rotation.ts, TURN_COUNT).
+      if (!hintsOff && op === '*' && ((rotationKind(a.hint) === 'turns' && !a.hint?.turns && sameDim(b.dim, TIME)) || (rotationKind(b.hint) === 'turns' && !b.hint?.turns && sameDim(a.dim, TIME)))) {
+        // Hz are cycles of anything (a vibration too): their count is a plain number; rpm, rps, min⁻¹ are turns.
+        const rate = rotationKind(a.hint) === 'turns' ? a.hint! : b.hint!;
+        return quantity(a.si * b.si, DIMENSIONLESS, /Hz$/.test(rate.symbol) ? {} : { hint: TURN_COUNT });
+      }
       const scaled = hintsOff ? undefined : scaledOperand(op, a, b);
       const combined = scaled || hintsOff ? undefined : samePowerHint(op, a, b);
       // Different units compose: kN/m · m² = kN·m (not joules, which have the same dimension).

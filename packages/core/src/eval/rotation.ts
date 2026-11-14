@@ -5,7 +5,7 @@
  * another name) nothing is assumed and no 2π is added.
  */
 
-import { dim, sameDim } from '../units/dimension.js';
+import { DIMENSIONLESS, dim, isDimensionless, sameDim } from '../units/dimension.js';
 import type { ResolvedUnit } from '../units/unitExpr.js';
 import type { Quantity } from '../values/value.js';
 
@@ -15,7 +15,12 @@ const PER_SECOND = dim({ T: -1 });
 const TURNS = /^(?:[kMGTmμµ]?Hz|rpm|rps|min⁻¹|1\/min|min\^-1)$/;
 const ANGLE = /^(?:rad|°|deg|rev)\/(?:s|min|h)$/;
 
+/** Angles a number of turns may be shown in: one turn is 2π of them in SI. */
+const ANGLES = /^(?:rad|°|deg|rev|gon)$/;
+
 export function rotationKind(unit: ResolvedUnit | undefined): RotationKind | undefined {
+  if (unit?.turns) return 'turns';
+  if (unit && isDimensionless(unit.dim) && ANGLES.test(unit.symbol)) return 'angle';
   if (!unit || !sameDim(unit.dim, PER_SECOND)) return undefined;
   if (unit.angular || ANGLE.test(unit.symbol)) return 'angle';
   return !unit.chosen && TURNS.test(unit.symbol) ? 'turns' : undefined;
@@ -35,6 +40,13 @@ export function inRotationOf(q: Quantity, target: ResolvedUnit | undefined): Qua
   const { exact: _exact, ...rest } = q;
   return { ...rest, si: q.si * factor, ...(q.im ? { im: q.im * factor } : {}) };
 }
+
+/**
+ * Turns per time times a time is a number of turns: 100 rpm for 2 s is 3.33 rev, 1200 °, not 0.53 rev (the 3.33 read
+ * as radians). Held as the count itself, so N·(wear per turn) needs no 2π; shown in ° or rad it is turned by 2π
+ * (decided by the user 2026-11-14: "Jako počet otáček").
+ */
+export const TURN_COUNT: ResolvedUnit = { symbol: 'rev', factor: 1, dim: DIMENSIONLESS, turns: true };
 
 /** A unit to show values of the kind `of` in, without changing them: a chart of rad/s drawn in rpm. */
 export function shownInRotation(unit: ResolvedUnit, of: ResolvedUnit | undefined): ResolvedUnit {

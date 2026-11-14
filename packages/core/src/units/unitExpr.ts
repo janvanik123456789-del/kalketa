@@ -19,6 +19,8 @@ export interface ResolvedUnit {
   readonly dim: Dimension;
   /** rpm or Hz shown of a value held in radians (ω := 3000 rpm | rpm), see eval/rotation.ts. */
   readonly angular?: boolean;
+  /** A number of turns (rpm times a time): held as the count itself, shown as rev, 2π rad each (eval/rotation.ts). */
+  readonly turns?: boolean;
   /**
    * Hz or kHz a product or quotient chose to show itself in (Ω/mH, m/s over mm), not a unit written: it says
    * nothing of turns, so no 2π comes of it (eval/rotation.ts).

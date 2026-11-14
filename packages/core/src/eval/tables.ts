@@ -78,6 +78,12 @@ function pick(call: CallExpr, table: Table, ctx: EvalContext, evaluate: Evaluate
     return fail('E-FUNC-ARITY', call.span, { function: 'pick', expected: 2, found: call.args.length + call.named.length });
   }
   const index = requireColumn(table, column, call.named[0]?.nameSpan ?? call.span);
+  // A key of another dimension than the column (200 for h in mm) finds no row by its nature: said as units, not as a
+  // missing row (pick(T, 200 mm) holds; Strata's subagent, 2026-11-14).
+  const sample = table.rows.map((cells) => cells[index] ?? null).find((cell) => cell?.type === 'quantity');
+  if (wanted.type === 'quantity' && sample?.type === 'quantity' && !sameDim(sample.dim, wanted.dim)) {
+    fail('E-UNIT-MISMATCH', span, { operator: 'pick', left: baseUnitSymbol(sample.dim), right: baseUnitSymbol(wanted.dim) });
+  }
   const row = table.rows.findIndex((cells) => cellEquals(cells[index] ?? null, wanted));
   if (row === -1) fail('E-TABLE-KEY', span, { table: table.name, column, key: describe(wanted) });
   return rowValue(table, row);

@@ -1241,10 +1241,10 @@ class LineParser {
     const save = this.pos;
     const diagnosticsBefore = this.diagnostics.length;
     try {
-      this.next();
+      const open = this.next();
       const inner = this.parseUnitExpr(false);
-      this.expect(')', ')');
-      return this.parseUnitPowers(inner);
+      const close = this.expect(')', ')');
+      return this.parseUnitPowers({ ...inner, span: spanOf(open, close) });
     } catch (err) {
       if (!(err instanceof CalcError)) throw err;
       this.pos = save;
@@ -1284,8 +1284,10 @@ class LineParser {
       base = { kind: 'unit-one', span: token.span };
     } else if (token.type === '(') {
       this.next();
-      base = this.parseUnitExpr(explicit);
-      this.expect(')', ')');
+      const inner = this.parseUnitExpr(explicit);
+      const close = this.expect(')', ')');
+      // The brackets belong to the unit: without them its span ended inside W/(m²·K and a check printed so (2026-11-14).
+      base = { ...inner, span: spanOf(token, close) };
     } else if (token.type === 'ident') {
       this.next();
       if (!this.isUnit(token.text)) fail('E-UNKNOWN-UNIT', token.span, { unit: token.text });

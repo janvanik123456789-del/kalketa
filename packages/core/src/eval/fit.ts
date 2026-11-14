@@ -252,6 +252,8 @@ function fitPoints(call: CallExpr, yExpr: Expr, xExpr: Expr, kind: FitKind, exac
 
   let coefficients: Quantity[];
   let body: Expr;
+  /** A polynomial far from zero: the centred coefficients its function is evaluated by. */
+  let centred: { a: number[]; mid: number; half: number } | undefined;
   /** For the errors: the covariance of the coefficients per s², and the residuals in the space of the fit. */
   let statistics: { covariance: number[][] | undefined; residuals: number[] };
   const linearFit = (rows: readonly (readonly number[])[], values: readonly number[], c: readonly number[]) => ({
@@ -287,6 +289,15 @@ function fitPoints(call: CallExpr, yExpr: Expr, xExpr: Expr, kind: FitKind, exac
       return quantity(v, dim, { ...(hint ? { hint } : {}), ...(k === 0 && y0.absolute ? { absolute: true } : {}) });
     });
     body = coefficients.slice(1).reduce<Expr>((sum, _, i) => bin('+', sum, bin('*', c(i + 1), i === 0 ? p : bin('^', p, { kind: 'number', value: i + 1, span: at }))), c(0));
+    // Far from zero (x = 100 000 … 100 005) the powers of x cancel to the last digits: the cubic was 3.969 at
+    // 100 002 instead of 3.937, R² 0.99915 instead of 0.99923, silently (2026-11-14). There the function keeps the
+    // centred form it was fitted in, Σ aⱼ·((x − mid)/half)^j; the coefficients shown stay those of the powers of x.
+    if ((Math.abs(mid) / half) ** degree > 1e6) {
+      const t = bin('/', bin('-', p, { kind: 'variable', name: `${COEFFICIENT}m`, span: at }), { kind: 'variable', name: `${COEFFICIENT}h`, span: at });
+      const ca = (j: number): Expr => ({ kind: 'variable', name: `${COEFFICIENT}a${j}`, span: at });
+      body = a.slice(1).reduce<Expr>((sum, _, i) => bin('+', sum, bin('*', ca(i + 1), i === 0 ? t : bin('^', t, { kind: 'number', value: i + 1, span: at }))), ca(0));
+      centred = { a, mid, half };
+    }
   } else if (kind === 'exp') {
     const [lnA, b] = leastSquares(xv.map((x) => [1, x]), yv.map(Math.log), call);
     statistics = linearFit(xv.map((x) => [1, x]), yv.map(Math.log), [lnA!, b!]);
@@ -308,9 +319,18 @@ function fitPoints(call: CallExpr, yExpr: Expr, xExpr: Expr, kind: FitKind, exac
   const captured = new Map<string, Value>(coefficients.map((q, i) => [`${COEFFICIENT}${i}`, q]));
   captured.set(`${COEFFICIENT}u`, xUnit);
   if (zero) captured.set(`${COEFFICIENT}z`, zero);
+  if (centred) {
+    captured.set(`${COEFFICIENT}m`, quantity(centred.mid, x0.dim));
+    captured.set(`${COEFFICIENT}h`, quantity(centred.half, x0.dim));
+    centred.a.forEach((v, j) =>
+      captured.set(`${COEFFICIENT}a${j}`, quantity(v, y0.dim, j === 0 ? { ...(y0.hint ? { hint: y0.hint } : {}), ...(y0.absolute ? { absolute: true } : {}) } : yHint ? { hint: yHint } : {})),
+    );
+  }
   const fitted: FunctionValue = { type: 'function', name: 'fit', params: [param], body, captured };
   // R² on the data as measured, with the fitted function.
-  const predicted = xv.map((x) => predict(kind, coefficients.map((q) => q.si), x, xUnit.si));
+  const predicted = centred
+    ? xv.map((x) => centred!.a.reduce((sum, aj, j) => sum + aj * ((x - centred!.mid) / centred!.half) ** j, 0))
+    : xv.map((x) => predict(kind, coefficients.map((q) => q.si), x, xUnit.si));
   const mean = yv.reduce((s, v) => s + v, 0) / yv.length;
   const total = yv.reduce((s, v) => s + (v - mean) ** 2, 0);
   const residual = yv.reduce((s, v, i) => s + (v - predicted[i]!) ** 2, 0);

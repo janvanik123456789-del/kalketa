@@ -61,7 +61,55 @@ describe('the end of a solution', () => {
       'solve h(t): h′ == dh(h) in 0 s .. 1.1·t_v',
       '    h(0 s) == h_0',
     ].join('\n');
-    expect(codes(tank)).toContain('E-ODE-SINGULAR');
-    expect(codes(tank)).not.toContain('E-ODE-STIFF');
+    // The fixed step tries all its grids first (several seconds).
+    const said = codes(tank);
+    expect(said).toContain('E-ODE-SINGULAR');
+    expect(said).not.toContain('E-ODE-STIFF');
+  }, 30_000);
+});
+
+/** Found by the subagents' batches 8 to 11 (2026-11-14), each checked again by hand. */
+describe('batches 8 to 11', () => {
+  it('keeps the brackets of a unit in its span (a check printed W/(m²·K without its last one)', () => {
+    const source = 'U := 0.2 W/(m²·K)\ncheck "X": U ≤ 0.25 W/(m²·K)';
+    const r = run(source);
+    const check = r.statements[1]!.statement;
+    expect(check.kind === 'check' ? source.slice(check.expr.span.offset, check.expr.span.offset + check.expr.span.length) : '').toBe('U ≤ 0.25 W/(m²·K)');
+  });
+
+  it('evaluates a polynomial fitted far from zero in its centred form', () => {
+    const rows = [1, 2, 4, 7, 11, 18].map((y, i) => `    | ${100000 + i} | ${y} |`).join('\n');
+    const r = run(`table D:\n    | x | y |\n${rows}\nf3 := fit(D.y, x: D.x, kind: "poly3")\nr := fit_r2(f3)\nv := f3(100002)`);
+    // NumPy polyfit on x − 100002.5: R² 0.9992325697402249, f(100002) 3.9365079365079367.
+    expect(Math.abs((r.values.get('r') as { si: number }).si - 0.9992325697402249)).toBeLessThan(1e-12);
+    expect(Math.abs((r.values.get('v') as { si: number }).si - 3.9365079365079367)).toBeLessThan(1e-9);
+  });
+
+  it('says a key without the unit of its column as units, not as a missing row', () => {
+    const table = 'table T2:\n    | h [mm] | A [cm^2] |\n    | 100 | 1 |\n    | 200 | 2 |';
+    expect(codes(`${table}\np := pick(T2, 200).A`)).toEqual(['E-UNIT-MISMATCH']);
+    expect(codes(`${table}\np := pick(T2, 200 mm).A`)).toEqual([]);
+  });
+
+  it('warns of a fraction before a unit only as written side by side', () => {
+    expect(codes('a := 3/8 in')).toEqual(['W-FRACTION-BEFORE-UNIT']);
+    expect(codes('c := 0.35/(1 d)')).toEqual([]);
+    expect(codes('solve u: 1/u == 0.25 m^-1')).toEqual([]);
+  });
+});
+
+describe('turns per time times a time', () => {
+  // Decided by the user 2026-11-14 ("Jako počet otáček"): 100 rpm for 2 s is 3.33 turns, not 0.53 (radians read as turns).
+  it('is a number of turns, shown as rev, turned into ° or rad by 2π, and a plain count in what follows', () => {
+    const sheet = 'n := 100 rpm\nt := 2 s\nN := n·t\na := n·t | °\nb := n·t | rad\nw := N · 0.1 mm';
+    expect(shown(sheet, 'N')).toBe('3.33333 rev');
+    expect(shown(sheet, 'a')).toBe('1200 °');
+    expect(shown(sheet, 'b')).toBe('20.944 rad');
+    expect(shown(sheet, 'w')).toBe('0.333333 mm');
+  });
+
+  it('leaves cycles in Hz a plain count and the power M·ω as it was', () => {
+    expect(shown('f := 50 Hz · 3 s', 'f')).toBe('150');
+    expect(shown('M := 100 N·m\nω := 3000 rpm\nP := M·ω | kW', 'P')).toBe('31.4159 kW');
   });
 });

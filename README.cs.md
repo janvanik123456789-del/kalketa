@@ -25,10 +25,11 @@ Sestavení pro Windows (instalátor nebo přenosný `.exe`) a Linux (`.AppImage`
 - **Přesné výsledky** na vyžádání: `{exact}` ukáže zlomek nebo odmocninu (49/9 ≐ 5,444).
 - **Podklady s teorií** ověřovanou jádrem a **Kontrola v Pythonu**, která list přepočítá nezávisle a porovná hodnotu po hodnotě. Dvě stránky vedle sebe ukážou výpočet a jeho teorii zároveň.
 - **Import ze SMath Studia:** list se převede na list Kalkety a výsledky uložené v souboru se porovnají s výsledky Kalkety. Co převést nejde, zůstane vidět jako text s důvodem.
-- **Knihovna vzorců:** Vložit → Vzorec z knihovny: 100 vzorců ze vzorových výpočtů, přeskládaných na veličinu, na kterou kliknete, s příkladnými hodnotami a zdrojem.
+- **Poctivě o svých mezích:** stovky zátěžových a limitních listů (tuhé rovnice, špatně podmíněné matice, ocasy rozdělení, součty velmi rozdílných čísel) se při každé změně jádra porovnávají s nezávislými referencemi. Kde dvojitá přesnost nebo metoda nestačí, Kalketa to řekne s pravdivým důvodem, místo aby vytiskla špatné číslo.
+- **Knihovna vzorců:** Vložit → Vzorec z knihovny: 149 vzorců ze všech oborů, každý ověřený jinou cestou než svou rovnicí, přeskládaných na veličinu, na kterou kliknete, s příkladnými hodnotami a zdrojem.
 - **AI volitelně:** vysvětlí, zkontroluje a navrhne změny, které člověk přijme nebo odmítne, a ověří výsledky v Pythonu jinou cestou. Sama výpočet nemění. Claude nebo lokální model, nebo vůbec.
 - **AI zvenku (MCP):** vaše vlastní AI aplikace (Claude Code, Claude Desktop, aplikace místního modelu) se připojí ke Kalketě, čte otevřený list a navrhuje změny, na vaše předplatné, bez API klíče. Vypnuté, dokud ho nezapnete, jen na tomto počítači a s tokenem.
-- **AI z obyčejného chatu:** do ChatGPT, Claude.ai nebo Gemini přiložte [`llms.txt`](https://raw.githubusercontent.com/janvanik123456789-del/kalketa/main/llms.txt) (návod jazyka Kalkety pro AI) a napište, co chcete spočítat. Výpočet z odpovědi vložte do Kalkety přes Ctrl+V, tabulku do datové vrstvy, skript do Ověření v Pythonu.
+- **AI z obyčejného chatu:** do ChatGPT, Claude.ai nebo Gemini přiložte [`llms.txt`](https://raw.githubusercontent.com/janvanik123456789-del/kalketa/main/llms.txt) (návod jazyka Kalkety pro AI) a napište, co chcete spočítat. Výpočet z odpovědi vložte do Kalkety přes Ctrl+V, tabulku do datové vrstvy, skript do Ověření v Pythonu. Soubor → Exportovat pro AI dá výpočet i se zadáním do jednoho souboru, který stačí přetáhnout do chatu.
 - **54 vzorových výpočtů** ve všech oborech, každý česky i anglicky; 32 z nich jsou řešené příklady z veřejných zdrojů (skripta, sbírky, články), s odkazem na zdroj a nezávisle ověřené.
 
 ## Dokumentace
